@@ -1,7 +1,7 @@
 # 正在配对（TAB_PAIRING）
 
-> 本页由自动脚本从雷云**自己的模块**提取，未做臆测。
-> 重新生成：`node .ref/tools/gen-screen-docs.js`
+> 本页由雷云自己的产品模块提取；本文件只记录原版事实，不记录本项目实现状态。
+> 证据工具：`node .ref/tools/gen-screen-docs.js`
 
 ## 1. 出现在哪些设备上
 
@@ -264,13 +264,3 @@
 | `UNPAIRING_COMPLETE` | 您的设备已经解除绑定 | Your device has been unpaired |
 | `UNPAIRING_FAILED` | 取消配对失败 | Unpairing Failed |
 | `UNPAIR_CONFIRM_TEXT` | 设备将从此 HyperSpeed 接收器上移除。 | Device will be removed from this HyperSpeed dongle. |
-## 4. 本项目的实现状态
-
-| 项 | 内容 |
-|---|---|
-| 本项目的页面 | src/pages/pairing.rs —— 已实现（接收器 / 配对 / 取消配对） |
-| 后端方案 | 方案 2：复用雷云原生引擎（`lighting_driver` / `RzLightingEngineApi` / `mapping_engine` / `simple_service`） |
-| 证据等级 | 布局 `[前端]`（设备模块 CSS）、文案 `[文案]`（语言包）、设备归属 `[前端]`（设备模块常量块） |
-
-> 尚未实现的界面在应用里走占位页；占位页列出该页**真实存在的 key**，不编造内容。
-

@@ -1,7 +1,7 @@
 # 性能（TAB_PERFORMANCE）
 
-> 本页由自动脚本从雷云**自己的模块**提取，未做臆测。
-> 重新生成：`node .ref/tools/gen-screen-docs.js`
+> 本页由雷云自己的产品模块提取；本文件只记录原版事实，不记录本项目实现状态。
+> 证据工具：`node .ref/tools/gen-screen-docs.js`
 
 ## 1. 出现在哪些设备上
 
@@ -303,13 +303,3 @@
 | `STAGE3` | 等级 3 | Stage 3 |
 | `STAGE4` | 等级 4 | Stage 4 |
 | `STAGE5` | 等级 5 | Stage 5 |
-## 4. 本项目的实现状态
-
-| 项 | 内容 |
-|---|---|
-| 本项目的页面 | src/pages/performance.rs —— 已实现（DPI 档位编辑 + 档位柱状图） |
-| 后端方案 | 方案 2：复用雷云原生引擎（`lighting_driver` / `RzLightingEngineApi` / `mapping_engine` / `simple_service`） |
-| 证据等级 | 布局 `[前端]`（设备模块 CSS）、文案 `[文案]`（语言包）、设备归属 `[前端]`（设备模块常量块） |
-
-> 尚未实现的界面在应用里走占位页；占位页列出该页**真实存在的 key**，不编造内容。
-

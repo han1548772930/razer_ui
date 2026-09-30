@@ -1,7 +1,7 @@
 # 麦克风（TAB_MIC）
 
-> 本页由自动脚本从雷云**自己的模块**提取，未做臆测。
-> 重新生成：`node .ref/tools/gen-screen-docs.js`
+> 本页由雷云自己的产品模块提取；本文件只记录原版事实，不记录本项目实现状态。
+> 证据工具：`node .ref/tools/gen-screen-docs.js`
 
 ## 1. 出现在哪些设备上
 
@@ -289,13 +289,3 @@
 | `VOICE_GATE_DESC` | 控制麦克风输入的阈值。 | Control the threshold of microphone input. |
 | `VOICE_GATE_DESC_2` | 若阈值较低，则可录入的声音更多 | A lower threshold will allow more sound to be registered. |
 | `VOICE_GATE_TOOLTIP` | 调整麦克风输入音量。<br><br>噪声门负责控制麦克风的输入量。低于阈值的所有声音都会被减弱，让它不会被听到。 | Adjust the microphone input volume.<br><br>Voice gate controls the amount of microphone input. Any sound that registers below the threshold will be attenuated and will not be heard. |
-## 4. 本项目的实现状态
-
-| 项 | 内容 |
-|---|---|
-| 本项目的页面 | src/pages/calibration.rs —— 已实现（表面配置文件 / 校准状态机） |
-| 后端方案 | 方案 2：复用雷云原生引擎（`lighting_driver` / `RzLightingEngineApi` / `mapping_engine` / `simple_service`） |
-| 证据等级 | 布局 `[前端]`（设备模块 CSS）、文案 `[文案]`（语言包）、设备归属 `[前端]`（设备模块常量块） |
-
-> 尚未实现的界面在应用里走占位页；占位页列出该页**真实存在的 key**，不编造内容。
-

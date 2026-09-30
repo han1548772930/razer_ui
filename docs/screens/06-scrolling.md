@@ -1,7 +1,7 @@
 # 滚动（TAB_SCROLLING）
 
-> 本页由自动脚本从雷云**自己的模块**提取，未做臆测。
-> 重新生成：`node .ref/tools/gen-screen-docs.js`
+> 本页由雷云自己的产品模块提取；本文件只记录原版事实，不记录本项目实现状态。
+> 证据工具：`node .ref/tools/gen-screen-docs.js`
 
 ## 1. 出现在哪些设备上
 
@@ -271,13 +271,3 @@
 | `SCROLL_WHEEL_TOOLTIP` | 自定义滚轮，使其滚动速度匹配你滑动滚轮的速度。<br> <br>你还可以将其滚动模式更改为触觉滚动模式以便一次滚动一行，或自由滚动模式以便轻松快速浏览内容，也可以启用智能滚动模式以便根据滚轮的移动自动切换滚动模式。 | Customize the scroll wheel to adapt its scroll speed to how fast you scroll.<br> <br>You can also change its scroll mode to Tactile Cycling to scroll one line at a time, Free-Spin Scrolling to easily speed through content, or enable Smart-Reel to automatically switch scroll modes according to scroll wheel movement. |
 | `SCROLL_WHEEL_TOOLTIP_V2` | 自定义滚轮，使其滚动速度匹配你滑动滚轮的速度。<br> <br>你可以根据需要更改滚动模式。滚动模式包括“触觉滚动”，可实现逐行滚动；“自由滚动”，可助你快速浏览内容；“精确触觉滚动”，可提供超精准控制；以及“智能滚动”，可根据滚轮的移动自动调整滚动模式。 | Customize the scroll wheel to adapt its scroll speed to how fast you scroll.<br> <br>You can change the scroll modes to suit your needs. Options include Tactile Cycling, which allows you to scroll one line at a time; Free-Spin Scrolling, which helps you quickly navigate through content; Precision Tactile, giving you ultra-precise control; or Smart-Reel, which automatically adjusts the scroll mode based on the movement of the scroll wheel. |
 | `WHEEL` | 旋转效果 | Wheel |
-## 4. 本项目的实现状态
-
-| 项 | 内容 |
-|---|---|
-| 本项目的页面 | src/pages/calibration.rs —— 已实现（表面配置文件 / 校准状态机） |
-| 后端方案 | 方案 2：复用雷云原生引擎（`lighting_driver` / `RzLightingEngineApi` / `mapping_engine` / `simple_service`） |
-| 证据等级 | 布局 `[前端]`（设备模块 CSS）、文案 `[文案]`（语言包）、设备归属 `[前端]`（设备模块常量块） |
-
-> 尚未实现的界面在应用里走占位页；占位页列出该页**真实存在的 key**，不编造内容。
-
