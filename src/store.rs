@@ -2,7 +2,7 @@
 //!
 //! # 为什么必须自建
 //!
-//! 逆向确认（`docs/FEATURES.md` I6 / D4，证据 `docs/re/01-ipc-api-surface.md` §20.8）：
+//! 逆向确认（主规范 §8，证据 `docs/re/01-ipc-api-surface.md` §20.8）：
 //! 雷云的 IPC 层**不提供任何配置持久化**——`memory_storage` / `window_storage` /
 //! `keyStorage` 全是按窗口 URL 索引的**内存** Map，窗口销毁即清空；
 //! 真正的落盘在远程前端与 C++ 引擎内部，我们无法复用。

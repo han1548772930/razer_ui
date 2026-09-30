@@ -1,20 +1,21 @@
 //! 雷云 4 的 Rust 原生替代 UI。
 //!
-//! 逆向成果见 `docs/FEATURES.md`，IPC 契约见 `docs/re/01-ipc-api-surface.md`。
+//! 原版 UI 规格见 `docs/RAZER-SYNAPSE-UI-SPEC.md`，IPC 契约见 `docs/re/01-ipc-api-surface.md`。
 //!
 //! 架构现状（方案 2 的起点）：
 //!   UI（本项目，gpui-kit）→ [已接通、待调用] 雷云原生引擎 DLL → 硬件
 //!
 //! 目前 UI 跑在本机实测的设备快照上；引擎 DLL 的加载探测走命令行。
 
-mod app;
+mod shell;
 mod backend;
 mod demo;
+mod domain;
 mod features;
 mod i18n;
 mod model;
 mod nav;
-mod pages;
+mod ui;
 mod store;
 
 // i18n：与 gpui-component 内部用的是同一套 rust-i18n。
@@ -155,7 +156,7 @@ fn main() {
     // 说明：真正的配置路径是 `%APPDATA%\razer_ui\profiles.json`，
     // 但自检写入显式路径，便于在受限环境里也能跑通。
     if args.iter().any(|arg| arg == "--selftest") {
-        use features::{Macro, MacroStep};
+        use domain::{Macro, MacroStep};
 
         // 语言包来自雷云真实前端，这里顺便验证它确实被载入了。
         println!("当前语言：{}", i18n::locale());
@@ -331,6 +332,8 @@ fn main() {
 
             // 页面底色 #222，卡片 #111
             theme.colors.background = rgb(0x2222_22).into();
+            theme.colors.title_bar = rgb(0x000000).into();
+            theme.colors.title_bar_border = rgb(0x0000_00).into();
             theme.colors.group_box = rgb(0x1111_11).into();
             theme.colors.group_box_foreground = rgb(0xCCCC_CC).into();
             theme.colors.secondary = rgb(0x3333_33).into();
@@ -401,7 +404,7 @@ fn main() {
             // 圆角：雷云是**两级**，正好对上主题的命名档位。
             //   .thx-btn { border-radius:3px }  → radius    → tokens.md（控件）
             //   .widget  { border-radius:5px }  → radius_lg → tokens.lg（卡片）
-            // 见 docs/screens/00-visual-system.md。
+            // 见 docs/RAZER-SYNAPSE-UI-SPEC.md §3、§5。
             theme.radius = px(3.);
             theme.radius_lg = px(5.);
         });
@@ -413,7 +416,7 @@ fn main() {
             ..TitleBar::window_options()
         };
 
-        gpui_kit::open_window(window_options, cx, |_, cx| cx.new(|_| app::AppShell::new()))
+        gpui_kit::open_window(window_options, cx, |_, cx| cx.new(|_| shell::AppShell::new()))
             .expect("Failed to open window");
     });
 }

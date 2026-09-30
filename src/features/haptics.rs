@@ -4,7 +4,7 @@
 //!
 //! 与所有设备页共用骨架：顶部 `.widget-prod` 产品图区（250px）
 //! ＋ 下方 `.body-widgets` 里固定 600px 宽的 `.widget` 两列换行。
-//! 见 [`docs/screens/00-visual-system.md`](../../docs/screens/00-visual-system.md)。
+//! 见 [`docs/RAZER-SYNAPSE-UI-SPEC.md`](../../docs/RAZER-SYNAPSE-UI-SPEC.md) §12.11。
 //!
 //! # 文案依据
 //!
@@ -28,8 +28,8 @@
 use gpui_kit::component::*;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::pages::widgets::{card_title, 
+use crate::shell::AppShell;
+use crate::ui::widgets::{card_title, 
     body_widgets, card, EmptyState, PageHeader, ProductBanner, SettingRow, stepper_row, toggle_button,
     widget_card,
 };

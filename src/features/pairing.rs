@@ -16,8 +16,8 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::pages::widgets::{card_title, PageLayout, card, EmptyState, PageHeader, SettingRow, btn};
+use crate::shell::AppShell;
+use crate::ui::widgets::{card_title, PageLayout, card, EmptyState, PageHeader, SettingRow, btn};
 
 /// 渲染配对页。
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
@@ -50,6 +50,14 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
         .iter()
         .find(|d| d.product_id == 179)
         .map(|d| d.display_name().to_string());
+    let dongle_connected = dongle_device.is_some();
+    let pairing_status = if pairing_now {
+        "正在扫描/等待设备确认"
+    } else if paired.is_empty() {
+        "空闲，尚未连接兼容设备"
+    } else {
+        "已连接"
+    };
 
     PageLayout::new("正在配对", device.display_name())
         // ① 接收器
@@ -69,12 +77,12 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                     this.child(SettingRow::new("本机检测到", name))
                         .child(SettingRow::new("productId", "179".to_string()))
                 })
-                .child(
-                    h_flex().gap_2().child(
-                        btn("dongle-cycle", "切换接收器类型")
-                            .on_click(cx.listener(|this, _, _, cx| this.cycle_dongle_kind(cx))),
-                    ),
-                ),
+                .when(!dongle_connected, |this| {
+                    this.child(SettingRow::new(
+                        "连接状态",
+                        "未检测到 HyperPolling 接收器；扫描与配对操作不可用".to_string(),
+                    ))
+                }),
         )
         // ② 配对指引
         .widget(
@@ -88,7 +96,26 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                     "将设备放在 HyperPolling 无线接收器附近".to_string(),
                 )),
         )
-        // ③ 已配对设备
+        // ③ 当前流程状态
+        .widget(
+            card()
+                .child(card_title("配对状态"))
+                .child(SettingRow::new("当前状态", pairing_status.to_string()))
+                .child(SettingRow::new(
+                    "候选设备",
+                    if pairing_now {
+                        "正在等待设备服务返回候选列表".to_string()
+                    } else {
+                        "暂无候选设备".to_string()
+                    },
+                ))
+                .when(!dongle_connected, |this| {
+                    this.child(div().text_xs().child(
+                        "当前页面只展示本地快照；设备扫描、候选发现和配对结果需要真实设备服务回传。",
+                    ))
+                }),
+        )
+        // ④ 已配对设备
         .widget(
             card()
                 .child(card_title("已配对设备"))
@@ -109,35 +136,24 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                         .gap_2()
                         .flex_wrap()
                         .child(
-                            btn("pair-start", if pairing_now { "停止配对" } else { "开始配对" })
+                            btn("pair-start", if pairing_now { "停止扫描" } else { "开始扫描" })
+                                .disabled(!dongle_connected)
                                 .on_click(cx.listener(|this, _, _, cx| this.toggle_pairing(cx))),
                         )
                         .child(
-                            btn("pair-done", "模拟配对成功")
-                                .on_click(cx.listener(|this, _, _, cx| this.complete_pairing(cx))),
-                        )
-                        .child(
-                            btn("pair-unpair", "取消全部配对")
-                                .on_click(cx.listener(|this, _, _, cx| this.unpair_all(cx))),
+                            btn("pair-unpair", "取消全部配对").disabled(true),
                         ),
                 )
                 .when(pairing_now, |this| {
-                    this.child(div().text_sm().child("正在配对..."))
+                    this.child(div().text_sm().child(
+                        "扫描已开始，等待设备服务返回候选设备；本页面不会伪造配对成功。",
+                    ))
+                })
+                .when(!dongle_connected, |this| {
+                    this.child(div().text_xs().child("取消配对需要真实接收器和设备服务确认。"))
                 })
                 .child(div().text_xs().child(
                     "取消配对前雷云会弹确认框：你即将取消 Razer 雷蛇设备与接收器的配对。确定要继续吗？",
-                )),
-        )
-        .widget(
-            card()
-                .child(card_title("为什么这台设备有这个页面"))
-                .child(SettingRow::new("标签页 key", "TAB_PAIRING".to_string()))
-                .child(SettingRow::new(
-                    "实测分布",
-                    "鼠标 182 有 · 键盘 653 无 · 耳机 777 无".to_string(),
-                ))
-                .child(div().text_xs().child(
-                    "该页需要设备模块里存在 TAB_PAIRING，以及本机存在无线接收器。",
                 )),
         )
         .into_any_element()

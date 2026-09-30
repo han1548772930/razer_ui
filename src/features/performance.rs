@@ -10,11 +10,11 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::app::AppShell;
+use crate::shell::AppShell;
 use crate::features::{DebounceMode, LiftOffDistance, PollingRate};
-use crate::pages::widgets::{
-    PageHeader, ProductBanner, SettingRow, body_widgets, btn, card, card_title,
-    dpi_stage_chart, select_row, slider_row, toggle_button, widget_slot,
+use crate::ui::widgets::{
+    PageLayout, SettingRow, btn, card, card_title, dpi_stage_chart, select_row, slider_row,
+    toggle_button, widget_slot,
 };
 
 /// 雷云实测的每设备档位上限。
@@ -23,39 +23,28 @@ const MAX_STAGES: usize = 5;
 /// 渲染性能页。
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
-        return crate::pages::widgets::EmptyState::new("未检测到设备").into_any_element();
+        return crate::ui::widgets::EmptyState::new("未检测到设备").into_any_element();
     };
 
     let is_mouse = device.is_mouse();
-    let device_name = device.display_name().to_string();
+    let device_name = device.display_name();
 
-    // 真实布局：顶部 `.widget-prod` 产品图区（250px）
-    // ＋ 下方 `.body-widgets` 里固定 600px 宽的 `.widget` 两列换行。
-    // 见 docs/screens/00-visual-system.md。
-    v_flex()
-        .size_full()
-        .gap_2()
-        .child(PageHeader::new(
-            "性能",
-            format!(
-                "{device_name} · 产品 ID {} · 更改会立即保存",
-                device.product_id
-            ),
-        ))
-        .child(ProductBanner::new(device_name.clone()))
-        .child(
-            body_widgets()
-                .child(widget_slot(sensor_section(app, cx)))
-                .child(widget_slot(dpi_section(app, cx)))
-                .when(is_mouse, |this| {
-                    this.child(widget_slot(sensor_extras(app, cx)))
-                        .child(widget_slot(clutch_section(app, cx)))
-                        .child(widget_slot(matcher_section(app, cx)))
-                })
-                .child(widget_slot(debounce_section(app, cx)))
-                .child(widget_slot(actions(app, cx))),
-        )
-        .into_any_element()
+    // 设备页统一使用原版的产品图区 + 600px 卡片网格。
+    // 鼠标和键盘的性能能力不是同一套控件，不能先渲染全部控件再隐藏。
+    let layout = PageLayout::new("性能", device_name)
+        .widget(widget_slot(sensor_section(app, cx)))
+        .when(is_mouse, |this| {
+            this.widget(widget_slot(dpi_section(app, cx)))
+                .widget(widget_slot(sensor_extras(app, cx)))
+                .widget(widget_slot(clutch_section(app, cx)))
+                .widget(widget_slot(matcher_section(app, cx)))
+        })
+        .when(!is_mouse, |this| {
+            this.widget(widget_slot(keyboard_performance_section(app, cx)))
+        })
+        .widget(widget_slot(debounce_section(app, cx)));
+
+    layout.into_any_element()
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +91,12 @@ fn sensor_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let polling = device.features.performance.polling_rate;
     let lift_off = device.features.performance.lift_off;
 
+    let has_hyperpolling_dongle = app.devices.iter().any(|device| device.product_id == 179);
+    let available_rates: Vec<PollingRate> = PollingRate::ALL
+        .into_iter()
+        .filter(|rate| !rate.needs_hyperpolling() || has_hyperpolling_dongle)
+        .collect();
+
     card()
         .child(card_title("轮询率"))
         .child(div().text_xs().child(
@@ -113,7 +108,7 @@ fn sensor_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                 .flex_wrap()
                 .gap_2()
                 .mt_2()
-                .children(PollingRate::ALL.into_iter().map(|rate| {
+                .children(available_rates.into_iter().map(|rate| {
                     let selected = rate == polling;
                     div()
                         .id(("polling", rate.hz() as usize))
@@ -141,8 +136,13 @@ fn sensor_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                         }))
                 })),
         )
-        .when(polling.needs_hyperpolling(), |this| {
-            this.child(div().text_xs().mt_1().child("需要 HyperPolling 无线接收器"))
+        .when(!has_hyperpolling_dongle, |this| {
+            this.child(
+                div()
+                    .text_xs()
+                    .mt_1()
+                    .child("2000 Hz 及以上需要已连接的 HyperPolling 无线接收器。"),
+            )
         })
         .when_some(lift_off, |this, value| {
             this.child(
@@ -168,6 +168,82 @@ fn sensor_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                     )),
             )
         })
+        .into_any_element()
+}
+
+/// 键盘在性能页只显示键盘能力，不显示鼠标 DPI、抬升距离或传感器控件。
+fn keyboard_performance_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
+    let Some(device) = app.current() else {
+        return card().into_any_element();
+    };
+    let Some(keyboard) = device.features.keyboard.as_ref() else {
+        return card()
+            .child(card_title("键盘性能"))
+            .child(div().text_sm().child("当前设备未声明键盘性能能力。"))
+            .into_any_element();
+    };
+
+    card()
+        .child(card_title("键盘性能"))
+        .child(div().text_xs().child(
+            "仅显示当前设备声明的键盘性能能力；鼠标专属 DPI、抬升距离和传感器设置不会出现在此页。",
+        ))
+        .child(toggle_button(
+            "perf-kb-gaming",
+            "游戏模式（禁用 Windows 键）",
+            keyboard.gaming_mode,
+            cx,
+            |this, cx| this.toggle_gaming_mode(cx),
+        ))
+        .child(
+            h_flex()
+                .gap_2()
+                .child(toggle_button(
+                    "perf-kb-alt-tab",
+                    "锁定 Alt + Tab",
+                    keyboard.lock_alt_tab,
+                    cx,
+                    |this, cx| this.toggle_lock_alt_tab(cx),
+                ))
+                .child(toggle_button(
+                    "perf-kb-alt-f4",
+                    "锁定 Alt + F4",
+                    keyboard.lock_alt_f4,
+                    cx,
+                    |this, cx| this.toggle_lock_alt_f4(cx),
+                )),
+        )
+        .child(toggle_button(
+            "perf-kb-n-key",
+            "全键无冲",
+            keyboard.n_key_rollover,
+            cx,
+            |this, cx| this.toggle_n_key_rollover(cx),
+        ))
+        .child(SettingRow::new(
+            "Snap Tap",
+            if keyboard.snap_tap.is_some() {
+                "已声明，可在键盘功能页配置".to_string()
+            } else {
+                "设备不支持".to_string()
+            },
+        ))
+        .child(SettingRow::new(
+            "Dynamic Keystroke",
+            if keyboard.dynamic_key_stroke.is_some() {
+                "已声明，可在键盘功能页配置".to_string()
+            } else {
+                "设备不支持".to_string()
+            },
+        ))
+        .child(SettingRow::new(
+            "Actuation",
+            if keyboard.actuation.is_some() {
+                "已声明，可在键盘功能页配置".to_string()
+            } else {
+                "设备不支持".to_string()
+            },
+        ))
         .into_any_element()
 }
 
@@ -353,7 +429,7 @@ fn clutch_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
 }
 
 /// ⑤ 灵敏度匹配器（`SENSITIVITY_MATCHER`）。
-fn matcher_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
+fn matcher_section(app: &AppShell, _cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return card().into_any_element();
     };
@@ -413,23 +489,3 @@ fn debounce_section(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
         .child(div().text_xs().child(crate::i18n::t_or(mode.desc_key(), "")))
         .into_any_element()
 }
-
-/// ⑦ 页脚动作：把当前配置写盘。
-fn actions(_app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
-    card()
-        .child(card_title("保存"))
-        .child(div().text_xs().child(
-            "雷云的改动是即时生效并写盘的；这里用显式按钮，避免每次拖动都写文件。",
-        ))
-        .child(
-            h_flex().mt_2().gap_2().child(
-                btn("perf-save", "保存到本地配置").on_click(cx.listener(|this, _, _, cx| {
-                    this.save_now(cx);
-                })),
-            ),
-        )
-        .into_any_element()
-}
-
-
-

@@ -29,8 +29,8 @@
 use gpui_kit::component::*;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::pages::widgets::{card_title, 
+use crate::shell::AppShell;
+use crate::ui::widgets::{card_title, 
     body_widgets, card, EmptyState, PageHeader, ProductBanner, SettingRow, widget_card,
 };
 
@@ -41,10 +41,9 @@ pub fn render(app: &AppShell, _cx: &mut Context<AppShell>) -> AnyElement {
     };
     let device_name = device.display_name().to_string();
 
-    // 该页读的是「本机上的音频设备」，而本项目尚未探测音频设备列表，
-    // 所以这里如实呈现结构，不填假数据。
-    let sound = device.features.sound.as_ref();
-    let has_audio = sound.is_some();
+    // TAB_AUDIO 读取系统音频服务，不等价于设备自身的 TAB_SOUND。
+    // 在 simple_service 接入前保持明确的 unavailable 状态，不填造输出设备。
+    let audio_service_available = false;
 
     v_flex()
         .size_full()
@@ -61,15 +60,19 @@ pub fn render(app: &AppShell, _cx: &mut Context<AppShell>) -> AnyElement {
                         .child(card_title("音频设备"))
                         .child(SettingRow::new(
                             "输出设备",
-                            if has_audio {
-                                "（尚未枚举，见下）".to_string()
+                            if audio_service_available {
+                                "等待系统音频设备枚举".to_string()
                             } else {
-                                "该设备不是音频设备".to_string()
+                                "系统音频服务未连接".to_string()
                             },
                         ))
                         .child(SettingRow::new(
-                            "功能开关",
-                            "在切换音频设备时更改音频输出".to_string(),
+                            "功能状态",
+                            if audio_service_available {
+                                "可用".to_string()
+                            } else {
+                                "不可用：需要 simple_service 音频枚举".to_string()
+                            },
                         ))
                         .child(div().text_xs().child(
                             "雷云原文：AUDIO_FUNCTION_DESC —— 在切换音频设备时更改音频输出。",
@@ -82,8 +85,12 @@ pub fn render(app: &AppShell, _cx: &mut Context<AppShell>) -> AnyElement {
                     card()
                         .child(card_title("设备枚举状态"))
                         .child(SettingRow::new(
-                            "本实现",
-                            "尚未枚举系统音频设备".to_string(),
+                            "服务状态",
+                            if audio_service_available {
+                                "已连接".to_string()
+                            } else {
+                                "未连接".to_string()
+                            },
                         ))
                         .child(div().text_sm().child(
                             "雷云通过 simple_service.dll 的 simpleEnumerateAudioDevices 枚举音频设备。\

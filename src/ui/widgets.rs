@@ -30,16 +30,17 @@
 use gpui_kit::component::{
     button::*, chart::BarChart, group_box::GroupBox, popover::Popover, *,
 };
+use gpui_kit::assets::IconName;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::app::AppShell;
+use crate::shell::AppShell;
 
 /// 雷云页面的**几何契约**常量。
 ///
 /// 这些不是配色，而是复刻对象本身的固定尺寸（卡片 600px、产品图区 250px…），
 /// 逐条引自设备模块 CSS，**颜色一律走 `cx.theme()`**，不在此处定义。
-/// 全量清单见 [`docs/screens/00-visual-system.md`](../../docs/screens/00-visual-system.md)。
+/// 全量清单见 [`docs/RAZER-SYNAPSE-UI-SPEC.md`](../../docs/RAZER-SYNAPSE-UI-SPEC.md) §3、§5。
 pub mod geometry {
     /// `.main-container` / `.body-wrapper` 的最小宽度
     pub const SHELL_MIN_WIDTH: f32 = 600.0;
@@ -517,7 +518,7 @@ impl RenderOnce for ColorSwatch {
 
 /// 设备页的统一外壳：页头 + 产品图区 + 600px 卡片区。
 ///
-/// 对应雷云真实结构（[`docs/screens/00-visual-system.md`](../../docs/screens/00-visual-system.md) §2.0）：
+/// 对应雷云真实结构（[`docs/RAZER-SYNAPSE-UI-SPEC.md`](../../docs/RAZER-SYNAPSE-UI-SPEC.md) §12.1）：
 ///
 /// ```text
 /// .body-wrapper
@@ -533,6 +534,8 @@ pub struct PageLayout {
     title: SharedString,
     device_name: SharedString,
     subtitle: Option<SharedString>,
+    show_header: bool,
+    show_product_banner: bool,
     widgets: Vec<AnyElement>,
 }
 
@@ -548,6 +551,8 @@ impl PageLayout {
             title: title.into(),
             device_name: device_name.into(),
             subtitle: None,
+            show_header: false,
+            show_product_banner: true,
             widgets: Vec::new(),
         }
     }
@@ -555,6 +560,17 @@ impl PageLayout {
     /// 覆盖默认副标题。仍应保留「更改会立即保存」这类状态说明。
     pub fn subtitle(mut self, subtitle: impl Into<SharedString>) -> Self {
         self.subtitle = Some(subtitle.into());
+        self
+    }
+
+    /// 仅在对应原版模块确实渲染页面标题时显式开启。
+    pub fn with_header(mut self) -> Self {
+        self.show_header = true;
+        self
+    }
+
+    pub fn without_product_banner(mut self) -> Self {
+        self.show_product_banner = false;
         self
     }
 
@@ -584,8 +600,12 @@ impl RenderOnce for PageLayout {
             .size_full()
             .min_w(px(geometry::SHELL_MIN_WIDTH))
             .gap_2()
-            .child(PageHeader::new(self.title, subtitle))
-            .child(ProductBanner::new(device_name))
+            .when(self.show_header, |this| {
+                this.child(PageHeader::new(self.title, subtitle))
+            })
+            .when(self.show_product_banner, |this| {
+                this.child(ProductBanner::new(device_name))
+            })
             .child(body_widgets().children(self.widgets))
     }
 }
@@ -594,28 +614,50 @@ impl RenderOnce for PageLayout {
 ///
 /// 真实布局是 250px 高、1024–1220px 宽，设备图片**绝对居中**
 /// （`.widget-prod img { left:50%; top:50% }`）。
-/// 本实现没有雷云素材（版权归 Razer），因此用同尺寸的占位框，
-/// 但**保持尺寸与位置一致**。
-///
-/// 文字色取自 `cx.theme().muted_foreground`——占位说明属于次要信息，
-/// 按 《Design Guides · Color and themes》用语义档位，不在调用点写颜色。
+/// 本实现没有随项目分发的雷云产品素材，因此使用设备类别图标作为视觉回退，
+/// 但**保持尺寸与中心定位一致**；接入 descriptor 素材后只替换内部视觉，不改变外层几何。
 #[derive(IntoElement)]
 pub struct ProductBanner {
     device_name: SharedString,
+    device_icon: IconName,
 }
 
 impl ProductBanner {
-    /// `device_name` 显示在占位框中央，说明这里本该是产品图。
+    /// 产品图区使用设备类别图标作为无版权素材缺失时的稳定视觉回退。
     pub fn new(device_name: impl Into<SharedString>) -> Self {
+        let device_name = device_name.into();
+        let device_icon = device_icon_for_name(device_name.as_ref());
         Self {
-            device_name: device_name.into(),
+            device_name,
+            device_icon,
         }
+    }
+}
+
+fn device_icon_for_name(device_name: &str) -> IconName {
+    let normalized = device_name.to_ascii_lowercase();
+    if normalized.contains("keyboard") || device_name.contains("键盘") {
+        IconName::Keyboard
+    } else if normalized.contains("headset")
+        || normalized.contains("kraken")
+        || device_name.contains("耳机")
+    {
+        IconName::Headphones
+    } else if normalized.contains("mouse") || device_name.contains("鼠标") {
+        IconName::Mouse
+    } else if normalized.contains("controller") || device_name.contains("手柄") {
+        IconName::Gamepad2
+    } else {
+        IconName::Cable
     }
 }
 
 impl RenderOnce for ProductBanner {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let foreground = cx.theme().foreground;
         let muted = cx.theme().muted_foreground;
+        let surface = cx.theme().group_box;
+        let border = cx.theme().border;
         div()
             .h(px(geometry::PRODUCT_BANNER_HEIGHT))
             .w_full()
@@ -628,13 +670,27 @@ impl RenderOnce for ProductBanner {
             .items_center()
             .justify_center()
             .child(
-                div()
-                    .text_sm()
-                    .text_color(muted)
-                    .child(format!(
-                        "{} · 产品图位置（250px 高，图片居中）",
-                        self.device_name
-                    )),
+                v_flex()
+                    .items_center()
+                    .gap_3()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .size(px(112.))
+                            .rounded(px(geometry::WIDGET_RADIUS))
+                            .border_1()
+                            .border_color(border)
+                            .bg(surface)
+                            .child(
+                                Icon::new(self.device_icon)
+                                    .w(px(72.))
+                                    .h(px(72.))
+                                    .text_color(foreground),
+                            ),
+                    )
+                    .child(div().text_xs().text_color(muted).child("产品视觉")),
             )
     }
 }
@@ -1162,7 +1218,7 @@ pub fn not_wired_hint() -> AnyElement {
              但写回通道尚未接通：当前改动只写入本地配置文件，不会下发到设备。",
         ))
         .child(div().text_xs().mt_1().child(
-            "只读探测已可用（见 --probe）；写入路径见 docs/FEATURES.md §9。",
+            "只读探测已可用（见 --probe）；写入路径见 docs/RAZER-SYNAPSE-UI-SPEC.md §13。",
         ))
         .into_any_element()
 }

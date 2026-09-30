@@ -4,7 +4,7 @@
 //!
 //! 这些设置**由设备模块在运行时下发**（`products/{id}/ui/{productId}_{edition}/`），
 //! 本地快照里只有基础字段（DPI 范围、dkmKeys、电量等）。
-//! 因此本文件的默认值属于 `docs/FEATURES.md` 证据分级里的 **[推断]**：
+//! 因此本文件的默认值属于 `docs/RAZER-SYNAPSE-UI-SPEC.md` 证据分级里的 **[推断]**：
 //! 依据雷云公开的产品行为与实测字段命名设定，接上设备模块后应以模块下发值为准。
 //!
 //! 已经 **[实测]** 的部分：`dpiStages` 结构、`minDPI/maxDPI/dpiStep`、
@@ -775,7 +775,7 @@ pub const KEYBOARD_LAYOUTS: [(&str, &str); 4] = [
 /// Chroma 灯光效果。
 ///
 /// ⚠️ 效果名清单属于 **[推断]**：真正的效果名定义在远程前端里，
-/// 本机无法访问 `apps.razer.com`（见 `docs/FEATURES.md` §5 未解项 1）。
+/// 本机无法访问 `apps.razer.com`（见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §11）。
 /// 这里列出的是雷云公开的效果集合，日志中实测出现过 `static`（213 次）
 /// 与 `Reactive`（60 次）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1220,7 +1220,7 @@ impl Default for Pairing {
 //   `.widget-prod img.audio-left, .widget-prod img.audio-right
 //    { left:auto; position:static; top:auto }`
 // 即**产品图片**的类名。真正的分栏是 `.widget-col { width:600px }`。
-// 见 docs/screens/00-visual-system.md。
+// 见 docs/RAZER-SYNAPSE-UI-SPEC.md §3、§5。
 
 /// 音效增强模式（`AUDIO_ENHANCEMENT_HEADER` = 音效增强）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1505,7 +1505,7 @@ pub struct DeviceFeatures {
     pub hypershift_enabled: bool,
     /// Hypershift 第二层绑定：与主层相同的输入点，但动作独立。
     ///
-    /// 雷云实测 `Razer Hypershift` 在日志中出现 24 次（`docs/FEATURES.md` C2）。
+    /// 雷云实测 `Razer Hypershift` 在日志中出现 24 次（见主规范 §12.2）。
     #[serde(default)]
     pub hypershift_bindings: Vec<DkmKey>,
     #[serde(default)]

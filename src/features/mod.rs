@@ -1,6 +1,10 @@
-//! 各功能页。
+//! Capability-oriented feature modules.
 //!
-//! 每个页面对应雷云 4 的一个真实功能域，范围依据 `docs/FEATURES.md`。
+//! Each module owns one product capability's page composition and commands.
+//! The domain data model remains in `crate::domain` and is re-exported here
+//! so existing feature code has one stable capability-facing import path.
+
+pub use crate::domain::*;
 
 pub mod audio;
 pub mod calibration;
@@ -19,9 +23,7 @@ pub mod mixer;
 pub mod oled;
 pub mod pairing;
 pub mod performance;
-pub mod placeholder;
 pub mod power;
 pub mod scrolling;
 pub mod setting;
 pub mod sound;
-pub mod widgets;

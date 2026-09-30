@@ -24,8 +24,8 @@
 use gpui_kit::component::*;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::pages::widgets::{card_title, 
+use crate::shell::AppShell;
+use crate::ui::widgets::{card_title, 
     body_widgets, card, EmptyState, PageHeader, ProductBanner, SettingRow, stepper_row, toggle_button,
     widget_card,
 };

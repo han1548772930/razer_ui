@@ -17,7 +17,7 @@
 //! `locales/zh-CN.json`、`locales/en.json`。
 //!
 //! 内容是雷云前端语言包导出的**原文**，不是我自译的 ——
-//! 取得方式见 `docs/SYNAPSE-UI.md` §0。
+//! 取得方式见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §8。
 
 /// 取雷云真实文案。
 ///
@@ -53,4 +53,3 @@ pub fn locale() -> String {
 pub fn set_locale(locale: &str) {
     rust_i18n::set_locale(locale);
 }
-

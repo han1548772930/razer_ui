@@ -15,9 +15,9 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::features::CalibrationState;
-use crate::pages::widgets::{
+use crate::shell::AppShell;
+use crate::domain::CalibrationState;
+use crate::ui::widgets::{
     EmptyState, PageHeader, PageLayout, SettingRow, btn, card, card_title,
 };
 
@@ -43,12 +43,26 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
 
     let state = calibration.state;
     let selected = calibration.selected;
-    let surfaces: Vec<(String, bool, bool)> = calibration
+    let surfaces: Vec<(String, bool, bool, String)> = calibration
         .surfaces
         .iter()
-        .map(|s| (s.name.clone(), s.builtin, s.calibrated))
+        .map(|s| {
+            (
+                s.name.clone(),
+                s.builtin,
+                s.calibrated,
+                surface_element_id(&s.name, s.builtin),
+            )
+        })
         .collect();
     let can_remove = calibration.current().map(|s| !s.builtin).unwrap_or(false);
+    let workflow_locked = state == CalibrationState::Running;
+    let start_label = match state {
+        CalibrationState::Idle => "开始校准",
+        CalibrationState::Completed => "重新校准",
+        CalibrationState::Failed => "重试校准",
+        CalibrationState::Running => "校准进行中",
+    };
 
     PageLayout::new("校准", device.display_name())
         // ① 校准信息
@@ -65,7 +79,7 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
             card()
                 .child(card_title("表面配置文件"))
                 .children(surfaces.into_iter().enumerate().map(
-                    |(index, (name, builtin, calibrated))| {
+                    |(index, (name, builtin, calibrated, element_id))| {
                         h_flex()
                             .w_full()
                             .justify_between()
@@ -88,7 +102,8 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                                         "未校准"
                                     }))
                                     .child(
-                                        btn(format!("surface-{index}"), if selected == index { "已选中" } else { "选择" })
+                                        btn(element_id, if selected == index { "已选中" } else { "选择" })
+                                            .disabled(workflow_locked)
                                             .on_click(cx.listener(move |this, _, _, cx| {
                                                 this.select_surface(index, cx)
                                             })),
@@ -102,18 +117,22 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                         .gap_2()
                         .child(
                             btn("surface-add", "添加")
+                                .disabled(workflow_locked)
                                 .on_click(cx.listener(|this, _, _, cx| this.add_surface(cx))),
                         )
                         .child(
                             btn("surface-remove", "删除")
+                                .disabled(!can_remove || workflow_locked)
                                 .on_click(cx.listener(move |this, _, _, cx| {
-                                    if can_remove {
+                                    if can_remove && !workflow_locked {
                                         this.remove_surface(cx);
                                     }
                                 })),
                         ),
                 )
-                .child(div().text_xs().child("预置表面不可删除；「添加」对应雷云 ADD_MAT。")),
+                .child(div().text_xs().child(
+                    "预置表面不可删除；「添加」对应雷云 ADD_MAT。校准进行中不能切换或删除表面。",
+                )),
         )
         // ③ 校准步骤
         .widget(
@@ -141,40 +160,44 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                         .gap_2()
                         .flex_wrap()
                         .child(
-                            btn("cali-start", "开始")
+                            btn("cali-start", start_label)
+                                .disabled(workflow_locked)
                                 .on_click(cx.listener(|this, _, _, cx| this.start_calibration(cx))),
                         )
-                        .child(
-                            btn("cali-ok", "完成")
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.finish_calibration(true, cx)
-                                })),
-                        )
-                        .child(
-                            btn("cali-fail", "标记失败")
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.finish_calibration(false, cx)
-                                })),
-                        ),
                 )
-                .when(state == CalibrationState::Completed, |this| {
-                    this.child(div().text_sm().child("校准完成。"))
+                .child(match state {
+                    CalibrationState::Idle => div()
+                        .text_sm()
+                        .child("尚未开始；选择表面后启动校准流程。"),
+                    CalibrationState::Running => div().text_sm().child(
+                        "校准进行中，等待设备服务返回阶段和进度；页面不会伪造完成结果。",
+                    ),
+                    CalibrationState::Completed => div().text_sm().child(
+                        "校准成功；当前有效结果已保留。需要再次校准时可重新启动流程。",
+                    ),
+                    CalibrationState::Failed => div().text_sm().child(
+                        "校准失败；上一次有效校准仍保留，可重试或更换表面。",
+                    ),
                 })
-                .when(state == CalibrationState::Failed, |this| {
-                    this.child(div().text_sm().child("校准失败。请重新开始校准。"))
-                })
-                .when(state == CalibrationState::Running, |this| {
-                    this.child(div().text_sm().child("校准中..."))
-                }),
-        )
-        .widget(
-            card()
-                .child(card_title("为什么这台设备有这个页面"))
-                .child(SettingRow::new("标签页 key", "TAB_CALIBRATION".to_string()))
                 .child(SettingRow::new(
-                    "实测分布",
-                    "鼠标 182 有 · 耳机 777 有 · 键盘 653 无".to_string(),
+                    "设备回传",
+                    "完成、失败和进度由设备服务确认；当前前端不提供手动结束按钮。".to_string(),
                 )),
         )
         .into_any_element()
+}
+
+fn surface_element_id(name: &str, builtin: bool) -> String {
+    let prefix = if builtin { "surface-builtin" } else { "surface-custom" };
+    let suffix: String = name
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() {
+                character.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("{prefix}-{suffix}")
 }

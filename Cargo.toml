@@ -11,3 +11,9 @@ serde_json = "1"
 libloading = "0.8"
 # 与 gpui-component 内部使用的是同一套 i18n（`rust_i18n::i18n!` + `t!`）。
 rust-i18n = "4"
+
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1

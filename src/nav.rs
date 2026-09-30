@@ -5,7 +5,7 @@
 //! 我此前按 i18n key 前缀硬分了一套「区块（Section）」，那是**没有依据的**，已删除。
 //! 读到真实前端后可以确认：
 //!
-//! - 雷云主界面外壳是 `Header + DeviceList + Content`（见 `docs/SYNAPSE-UI.md` §2.1）；
+//! - 雷云主界面外壳是顶栏、设备内容与设置（见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §3、§4）；
 //! - 每个**产品**有一份**独立的 React 应用**，位于
 //!   `/synapse/products/<productId>/ui/`；
 //! - 该设备显示哪些标签页，**写在该设备模块自己的代码里，各设备不同**。

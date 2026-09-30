@@ -1,7 +1,7 @@
 ﻿//! 设备与配置的数据模型。
 //!
 //! 本文件的字段**逐字对应**雷云 4 在运行日志中真实吐出的 JSON，
-//! 不是凭空设计的。证据见 `docs/FEATURES.md` §3 与 `.ref/notes/device-model.json`。
+//! 不是凭空设计的。证据见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2 与 `.ref/notes/device-model.json`。
 //!
 //! 关键点：
 //! - 设备名称是 9 语区的 i18n 对象，不是单个字符串。
@@ -16,7 +16,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::features::DeviceFeatures;
+use crate::domain::DeviceFeatures;
 
 /// 雷云支持的语言区（实测设备 `name` 字段里出现的全部 key）。
 pub const LOCALES: [&str; 9] = [
@@ -409,7 +409,7 @@ pub fn region_label_zh(input_id: &str) -> String {
 
 /// 本机实测的设备快照。
 ///
-/// 这里只放**实际探测到**的设备（见 `docs/FEATURES.md` §3）：
+/// 这里只放**实际探测到**的设备（见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2）：
 ///
 /// | productId | 设备 | 类别 |
 /// |---|---|---|

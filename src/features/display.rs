@@ -1,6 +1,6 @@
 ﻿//! 显示页（`TAB_DISPLAY`），笔记本专属。
 //!
-//! 布局与文案依据 `docs/screens/`（`docs/FEATURES.md` §2）：
+//! 布局与文案依据 `docs/screens/` 与主规范 §12.11：
 //!
 //! | key | 中文 |
 //! |---|---|
@@ -16,8 +16,8 @@
 use gpui_kit::component::*;
 use gpui_kit::*;
 
-use crate::app::AppShell;
-use crate::pages::widgets::{card_title, PageLayout, card, EmptyState, PageHeader, SettingRow, stepper_row, toggle_button};
+use crate::shell::AppShell;
+use crate::ui::widgets::{card_title, PageLayout, card, EmptyState, PageHeader, SettingRow, stepper_row, toggle_button};
 
 /// 渲染显示页。
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {

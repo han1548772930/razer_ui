@@ -33,7 +33,7 @@
 
 ## 1. 应用外壳
 
-### 1.0 顶栏就是最高的一行——**没有独立的标题栏**
+### 1.0 外层 Electron 标签栏与产品顶栏是两层不同结构
 
 在主前端全部 CSS 中检索 `title-bar` / `titlebar` / `drag-region` /
 `window-controls` / `app-header` / `rz-title` / `top-bar`，**全部 0 命中**。
@@ -47,10 +47,18 @@ div.nav-tabs {
 }
 ```
 
-因此原版网页内容的第一行就是 `.nav-tabs`：窗口拖动区由 Electron 壳处理，
-由 `TitleBar` 只承担拖动，里面直接就是三区内容。
+因此原版网页内容的第一行就是 `.nav-tabs`：窗口边框、系统按钮和拖动由 Electron 壳处理，
+原版 Electron 壳先渲染 `.etabs-tabgroup`：黑色 `42px` 外层标签栏，右侧是三个各 `48px` 的系统按钮；其下才是产品网页自己的 `.nav-tabs`。系统按钮不属于 `.nav-tabs` 的 profile/nav/right 三个网页区域。GPUI 的 `TitleBar` 只是实现技术，不能额外再渲染一条 `34px` 标题栏；本项目用自绘 `42px` 外层栏承载原版按钮和拖动区。
 
 > 原始前端没有独立网页标题栏；窗口边框和拖动由 Electron 壳处理。
+
+### 1.0.1 Rust 窗口实现边界
+
+- 原版事实：`.nav-tabs` 只有 profile、导航、right 三个网页区域。
+- Rust 实现：窗口可以使用 client-side decoration，但最小化、最大化/还原、关闭必须占用同一行右侧的系统命中区。
+- 外层 `.etabs-tabs` 拖动区高度 `42px`；三个按钮各 `48px` 且必须是 `no-drag` 命中区。
+- 产品 `.nav-tabs` 高度 `48px`，只负责 profile、导航和右侧状态；点击导航、profile、帮助不能触发窗口拖动。
+- 不得把 gpui-component 的 34px `TitleBar` 作为雷云页面的额外视觉层；也不得把系统按钮错误塞进产品 `.nav-tabs`。
 
 ### 1.1 DOM 结构（引自 `App.eb32d7cd.chunk.js`）
 
@@ -332,5 +340,3 @@ node .ref/tools/grep-css.js  ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css" 
 node .ref/tools/dump-shell.js
 node .ref/tools/frontend-inventory.js
 ```
-
-

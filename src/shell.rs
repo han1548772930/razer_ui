@@ -39,19 +39,19 @@
 // `component::IconName` 只是原有子集。显式导入优先于 glob，因此这里的
 // `IconName` 指完整目录——与 `nav.rs` 的写法一致。
 use gpui_kit::assets::IconName;
-use gpui_kit::component::{button::*, dialog::AlertDialog, TitleBar, *};
+use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::features::{
-    COLOR_PALETTE, DebounceMode, DeviceFeatures,
+use crate::domain::{
+    DebounceMode,
     KEYBOARD_LAYOUTS, LiftOffDistance, LightingEffect, MACRO_ACTIONS, Macro, MacroStep,
     PollingRate,
 };
 use crate::model::{BUTTON_ACTIONS, Device};
 use crate::nav::{DeviceKind, Tab};
-use crate::pages;
-use crate::pages::widgets::geometry::{BODY_PADDING_SIDE, BODY_PADDING_TOP, TEXT_10, TEXT_12};
+use crate::features;
+use crate::ui::widgets::geometry::TEXT_12;
 use crate::store;
 //  定义在 gpui 的 InteractiveElement trait 上——gpui_kit::*`r
 // 转发的是 ::gpui::* 的根，不带这个 trait。
@@ -63,7 +63,6 @@ use crate::store;
 /// 键区功能项选中）。它**不等于** `.thx-btn:hover{opacity:.8}` 混出的 `#3db22a`，
 /// 也不等于 `.thx-btn:active{opacity:.6}` 混出的 `#368e28`，因此单列一个具名常量，
 /// 而不是在调用点写十六进制、也不借用含义不同的主题令牌。
-const NAV_ACTIVE_BG: u32 = 0x003C_BF27;
 
 /// `div.nav-tabs { border-bottom:2px solid #000 }`。
 ///
@@ -77,6 +76,8 @@ const NAV_TABS_BORDER: u32 = 0x0000_00;
 /// `TITLE_BAR_HEIGHT = px(34.)`（`title_bar.rs:15`，用于 `title_bar.rs:335`
 /// 的 `.h(TITLE_BAR_HEIGHT)`）。34px 是本项目**不能**采用的默认值，
 /// 所以顶栏显式传这个 48px。
+const APP_TABGROUP_HEIGHT: f32 = 42.0;
+const WINDOW_CONTROL_WIDTH: f32 = 48.0;
 const NAV_TABS_MIN_HEIGHT: f32 = 48.0;
 
 /// 在字符串选项里按 `step` 环绕移动。
@@ -87,17 +88,8 @@ fn cycle_str(items: &[&'static str], current: &str, step: i32) -> String {
 }
 
 /// 在预设色板里按 `step` 环绕移动。
-fn cycle_color(current: [u8; 3], step: i32) -> [u8; 3] {
-    let index = COLOR_PALETTE
-        .iter()
-        .position(|color| *color == current)
-        .unwrap_or(0) as i32;
-    let len = COLOR_PALETTE.len() as i32;
-    COLOR_PALETTE[((index + step).rem_euclid(len)) as usize]
-}
-
 // 导航在 `crate::nav`：**按设备**决定标签页，与雷云真实结构一致
-// （每个产品一份独立模块，标签页写在该设备模块里）。见 `docs/SYNAPSE-UI.md`。
+// （每个产品一份独立模块，标签页写在该设备模块里）。见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2、§4。
 
 /// 应用根视图。
 pub struct AppShell {
@@ -112,11 +104,11 @@ pub struct AppShell {
     /// 是否注入了合成演示设备（`--demo-keyboard`）。
     pub demo: bool,
     /// 全局亮度（`BRIGHTNESS_GLOBAL`）。作用于**所有设备**，所以放在应用级。
-    pub global_brightness: crate::features::GlobalBrightness,
+    pub global_brightness: crate::domain::GlobalBrightness,
     /// 配置文件切换方式（`PROFILE_SWITCHING`）。
-    pub profile_switch_mode: crate::features::ProfileSwitchMode,
+    pub profile_switch_mode: crate::domain::ProfileSwitchMode,
     /// 已关联的游戏/程序（`LINKED_GAMES`）。
-    pub linked_games: Vec<crate::features::LinkedGame>,
+    pub linked_games: Vec<crate::domain::LinkedGame>,
     /// 首页各分段的**展开态**与**顺序**，对应雷云 Dashboard 的
     /// `.box-group`（`docs/screens/00-app-shell.md` §2.2）。
     ///
@@ -198,10 +190,11 @@ impl Default for AppShell {
 // ===========================================================================
 
 impl Render for AppShell {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .size_full()
             .bg(cx.theme().background)
+            .child(self.app_tab_bar(window, cx))
             .child(self.top_bar(cx))
             .child(self.content(cx))
     }
@@ -259,6 +252,90 @@ impl AppShell {
             .child(self.profile_region(cx))
             .child(self.tab_strip(cx))
             .child(self.right_region(cx))
+            .into_any_element()
+    }
+
+    fn app_tab_bar(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        let theme = cx.theme().clone();
+        let active_title = self
+            .current()
+            .map(|device| device.display_name())
+            .unwrap_or_else(|| "雷云".to_string());
+
+        h_flex()
+            .w_full()
+            .h(px(APP_TABGROUP_HEIGHT))
+            .flex_shrink_0()
+            .bg(theme.title_bar)
+            .child(
+                h_flex()
+                    .id("app-tab-drag-region")
+                    .flex_1()
+                    .h_full()
+                    .window_control_area(WindowControlArea::Drag)
+                    .items_center()
+                    .gap_3()
+                    .px(px(12.))
+                    .child(Icon::new(IconName::Mouse).w(px(18.)).h(px(18.)))
+                    .child(
+                        div()
+                            .text_size(px(TEXT_12))
+                            .text_color(theme.foreground)
+                            .child(active_title),
+                    ),
+            )
+            .child(self.window_controls(window, &theme))
+            .into_any_element()
+    }
+
+    fn window_controls(&self, window: &Window, theme: &Theme) -> AnyElement {
+        let minimize = div()
+            .id("window-minimize")
+            .w(px(WINDOW_CONTROL_WIDTH))
+            .h(px(APP_TABGROUP_HEIGHT))
+            .flex()
+            .items_center()
+            .justify_center()
+            .window_control_area(WindowControlArea::Min)
+            .hover(|style| style.bg(theme.background))
+            .child(svg().data(include_bytes!("../assets/window-minimize.svg")).w(px(WINDOW_CONTROL_WIDTH)).h(px(32.)));
+
+        let maximize_asset = if window.is_maximized() {
+            "../assets/window-restore.svg"
+        } else {
+            "../assets/window-maximize.svg"
+        };
+        let maximize = div()
+            .id("window-maximize")
+            .w(px(WINDOW_CONTROL_WIDTH))
+            .h(px(APP_TABGROUP_HEIGHT))
+            .flex()
+            .items_center()
+            .justify_center()
+            .window_control_area(WindowControlArea::Max)
+            .hover(|style| style.bg(theme.background))
+            .child(svg().data(match maximize_asset {
+                "../assets/window-restore.svg" => include_bytes!("../assets/window-restore.svg"),
+                _ => include_bytes!("../assets/window-maximize.svg"),
+            }).w(px(WINDOW_CONTROL_WIDTH)).h(px(32.)));
+
+        let close = div()
+            .id("window-close")
+            .w(px(WINDOW_CONTROL_WIDTH))
+            .h(px(APP_TABGROUP_HEIGHT))
+            .flex()
+            .items_center()
+            .justify_center()
+            .window_control_area(WindowControlArea::Close)
+            .hover(|style| style.bg(theme.background))
+            .child(svg().data(include_bytes!("../assets/window-close.svg")).w(px(16.)).h(px(16.)));
+
+        h_flex()
+            .h_full()
+            .flex_shrink_0()
+            .child(minimize)
+            .child(maximize)
+            .child(close)
             .into_any_element()
     }
 
@@ -363,6 +440,7 @@ impl AppShell {
             .and_then(|device| device.power_status.as_ref())
             .map(|status| format!("{} %", status.level));
         let theme = cx.theme().clone();
+        let help_hover = theme.secondary_hover;
 
         h_flex()
             .flex_basis(gpui::relative(0.25))
@@ -374,6 +452,9 @@ impl AppShell {
             .px(px(10.))
             .when_some(battery, |this, text| {
                 this.child(div().text_xs().child(text))
+            })
+            .when(self.dirty, |this| {
+                this.child(div().text_xs().text_color(theme.primary).child("*"))
             })
             .child(
                 // `.nav-tabs .help { align-items:center; display:flex; height:24px;
@@ -389,7 +470,7 @@ impl AppShell {
                     .mr(px(10.))
                     .rounded(px(5.))
                     .cursor_pointer()
-                    .hover(move |style| style.bg(theme.secondary_hover))
+                    .hover(move |style| style.bg(help_hover))
                     .child(Icon::new(IconName::Info).w(px(16.)).h(px(16.))),
             )
             .into_any_element()
@@ -397,43 +478,45 @@ impl AppShell {
 
     /// 内容区：按当前标签路由到对应页面。
     fn content(&self, cx: &mut Context<Self>) -> AnyElement {
-        let device_name = self
-            .current()
-            .map(|device| device.display_name().to_string())
-            .unwrap_or_default();
-
         let page: AnyElement = match self.tab {
-            Tab::Home => pages::dashboard::render(self, cx),
-            Tab::Setting => pages::setting::render(self, cx),
-            Tab::Customize => pages::customize::render(self, cx),
-            Tab::Performance => pages::performance::render(self, cx),
-            Tab::Pairing => pages::pairing::render(self, cx),
-            Tab::Calibration => pages::calibration::render(self, cx),
-            Tab::Power => pages::power::render(self, cx),
-            Tab::Scrolling => pages::scrolling::render(self, cx),
-            Tab::Lighting => pages::lighting::render(self, cx),
-            Tab::Sound => pages::sound::render(self, cx),
-            Tab::Mic => pages::mic::render(self, cx),
-            Tab::Mixer => pages::mixer::render(self, cx),
-            Tab::Audio => pages::audio::render(self, cx),
-            Tab::Enhancement => pages::enhancement::render(self, cx),
-            Tab::Eq => pages::eq::render(self, cx),
-            Tab::Haptics => pages::haptics::render(self, cx),
-            Tab::Display => pages::display::render(self, cx),
-            Tab::Oled => pages::oled::render(self, cx),
-            Tab::Keyboard => pages::keyboard::render(self, cx),
-            Tab::Macros => pages::macros::render(self, cx),
-            // 以下标签的数据来源尚未全部接通，走占位页——
-            // 占位页会说明「缺什么、依据在哪」，而不是留空白。
-            Tab::Battery | Tab::Color | Tab::Effects | Tab::Gaming | Tab::KeyBinds
-            | Tab::Demo => pages::placeholder::render(self.tab, &device_name, cx),
+            Tab::Home => features::dashboard::render(self, cx),
+            Tab::Setting => features::setting::render(self, cx),
+            Tab::Customize => features::customize::render(self, cx),
+            Tab::Performance => features::performance::render(self, cx),
+            Tab::Pairing => features::pairing::render(self, cx),
+            Tab::Calibration => features::calibration::render(self, cx),
+            Tab::Power => features::power::render(self, cx),
+            Tab::Scrolling => features::scrolling::render(self, cx),
+            Tab::Lighting => features::lighting::render(self, cx),
+            Tab::Sound => features::sound::render(self, cx),
+            Tab::Mic => features::mic::render(self, cx),
+            Tab::Mixer => features::mixer::render(self, cx),
+            Tab::Audio => features::audio::render(self, cx),
+            Tab::Enhancement => features::enhancement::render(self, cx),
+            Tab::Eq => features::eq::render(self, cx),
+            Tab::Haptics => features::haptics::render(self, cx),
+            Tab::Display => features::display::render(self, cx),
+            Tab::Oled => features::oled::render(self, cx),
+            Tab::Keyboard => features::keyboard::render(self, cx),
+            Tab::Macros => features::macros::render(self, cx),
+            Tab::Battery => features::power::render(self, cx),
+            Tab::Color | Tab::Effects => features::lighting::render(self, cx),
+            Tab::Gaming => {
+                if self.current().is_some_and(|device| device.is_keyboard()) {
+                    features::keyboard::render(self, cx)
+                } else {
+                    features::performance::render(self, cx)
+                }
+            }
+            Tab::KeyBinds => features::customize::render(self, cx),
+            Tab::Demo => features::dashboard::render(self, cx),
         };
 
         // `.body-wrapper { flex:1 1; min-width:600px; padding:10px 20px 20px }`
         div()
             .flex_grow(1.)
             .flex_shrink(1.)
-            .min_w(px(pages::widgets::geometry::SHELL_MIN_WIDTH))
+            .min_w(px(crate::ui::widgets::geometry::SHELL_MIN_WIDTH))
             .px(px(20.))
             .pt(px(10.))
             .pb(px(20.))
@@ -481,11 +564,12 @@ impl AppShell {
             selected: 0,
             last_saved: None,
             demo,
-            global_brightness: crate::features::GlobalBrightness::default(),
-            profile_switch_mode: crate::features::ProfileSwitchMode::Automatic,
+            global_brightness: crate::domain::GlobalBrightness::default(),
+            profile_switch_mode: crate::domain::ProfileSwitchMode::Automatic,
             linked_games: Vec::new(),
             home_sections: default_home_sections(),
             open_select: None,
+            dirty: false,
         }
     }
 
@@ -509,12 +593,13 @@ impl AppShell {
     pub fn edit_features(
         &mut self,
         cx: &mut Context<Self>,
-        edit: impl FnOnce(&mut crate::features::DeviceFeatures),
+        edit: impl FnOnce(&mut crate::domain::DeviceFeatures),
     ) {
         let Some(device) = self.devices.get_mut(self.selected) else {
             return;
         };
         edit(&mut device.features);
+        self.dirty = true;
         cx.notify();
     }
 
@@ -535,7 +620,7 @@ impl AppShell {
     fn flip(
         &mut self,
         cx: &mut Context<Self>,
-        pick: impl FnOnce(&mut crate::features::DeviceFeatures) -> Option<&mut bool>,
+        pick: impl FnOnce(&mut crate::domain::DeviceFeatures) -> Option<&mut bool>,
     ) {
         self.edit_features(cx, |features| {
             if let Some(value) = pick(features) {
@@ -550,7 +635,7 @@ impl AppShell {
         cx: &mut Context<Self>,
         delta: i32,
         step: i32,
-        pick: impl FnOnce(&mut crate::features::DeviceFeatures) -> Option<&mut u8>,
+        pick: impl FnOnce(&mut crate::domain::DeviceFeatures) -> Option<&mut u8>,
     ) {
         self.edit_features(cx, |features| {
             if let Some(value) = pick(features) {
@@ -564,7 +649,7 @@ impl AppShell {
         &mut self,
         cx: &mut Context<Self>,
         value: f32,
-        pick: impl FnOnce(&mut crate::features::DeviceFeatures) -> Option<&mut u8>,
+        pick: impl FnOnce(&mut crate::domain::DeviceFeatures) -> Option<&mut u8>,
     ) {
         self.edit_features(cx, |features| {
             if let Some(slot) = pick(features) {
@@ -580,7 +665,7 @@ impl AppShell {
     /// 二选一的枚举 → 真实界面是 `.s3-dropdown` 直选。
     pub fn set_profile_switch_mode(
         &mut self,
-        mode: crate::features::ProfileSwitchMode,
+        mode: crate::domain::ProfileSwitchMode,
         cx: &mut Context<Self>,
     ) {
         self.profile_switch_mode = mode;
@@ -630,6 +715,16 @@ impl AppShell {
         }
     }
 
+    pub fn select_device_by_serial(&mut self, serial_number: &str, cx: &mut Context<Self>) {
+        if let Some(index) = self
+            .devices
+            .iter()
+            .position(|device| device.serial_number == serial_number)
+        {
+            self.select_device(index, cx);
+        }
+    }
+
     /// 删除第 `index` 台设备（首页的「移除」）。
     pub fn remove_device(&mut self, index: usize, cx: &mut Context<Self>) {
         if index >= self.devices.len() {
@@ -675,7 +770,7 @@ impl AppShell {
     pub fn add_linked_game(&mut self, cx: &mut Context<Self>) {
         let n = self.linked_games.len() + 1;
         self.linked_games
-            .push(crate::features::LinkedGame::new(&format!(
+            .push(crate::domain::LinkedGame::new(&format!(
                 "游戏或程序 {n}"
             )));
         self.last_saved = Some(format!("已添加「游戏或程序 {n}」"));
@@ -823,7 +918,7 @@ impl AppShell {
 
     /// 调整「无活动后调暗」（分钟；0 = 已关闭）。
     pub fn adjust_dim_on_battery(&mut self, delta: i32, cx: &mut Context<Self>) {
-        use crate::features::DIM_ON_BATTERY_STEPS;
+        use crate::domain::DIM_ON_BATTERY_STEPS;
         self.edit_features(cx, |f| {
             if let Some(kb) = f.keyboard.as_mut() {
                 let current = DIM_ON_BATTERY_STEPS
@@ -930,8 +1025,8 @@ impl AppShell {
     pub fn add_snap_tap_pair(&mut self, cx: &mut Context<Self>) {
         self.edit_features(cx, |f| {
             if let Some(snap) = f.keyboard.as_mut().and_then(|k| k.snap_tap.as_mut()) {
-                if snap.pairs.len() < crate::features::SNAP_TAP_MAX_PAIRS {
-                    snap.pairs.push(crate::features::SnapTapPair::new("A", "D"));
+                if snap.pairs.len() < crate::domain::SNAP_TAP_MAX_PAIRS {
+                    snap.pairs.push(crate::domain::SnapTapPair::new("A", "D"));
                 }
             }
         });
@@ -949,7 +1044,7 @@ impl AppShell {
     pub fn set_snap_tap_mode(
         &mut self,
         index: usize,
-        mode: crate::features::SnapTapMode,
+        mode: crate::domain::SnapTapMode,
         cx: &mut Context<Self>,
     ) {
         self.edit_features(cx, |f| {
@@ -1123,7 +1218,7 @@ impl AppShell {
 
     /// 调整闲置休眠时间（分钟；0 = 从不）。
     pub fn adjust_sleep_after(&mut self, delta: i32, cx: &mut Context<Self>) {
-        use crate::features::SLEEP_AFTER_STEPS;
+        use crate::domain::SLEEP_AFTER_STEPS;
         self.edit_features(cx, |f| {
             if let Some(p) = f.power.as_mut() {
                 let current =
@@ -1138,7 +1233,7 @@ impl AppShell {
 
     /// 调整闲置降低亮度时间（分钟；0 = 从不）。
     pub fn adjust_dim_after(&mut self, delta: i32, cx: &mut Context<Self>) {
-        use crate::features::DIM_AFTER_STEPS;
+        use crate::domain::DIM_AFTER_STEPS;
         self.edit_features(cx, |f| {
             if let Some(p) = f.power.as_mut() {
                 let current =
@@ -1188,7 +1283,7 @@ impl AppShell {
     /// 直接设定滚动模式（`SCROLL_MODE` / `FREE_SPIN`）。
     pub fn set_scrolling_mode(
         &mut self,
-        mode: crate::features::ScrollingMode,
+        mode: crate::domain::ScrollingMode,
         cx: &mut Context<Self>,
     ) {
         self.edit_features(cx, |f| {
@@ -1260,7 +1355,7 @@ impl AppShell {
             };
             if stage.disabled {
                 stage.disabled = false;
-            } else if disabled < crate::features::SCROLL_MAX_DISABLED_STAGES {
+            } else if disabled < crate::domain::SCROLL_MAX_DISABLED_STAGES {
                 stage.disabled = true;
             }
         });
@@ -1305,7 +1400,7 @@ impl AppShell {
             if let Some(c) = f.calibration.as_mut() {
                 let n = c.surfaces.len() + 1;
                 c.surfaces
-                    .push(crate::features::SurfaceProfile::new(&format!("表面 {n}"), false));
+                    .push(crate::domain::SurfaceProfile::new(&format!("表面 {n}"), false));
             }
         });
     }
@@ -1332,7 +1427,7 @@ impl AppShell {
     pub fn start_calibration(&mut self, cx: &mut Context<Self>) {
         self.edit_features(cx, |f| {
             if let Some(c) = f.calibration.as_mut() {
-                c.state = crate::features::CalibrationState::Running;
+                c.state = crate::domain::CalibrationState::Running;
             }
         });
     }
@@ -1342,9 +1437,9 @@ impl AppShell {
         self.edit_features(cx, |f| {
             if let Some(c) = f.calibration.as_mut() {
                 c.state = if success {
-                    crate::features::CalibrationState::Completed
+                    crate::domain::CalibrationState::Completed
                 } else {
-                    crate::features::CalibrationState::Idle
+                    crate::domain::CalibrationState::Idle
                 };
                 if success {
                     let index = c.selected;
@@ -1395,7 +1490,7 @@ impl AppShell {
     ///
     /// `Pairing::dongle` 是枚举而不是字符串，所以用 match 循环，不套 `cycle_str`。
     pub fn cycle_dongle_kind(&mut self, cx: &mut Context<Self>) {
-        use crate::features::DongleKind;
+        use crate::domain::DongleKind;
         self.edit_features(cx, |f| {
             if let Some(p) = f.pairing.as_mut() {
                 p.dongle = match p.dongle {
@@ -1412,7 +1507,7 @@ impl AppShell {
     /// 直接设定音效增强（`AUDIO_ENHANCEMENT`）。
     pub fn set_enhancement(
         &mut self,
-        value: crate::features::AudioEnhancement,
+        value: crate::domain::AudioEnhancement,
         cx: &mut Context<Self>,
     ) {
         self.edit_features(cx, |f| {
@@ -1541,7 +1636,7 @@ impl AppShell {
     /// 直接设定采样率 44.1 / 48 / 96 kHz。
     pub fn set_sampling_rate(
         &mut self,
-        rate: crate::features::SamplingRate,
+        rate: crate::domain::SamplingRate,
         cx: &mut Context<Self>,
     ) {
         self.edit_features(cx, |f| {
@@ -1593,7 +1688,7 @@ impl AppShell {
 
     /// 调整 OLED 闲置关闭时间（秒；0 = 从不）。
     pub fn adjust_oled_timeout(&mut self, delta: i32, cx: &mut Context<Self>) {
-        use crate::features::OLED_TIMEOUT_STEPS;
+        use crate::domain::OLED_TIMEOUT_STEPS;
         self.edit_features(cx, |f| {
             if let Some(o) = f.oled.as_mut() {
                 let current =

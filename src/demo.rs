@@ -8,7 +8,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::features::{DeviceFeatures, LightingEffect, LightingZone};
+use crate::domain::{DeviceFeatures, LightingEffect, LightingZone};
 use crate::model::{
     Device, DeviceCategory, DkmKey, FirmwareInfo, LocalizedText, Profile, SetupStatus,
 };
