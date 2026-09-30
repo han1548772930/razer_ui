@@ -17,25 +17,19 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::shell::AppShell;
-use crate::ui::widgets::{card_title, PageLayout, card, EmptyState, PageHeader, SettingRow, btn};
+use crate::ui::widgets::{card_title, PageLayout, card, EmptyState, SettingRow, btn};
 
 /// 渲染配对页。
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
+    if device.product_id != 182 {
+        return EmptyState::new("配对页当前只为 productId 182 鼠标实现").into_any_element();
+    }
 
     let Some(pairing) = device.features.pairing.as_ref() else {
-        return v_flex()
-            .size_full()
-            .gap_4()
-            .child(PageHeader::new(
-                "正在配对",
-                format!("{} · 该设备无需配对", device.display_name()),
-            ))
-            .child(EmptyState::new(
-"该设备没有无线配对设置。实测：只有鼠标（182）显示该页面。",
-            ))
+        return EmptyState::new("该设备没有无线配对设置。")
             .into_any_element();
     };
 
@@ -60,6 +54,7 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     };
 
     PageLayout::new("正在配对", device.display_name())
+        .without_product_banner()
         // ① 接收器
         .widget(
             card()

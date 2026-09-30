@@ -5,6 +5,10 @@
 //! 外壳**没有左侧栏**，顶栏是**三个区**。逐条引自雷云主前端：
 //!
 //! ```jsx
+//! <div className="etabs-tabgroup">                 // Electron, 42px, #000
+//!   <div className="etabs-tabs">                   // 主 tab + 拖动区
+//!   <div className="etabs-window-control-btns">   // 3 × 48px 系统按钮
+//! </div>
 //! <div className="main-container">                  // column, #222, min-width:600px
 //!   <div className="nav-tabs">                      // min-height:48px, border-bottom:2px solid #000
 //!     <div className="profile-wrapper">…</div>      // flex:1 0 25%
@@ -40,6 +44,7 @@
 // `IconName` 指完整目录——与 `nav.rs` 的写法一致。
 use gpui_kit::assets::IconName;
 use gpui_kit::component::*;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
@@ -201,14 +206,10 @@ impl Render for AppShell {
 }
 
 impl AppShell {
-    /// 当前应显示的标签页。
+    /// 当前产品页面标签。
     ///
-    /// 真实结构（`docs/screens/00-app-shell.md` §1）：**只有一行**标签，居中，
-    /// 内容随选中设备变化——不是「应用标签 + 设备标签」两行。
-    ///
-    /// 因此这里是 `首页 ++ 该设备的标签 ++ 设置`。
-    /// 每台设备的标签集合由 [`DeviceKind::tabs`] 给出，逐条来自实测的
-    /// productId → 设备模块映射（182 鼠标 / 653 键盘 / 777 耳机）。
+    /// Electron 外层标签区由 `app_tab_bar` 单独渲染；这里的标签只对应网页中的
+    /// `.nav-tabs`，不能与窗口标签栏或系统按钮混在一起。
     pub fn tabs(&self) -> Vec<Tab> {
         let mut tabs = vec![Tab::Home];
         if let Some(device) = self.current() {
@@ -218,7 +219,7 @@ impl AppShell {
         tabs
     }
 
-    /// 顶栏。真实类名 `div.nav-tabs`。
+    /// 产品顶栏。真实类名 `div.nav-tabs`。
     ///
     /// ```css
     /// div.nav-tabs { align-items:center; min-height:48px; position:relative; width:100%;
@@ -226,7 +227,7 @@ impl AppShell {
     ///                color:#5d5d5d }
     /// ```
     ///
-    /// **只有一个顶栏**：`.nav-tabs` 本身就是标题栏，雷云没有再单设一条。
+    /// 这是产品内容顶栏，位于 Electron 的 42px 外层标签栏下方；两者不是同一层。
     /// 三个区域的宽度比例逐字来自 CSS：
     ///
     /// ```css
@@ -257,34 +258,52 @@ impl AppShell {
 
     fn app_tab_bar(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.theme().clone();
-        let active_title = self
-            .current()
-            .map(|device| device.display_name())
-            .unwrap_or_else(|| "雷云".to_string());
-
         h_flex()
             .w_full()
             .h(px(APP_TABGROUP_HEIGHT))
             .flex_shrink_0()
             .bg(theme.title_bar)
+            .child(self.host_tabs(cx))
+            .child(self.window_controls(window, &theme))
+            .into_any_element()
+    }
+
+    fn host_tabs(&self, cx: &mut Context<Self>) -> AnyElement {
+        let theme = cx.theme().clone();
+        h_flex()
+            .id("app-tab-drag-region")
+            .flex_1()
+            .h_full()
+            .items_end()
+            .overflow_hidden()
             .child(
-                h_flex()
-                    .id("app-tab-drag-region")
-                    .flex_1()
-                    .h_full()
-                    .window_control_area(WindowControlArea::Drag)
-                    .items_center()
-                    .gap_3()
+                div()
+                    .id("host-main-tab")
+                    .w(px(90.))
+                    .h(px(40.))
+                    .mb(px(0.))
                     .px(px(12.))
-                    .child(Icon::new(IconName::Mouse).w(px(18.)).h(px(18.)))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded_t(px(5.))
+                    .bg(theme.background)
+                    .border_b_2()
+                    .border_color(theme.primary)
                     .child(
-                        div()
-                            .text_size(px(TEXT_12))
-                            .text_color(theme.foreground)
-                            .child(active_title),
+                        svg()
+                            .data(include_bytes!("../.ref/synapse-asar/electron/resources/images/logo_synapse.svg"))
+                            .w(px(20.))
+                            .h(px(20.)),
                     ),
             )
-            .child(self.window_controls(window, &theme))
+            .child(
+                div()
+                    .id("host-drag-region")
+                    .flex_1()
+                    .h_full()
+                    .window_control_area(WindowControlArea::Drag),
+            )
             .into_any_element()
     }
 
@@ -300,10 +319,10 @@ impl AppShell {
             .hover(|style| style.bg(theme.background))
             .child(svg().data(include_bytes!("../assets/window-minimize.svg")).w(px(WINDOW_CONTROL_WIDTH)).h(px(32.)));
 
-        let maximize_asset = if window.is_maximized() {
-            "../assets/window-restore.svg"
+        let (maximize_asset, maximize_width, maximize_height): (&[u8], f32, f32) = if window.is_maximized() {
+            (include_bytes!("../assets/window-restore.svg"), 13., 13.)
         } else {
-            "../assets/window-maximize.svg"
+            (include_bytes!("../assets/window-maximize.svg"), WINDOW_CONTROL_WIDTH, 32.)
         };
         let maximize = div()
             .id("window-maximize")
@@ -314,10 +333,7 @@ impl AppShell {
             .justify_center()
             .window_control_area(WindowControlArea::Max)
             .hover(|style| style.bg(theme.background))
-            .child(svg().data(match maximize_asset {
-                "../assets/window-restore.svg" => include_bytes!("../assets/window-restore.svg"),
-                _ => include_bytes!("../assets/window-maximize.svg"),
-            }).w(px(WINDOW_CONTROL_WIDTH)).h(px(32.)));
+            .child(svg().data(maximize_asset).w(px(maximize_width)).h(px(maximize_height)));
 
         let close = div()
             .id("window-close")
@@ -328,7 +344,7 @@ impl AppShell {
             .justify_center()
             .window_control_area(WindowControlArea::Close)
             .hover(|style| style.bg(theme.background))
-            .child(svg().data(include_bytes!("../assets/window-close.svg")).w(px(16.)).h(px(16.)));
+            .child(svg().data(include_bytes!("../assets/window-close.svg")).w(px(12.7)).h(px(12.7)));
 
         h_flex()
             .h_full()
@@ -520,6 +536,7 @@ impl AppShell {
             .px(px(20.))
             .pt(px(10.))
             .pb(px(20.))
+            .overflow_y_scrollbar()
             
             .child(page)
             .into_any_element()

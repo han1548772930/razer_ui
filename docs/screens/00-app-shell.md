@@ -1,342 +1,682 @@
-# 应用外壳与整体布局（从主前端实测）
+# 应用外壳、主前端与产品导航
 
-> 本文补齐此前缺失的**整体骨架**。各设备页文档（`01-*.md` … `09-*.md`）只覆盖
-> 「设备页内部」，没有覆盖「应用外壳 / Dashboard / 应用设置」这一层。
->
-> 全部数值逐条引自雷云自己的 CSS，**没有推断**。证据文件见文末。
+本文只描述雷蛇 Synapse 4 的外壳层级。外层 Electron 标签栏、主前端宿主页、
+产品模块页是三个不同的渲染层，不能合并成一条标题栏，也不能把其中一层的按钮
+或导航复制到另一层。
 
----
+证据来自实际保存的 Electron 和前端构建产物：
 
-## 0. 一句话结论
-
-雷云 Synapse 4 是**两级页面模型**：
-
-```
-应用外壳（主前端 apps.razer.com/synapse/dashboard/）
-├─ 顶栏 .nav-tabs      [配置文件 25%] [功能标签页 居中] [电池/帮助 25%]
-└─ #body-wrapper
-   ├─ Dashboard        .dashboard —— 可折叠、可拖拽的 .box-group 分段
-   │                   每段里是 290×220 的 DeviceCard
-   └─ 应用设置          .main-setting —— 固定左侧 .side-navigation（宽 180px）
-
-设备页（每个设备独立窗口，openNewTab 打开）
-  products/{productId}/ui/index.html
-  ├─ 顶栏 .nav-tabs     同样的三区结构，但中间是该设备的标签页
-  └─ #body-wrapper
-     └─ .body-widgets   600px 卡片两列换行 + 250px 产品图区
-```
-
-**设备页没有左侧栏。** 设备是在 Dashboard 上选的，点开后在**新窗口/新标签页**里
-加载该设备自己的 UI。左侧栏只出现在**应用设置页**。
+- `.ref/synapse-asar/electron/index.css`
+- `.ref/synapse-asar/electron/components/Tab/TabUI.js`
+- `.ref/synapse-asar/electron/assets/image/tab/*.svg`
+- `.ref/frontend/static/js/App.eb32d7cd.chunk.js`
+- `.ref/frontend/static/js/4130.155387bf.chunk.js`
+- `.ref/frontend/static/js/9388.2bec5db3.chunk.js`
+- `.ref/frontend/static/css/55.a5b041a2.chunk.css`
+- `.ref/frontend/static/css/4130.6bdf8dd0.chunk.css`
 
 ---
 
-## 1. 应用外壳
+## 1. 三层结构
 
-### 1.0 外层 Electron 标签栏与产品顶栏是两层不同结构
+```text
+Electron host window
+└─ .etabs-tabgroup / Rust app_tab_bar       42px
+   ├─ .etabs-tabs / Rust app-tab-drag-region 外层动态 tab 与拖动区
+   └─ .etabs-window-control-btns             Windows 非 macOS 时创建
+      ├─ .etab-minimize                      48px 命中区
+      ├─ .etab-restore                       48px 命中区
+      └─ .etab-close                         48px 命中区
 
-在主前端全部 CSS 中检索 `title-bar` / `titlebar` / `drag-region` /
-`window-controls` / `app-header` / `rz-title` / `top-bar`，**全部 0 命中**。
+Web content hosted by Electron
+└─ .main-container
+   ├─ .nav-tabs                             48px 主前端/产品页 header
+   │  ├─ .profile-wrapper                   左侧配置文件区
+   │  ├─ .navs-wrapper                     中间页面导航
+   │  └─ .right                            右侧状态与辅助入口
+   └─ #body-wrapper                         页面内容和滚动区域
+      ├─ Dashboard                          主前端首页
+      ├─ .main-setting                      应用设置
+      └─ 产品模块 body                      设备产品页内容
+```
 
-窗口边框由 Electron 提供；网页内容的第一行就是 `.nav-tabs`：
+### 1.1 Electron 42px 外层标签栏
+
+Electron 层不是主前端的 `.nav-tabs`。`TabUI.js` 的 `render()` / `addTabGroup()`
+动态创建 `.etabs-tabgroup`，并在非 macOS 环境中追加
+`.etabs-window-control-btns`。初始化时如果页面中已经存在 `.etabs-tabgroup`，
+不会再次创建；外层标签栏只有在收到 `setTabBarVisible` 后添加 `visible` 类才显示。
+
+`TabUI.js` 的 tab 不是固定三项菜单，而是由 Electron 的 tab message 动态维护：
+
+- `createNewTab` 消息调用 `createNewTab(name, url, featureObj, windowId)`，创建一个
+  `.etabs-tab`，保存 `url`、`featureObj`、`windowId` 到 `tabList`，并发送
+  `tab-create` 回 Electron。
+- 第一个 tab 被保存为 `mainTab`，增加 `.main-tab` 和
+  `.non-collapsible-tab`；它位于 `.etabs-tabs` 之外的固定主 tab 位置，不参与普通
+  tab 的关闭/折叠规则。
+- 后续 tab 进入 `.etabs-tabs`，根据持久化位置插入并分配 `pos`、`left`、`width`；
+  tab 的增删、激活、标题、图标、加载/失败状态由 `tab-message` 的
+  `createNewTab`、`changeActiveTab`、`closeTab`、`changeTitle`、`changeIcon`、
+  `startLoading`、`stopLoading`、`failToLoad` 分支更新。
+- `mainTab` 关闭时，代码会选择下一个可见 tab；只有普通 tab 显示关闭操作，主 tab
+  不显示关闭按钮。`manual-close` 还会强制隐藏普通 tab 的 close 控件。
+- `setTabPos` / `setTabPosArr` 和 `saveTabData()` 维护 tab 顺序；恢复时由
+  `restoreTabUI` 逐项重新创建并恢复标题、图标、加载状态和可关闭状态。
 
 ```css
-div.nav-tabs {
-  align-items:center; background-color:#222; border-bottom:2px solid #000;
-  color:#5d5d5d; min-height:48px; position:relative; width:100%; z-index:106;
+body {
+  margin: 0;
+  background-color: #000;
+}
+
+.etabs-tabgroup {
+  width: 100%;
+  height: 42px;
+  display: none;
+  position: relative;
+  z-index: 2;
+  background-color: #000;
+  cursor: default;
+  font: 14px Roboto, sans-serif;
+}
+
+.etabs-tabgroup.visible {
+  display: flex;
 }
 ```
 
-因此原版网页内容的第一行就是 `.nav-tabs`：窗口边框、系统按钮和拖动由 Electron 壳处理，
-原版 Electron 壳先渲染 `.etabs-tabgroup`：黑色 `42px` 外层标签栏，右侧是三个各 `48px` 的系统按钮；其下才是产品网页自己的 `.nav-tabs`。系统按钮不属于 `.nav-tabs` 的 profile/nav/right 三个网页区域。GPUI 的 `TitleBar` 只是实现技术，不能额外再渲染一条 `34px` 标题栏；本项目用自绘 `42px` 外层栏承载原版按钮和拖动区。
+这 42px 是 Electron host 的 tab strip 高度，不是网页 header 高度。Windows 10
+兼容边框另加 `.custom-win10-border`；最大化时 `.custom-win10-border.maximized`
+去掉边框并恢复 `width:100%`。这些状态属于 Electron 壳，不属于 Dashboard 或
+产品模块。
 
-> 原始前端没有独立网页标题栏；窗口边框和拖动由 Electron 壳处理。
+### 1.2 外层标签与拖动
 
-### 1.0.1 Rust 窗口实现边界
+`TabUI.js` 创建 `.etabs-tabs-wrapper`、左右滚动按钮和 `.etabs-tabs`。可拖动区域
+由 CSS 的 `-webkit-app-region: drag` 提供；正在拖动标签或所有交互控件则改为
+`no-drag`。外层标签本身也是 `no-drag`，所以点击标签、滚动按钮、关闭按钮不会
+拖动窗口。
 
-- 原版事实：`.nav-tabs` 只有 profile、导航、right 三个网页区域。
-- Rust 实现：窗口可以使用 client-side decoration，但最小化、最大化/还原、关闭必须占用同一行右侧的系统命中区。
-- 外层 `.etabs-tabs` 拖动区高度 `42px`；三个按钮各 `48px` 且必须是 `no-drag` 命中区。
-- 产品 `.nav-tabs` 高度 `48px`，只负责 profile、导航和右侧状态；点击导航、profile、帮助不能触发窗口拖动。
-- 不得把 gpui-component 的 34px `TitleBar` 作为雷云页面的额外视觉层；也不得把系统按钮错误塞进产品 `.nav-tabs`。
+```css
+.etabs-tabs {
+  height: 42px;
+  width: calc(100vw - 365px);
+  overflow: hidden;
+  position: relative;
+  -webkit-app-region: drag;
+}
 
-### 1.1 DOM 结构（引自 `App.eb32d7cd.chunk.js`）
+.etabs-tabs.dragging {
+  -webkit-app-region: no-drag;
+}
+
+.etabs-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1 0 auto;
+  margin-left: 4px;
+}
+
+.etabs-tabs-wrapper::after {
+  content: "";
+  flex: 1 0 auto;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+```
+
+外层标签的主要状态来自 `TabUI.js` 和 `index.css`：
+
+- `.etabs-tab` 默认隐藏；`.visible` 才参与显示，宽度范围为 `90px–240px`。
+- `.main-tab` 是当前窗口主 tab；它位于标签区底部并带 `non-collapsible-tab`。
+- 普通标签的背景为 `#000`；hover 使用从 `#222` 到 `#444` 的渐变。
+- active 标签使用从 `#44d62c` 到 `#222` 的渐变，实际内容区为 `#222`。
+- 标签标题为 `#ccc`，非 active 标题为 `#999`，大写、单行、最大宽度 `200px`。
+- 标签可以在 `.etabs-tabs` 内拖动排序；顺序通过 `tab-updated` 和 localStorage 的
+  `tab` 数据保存。
+- 标签过多时，`#scroll-left-btn` 与 `#scroll-right-btn` 根据滚动位置显示或隐藏，
+  并切换 default / hover / active / disabled SVG。
+
+原始 DOM 的关系应保持为：
+
+```text
+.etabs-tabgroup
+├─ .etabs-tabs-wrapper
+│  ├─ #scroll-left-btn
+│  ├─ .etabs-tabs
+│  │  └─ 普通动态 .etabs-tab...
+│  └─ #scroll-right-btn
+└─ .etabs-window-control-btns
+```
+
+`mainTab` 不是把一个普通 tab 再复制一份，而是原始 `createNewTab` 在首次创建时
+赋予 `.main-tab` 的主 tab；普通 tab 才进入可滚动的 `.etabs-tabs` 列表。
+
+### 1.3 三个系统按钮：三个 48px 命中区
+
+`TabUI.js` 的 `addWindowControlBtns()` 按固定顺序创建三个 `div`：
+
+```text
+.etabs-window-control-btns
+├─ .etab-minimize  → callApiElectron({ action: "minimize" })
+├─ .etab-restore   → callApiElectron({ action: "maximize" })
+└─ .etab-close     → callApiElectron({ action: "handleCloseBtn", ... })
+```
+
+```css
+.etabs-window-control-btns {
+  display: flex;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+}
+
+.etabs-window-control-btns > div {
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-repeat: no-repeat;
+  background-position: center;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-app-region: no-drag;
+}
+
+.etabs-window-control-btns > div:hover {
+  background-color: #222;
+}
+
+.etab-minimize { background-image: url("./assets/image/tab/minimize.svg") }
+.etab-restore  { background-image: url("./assets/image/tab/maximize.svg") }
+.etab-close    { background-image: url("./assets/image/tab/close.svg") }
+.etab-restore.restore-icon {
+  background-image: url("./assets/image/tab/restore.svg");
+}
+```
+
+按钮的**命中区**是 `48px × 42px`，不能把 SVG 的尺寸误当成按钮尺寸：
+
+| 资源 | 原始 SVG 尺寸 | 实际绘制重点 |
+|---|---:|---|
+| `minimize.svg` | `48 × 32` | `#999` 最小化横线；透明背景矩形也是 `48 × 32` |
+| `maximize.svg` | `48 × 32` | 中央 `12 × 12` 的 `#999` 空心方框 |
+| `restore.svg` | `13 × 13` | 最大化后替换 restore 图标 |
+| `close.svg` | `12.7 × 12.7` | `#999` 叉号；外围命中区仍为 `48px` |
+
+按钮 hover 只改变外围 `#222` 背景，图标默认 `#999`。最大化状态由
+`checkMaximizeWindow()` 查询 Electron 的 `isMaximized`，为 `.etab-restore` 添加
+`restore-icon`，同时给 `.etabs-tabgroup` 添加 `maximized`。不可调整大小的主 tab
+会隐藏 restore 按钮；这是窗口能力条件，不应在网页 `.nav-tabs` 中复制一套按钮。
+
+### 1.4 当前 Rust 外壳的对应关系
+
+当前 `src/shell.rs` 已经将外层高度、拖动区和窗口控制区拆开：
+
+```text
+render()
+└─ app_tab_bar()                         h = 42px
+   ├─ host_tabs()                        flex:1, app-tab-drag-region
+   │  ├─ host-main-tab                   主 tab，仅显示 Synapse 图标
+   │  └─ host-drag-region                剩余窗口拖动区
+   └─ window_controls()
+      ├─ window-minimize                 WindowControlArea::Min
+      ├─ window-maximize                 WindowControlArea::Max
+      └─ window-close                    WindowControlArea::Close
+```
+
+对应关系和边界如下：
+
+- `app_tab_bar()` 使用 `APP_TABGROUP_HEIGHT = 42.0`，是原始 `.etabs-tabgroup` 的
+  Rust 视觉层；其下才是 `top_bar()` 的 48px 主前端 `.nav-tabs`。
+- `host_tabs()` 将主 tab 与剩余拖动区分开；`host-drag-region` 使用
+  `WindowControlArea::Drag`，主 tab 和三个系统按钮不会拖动窗口。
+- Rust 当前主 tab 宽 `90px`、高 `40px`，与原始 `.etabs-tab` 的宽度范围和底部对齐
+  意图一致；系统按钮仍保持 `48px` 宽、`42px` 高。
+- 当前项目尚未接入 Electron 的多窗口 tab IPC，因此只渲染源代码明确存在的主 tab；
+  不再把“首页/已关联游戏/当前设备”伪装成 Electron 外层 tab。产品页面导航仍由
+  下方 48px 的 `top_bar()` 负责。
+- 原始 Electron 的 `tab-message` 多 tab 列表、`mainTab`、滚动按钮和持久化位置是
+  参考行为；当前 Rust 外层尚未把这些 JS 对象/消息协议逐字复制为独立的数据结构，
+  因此文档不能把 Rust 的单个主 tab 描述成原始 Electron 的完整动态 tab manager。
+- Rust 的 `window_controls()` 使用独立的 `window_control_area` 命中区和内嵌 SVG；
+  视觉上对应 `.etabs-window-control-btns > div`，不是产品 `.nav-tabs` 的右侧区域。
+
+---
+
+## 2. 主前端 header：宿主页面的 48px `.nav-tabs`
+
+`App.eb32d7cd.chunk.js` 的 header renderer 返回的是一个 React `Fragment`，其中的
+网页 header 是：
 
 ```jsx
-<div className="main-container">
-  <div className={"nav-tabs" + (keymapbarEnabled ? " keymapbar-enabled" : "")
-                            + (showLinkedGames ? " disabled" : "")}
-       style={extraStyle}>
-    <div className="profile-wrapper" ref={profileEl}>…</div>
-    <div className="navs-wrapper" role="tabs">…</div>
-    <div className="right" ref={rightEl} role="tablist">…</div>
-  </div>
-  <div id="body-wrapper" className={"body-wrapper" + (status ? "" : " scrollable")}
-       ref={bodyRef} style={extraStyle}>…</div>
+<div className="nav-tabs">
+  <div className="profile-wrapper">...</div>
+  <div className="navs-wrapper" role="tabs">...</div>
+  <div className="right" role="tablist">...</div>
 </div>
 ```
 
-### 1.2 外壳 CSS
+它不是 Electron 的 42px tab strip。主前端 header 负责宿主页面的 profile、首页/模块
+导航和右侧状态入口；它不负责最小化、最大化、关闭或窗口拖动。
 
-| 选择器 | 布局 | 样式 |
+```css
+.main-container {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  min-width: 600px;
+  background-color: #222;
+}
+
+div.nav-tabs {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  min-height: 48px;
+  z-index: 106;
+  color: #5d5d5d;
+  background-color: #222;
+  border-bottom: 2px solid #000;
+}
+
+.nav-tabs .profile-wrapper { flex: 1 0 25%; }
+.nav-tabs .navs-wrapper {
+  display: flex;
+  flex: 1 0 max-content;
+  justify-content: center;
+  font: 12px Roboto, sans-serif;
+}
+.nav-tabs .right { flex: 1 1 25%; }
+```
+
+### 2.1 Header 三个区域的作用
+
+| 区域 | 作用 | 原代码条件/内容 |
 |---|---|---|
-| `body, html` | `height:100%; margin:0; max-width:1920px; min-height:720px; overflow:hidden; width:100%` | `background-color:#222; color:#ccc; font-family:Roboto,sans-serif; font-size:16px; user-select:none` |
-| `.main-container` | `display:flex; flex-direction:column; height:100%; min-width:600px; position:absolute; width:100%` | `background-color:#222` |
-| `div.nav-tabs` | `align-items:center; min-height:48px; position:relative; width:100%; z-index:105` | `background-color:#222; border-bottom:2px solid #000; color:#5d5d5d` |
-| `.nav-tabs` | `display:flex` | |
-| `.nav-tabs .profile-wrapper` | `display:flex; flex:1 0 25%` | |
-| `.nav-tabs .navs-wrapper` | `display:flex; flex:1 0 max-content; justify-content:center; font-family:Roboto,sans-serif; font-size:12px` | |
-| `.nav-tabs .right` | `flex:1 1 25%` | |
-| `.body-wrapper` | `flex:1 1; height:100%; min-width:600px; padding:10px 20px 20px; width:100%` | |
-| `.main-container > #body-wrapper > .body-widgets` | `min-width:0; min-width:auto` | |
-| `body .main-container .body-wrapper` | `min-height:0; min-height:auto` | |
+| `.profile-wrapper` | 当前 profile、动态模式提示、keymap bar | `renderProfileBar`、`hasDynamicMode && activeDynamicMode`、`renderKeyMapBar` 条件渲染 |
+| `.navs-wrapper` | 主前端页面导航 | `visibleNavs.map(...)` 渲染 tab；有溢出项时增加 `dots3` 菜单 |
+| `.right` | 宿主状态和辅助入口 | `displayMode` 警告、教程/扩展、电池、帮助等按 props 条件渲染 |
 
-> 注意 `.body-wrapper` 会按状态加类：可滚动时加 `.scrollable`，
-> 宏显示模式加 `.customMacro`，armory 模式加 `.custom-scrollable`。
-
-### 1.3 顶栏三个区
-
-顶栏是 **3 个区**，不是「一个标签条」：
-
-| 区 | 类名 | 占比 | 内容 |
-|---|---|---|---|
-| 左 | `.profile-wrapper` | `flex:1 0 25%` | 配置文件下拉（`renderProfileBar`）、动态模式提示 `.profile-tips`、keymap bar |
-| 中 | `.navs-wrapper` | `flex:1 0 max-content`，`justify-content:center` | **功能标签页**（`.nav`）+ 「⋯」溢出菜单 `.dots3` |
-| 右 | `.right` | `flex:1 1 25%` | 重启/立体声警告、过滤栏、**电池指示器**、扩展项、帮助图标 `.help` |
-
-### 1.4 标签页胶囊 `.nav` 的完整状态
+页面导航 `.nav` 是主前端的 tab，不是 Electron 标签：
 
 ```css
 .nav-tabs .nav {
-  border-radius: 14px;          /* 胶囊 */
-  padding: 7px 10px;
   margin-right: 20px;
+  padding: 7px 10px;
+  border-radius: 14px;
   color: #999;
-  font-size: 12px;              /* 来自 .navs-wrapper */
   line-height: 14px;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   transition: background-color .3s, color .1s;
 }
-.nav-tabs .nav:last-child { margin-right: 0 }
-.nav-tabs .nav:hover  { background-color:#2d2d2d; color:#ccc }
-.nav-tabs .nav:active { background-color:#3cbf27; color:#111 }
-.nav.active,
-.nav-tabs .nav.active:hover { background-color:#44d62c; color:#111 }
-.nav.disabled { opacity:.3; pointer-events:none }
-.nav-tabs .user.disabled:hover, .nav.disabled:hover { background-color:#0000; cursor:default }
+
+.nav-tabs .nav:hover  { background-color: #2d2d2d; color: #ccc; }
+.nav-tabs .nav:active { background-color: #3cbf27; color: #111; }
+.nav-tabs .nav.active,
+.nav-tabs .nav.active:hover {
+  background-color: #44d62c;
+  color: #111;
+}
+.nav-tabs .nav.disabled {
+  opacity: .3;
+  pointer-events: none;
+}
 ```
 
-> `.nav` 用 `role="tab"` + `aria-selected`，溢出项进 `.dots3` 下拉：
-> ```css
-> .nav-tabs .navs-wrapper .dots3 { border:none; border-radius:13px }
-> .nav-tabs .navs-wrapper .dots3:hover { background-color:#2d2d2d }
-> .nav-tabs .navs-wrapper .dots3.has-actived-option { background-color:#44d62c }
-> .nav-tabs .navs-wrapper .dots3 .act { color:#ccc; font-size:14px }
-> .nav-tabs .navs-wrapper .dots3 .act:hover { background-color:#1a1a1a }
-> .nav-tabs .navs-wrapper .dots3 .act.action.active { background-color:#000; color:#44d62c }
-> .nav-tabs .navs-wrapper .dots3 .act.action.active:hover { background-color:#1a1a1a; color:#44d62c }
-> ```
+主前端 header 还存在宿主状态条件：
 
-### 1.5 顶栏电池指示器
+- `showLinkedGames` 时 `.nav-tabs` 增加 `disabled`，CSS 为整个 header 设置 `opacity:.5`。
+- `.main-container.backdrop-on .nav-tabs` 设置 `opacity:.3; pointer-events:none`，用于
+  backdrop/模态遮罩期间冻结宿主导航。
+- 每个导航项使用 `role="tab"`、`aria-selected` 和当前 view；不能只渲染无事件的文本。
+- `.dots3` 只承载由于空间不足而隐藏的页面项；有 active 溢出项时增加
+  `has-actived-option`，背景变为 `#44d62c`。
+
+### 2.2 `#body-wrapper`：header 下唯一内容区域
+
+主前端 header 下方不是另一个标题栏，而是 `#body-wrapper`。前端 DOM 使用状态类
+控制滚动：有 status 时保持普通类，没有 status 时追加 `scrollable`。
+
+```css
+.body-wrapper {
+  flex: 1 1;
+  width: 100%;
+  height: 100%;
+  min-width: 600px;
+  padding: 10px 20px 20px;
+}
+
+@media screen and (max-width: 1279px) {
+  .body-wrapper { padding: 10px 30px 20px; }
+}
+
+#body-wrapper.body-wrapper.scrollable {
+  overflow: auto;
+}
+```
+
+`.main-container` 的垂直关系是：Electron 42px 外层 → web view → 48px 网页
+`.nav-tabs` → `#body-wrapper`。实现时不能将 body padding、Dashboard 顶部间距或
+产品图区向上挪动来抵消 Electron 外层高度。
+
+---
+
+## 3. Dashboard：真实渲染和交互状态
+
+Dashboard renderer 在前端 JS 中渲染教程/介绍 banner（按 props 条件），再渲染：
 
 ```jsx
-<div role="img" id="battery-level-tips" aria-roledescription="battery status"
-     className={"battery " + (hideBattValue ? "hideBattValue" : "")}>
-  {!hideBattValue && !externalPowerConnected &&
-    <span className={battery 0..10 ? "low-batt" : ""}>{batteryValue >= 0 ? `${batteryValue} %` : "-"}</span>}
-  <div className={getBatteryState()} />
-  <Tooltip position="bottom-left" target="battery-level-tips">{batteryTips}</Tooltip>
+<div className="dashboard flex [reflow]">
+  <div style={{ display: "flex", flexDirection: "column" }}>
+    {renderGroup()}
+  </div>
 </div>
 ```
 
-电量**显示在顶栏右侧**，不在电源页里；`0–10%` 加 `.low-batt`。
-
----
-
-## 2. Dashboard
-
-### 2.1 容器
-
-| 选择器 | 布局 |
-|---|---|
-| `.dashboard` | `display:flex; flex-direction:column; margin:0 auto; max-width:1220px; min-width:620px; position:relative; transition:height .2s linear` |
-| `.dashboard.reflow` | `max-width:2460px` |
-| `body .main-container .body-wrapper .dashboard` | `margin-bottom:50px` |
-
-### 2.2 分段 `.box-group`：可折叠 + 可拖拽
+当设备项数量大于 4 时，JS 为 Dashboard 增加 `reflow`；CSS 将最大宽度从 `1220px`
+扩展到 `2460px`。普通 Dashboard 居中，最小宽度 `620px`，底部保留 `50px`。
 
 ```css
-.dashboard .box-group { margin:10px 0; max-width:100%; min-height:18px; width:100%; transition:all .1s ease-in-out }
-.dashboard .box-group.loading { visibility:hidden }
-.dashboard .box-group:hover { z-index:20 }
-
-/* 标题行：折叠箭头 + 标题 + 拖拽把手 */
-.dashboard .box-group .title {
-  align-items:stretch; display:flex; font-size:14px;
-  position:relative; width:100%; color:#ccc;
-}
-.dashboard .box-group .title .collapse { align-items:center; display:flex; flex:1 1; z-index:2 }
-.dashboard .box-group .title .collapse:hover { color:#fff }
-.dashboard .box-group .title .collapse .icon {
-  height:10px; width:10px; margin-right:10px;
-  transform:rotate(-90deg);                 /* 折叠态 */
-  transition:transform .3s linear;
-  background-image:url(icon_expand.svg); background-size:10px; background-position:50%;
-}
-.dashboard .box-group.expand .title .icon { transform:rotate(0deg) }   /* 展开态回正 */
-.dashboard .box-group .title .drag-div {
-  align-items:center; cursor:grab; display:flex; flex:1 1 auto;
-  height:17px; justify-content:center; top:-3px; z-index:6;
-}
-.dashboard .box-group .title .drag-icon { position:absolute; inset:0; justify-content:center; z-index:3 }
-.dashboard .box-group .title .drag-icon:before {
-  content:""; cursor:grab; display:block; height:19px; width:22px; transform:rotate(90deg);
-  background-image:url(icon_draggable_large.svg); opacity:0; visibility:hidden;
-}
-/* hover 标题 或 .show-drag-icon 时才淡入把手 */
-.dashboard .box-group .title:hover .drag-icon:before,
-.dashboard .box-group.show-drag-icon .drag-icon:before { animation:delayedShow .5s linear 0s forwards }
-
-/* 内容：max-height 0 → 展开 */
-.dashboard .box-group .content { margin-top:10px; max-height:0; transition:max-height .3s ease-in }
-.dashboard .box-group .content.show-overflow { transition:max-height .15s ease-in-out }
-.dashboard .box-group .content .content-inner {
-  display:flex; flex-wrap:wrap; gap:20px;
-  position:relative; transform:translateY(-100%); transition:transform .3s linear;
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin: 0 auto;
+  min-width: 620px;
+  max-width: 1220px;
+  transition: height .2s linear;
 }
 
-/* 背板：展开时形成整段的卡片底 */
-.dashboard .box-group .backdrop-box {
-  position:absolute; left:0; right:0; top:0; bottom:10px; max-height:40px;
-  background-color:#333; border-radius:5px; opacity:0; visibility:hidden; z-index:0;
-  transition:all .3s ease-in-out .3s;
-}
-.dashboard .box-group.expand .backdrop-box { bottom:0; max-height:2000px }
-.dashboard .box-group.dragging .backdrop-box {
-  background-color:#3333334d; border:2px solid #44d62c; border-radius:5px; opacity:1; z-index:5;
-}
-.dashboard .box-group #devices { position:relative; z-index:1 }
+.dashboard.reflow { max-width: 2460px; }
+.body-wrapper .dashboard { margin-bottom: 50px; }
 ```
 
-**要点**：分段折叠时只有 40px 高的背板；展开后背板撑到 `max-height:2000px`
-形成整段底色 `#333` + 圆角 5px。拖拽时背板变 `2px solid #44d62c`。
+### 3.1 分组的存在条件、折叠和拖动
 
-### 2.3 设备卡片 `DeviceCard`
+`SimpleBoxGroups` 的 render 只有在 `boxItems` 存在且长度不为 0 时返回
+`.box-group`。分组折叠状态来自 `groupsCollapsed[groupTitle]`；点击
+`.collapse-action` 调用 `toggleDashboardGroupCollapsed(groupTitle, nextValue)`，
+不是静态箭头。
+
+```css
+.dashboard .box-group {
+  width: 100%;
+  max-width: 100%;
+  min-height: 18px;
+  margin: 10px 0;
+  transition: all .1s ease-in-out;
+}
+
+.dashboard .box-group .title {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  width: 100%;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.dashboard .box-group .title .collapse {
+  display: flex;
+  align-items: center;
+  flex: 1 1;
+  position: relative;
+  z-index: 2;
+}
+
+.dashboard .box-group .title .collapse .icon {
+  width: 10px;
+  height: 10px;
+  margin-right: 10px;
+  transform: rotate(-90deg);
+  transition: transform .3s linear;
+}
+
+.dashboard .box-group.expand .title .icon {
+  transform: rotate(0deg);
+}
+```
+
+展开/折叠不是立即移除 DOM：
+
+- `.content` 折叠时 `max-height:0`，展开时最高 `2000px`，顶部间距 `10px`。
+- `.content-inner` 使用 flex-wrap 和 `gap:20px`，并以 `translateY(-100%)` / `0` 做过渡。
+- 非展开状态背板最高 `40px`，颜色 `#333`，圆角 `5px`，默认透明且不可见。
+- 展开状态背板最大高度 `2000px`，底部延伸到内容区域。
+- 分组拖动时背板为 `#3333334d`、`2px solid #44d62c`，并置于交互层上方。
+- 标题 hover 或 `.show-drag-icon` 时才淡入 `22 × 19px` 的拖动图标；拖动光标为
+  `grab`，实际拖动为 `grabbing`。
+
+组内设备顺序由 JS 的 `itemsOrder` 管理。拖动时根据卡片的列数计算目标行列和位移，
+释放后通过 `updateGroupItemOrder` 写回对应 group；因此 Dashboard 不能只画一组静态
+卡片，也不能按数组 index 作为持久身份。
+
+### 3.2 DeviceCard 的尺寸、内部布局和状态
+
+DeviceCard 的 CSS 声明如下：
 
 ```css
 .DeviceCard_deviceCard {
-  background:#0000004d; border-radius:5px;
-  display:flex; flex-direction:column;
-  width:290px; min-height:220px; padding:10px;
-  position:relative; transition:border-color .3s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 290px;
+  min-height: 220px;
+  padding: 10px;
+  background: #0000004d;
+  border-radius: 5px;
+  transition: border-color .3s;
 }
-.DeviceCard_deviceImageContainer { align-items:center; display:flex; flex:1 1; justify-content:center;
-                                   max-height:140px; min-height:140px; position:relative }
-.DeviceCard_deviceInfo { align-items:center; display:flex; flex-direction:column;
-                         font-size:14px; gap:8px; justify-content:flex-start;
-                         min-height:50px; text-align:center; text-transform:uppercase }
+
+.DeviceCard_deviceImageContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex: 1 1;
+  min-height: 140px;
+  max-height: 140px;
+}
+
+.DeviceCard_deviceImage {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.DeviceCard_deviceInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 50px;
+  gap: 8px;
+  font-size: 14px;
+  text-align: center;
+  text-transform: uppercase;
+}
 ```
 
-即 **290×220**：图片区固定 140px，信息区最小 50px、居中、大写。
+`width:290px`、`min-height:220px`、`padding:10px` 是原 CSS 声明；内部图片区固定
+`140px`，信息区至少 `50px`，名称不能通过固定单行高度或 index-based 截断造成溢出。
+布局实现应保留原 CSS 的内容区计算方式，不额外叠加一套“产品页 600px widget”。
 
-卡片还有这些状态类（`4130.css`，共 49 条规则）：
-`_clickable` `_nonClickable` `_disabled` `_dimmedContent` `_connected` `_failed`
-`_pairBadge` `_pairedBadge` `_pairingBadge` `_unpairingBadge` `_spinnerSmall`
-`_categoryIcon` `_mouse` `_keyboard` `_deviceImage` `_devicePlaceholder` `_boxImgContainer`
+DeviceCard 的 JS 根据设备数据决定有效图片或 category placeholder，并按状态拼接
+这些真实类名：
 
-> 卡片是**可翻转**的（`box-flip-front` / `box-flip-inner` / `box-flip-back`），
-> 背面含 `.header` / `.body` / `.description` / `.device-list`（`ul > li`）/ `.footer-link`。
-> 键盘可达性由代码显式实现：卡片内 `[data-device-card-action]` 之间用
-> `Tab` / `Shift+Tab` 循环，`Space` / `Enter` 触发。
+| 状态/类 | 原始样式或行为 |
+|---|---|
+| `clickable` / `nonClickable` | 可进入设备页或只读；可点击项有 `cursor:pointer`，不可点击项保持默认光标 |
+| `disabled` | 图片容器和名称标签 `opacity:.45` |
+| `connected` | 卡片边框 `#44d62c4d` |
+| `failed` | 卡片边框 `#ff4d4d80` |
+| `pairBadge` | `#999` 边框/文字，`20px` 高、圆角 `25px`，用于配对入口 |
+| `pairedBadge` | `#44d62c` 边框/文字，最小宽 `66px`，用于已配对操作 |
+| `pairingBadge` | `#44d62c` 边框/文字，带 `16px` spinner |
+| `unpairingBadge` | `#fd8611` 边框/文字，带橙色 spinner |
+| `categoryIcon` | `80 × 80px`，白色图标、`opacity:.3`；按 mouse/keyboard 等分类切换 |
+
+卡片中可执行的 pair/unpair 入口使用 `role="button"`、`tabIndex=0` 和
+`data-device-card-action="true"`。JS 对 `Tab` / `Shift+Tab` 在同一卡片的 action
+集合内循环，并将 `Space` / `Enter` 转换为点击；这不是 hover-only 装饰。
+
+没有有效设备数据时使用 placeholder/category 图标；组没有 item 时不渲染空的
+`.box-group`。扫描、配对、失败和加载状态必须由上述真实设备字段/类驱动，不能用
+固定“已连接”文案替代状态。
 
 ---
 
-## 3. 应用设置页
+## 4. 应用设置：固定导航 + 右侧内容
 
-设置是**应用级页面**，不是设备标签页。三台已下载设备声明的标签页里
-**都没有 `TAB_SETTING`**（见 `docs/screens/README.md` 的按设备标签页表）。
+设置是主前端 body 中的应用级页面，不是产品模块的 `TAB_*`。宿主 48px header
+继续存在；设置页面只改变 `#body-wrapper` 内部内容为 `.main-setting`。
 
 ```css
-.main-setting { height:100%; width:100% }
+.main-setting {
+  width: 100%;
+  height: 100%;
+}
 
 .main-setting .side-navigation {
-  position:fixed; margin-left:70px; width:180px;
-  font-size:14px; line-height:17px; text-align:left;
-  color:#ccc;
+  position: fixed;
+  width: 180px;
+  margin-left: 70px;
+  color: #ccc;
+  font-size: 14px;
+  line-height: 17px;
+  text-align: left;
 }
-.main-setting .side-navigation ul { list-style:none; padding:0 }
+
+.main-setting .side-navigation ul {
+  list-style: none;
+  padding: 0;
+}
+
 .main-setting .side-navigation ul li {
-  display:flex; flex-direction:column; justify-content:center;
-  height:30px; padding-left:10px; margin-bottom:2px;
-  border-radius:5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 30px;
+  margin-bottom: 2px;
+  padding-left: 10px;
+  border-radius: 5px;
 }
-.main-setting .side-navigation ul li:last-child { margin:0 }
-.main-setting .side-navigation ul li:hover  { background:#ffffff1a none; color:#44d62c }
-.main-setting .side-navigation ul li:active { background-color:#000; color:#44d62c }
-.main-setting .side-navigation .active          { color:#44d62c }
-.main-setting .side-navigation .active:hover    { background:#ffffff1a none; color:#ccc }
-.main-setting .side-navigation .active:active   { background-color:#000!important; color:#ccc }
 
-/* 设置页的 .body-widgets 是块级，不是 flex 网格 */
-.main-setting div .body-widgets { display:block; margin:0 }
-.main-setting .widget .title { font-size:18px }
-.main-setting .text-bold { font-size:14px; font-weight:500; line-height:17px; text-align:left; text-transform:uppercase; color:#ccc }
+.main-setting .setting-content {
+  margin-left: 250px;
+}
+
+.main-setting .setting-content:last-child {
+  padding-bottom: 80px;
+}
+
+.main-setting div .body-widgets {
+  display: block;
+  margin: 0;
+}
 ```
 
-**要点**：左侧导航 `position:fixed`、`margin-left:70px`、宽 `180px`；
-条目高 `30px`、圆角 `5px`、hover 底色 `#ffffff1a` + 绿字，激活字色 `#44d62c`。
-设置页里的 `.widget` 标题放大到 `18px`。
+### 4.1 设置导航状态
 
----
+导航条目是实际可选择的页面入口，当前项由 `.active` 表示；不能将导航写成没有
+事件的静态文本：
 
-## 4. 设备页（本仓库各 `0X-*.md` 覆盖的对象）
-
-设备页由主前端 `openNewTab` 打开：
-
-```js
-this.addDeviceUITab = function (device, tabName, newTab) {
-  const { productId, deviceContainerId } = device;
-  const query = stringify({ containerId: deviceContainerId });
-  const url = `${HOST_URL}/products/${productId}/ui/index.html?${query}`;
-  newTab ? openNewTab(url, tabName).then(() => setTimeout(() => focusTab(tabName), 200))
-         : openNewTab(url, tabName);
-};
-this.getDeviceTabName = ({ vendorId = 5426, productId, deviceContainerId }) => ({
-  ui_tab_name: `usb_${vendorId}_${productId}_${deviceContainerId}_ui`,
-});
-```
-
-设备页自身仍是 `.main-container` + `.nav-tabs`（三区，中间换成该设备的标签页）
-+ `.body-wrapper`，其中：
-
-| 选择器 | 布局 | 样式 |
+| 状态 | 背景 | 文字/行为 |
 |---|---|---|
-| `.body-widgets` | `flex-direction:row; flex-wrap:wrap; justify-content:center; margin:auto; max-width:1240px` | |
-| `.body-widgets .widget` | `flex:0 0 auto; margin:10px auto; max-width:600px; min-width:600px; padding:30px 40px; font-size:14px` | `background-color:#111; border-radius:5px` |
-| `.widget-col` | `flex-direction:column; height:fit-content; width:600px` | |
-| `.widget-prod` | `height:250px; margin:10px auto; max-width:1220px; min-width:1024px; width:100%` | |
-| `.widget-prod img` | `left:50%; position:absolute; top:50%` | |
+| 默认 | 透明 | `#ccc` |
+| hover | `#ffffff1a` | `#44d62c` |
+| active | 透明 | `#44d62c` |
+| active + hover | `#ffffff1a` | 回到 `#ccc` |
+| active + pressed | `#000!important` | `#ccc` |
+| 默认 + pressed | `#000` | `#44d62c` |
+
+CSS 原规则还要求最后一个 `li` 的 `margin-bottom:0`。导航项高度为 `30px`，条目
+之间只有 `2px`，左内边距为 `10px`；左栏整体不是 250px，**180px 是导航本身的
+宽度，250px 是右侧内容的起始 margin**。
+
+### 4.2 设置内容样式和条件
+
+- 右侧 `.setting-content` 从 `margin-left:250px` 开始，避免被 fixed 左栏覆盖。
+- 设置页的 `.body-widgets` 是块级流，不使用 Dashboard 的 flex 网格，也不使用
+  产品页的 `.widget-prod`。
+- `.main-setting .widget .title` 为 `18px`；普通粗体说明为 `14px`、`500`、
+  `17px` 行高、大写、`#ccc`。
+- `.general-setting` 下拉区域在窄窗口下有 `188px` 宽约束；设备设置 widget 在
+  CSS 条件下使用 `padding:20px`。
+- 内容较长时由 `#body-wrapper` 的 scrollable 状态承载滚动；不能通过固定高度把
+  设置内容裁掉。
+- 设置页面的 active 项、右侧内容和表单状态必须来自当前设置 view/state。切换项后
+  应更新 active 与对应内容，而不是只改变颜色或保留上一页内容。
 
 ---
 
-## 7. 证据来源
+## 5. 产品模块页的 48px 导航
 
-| 内容 | 文件 |
+产品模块通过主前端的设备入口交给 TabManager / `openNewTab` 管理；这描述的是
+宿主如何打开或聚焦产品 UI，不等于“产品页一定是一个独立窗口”，也不等于产品页
+与主前端共用同一份 DOM。
+
+每个产品 web view 自己渲染 `.main-container`、`.nav-tabs` 与 `#body-wrapper`。
+它的 `.nav-tabs` 仍是 `48px`、`#222`、底部 `2px solid #000`，但中间
+`.navs-wrapper` 换成该产品的 TAB 集合；产品页的 `.right` 仍可承载该页面的电量、
+帮助或警告状态。
+
+产品页的 `body-wrapper` 内才放产品模块的 `.widget-prod`、`.body-widgets` 和
+600px widget。不能把产品页的 250px 产品图区、600px 卡片网格放到主前端
+Dashboard 或应用设置。
+
+### 5.1 三种导航不要混淆
+
+| 层 | 选择器/实现 | 高度 | 负责什么 |
+|---|---|---:|---|
+| Electron host | `.etabs-tabgroup` / `TabUI.js` | `42px` | 外层 tab、窗口拖动、最小化/最大化/关闭 |
+| 主前端 header | `.main-container > .nav-tabs` | `48px` | profile、Dashboard/模块/设置等宿主页面导航、右侧状态 |
+| 产品页 nav | 产品 web view 自己的 `.nav-tabs` | `48px` | 设备产品 TAB；其内容是产品模块自己的 body |
+
+允许同时存在 Electron 42px 外层和 web content 的 48px header；禁止额外增加一条
+没有原始 DOM/CSS 对应的 34px 网页标题栏，禁止把三个系统按钮塞进任意 `.nav-tabs`。
+
+---
+
+## 6. 原代码证据与实现差异
+
+| 结论 | 原代码证据 |
 |---|---|
-| 外壳 DOM（`main-container` / `nav-tabs` 三区 / `profile-wrapper` / `navs-wrapper` / `right` / 电池） | `.ref/frontend/static/js/App.eb32d7cd.chunk.js` |
-| 设备页打开方式（`addDeviceUITab` / `getDeviceTabName` / `openNewTab`） | 同上 |
-| 外壳 CSS（`.main-container` / `.nav-tabs` / `.nav` / `.body-wrapper` / `.dashboard` / `.box-group` / `.main-setting` / `.side-navigation`） | `.ref/frontend/static/css/55.a5b041a2.chunk.css`（3138 条规则） |
-| `DeviceCard` 与配对相关内容 | `.ref/frontend/static/css/4130.6bdf8dd0.chunk.css`（217 条规则） |
-| 设备页内部 CSS（`.body-widgets` / `.widget` / `.widget-prod` / `.thx-btn`） | `.ref/devices/{182,653,777}/static/css/main.*.css` |
-| 每设备标签页集合 | `.ref/tools/gen-screen-docs.js` 的 `DEVICE_TABS` |
+| Electron 外层为 42px | `electron/index.css` 的 `.etabs-tabgroup`、`.etabs-tabs` |
+| 系统按钮由 JS 创建 | `electron/components/Tab/TabUI.js` 的 `addWindowControlBtns()` |
+| 三个按钮动作不同 | `minimizeWindow`、`maximizeWindow`、`closeWindow` 三个 listener |
+| 每个按钮命中区 48px 且 no-drag | `electron/index.css` 的 `.etabs-window-control-btns > div` |
+| SVG 不是命中区尺寸 | `electron/assets/image/tab/minimize.svg`、`maximize.svg`、`close.svg` |
+| 主前端 header 为三分区 | `frontend/static/js/App.eb32d7cd.chunk.js` 的 `nav-tabs` renderer |
+| header 导航有真实 tab 状态 | 同一 renderer 的 `visibleNavs.map`、`role="tab"`、`aria-selected` |
+| body 内容由 `#body-wrapper` 承载 | App shell renderer 与 `55.a5b041a2.chunk.css` |
+| Dashboard 分组可折叠 | `4130.155387bf.chunk.js` 的 `toggleGroupCollapsed` 和 `groupsCollapsed` |
+| Dashboard 分组无内容时不渲染 | 同文件 `boxItems && boxItems.length !== 0` 的 render 条件 |
+| Dashboard 可排序拖动 | 同文件的 `dragMouseDown`、拖动位置计算与 `updateGroupItemOrder` |
+| DeviceCard 操作可键盘访问 | `4130.155387bf.chunk.js` 的 `data-device-card-action`、Tab/Space/Enter 处理 |
+| DeviceCard 尺寸与状态 | `frontend/static/css/4130.6bdf8dd0.chunk.css` 的 `DeviceCard_*` 规则 |
+| 设置左栏和右侧内容分离 | `55.a5b041a2.chunk.css` 的 `.side-navigation`、`.setting-content`、`.body-widgets` |
 
-### 复现命令
+本次文档修正相对旧版的差异：
 
-```powershell
-node .ref/tools/audit-css.js ".ref/frontend/static/css/55.a5b041a2.chunk.css" main-container nav-tabs side-navigation
-node .ref/tools/grep-css.js  ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css" "DeviceCard_deviceCard" 4
-node .ref/tools/dump-shell.js
-node .ref/tools/frontend-inventory.js
-```
+1. 删除“所有数值逐条引自 CSS、没有推断”的绝对表述，改为逐条列出证据文件与
+   可复核的 JS/CSS 条件。
+2. 删除“系统按钮与产品 nav 同一行”的含混描述；系统按钮属于 Electron 42px
+   外层，主前端/产品 `.nav-tabs` 属于 web content 的 48px header。
+3. 删除“设备页必然是独立窗口”的断言，改为准确描述 `TabManager/openNewTab`
+   的宿主管理和产品 web view 自己的 DOM。
+4. 补充三个系统按钮的 `48px` 命中区、SVG `48×32` / close `12.7×12.7` 资源尺寸、
+   `no-drag`、最大化 restore 状态和实际 Electron action。
+5. 补充主前端 header 的渲染结构、导航条件、禁用/backdrop 状态、Dashboard 的 JS
+   render 条件与持久排序、设置页的 active/hover/pressed 规则。

@@ -1,353 +1,129 @@
-# 电源（TAB_POWER）
+# 电源（`TAB_POWER`）
 
-> 本页由雷云自己的产品模块提取；本文件只记录原版事实，不记录本项目实现状态。
-> 证据工具：`node .ref/tools/gen-screen-docs.js`
+> 本页只记录 `.ref` 中雷云产品模块已经证明的事实，不记录本项目 Rust 实现状态。功能必须以产品模块的 JS 渲染分支和 CSS 为准；仅存在于 locale 的文案不等于页面一定显示。
 
-## 1. 出现在哪些设备上
+## 1. 页面归属
 
-| 设备 | productId | 设备类型 | 该设备标签页顺序 |
-|---|---|---|---|
-| Razer DeathAdder V3 Pro | 182 | 鼠标 | 第 5 个：自定义 · 性能 · 正在配对 · 校准 · 电源 · 滚动 |
-| Blackwidow V4 Pro | 653 | 键盘 | 第 4 个：自定义 · 性能 · 灯光 · 电源 · 滚动 |
-| RAZER KRAKEN BT SANRIO LIMITED EDITION | 777 | 耳机 | 第 4 个：自定义 · 灯光 · 校准 · 电源 · 声音 · 麦克风 |
+| productId | 设备 | 是否有电源标签 | 证据 |
+|---:|---|---|---|
+| `182` | Razer DeathAdder V3 Pro | 有 | `.ref/devices/182/static/js/main.db20a7c4.js` 的标签常量与设备路由；`.ref/devices/182/manifest.json` |
+| `653` | Blackwidow V4 Pro | 有 | `.ref/devices/653/static/js/main.7b71cce5.js` 的标签常量与设备默认配置；`.ref/devices/653/manifest.json` |
+| `777` | RAZER KRAKEN BT SANRIO LIMITED EDITION | 有 | `.ref/devices/777/static/js/main.eb70ce38.js` 的标签常量与设备路由；`.ref/devices/777/manifest.json` |
 
-标签页真实文案：**电源**（key `TAB_POWER`）
+三个设备模块都导出 `TAB_POWER`，但电源控件的具体可用状态由设备连接方式、无线状态、轮询率和设备能力决定，不能把鼠标、键盘、耳机的默认配置互相套用。
 
-## 2. 布局
+## 2. 外层布局
 
-### 2.0 页面骨架（所有设备页共用）
+电源页使用设备模块通用页面骨架；电量状态本身还会出现在产品顶栏右侧，不能误画成电源页正文卡片。
 
-设备页**不是**「一列全宽卡片」。真实骨架如下（逐条引自设备模块的 CSS）：
-
-| 选择器 | 布局 | 样式 |
+| 选择器 | 确切布局 | 确切样式 |
 |---|---|---|
-| `body, html` | `font-family:Roboto,sans-serif; font-size:16px; height:100%; margin:0; max-width:1920px; min-height:720px; overflow:hidden; width:100%` | `background-color:#222; color:#ccc; user-select:none` |
-| `.main-container` | `display:flex; flex-direction:column; height:100%; min-width:600px; position:absolute; width:100%` | `background-color:#222` |
-| `.nav-tabs` | `display:flex; align-items:center; min-height:48px; position:relative; width:100%; z-index:105` | `background-color:#222; border-bottom:2px solid #000; color:#5d5d5d` |
-| `.body-wrapper` | `flex:1 1; height:100%; min-width:600px; padding:10px 20px 20px; width:100%` | — |
-| `.body-widgets` | `flex-direction:row; flex-wrap:wrap; justify-content:center; margin:auto; max-width:1240px` | — |
-| `.body-widgets .widget` | `flex:0 0 auto; height:auto; margin:10px auto; max-width:600px; min-width:600px; padding:30px 40px; position:relative; font-size:14px` | `background-color:#111; border-radius:5px` |
-| `.widget-col` | `flex-direction:column; height:fit-content; width:600px` | — |
-| `.widget-prod` | `height:250px; margin:10px auto; max-width:1220px; min-width:1024px; width:100%` | — |
-| `.widget-prod img` | `left:50%; position:absolute; top:50%` | — |
-| `.thx-btn` | `display:inline-block; padding:.5rem 1.5rem; text-align:center; text-transform:uppercase` | `background-color:#44d62c; border-radius:3px; color:#000` |
-| `.thx-btn:hover` | — | `opacity:.8` |
-| `.thx-btn:active` | — | `opacity:.6` |
-| `.thx-btn.disabled` | `cursor:default` | `opacity:.3` |
-| `.thx-btn.secondary` | — | `background-color:#707070; color:#fff` |
+| `body, html` | `height:100%; width:100%; min-height:720px; max-width:1920px; overflow:hidden; margin:0` | `Roboto, sans-serif; font-size:16px; background:#222; color:#ccc; user-select:none` |
+| `.main-container` | `display:flex; flex-direction:column; position:absolute; width:100%; height:100%; min-width:600px` | `background:#222` |
+| `.nav-tabs` | `display:flex; align-items:center; position:relative; width:100%; min-height:48px; z-index:105` | `background:#222; border-bottom:2px solid #000; color:#5d5d5d` |
+| `.body-wrapper` | `flex:1 1; width:100%; height:100%; min-width:600px; padding:10px 20px 20px` | 默认可滚动；页面状态为禁止滚动时使用 `.no-scroll` |
+| `.body-widgets` | `display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; max-width:1240px; margin:auto` | 无额外背景 |
+| `.body-widgets .widget` | `flex:0 0 auto; min-width:600px; max-width:600px; height:auto; margin:10px auto; padding:30px 40px; position:relative` | `background:#111; border-radius:5px; font-size:14px` |
+| `.widget-col` | `display:flex; flex-direction:column; width:600px; height:fit-content` | — |
 
-由此可推出的界面排布：
+### 2.1 控件通用状态
 
-```
-.main-container（纵向，底 #222）
-├─ .nav-tabs           顶栏，最小高 48px，下边线 2px #000，文字 #5d5d5d
-└─ .body-wrapper（内边距 10/20/20）
-   ├─ .widget-prod      顶部产品图区，高 250px，宽 1024–1220px，图片绝对居中
-   └─ .body-widgets     横向排列 + 自动换行 + 居中，最大宽 1240px
-      ├─ .widget        固定 600px 宽，内边距 30/40，底 #111，圆角 5px，字号 14px
-      ├─ .widget
-      └─ .widget-col    600px 宽的列，内部再纵向堆叠
-```
+以下是电源页实际引用的共享控件样式，不代表每个设备都显示所有控件：
 
-> 关键数值：**卡片固定 600px、容器最大 1240px、产品图区高 250px、控件圆角 3px、卡片圆角 5px**。
+| 控件/状态 | 样式与行为 |
+|---|---|
+| `.powerSaving-value` | `display:flex; align-items:center; justify-content:center; min-width:90px; padding:7px 30px; background:#111; border:1px solid #5d5d5d; border-radius:3px; color:#fff; font-size:12px; line-height:12px` |
+| `.powerSaving-value:hover` | 边框变为 `#44d62c`，光标为 pointer |
+| `.powerSaving-value.active` | `background:#292929; border-color:#44d62c` |
+| `.powerSaving-select` | `display:flex; gap:10px; margin-top:20px`；仅在产品使用离散省电选项时出现 |
+| `.powerSaving-wrap--disabled` | `opacity:30%; pointer-events:none; user-select:none` |
+| `.powerSaving-desc` | `margin-top:20px` |
+| `.power-saving-effect` | `display:flex; flex-direction:column; position:relative; z-index:-1`；标题 `margin:20px 0 10px`，内容横向排列 |
+| `.power-saving-effect .content .text` | `color:#ccc; margin-bottom:15px; padding-right:15px` |
+| `.warning-text` | 由设备条件决定是否插入；不能在默认页面中始终显示 |
 
-### 2.0.1 全局样式
+## 3. 正文功能与状态
 
-**调色板**（按出现次数排序，共统计 1844 处颜色声明）：
+### 3.1 共享的省电设置组件
 
-| 次数 | 颜色 | 角色 |
-|---:|---|---|
-| 289 | `#44d62c` | 主色 / 激活态 / 标题 |
-| 275 | `#ccc` | 主文字 |
-| 157 | `#5d5d5d` | **通用边框** |
-| 139 | `#111` | 卡片 / 输入框底色 |
-| 132 | `#000` | 按钮文字、描边、顶栏下边线 |
-| 108 | `#0000` | 透明 |
-| 80 | `#707070` | 次要按钮底色 |
-| 70 | `#999` | 次要文字 |
-| 68 | `#fff` | 次要按钮文字 |
-| 63 | `#fd8611` | 橙色：提示 / 警告 / 分享 |
-| 59 | `#222` | 页面底色 / 顶栏底色 |
-| 30 | `#ffffff1a` | 半透明白：hover 覆盖 |
-| 25 | `#0000004d` | 半透明黑：按钮描边 |
-| 23 | `#212121` | 深色文字（浅底上）/ 离线指示 |
-| 19 | `#ffffff4d` | 半透明白：按下覆盖 |
-| 15 | `#2d2d2d` | **hover 底色** |
-| 15 | `#fd4949` | 危险红（亮） |
-| 14 | `#c8323c` | 危险红 |
-| 14 | `#333` | 开关关闭态底色 |
-| 11 | `#515151` | **下拉框边框** |
-| 11 | `#4a4a4a` | 帮助图标底色 |
-| 10 | `#292929` |  |
+三个模块都包含同一组省电状态动作：`setPowerSaving`、`setLowPowerMode`、`loadPowerSavingFromDevice`、`setPowerSavingMode`、`toggleRequirePowerWarning`。真正渲染的两个主要组件在压缩 JS 中分别表现为：
 
-**字体与圆角**（同样按出现次数排序）：
+1. **省电时间组件**：标题使用 `POWER_SAVING_HEADER`，描述使用设备条件对应的 `POWER_SAVING_DESC*`，写入 `powerSavingValue`。
+2. **低电量/低功耗组件**：标题使用 `POWER_MODE_HEADER*` 或对应低功耗文案，写入 `lowPowerMode`；当设备的无线轮询率不满足要求时，控件不可用并显示 warning 文案。
 
-| 项 | 值 | 说明 |
-|---|---|---|
-| 正文字体 | `Roboto, sans-serif` | `body,html` 全局设置 |
-| 标题字体 | `RazerF5` | 区块标题（如 `.key-config .body .heading`） |
-| 正文字号 | `14px` | 出现 251 次，设备页里最常用 |
-| 小字号 | `12px` | 出现 76 次，次要按钮与说明 |
-| 全局字号 | `16px` | `body,html`；进入 `.widget` 后变为 14px |
-| 控件圆角 | `3px` | 出现 89 次 |
-| 卡片圆角 | `5px` | 出现 43 次 |
-| 窗口最小尺寸 | `min-width:600px` / `min-height:720px` | `.main-container` / `body,html` |
+源码证据：
 
-> ⚠️ 通用边框是 **`#5d5d5d`**（出现 162 次），不是 `#555`（仅 7 次）。
-> hover 底色是 **`#2d2d2d`**；下拉框边框是 **`#515151`**。
+- `.ref/devices/182/static/js/main.db20a7c4.js`：`class CM` 渲染 `powerSaving-select` 或步进滑块；`class pM` 渲染 `lowPowerMode` 滑块并按 polling rate 判断 `active`。
+- `.ref/devices/653/static/js/main.7b71cce5.js`：同一共享组件和键盘设备默认配置，默认 `sleepModeInSeconds:15`、`lowPowerMode:30`。
+- `.ref/devices/777/static/js/main.eb70ce38.js`：同一共享动作；耳机模块同时拥有 `earbudBatteryState` 和左右电池状态，不应按鼠标单电池文案实现。
 
-### 2.1 该界面的分区（布局 + 样式）
+### 3.2 productId 182：DeathAdder V3 Pro
 
-下表把该界面的类名按语义归入 UI 分区，并给出它们在 CSS 里的**实际布局与样式声明**。
-分区顺序即界面自上而下 / 自左而右的排布。
+设备配置中的初始值为 `powerSavingValue:5`、`lowPowerMode:5`，但初始值不是 UI 范围的唯一证据。JS 明确证明的交互是：
 
-#### Razer DeathAdder V3 Pro（productId 182）
+| 控件 | 真实行为 |
+|---|---|
+| 省电时间 | 当 `usePowerSavingButton` 为真时，显示三个离散按钮：`15`、`30`、`45` 分钟；按钮通过 `.powerSaving-select` 横向排列，当前值使用 `.active`。否则走共享滑块组件。 |
+| 低功耗 | 滑块范围 `5–100`，步长 `5`，显示 `5%–100%`；`isEnabled()` 在无线/蓝牙模式使用无线轮询率，否则使用有线轮询率，并要求 `<=1000`。 |
+| 低功耗不可用 | 不满足轮询率条件时，滑块使用 inactive 状态，并插入 warning 文案；不能仍画成可操作的绿色控件。 |
+| 状态保存 | 改变省电值派发 `SET_POWER_SAVING_VALUE`；改变低功耗值派发 `SET_LOW_POWER_MODE`，并通过本地状态机/广播同步。 |
 
-该界面共 34 个布局类名，分 3 个分区。
+### 3.3 productId 653：Blackwidow V4 Pro
 
-**① 电量与充电**（10）
+设备 manifest/JS 默认配置明确包含：`sleepModeInSeconds:15`、`lowPowerMode:30`、`ledPowerSettings.idleValue:60`。这些字段证明设备支持睡眠/低功耗和灯光相关的设备状态，但不能据此额外添加“电池健康度”“鼠标抬升距离”等控件。
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `battery` | `align-items:center; display:flex; height:46px; justify-content:center` | `color:#ccc; font-size:14px`<br>`color:#c8323c` |
-| `battery-header` | `display:flex; position:relative` | — |
-| `battery-health` | — | `opacity:1` |
-| `battery-help-container` | `left:32px; position:relative; top:-8px` | — |
-| `battery-level` | `height:10px; margin:5px 0` | `background-image:url(../../static/media/icon_battery_graph.5140e4be.svg); background-repeat:no-repeat; background-size:cover` |
-| `battery-percent` | `display:flex; justify-content:space-between` | — |
-| `battery-tooltip` | `display:flex; gap:20px; height:100%`<br>`align-items:center; gap:5px; justify-content:center`<br>`height:20px; width:20px` | `text-align:center`<br>`background-position:50%; background-repeat:no-repeat; background-size:20px` |
-| `battery-value` | — | — |
-| `rapid-trigger-slider-battery` | `left:50%; width:30%` | — |
-| `slider-battery` | `left:50%; width:30%` | — |
+页面实现应保留：
 
-**② 省电（闲置休眠 / 低电量）**（16）
+- 电源标签和共享电源设置容器；
+- 与键盘设备状态相匹配的低功耗/睡眠控件；
+- 共享的 disabled、warning、active 状态；
+- 如果实际设备状态没有电池值，不显示电池百分比卡片。
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `FirmwareFactoryReset_poweroff-text__tkcSU` | `margin:10px auto 16px` | `color:#999; text-align:center` |
-| `audio-power-saving` | `min-width:78px` | — |
-| `device--cta-power` | `height:24px; width:24px`<br>`bottom:54%; left:6%` | `background-color:#111; background:url(../../static/media/power-on-btn.aaab82c7.svg); background-position:50%; background-repeat:no-repeat; border:1px solid #0000; border-radius:50%`<br>`border-color:#44d62c` |
-| `device--cta-power-off` | — | `background:url(../../static/media/power-off-btn.32ef0657.svg)` |
-| `icon-power` | `height:20px; position:relative; width:20px` | `transition:all .3s`<br>`fill:#44d62c`<br>`fill:#111`<br>`fill:#7de36c` |
-| `icon-power--power-off` | — | `fill:#c8323c`<br>`fill:#d97077` |
-| `idleEffect` | — | `opacity:1`<br>`opacity:.3` |
-| `mouse-power-saving` | `min-width:78px; padding:7px 16px` | `color:#ccc; font-size:12px; line-height:14px` |
-| `power-icons` | `display:flex; justify-content:center` | — |
-| `power-off` | — | `opacity:1`<br>`opacity:.5` |
-| `power-saving-effect` | `display:flex; flex-direction:column; position:relative`<br>`margin:20px 0 10px`<br>`display:flex`<br>`width:-webkit-fit-content; width:fit-content` | `color:#ccc`<br>`opacity:1` |
-| `powerSaving-desc` | — | — |
-| `powerSaving-select` | `display:flex; gap:10px` | — |
-| `powerSaving-value` | `align-items:center; display:flex; justify-content:center; min-width:90px; padding:7px 30px`<br>`min-width:78px`<br>`min-width:78px; padding:7px 16px`<br>`padding:4px 36px` | `background:#111; border:1px solid #5d5d5d; border-radius:3px; color:#fff; font-size:12px; line-height:12px`<br>`color:#ccc; font-size:12px; line-height:14px`<br>`border:1px solid #44d62c; cursor:pointer`<br>`background:#292929; border-color:#44d62c` |
-| `powerSaving-wrap--disabled` | — | `opacity:30%` |
-| `system-power-saving` | `padding:4px 36px` | — |
+源码中确实存在全局 `battery` 顶栏组件和 `getBatteryLevel` 等能力，但这只证明导航栏可以显示电池状态，不证明电源正文一定显示独立电池卡片。
 
-**③ 熄灯 / 调暗**（8）
+### 3.4 productId 777：KRAKEN BT SANRIO
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `DeviceCard_dimmedContent__dlMvE` | — | `opacity:.3` |
-| `DimKeyboardLighting_backdrop__WXv8r` | `height:30px; position:absolute; width:300px` | `background-color:#111; opacity:.5` |
-| `DimKeyboardLighting_width-auto__C0C3F` | `width:48px!important` | — |
-| `custom-dim-corner` | `height:100%; width:100%` | `background:radial-gradient(#0000,#222)` |
-| `dim` | — | `color:#707070` |
-| `dim-corner` | `height:100%; left:0; position:absolute; top:0; width:100%`<br>`min-width:0; min-width:auto` | `background:radial-gradient(#0000,#222)` |
-| `info-dimmed` | — | `color:#ccc; opacity:.3` |
-| `warning-dimmed` | — | `color:#c8323c; opacity:.3` |
+耳机模块的 manifest 名称和 JS 状态明确使用耳机电池模型：`earbudBatteries`、`earbudBatteryState.left`、`earbudBatteryState.right`。因此电量提示需要支持左右电池状态；不能复用鼠标单值 `batteryValue` 的视觉和文案。
 
-#### Blackwidow V4 Pro（productId 653）
+已确认的状态：
 
-该界面共 33 个布局类名，分 3 个分区。
+- 顶栏电量提示可以显示左、右电池百分比和各自状态图标；
+- 电池状态图标来自 `icon_battery_*.svg`、`icon_battery_charging*.svg`、`icon_battery_disconnected.svg`、`icon_battery_error.svg` 等资源；
+- 电源页仍使用共享省电动作，但是否显示某个低功耗警告必须服从耳机模块的运行时状态；
+- 不应凭 locale 中的鼠标、电池寿命、抬升距离或无线接收器文案增加耳机控件。
 
-**① 电量与充电**（10）
+源码证据：`.ref/devices/777/static/js/main.eb70ce38.js` 的 `earbudBatteries`/`earbudBatteryState` 顶栏渲染、`powerSavingValue`/`lowPowerMode` 状态动作；`.ref/devices/777/manifest.json` 的设备身份和版本信息。
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `battery` | `align-items:center; display:flex; height:46px; justify-content:center` | `color:#ccc; font-size:14px`<br>`color:#c8323c` |
-| `battery-header` | `display:flex; position:relative` | — |
-| `battery-health` | — | `opacity:1` |
-| `battery-help-container` | `left:32px; position:relative; top:-8px` | — |
-| `battery-level` | `height:10px; margin:5px 0` | `background-image:url(../../static/media/icon_battery_graph.5140e4be.svg); background-repeat:no-repeat; background-size:cover` |
-| `battery-percent` | `display:flex; justify-content:space-between` | — |
-| `battery-tooltip` | `display:flex; gap:20px; height:100%`<br>`align-items:center; gap:5px; justify-content:center`<br>`height:20px; width:20px` | `text-align:center`<br>`background-position:50%; background-repeat:no-repeat; background-size:20px` |
-| `battery-value` | — | — |
-| `rapid-trigger-slider-battery` | `left:50%; width:30%` | — |
-| `slider-battery` | `left:50%; width:30%` | — |
+## 4. 电量状态图标与颜色
 
-**② 省电（闲置休眠 / 低电量）**（16）
+电池图标不是纯色占位。实现时必须使用 manifest 中映射的带哈希 SVG 资源，不能用一套自绘图标替代：
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `FirmwareFactoryReset_poweroff-text__tkcSU` | `margin:10px auto 16px` | `color:#999; text-align:center` |
-| `audio-power-saving` | `min-width:78px` | — |
-| `device--cta-power` | `height:24px; width:24px`<br>`bottom:54%; left:6%` | `background-color:#111; background:url(../../static/media/power-on-btn.aaab82c7.svg); background-position:50%; background-repeat:no-repeat; border:1px solid #0000; border-radius:50%`<br>`border-color:#44d62c` |
-| `device--cta-power-off` | — | `background:url(../../static/media/power-off-btn.32ef0657.svg)` |
-| `icon-power` | `height:20px; position:relative; width:20px` | `transition:all .3s`<br>`fill:#44d62c`<br>`fill:#111`<br>`fill:#7de36c` |
-| `icon-power--power-off` | — | `fill:#c8323c`<br>`fill:#d97077` |
-| `idleEffect` | — | `opacity:1`<br>`opacity:.3` |
-| `mouse-power-saving` | `min-width:78px; padding:7px 16px` | `color:#ccc; font-size:12px; line-height:14px` |
-| `power-icons` | `display:flex; justify-content:center` | — |
-| `power-off` | — | `opacity:1`<br>`opacity:.5` |
-| `power-saving-effect` | `display:flex; flex-direction:column; position:relative`<br>`margin:20px 0 10px`<br>`display:flex`<br>`width:-webkit-fit-content; width:fit-content` | `color:#ccc`<br>`opacity:1` |
-| `powerSaving-desc` | — | — |
-| `powerSaving-select` | `display:flex; gap:10px` | — |
-| `powerSaving-value` | `align-items:center; display:flex; justify-content:center; min-width:90px; padding:7px 30px`<br>`min-width:78px`<br>`min-width:78px; padding:7px 16px`<br>`padding:4px 36px` | `background:#111; border:1px solid #5d5d5d; border-radius:3px; color:#fff; font-size:12px; line-height:12px`<br>`color:#ccc; font-size:12px; line-height:14px`<br>`border:1px solid #44d62c; cursor:pointer`<br>`background:#292929; border-color:#44d62c` |
-| `powerSaving-wrap--disabled` | — | `opacity:30%` |
-| `system-power-saving` | `padding:4px 36px` | — |
+- `icon_battery_0.svg`、`icon_battery_10.svg` … `icon_battery_100.svg`：按电量等级切换；
+- `icon_battery_charging.svg`、`icon_battery_charging_100.svg`：充电态；
+- `icon_battery_disconnected.svg`：断开态；
+- `icon_battery_error.svg`：错误态；
+- `icon_battery_paused.svg`：暂停/特殊状态。
 
-**③ 熄灯 / 调暗**（7）
+正文和顶栏的颜色证据来自 `.ref/devices/*/static/css/main.*.css`：页面底色 `#222`、卡片 `#111`、普通文字 `#ccc`、次级文字 `#999`、通用边框 `#5d5d5d`、主色 `#44d62c`、active 背景 `#292929`、低电量文字 `#c8323c`。不要把 SVG 的内部颜色替换成 `#44d62c`；SVG 资源本身的填充/路径颜色优先于外层 CSS。
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `DimKeyboardLighting_backdrop__WXv8r` | `height:30px; position:absolute; width:300px` | `background-color:#111; opacity:.5` |
-| `DimKeyboardLighting_width-auto__C0C3F` | `width:48px!important` | — |
-| `custom-dim-corner` | `height:100%; width:100%` | `background:radial-gradient(#0000,#222)` |
-| `dim` | — | `color:#707070` |
-| `dim-corner` | `height:100%; left:0; position:absolute; top:0; width:100%`<br>`min-width:0; min-width:auto`<br>`min-width:770px` | `background:radial-gradient(#0000,#222)` |
-| `info-dimmed` | — | `color:#ccc; opacity:.3` |
-| `warning-dimmed` | — | `color:#c8323c; opacity:.3` |
+## 5. 明确删除的无证据内容
 
-#### RAZER KRAKEN BT SANRIO LIMITED EDITION（productId 777）
+以下内容不再作为电源页规格：
 
-该界面共 30 个布局类名，分 3 个分区。
+- “所有设备都有相同的电池正文卡片”；
+- “键盘一定有鼠标式电量百分比和低电量滑块”；
+- “耳机显示单一电池值”；
+- “存在电池健康度调节、充电上限、功率曲线、瓦数图表”等，仅凭共享 API 名称或 locale 推导的功能；
+- 把 `POWER_SAVING_*` locale 全量当作当前页面同时可见的文案；
+- 把产品卡片里的电源按钮 `.device--cta-power` 当成电源页控件。它属于设备轮播卡片，CSS 位置为 `24px × 24px`、圆形、默认背景 `#111`，并使用 `power-on-btn.svg`/`power-off-btn.svg`，不应放进电源正文。
 
-**① 电量与充电**（9）
+## 6. 证据索引
 
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `battery` | `align-items:center; display:flex; height:46px; justify-content:center` | `color:#ccc; font-size:14px`<br>`color:#c8323c` |
-| `battery-header` | `display:flex; position:relative` | — |
-| `battery-health` | — | `opacity:1` |
-| `battery-help-container` | `left:32px; position:relative; top:-8px` | — |
-| `battery-level` | `height:10px; margin:5px 0` | `background-image:url(../../static/media/icon_battery_graph.5140e4be.svg); background-repeat:no-repeat; background-size:cover` |
-| `battery-percent` | `display:flex; justify-content:space-between` | — |
-| `battery-tooltip` | `display:flex; gap:20px; height:100%`<br>`align-items:center; gap:5px; justify-content:center`<br>`height:20px; width:20px` | `text-align:center`<br>`background-position:50%; background-repeat:no-repeat; background-size:20px` |
-| `battery-value` | — | — |
-| `slider-battery` | `left:50%; width:30%` | — |
-
-**② 省电（闲置休眠 / 低电量）**（16）
-
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `FirmwareFactoryReset_poweroff-text__tkcSU` | `margin:10px auto 16px` | `color:#999; text-align:center` |
-| `audio-power-saving` | `min-width:78px` | — |
-| `device--cta-power` | `height:24px; width:24px`<br>`bottom:54%; left:6%` | `background-color:#111; background:url(../../static/media/power-on-btn.aaab82c7.svg); background-position:50%; background-repeat:no-repeat; border:1px solid #0000; border-radius:50%`<br>`border-color:#44d62c` |
-| `device--cta-power-off` | — | `background:url(../../static/media/power-off-btn.32ef0657.svg)` |
-| `icon-power` | `height:20px; position:relative; width:20px` | `transition:all .3s`<br>`fill:#44d62c`<br>`fill:#111`<br>`fill:#7de36c` |
-| `icon-power--power-off` | — | `fill:#c8323c`<br>`fill:#d97077` |
-| `idleEffect` | — | `opacity:1`<br>`opacity:.3` |
-| `mouse-power-saving` | `min-width:78px; padding:7px 16px` | `color:#ccc; font-size:12px; line-height:14px` |
-| `power-icons` | `display:flex; justify-content:center` | — |
-| `power-off` | — | `opacity:1`<br>`opacity:.5` |
-| `power-saving-effect` | `display:flex; flex-direction:column; position:relative`<br>`margin:20px 0 10px`<br>`display:flex`<br>`width:-webkit-fit-content; width:fit-content` | `color:#ccc`<br>`opacity:1` |
-| `powerSaving-desc` | — | — |
-| `powerSaving-select` | `display:flex; gap:10px` | — |
-| `powerSaving-value` | `align-items:center; display:flex; justify-content:center; min-width:90px; padding:7px 30px`<br>`min-width:78px`<br>`min-width:78px; padding:7px 16px`<br>`padding:4px 36px` | `background:#111; border:1px solid #5d5d5d; border-radius:3px; color:#fff; font-size:12px; line-height:12px`<br>`color:#ccc; font-size:12px; line-height:14px`<br>`border:1px solid #44d62c; cursor:pointer`<br>`background:#292929; border-color:#44d62c` |
-| `powerSaving-wrap--disabled` | — | `opacity:30%` |
-| `system-power-saving` | `padding:4px 36px` | — |
-
-**③ 熄灯 / 调暗**（5）
-
-| 类名 | 布局 | 样式（颜色 / 圆角 / 字号 / 字体 / 状态） |
-|---|---|---|
-| `custom-dim-corner` | `height:100%; width:100%` | `background:radial-gradient(#0000,#222)` |
-| `dim` | — | `color:#707070` |
-| `dim-corner` | `height:100%; left:0; position:absolute; top:0; width:100%`<br>`min-width:0; min-width:auto` | `background:radial-gradient(#0000,#222)` |
-| `info-dimmed` | — | `color:#ccc; opacity:.3` |
-| `warning-dimmed` | — | `color:#c8323c; opacity:.3` |
-
-## 3. 功能项
-
-该界面对应的雷云文案 key，共 **90** 条（中文为雷云原文）：
-
-| key | 中文 | English |
-|---|---|---|
-| `BATTERY_CHARGED_FULL` | 100% 已充满电 | 100% charged |
-| `BATTERY_CHARGING` | 电池正在充电 | Battery Charging |
-| `BATTERY_CHARGING_OVERRIDE_CONTENT` | 让系统充满电一次。 | Allow system to fully charge once. |
-| `BATTERY_CHARGING_OVERRIDE_WARNING_CONTENT` | 电池充满电后，电池健康优化功能会重新启用 | Battery Health Optimizer is re-enabled when battery is fully charged |
-| `BATTERY_CONTENT` | 电池在达到上限 (%) 时将停止充电。 | Battery will stop charging when it has reached the limit (%). |
-| `BATTERY_ERROR_TIPS` | 系统不支持所安装的电池，并可能会因此受到损坏。 请使用系统支持的 Razer 雷蛇电池更换此电池。 | The battery installed is not supported and may cause damage to the system. Replace the battery with a supported Razer battery for this system. |
-| `BATTERY_HEALTH_OPTIMIZER` | 电池健康优化功能 | Battery health optimizer |
-| `BATTERY_HEALTH_OPTIMIZER_MOUSEMAT_DESCRIPTION` | 当达到设定的百分比时，鼠标垫将停止为设备充电。 | When the set percentage has been reached, the mouse mat will stop charging the device. |
-| `BATTERY_HEALTH_OPTIMIZER_MOUSEMAT_TOOLTIP` | 要启用此功能，必须配对兼容的 Razer 雷蛇鼠标并将其设置为 HyperSpeed Wireless 无线模式。 | To enable this feature, a compatible Razer mouse must be paired and set to HyperSpeed Wireless mode. |
-| `BATTERY_LEVEL` | 电池电量 | Battery Level |
-| `BATTERY_LEVEL_EFFECT` | 电池: {{percentageBattery}}% | Battery: {{percentageBattery}}% |
-| `BATTERY_LEVEL_STATUS` | 电池电量状态 | Battery Level Status |
-| `BATTERY_LEVEL_STATUS_TOOLTIP` | 即使未在充电，电池电量也会与所选设备保持同步。雷云必须运行，此设置才能持续生效。 | The battery level will remain synced with the selected device even when not charging. Razer Synapse must be running for this setting to stay active. |
-| `BATTERY_LIFE` | 电池电量 | BATTERY LIFE |
-| `BATTERY_OFF` | 关闭 | off |
-| `BATTERY_PERCENT` | {{level}}% 电池 | {{level}}% Battery |
-| `BATTERY_REFRESH_RATE` | 使用电池时刷新率 | Battery Refresh Rate |
-| `BATTERY_REFRESH_RATE_TITTLE` | 以电池供电时，请将笔记本电脑的屏幕刷新率切换为 60Hz。 | Switch laptop screen refresh rate to 60Hz when on battery. |
-| `BATTERY_SELECTION` | 电池选择 | BATTERY SELECTION |
-| `BATTERY_SELECTION_DESC` | 选择你使用的电池类型以获得更准确的电池电量指示。 | Select the type of battery you're using for more accurate battery level indication. |
-| `BATTERY_SELECTION_TOOLTIP` | 提高电池电量指示的准确性。 | Enhances the accuracy of the battery level indication. |
-| `BATTERY_STATUS` | 电池状态 | Battery Status |
-| `BATTERY_STATUS_AUDIO_DESC` | 根据设备当前的电池电量，从绿色 (100%)、黄色 (50%) 和红色 (8%) 逐渐变化。 | Gradually changes from Green (100%), Yellow (50%), and Red (8%) depending on the current battery level of your device. |
-| `BATTERY_STATUS_DESC` | 根据设备当前的电池电量，从绿色 (100%)、黄色 (66%)、橙色 (33%) 和红色 (0%) 逐渐变化。 | Gradually changes from Green (100%), Yellow (66%), Orange (33%), and Red (0%) depending on the current battery level of your device. |
-| `BATTERY_STATUS_KEYBOARD_DESC` | 根据设备当前的电池电量，从绿色 (100%)、黄色 (66%)、橙色 (33%) 和红色 (8%) 逐渐变化。 | Gradually changes from Green (100%), Yellow (66%), Orange (33%) and Red (8%) depending on the current battery level of your device. |
-| `BATTERY_TOOLTIP` | 将最大可充电量限制在 80% 或更低，以此来延长电池保持健康的时间。<br><br>将电池的最大可充电量设置为 50-80%。此值设置得较低可延长电池寿命，但需要频繁充电。 | Extend the health of your battery by <br>limiting the maximum charging capacity to <br>80% or less.<br><br>Set a maximum battery charge level from 50-80%. Lower charge limit will prolong <br>battery life but requires frequent charging <br>times. |
-| `BATTERY_TYPE_AKALINE` | 碱性电池 | Alkaline |
-| `BATTERY_TYPE_LITHIUM` | 锂离子电池 | Lithium |
-| `BATTERY_TYPE_RECHARGEABLE_NIMH` | 可充电镍氢电池 | Rechargeable NiMh |
-| `BATTERY_WARNING_ONLY` | 仅电池警告 | Battery Warning Only |
-| `BRIGHTNESS_WHEN_INACTIVE` | 启用时的亮度 | Brightness when inactive |
-| `DIM_KEYBOARD_LIGHTING_DESC` | 以电池供电时，在无活动（分钟）后，设备将会变暗。 | Device will turn dim after (mins) of inactivity when running on battery. |
-| `DIM_KEYBOARD_LIGHTING_TIPS` | 设置设备闲置多长时间后调暗灯光效果。<br><br> 当设备使用无线连接且不处于充电状态时，调暗灯光功能可起作用。 | Set how long the device should be idle before it will dim the lighting.<br><br>This dim lighting function only works when the device using wireless connection and not being charged. |
-| `DIM_LIGHTING_DESC` | 处于无线模式时，在闲置以下时间（分钟）后调暗灯光效果 | When wireless, dim lighting if idle for (minutes) |
-| `DIM_LIGHTING_DESC_V2` | 系统在闲置（分钟）后，设备亮度将降至 20%。 | Device dims to 20% brightness after (mins) of system inactivity. |
-| `DIM_LIGHTING_HEADER` | 暗光效果 | DIM LIGHTING |
-| `DIM_LIGHTING_TOOLTIP` | 设置设备闲置多长时间后调暗灯光效果  | Set how long the device should be idle before it will dim the lighting  |
-| `DIM_LIGHTING_TOOLTIP_V2` | 选择系统闲置多长时间后亮度会降至 20%。<br><br>此功能仅在设备亮度高于 20% 时激活。<br><br>当 Razer Synapse 雷云运行时，亮度会随系统活动自动恢复。若没有恢复，请按下设备上的任意按键以恢复亮度。<br><br>这些设置保存在设备上，并应用于所有配置文件。 | Choose how long the system should remain idle before the lighting dims to 20% brightness.<br><br>This feature only activates when the device brightness is set above 20%.<br><br>Brightness restores with system activity when Razer Synapse is running. Otherwise, press any button on the device to restore it.<br><br>These settings are saved to your device and are applied to all profiles. |
-| `IDLE_EFFECT` | 闲置效果 | IDLE EFFECT |
-| `IDLE_EFFECT_DESC` | 当充电板空闲或未为设备充电时会激活此灯光效果。 | This effect is active when the charging pad is idle or not charging a device. |
-| `IDLE_EFFECT_TOOLTIP` | 自定义充电板空闲或未为设备充电时的灯光效果。 这些设置存储在充电板上。即使 Razer Synapse 雷云没有运行，只要设备有插入，那么就算设备处于空闲状态，这些设置仍会继续生效。 | Customize the lighting effect when the charging pad is idle or not charging a device. These settings are stored on the charging pad and will remain active while idle (and plugged in), even when Razer Synapse is not running. |
-| `IDLE_FOR_MIN` | 当闲置超过以下时长（分钟）时 | When idle for (minutes) |
-| `LOW_POWER_MODE_DESC` | 处于无线模式时，当电池电量低于以下百分比 (%) 时进入低能耗模式 | When wireless, enter Low Power Mode if the battery level is below (%) |
-| `LOW_POWER_MODE_DESC_V2` | 处于无线模式时，当电池电量低于以下百分比 (%) 时进入低能耗模式 | When wireless, enter Low Power Mode if the battery level is below (%) |
-| `LOW_POWER_MODE_HEADER` | 低能耗模式 | LOW POWER MODE |
-| `LOW_POWER_MODE_HEADER_V2` | 低能耗模式 | LOW POWER MODE |
-| `LOW_POWER_MODE_TOOLTIP` | 当设备进入低能耗模式后，设备的追踪速度和传感器加速会自动降低以节省电力。 | Once the device enters Low Power Mode, the device's tracking speed and sensor acceleration are automatically reduced to conserve battery life. |
-| `LOW_POWER_MODE_WARN` | 当轮询率为 2000 Hz 及以上时，不支持低能耗模式。 | Low Power Mode is not supported at polling rates of 2000 Hz and above. |
-| `POWER_BUTTON_SHORTCUTS_2_SECS` | 2 秒 | 2 secs |
-| `POWER_BUTTON_SHORTCUTS_BLUETOOTH_NOTE` | 适用于连接的蓝牙移动设备。 | Works on connected Bluetooth mobile devices. |
-| `POWER_BUTTON_SHORTCUTS_DURING_CALL` | 通话期间 | during call |
-| `POWER_BUTTON_SHORTCUTS_END_CALL` | 挂断电话 | End call |
-| `POWER_BUTTON_SHORTCUTS_INCOMING_CALL` | 来电 | incoming call |
-| `POWER_BUTTON_SHORTCUTS_LONG_PRESS_2_SECS` | 长按 2 秒 | Long Press 2 Secs |
-| `POWER_BUTTON_SHORTCUTS_REJECT_CALL` | 拒绝来电 | Reject call |
-| `POWER_BUTTON_SHORTCUTS_SWITCH_CALLS_3_WAY` | 切换通话<br>（3 向通话） | Switch calls<br>(3-way calls) |
-| `POWER_BUTTON_SHORTCUTS_TITLE` | 电源按钮快捷方式 | Power Button Shortcuts |
-| `POWER_BUTTON_SHORTCUTS_TRIPLE_PRESS` | 连按三下 | Triple Press |
-| `POWER_INDICATOR` | 电源指示灯 | POWER INDICATOR |
-| `POWER_INDICATOR_BATTERY_WARNING_ONLY_DESC` | 始终保持熄灭，仅在设备需要充电时闪烁红色。 | Remains off at all times and only displays blinking red when the device needs charging. |
-| `POWER_INDICATOR_CONNECTION_STATUS_DESC` | 只有当设备连接到接收器时才会点亮并保持白色常亮。 | Only active and solid white when a device is connected to the dongle. |
-| `POWER_INDICATOR_CONNECTION_STATUS_DESC_2` | 指示与接收器的连接状态：绿色 (2.4GHz)、白色（同步音频）或熄灭（未连接）。 | Indicates connection status to the dongle: Green (2.4GHz), White (Simultaneous), or Off (not connected). |
-| `POWER_ON` | 打开/关闭电源 | Power ON/OFF |
-| `POWER_ON_OFF` | 打开/关闭电源 | Power On/Off |
-| `POWER_SAVING` | 节能 | POWER SAVING |
-| `POWER_SAVING_DESC` | 在闲置以下时间（分钟）后进入睡眠模式 | Enter sleep mode if idle for (minutes) |
-| `POWER_SAVING_DESC_V2` | 处于无线模式时，在闲置以下时间（分钟）后进入睡眠模式 | When wireless, enter sleep mode if idle for (minutes) |
-| `POWER_SAVING_DESC_V3` | 在闲置以下时间（分钟）后进入待机模式 | Enter standby mode if idle for (minutes) |
-| `POWER_SAVING_DESC_V4` | 在闲置以下时间后进入睡眠模式 | Enter sleep mode if idle for |
-| `POWER_SAVING_DESC_V5` | Razer Clio 雷蛇悦神未播放音频以下时间（分钟）后将会关闭设备 | Device will turn off when there's no audio playback on Razer Clio after (mins) |
-| `POWER_SAVING_DESC_V6` | 当系统闲置超过（分钟）时进入睡眠模式。 | Enter sleep mode when the system is idle for (minutes). |
-| `POWER_SAVING_DESC_V7` | {{deviceName}} 未播放音频以下时间（分钟）后将会关闭设备 | Device will turn off when there's no audio playback on {{deviceName}} after (mins) |
-| `POWER_SAVING_EFFECT_DESC` | 以电池供电时使用功耗已优化的光谱循环效果。 | Use power-optimized Spectrum Cycling when running on battery. |
-| `POWER_SAVING_EFFECT_DESC_2` | 使用电池供电时，降低灯光效果的变换频率，以节省电量。 | Reduce the effect's refresh rates when on battery to conserve power. |
-| `POWER_SAVING_EFFECT_TIP` | 以电池供电时，使用功耗已优化的光谱循环效果以节省电量。<br> <br> 注意：由于此效果独立运行，其灯光效果可能与标准光谱循环效果有所不同，而且不会与其他支持 Razer Chroma 雷蛇幻彩技术的设备同步。 | Save power while running on battery using power-optimized Spectrum Cycling. <br> <br> Note: As this effect runs independently, it may look different from the standard Spectrum Cycling, and will not sync with other Razer Chroma-enabled devices. |
-| `POWER_SAVING_HEADER` | 无线节能 | WIRELESS POWER SAVING |
-| `POWER_SAVING_MODE` | 激活节能模式 | Activate Power Saving Mode |
-| `POWER_SAVING_MODE_WARNING_DESC_1` | 由于设备当前处于节能模式，因此无法使用 Synapse 雷云设置。 | Synapse settings are inaccessible as your device is currently in Power Saving Mode. |
-| `POWER_SAVING_MODE_WARNING_DESC_2` | 要自定义 Synapse 雷云设置，只需长按电池寿续航时间/状态按键 3 秒。 | To customize Synapse settings, simply press and hold the Battery life / status button for 3 seconds. |
-| `POWER_SAVING_MODE_WARNING_DESC_3` | 如要自定义 Synapse 雷云设置，只需长按电池电量按键 3 秒。 | To customize Synapse settings, simply press and hold the Battery level button for 3 seconds. |
-| `POWER_SAVING_MODE_WARNING_TITLE` | 节能模式 | Power Saving Mode |
-| `POWER_SAVING_SUB_DESC` | 注：你可以通过短按设备的电源键，或使用鼠标或键盘唤醒设备。 | Note: You can wake the device with a short press of its power button or by using your mouse or keyboard. |
-| `POWER_SAVING_TOOLTIP` | 设置设备闲置多长时间后进入睡眠模式。 | Set how long the device should be idle before it enters sleep mode. |
-| `POWER_SAVING_TOOLTIP_V2` | 设置设备闲置多长时间后进入待机模式。 | Set how long the device should be idle before it enters standby mode. |
-| `POWER_SAVING_TOOLTIP_V3` | 设置系统闲置多长时间后设备进入睡眠模式。<br><br>该设备还将随你的电脑自动进入睡眠和唤醒状态，或在你使用鼠标或键盘时自动响应。 | Set how long the system should be idle before the device enters sleep mode.<br><br>The device will also sleep and wake automatically with your PC or when you use your mouse or keyboard. |
-| `POWER_SAVING_WARNING` | 启用“麦克风监听（侧音）”时，设备不会进入无线节能模式。 | Your device will not enter Wireless Power Saving mode while Mic Monitoring (Sidetone) is enabled. |
-| `POWER_SAVING_WARNING_V1` | 当连接到运行 Razer Synapse 雷云的电脑时，Razer Clio 雷蛇悦神会保持开启状态，直至系统关机、休眠或进入睡眠模式。 | When connected to a PC with Razer Synapse, Razer Clio remains on until the system shuts down, hibernates, or goes to sleep. |
-| `POWER_SAVING_WARNING_V2` | 当连接到运行 Razer Synapse 雷云的电脑时，{{deviceName}} 会保持开启状态，直至系统关机、休眠或进入睡眠模式。 | When connected to a PC with Razer Synapse, {{deviceName}} remains on until the system shuts down, hibernates, or goes to sleep. |
-| `POWER_TABLE_INFO` | 功耗 | Power |
-| `SLEEP` | 睡眠 | Sleep |
+- JS：`.ref/devices/182/static/js/main.db20a7c4.js`
+- JS：`.ref/devices/653/static/js/main.7b71cce5.js`
+- JS：`.ref/devices/777/static/js/main.eb70ce38.js`
+- CSS：`.ref/devices/182/static/css/main.48c20423.css`
+- CSS：`.ref/devices/653/static/css/main.5425442a.css`
+- CSS：`.ref/devices/777/static/css/main.e4bab2aa.css`
+- 设备 manifest：`.ref/devices/182/manifest.json`、`.ref/devices/653/manifest.json`、`.ref/devices/777/manifest.json`
+- 资源索引：`.ref/devices/182/asset-manifest.json`、`.ref/devices/653/asset-manifest.json`、`.ref/devices/777/asset-manifest.json`

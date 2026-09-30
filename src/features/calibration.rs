@@ -18,7 +18,7 @@ use gpui_kit::*;
 use crate::shell::AppShell;
 use crate::domain::CalibrationState;
 use crate::ui::widgets::{
-    EmptyState, PageHeader, PageLayout, SettingRow, btn, card, card_title,
+    EmptyState, PageLayout, SettingRow, btn, card, card_title,
 };
 
 /// 渲染校准页。
@@ -26,19 +26,15 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
+    if device.product_id != 182 {
+        return EmptyState::new("校准页当前只为 productId 182 鼠标实现").into_any_element();
+    }
 
     let Some(calibration) = device.features.calibration.as_ref() else {
-        return v_flex()
-            .size_full()
-            .gap_4()
-            .child(PageHeader::new(
-                "校准",
-                format!("{} · 该设备无需校准", device.display_name()),
-            ))
-            .child(EmptyState::new(
-                "该设备没有校准设置。实测：鼠标（182）与耳机（777）有，键盘（653）没有。",
-            ))
-            .into_any_element();
+        return EmptyState::new(
+            "该设备没有校准设置。",
+        )
+        .into_any_element();
     };
 
     let state = calibration.state;
@@ -65,6 +61,7 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     };
 
     PageLayout::new("校准", device.display_name())
+        .without_product_banner()
         // ① 校准信息
         .widget(
             card()

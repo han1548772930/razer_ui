@@ -13,7 +13,7 @@ use gpui_kit::*;
 use crate::shell::AppShell;
 use crate::features::{DebounceMode, LiftOffDistance, PollingRate};
 use crate::ui::widgets::{
-    PageLayout, SettingRow, btn, card, card_title, dpi_stage_chart, select_row, slider_row,
+    PageLayout, SettingRow, card, card_title, dpi_stage_chart, select_row, slider_row,
     toggle_button, widget_slot,
 };
 
@@ -25,6 +25,10 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return crate::ui::widgets::EmptyState::new("未检测到设备").into_any_element();
     };
+    if device.product_id != 182 {
+        return crate::ui::widgets::EmptyState::new("性能页当前只为 productId 182 鼠标实现")
+            .into_any_element();
+    }
 
     let is_mouse = device.is_mouse();
     let device_name = device.display_name();
@@ -42,7 +46,8 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
         .when(!is_mouse, |this| {
             this.widget(widget_slot(keyboard_performance_section(app, cx)))
         })
-        .widget(widget_slot(debounce_section(app, cx)));
+        .widget(widget_slot(debounce_section(app, cx)))
+        .without_product_banner();
 
     layout.into_any_element()
 }

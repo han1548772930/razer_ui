@@ -7,8 +7,7 @@ use gpui_kit::*;
 use crate::model::{action_label_zh, region_label_zh, BUTTON_ACTIONS, DkmKey};
 use crate::shell::AppShell;
 use crate::ui::widgets::{
-    btn, card, card_title, not_wired_hint, select_row, toggle_button, EmptyState, PageLayout,
-    SettingRow,
+    btn, card, card_title, select_row, toggle_button, EmptyState, PageLayout, SettingRow,
 };
 
 /// 渲染 Razer Customize 页面。
@@ -16,6 +15,9 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
+    if device.product_id != 182 {
+        return EmptyState::new("自定义页当前只为 productId 182 鼠标实现").into_any_element();
+    }
 
     let bindings = &device.dkm_keys;
     let active_profile = device
@@ -32,7 +34,9 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
                 .map(|profile| profile.name.as_str())
                 .unwrap_or("未选择")
         ))
+        .without_product_banner()
         .widget(profile_bar(device, cx))
+        .widget(mouse_config_panel(bindings, cx))
         .widget(if bindings.is_empty() {
             empty_bindings()
         } else {
@@ -40,7 +44,48 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
         })
         .widget(hypershift_card(app, cx))
         .widget(boss_key_card(app, cx))
-        .widget(not_wired_hint())
+        .into_any_element()
+}
+
+fn mouse_config_panel(bindings: &[DkmKey], cx: &mut Context<AppShell>) -> AnyElement {
+    let controls = bindings.iter().enumerate().map(|(index, binding)| {
+        let input_id = binding.input_id.clone();
+        let action = action_label_zh(&binding.button_key);
+        btn(
+            format!("mouse-config-button-{}", stable_id(&input_id)),
+            format!("{} · {}", region_label_zh(&input_id), action),
+        )
+        .on_click(cx.listener(move |this, _, _, cx| this.set_binding_action(index, 0, cx)))
+    });
+
+    div()
+        .w(px(770.))
+        .max_w_full()
+        .h(px(340.))
+        .mx_auto()
+        .relative()
+        .child(
+            h_flex()
+                .size_full()
+                .items_center()
+                .justify_center()
+                .gap_8()
+                .child(v_flex().w(px(235.)).gap_2().children(controls))
+                .child(
+                    v_flex()
+                        .w(px(300.))
+                        .h(px(300.))
+                        .items_center()
+                        .justify_center()
+                        .gap_2()
+                        .rounded(px(120.))
+                        .border_1()
+                        .border_color(cx.theme().border)
+                        .bg(cx.theme().group_box)
+                        .child(div().font_bold().child("Razer DeathAdder V3 Pro"))
+                        .child(div().text_xs().child("182 · Mouse layout")),
+                ),
+        )
         .into_any_element()
 }
 
