@@ -1,140 +1,72 @@
-# 麦克风（`TAB_MIC`）
+# 麦克风：777 独立 micEq
 
-> 本文只记录 `.ref/devices/777` 原始前端能够证明的界面事实。通用 locale 中存在的能力不等于 RAZER KRAKEN BT SANRIO LIMITED EDITION 的麦克风页实际渲染能力。
+> Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
-## 1. 页面归属与入口
+## 1. 实际入口只有 EQ
 
-- 设备：`RAZER KRAKEN BT SANRIO LIMITED EDITION`。
-- `productId`：`777`。
-- 设备类别：耳机。
-- 标签页 key：`TAB_MIC`；标签显示由产品 locale 提供。
-- 页面主体与声音页共用 `body-widgets`，但麦克风页实际 EQ widget 使用 `widgetId:"eqBox"`，并且 CSS 强制为 `940px × 至少 473px`。
+`[JS]` [777 main](../../.ref/devices/777/static/js/main.eb70ce38.js)：`Ov.navs → KM → kM → YM → gM/GM`。
 
-证据：
+kM.render 只挂载 EQ，传入 Mic_EQ_Tabs、micBandPreset、layoutOptions=wM、options=zM、widgetId=eqBox。没有独立 Mic Gain、Sidetone、Noise Cancellation、XLR 或麦克风音量卡。共有 profile 字段不能证明这些控件在此页显示。
 
-- `.ref/devices/777/manifest.json`
-- `.ref/devices/777/static/js/main.eb70ce38.js` 的设备模块 `7816`、`TAB_MIC` 常量与 `DeviceInfo.productId:777`
-- `.ref/frontend/locales/zh-CN.json` 的 `TAB_MIC`
+YM 读取 **micEq** 的 activePresetMode、frequencyBands、customBands、deviceEqDifferent；setEQ 经 `vM → Oe.IkZ`，setSaveDeviceEQ 经 BM。与 audioEq 是不同的 action 和数据。
 
-## 2. 真实组件树
+wM 为 sliderType=wide、yTitleAlign=flex-end、yTitleMarginRight=40px、tabScale=true；zM 为 **-5..5 dB、step 1**，Y 轴标签 -5/0/+5 dB。
 
-原始 bundle 对麦克风页 EQ 的组件链是：
+## 2. 预设和原包数据矛盾
 
-```text
-KM  麦克风页面根组件
-└─ Bm / body-widgets
-   └─ YM                 连接 micEq store 的 EQ 编辑器
-      └─ gM              通用 EQ 编辑器
+| preset ID | 各频段 dB |
+|---|---|
+| default | 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 |
+| boost | 0, 0, 2, 4, 5, 5, 5, 5, 2, 1 |
+| broadcast | -2, -1, 1, -1, 0, 0, 0, 2, 1, 1 |
+| conference | -5, -5, -5, -3, 1, 0, 3, 2, 1, 0 |
+| custom | 使用 mic 的 customBands，缺少则 default |
+
+配置模块 7816 中存在明确不一致：
+
+```js
+// 导出的 micBandFrequency
+N = [250,750,1000,1200,1500,2300,3000,4000,5000,7000];
+// audioBandFrequency
+u = [31,63,125,250,500,1000,2000,4000,8000,16000];
+// 实际 micBandPreset 的 reduce 使用 u
+C = Object.entries({...}).reduce((e,E) => {
+  let a = (0,t.A)(E,2), _ = a[0], o = a[1];
+  e[_] = o.map((e,E) => ({frequency:u[E],decibel:e}));
+  return e;
+}, {});
 ```
 
-源码中的连接关系：
+GM 对非 Custom 模式使用 presetData[activePresetMode]，因此本包预设画面/提交数据沿用 **u 频率集合**，不能只看到 micBandFrequency 导出就认定图中必然是 250–7000 Hz。
 
-- `YM` 读取 `micEq.activePresetMode`。
-- `YM` 读取 `micEq.frequencyBands`。
-- `YM` 读取 `micEq.customBands`。
-- `YM` 读取 `micEq.deviceEqDifferent`。
-- `YM` 的动作是 `setEQ` 与 `setSaveDeviceEQ` 的麦克风版本。
-- `KM` 将 `YM` 包在 `Bm / body-widgets` 中，并把 `widgetId:"eqBox"` 传给通用 EQ 编辑器。
+Custom 可能来自设备回传 frequencyBands；本轮没有验证真实设备最终采用哪一组频率。实现模型应保留 `{frequency, decibel}`，记录原包行为与硬件回读的区别，不能静默改成一组“更合理”的频率并宣称完全一致。
 
-这证明了 777 麦克风页的核心是麦克风 EQ 编辑器，不证明它一定还有音量、侧音、降噪、噪声门或语音增强卡片。
+## 3. 编辑契约
 
-## 3. 外层布局与尺寸
+与 [声音页](08-sound.md) 共用 GM 行为，但读写 mic 域：
 
-### 3.1 页面外壳
+- 拖动频段按 frequency 修改，进入 custom。
+- 选择预设使用稳定 ID；Custom 恢复 mic customBands。
+- Reset 生成 mode=custom 加 default bands，不自动选 default tab。
+- deviceEqDifferent 有保留设备 EQ 的确认，确认结果仅作用于 mic。
+- profile 切换后，preset、频段、custom 缓存与控件状态一致更新。
 
-| 选择器/组件 | 真实布局与尺寸 | 颜色/样式 |
-|---|---|---|
-| `body, html` | `height:100%`、`width:100%`、`min-height:720px`、`max-width:1920px`、`overflow:hidden` | `background-color:#222`、`color:#ccc`、`font-family:Roboto,sans-serif`、`font-size:16px` |
-| `.main-container` | 绝对定位、宽高 100%、纵向 flex、`min-width:600px` | `background-color:#222` |
-| `.nav-tabs` | `display:flex`、`min-height:48px`、宽 100% | 背景 `#222`，底边 `2px solid #000`，默认文字 `#5d5d5d` |
-| `.body-wrapper` | `flex:1`、宽 100%、`min-width:600px`、内边距 `10px 20px 20px` | 作为内容区域的内边距来源 |
-| `.body-widgets` | 横向 flex、允许换行、居中、`max-width:1240px` | 不额外生成一列全宽控制面板 |
-| `#eqBox` | `min-width:940px`、`max-width:940px`、`width:940px`、`min-height:473px` | 页面主 widget，不能压缩为 600px |
+仅用 Vec<i8> 无法完整保留频率、预设与设备差异信息。
 
-### 3.2 EQ widget 颜色与控件样式
+## 4. 布局和资源
 
-- 页面底色：`#222`。
-- EQ/widget 背景：通用 widget 使用 `#111`；图表及辅助区域沿用 bundle 中的 `#222`、`#111`、`#5d5d5d`、`#ccc`。
-- 激活色：`#44d62c`，用于 slider thumb、激活边框、hover 和可操作强调。
-- slider 轨道：源码使用深灰轨道；可编辑 thumb 为绿色圆点，hover 为 `#707070`，active 为 `#383838`。
-- dB 提示气泡：绿色 `#44d62c` 背景、黑色文字、`3px` 圆角、字号 `12px`、高度 `20px`、宽度 `26px`。
-- read-only slider：轨道与填充使用 `#494949` / `#ccc`，提示气泡为灰色；不可编辑时隐藏 reset。
-- EQ widget 的垂直 slider 使用 `vertical-slider__container--wide`；声音页使用 narrow，麦克风页不能复用 narrow 尺寸。
+[777 CSS](../../.ref/devices/777/static/css/main.e4bab2aa.css) 中 #eqBox 宽/最小宽/最大宽基线 940，最小高度 473。只有 kM 实际传入这个 ID，不能套在 Sound 上。
 
-证据：`.ref/devices/777/static/css/main.e4bab2aa.css` 的 `#eqBox`、`.vertical-slider__*`、`.sliderChart__*` 与通用设备页样式。
+tabScale 分支宽 calc(100% + 10px)，预设等分伸展，padding 7px 0 6px；Y 轴区域约 300，wide 纵向 slider 与 Sound 的 narrow 不同。当前树不含产品 banner。共有 icon-tab 样式存在不代表 kM 传了 isIconTab。
 
-## 4. 麦克风 EQ 功能
+资源为 [eq_reset](../../.ref/devices/777/static/media/eq_reset.e0c3c09c.svg)、[hover](../../.ref/devices/777/static/media/eq_reset_hover.186df33c.svg)、[pressed](../../.ref/devices/777/static/media/eq_reset_active.37c570d3.svg) 及 Roboto；图表坐标由 CSS/组件生成，不应改用静态截图。
 
-### 4.1 预设
+当前Mic沿用原940px固定面板，通过正文横向滚动适配窄窗口，不压缩78px频段间距。新增生产视图测试覆盖1100→700→1100宽度变化，滚至16kHz和Reset、拖动末频段、验证10个保留控件与原有曲线数据，并检查Sound数据隔离；这些用例只编译，未运行。Mic与Sound共用已还原的随滑块移动数值气泡。
 
-`Mic_EQ_Tabs` 在设备模块 `7816` 中明确包含以下 id：
+## 5. 重构前基线与验收
 
-| id | 语义来源 |
-|---|---|
-| `default` | 默认麦克风 EQ |
-| `boost` | 麦克风增强预设 |
-| `broadcast` | 广播预设 |
-| `conference` | 会议预设 |
-| `custom` | 自定义 EQ |
+`[RUST 基线]` [mic.rs](../../src/features/mic.rs) 虽取得 features.mic，实际频段却读取 **features.sound.equalizer.bands**，slider 回调也调用仅写 sound 的 AppShell::set_eq_band。调整 Mic 会修改 Sound，是明确的数据隔离问题。
 
-显示名称由 locale key 映射，不能在文档中硬编码成另一套中文名称。
+同时缺独立 mic preset/custom、Reset、设备 EQ 确认，wide 纵向布局也未还原。部分渲染字符串使用 Box::leak，应在后续代码修订时改为受控生命周期，不能每次 render 永久泄漏。
 
-### 4.2 频段滑杆
-
-`KM → YM → gM` 为麦克风 EQ 的实际编辑路径。源码明确参数如下：
-
-| 参数 | 麦克风页真实值 |
-|---|---|
-| 滑杆类型 | `wide` |
-| Y 轴对齐 | `flex-end` |
-| Y 轴右边距 | `40px` |
-| `tabScale` | `true` |
-| 最小值 | `-5` |
-| 最大值 | `5` |
-| 步长 | `1` |
-| Y 轴标签 | `-5dB`、`0dB`、`+5dB` |
-| widget id | `eqBox` |
-
-通用 `gM`：
-
-- 遍历 store 提供的 `frequencyBands`，按每个频率的 `decibel` 值绘制 slider。
-- 频率标签按值转换为 `Hz` 或 `kHz`。
-- slider 改变后通过 `setEQ` 更新麦克风 EQ 状态。
-- reset 由 EQ 编辑器提供；只读状态隐藏 reset。
-- `customBands` 仅在 custom 模式下作为自定义频段数据保存/回填。
-
-### 4.3 设备保存与不同步状态
-
-- `deviceEqDifferent` 是源码明确提供的“设备 EQ 与当前 UI 状态不同”状态。
-- `setSaveDeviceEQ` 是源码明确提供的保存到设备动作。
-- 文档只记录这两个状态/动作存在，不虚构保存成功 toast、进度动画、断开重试或硬件同步提示；这些必须由实际 render 分支或状态机证据支持后才能加入。
-
-## 5. 明确删除的未经证明内容
-
-以下内容已从本页规格中删除，因为 777 的 `KM → YM → gM` render 没有证明这些控件属于麦克风页：
-
-- 麦克风音量滑杆或静音开关。
-- 侧音开关、侧音音量、Mic Monitoring。
-- 降噪、噪声门、Voice Gate、AI Noise Suppression。
-- 语音清晰度、语音增强、变声器。
-- 游戏/聊天混音、输入/输出路由选择。
-- 采样率、监听延迟、麦克风增益等额外硬件参数。
-- 固定“10 段 EQ”或未经 `frequencyBands` 数组证明的频段数量。
-- 将 `VOICE_*`、`SIDETONE_*`、`NOISE_*` locale key 的存在直接当作页面控件。
-
-这些 key 可能属于其他产品、其他模块、共享组件或未启用功能；它们不能覆盖 777 实际组件树的证据。
-
-## 6. 原始证据索引
-
-- 组件树、预设、store 字段与动作：`.ref/devices/777/static/js/main.eb70ce38.js`
-  - `7816`：`Mic_EQ_Tabs`、`micBandPreset`、`DeviceInfo`
-  - `YM`：麦克风 EQ store connect
-  - `KM`：麦克风页面根组件与 `widgetId:"eqBox"`
-  - `gM`：通用 EQ 编辑器、频段滑杆、reset 与 read-only 分支
-- 样式：`.ref/devices/777/static/css/main.e4bab2aa.css`
-  - `#eqBox`
-  - `.vertical-slider__container--wide`
-  - `.vertical-slider__input`、`.vertical-slider__bubble`、`.vertical-slider__title`
-  - `.sliderChart__container`、`.sliderChart__yAxisTitle`、`.sliderChart__reset-button`
-- 设备信息：`.ref/devices/777/manifest.json`
-- locale：`.ref/frontend/locales/zh-CN.json`、`.ref/frontend/locales/en.json`
+`[建议]` mic feature 拥有独立状态和 retained SliderState，订阅持有至 owner 生命周期结束。验收先保证改 Mic 不改 Sound，再验证五个 preset、Custom/Reset、设备差异确认、profile 隔离与频率来源。真实频率语义需设备验证，文档不替硬件作结论。

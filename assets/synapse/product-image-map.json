@@ -1,0 +1,1575 @@
+{
+  "version": 1,
+  "requests": [
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "request": "./182_0/img_prods/litat1-profile-button-1x.png",
+      "module": 3712,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.ba4ac8e1.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.ba4ac8e1.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "request": "./182_0/img_prods/litat1-profile-button-3x.png",
+      "module": 4986,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.99ffa7e1.avif",
+      "output": "assets/synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "request": "./182_0/img_prods/prd-1x.png",
+      "module": 48,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/48.7e4eb4db.chunk.js",
+      "module_sha256": "8b4850c2cae101e34094181df38d951b1c8be183f604219918450dc52cad9139",
+      "source": ".ref/devices/182/static/media/prd-1x.cb2eedcf.avif",
+      "output": "assets/synapse/product-182-prd-1x.cb2eedcf.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "request": "./182_0/img_prods/prd-3x.png",
+      "module": 8922,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/8922.8bdb77be.chunk.js",
+      "module_sha256": "b3d3eade047b28b19d2414ee50513d824a5bd3a9f641c39eeb0576cbeeb0ad53",
+      "source": ".ref/devices/182/static/media/prd-3x.674b18f0.avif",
+      "output": "assets/synapse/mouse-182.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "request": "./182_128/img_prods/litat1-profile-button-1x.png",
+      "module": 1477,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.51af3998.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.51af3998.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "request": "./182_128/img_prods/litat1-profile-button-3x.png",
+      "module": 5179,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.19382cc9.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-3x.19382cc9.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "request": "./182_128/img_prods/prd-1x.png",
+      "module": 3125,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/3125.b2af78bc.chunk.js",
+      "module_sha256": "e4cfcb61c09001a7a3544bd8bc15202e7af50208abfc0f9fa3e0c5baa328b541",
+      "source": ".ref/devices/182/static/media/prd-1x.a8c0cadd.avif",
+      "output": "assets/synapse/product-182-prd-1x.a8c0cadd.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "request": "./182_128/img_prods/prd-3x.png",
+      "module": 7915,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/7915.50aec7db.chunk.js",
+      "module_sha256": "af1cc654e2d2cd13357cda765eeaca7adc63c19eefd94e7a8b7c9bed76039920",
+      "source": ".ref/devices/182/static/media/prd-3x.fa151ada.avif",
+      "output": "assets/synapse/product-182-prd-3x.fa151ada.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "request": "./182_129/img_prods/litat1-profile-button-1x.png",
+      "module": 8110,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.fc69b02f.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.fc69b02f.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "request": "./182_129/img_prods/litat1-profile-button-3x.png",
+      "module": 8100,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.d3439e26.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-3x.d3439e26.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "request": "./182_129/img_prods/prd-1x.png",
+      "module": 6378,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/6378.75912685.chunk.js",
+      "module_sha256": "243249c85f8b5ebd3f08fec3e4cc6521c9c4aa1ad2997d8e886722eb4ea5f240",
+      "source": ".ref/devices/182/static/media/prd-1x.bbacb213.avif",
+      "output": "assets/synapse/product-182-prd-1x.bbacb213.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "request": "./182_129/img_prods/prd-3x.png",
+      "module": 2560,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/2560.ac5d57b2.chunk.js",
+      "module_sha256": "ff674056c951f079d4bd4d644abfecac241ebecfbbef7dbbf1cfc4f2940f6ebe",
+      "source": ".ref/devices/182/static/media/prd-3x.d6a100a5.avif",
+      "output": "assets/synapse/product-182-prd-3x.d6a100a5.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "request": "./182_130/img_prods/litat1-profile-button-1x.png",
+      "module": 3452,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.ba4ac8e1.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.ba4ac8e1.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "request": "./182_130/img_prods/litat1-profile-button-3x.png",
+      "module": 3094,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.99ffa7e1.avif",
+      "output": "assets/synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "request": "./182_130/img_prods/prd-1x.png",
+      "module": 1588,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/1588.0cd516df.chunk.js",
+      "module_sha256": "02b2989a56316126a59943c4e9dca8d32d6a8b354028dd0e7dd650063d96c13c",
+      "source": ".ref/devices/182/static/media/prd-1x.d9ca8c5e.avif",
+      "output": "assets/synapse/product-182-prd-1x.d9ca8c5e.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "request": "./182_130/img_prods/prd-3x.png",
+      "module": 8238,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/8238.54f5819c.chunk.js",
+      "module_sha256": "1a56c6cc7b3d787613c1f3ed637bffca1237b21b5a8a9f71b1bcc11a71ba6828",
+      "source": ".ref/devices/182/static/media/prd-3x.d9ca8c5e.avif",
+      "output": "assets/synapse/product-182-prd-3x.d9ca8c5e.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "request": "./182_131/img_prods/litat1-profile-button-1x.png",
+      "module": 4555,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.ba4ac8e1.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.ba4ac8e1.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "request": "./182_131/img_prods/litat1-profile-button-3x.png",
+      "module": 7349,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.99ffa7e1.avif",
+      "output": "assets/synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "request": "./182_131/img_prods/prd-1x.png",
+      "module": 4663,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/4663.07e4df00.chunk.js",
+      "module_sha256": "6ecc008c86bab836ba428eedbe5b43628604505ca8cdd4221c4e4fb6b65ec26b",
+      "source": ".ref/devices/182/static/media/prd-1x.43d579a8.avif",
+      "output": "assets/synapse/product-182-prd-1x.43d579a8.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "request": "./182_131/img_prods/prd-3x.png",
+      "module": 6577,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/6577.87d0f9cf.chunk.js",
+      "module_sha256": "1b1639393b61ff2c84930ca8289cbe66fa92d0294d9298bb6b75f4f9ababbde3",
+      "source": ".ref/devices/182/static/media/prd-3x.43d579a8.avif",
+      "output": "assets/synapse/product-182-prd-3x.43d579a8.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "request": "./182_132/img_prods/litat1-profile-button-1x.png",
+      "module": 7254,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.ba4ac8e1.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.ba4ac8e1.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "request": "./182_132/img_prods/litat1-profile-button-3x.png",
+      "module": 4460,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.99ffa7e1.avif",
+      "output": "assets/synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "request": "./182_132/img_prods/prd-1x.png",
+      "module": 6530,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/6530.c3315102.chunk.js",
+      "module_sha256": "2c5b63b2da67799153a7f73bb4f574bd4af0e74a48fa0ab551ddc6b1f9044245",
+      "source": ".ref/devices/182/static/media/prd-1x.02f9ee63.avif",
+      "output": "assets/synapse/product-182-prd-1x.02f9ee63.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "request": "./182_132/img_prods/prd-3x.png",
+      "module": 3736,
+      "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module_file": ".ref/devices/182/static/js/3736.4fb94caa.chunk.js",
+      "module_sha256": "563979a18ced1672eb77c7a3bc0e4d57590ede2af903060f55eddec561e8d59d",
+      "source": ".ref/devices/182/static/media/prd-3x.f43aa7e1.avif",
+      "output": "assets/synapse/product-182-prd-3x.f43aa7e1.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/1-1x.png",
+      "module": 95858,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/5858.593ed23c.chunk.js",
+      "module_sha256": "a8348fd889e38fcd48b8ff86527d0ddfc5958ac3cedc5265ca6aebe29495b660",
+      "source": ".ref/devices/653/static/media/1-1x.ab26aeb7.avif",
+      "output": "assets/synapse/product-653-1-1x.ab26aeb7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/1-3x.png",
+      "module": 60136,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/136.af63c2d3.chunk.js",
+      "module_sha256": "1d107534cd77d81816ce87db18df6beedcb9752d51947636d5ce002274727475",
+      "source": ".ref/devices/653/static/media/1-3x.8d525695.avif",
+      "output": "assets/synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/10-1x.png",
+      "module": 82692,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/2692.7df07c84.chunk.js",
+      "module_sha256": "031a742d47c79aa6386ac23d7ecdee60951c74fc18ebbf01828f89781c5ef401",
+      "source": ".ref/devices/653/static/media/10-1x.f4ae459c.avif",
+      "output": "assets/synapse/product-653-10-1x.f4ae459c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/10-3x.png",
+      "module": 49966,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9966.d8fbc183.chunk.js",
+      "module_sha256": "60d26162811de4e23c36f0767b059c9b2c6e6a092697c1a598d6ef5d49c0ea9c",
+      "source": ".ref/devices/653/static/media/10-3x.3f217b26.avif",
+      "output": "assets/synapse/product-653-10-3x.3f217b26.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/11-1x.png",
+      "module": 69171,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9171.1cf3cebb.chunk.js",
+      "module_sha256": "0b1085a82ed43a74d6ea8342e4a00cc2a78f4ca728bb1b75b9dd44b3a22d40a5",
+      "source": ".ref/devices/653/static/media/11-1x.f9260b13.avif",
+      "output": "assets/synapse/product-653-11-1x.f9260b13.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/11-3x.png",
+      "module": 92701,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/2701.071ae757.chunk.js",
+      "module_sha256": "cff67db411590fbbc2a023b6b148a38038709c0be9057b085c20d6a364d30631",
+      "source": ".ref/devices/653/static/media/11-3x.dfee759e.avif",
+      "output": "assets/synapse/product-653-11-3x.dfee759e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/12-1x.png",
+      "module": 85722,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/5722.02b17057.chunk.js",
+      "module_sha256": "60650b8b5c7eb8f9114f7eaef6e5405473eedd387bd25f654eb6bf4c76ad5883",
+      "source": ".ref/devices/653/static/media/12-1x.6c82872f.avif",
+      "output": "assets/synapse/product-653-12-1x.6c82872f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/12-3x.png",
+      "module": 7856,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7856.907e2157.chunk.js",
+      "module_sha256": "5813ed9ac960c5cee664001a7b47d994dc07e9d7d0084ee393262e68d944c35b",
+      "source": ".ref/devices/653/static/media/12-3x.97e2fc23.avif",
+      "output": "assets/synapse/product-653-12-3x.97e2fc23.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/15-1x.png",
+      "module": 24039,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4039.8b4557e0.chunk.js",
+      "module_sha256": "c2a6e3fa13c0b0605fbe905d2cd92f01cf00c481ffede5454255d3b8d6c17ee6",
+      "source": ".ref/devices/653/static/media/15-1x.04bce260.avif",
+      "output": "assets/synapse/product-653-15-1x.04bce260.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/15-3x.png",
+      "module": 33489,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3489.1101f94b.chunk.js",
+      "module_sha256": "6e86bc78c2ffa8f0a1e95acd72a5a247330e21bc3007409ca480e8f5a7548133",
+      "source": ".ref/devices/653/static/media/15-3x.2d501bd7.avif",
+      "output": "assets/synapse/product-653-15-3x.2d501bd7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/16-1x.png",
+      "module": 17358,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7358.88503455.chunk.js",
+      "module_sha256": "b5819116c81dc9851c4ec15ccc9cb0bcd8a2ffe27c7f4ae9afe72bbb239eaa6a",
+      "source": ".ref/devices/653/static/media/16-1x.7296aa8c.avif",
+      "output": "assets/synapse/product-653-16-1x.7296aa8c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/16-3x.png",
+      "module": 66916,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6916.aabb1b48.chunk.js",
+      "module_sha256": "05e935a3914147263223a7bd4437ac47384ffb1d4fcc03cae1da2378133bfdd8",
+      "source": ".ref/devices/653/static/media/16-3x.099bf2be.avif",
+      "output": "assets/synapse/product-653-16-3x.099bf2be.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/17-1x.png",
+      "module": 95909,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/5909.ca5d8299.chunk.js",
+      "module_sha256": "d95f25cea8757b81c9c9b6733c714906e6fd949dec2b8d82bc77c0570c937e32",
+      "source": ".ref/devices/653/static/media/17-1x.e408c5a0.avif",
+      "output": "assets/synapse/product-653-17-1x.e408c5a0.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/17-3x.png",
+      "module": 20699,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/699.1455c195.chunk.js",
+      "module_sha256": "ac6f9f47132de69aa8837518525194a5f53399cde335a29cf29152d5de907a27",
+      "source": ".ref/devices/653/static/media/17-3x.024b2318.avif",
+      "output": "assets/synapse/product-653-17-3x.024b2318.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/18-1x.png",
+      "module": 70031,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/2412.1332569f.chunk.js",
+      "module_sha256": "14a7e4d568bd13e0b9d16811cb1011db181023d2be19b3fa236f2099c04e52ee",
+      "source": ".ref/devices/653/static/media/18-1x.4006827f.avif",
+      "output": "assets/synapse/product-653-18-1x.4006827f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/18-3x.png",
+      "module": 88454,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/8454.9dae2729.chunk.js",
+      "module_sha256": "25c076f12652712a9b495c437c1ace7f69187f0d1df09655f193dec9aff96c6e",
+      "source": ".ref/devices/653/static/media/18-3x.4f188968.avif",
+      "output": "assets/synapse/product-653-18-3x.4f188968.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/2-1x.png",
+      "module": 41547,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1547.176ec3d7.chunk.js",
+      "module_sha256": "6d930ee9035e333233fda0b96f5e9ab40da168026849a644b077794587d82453",
+      "source": ".ref/devices/653/static/media/2-1x.cfe79c6f.avif",
+      "output": "assets/synapse/product-653-2-1x.cfe79c6f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/2-3x.png",
+      "module": 71445,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1445.b281a7b0.chunk.js",
+      "module_sha256": "5dd47357423a64631eba9c2d383888031feeb784d0e55302ffa644d68c64bc97",
+      "source": ".ref/devices/653/static/media/2-3x.fb8dcb10.avif",
+      "output": "assets/synapse/product-653-2-3x.fb8dcb10.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/3-1x.png",
+      "module": 44764,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4764.9669d50d.chunk.js",
+      "module_sha256": "52d77db02fc224e47b068995f36f013edde8926369e8ed67ac135c05b32ea602",
+      "source": ".ref/devices/653/static/media/3-1x.52fa5004.avif",
+      "output": "assets/synapse/product-653-3-1x.52fa5004.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/3-3x.png",
+      "module": 28902,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/8902.0144cdf9.chunk.js",
+      "module_sha256": "0e6ec1a7aa786613dae75cb4221169adc3f2aa52ed26dffc074ccd6237b2a7e7",
+      "source": ".ref/devices/653/static/media/3-3x.64d7b830.avif",
+      "output": "assets/synapse/product-653-3-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/4-1x.png",
+      "module": 94077,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/8839.8cf5ba7f.chunk.js",
+      "module_sha256": "082378abd0fc0d1b71234bf11683245e3f928ac8216cc1bc6e43c074dfcf000a",
+      "source": ".ref/devices/653/static/media/4-1x.03001c8e.avif",
+      "output": "assets/synapse/product-653-4-1x.03001c8e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/4-3x.png",
+      "module": 14227,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4227.463b329e.chunk.js",
+      "module_sha256": "791fb75972b822244526cd165a52fe1405b20bf241a9412c0eda269c080ef266",
+      "source": ".ref/devices/653/static/media/4-3x.5433580e.avif",
+      "output": "assets/synapse/product-653-4-3x.5433580e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/5-1x.png",
+      "module": 76774,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6774.525e824b.chunk.js",
+      "module_sha256": "cac85e6423ec658d0d8b35af7010c5cd10f3e14b46a7a379525eaee2fbb38f24",
+      "source": ".ref/devices/653/static/media/5-1x.31d3238f.avif",
+      "output": "assets/synapse/product-653-5-1x.31d3238f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/5-3x.png",
+      "module": 94524,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4524.1539d9e4.chunk.js",
+      "module_sha256": "b57b718da513ee04ee77e75ffcf0665e22c406bce67b7fc10f6ff3e52d7a46c3",
+      "source": ".ref/devices/653/static/media/5-3x.268ad7c5.avif",
+      "output": "assets/synapse/product-653-5-3x.268ad7c5.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/6-1x.png",
+      "module": 96287,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6287.fea6e5c8.chunk.js",
+      "module_sha256": "44cc8432f918ac5327ad745e18c926c6e36896249b64685e46258322bb45b71f",
+      "source": ".ref/devices/653/static/media/6-1x.af2072c7.avif",
+      "output": "assets/synapse/product-653-6-1x.af2072c7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/6-3x.png",
+      "module": 90153,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/153.c0c74f63.chunk.js",
+      "module_sha256": "13e134838fabcacce4d3ffbfb621c3c32368a5ecf6aaadc2f4c14b1797b5a579",
+      "source": ".ref/devices/653/static/media/6-3x.f8148117.avif",
+      "output": "assets/synapse/product-653-6-3x.f8148117.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/7-1x.png",
+      "module": 41168,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/8787.a40711ef.chunk.js",
+      "module_sha256": "4c4bd68dd0e69a288b73e6599f64b83d8b70b0d947a0a83b0d7aa96fdf946778",
+      "source": ".ref/devices/653/static/media/7-1x.71ca569c.avif",
+      "output": "assets/synapse/product-653-7-1x.71ca569c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/7-3x.png",
+      "module": 19034,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9034.0b7cf5d7.chunk.js",
+      "module_sha256": "a94d128791d5351c35a06a9e8024aa7632b779f036dd83d1d17ebac554dcefc3",
+      "source": ".ref/devices/653/static/media/7-3x.9da95ab4.avif",
+      "output": "assets/synapse/product-653-7-3x.9da95ab4.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/8-1x.png",
+      "module": 79985,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9985.862311e0.chunk.js",
+      "module_sha256": "4c395d03cfb4eeeaeedd1ef9a2eabafdd584b6c177de97d64f15c792d6a0f27f",
+      "source": ".ref/devices/653/static/media/8-1x.e90184f0.avif",
+      "output": "assets/synapse/product-653-8-1x.e90184f0.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/8-3x.png",
+      "module": 81447,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1447.398f4775.chunk.js",
+      "module_sha256": "40fe25a0196f7cf419f8bef507a9b548af136faba532ec7f27f24d60b8c42f45",
+      "source": ".ref/devices/653/static/media/8-3x.372ad914.avif",
+      "output": "assets/synapse/product-653-8-3x.372ad914.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/9-1x.png",
+      "module": 29274,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9274.66bacf55.chunk.js",
+      "module_sha256": "1dbeb91571c44dbd4f9d7a93c819c9259f370f3aefcafe2b80de5c3578bff421",
+      "source": ".ref/devices/653/static/media/9-1x.c1e63484.avif",
+      "output": "assets/synapse/product-653-9-1x.c1e63484.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/9-3x.png",
+      "module": 25008,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/5008.7f30ee66.chunk.js",
+      "module_sha256": "987e4f09dbc0bddd5fcf63afec28c7f576b94cf33e0da211f3643bf8800d15c7",
+      "source": ".ref/devices/653/static/media/9-3x.e379204e.avif",
+      "output": "assets/synapse/product-653-9-3x.e379204e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "request": "./653_0/img_prods/prd.png",
+      "module": 2649,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/2649.6577f913.chunk.js",
+      "module_sha256": "ae45e2b4de15ce7ac3ac185224a412be3021b436bf6b05cec9881be1977aa134",
+      "source": ".ref/devices/653/static/media/prd.4221e2bc.avif",
+      "output": "assets/synapse/product-653-prd.4221e2bc.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/1-1x.png",
+      "module": 34475,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4475.d44136e6.chunk.js",
+      "module_sha256": "ac84bff63c3669c16865bd327325d71e56c428e92821b153d15c69bd93cb3246",
+      "source": ".ref/devices/653/static/media/1-1x.ab26aeb7.avif",
+      "output": "assets/synapse/product-653-1-1x.ab26aeb7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/1-3x.png",
+      "module": 29845,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9845.c1e290b9.chunk.js",
+      "module_sha256": "5338c97f91340a1f3ed88f21c329046c297541ad0475b1824680c69151f06ca8",
+      "source": ".ref/devices/653/static/media/1-3x.8d525695.avif",
+      "output": "assets/synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/10-1x.png",
+      "module": 10927,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/927.87022876.chunk.js",
+      "module_sha256": "845e7e0ae566c039991c78cd5eb5e1942542adffd97503c672fc97a59f2e5ad3",
+      "source": ".ref/devices/653/static/media/10-1x.f4ae459c.avif",
+      "output": "assets/synapse/product-653-10-1x.f4ae459c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/10-3x.png",
+      "module": 64121,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4121.c0a3f108.chunk.js",
+      "module_sha256": "2398d8a6d00f09d18de7b99c5dd62a3bede7fe53984bc779f74f8a479642f159",
+      "source": ".ref/devices/653/static/media/10-3x.3f217b26.avif",
+      "output": "assets/synapse/product-653-10-3x.3f217b26.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/11-1x.png",
+      "module": 31168,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1168.d1473202.chunk.js",
+      "module_sha256": "0a6d990764160bb2da05fc8c71ac714292d38bb604a770ec623e3e878b1a52ac",
+      "source": ".ref/devices/653/static/media/11-1x.f9260b13.avif",
+      "output": "assets/synapse/product-653-11-1x.f9260b13.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/11-3x.png",
+      "module": 47018,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7018.b4878e5a.chunk.js",
+      "module_sha256": "f205d430c1cfe9a2ec320e2b8740e7168a56a715939b322cedee39a93bebaf1e",
+      "source": ".ref/devices/653/static/media/11-3x.dfee759e.avif",
+      "output": "assets/synapse/product-653-11-3x.dfee759e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/12-1x.png",
+      "module": 84077,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4077.2d6bab44.chunk.js",
+      "module_sha256": "bba3b7ad84c328067e4290ab38ee5f4c10f5a1a522e73caea3742ea6420115c7",
+      "source": ".ref/devices/653/static/media/12-1x.6c82872f.avif",
+      "output": "assets/synapse/product-653-12-1x.6c82872f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/12-3x.png",
+      "module": 59683,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9683.961958a2.chunk.js",
+      "module_sha256": "f5fd7d6f376df89b9b92ad7e8d4b1ac087efad7499e0353ff3c657dcb6b722f1",
+      "source": ".ref/devices/653/static/media/12-3x.97e2fc23.avif",
+      "output": "assets/synapse/product-653-12-3x.97e2fc23.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/15-1x.png",
+      "module": 93388,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3388.8b5ea3bf.chunk.js",
+      "module_sha256": "b1e8a3e7b0ac237cd6f76cb82bb48bbf3dd4175c097791e2332962506c516398",
+      "source": ".ref/devices/653/static/media/15-1x.04bce260.avif",
+      "output": "assets/synapse/product-653-15-1x.04bce260.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/15-3x.png",
+      "module": 98006,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/8006.b04e5b96.chunk.js",
+      "module_sha256": "abd17f0c13bf279bf73e0c70813272e72d24c74589db1dc4df07e812b103bc44",
+      "source": ".ref/devices/653/static/media/15-3x.2d501bd7.avif",
+      "output": "assets/synapse/product-653-15-3x.2d501bd7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/16-1x.png",
+      "module": 99033,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9033.6775f3df.chunk.js",
+      "module_sha256": "1713e7cffb54500b3369f5679977e20fcf0ba98b238ffdffbe34551e86676974",
+      "source": ".ref/devices/653/static/media/16-1x.7296aa8c.avif",
+      "output": "assets/synapse/product-653-16-1x.7296aa8c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/16-3x.png",
+      "module": 60335,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/335.de71a4da.chunk.js",
+      "module_sha256": "f1742a4e415bd93a8c7aff367c03ce4479f49e36b38747b60d0fc4fa1ed10d67",
+      "source": ".ref/devices/653/static/media/16-3x.099bf2be.avif",
+      "output": "assets/synapse/product-653-16-3x.099bf2be.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/17-1x.png",
+      "module": 34210,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4210.d8f31915.chunk.js",
+      "module_sha256": "9df07fa209165aac15f3f42ec6a3ac0cda00e7818ae5b3892980f3f441c67ef8",
+      "source": ".ref/devices/653/static/media/17-1x.e408c5a0.avif",
+      "output": "assets/synapse/product-653-17-1x.e408c5a0.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/17-3x.png",
+      "module": 11416,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1416.c7139311.chunk.js",
+      "module_sha256": "a02a7bdb74ae9ccae8a761adc3432095cab17dac5faa568e9792c8ec2d7f9024",
+      "source": ".ref/devices/653/static/media/17-3x.024b2318.avif",
+      "output": "assets/synapse/product-653-17-3x.024b2318.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/18-1x.png",
+      "module": 74583,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4583.32901d69.chunk.js",
+      "module_sha256": "d85babf686ec0258236fb01562159a572c5174ff9014a0645bad5f863fe88cfa",
+      "source": ".ref/devices/653/static/media/18-1x.4006827f.avif",
+      "output": "assets/synapse/product-653-18-1x.4006827f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/18-3x.png",
+      "module": 40417,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/417.b96d7ec8.chunk.js",
+      "module_sha256": "6ad37bc42a741fd27bf64a2cb83dc05a3ec7b3869457b58946a6a155aa15718e",
+      "source": ".ref/devices/653/static/media/18-3x.4f188968.avif",
+      "output": "assets/synapse/product-653-18-3x.4f188968.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/2-1x.png",
+      "module": 74162,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4162.96c1d7e9.chunk.js",
+      "module_sha256": "30da79d34a9930d49d2df2603ae10f59a46daceb632576d105e07df6c8899fd1",
+      "source": ".ref/devices/653/static/media/2-1x.93ae7bf6.avif",
+      "output": "assets/synapse/product-653-2-1x.93ae7bf6.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/2-3x.png",
+      "module": 47848,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7848.c0d04910.chunk.js",
+      "module_sha256": "e0d2bc96c3283399ebd963d9f64b6b31e58b2b0abd59ad393af2156aa56312d2",
+      "source": ".ref/devices/653/static/media/2-3x.64d7b830.avif",
+      "output": "assets/synapse/product-653-2-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/3-1x.png",
+      "module": 56297,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6297.762254d1.chunk.js",
+      "module_sha256": "3ab97dc953cdcef48771d5d208bbf10eb88a271de4c31ad73c2f18d0bbeedade",
+      "source": ".ref/devices/653/static/media/3-1x.52fa5004.avif",
+      "output": "assets/synapse/product-653-3-1x.52fa5004.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/3-3x.png",
+      "module": 83391,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3391.95a45e72.chunk.js",
+      "module_sha256": "cc163c3f003ffcbcc4ff5ca4d1f95df67214ea37dcb2e61a5171c405da26a0cd",
+      "source": ".ref/devices/653/static/media/3-3x.64d7b830.avif",
+      "output": "assets/synapse/product-653-3-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/4-1x.png",
+      "module": 57040,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7040.adb12d77.chunk.js",
+      "module_sha256": "a7aeb167a862be3f8683a236b5ae1f520e126e6caf53ab9c903105e5c135bffe",
+      "source": ".ref/devices/653/static/media/4-1x.03001c8e.avif",
+      "output": "assets/synapse/product-653-4-1x.03001c8e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/4-3x.png",
+      "module": 26458,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6458.2a99ea51.chunk.js",
+      "module_sha256": "0e46f97bc32eec1d9003ac818b58690c4dde1d93acc55671d1066927aabbc9e8",
+      "source": ".ref/devices/653/static/media/4-3x.5433580e.avif",
+      "output": "assets/synapse/product-653-4-3x.5433580e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/5-1x.png",
+      "module": 75199,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/5199.018dd35e.chunk.js",
+      "module_sha256": "830f6af0017a30837b624b9a8152f6cae191b88db47d88e6370f1dc136aece7c",
+      "source": ".ref/devices/653/static/media/5-1x.31d3238f.avif",
+      "output": "assets/synapse/product-653-5-1x.31d3238f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/5-3x.png",
+      "module": 64457,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4457.c1a399f0.chunk.js",
+      "module_sha256": "e521b43e35ed7af2f9ff03a151b0db41a05e535e4dc0b215a27dbbc1764e8933",
+      "source": ".ref/devices/653/static/media/5-3x.268ad7c5.avif",
+      "output": "assets/synapse/product-653-5-3x.268ad7c5.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/6-1x.png",
+      "module": 20454,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/454.a3efa97c.chunk.js",
+      "module_sha256": "fc6057005cadbb0858d0635bc32ed1a943abb6b73de0b390867532594311487d",
+      "source": ".ref/devices/653/static/media/6-1x.af2072c7.avif",
+      "output": "assets/synapse/product-653-6-1x.af2072c7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/6-3x.png",
+      "module": 24412,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/4412.d8cca8cd.chunk.js",
+      "module_sha256": "267a46725962f38748764e3853fa3dcff745148d204d976c4e68cdc950e43c41",
+      "source": ".ref/devices/653/static/media/6-3x.f8148117.avif",
+      "output": "assets/synapse/product-653-6-3x.f8148117.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/7-1x.png",
+      "module": 9949,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9949.0e36ea13.chunk.js",
+      "module_sha256": "088297bafc2c90488b3123fd96edacd474b9fd396feb283524993330b07fd3b9",
+      "source": ".ref/devices/653/static/media/7-1x.71ca569c.avif",
+      "output": "assets/synapse/product-653-7-1x.71ca569c.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/7-3x.png",
+      "module": 70067,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/67.3184fddb.chunk.js",
+      "module_sha256": "076e9a5a743f61d9db37566d295ca4259e8886e27fd57c6e7fb3000879c3b496",
+      "source": ".ref/devices/653/static/media/7-3x.9da95ab4.avif",
+      "output": "assets/synapse/product-653-7-3x.9da95ab4.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/8-1x.png",
+      "module": 81540,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1540.d7430497.chunk.js",
+      "module_sha256": "ad0457825eba214cedba28ba9c027b56f182328e690031216ecb31aacdfa31d3",
+      "source": ".ref/devices/653/static/media/8-1x.e90184f0.avif",
+      "output": "assets/synapse/product-653-8-1x.e90184f0.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/8-3x.png",
+      "module": 31982,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/1982.4a63b747.chunk.js",
+      "module_sha256": "16bfcbd3e3af9668c0166e3363f7d6787e1a845e23863204b752ed4e45036fbd",
+      "source": ".ref/devices/653/static/media/8-3x.372ad914.avif",
+      "output": "assets/synapse/product-653-8-3x.372ad914.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/9-1x.png",
+      "module": 87347,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7347.2b3feef9.chunk.js",
+      "module_sha256": "5ceeb7700bd6e9104c0455253be499f99dd6005ff1976d5f1784b95039333818",
+      "source": ".ref/devices/653/static/media/9-1x.c1e63484.avif",
+      "output": "assets/synapse/product-653-9-1x.c1e63484.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/9-3x.png",
+      "module": 67197,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/7197.7a7e9b15.chunk.js",
+      "module_sha256": "4303f929ff2857d03a8ecb5b2402549bbd4c9e75909e8ffdddf723ad0f21ae45",
+      "source": ".ref/devices/653/static/media/9-3x.e379204e.avif",
+      "output": "assets/synapse/product-653-9-3x.e379204e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "request": "./653_128/img_prods/prd.png",
+      "module": 22974,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/2974.9c5d5114.chunk.js",
+      "module_sha256": "e0014bd629c461cbcdfe63b81f830f140791839eb63eceb90ce4f29b739fe04a",
+      "source": ".ref/devices/653/static/media/prd.4221e2bc.avif",
+      "output": "assets/synapse/product-653-prd.4221e2bc.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "request": "./653_129/img_prods/1-1x.png",
+      "module": 83700,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3700.e633a9d5.chunk.js",
+      "module_sha256": "ab6db4b946616b3f66d98a36bdce9b0e7e39b75e2feeb7cfa45a66e0ebc38af9",
+      "source": ".ref/devices/653/static/media/1-1x.ab26aeb7.avif",
+      "output": "assets/synapse/product-653-1-1x.ab26aeb7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "request": "./653_129/img_prods/1-3x.png",
+      "module": 3710,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3710.e3e9e66f.chunk.js",
+      "module_sha256": "bfcb08107173db834d8e07f0f69b4a0401e1f9c94a46cfe234d82304f151c310",
+      "source": ".ref/devices/653/static/media/1-3x.8d525695.avif",
+      "output": "assets/synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "request": "./653_129/img_prods/prd.png",
+      "module": 10075,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/75.f144d8a3.chunk.js",
+      "module_sha256": "6b2a5c2cdee768293b9d87c7828577ecbbedafe466f14c73a7a4180e6b450aba",
+      "source": ".ref/devices/653/static/media/prd.4221e2bc.avif",
+      "output": "assets/synapse/product-653-prd.4221e2bc.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "request": "./653_130/img_prods/1-1x.png",
+      "module": 33582,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/3582.01519583.chunk.js",
+      "module_sha256": "1f9de6681ab92565be3437611b2aeb90a425a3b11705e5f3a341f54935a69d40",
+      "source": ".ref/devices/653/static/media/1-1x.9d96d6ee.avif",
+      "output": "assets/synapse/product-653-1-1x.9d96d6ee.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "request": "./653_130/img_prods/1-3x.png",
+      "module": 96932,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/6932.0bd01882.chunk.js",
+      "module_sha256": "c9f95ef4de0ffca039521676ce16845a47ad82d1720374fed0643c03c4eacb4e",
+      "source": ".ref/devices/653/static/media/1-3x.5fbaa05f.avif",
+      "output": "assets/synapse/product-653-1-3x.5fbaa05f.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "request": "./653_130/img_prods/prd.png",
+      "module": 49357,
+      "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "module_file": ".ref/devices/653/static/js/9357.495b3f1c.chunk.js",
+      "module_sha256": "a01ed6c7aeb0f416b26157cb325267bb9ffb6980b1489368cd694ca7c25b8179",
+      "source": ".ref/devices/653/static/media/prd.5fbaa05f.avif",
+      "output": "assets/synapse/product-653-prd.5fbaa05f.png"
+    },
+    {
+      "product_id": 777,
+      "edition_id": 0,
+      "request": "./777_0/img_prods/prd-1x.png",
+      "module": 5298,
+      "context": ".ref/devices/777/static/js/main.eb70ce38.js",
+      "context_sha256": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
+      "module_file": ".ref/devices/777/static/js/298.252992aa.chunk.js",
+      "module_sha256": "370d133df4fea00127ce5f802e1b973156f5e3bc4ac9d8d9cf812b5f2402ce7b",
+      "source": ".ref/devices/777/static/media/prd-1x.5cd1e5ea.avif",
+      "output": "assets/synapse/product-777-prd-1x.5cd1e5ea.png"
+    },
+    {
+      "product_id": 777,
+      "edition_id": 0,
+      "request": "./777_0/img_prods/prd-3x.png",
+      "module": 4024,
+      "context": ".ref/devices/777/static/js/main.eb70ce38.js",
+      "context_sha256": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
+      "module_file": ".ref/devices/777/static/js/24.2b0388fd.chunk.js",
+      "module_sha256": "5cc4737a4e0bea4feb8370c0fff0473984ab1d7d15b084b5002fe6e2a1fa2093",
+      "source": ".ref/devices/777/static/media/prd-3x.ede8800a.avif",
+      "output": "assets/synapse/headset-777.png"
+    }
+  ],
+  "resolved": [
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/mouse-182.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/product-182-litat1-profile-button-3x.19382cc9.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 128,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-182-prd-3x.fa151ada.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/product-182-litat1-profile-button-3x.d3439e26.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 129,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-182-prd-3x.d6a100a5.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 130,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-182-prd-3x.d9ca8c5e.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 131,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-182-prd-3x.43d579a8.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "layout_id": 0,
+      "part": "MouseBottom",
+      "asset": "synapse/mouse-182-bottom.png"
+    },
+    {
+      "product_id": 182,
+      "edition_id": 132,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-182-prd-3x.f43aa7e1.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "KeyboardDial",
+      "asset": "synapse/keyboard-653-roller.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "KeyboardWrist",
+      "asset": "synapse/keyboard-653-wrist.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 1,
+      "part": "Product",
+      "asset": "synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 2,
+      "part": "Product",
+      "asset": "synapse/product-653-2-3x.fb8dcb10.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 3,
+      "part": "Product",
+      "asset": "synapse/product-653-3-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 4,
+      "part": "Product",
+      "asset": "synapse/product-653-4-3x.5433580e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 5,
+      "part": "Product",
+      "asset": "synapse/product-653-5-3x.268ad7c5.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 6,
+      "part": "Product",
+      "asset": "synapse/product-653-6-3x.f8148117.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 7,
+      "part": "Product",
+      "asset": "synapse/product-653-7-3x.9da95ab4.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 8,
+      "part": "Product",
+      "asset": "synapse/product-653-8-3x.372ad914.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 9,
+      "part": "Product",
+      "asset": "synapse/product-653-9-3x.e379204e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 10,
+      "part": "Product",
+      "asset": "synapse/product-653-10-3x.3f217b26.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 11,
+      "part": "Product",
+      "asset": "synapse/product-653-11-3x.dfee759e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 12,
+      "part": "Product",
+      "asset": "synapse/product-653-12-3x.97e2fc23.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 15,
+      "part": "Product",
+      "asset": "synapse/product-653-15-3x.2d501bd7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 16,
+      "part": "Product",
+      "asset": "synapse/product-653-16-3x.099bf2be.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 17,
+      "part": "Product",
+      "asset": "synapse/product-653-17-3x.024b2318.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 0,
+      "layout_id": 18,
+      "part": "Product",
+      "asset": "synapse/product-653-18-3x.4f188968.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 0,
+      "part": "KeyboardDial",
+      "asset": "synapse/keyboard-653-roller.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 0,
+      "part": "KeyboardWrist",
+      "asset": "synapse/keyboard-653-wrist.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 1,
+      "part": "Product",
+      "asset": "synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 2,
+      "part": "Product",
+      "asset": "synapse/product-653-2-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 3,
+      "part": "Product",
+      "asset": "synapse/product-653-3-3x.64d7b830.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 4,
+      "part": "Product",
+      "asset": "synapse/product-653-4-3x.5433580e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 5,
+      "part": "Product",
+      "asset": "synapse/product-653-5-3x.268ad7c5.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 6,
+      "part": "Product",
+      "asset": "synapse/product-653-6-3x.f8148117.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 7,
+      "part": "Product",
+      "asset": "synapse/product-653-7-3x.9da95ab4.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 8,
+      "part": "Product",
+      "asset": "synapse/product-653-8-3x.372ad914.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 9,
+      "part": "Product",
+      "asset": "synapse/product-653-9-3x.e379204e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 10,
+      "part": "Product",
+      "asset": "synapse/product-653-10-3x.3f217b26.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 11,
+      "part": "Product",
+      "asset": "synapse/product-653-11-3x.dfee759e.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 12,
+      "part": "Product",
+      "asset": "synapse/product-653-12-3x.97e2fc23.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 15,
+      "part": "Product",
+      "asset": "synapse/product-653-15-3x.2d501bd7.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 16,
+      "part": "Product",
+      "asset": "synapse/product-653-16-3x.099bf2be.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 17,
+      "part": "Product",
+      "asset": "synapse/product-653-17-3x.024b2318.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 128,
+      "layout_id": 18,
+      "part": "Product",
+      "asset": "synapse/product-653-18-3x.4f188968.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "layout_id": 0,
+      "part": "KeyboardDial",
+      "asset": "synapse/keyboard-653-roller.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "layout_id": 0,
+      "part": "KeyboardWrist",
+      "asset": "synapse/keyboard-653-wrist.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 129,
+      "layout_id": 1,
+      "part": "Product",
+      "asset": "synapse/keyboard-653.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "layout_id": 0,
+      "part": "KeyboardDial",
+      "asset": "synapse/keyboard-653-roller-white.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "layout_id": 0,
+      "part": "KeyboardWrist",
+      "asset": "synapse/keyboard-653-wrist-white.png"
+    },
+    {
+      "product_id": 653,
+      "edition_id": 130,
+      "layout_id": 1,
+      "part": "Product",
+      "asset": "synapse/product-653-1-3x.5fbaa05f.png"
+    },
+    {
+      "product_id": 777,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/headset-777.png"
+    },
+    {
+      "product_id": 777,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "Streamer",
+      "asset": "synapse/stream-777.png"
+    }
+  ]
+}

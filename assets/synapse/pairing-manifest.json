@@ -1,0 +1,44 @@
+{
+  "assets": [
+    {
+      "asset": "synapse/pairing-keyboard.svg",
+      "output": "assets/synapse/pairing-keyboard.svg",
+      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
+      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_keyboard__J1Q8r",
+      "source_character_offset": 27073,
+      "sha256": "02935d5730ea0d15991a667d7048883de85da9a022fa3779782e9ac33ce7cd90",
+      "transform": "decode original CSS SVG data URL"
+    },
+    {
+      "asset": "synapse/pairing-mouse.svg",
+      "output": "assets/synapse/pairing-mouse.svg",
+      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
+      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_mouse__Ijr7F",
+      "source_character_offset": 27429,
+      "sha256": "0ee65f2ca3646ac4d3a74dc854a4730a95deb85408c836185ca3a9bc4bdaccca",
+      "transform": "decode original CSS SVG data URL"
+    },
+    {
+      "asset": "synapse/pairing-paired.svg",
+      "output": "assets/synapse/pairing-paired.svg",
+      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
+      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
+      "source_symbol": "Ps",
+      "source_character_offset": 82820,
+      "sha256": "3f372ecd94710632444b4306fdc6755d6d89b04cd43fbe8fa8455b3bb32b4235",
+      "transform": "serialize original React SVG attributes and path without geometry changes"
+    },
+    {
+      "asset": "synapse/pairing-unpair.svg",
+      "output": "assets/synapse/pairing-unpair.svg",
+      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
+      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
+      "source_symbol": "Bs",
+      "source_character_offset": 84632,
+      "sha256": "d414799888192c550106b48264549d3a1156f8f41166a8c2e686fa38e13102c8",
+      "transform": "serialize original React SVG attributes and path without geometry changes"
+    }
+  ]
+}

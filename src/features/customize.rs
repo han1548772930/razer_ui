@@ -1,16 +1,26 @@
-//! 自定义页：profile、Standard/Hypershift 层和设备输入点动作编辑。
+//! 182 鼠标的 Customize 页面。
+//!
+//! 该页面不使用通用设置卡片作为主布局。182 的原始页面以
+//! `.config-wrapper`/`.config-block` 为核心，设备图居中，按键分列在两侧，
+//! 下面再接 Standard/Hypershift 层切换和按键抽屉。
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::model::{action_label_zh, region_label_zh, BUTTON_ACTIONS, DkmKey};
 use crate::shell::AppShell;
-use crate::ui::widgets::{
-    btn, card, card_title, select_row, toggle_button, EmptyState, PageLayout, SettingRow,
-};
+use crate::ui::widgets::{body_widgets, btn, select_row, toggle_button, EmptyState};
 
-/// 渲染 Razer Customize 页面。
+const CONFIG_HEIGHT: f32 = 340.0;
+const CONFIG_WIDTH: f32 = 770.0;
+const BUTTON_COLUMN_WIDTH: f32 = 235.0;
+const MOUSE_IMAGE_SIZE: f32 = 300.0;
+const DRAWING_GREEN: u32 = 0x44D62C;
+const HYPERSHIFT_ORANGE: u32 = 0xFD8611;
+
+/// 渲染 182 的真实自定义页结构。
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
@@ -19,114 +29,362 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
         return EmptyState::new("自定义页当前只为 productId 182 鼠标实现").into_any_element();
     }
 
-    let bindings = &device.dkm_keys;
-    let active_profile = device
-        .profiles
-        .iter()
-        .find(|profile| profile.id == device.active_profile);
+    let bindings = device.dkm_keys.clone();
+    let profiles = device.profiles.clone();
+    let active_profile = device.active_profile.clone();
+    let hypershift_enabled = device.features.hypershift_enabled;
+    let hypershift_bindings = device.features.hypershift_bindings.clone();
+    let device_name = device.display_name();
 
-    PageLayout::new("自定义", device.display_name())
-        .subtitle(format!(
-            "{} · {} 个可自定义输入点 · 当前配置：{}",
-            device.display_name(),
-            bindings.len(),
-            active_profile
-                .map(|profile| profile.name.as_str())
-                .unwrap_or("未选择")
+    body_widgets()
+        .flex_col()
+        .items_center()
+        .child(profile_strip(&device_name, &profiles, &active_profile, cx))
+        .child(config_wrapper(&bindings, hypershift_enabled))
+        .child(config_row(hypershift_enabled, cx))
+        .child(button_panel(
+            &bindings,
+            &hypershift_bindings,
+            hypershift_enabled,
+            app.open_select.as_deref(),
+            cx,
         ))
-        .without_product_banner()
-        .widget(profile_bar(device, cx))
-        .widget(mouse_config_panel(bindings, cx))
-        .widget(if bindings.is_empty() {
-            empty_bindings()
-        } else {
-            bindings_card(bindings, app.open_select.as_deref(), cx)
-        })
-        .widget(hypershift_card(app, cx))
-        .widget(boss_key_card(app, cx))
         .into_any_element()
 }
 
-fn mouse_config_panel(bindings: &[DkmKey], cx: &mut Context<AppShell>) -> AnyElement {
-    let controls = bindings.iter().enumerate().map(|(index, binding)| {
-        let input_id = binding.input_id.clone();
-        let action = action_label_zh(&binding.button_key);
-        btn(
-            format!("mouse-config-button-{}", stable_id(&input_id)),
-            format!("{} · {}", region_label_zh(&input_id), action),
-        )
-        .on_click(cx.listener(move |this, _, _, cx| this.set_binding_action(index, 0, cx)))
-    });
-
-    div()
-        .w(px(770.))
+fn profile_strip(
+    device_name: &str,
+    profiles: &[crate::model::Profile],
+    active_profile: &str,
+    cx: &mut Context<AppShell>,
+) -> AnyElement {
+    h_flex()
+        .w(px(CONFIG_WIDTH))
         .max_w_full()
-        .h(px(340.))
-        .mx_auto()
-        .relative()
+        .h(px(42.))
+        .items_center()
+        .justify_between()
+        .border_b_1()
+        .border_color(rgb(0x5D5D5D))
+        .child(
+            div()
+                .text_size(px(14.))
+                .text_color(rgb(0xCCCCCC))
+                .child(format!("{} · 配置文件", device_name)),
+        )
         .child(
             h_flex()
-                .size_full()
+                .gap_1()
+                .children(profiles.iter().enumerate().map(|(index, profile)| {
+                    let selected = profile.id == active_profile;
+                    let profile_id = profile.id.clone();
+                    btn(
+                        format!("profile-{}", stable_id(&profile_id)),
+                        profile.name.clone(),
+                    )
+                    .when(selected, |this| {
+                        this.border_1().border_color(rgb(DRAWING_GREEN))
+                    })
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.select_profile(index, cx);
+                    }))
+                })),
+        )
+        .into_any_element()
+}
+
+fn config_wrapper(bindings: &[DkmKey], hypershift_enabled: bool) -> AnyElement {
+    let left = [0usize, 2, 6, 5, 7];
+    let right = [1usize, 3, 4];
+
+    div()
+        .id("config-wrapper")
+        .w_full()
+        .min_w(px(CONFIG_WIDTH))
+        .max_w(px(1220.))
+        .h(px(CONFIG_HEIGHT))
+        .relative()
+        .child(
+            div()
+                .id("config-block")
+                .w(px(CONFIG_WIDTH))
+                .h(px(CONFIG_HEIGHT))
+                .mx_auto()
+                .relative()
+                .child(connection_canvas(hypershift_enabled))
+                .child(button_column("config-buttons-left", &left, bindings, false))
+                .child(mouse_visual(hypershift_enabled))
+                .child(button_column("config-buttons-right", &right, bindings, true)),
+        )
+        .into_any_element()
+}
+
+fn connection_canvas(hypershift_enabled: bool) -> AnyElement {
+    let line_color = if hypershift_enabled {
+        rgb(HYPERSHIFT_ORANGE)
+    } else {
+        rgb(DRAWING_GREEN)
+    };
+
+    div()
+        .id("config-ctx")
+        .absolute()
+        .left(px(0.))
+        .top(px(0.))
+        .w(px(CONFIG_WIDTH))
+        .h(px(CONFIG_HEIGHT))
+        .child(
+            div()
+                .absolute()
+                .left(px(235.))
+                .top(px(78.))
+                .w(px(300.))
+                .h(px(1.))
+                .bg(line_color),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(235.))
+                .top(px(258.))
+                .w(px(300.))
+                .h(px(1.))
+                .bg(line_color),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(384.))
+                .top(px(30.))
+                .w(px(1.))
+                .h(px(280.))
+                .bg(line_color),
+        )
+        .into_any_element()
+}
+
+fn mouse_visual(hypershift_enabled: bool) -> AnyElement {
+    div()
+        .id("mouse-svg")
+        .absolute()
+        .left(px((CONFIG_WIDTH - MOUSE_IMAGE_SIZE) / 2.))
+        .top(px(0.))
+        .w(px(MOUSE_IMAGE_SIZE))
+        .h(px(CONFIG_HEIGHT))
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(
+            v_flex()
                 .items_center()
                 .justify_center()
-                .gap_8()
-                .child(v_flex().w(px(235.)).gap_2().children(controls))
+                .gap_2()
+                .w(px(170.))
+                .h(px(300.))
+                .rounded(px(82.))
+                .border_1()
+                .border_color(if hypershift_enabled {
+                    rgb(HYPERSHIFT_ORANGE)
+                } else {
+                    rgb(0x5D5D5D)
+                })
+                .bg(rgb(0x111111))
                 .child(
-                    v_flex()
-                        .w(px(300.))
-                        .h(px(300.))
-                        .items_center()
-                        .justify_center()
-                        .gap_2()
-                        .rounded(px(120.))
-                        .border_1()
-                        .border_color(cx.theme().border)
-                        .bg(cx.theme().group_box)
-                        .child(div().font_bold().child("Razer DeathAdder V3 Pro"))
-                        .child(div().text_xs().child("182 · Mouse layout")),
+                    Icon::new(IconName::Mouse)
+                        .w(px(92.))
+                        .h(px(92.))
+                        .text_color(rgb(if hypershift_enabled {
+                            HYPERSHIFT_ORANGE
+                        } else {
+                            0x707070
+                        })),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(0x707070))
+                        .child("Razer DeathAdder V3 Pro"),
                 ),
         )
         .into_any_element()
 }
 
-fn profile_bar(device: &crate::model::Device, cx: &mut Context<AppShell>) -> AnyElement {
-    let active_id = device.active_profile.clone();
-    let profiles = device.profiles.clone();
+fn button_column(
+    id: &'static str,
+    indices: &[usize],
+    bindings: &[DkmKey],
+    right: bool,
+) -> AnyElement {
+    v_flex()
+        .id(id)
+        .absolute()
+        .top(px(0.))
+        .when(right, |this| this.right_0())
+        .when(!right, |this| this.left_0())
+        .w(px(BUTTON_COLUMN_WIDTH))
+        .h(px(CONFIG_HEIGHT))
+        .justify_between()
+        .children(indices.iter().map(|index| {
+            mapping_button(bindings.get(*index), *index, right)
+        }))
+        .into_any_element()
+}
 
-    card()
+fn mapping_button(binding: Option<&DkmKey>, index: usize, right: bool) -> AnyElement {
+    let (label, action, enabled) = match binding {
+        Some(binding) => (
+            region_label_zh(&binding.input_id),
+            action_label_zh(&binding.button_key),
+            true,
+        ),
+        None => (format!("按钮 {}", index + 1), "未上报".to_string(), false),
+    };
+
+    h_flex()
+        .id(format!("config-button-{index}"))
+        .w(px(BUTTON_COLUMN_WIDTH))
+        .h(px(48.))
+        .px(px(10.))
+        .gap_2()
+        .items_center()
+        .justify_between()
+        .rounded(px(3.))
+        .border_1()
+        .border_color(if enabled {
+            rgb(0x5D5D5D)
+        } else {
+            rgb(0x333333)
+        })
+        .bg(rgb(0x111111))
+        .when(!enabled, |this| this.opacity(0.45))
+        .child(if right {
+            div().text_xs().child(action.clone())
+        } else {
+            div().text_xs().child(label.clone())
+        })
+        .child(
+            div()
+                .text_size(px(12.))
+                .text_color(rgb(0x707070))
+                .child(if right { label } else { action }),
+        )
+        .into_any_element()
+}
+
+fn config_row(hypershift_enabled: bool, cx: &mut Context<AppShell>) -> AnyElement {
+    h_flex()
+        .id("config-row")
+        .w(px(CONFIG_WIDTH))
+        .max_w_full()
+        .mt(px(20.))
+        .mb(px(10.))
+        .items_center()
+        .justify_center()
+        .gap_2()
+        .child(btn("standard-layer", "Standard"))
+        .child(toggle_button(
+            "hypershift-layer",
+            "Hypershift",
+            hypershift_enabled,
+            cx,
+            |this, cx| this.toggle_hypershift(cx),
+        ))
+        .into_any_element()
+}
+
+fn button_panel(
+    standard: &[DkmKey],
+    hypershift: &[DkmKey],
+    hypershift_enabled: bool,
+    open_select: Option<&str>,
+    cx: &mut Context<AppShell>,
+) -> AnyElement {
+    let bindings = if hypershift_enabled { hypershift } else { standard };
+    let rows: Vec<AnyElement> = bindings
+        .iter()
+        .enumerate()
+        .map(|(index, binding)| {
+            let input_id = binding.input_id.clone();
+            let action = binding.button_key.clone();
+            let row_id = format!("drawer-binding-{}", stable_id(&input_id));
+            v_flex()
+                .w_full()
+                .gap_1()
+                .pb(px(10.))
+                .border_b_1()
+                .border_color(rgb(0x333333))
+                .child(
+                    h_flex()
+                        .w_full()
+                        .justify_between()
+                        .items_center()
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(div().text_sm().child(region_label_zh(&input_id)))
+                                .child(
+                                    div()
+                                        .text_size(px(10.))
+                                        .text_color(rgb(0x707070))
+                                        .child(format!("按钮 {} · 键码 {}", index + 1, binding.key)),
+                                ),
+                        )
+                        .child(select_row(
+                            row_id.clone(),
+                            action_group(&action),
+                            action_label_zh(&action),
+                            &BUTTON_ACTIONS,
+                            open_select == Some(row_id.as_str()),
+                            cx,
+                            move |this, picked, cx| this.set_binding_action(index, picked, cx),
+                        )),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(0x999999))
+                        .child(no_action_parameter(&action)),
+                )
+                .into_any_element()
+        })
+        .collect();
+
+    div()
+        .id("config-drawer")
+        .w(px(600.))
+        .max_w_full()
+        .p(px(20.))
+        .bg(rgb(0x111111))
+        .border_1()
+        .border_color(rgb(0x5D5D5D))
+        .rounded(px(5.))
         .child(
             h_flex()
                 .w_full()
                 .justify_between()
                 .items_center()
+                .pb(px(14.))
+                .child(div().text_size(px(16.)).child("按键面板"))
                 .child(
-                    v_flex()
-                        .gap_1()
-                        .child(card_title("配置文件"))
-                        .child(div().text_xs().child(
-                            "Standard 与 Hypershift 使用当前配置文件的独立映射。",
-                        )),
-                )
-                .when(profiles.is_empty(), |this| {
-                    this.child(div().text_xs().child("设备没有上报可切换的 profile"))
-                }),
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(0x707070))
+                        .child(if hypershift_enabled {
+                            "Hypershift 层"
+                        } else {
+                            "Standard 层"
+                        }),
+                ),
         )
-        .children(profiles.into_iter().enumerate().map(|(index, profile)| {
-            let profile_id = profile.id.clone();
-            let selected = profile_id == active_id;
-            let button_id = format!("profile-{}", stable_id(&profile_id));
-            let label = if selected {
-                format!("✓ {}", profile.name)
-            } else {
-                profile.name
-            };
-
-            btn(button_id, label)
-                .when(selected, |this| this.border_1().border_color(cx.theme().primary))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.select_profile(index, cx);
-                }))
-        }))
+        .when(rows.is_empty(), |this| {
+            this.child(
+                div()
+                    .text_size(px(14.))
+                    .text_color(rgb(0x999999))
+                    .child("当前层没有设备上报的按键映射。"),
+            )
+        })
+        .children(rows)
         .into_any_element()
 }
 
@@ -168,170 +426,4 @@ fn action_group(action: &str) -> &'static str {
         "Sensitivity Clutch" | "Hypershift" | "Switch Profile" => "Razer 功能",
         _ => "设备动作",
     }
-}
-
-fn empty_bindings() -> AnyElement {
-    card()
-        .child(card_title("Standard · 按键指派"))
-        .child(div().text_sm().child(
-            "该设备未上报 dkmKeys，因此没有可指派的输入点。",
-        ))
-        .into_any_element()
-}
-
-fn bindings_card(
-    bindings: &[DkmKey],
-    open_select: Option<&str>,
-    cx: &mut Context<AppShell>,
-) -> AnyElement {
-    let rows: Vec<AnyElement> = bindings
-        .iter()
-        .enumerate()
-        .map(|(index, binding)| {
-            let input_id = binding.input_id.clone();
-            let action = binding.button_key.clone();
-            let key = binding.key;
-            let id = format!("binding-{}", stable_id(&input_id));
-            let parameter = no_action_parameter(&action);
-
-            v_flex()
-                .w_full()
-                .gap_1()
-                .child(
-                    h_flex()
-                        .w_full()
-                        .justify_between()
-                        .items_center()
-                        .gap_3()
-                        .child(v_flex().gap_1().child(div().text_sm().child(format!(
-                            "{} · {}",
-                            region_label_zh(&input_id),
-                            input_id
-                        ))).child(div().text_xs().child(format!("键码 {key}"))))
-                        .child(select_row(
-                            id.clone(),
-                            action_group(&action),
-                            action_label_zh(&action),
-                            &BUTTON_ACTIONS,
-                            open_select == Some(id.as_str()),
-                            cx,
-                            move |this, picked, cx| this.set_binding_action(index, picked, cx),
-                        )),
-                )
-                .child(SettingRow::new("动作参数", parameter.to_string()))
-                .into_any_element()
-        })
-        .collect();
-
-    card()
-        .child(card_title("Standard · 按键动作编辑器"))
-        .child(div().text_xs().child(
-            "点击设备图形上的按键，或从输入点列表选择动作。动作类型与参数区域分开显示。",
-        ))
-        .children(rows)
-        .into_any_element()
-}
-
-fn boss_key_card(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
-    let boss = app
-        .current()
-        .and_then(|device| device.features.boss_key.as_ref());
-    let enabled = boss.map(|boss| boss.enabled).unwrap_or(false);
-    let action = boss
-        .map(|boss| boss.action.clone())
-        .unwrap_or_else(|| "未配置".to_string());
-
-    card()
-        .child(card_title("老板键"))
-        .child(div().text_xs().child("配置鼠标老板键按下时执行的操作。"))
-        .child(toggle_button(
-            "boss-toggle",
-            "老板键配置",
-            enabled,
-            cx,
-            |this, cx| this.toggle_boss_key(cx),
-        ))
-        .child(SettingRow::new("按下时执行", action))
-        .into_any_element()
-}
-
-fn hypershift_card(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
-    let enabled = app
-        .current()
-        .map(|device| device.features.hypershift_enabled)
-        .unwrap_or(false);
-    let bindings = app
-        .current()
-        .map(|device| device.features.hypershift_bindings.clone())
-        .unwrap_or_default();
-
-    let rows: Vec<AnyElement> = bindings
-        .iter()
-        .enumerate()
-        .map(|(index, binding)| {
-            let input_id = binding.input_id.clone();
-            let action = binding.button_key.clone();
-            let key = binding.key;
-            let id = format!("hypershift-binding-{}", stable_id(&input_id));
-            let parameter = no_action_parameter(&action);
-
-            v_flex()
-                .w_full()
-                .gap_1()
-                .child(
-                    h_flex()
-                        .w_full()
-                        .justify_between()
-                        .items_center()
-                        .gap_3()
-                        .child(v_flex().gap_1().child(div().text_sm().child(format!(
-                            "{} · {}",
-                            region_label_zh(&input_id),
-                            input_id
-                        ))).child(div().text_xs().child(format!("键码 {key}"))))
-                        .child(select_row(
-                            id.clone(),
-                            action_group(&action),
-                            action_label_zh(&action),
-                            &BUTTON_ACTIONS,
-                            app.open_select.as_deref() == Some(id.as_str()),
-                            cx,
-                            move |this, picked, cx| {
-                                this.set_hypershift_action(index, picked, cx)
-                            },
-                        )),
-                )
-                .child(SettingRow::new("动作参数", parameter.to_string()))
-                .into_any_element()
-        })
-        .collect();
-
-    card()
-        .child(
-            h_flex()
-                .w_full()
-                .justify_between()
-                .items_center()
-                .gap_3()
-                .child(
-                    v_flex()
-                        .gap_1()
-                        .child(card_title("Hypershift · 第二层映射"))
-                        .child(div().text_xs().child(
-                            "按住 Hypershift 键时启用独立的输入点动作，不覆盖 Standard 层。",
-                        )),
-                )
-                .child(toggle_button(
-                    "hs-toggle",
-                    "Hypershift",
-                    enabled,
-                    cx,
-                    |this, cx| this.toggle_hypershift(cx),
-                )),
-        )
-        .when(rows.is_empty(), |this| {
-            this.child(div().text_sm().child("该设备未上报第二层输入点映射"))
-        })
-        .children(rows)
-        .into_any_element()
 }

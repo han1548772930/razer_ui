@@ -1,150 +1,100 @@
-//! 777 麦克风页：输入、监听、麦克风增强和采样率。
+//! 777 麦克风页：麦克风 EQ 编辑器。
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::shell::AppShell;
-use crate::ui::widgets::{
-    card, card_title, not_wired_hint, select_row, slider_row, toggle_button, EmptyState,
-    PageLayout, SettingRow,
-};
+use crate::ui::widgets::{card_title, slider_row, EmptyState, PageLayout};
 
-const MIC_BOOST_LABELS: [&str; 3] = ["关闭", "低", "高"];
+const EQ_WIDTH: f32 = 940.0;
+const EQ_MIN_HEIGHT: f32 = 473.0;
+const EQ_MIN: f32 = -5.0;
+const EQ_MAX: f32 = 5.0;
+const EQ_STEP: f32 = 1.0;
+
+const MIC_PRESETS: [&str; 5] = ["默认", "增强", "广播", "会议", "自定义"];
 
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
-    let Some(mic) = device.features.mic.as_ref() else {
+
+    if device.product_id != 777 {
         return PageLayout::new("麦克风", device.display_name())
-            .subtitle("当前设备未声明麦克风能力")
-            .widget(EmptyState::new("该设备没有麦克风设置"))
+            .widget(EmptyState::new("麦克风 EQ 页面仅适用于 productId 777。"))
+            .into_any_element();
+    }
+
+    let Some(_mic) = device.features.mic.as_ref() else {
+        return PageLayout::new("麦克风", device.display_name())
+            .widget(EmptyState::new("该设备没有麦克风 EQ 设置。"))
             .into_any_element();
     };
 
-    let boost_index = usize::from(mic.boost.min(2));
-    let sampling_index = crate::domain::SamplingRate::ALL
-        .iter()
-        .position(|rate| *rate == mic.sampling_rate)
-        .unwrap_or(0);
-    let current_boost = mic.boost.min(2);
+    let Some(sound) = device.features.sound.as_ref() else {
+        return PageLayout::new("麦克风", device.display_name())
+            .widget(EmptyState::new("该设备没有可用的 EQ 频段数据。"))
+            .into_any_element();
+    };
+
+    let bands = sound.equalizer.bands.clone();
 
     PageLayout::new("麦克风", device.display_name())
-        .subtitle("麦克风输入、监听和录音质量")
-        .widget(
-            card()
-                .child(card_title("麦克风输入"))
-                .child(slider_row(
-                    "mic-gain",
-                    "麦克风增益",
-                    mic.gain as f32,
-                    0.,
-                    100.,
-                    1.,
-                    format!("{}%", mic.gain),
-                    true,
-                    cx,
-                    |this, value, cx| this.set_mic_gain(value, cx),
-                ))
-                .child(select_row(
-                    "mic-boost",
-                    "麦克风增强",
-                    MIC_BOOST_LABELS[boost_index].to_string(),
-                    &MIC_BOOST_LABELS,
-                    app.open_select.as_deref() == Some("mic-boost"),
-                    cx,
-                    move |this, picked, cx| {
-                        let target = picked.min(2) as i32;
-                        let delta = (target - current_boost as i32).rem_euclid(3);
-                        for _ in 0..delta {
-                            this.cycle_mic_boost(cx);
-                        }
-                    },
-                ))
-                .child(toggle_button(
-                    "mic-mute",
-                    "麦克风静音",
-                    mic.muted,
-                    cx,
-                    |this, cx| this.toggle_mic_mute(cx),
-                )),
+        .subtitle("Mic EQ · wide · tabScale · -5dB 至 +5dB · 步长 1")
+        .widget(mic_eq_panel(&bands, cx))
+        .into_any_element()
+}
+
+fn mic_eq_panel(bands: &[i8], cx: &mut Context<AppShell>) -> AnyElement {
+    let theme = cx.theme().clone();
+
+    div()
+        .id("mic-eqBox")
+        .w(px(EQ_WIDTH))
+        .min_w(px(EQ_WIDTH))
+        .min_h(px(EQ_MIN_HEIGHT))
+        .my(px(10.0))
+        .p(px(30.0))
+        .rounded(px(5.0))
+        .bg(theme.group_box)
+        .text_size(px(14.0))
+        .child(card_title("麦克风 EQ"))
+        .child(
+            h_flex()
+                .mt(px(18.0))
+                .gap(px(6.0))
+                .children(MIC_PRESETS.iter().enumerate().map(|(index, preset)| {
+                    div()
+                        .id(SharedString::from(format!("mic-eq-preset-{index}")))
+                        .px(px(10.0))
+                        .py(px(6.0))
+                        .rounded(px(3.0))
+                        .text_size(px(12.0))
+                        .text_color(theme.foreground)
+                        .when(index == 0, |this| this.bg(theme.primary))
+                        .child(*preset)
+                })),
         )
-        .widget(
-            card()
-                .child(card_title("监听 / 侧音"))
-                .child(toggle_button(
-                    "mic-monitoring",
-                    "启用麦克风监听",
-                    mic.monitoring,
-                    cx,
-                    |this, cx| this.toggle_mic_monitoring(cx),
-                ))
-                .child(slider_row(
-                    "mic-sidetone",
-                    "侧音电平",
-                    mic.sidetone as f32,
-                    0.,
-                    100.,
-                    1.,
-                    format!("{}%", mic.sidetone),
-                    mic.monitoring,
-                    cx,
-                    |this, value, cx| this.set_sidetone(value, cx),
-                ))
-                .child(div().text_xs().child(
-                    "监听麦克风未经优化的声音；启用后设备会保持麦克风活动。",
-                )),
+        .child(
+            v_flex()
+                .mt(px(28.0))
+                .gap(px(18.0))
+                .children(bands.iter().enumerate().map(|(index, gain)| {
+                    let value = (*gain as f32).clamp(EQ_MIN, EQ_MAX);
+                    slider_row(
+                        Box::leak(format!("mic-eq-band-{index}").into_boxed_str()),
+                        format!("频段 {}", index + 1).as_str(),
+                        value,
+                        EQ_MIN,
+                        EQ_MAX,
+                        EQ_STEP,
+                        format!("{:+} dB", value as i8),
+                        true,
+                        cx,
+                        move |this, value, cx| this.set_eq_band(index, value, cx),
+                    )
+                })),
         )
-        .widget(
-            card()
-                .child(card_title("麦克风增强"))
-                .child(toggle_button(
-                    "mic-ai-noise-cancellation",
-                    "AI 降噪",
-                    mic.ai_noise_cancellation,
-                    cx,
-                    |this, cx| this.toggle_ai_noise_cancellation(cx),
-                ))
-                .child(toggle_button(
-                    "mic-high-pass-filter",
-                    "高通滤波器",
-                    mic.high_pass_filter,
-                    cx,
-                    |this, cx| this.toggle_high_pass_filter(cx),
-                ))
-                .child(toggle_button(
-                    "mic-analogue-gain-limiter",
-                    "模拟增益限制器",
-                    mic.analogue_gain_limiter,
-                    cx,
-                    |this, cx| this.toggle_analogue_gain_limiter(cx),
-                ))
-                .child(div().text_xs().child(
-                    "高通滤波器过滤低频隆隆声和嗡嗡声；模拟增益限制器防止削波和语音失真。",
-                )),
-        )
-        .widget(
-            card()
-                .child(card_title("录音质量"))
-                .child(select_row(
-                    "mic-sampling-rate",
-                    "采样率",
-                    mic.sampling_rate.label(),
-                    &crate::domain::SamplingRate::LABELS,
-                    app.open_select.as_deref() == Some("mic-sampling-rate"),
-                    cx,
-                    |this, index, cx| {
-                        if let Some(rate) = crate::domain::SamplingRate::ALL.get(index).copied() {
-                            this.set_sampling_rate(rate, cx);
-                        }
-                    },
-                ))
-                .child(SettingRow::new("输入电平", "实时电平需接入音频后端".to_string()))
-                .child(div().text_xs().child(
-                    "采样率控制录音解析度；当前输入电平未接入真实音频流。",
-                )),
-        )
-        .widget(not_wired_hint())
         .into_any_element()
 }

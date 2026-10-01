@@ -3,11 +3,10 @@
 //! 原版 UI 规格见 `docs/RAZER-SYNAPSE-UI-SPEC.md`，IPC 契约见 `docs/re/01-ipc-api-surface.md`。
 //!
 //! 架构现状（方案 2 的起点）：
-//!   UI（本项目，gpui-kit）→ [已接通、待调用] 雷云原生引擎 DLL → 硬件
+//!   UI（gpui-kit）→ 本地配置；DLL 探测/调用仍由显式命令行路径触发。
 //!
 //! 目前 UI 跑在本机实测的设备快照上；引擎 DLL 的加载探测走命令行。
 
-mod shell;
 mod backend;
 mod demo;
 mod domain;
@@ -15,8 +14,11 @@ mod features;
 mod i18n;
 mod model;
 mod nav;
-mod ui;
+mod preferences;
+mod resources;
+mod shell;
 mod store;
+mod ui;
 
 // i18n：与 gpui-component 内部用的是同一套 rust-i18n。
 //
@@ -31,6 +33,9 @@ use gpui_kit::*;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--service-worker") {
+        std::process::exit(backend::runtime::run_worker());
+    }
 
     // 语言：`--lang <代码>`，默认中文。
     //
@@ -41,7 +46,13 @@ fn main() {
         .position(|arg| arg == "--lang")
         .and_then(|index| args.get(index + 1))
         .cloned()
-        .unwrap_or_else(|| "zh-CN".to_string());
+        .unwrap_or_else(|| {
+            store::read_workspace(&store::store_path())
+                .ok()
+                .flatten()
+                .map(|file| file.preferences.language)
+                .unwrap_or_else(|| "zh-CN".to_string())
+        });
     i18n::set_locale(&lang);
 
     // `--probe [引擎名]`：加载引擎 DLL 并统计符号后退出。
@@ -209,11 +220,10 @@ fn main() {
 
             // 该设备类别应显示的标签页（实测自设备模块的常量块），
             // 以及对应功能块是否就位——这两者必须一致。
-            let kind = nav::DeviceKind::from_enum(device.category);
-            let tabs = kind.tabs();
+            let tabs = nav::Tab::for_product(device.product_id);
             let names: Vec<String> = tabs
                 .iter()
-                .map(|tab| format!("{}({})", tab.zh(), tab.key()))
+                .map(|tab| format!("{}({})", tab.label(), tab.id()))
                 .collect();
             println!(
                 "    标签页 {} 个：{}",
@@ -284,11 +294,14 @@ fn main() {
 
     // 注册图标源：**必须用 `AllAssets`**（完整 Lucide 图标集，1830 个 SVG）。
     // 默认的 `Assets` 只有少量图标，用它会导致大部分 `IconName` 渲染为空白。
-    let application = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
+    let application = gpui_kit::application().with_assets(resources::SynapseAssets);
 
     application.run(move |cx| {
         // 使用任何组件前必须先初始化。
         gpui_kit::init(cx);
+        if let Err(error) = resources::register_fonts(cx) {
+            eprintln!("字体加载失败：{error}");
+        }
 
         // 暗色主题 + 雷蛇配色。
         //
@@ -331,59 +344,62 @@ fn main() {
             theme.font_size = px(16.);
 
             // 页面底色 #222，卡片 #111
-            theme.colors.background = rgb(0x2222_22).into();
+            theme.colors.background = rgb(0x222222).into();
             theme.colors.title_bar = rgb(0x000000).into();
-            theme.colors.title_bar_border = rgb(0x0000_00).into();
-            theme.colors.group_box = rgb(0x1111_11).into();
-            theme.colors.group_box_foreground = rgb(0xCCCC_CC).into();
-            theme.colors.secondary = rgb(0x3333_33).into();
-            theme.colors.secondary_hover = rgb(0x2D2D_2D).into();
-            theme.colors.popover = rgb(0x1111_11).into();
+            theme.colors.title_bar_border = rgb(0x000000).into();
+            theme.colors.group_box = rgb(0x111111).into();
+            theme.colors.group_box_foreground = rgb(0xCCCCCC).into();
+            theme.colors.secondary = rgb(0x333333).into();
+            theme.colors.secondary_hover = rgb(0x2D2D2D).into();
+            theme.colors.popover = rgb(0x111111).into();
 
             // 文字 #ccc，次要文字 #999（.volume-item{color:#999}）
-            theme.colors.foreground = rgb(0xCCCC_CC).into();
-            theme.colors.muted_foreground = rgb(0x9999_99).into();
+            theme.colors.foreground = rgb(0xCCCCCC).into();
+            theme.colors.muted_foreground = rgb(0x999999).into();
+            theme.colors.list_hover = rgb(0x383838).into();
+            theme.colors.slider_bar = rgb(0x44d62c).into();
+            theme.colors.slider_thumb = rgb(0x44d62c).into();
 
             // 边框：**通用 #5d5d5d（157 次）**，下拉框 #515151
-            theme.colors.border = rgb(0x5D5D_5D).into();
-            theme.colors.input = rgb(0x1111_11).into();
-            theme.colors.sidebar_border = rgb(0x5D5D_5D).into();
+            theme.colors.border = rgb(0x5D5D5D).into();
+            theme.colors.input = rgb(0x515151).into();
+            theme.colors.sidebar_border = rgb(0x5D5D5D).into();
 
             // 按钮：默认 #707070 底 + #fff 字（`.thx-btn.secondary`）
-            theme.colors.button = rgb(0x7070_70).into();
-            theme.colors.button_foreground = rgb(0xFFFF_FF).into();
-            theme.colors.button_secondary = rgb(0x3333_33).into();
-            theme.colors.button_secondary_hover = rgb(0x2D2D_2D).into();
-            theme.colors.button_secondary_foreground = rgb(0xCCCC_CC).into();
+            theme.colors.button = rgb(0x707070).into();
+            theme.colors.button_foreground = rgb(0xFFFFFF).into();
+            theme.colors.button_secondary = rgb(0x333333).into();
+            theme.colors.button_secondary_hover = rgb(0x2D2D2D).into();
+            theme.colors.button_secondary_foreground = rgb(0xCCCCCC).into();
 
             // 主色：雷蛇绿 #44d62c，前景黑（.thx-btn{background-color:#44d62c;color:#000}）
-            theme.colors.primary = rgb(0x44D6_2C).into();
+            theme.colors.primary = rgb(0x44D62C).into();
             // .nav.active{background-color:#44d62c;color:#111} —— 主色上的前景是 #111
-            theme.colors.primary_foreground = rgb(0x1111_11).into();
-            theme.colors.button_primary = rgb(0x44D6_2C).into();
-            theme.colors.button_primary_foreground = rgb(0x0000_00).into();
+            theme.colors.primary_foreground = rgb(0x111111).into();
+            theme.colors.button_primary = rgb(0x44D62C).into();
+            theme.colors.button_primary_foreground = rgb(0x000000).into();
             // 按钮的悬停/按下来自**透明度**，不是显式色值：
             //   `.thx-btn:hover { opacity:.8 }`、`.thx-btn:active { opacity:.6 }`
             // 因此按底色 #222 混合换算：
             //   hover : .8*#44d62c + .2*#222 = #3db22a
             //   active: .6*#44d62c + .4*#222 = #368e28
-            theme.colors.button_primary_hover = rgb(0x3DB2_2A).into();
-            theme.colors.button_primary_active = rgb(0x368E_28).into();
+            theme.colors.button_primary_hover = rgb(0x3DB22A).into();
+            theme.colors.button_primary_active = rgb(0x368E28).into();
             // 注：`.nav-tabs .nav:active` 用的是**另一个**显式值 `#3cbf27`
             // （产品级「主色按下」角色，全站 14 处）。它不等于上面的
             // `button_primary_hover`，因此不能共用令牌——
             // 见 `src/app.rs` 的 `NAV_ACTIVE_BG`。
-            theme.colors.accent = rgb(0x44D6_2C).into();
-            theme.colors.ring = rgb(0x44D6_2C).into();
-            theme.colors.sidebar = rgb(0x2222_22).into();
-            theme.colors.sidebar_foreground = rgb(0xCCCC_CC).into();
-            theme.colors.sidebar_primary = rgb(0x44D6_2C).into();
-            theme.colors.sidebar_primary_foreground = rgb(0x1111_11).into();
+            theme.colors.accent = rgb(0x44D62C).into();
+            theme.colors.ring = rgb(0x44D62C).into();
+            theme.colors.sidebar = rgb(0x222222).into();
+            theme.colors.sidebar_foreground = rgb(0xCCCCCC).into();
+            theme.colors.sidebar_primary = rgb(0x44D62C).into();
+            theme.colors.sidebar_primary_foreground = rgb(0x111111).into();
 
             // 语义色：橙 #fd8611（提示/警告/分享）、红 #c8323c（危险）
-            theme.colors.warning = rgb(0xFD86_11).into();
-            theme.colors.danger = rgb(0xC832_3C).into();
-            theme.colors.success = rgb(0x44D6_2C).into();
+            theme.colors.warning = rgb(0xFD8611).into();
+            theme.colors.danger = rgb(0xC8323C).into();
+            theme.colors.success = rgb(0x44D62C).into();
 
             // 开关。真实规格（`.ref/devices/777/static/css/main.e4bab2aa.css`）：
             //
@@ -398,8 +414,8 @@ fn main() {
             //
             // 关态轨道是 **#707070**（不是 #333），滑块是 **#111**（不是 #ccc）。
             // 打开态由 `primary`（#44d62c）承担。
-            theme.colors.switch = rgb(0x7070_70).into();
-            theme.colors.switch_thumb = rgb(0x1111_11).into();
+            theme.colors.switch = rgb(0x707070).into();
+            theme.colors.switch_thumb = rgb(0x111111).into();
 
             // 圆角：雷云是**两级**，正好对上主题的命名档位。
             //   .thx-btn { border-radius:3px }  → radius    → tokens.md（控件）
@@ -416,7 +432,9 @@ fn main() {
             ..TitleBar::window_options()
         };
 
-        gpui_kit::open_window(window_options, cx, |_, cx| cx.new(|_| shell::AppShell::new()))
-            .expect("Failed to open window");
+        gpui_kit::open_window(window_options, cx, |window, cx| {
+            cx.new(|cx| shell::AppShell::new(window, cx))
+        })
+        .expect("Failed to open window");
     });
 }

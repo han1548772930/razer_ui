@@ -8,7 +8,6 @@
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
 
-
 use std::path::{Path, PathBuf};
 
 /// 引擎 DLL 的两处安装位置。

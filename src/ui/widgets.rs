@@ -552,7 +552,7 @@ impl PageLayout {
             device_name: device_name.into(),
             subtitle: None,
             show_header: false,
-            show_product_banner: true,
+            show_product_banner: false,
             widgets: Vec::new(),
         }
     }

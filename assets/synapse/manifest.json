@@ -1,0 +1,2525 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.674b18f0.avif",
+      "output": "assets/synapse/mouse-182.png",
+      "source_sha256": "f9ad5bc36e124e0ede11637f8db420dbd4ff371070322f2a7425e60001b0a1db",
+      "sha256": "7fdaa3921a5d6ac3f88483bd8955c55b2babec60aa58cbff0e2eff88af433b04",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_0/img_prods/prd-3x.png",
+          "module": 8922,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/8922.8bdb77be.chunk.js",
+          "module_sha256": "b3d3eade047b28b19d2414ee50513d824a5bd3a9f641c39eeb0576cbeeb0ad53"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.99ffa7e1.avif",
+      "output": "assets/synapse/mouse-182-bottom.png",
+      "source_sha256": "2873486028f0db4447ef31deb6d7493323488275174514aebeb793510052b2d3",
+      "sha256": "59b33f08f578bbbcfafb0d520673e0970ee900026240ddbc76ea45fb2b340537",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_0/img_prods/litat1-profile-button-3x.png",
+          "module": 4986,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_130/img_prods/litat1-profile-button-3x.png",
+          "module": 3094,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_131/img_prods/litat1-profile-button-3x.png",
+          "module": 7349,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_132/img_prods/litat1-profile-button-3x.png",
+          "module": 4460,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/1-3x.8d525695.avif",
+      "output": "assets/synapse/keyboard-653.png",
+      "source_sha256": "abc7dc3ecbcb140456b34416b984b5f6d792f01d29519c1d98801f9c41d057c7",
+      "sha256": "4bd8cd62c5c8a9d8ee35d11027e4ccfdb1f5d09a4c3410d4f9f97440c36251b6",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/1-3x.png",
+          "module": 60136,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/136.af63c2d3.chunk.js",
+          "module_sha256": "1d107534cd77d81816ce87db18df6beedcb9752d51947636d5ce002274727475"
+        },
+        {
+          "request": "./653_128/img_prods/1-3x.png",
+          "module": 29845,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9845.c1e290b9.chunk.js",
+          "module_sha256": "5338c97f91340a1f3ed88f21c329046c297541ad0475b1824680c69151f06ca8"
+        },
+        {
+          "request": "./653_129/img_prods/1-3x.png",
+          "module": 3710,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3710.e3e9e66f.chunk.js",
+          "module_sha256": "bfcb08107173db834d8e07f0f69b4a0401e1f9c94a46cfe234d82304f151c310"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/wrist-without-gap.efc0505f.avif",
+      "output": "assets/synapse/keyboard-653-wrist.png",
+      "source_sha256": "6104180e8967d87505447a88c0bb1dc80cfa8420d0206baa1ffdd3490bd09a6e",
+      "sha256": "a83cd25455a9060dac2e87aff6734acba989c2bcb00de990415b105cb6245191",
+      "width": 2079,
+      "height": 322,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/dial-3x-1-2x.a7526df5.avif",
+      "output": "assets/synapse/keyboard-653-dial.png",
+      "source_sha256": "eab1726084b97e71641e8554a159fc519ff65ade3429e1fec089a16cc7f4dac3",
+      "sha256": "dc9d193799129bfc459012050603398034fc2dfa83fc3c301b65e0932a1d46c3",
+      "width": 120,
+      "height": 120,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/digital-dial.1e701318.avif",
+      "output": "assets/synapse/keyboard-653-digital-dial.png",
+      "source_sha256": "1d28a0ad750465fd2abfe91c53cd0865beaf5be05de118a895d3958f9bfb48ec",
+      "sha256": "c55825cbdc7a3c377bdfea9e314372b4f0e9ed556520fa1d819ee08494180978",
+      "width": 109,
+      "height": 109,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/wrist-without-gap-white.f54a214f.avif",
+      "output": "assets/synapse/keyboard-653-wrist-white.png",
+      "source_sha256": "9f808de86b297a83bdbb1f3aaf8b2efd8acee8831c06eed313f585056e2470d0",
+      "sha256": "b06a9aa8d61bb4a5b0d667433eb8b8d7b90c98a91a9e34cef67e6abff7b36ffb",
+      "width": 1867,
+      "height": 305,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/roller-3x.7fe981b9.avif",
+      "output": "assets/synapse/keyboard-653-roller.png",
+      "source_sha256": "896dbe972e65c7e8f76f338726b1a74aac1e4bb10a361be91a70c94d0b790d2c",
+      "sha256": "ff033a9d01d3cb79739f72dc809a00a9a3113f429bc8f78d0fd24ca87acd9823",
+      "width": 235,
+      "height": 68,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/roller-white-3x.7863b66d.avif",
+      "output": "assets/synapse/keyboard-653-roller-white.png",
+      "source_sha256": "62de204f898a762d8f2bdc01a6fdd1e6d5bf2faf1f213558afd4dbbbf1ddd904",
+      "sha256": "d0c2a727f77df44720a124f758fb7825edb4df45c4abd39469d1b9d1c6ac0a46",
+      "width": 235,
+      "height": 68,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/777/static/media/prd-3x.ede8800a.avif",
+      "output": "assets/synapse/headset-777.png",
+      "source_sha256": "e7119a87987901418930ccd67b4ae6010fe5a9b42794a615c2120201c5854367",
+      "sha256": "9c940b084a804c68865d68a5c69907596f55fc0c4532138ab764ca2bef2a6477",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./777_0/img_prods/prd-3x.png",
+          "module": 4024,
+          "context": ".ref/devices/777/static/js/main.eb70ce38.js",
+          "context_sha256": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
+          "module_file": ".ref/devices/777/static/js/24.2b0388fd.chunk.js",
+          "module_sha256": "5cc4737a4e0bea4feb8370c0fff0473984ab1d7d15b084b5002fe6e2a1fa2093"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/777/static/media/stream-3x.e6572c2c.avif",
+      "output": "assets/synapse/stream-777.png",
+      "source_sha256": "107437185cfe01f196ad8693dfc0e121abdbe757716e11b9527ac4a3bc2cd482",
+      "sha256": "d8ee6b2f46597dc357975d417c02f9c300accf0b0db672cf052dc17af0ea3400",
+      "width": 1560,
+      "height": 540,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/653/static/media/install_chroma.85d4bc96.avif",
+      "output": "assets/synapse/install-chroma.png",
+      "source_sha256": "e624332d26c6acc5c3068ebd85b3b1be2db76dbaebb06f8f425eccb401ca2ea5",
+      "sha256": "caaeffb171c29af848f62bd64abf1000354fd4c0456e6a0756bf08c22ccfd6bc",
+      "width": 520,
+      "height": 180,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/frontend/static/media/gamer-room-bg-image@3x.ed0ae6ff.avif",
+      "output": "assets/synapse/gr-background.png",
+      "source_sha256": "202c62de64ea1368bba4a3cf397b432640e2013543a1a743b9b000e033191d9a",
+      "sha256": "b858a1fbf895936f92cc29115ca84fdd0e203fa42af828d5f456db4e4d9cc612",
+      "width": 2440,
+      "height": 1060,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/gamer-room-bg-image@3x.ed0ae6ff.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/aether-bulb-marketing-image.2048a07b.avif",
+      "output": "assets/synapse/gr-bulb.png",
+      "source_sha256": "10b4986f2fc9e08aad63588a1cba6ff7b154e3744315489a612e1c504c4390ec",
+      "sha256": "befc02a7d93c9aac00ea308c34ab2df7dabfac110299c73001d092655143e8c8",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/aether-bulb-marketing-image.2048a07b.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/aether-strip-marketing-image.797da4bf.avif",
+      "output": "assets/synapse/gr-strip.png",
+      "source_sha256": "a221e5d8c249672bc7ceb64ee0a57e282c095617664e3410e5348eec0a091228",
+      "sha256": "1b832b10f4711f1213650cff8e1eb154f3721af872e066e449d75cad29378dfb",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/aether-strip-marketing-image.797da4bf.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/aether-lamp-pro-marketing-image.57b787df.avif",
+      "output": "assets/synapse/gr-lamp-pro.png",
+      "source_sha256": "2621cef825e2c04b600867eaf0753b368aadcfeb6770c2c3525f5f72d1e71bd7",
+      "sha256": "db92b234a85419d91bb3912c96e9623c30da20c9cc3bba514d0dd49b3a0cba38",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/aether-lamp-pro-marketing-image.57b787df.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/app-gamer-room-icon.01c86f10.svg",
+      "output": "assets/synapse/gr-app.svg",
+      "source_sha256": "6caaf5392227fe9974a274663503e7d60af1fdd513e347cf65bb6b7357c33d19",
+      "sha256": "6caaf5392227fe9974a274663503e7d60af1fdd513e347cf65bb6b7357c33d19",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/app-gamer-room-icon.01c86f10.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/qr-code-gamer-room.58677794.svg",
+      "output": "assets/synapse/gr-qr.svg",
+      "source_sha256": "8ab4fc7949757a533895e8902b38388063d96a2ebb5961601e034149fd9fd45d",
+      "sha256": "8ab4fc7949757a533895e8902b38388063d96a2ebb5961601e034149fd9fd45d",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/qr-code-gamer-room.58677794.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_add_smart_home_device_outline.01f8b64d.svg",
+      "output": "assets/synapse/gr-add-device.svg",
+      "source_sha256": "ffbec2de06dcbfad0943d35b6b8e96cdec0e769c8c8b95f163676afb0014e19c",
+      "sha256": "ffbec2de06dcbfad0943d35b6b8e96cdec0e769c8c8b95f163676afb0014e19c",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_add_smart_home_device_outline.01f8b64d.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_mobile_download.858c66c9.svg",
+      "output": "assets/synapse/gr-mobile.svg",
+      "source_sha256": "34944f7ffe2ed9dbb914042e9648a32923272fb24dc2345611bbce9e2c1bb868",
+      "sha256": "34944f7ffe2ed9dbb914042e9648a32923272fb24dc2345611bbce9e2c1bb868",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_mobile_download.858c66c9.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_macro.9a6b554a.svg",
+      "output": "assets/synapse/module-macro.svg",
+      "source_sha256": "6e78e4b830dd65110071ec967fa859e74478fa2a1c5eaa1693f72b57e5c80b4e",
+      "sha256": "6e78e4b830dd65110071ec967fa859e74478fa2a1c5eaa1693f72b57e5c80b4e",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_macro.9a6b554a.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_alexa.b9b62050.svg",
+      "output": "assets/synapse/module-alexa.svg",
+      "source_sha256": "24ae050901d6e4833bf6b6b590d7bac6cb0edb265e7b2e0b5a24b8d15d67d816",
+      "sha256": "24ae050901d6e4833bf6b6b590d7bac6cb0edb265e7b2e0b5a24b8d15d67d816",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_alexa.b9b62050.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_linked_games.b9bd8037.svg",
+      "output": "assets/synapse/module-linked-games.svg",
+      "source_sha256": "1151db35205efd40630085ad6d80ebd40460dd836a5b7f5a93bc3f2fb8613b90",
+      "sha256": "1151db35205efd40630085ad6d80ebd40460dd836a5b7f5a93bc3f2fb8613b90",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_linked_games.b9bd8037.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_feedback.0ee7f6c6.svg",
+      "output": "assets/synapse/module-feedback.svg",
+      "source_sha256": "00939aa439f61576f7f728123d70abaa61e023448953403c859c8d14f98327f9",
+      "sha256": "00939aa439f61576f7f728123d70abaa61e023448953403c859c8d14f98327f9",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_feedback.0ee7f6c6.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_armory_workshop.9cfc256a.svg",
+      "output": "assets/synapse/module-armory.svg",
+      "source_sha256": "77f4924dbfecc1ce10b711d054029f3a65a12246cd8f815abbd54b8d04141f54",
+      "sha256": "77f4924dbfecc1ce10b711d054029f3a65a12246cd8f815abbd54b8d04141f54",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_armory_workshop.9cfc256a.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/macro.4afae13e.avif",
+      "output": "assets/synapse/module-macro.png",
+      "source_sha256": "fedd3252e1bb31aac79569a345e5347fcfc892719d708c3127faf55432c53c72",
+      "sha256": "3e48de6badbfec7b045926d70b588768ec2b400ddde6216828077ce2c552ce3f",
+      "width": 576,
+      "height": 324,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/macro.4afae13e.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/alexa.110b43c3.avif",
+      "output": "assets/synapse/module-alexa.png",
+      "source_sha256": "85c82bf41c223d10b7f1457565f6fdecd50e2810420b856cdc9256f612974ac4",
+      "sha256": "c28197474809fc21a31a86c0883af0c258f77389be8506137144b31ef6738f5f",
+      "width": 576,
+      "height": 324,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/alexa.110b43c3.avif"
+    },
+    {
+      "source": ".ref/settings/static/media/razer_synapse_4-1.56e5c81a.svg",
+      "output": "assets/synapse/settings-synapse-logo.svg",
+      "source_sha256": "527a642631c2dc0911f59c013c39263363c3003331a00dc9de1ad5478f9431cf",
+      "sha256": "527a642631c2dc0911f59c013c39263363c3003331a00dc9de1ad5478f9431cf",
+      "source_url": "https://apps.razer.com/synapse/settings/static/media/razer_synapse_4-1.56e5c81a.svg"
+    },
+    {
+      "source": ".ref/settings/static/media/wdl_large_icon.e610fd8c.svg",
+      "output": "assets/synapse/settings-wdl.svg",
+      "source_sha256": "57bd6ae913010d4f79a84fa3d2bcbe25cbcc88f98968d31c5f1c295629d3fbb1",
+      "sha256": "57bd6ae913010d4f79a84fa3d2bcbe25cbcc88f98968d31c5f1c295629d3fbb1",
+      "source_url": "https://apps.razer.com/synapse/settings/static/media/wdl_large_icon.e610fd8c.svg"
+    },
+    {
+      "source": ".ref/settings/static/media/exclamation_icon.53d6d40b.svg",
+      "output": "assets/synapse/settings-warning.svg",
+      "source_sha256": "f3af4d60b069e0481be0c038e34760bd2e0ef2b8b41c3a34434e4d7abca25997",
+      "sha256": "f3af4d60b069e0481be0c038e34760bd2e0ef2b8b41c3a34434e4d7abca25997",
+      "source_url": "https://apps.razer.com/synapse/settings/static/media/exclamation_icon.53d6d40b.svg"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-lamp.png",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "f85523e6b8854646902f1903295e5c13c1f0421559b62fb268ee3c49b87341e2",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "module": 71610,
+      "purpose": "Gamer Room Aether Lamp literal PNG data URL"
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.ba4ac8e1.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.ba4ac8e1.png",
+      "source_sha256": "8f22057931bcd8cdfd3d6c312abc6e1b93dc6acea9b0d3cdb94edf27d4e0387a",
+      "sha256": "26092e81c5c9488885a91ad89692c17820f3b95d18174fa33969c997264a268d",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_0/img_prods/litat1-profile-button-1x.png",
+          "module": 3712,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_130/img_prods/litat1-profile-button-1x.png",
+          "module": 3452,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_131/img_prods/litat1-profile-button-1x.png",
+          "module": 4555,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        },
+        {
+          "request": "./182_132/img_prods/litat1-profile-button-1x.png",
+          "module": 7254,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.cb2eedcf.avif",
+      "output": "assets/synapse/product-182-prd-1x.cb2eedcf.png",
+      "source_sha256": "89627809cf47366ef868cc6b5237d82293a87215a5b201d352b9ff7565d367e8",
+      "sha256": "bd0cd9fb6e244e96f05044bb47e8e6833e1286a2d22df084b61eea0a3c88dc31",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_0/img_prods/prd-1x.png",
+          "module": 48,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/48.7e4eb4db.chunk.js",
+          "module_sha256": "8b4850c2cae101e34094181df38d951b1c8be183f604219918450dc52cad9139"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.51af3998.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.51af3998.png",
+      "source_sha256": "59163999437b18fcef47646c144bd2b872f6669edc3e6b00a3a42c5dc1e27f33",
+      "sha256": "8eabd287200d4bd7142ca87f545b748e874aa2ad5b8526989235ae171e2fcd14",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_128/img_prods/litat1-profile-button-1x.png",
+          "module": 1477,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.19382cc9.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-3x.19382cc9.png",
+      "source_sha256": "66883a993e5643aa5b8d7ececfa239c67bc33dcac6ac26779e2c96bbbd0e62bd",
+      "sha256": "19bb61cdafe0a363c036137b9d41531d0e8ee4deced1a5af4e8a90df81268f39",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_128/img_prods/litat1-profile-button-3x.png",
+          "module": 5179,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.a8c0cadd.avif",
+      "output": "assets/synapse/product-182-prd-1x.a8c0cadd.png",
+      "source_sha256": "a46f6ba08dd26a0678d5d87156f3224e9a6bf990f391494a38c606702977eb41",
+      "sha256": "afbb17fa46d7996cc94d4de1a0f80472650dc03efcd4fac86544892042eb0fdd",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_128/img_prods/prd-1x.png",
+          "module": 3125,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/3125.b2af78bc.chunk.js",
+          "module_sha256": "e4cfcb61c09001a7a3544bd8bc15202e7af50208abfc0f9fa3e0c5baa328b541"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.fa151ada.avif",
+      "output": "assets/synapse/product-182-prd-3x.fa151ada.png",
+      "source_sha256": "a9ee0862b78dd30031097c597cc6c7754ef5f136d0153f04dbc56af664cac8bd",
+      "sha256": "86f16b0068865dd6dd555a180d123c00d7f81e576fb11289d323c8b2cc6384cb",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_128/img_prods/prd-3x.png",
+          "module": 7915,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/7915.50aec7db.chunk.js",
+          "module_sha256": "af1cc654e2d2cd13357cda765eeaca7adc63c19eefd94e7a8b7c9bed76039920"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-1x.fc69b02f.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-1x.fc69b02f.png",
+      "source_sha256": "a77a4f23a195f4e7a64938cba13c3feb16205840fa7e739aa96c5585840607ac",
+      "sha256": "5d17f1eb45b497a75c48d34175ab94721ba837b1d1c5d6874c487b7f49249fb4",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_129/img_prods/litat1-profile-button-1x.png",
+          "module": 8110,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/litat1-profile-button-3x.d3439e26.avif",
+      "output": "assets/synapse/product-182-litat1-profile-button-3x.d3439e26.png",
+      "source_sha256": "8be94a6c3ee94e7db4b2e00fe4da3fe562450b9a74583128364ddd040c477be6",
+      "sha256": "7564df3034c1b7b92e24c7f077708bd0f1177fb2102268dd1dd44964f08063bd",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_129/img_prods/litat1-profile-button-3x.png",
+          "module": 8100,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "module_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.bbacb213.avif",
+      "output": "assets/synapse/product-182-prd-1x.bbacb213.png",
+      "source_sha256": "0bcb02391ba897af1fa125e3182dd99a34386fee1e4a535530e43355e99f9d49",
+      "sha256": "bd032cecd7edba6b7cc516c615a30f83e5008af50212625a49e924dec2542abe",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_129/img_prods/prd-1x.png",
+          "module": 6378,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/6378.75912685.chunk.js",
+          "module_sha256": "243249c85f8b5ebd3f08fec3e4cc6521c9c4aa1ad2997d8e886722eb4ea5f240"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.d6a100a5.avif",
+      "output": "assets/synapse/product-182-prd-3x.d6a100a5.png",
+      "source_sha256": "bd834abe07282515859be2e726e99cba41c7acb17e1c9970cac963a2924d8f90",
+      "sha256": "04c011a9ce3e05eb3000e4aee641e71c5bf4fe3db0b818a024243f1785c00ce8",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_129/img_prods/prd-3x.png",
+          "module": 2560,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/2560.ac5d57b2.chunk.js",
+          "module_sha256": "ff674056c951f079d4bd4d644abfecac241ebecfbbef7dbbf1cfc4f2940f6ebe"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.d9ca8c5e.avif",
+      "output": "assets/synapse/product-182-prd-1x.d9ca8c5e.png",
+      "source_sha256": "726d05cc332fde63bdd2cbac9b2edecfd497bdeb1b9afe6be6c7399ebc49b307",
+      "sha256": "ff9029ed9f0cd2601427a42a0224c4c349750483d3e713335d7ebaf87e829205",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_130/img_prods/prd-1x.png",
+          "module": 1588,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/1588.0cd516df.chunk.js",
+          "module_sha256": "02b2989a56316126a59943c4e9dca8d32d6a8b354028dd0e7dd650063d96c13c"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.d9ca8c5e.avif",
+      "output": "assets/synapse/product-182-prd-3x.d9ca8c5e.png",
+      "source_sha256": "726d05cc332fde63bdd2cbac9b2edecfd497bdeb1b9afe6be6c7399ebc49b307",
+      "sha256": "ff9029ed9f0cd2601427a42a0224c4c349750483d3e713335d7ebaf87e829205",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_130/img_prods/prd-3x.png",
+          "module": 8238,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/8238.54f5819c.chunk.js",
+          "module_sha256": "1a56c6cc7b3d787613c1f3ed637bffca1237b21b5a8a9f71b1bcc11a71ba6828"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.43d579a8.avif",
+      "output": "assets/synapse/product-182-prd-1x.43d579a8.png",
+      "source_sha256": "fb9711f8632cf1f17d3cc1bbabc44f117499471ad102c1aa94bbf22b8dce6794",
+      "sha256": "6dc6a3c734c88522777d0518bd3fda7f834b8b0c26ddf5c9b579de4de291f226",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_131/img_prods/prd-1x.png",
+          "module": 4663,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/4663.07e4df00.chunk.js",
+          "module_sha256": "6ecc008c86bab836ba428eedbe5b43628604505ca8cdd4221c4e4fb6b65ec26b"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.43d579a8.avif",
+      "output": "assets/synapse/product-182-prd-3x.43d579a8.png",
+      "source_sha256": "fb9711f8632cf1f17d3cc1bbabc44f117499471ad102c1aa94bbf22b8dce6794",
+      "sha256": "6dc6a3c734c88522777d0518bd3fda7f834b8b0c26ddf5c9b579de4de291f226",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_131/img_prods/prd-3x.png",
+          "module": 6577,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/6577.87d0f9cf.chunk.js",
+          "module_sha256": "1b1639393b61ff2c84930ca8289cbe66fa92d0294d9298bb6b75f4f9ababbde3"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-1x.02f9ee63.avif",
+      "output": "assets/synapse/product-182-prd-1x.02f9ee63.png",
+      "source_sha256": "999c0b4db280f81a2cbf98c65d025564196d2438c0f683be5e4330320e703676",
+      "sha256": "5d677f2688abd80f1ebe7429dde9d763636fb221ffe80d44f920ef2a819e9744",
+      "width": 300,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_132/img_prods/prd-1x.png",
+          "module": 6530,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/6530.c3315102.chunk.js",
+          "module_sha256": "2c5b63b2da67799153a7f73bb4f574bd4af0e74a48fa0ab551ddc6b1f9044245"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/182/static/media/prd-3x.f43aa7e1.avif",
+      "output": "assets/synapse/product-182-prd-3x.f43aa7e1.png",
+      "source_sha256": "edbd110a2303742ac01d0da75dbcc386379e9a12201425d73f6efff3874cc397",
+      "sha256": "c93d754a663513a4ba284ebb23d2d56d06120456c57f4acdf8e3086fad3cdeb3",
+      "width": 900,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./182_132/img_prods/prd-3x.png",
+          "module": 3736,
+          "context": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "context_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "module_file": ".ref/devices/182/static/js/3736.4fb94caa.chunk.js",
+          "module_sha256": "563979a18ced1672eb77c7a3bc0e4d57590ede2af903060f55eddec561e8d59d"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/1-1x.ab26aeb7.avif",
+      "output": "assets/synapse/product-653-1-1x.ab26aeb7.png",
+      "source_sha256": "f43c17a04a83e9f66f52fb7bdc6aedf4f1314c7e088c2e198584e80f7922b419",
+      "sha256": "2a404982ac8a27ea4e98c76ec8a4bc6e2ec5971d587fd7c44c28df5fdf439f81",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/1-1x.png",
+          "module": 95858,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/5858.593ed23c.chunk.js",
+          "module_sha256": "a8348fd889e38fcd48b8ff86527d0ddfc5958ac3cedc5265ca6aebe29495b660"
+        },
+        {
+          "request": "./653_128/img_prods/1-1x.png",
+          "module": 34475,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4475.d44136e6.chunk.js",
+          "module_sha256": "ac84bff63c3669c16865bd327325d71e56c428e92821b153d15c69bd93cb3246"
+        },
+        {
+          "request": "./653_129/img_prods/1-1x.png",
+          "module": 83700,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3700.e633a9d5.chunk.js",
+          "module_sha256": "ab6db4b946616b3f66d98a36bdce9b0e7e39b75e2feeb7cfa45a66e0ebc38af9"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/10-1x.f4ae459c.avif",
+      "output": "assets/synapse/product-653-10-1x.f4ae459c.png",
+      "source_sha256": "19b0d9037d18fe38d9aa60f539d617ca8d289e42851a06b2c401b8474bf6ba91",
+      "sha256": "ba99d2ed3bbafc2fef8bb354d3deb82c332f5e7d3ac132598ffd87f18ae0ffc2",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/10-1x.png",
+          "module": 82692,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/2692.7df07c84.chunk.js",
+          "module_sha256": "031a742d47c79aa6386ac23d7ecdee60951c74fc18ebbf01828f89781c5ef401"
+        },
+        {
+          "request": "./653_128/img_prods/10-1x.png",
+          "module": 10927,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/927.87022876.chunk.js",
+          "module_sha256": "845e7e0ae566c039991c78cd5eb5e1942542adffd97503c672fc97a59f2e5ad3"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/10-3x.3f217b26.avif",
+      "output": "assets/synapse/product-653-10-3x.3f217b26.png",
+      "source_sha256": "045737d26d823b5cf1fb9cdd3e800a0a452722aae001abf684c12e8033cd1dd9",
+      "sha256": "433c7a998b42bbfa45f9623a9a4b575fc40c22fcc57de227b6e64660fd9b6571",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/10-3x.png",
+          "module": 49966,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9966.d8fbc183.chunk.js",
+          "module_sha256": "60d26162811de4e23c36f0767b059c9b2c6e6a092697c1a598d6ef5d49c0ea9c"
+        },
+        {
+          "request": "./653_128/img_prods/10-3x.png",
+          "module": 64121,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4121.c0a3f108.chunk.js",
+          "module_sha256": "2398d8a6d00f09d18de7b99c5dd62a3bede7fe53984bc779f74f8a479642f159"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/11-1x.f9260b13.avif",
+      "output": "assets/synapse/product-653-11-1x.f9260b13.png",
+      "source_sha256": "4b15b7f2c53fa6046228cd9e8e36709bce7f305de047a658bdae4630175b96fe",
+      "sha256": "d752578636151a86564b65bd5cdeb10982d18f9f217b4f49520ad409ac92bdae",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/11-1x.png",
+          "module": 69171,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9171.1cf3cebb.chunk.js",
+          "module_sha256": "0b1085a82ed43a74d6ea8342e4a00cc2a78f4ca728bb1b75b9dd44b3a22d40a5"
+        },
+        {
+          "request": "./653_128/img_prods/11-1x.png",
+          "module": 31168,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1168.d1473202.chunk.js",
+          "module_sha256": "0a6d990764160bb2da05fc8c71ac714292d38bb604a770ec623e3e878b1a52ac"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/11-3x.dfee759e.avif",
+      "output": "assets/synapse/product-653-11-3x.dfee759e.png",
+      "source_sha256": "5a74098e316eb1ab5a364fda8ba6fee34313bfb1ffdedd94ad92c2714722a40d",
+      "sha256": "eb6f956b79f4d92d87a8f121bd0b7f916a30cb3974591a14e01ee77662a5718d",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/11-3x.png",
+          "module": 92701,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/2701.071ae757.chunk.js",
+          "module_sha256": "cff67db411590fbbc2a023b6b148a38038709c0be9057b085c20d6a364d30631"
+        },
+        {
+          "request": "./653_128/img_prods/11-3x.png",
+          "module": 47018,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7018.b4878e5a.chunk.js",
+          "module_sha256": "f205d430c1cfe9a2ec320e2b8740e7168a56a715939b322cedee39a93bebaf1e"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/12-1x.6c82872f.avif",
+      "output": "assets/synapse/product-653-12-1x.6c82872f.png",
+      "source_sha256": "a8a14043d86bb3eb79e2eac3897eebda78e38f7a536b942e19247569fcb5faf2",
+      "sha256": "5a5ca9d3787772b0a4a6c3ce8e1aeb75ef5c84e2688c0eef1c1f7c4f8b205dfd",
+      "width": 920,
+      "height": 428,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/12-1x.png",
+          "module": 85722,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/5722.02b17057.chunk.js",
+          "module_sha256": "60650b8b5c7eb8f9114f7eaef6e5405473eedd387bd25f654eb6bf4c76ad5883"
+        },
+        {
+          "request": "./653_128/img_prods/12-1x.png",
+          "module": 84077,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4077.2d6bab44.chunk.js",
+          "module_sha256": "bba3b7ad84c328067e4290ab38ee5f4c10f5a1a522e73caea3742ea6420115c7"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/12-3x.97e2fc23.avif",
+      "output": "assets/synapse/product-653-12-3x.97e2fc23.png",
+      "source_sha256": "ef67a81ada5e48860c5f7ee0e8c55f8d545389e7a19186e105de635cd74b3ccf",
+      "sha256": "7fae901dbdfe57b92be653b28cb75a9168b9a762243aab345f656ad680b424b0",
+      "width": 2190,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/12-3x.png",
+          "module": 7856,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7856.907e2157.chunk.js",
+          "module_sha256": "5813ed9ac960c5cee664001a7b47d994dc07e9d7d0084ee393262e68d944c35b"
+        },
+        {
+          "request": "./653_128/img_prods/12-3x.png",
+          "module": 59683,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9683.961958a2.chunk.js",
+          "module_sha256": "f5fd7d6f376df89b9b92ad7e8d4b1ac087efad7499e0353ff3c657dcb6b722f1"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/15-1x.04bce260.avif",
+      "output": "assets/synapse/product-653-15-1x.04bce260.png",
+      "source_sha256": "2a9f9b1fee30fa29a194c48d1ce31fddaee02d3de4f3bc532abc522be4972702",
+      "sha256": "64849d452e0e4ef7aac20af06b57024f005d96ec25f3fc7309297df88db609ea",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/15-1x.png",
+          "module": 24039,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4039.8b4557e0.chunk.js",
+          "module_sha256": "c2a6e3fa13c0b0605fbe905d2cd92f01cf00c481ffede5454255d3b8d6c17ee6"
+        },
+        {
+          "request": "./653_128/img_prods/15-1x.png",
+          "module": 93388,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3388.8b5ea3bf.chunk.js",
+          "module_sha256": "b1e8a3e7b0ac237cd6f76cb82bb48bbf3dd4175c097791e2332962506c516398"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/15-3x.2d501bd7.avif",
+      "output": "assets/synapse/product-653-15-3x.2d501bd7.png",
+      "source_sha256": "5cc55e94671435e6156631a0ba114e0b92b3deceda0caed37557e30771f5e755",
+      "sha256": "22fb2740ab32db76abc1996fffce8c2b589c9b8e8591b50572f2899fa2b2e863",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/15-3x.png",
+          "module": 33489,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3489.1101f94b.chunk.js",
+          "module_sha256": "6e86bc78c2ffa8f0a1e95acd72a5a247330e21bc3007409ca480e8f5a7548133"
+        },
+        {
+          "request": "./653_128/img_prods/15-3x.png",
+          "module": 98006,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/8006.b04e5b96.chunk.js",
+          "module_sha256": "abd17f0c13bf279bf73e0c70813272e72d24c74589db1dc4df07e812b103bc44"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/16-1x.7296aa8c.avif",
+      "output": "assets/synapse/product-653-16-1x.7296aa8c.png",
+      "source_sha256": "2b96f4b8f72b5d4845abd477fe7f5b510856dc5dc0d62a45b36d6a1006af9e10",
+      "sha256": "38f30ed3bf03b7475247f52eb8048dda43d94bb5b67fbac8c21658ad9b7099e6",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/16-1x.png",
+          "module": 17358,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7358.88503455.chunk.js",
+          "module_sha256": "b5819116c81dc9851c4ec15ccc9cb0bcd8a2ffe27c7f4ae9afe72bbb239eaa6a"
+        },
+        {
+          "request": "./653_128/img_prods/16-1x.png",
+          "module": 99033,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9033.6775f3df.chunk.js",
+          "module_sha256": "1713e7cffb54500b3369f5679977e20fcf0ba98b238ffdffbe34551e86676974"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/16-3x.099bf2be.avif",
+      "output": "assets/synapse/product-653-16-3x.099bf2be.png",
+      "source_sha256": "0a98e56825eecafeff57b5ba9560d77a6f8993ebeeb2ca8a66421a7dd687c019",
+      "sha256": "d825b0ad0762301198306f20c58b0904dd849074ec8380c8b57c626037febc2b",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/16-3x.png",
+          "module": 66916,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6916.aabb1b48.chunk.js",
+          "module_sha256": "05e935a3914147263223a7bd4437ac47384ffb1d4fcc03cae1da2378133bfdd8"
+        },
+        {
+          "request": "./653_128/img_prods/16-3x.png",
+          "module": 60335,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/335.de71a4da.chunk.js",
+          "module_sha256": "f1742a4e415bd93a8c7aff367c03ce4479f49e36b38747b60d0fc4fa1ed10d67"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/17-1x.e408c5a0.avif",
+      "output": "assets/synapse/product-653-17-1x.e408c5a0.png",
+      "source_sha256": "a1ec3dbbd1322cc557258b6f772c2d2ac4f1b9bcadc9612b7eda967cbd287c77",
+      "sha256": "c2c9a6f9af89557aa3eb65a1202df17170541da6885a66d9f6842795d309c388",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/17-1x.png",
+          "module": 95909,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/5909.ca5d8299.chunk.js",
+          "module_sha256": "d95f25cea8757b81c9c9b6733c714906e6fd949dec2b8d82bc77c0570c937e32"
+        },
+        {
+          "request": "./653_128/img_prods/17-1x.png",
+          "module": 34210,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4210.d8f31915.chunk.js",
+          "module_sha256": "9df07fa209165aac15f3f42ec6a3ac0cda00e7818ae5b3892980f3f441c67ef8"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/17-3x.024b2318.avif",
+      "output": "assets/synapse/product-653-17-3x.024b2318.png",
+      "source_sha256": "784a2e0768c28eb0238a7dbfde95526d734fdd0476539ef30d4f35c221768dfe",
+      "sha256": "fb64d15194a23c9b3e9089bf0d4b524b31321af5ea5b4d99f8414f1e5b0f0c40",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/17-3x.png",
+          "module": 20699,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/699.1455c195.chunk.js",
+          "module_sha256": "ac6f9f47132de69aa8837518525194a5f53399cde335a29cf29152d5de907a27"
+        },
+        {
+          "request": "./653_128/img_prods/17-3x.png",
+          "module": 11416,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1416.c7139311.chunk.js",
+          "module_sha256": "a02a7bdb74ae9ccae8a761adc3432095cab17dac5faa568e9792c8ec2d7f9024"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/18-1x.4006827f.avif",
+      "output": "assets/synapse/product-653-18-1x.4006827f.png",
+      "source_sha256": "1910b47c896b498b79485be4df90409e11b8eb8de57820f6863c0053639b40bc",
+      "sha256": "dbdda4c5ecff445152b92938fb38eea25bbb5df664e1f1323f5ee73bbfd3f9a6",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/18-1x.png",
+          "module": 70031,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/2412.1332569f.chunk.js",
+          "module_sha256": "14a7e4d568bd13e0b9d16811cb1011db181023d2be19b3fa236f2099c04e52ee"
+        },
+        {
+          "request": "./653_128/img_prods/18-1x.png",
+          "module": 74583,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4583.32901d69.chunk.js",
+          "module_sha256": "d85babf686ec0258236fb01562159a572c5174ff9014a0645bad5f863fe88cfa"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/18-3x.4f188968.avif",
+      "output": "assets/synapse/product-653-18-3x.4f188968.png",
+      "source_sha256": "274d5244a1b6c148d2e16dd3a4b9ac55117374546ce744d6c2eb4f57b98448c9",
+      "sha256": "c73903a74888146c786dc30e037400c424b4d61440310d1c329633ddd47aa462",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/18-3x.png",
+          "module": 88454,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/8454.9dae2729.chunk.js",
+          "module_sha256": "25c076f12652712a9b495c437c1ace7f69187f0d1df09655f193dec9aff96c6e"
+        },
+        {
+          "request": "./653_128/img_prods/18-3x.png",
+          "module": 40417,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/417.b96d7ec8.chunk.js",
+          "module_sha256": "6ad37bc42a741fd27bf64a2cb83dc05a3ec7b3869457b58946a6a155aa15718e"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/2-1x.cfe79c6f.avif",
+      "output": "assets/synapse/product-653-2-1x.cfe79c6f.png",
+      "source_sha256": "c047eb66064ae66ffe4b4b6932eb287b571a0c66fa1074cbc56bc0ef47b48d98",
+      "sha256": "f9ee3b0c45e801e88fb1022fda05d0ebcbb77f782898a6c1f2af98965aaefa8a",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/2-1x.png",
+          "module": 41547,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1547.176ec3d7.chunk.js",
+          "module_sha256": "6d930ee9035e333233fda0b96f5e9ab40da168026849a644b077794587d82453"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/2-3x.fb8dcb10.avif",
+      "output": "assets/synapse/product-653-2-3x.fb8dcb10.png",
+      "source_sha256": "6faa592b8ffefe6a0f1875706231b23c0a5dde4280e31c12b424caf50494bd71",
+      "sha256": "e35647001b1e277f07eb288ffd1c81e289312b47e8fb6cfc7d51fd14e2f69ff6",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/2-3x.png",
+          "module": 71445,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1445.b281a7b0.chunk.js",
+          "module_sha256": "5dd47357423a64631eba9c2d383888031feeb784d0e55302ffa644d68c64bc97"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/3-1x.52fa5004.avif",
+      "output": "assets/synapse/product-653-3-1x.52fa5004.png",
+      "source_sha256": "f6bf1f7f092b117960ab0c7efdf8982256b19bed71417ff538deae32feaade47",
+      "sha256": "47084eff1be2f1d885c244ccc45dd16e5650c61fd58801ec98e8a6bffb4b0d21",
+      "width": 730,
+      "height": 270,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/3-1x.png",
+          "module": 44764,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4764.9669d50d.chunk.js",
+          "module_sha256": "52d77db02fc224e47b068995f36f013edde8926369e8ed67ac135c05b32ea602"
+        },
+        {
+          "request": "./653_128/img_prods/3-1x.png",
+          "module": 56297,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6297.762254d1.chunk.js",
+          "module_sha256": "3ab97dc953cdcef48771d5d208bbf10eb88a271de4c31ad73c2f18d0bbeedade"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/3-3x.64d7b830.avif",
+      "output": "assets/synapse/product-653-3-3x.64d7b830.png",
+      "source_sha256": "62ebe59cb016d82be82bd0c223e342f9fd61824b71d3663a7669dd446768c3b8",
+      "sha256": "b1839793921f4d5acc4ae272ea9987fdfff98c8f8443fb4a2441deddb14cb8ca",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/3-3x.png",
+          "module": 28902,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/8902.0144cdf9.chunk.js",
+          "module_sha256": "0e6ec1a7aa786613dae75cb4221169adc3f2aa52ed26dffc074ccd6237b2a7e7"
+        },
+        {
+          "request": "./653_128/img_prods/3-3x.png",
+          "module": 83391,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3391.95a45e72.chunk.js",
+          "module_sha256": "cc163c3f003ffcbcc4ff5ca4d1f95df67214ea37dcb2e61a5171c405da26a0cd"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/4-1x.03001c8e.avif",
+      "output": "assets/synapse/product-653-4-1x.03001c8e.png",
+      "source_sha256": "c4f6c969bc078a57717d25162d1bb1de10c5a16f20624160a7a956537e63d198",
+      "sha256": "cbf867075cabdde639fdda000be96745ac0c64546b32f5d75a4dc8cfb8aba731",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/4-1x.png",
+          "module": 94077,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/8839.8cf5ba7f.chunk.js",
+          "module_sha256": "082378abd0fc0d1b71234bf11683245e3f928ac8216cc1bc6e43c074dfcf000a"
+        },
+        {
+          "request": "./653_128/img_prods/4-1x.png",
+          "module": 57040,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7040.adb12d77.chunk.js",
+          "module_sha256": "a7aeb167a862be3f8683a236b5ae1f520e126e6caf53ab9c903105e5c135bffe"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/4-3x.5433580e.avif",
+      "output": "assets/synapse/product-653-4-3x.5433580e.png",
+      "source_sha256": "be987f66887549da22db97080d77ee1ac547e4d184a4f144cbbe3217b5a68ba6",
+      "sha256": "52425f06a27256ee6156aa7ee48f0a166233c27c6f3d360f63702c052dca923d",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/4-3x.png",
+          "module": 14227,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4227.463b329e.chunk.js",
+          "module_sha256": "791fb75972b822244526cd165a52fe1405b20bf241a9412c0eda269c080ef266"
+        },
+        {
+          "request": "./653_128/img_prods/4-3x.png",
+          "module": 26458,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6458.2a99ea51.chunk.js",
+          "module_sha256": "0e46f97bc32eec1d9003ac818b58690c4dde1d93acc55671d1066927aabbc9e8"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/5-1x.31d3238f.avif",
+      "output": "assets/synapse/product-653-5-1x.31d3238f.png",
+      "source_sha256": "12e47eb26008aaef4538af45a55bc3dab5fc59435b1d89986b4e02b5ef61c6b9",
+      "sha256": "45945ae86dcf81f18927680dd4bd5dfe822454c834a957c04bcc3ea1d6366e70",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/5-1x.png",
+          "module": 76774,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6774.525e824b.chunk.js",
+          "module_sha256": "cac85e6423ec658d0d8b35af7010c5cd10f3e14b46a7a379525eaee2fbb38f24"
+        },
+        {
+          "request": "./653_128/img_prods/5-1x.png",
+          "module": 75199,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/5199.018dd35e.chunk.js",
+          "module_sha256": "830f6af0017a30837b624b9a8152f6cae191b88db47d88e6370f1dc136aece7c"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/5-3x.268ad7c5.avif",
+      "output": "assets/synapse/product-653-5-3x.268ad7c5.png",
+      "source_sha256": "2fcb41866b8460fe4879b203e8e536ef9de9f724afe93739718c2351d7aaeed4",
+      "sha256": "c713ba2fbeea8ce0c8bd238a9ca2cd1a4846236f3ee3d32d5d31708bbf0f82d3",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/5-3x.png",
+          "module": 94524,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4524.1539d9e4.chunk.js",
+          "module_sha256": "b57b718da513ee04ee77e75ffcf0665e22c406bce67b7fc10f6ff3e52d7a46c3"
+        },
+        {
+          "request": "./653_128/img_prods/5-3x.png",
+          "module": 64457,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4457.c1a399f0.chunk.js",
+          "module_sha256": "e521b43e35ed7af2f9ff03a151b0db41a05e535e4dc0b215a27dbbc1764e8933"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/6-1x.af2072c7.avif",
+      "output": "assets/synapse/product-653-6-1x.af2072c7.png",
+      "source_sha256": "b823597fa0b225365d6689375328bacd4dfcafae5d24f051b4b349ec4f7436df",
+      "sha256": "ce43d5b9547d4a1e0cfabed76c42106044a27b611cc7c65a5ddf4f83508bd2fd",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/6-1x.png",
+          "module": 96287,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6287.fea6e5c8.chunk.js",
+          "module_sha256": "44cc8432f918ac5327ad745e18c926c6e36896249b64685e46258322bb45b71f"
+        },
+        {
+          "request": "./653_128/img_prods/6-1x.png",
+          "module": 20454,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/454.a3efa97c.chunk.js",
+          "module_sha256": "fc6057005cadbb0858d0635bc32ed1a943abb6b73de0b390867532594311487d"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/6-3x.f8148117.avif",
+      "output": "assets/synapse/product-653-6-3x.f8148117.png",
+      "source_sha256": "8e5ddf26ae9842e460fa9f7d16f56cdac29577599852a779198aa3aa806db3ce",
+      "sha256": "b238a6671aa78f0fb5f7fbf0b0c64d3cfe55dd60cac461d0bcb302d59911404a",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/6-3x.png",
+          "module": 90153,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/153.c0c74f63.chunk.js",
+          "module_sha256": "13e134838fabcacce4d3ffbfb621c3c32368a5ecf6aaadc2f4c14b1797b5a579"
+        },
+        {
+          "request": "./653_128/img_prods/6-3x.png",
+          "module": 24412,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4412.d8cca8cd.chunk.js",
+          "module_sha256": "267a46725962f38748764e3853fa3dcff745148d204d976c4e68cdc950e43c41"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/7-1x.71ca569c.avif",
+      "output": "assets/synapse/product-653-7-1x.71ca569c.png",
+      "source_sha256": "6e4564261c7fe6a8140ae01befcb3fab5431ba43598d553a5e294293ef915820",
+      "sha256": "c10dfed0521f9bdcfa0f41da44e4e70a55798089cce29ef9e5f16aed8f388ca8",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/7-1x.png",
+          "module": 41168,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/8787.a40711ef.chunk.js",
+          "module_sha256": "4c4bd68dd0e69a288b73e6599f64b83d8b70b0d947a0a83b0d7aa96fdf946778"
+        },
+        {
+          "request": "./653_128/img_prods/7-1x.png",
+          "module": 9949,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9949.0e36ea13.chunk.js",
+          "module_sha256": "088297bafc2c90488b3123fd96edacd474b9fd396feb283524993330b07fd3b9"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/7-3x.9da95ab4.avif",
+      "output": "assets/synapse/product-653-7-3x.9da95ab4.png",
+      "source_sha256": "e88f211fdb3b60a81c3a8d8f01effd771c3860d6d10daa79279464e1a8ed7180",
+      "sha256": "af5301a1edc38d3ef3744c41df0f687ccc1a61ae9486afbed942a17c3d2e1d30",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/7-3x.png",
+          "module": 19034,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9034.0b7cf5d7.chunk.js",
+          "module_sha256": "a94d128791d5351c35a06a9e8024aa7632b779f036dd83d1d17ebac554dcefc3"
+        },
+        {
+          "request": "./653_128/img_prods/7-3x.png",
+          "module": 70067,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/67.3184fddb.chunk.js",
+          "module_sha256": "076e9a5a743f61d9db37566d295ca4259e8886e27fd57c6e7fb3000879c3b496"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/8-1x.e90184f0.avif",
+      "output": "assets/synapse/product-653-8-1x.e90184f0.png",
+      "source_sha256": "a973331e554266d7f23f06f17ddbf5d92aa5336cfed7a13a88fce1a1ee7cf1ee",
+      "sha256": "9fd336db9f75ae68dc79b4d3fd6d67b52c031a462b7aa1b01a997225068609ea",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/8-1x.png",
+          "module": 79985,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9985.862311e0.chunk.js",
+          "module_sha256": "4c395d03cfb4eeeaeedd1ef9a2eabafdd584b6c177de97d64f15c792d6a0f27f"
+        },
+        {
+          "request": "./653_128/img_prods/8-1x.png",
+          "module": 81540,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1540.d7430497.chunk.js",
+          "module_sha256": "ad0457825eba214cedba28ba9c027b56f182328e690031216ecb31aacdfa31d3"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/8-3x.372ad914.avif",
+      "output": "assets/synapse/product-653-8-3x.372ad914.png",
+      "source_sha256": "68efeba52b32eec3c72f1aec79f6fe058e8bee66a1e18f17a786eeca5cce9985",
+      "sha256": "3e6b0ad24b1cdd3a7669b0ee819d4dcfc3a953a6945e4382598efafbf31e3f13",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/8-3x.png",
+          "module": 81447,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1447.398f4775.chunk.js",
+          "module_sha256": "40fe25a0196f7cf419f8bef507a9b548af136faba532ec7f27f24d60b8c42f45"
+        },
+        {
+          "request": "./653_128/img_prods/8-3x.png",
+          "module": 31982,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/1982.4a63b747.chunk.js",
+          "module_sha256": "16bfcbd3e3af9668c0166e3363f7d6787e1a845e23863204b752ed4e45036fbd"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/9-1x.c1e63484.avif",
+      "output": "assets/synapse/product-653-9-1x.c1e63484.png",
+      "source_sha256": "fedebac56a81436b5606f70e27d363a1909f954f4f1519fb4ac0d515a2c9f69f",
+      "sha256": "d19f10d6359796fac4ce40cd86bf97329d38190e48b7c1864e953c22b2365ae4",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/9-1x.png",
+          "module": 29274,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9274.66bacf55.chunk.js",
+          "module_sha256": "1dbeb91571c44dbd4f9d7a93c819c9259f370f3aefcafe2b80de5c3578bff421"
+        },
+        {
+          "request": "./653_128/img_prods/9-1x.png",
+          "module": 87347,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7347.2b3feef9.chunk.js",
+          "module_sha256": "5ceeb7700bd6e9104c0455253be499f99dd6005ff1976d5f1784b95039333818"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/9-3x.e379204e.avif",
+      "output": "assets/synapse/product-653-9-3x.e379204e.png",
+      "source_sha256": "4ab3e657a391961790f98b0a15bb67483cfbc487a198527e657ceeeae308530a",
+      "sha256": "e378bb24662dd55c3eef897870f474ceb36da056c89ed29de7cad8d129e15c5a",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/9-3x.png",
+          "module": 25008,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/5008.7f30ee66.chunk.js",
+          "module_sha256": "987e4f09dbc0bddd5fcf63afec28c7f576b94cf33e0da211f3643bf8800d15c7"
+        },
+        {
+          "request": "./653_128/img_prods/9-3x.png",
+          "module": 67197,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7197.7a7e9b15.chunk.js",
+          "module_sha256": "4303f929ff2857d03a8ecb5b2402549bbd4c9e75909e8ffdddf723ad0f21ae45"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/prd.4221e2bc.avif",
+      "output": "assets/synapse/product-653-prd.4221e2bc.png",
+      "source_sha256": "9610bea60734d8ce783b7d6881d2277f0d1ebfd92aedea8509090ea265e103cf",
+      "sha256": "9b45b275029b1529817309990b586403259b7bf97e2cf4bd7f7a9d3eb6d837fd",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_0/img_prods/prd.png",
+          "module": 2649,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/2649.6577f913.chunk.js",
+          "module_sha256": "ae45e2b4de15ce7ac3ac185224a412be3021b436bf6b05cec9881be1977aa134"
+        },
+        {
+          "request": "./653_128/img_prods/prd.png",
+          "module": 22974,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/2974.9c5d5114.chunk.js",
+          "module_sha256": "e0014bd629c461cbcdfe63b81f830f140791839eb63eceb90ce4f29b739fe04a"
+        },
+        {
+          "request": "./653_129/img_prods/prd.png",
+          "module": 10075,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/75.f144d8a3.chunk.js",
+          "module_sha256": "6b2a5c2cdee768293b9d87c7828577ecbbedafe466f14c73a7a4180e6b450aba"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/2-1x.93ae7bf6.avif",
+      "output": "assets/synapse/product-653-2-1x.93ae7bf6.png",
+      "source_sha256": "b74c1af7dff3fddb589d1217b6bfc6e70cf96929795d898697e218337aea77ab",
+      "sha256": "655d2a1b620b941519cf28d2ccb03f30f3123331c58fa7e7ba2282d414fb35af",
+      "width": 920,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_128/img_prods/2-1x.png",
+          "module": 74162,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/4162.96c1d7e9.chunk.js",
+          "module_sha256": "30da79d34a9930d49d2df2603ae10f59a46daceb632576d105e07df6c8899fd1"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/2-3x.64d7b830.avif",
+      "output": "assets/synapse/product-653-2-3x.64d7b830.png",
+      "source_sha256": "62ebe59cb016d82be82bd0c223e342f9fd61824b71d3663a7669dd446768c3b8",
+      "sha256": "b1839793921f4d5acc4ae272ea9987fdfff98c8f8443fb4a2441deddb14cb8ca",
+      "width": 2760,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_128/img_prods/2-3x.png",
+          "module": 47848,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/7848.c0d04910.chunk.js",
+          "module_sha256": "e0d2bc96c3283399ebd963d9f64b6b31e58b2b0abd59ad393af2156aa56312d2"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/1-1x.9d96d6ee.avif",
+      "output": "assets/synapse/product-653-1-1x.9d96d6ee.png",
+      "source_sha256": "e0d3998009cca91092c5346451212991f3559742e0792452c1663cc9c74657af",
+      "sha256": "f5a792213bd2ecb7a4ad541516488aa3346d77f7b56618a37ec9fc314c8441fa",
+      "width": 730,
+      "height": 340,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_130/img_prods/1-1x.png",
+          "module": 33582,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/3582.01519583.chunk.js",
+          "module_sha256": "1f9de6681ab92565be3437611b2aeb90a425a3b11705e5f3a341f54935a69d40"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/1-3x.5fbaa05f.avif",
+      "output": "assets/synapse/product-653-1-3x.5fbaa05f.png",
+      "source_sha256": "065eac6aaa30e61560b7e5b107c498d23727a4a9b38d326c154b1a487f17c504",
+      "sha256": "45fb42e175ebe5ce4b9862b82ee7cf961924ffd8314c99276c18f0931b817400",
+      "width": 2190,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_130/img_prods/1-3x.png",
+          "module": 96932,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/6932.0bd01882.chunk.js",
+          "module_sha256": "c9f95ef4de0ffca039521676ce16845a47ad82d1720374fed0643c03c4eacb4e"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/media/prd.5fbaa05f.avif",
+      "output": "assets/synapse/product-653-prd.5fbaa05f.png",
+      "source_sha256": "065eac6aaa30e61560b7e5b107c498d23727a4a9b38d326c154b1a487f17c504",
+      "sha256": "45fb42e175ebe5ce4b9862b82ee7cf961924ffd8314c99276c18f0931b817400",
+      "width": 2190,
+      "height": 1020,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./653_130/img_prods/prd.png",
+          "module": 49357,
+          "context": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "context_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "module_file": ".ref/devices/653/static/js/9357.495b3f1c.chunk.js",
+          "module_sha256": "a01ed6c7aeb0f416b26157cb325267bb9ffb6980b1489368cd694ca7c25b8179"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/777/static/media/prd-1x.5cd1e5ea.avif",
+      "output": "assets/synapse/product-777-prd-1x.5cd1e5ea.png",
+      "source_sha256": "ff7520aa6af3461b04b32126221b4492ae5ce2763ba7a6e0b238412f199ac8d0",
+      "sha256": "e5dcad3d7b82dfaaff8602a4e5def55952b1bc7f9fc8a52fb20543b3a05024eb",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA",
+      "webpack_requests": [
+        {
+          "request": "./777_0/img_prods/prd-1x.png",
+          "module": 5298,
+          "context": ".ref/devices/777/static/js/main.eb70ce38.js",
+          "context_sha256": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
+          "module_file": ".ref/devices/777/static/js/298.252992aa.chunk.js",
+          "module_sha256": "370d133df4fea00127ce5f802e1b973156f5e3bc4ac9d8d9cf812b5f2402ce7b"
+        }
+      ]
+    },
+    {
+      "source": "assets/mouse-182-dashboard3x.png",
+      "output": "assets/synapse/dashboard-182.png",
+      "source_sha256": "395cdf6db529cd0e5ff0ce1b299e806b9231724c9204cd050f88f7c59e385949",
+      "sha256": "395cdf6db529cd0e5ff0ce1b299e806b9231724c9204cd050f88f7c59e385949",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "purpose": "Dashboard card; not Customize prd",
+      "source_kind": "historical_local_download",
+      "reference_url": "https://apps.razer.com/synapse/products/182/ui/182_0/PluginImages/182_0_0_dashboard3x.avif",
+      "reference_note": "URL recorded by the original frontend; original download/conversion metadata is unavailable"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_brightness.7a95c958.svg",
+      "output": "assets/synapse/mapping-brightness.svg",
+      "source_sha256": "06d9d7cd03130f5a03f65848578183c0f4fc09afa6ab9054aee95f87a2513680",
+      "sha256": "06d9d7cd03130f5a03f65848578183c0f4fc09afa6ab9054aee95f87a2513680"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_default.46d77571.svg",
+      "output": "assets/synapse/mapping-default.svg",
+      "source_sha256": "f92184422565df65f4f9e2dc23f4e9529e59f6b4f3858c24f2c43948b7e2c738",
+      "sha256": "f92184422565df65f4f9e2dc23f4e9529e59f6b4f3858c24f2c43948b7e2c738"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_keyboard.08cddd8c.svg",
+      "output": "assets/synapse/mapping-keyboard.svg",
+      "source_sha256": "005a7e321e040bc3253e059344d03450ac2a8de88d992f8e9b85798115456d1f",
+      "sha256": "005a7e321e040bc3253e059344d03450ac2a8de88d992f8e9b85798115456d1f"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_mouse.d7500793.svg",
+      "output": "assets/synapse/mapping-mouse.svg",
+      "source_sha256": "f5059382c588c328e24ffd7decca3b268c3604fd1489f1bcf7141c985030c336",
+      "sha256": "f5059382c588c328e24ffd7decca3b268c3604fd1489f1bcf7141c985030c336"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_mouse_sensitivity.cd4e347f.svg",
+      "output": "assets/synapse/mapping-sensitivity.svg",
+      "source_sha256": "d21bfb7bb9edbdc630d093a961e7f986763d653fc71321ba05ee39813f43722c",
+      "sha256": "d21bfb7bb9edbdc630d093a961e7f986763d653fc71321ba05ee39813f43722c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_macro.243cd8e5.svg",
+      "output": "assets/synapse/mapping-macro.svg",
+      "source_sha256": "966234ec13749beb235e0675552b54db52b0caeb42053a13b6cab4020a751e63",
+      "sha256": "966234ec13749beb235e0675552b54db52b0caeb42053a13b6cab4020a751e63"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_interdevice.9b1fc6e9.svg",
+      "output": "assets/synapse/mapping-interdevice.svg",
+      "source_sha256": "7c2bb68578330ddc139d959cd11ef8315452ecfd139cc71b2679d6a864c05611",
+      "sha256": "7c2bb68578330ddc139d959cd11ef8315452ecfd139cc71b2679d6a864c05611"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_switch_device_profile.88b9f2aa.svg",
+      "output": "assets/synapse/mapping-profile.svg",
+      "source_sha256": "5c3f28019002944f5aade3ea80f293b1d232e3d281b43d895811ffeac6df9244",
+      "sha256": "5c3f28019002944f5aade3ea80f293b1d232e3d281b43d895811ffeac6df9244"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_hypershift.6c83f48a.svg",
+      "output": "assets/synapse/mapping-hypershift.svg",
+      "source_sha256": "a575d2b0eaf5e03386e8c3c5e5c72ba7f11d540419834dc7bcb8a055336a9e80",
+      "sha256": "a575d2b0eaf5e03386e8c3c5e5c72ba7f11d540419834dc7bcb8a055336a9e80"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_launch.3b800ccf.svg",
+      "output": "assets/synapse/mapping-launch.svg",
+      "source_sha256": "f5145a5f84619e93d8b6656d5b84083a2ac29583db613ac834bbfa62e7fc8d62",
+      "sha256": "f5145a5f84619e93d8b6656d5b84083a2ac29583db613ac834bbfa62e7fc8d62"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_multimedia.800d8c90.svg",
+      "output": "assets/synapse/mapping-multimedia.svg",
+      "source_sha256": "4cbaf1b90acb1ae5ed84ead2855adf34a47180169b2a3676226109a2cf4c2ba5",
+      "sha256": "4cbaf1b90acb1ae5ed84ead2855adf34a47180169b2a3676226109a2cf4c2ba5"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_windows_shortcut.580f7d02.svg",
+      "output": "assets/synapse/mapping-windows.svg",
+      "source_sha256": "ab217ae682fb0bdd61cb9eacff5d39f8d76d75fe9c27d4a0a157ed469c7fcb9d",
+      "sha256": "ab217ae682fb0bdd61cb9eacff5d39f8d76d75fe9c27d4a0a157ed469c7fcb9d"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_text.3259fd59.svg",
+      "output": "assets/synapse/mapping-text.svg",
+      "source_sha256": "04c21e632f67a13e4f9ed1f67a17c2ec20b3c498e23ddfa7853488f87f17c087",
+      "sha256": "04c21e632f67a13e4f9ed1f67a17c2ec20b3c498e23ddfa7853488f87f17c087"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_disable.52df003a.svg",
+      "output": "assets/synapse/mapping-disable.svg",
+      "source_sha256": "2ecd47d2a896e646282dd2bf3b9cb71feffba23073e0499a198a0ca811ee16d3",
+      "sha256": "2ecd47d2a896e646282dd2bf3b9cb71feffba23073e0499a198a0ca811ee16d3"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_external_link.48227e72.svg",
+      "output": "assets/synapse/external-link.svg",
+      "source_sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
+      "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_closepanel.86903958.svg",
+      "output": "assets/synapse/drawer-close.svg",
+      "source_sha256": "1937fa7ea66383ef9d1af3c9764cec4ac8f78d7c0db43e3cc58ef8eef42196b1",
+      "sha256": "1937fa7ea66383ef9d1af3c9764cec4ac8f78d7c0db43e3cc58ef8eef42196b1"
+    },
+    {
+      "source": ".ref/devices/653/static/media/stepper_up.dcb04520.svg",
+      "output": "assets/synapse/stepper-up.svg",
+      "source_sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c",
+      "sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c"
+    },
+    {
+      "source": ".ref/devices/653/static/media/stepper_down.349f755c.svg",
+      "output": "assets/synapse/stepper-down.svg",
+      "source_sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa",
+      "sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_more.fb688d78.svg",
+      "output": "assets/synapse/profile-more.svg",
+      "source_sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c",
+      "sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c"
+    },
+    {
+      "source": ".ref/devices/777/static/media/eq_reset.e0c3c09c.svg",
+      "output": "assets/synapse/eq-reset.svg",
+      "source_sha256": "6812181e240494d9d5ef286240bd01bccc0841d18d91312328af44440a16efbd",
+      "sha256": "6812181e240494d9d5ef286240bd01bccc0841d18d91312328af44440a16efbd"
+    },
+    {
+      "source": ".ref/devices/777/static/media/eq_reset_hover.186df33c.svg",
+      "output": "assets/synapse/eq-reset-hover.svg",
+      "source_sha256": "445d4417e9b5f16430961a43f3bc96d071ec1c5e14008e1cac3113443252e5c8",
+      "sha256": "445d4417e9b5f16430961a43f3bc96d071ec1c5e14008e1cac3113443252e5c8"
+    },
+    {
+      "source": ".ref/devices/777/static/media/eq_reset_active.37c570d3.svg",
+      "output": "assets/synapse/eq-reset-active.svg",
+      "source_sha256": "2eb9a74f22665f9ce4ee78ceac6a02d6f039bf6e980069a684a13df6362a56d5",
+      "sha256": "2eb9a74f22665f9ce4ee78ceac6a02d6f039bf6e980069a684a13df6362a56d5"
+    },
+    {
+      "source": ".ref/devices/653/static/media/dial-mapping.36cf0d1f.svg",
+      "output": "assets/synapse/keyboard-653-dial-mapping.svg",
+      "source_sha256": "02552a31cab66bee1a2f3d5b48b1c1fb7c5b3f20d380fed66b86cfd06f7c21b6",
+      "sha256": "02552a31cab66bee1a2f3d5b48b1c1fb7c5b3f20d380fed66b86cfd06f7c21b6"
+    },
+    {
+      "source": ".ref/devices/653/static/media/chroma_studio.55db6875.svg",
+      "output": "assets/synapse/chroma-studio.svg",
+      "source_sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414",
+      "sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_arrow_left_thin.e6d37c55.svg",
+      "output": "assets/synapse/history-back.svg",
+      "source_sha256": "65b0b6197ac1540cca6ed10d03a1f13497a98fedae8fbd564c15c14ba4cfcfdf",
+      "sha256": "65b0b6197ac1540cca6ed10d03a1f13497a98fedae8fbd564c15c14ba4cfcfdf"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_arrow_right_thin.bef8ca32.svg",
+      "output": "assets/synapse/history-forward.svg",
+      "source_sha256": "6fc4199ed8a4fb00dadd4b11dd159f7c82634c938f40597b9cf6642c51008e1f",
+      "sha256": "6fc4199ed8a4fb00dadd4b11dd159f7c82634c938f40597b9cf6642c51008e1f"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_settings-2.07e96d4c.svg",
+      "output": "assets/synapse/settings.svg",
+      "source_sha256": "7bf93d2d7e3c9c409f10383fbfdd21dc7dfbb06fc0eeeea11b3b62ddf9da75e5",
+      "sha256": "7bf93d2d7e3c9c409f10383fbfdd21dc7dfbb06fc0eeeea11b3b62ddf9da75e5"
+    },
+    {
+      "source": ".ref/devices/182/static/media/profile-default.f608d82c.svg",
+      "output": "assets/synapse/profile.svg",
+      "source_sha256": "0a762043813555dc9c161bcbf6e232e187d4051b4ecdc6b9bfb9092c0c52159d",
+      "sha256": "0a762043813555dc9c161bcbf6e232e187d4051b4ecdc6b9bfb9092c0c52159d"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_obm.888208d6.svg",
+      "output": "assets/synapse/profile-obm.svg",
+      "source_sha256": "0e05d29d048d48b6c112e48ac79bb7f4d4f09da4e824e798db6f8b75148eb841",
+      "sha256": "0e05d29d048d48b6c112e48ac79bb7f4d4f09da4e824e798db6f8b75148eb841"
+    },
+    {
+      "source": ".ref/devices/182/static/media/logo_synapse.bc241e5e.svg",
+      "output": "assets/synapse/synapse.svg",
+      "source_sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79",
+      "sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_sidepanel.e53fef93.svg",
+      "output": "assets/synapse/drawer.svg",
+      "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+      "sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_sidepanel_a.90d67a6e.svg",
+      "output": "assets/synapse/drawer-active.svg",
+      "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+      "sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_close_white.8ab462b8.svg",
+      "output": "assets/synapse/calibration-close.svg",
+      "source_sha256": "0d37e919b0165d5dcff4a6336b3af20fd06b29dbb8dfa0035581f6ae008ce4cd",
+      "sha256": "0d37e919b0165d5dcff4a6336b3af20fd06b29dbb8dfa0035581f6ae008ce4cd"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_close_green.45f61360.svg",
+      "output": "assets/synapse/calibration-close-active.svg",
+      "source_sha256": "d9a92ca5978e1d640e76bec9d2b777112eac9238e2aefacb64218c7168f6a03e",
+      "sha256": "d9a92ca5978e1d640e76bec9d2b777112eac9238e2aefacb64218c7168f6a03e"
+    },
+    {
+      "source": ".ref/devices/182/static/media/windows_logo.8fb1e7e2.svg",
+      "output": "assets/synapse/windows.svg",
+      "source_sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
+      "sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3"
+    },
+    {
+      "source": ".ref/devices/182/static/media/common-windows-11.d477cadb.svg",
+      "output": "assets/synapse/windows-11.svg",
+      "source_sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
+      "sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_expand.55a47b0c.svg",
+      "output": "assets/synapse/expand.svg",
+      "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_expand_l.3b8f6b34.svg",
+      "output": "assets/synapse/expand-hover.svg",
+      "source_sha256": "c647af783d8e1a806f311294f6204dc058d691d4fd1f2bfde20b1ab5b0dee9fc",
+      "sha256": "c647af783d8e1a806f311294f6204dc058d691d4fd1f2bfde20b1ab5b0dee9fc"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_draggable_large.e4bda42a.svg",
+      "output": "assets/synapse/dashboard-drag.svg",
+      "source_sha256": "bb5a61c4ec4369f14689df7f98b0e0b839b70d821edca128bce9c8ee93f16899",
+      "sha256": "bb5a61c4ec4369f14689df7f98b0e0b839b70d821edca128bce9c8ee93f16899"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_draggable_large.e4bda42a.svg",
+      "output": "assets/synapse/dpi-draggable.svg",
+      "source_sha256": "bb5a61c4ec4369f14689df7f98b0e0b839b70d821edca128bce9c8ee93f16899",
+      "sha256": "bb5a61c4ec4369f14689df7f98b0e0b839b70d821edca128bce9c8ee93f16899"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_add.c95a8d74.svg",
+      "output": "assets/synapse/dashboard-add.svg",
+      "source_sha256": "5bf5f05350fb55e4fc72f196300fb89a484b6a9ce2244bfa24a599aaca9a3ceb",
+      "sha256": "5bf5f05350fb55e4fc72f196300fb89a484b6a9ce2244bfa24a599aaca9a3ceb"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_add_w.0fc3f789.svg",
+      "output": "assets/synapse/dashboard-add-hover.svg",
+      "source_sha256": "80cb59ab105be8635fd531663acf236d8b6472dc104247e09c5ee9790dd502b4",
+      "sha256": "80cb59ab105be8635fd531663acf236d8b6472dc104247e09c5ee9790dd502b4"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_sensitivity_xy.b9eb5286.svg",
+      "output": "assets/synapse/sensitivity-xy.svg",
+      "source_sha256": "5d5e73f916d6630887d347224e2b8d7c700793e3c9c8ad53b90901108c6ec770",
+      "sha256": "5d5e73f916d6630887d347224e2b8d7c700793e3c9c8ad53b90901108c6ec770"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_sensitivity_xy_active.39d46352.svg",
+      "output": "assets/synapse/sensitivity-xy-active.svg",
+      "source_sha256": "6657eab8fac2c8facefe0ddc4e0c6586c5493d900ce006826528fb4b677337c7",
+      "sha256": "6657eab8fac2c8facefe0ddc4e0c6586c5493d900ce006826528fb4b677337c7"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_sensitivity_xy_disabled.3a6ee34e.svg",
+      "output": "assets/synapse/sensitivity-xy-disabled.svg",
+      "source_sha256": "b02f4bbafb05b8f6901750865c89499d63492470294f117a5177c38a1e87128e",
+      "sha256": "b02f4bbafb05b8f6901750865c89499d63492470294f117a5177c38a1e87128e"
+    },
+    {
+      "source": ".ref/devices/182/static/media/red.99a70e7d.svg",
+      "output": "assets/synapse/stage-1.svg",
+      "source_sha256": "204c969eb80160db30bbfab15f19fcdc54b04c97786945725fdea9e2454b447b",
+      "sha256": "204c969eb80160db30bbfab15f19fcdc54b04c97786945725fdea9e2454b447b"
+    },
+    {
+      "source": ".ref/devices/182/static/media/green.9abd2946.svg",
+      "output": "assets/synapse/stage-2.svg",
+      "source_sha256": "dc5e950718dfb07e214a1dd667f7d96bcfa7a0ace62e1493ed5989048ddcf884",
+      "sha256": "dc5e950718dfb07e214a1dd667f7d96bcfa7a0ace62e1493ed5989048ddcf884"
+    },
+    {
+      "source": ".ref/devices/182/static/media/blue.c01cdc30.svg",
+      "output": "assets/synapse/stage-3.svg",
+      "source_sha256": "94eea1073ff09a7d788f5640e3a9a277e8572a44795ba455cc5d8c87dd6a4b43",
+      "sha256": "94eea1073ff09a7d788f5640e3a9a277e8572a44795ba455cc5d8c87dd6a4b43"
+    },
+    {
+      "source": ".ref/devices/182/static/media/cyan.02647853.svg",
+      "output": "assets/synapse/stage-4.svg",
+      "source_sha256": "4d37b31620d9f5adc5376432402cc2fec69d2f8af8f30f051aebfce2490ec473",
+      "sha256": "4d37b31620d9f5adc5376432402cc2fec69d2f8af8f30f051aebfce2490ec473"
+    },
+    {
+      "source": ".ref/devices/182/static/media/yellow.a30299c6.svg",
+      "output": "assets/synapse/stage-5.svg",
+      "source_sha256": "f1dc2a76e9e624445575991b9fa83a894d6355710d7221555ae66d2f94db321e",
+      "sha256": "f1dc2a76e9e624445575991b9fa83a894d6355710d7221555ae66d2f94db321e"
+    },
+    {
+      "source": ".ref/devices/653/static/media/chroma_sync_v3_static.c8ddf315.svg",
+      "output": "assets/synapse/chroma-sync.svg",
+      "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+      "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_left_999.3397283a.svg",
+      "output": "assets/synapse/direction-left.svg",
+      "source_sha256": "5941810302129850751968dbad3973eee8b3f0065c05fc47a24dcf6b968463e6",
+      "sha256": "5941810302129850751968dbad3973eee8b3f0065c05fc47a24dcf6b968463e6"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_left.cc325d65.svg",
+      "output": "assets/synapse/direction-left-active.svg",
+      "source_sha256": "0bf39215e3ea3f39e2cf75f03eb93805d418883f8f1201d8aa5873ba35c6e111",
+      "sha256": "0bf39215e3ea3f39e2cf75f03eb93805d418883f8f1201d8aa5873ba35c6e111"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_right_999.8c251efa.svg",
+      "output": "assets/synapse/direction-right.svg",
+      "source_sha256": "d3809db286279a6b146711026cf88372d525e3c8b195ac90488f7f4ef24c6926",
+      "sha256": "d3809db286279a6b146711026cf88372d525e3c8b195ac90488f7f4ef24c6926"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_right.70dccfc5.svg",
+      "output": "assets/synapse/direction-right-active.svg",
+      "source_sha256": "a07a5cfb088a0103cb097436e6dc4ca3309c7eb115d33ed7b3d04a7f0ece69e8",
+      "sha256": "a07a5cfb088a0103cb097436e6dc4ca3309c7eb115d33ed7b3d04a7f0ece69e8"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_cw.075c1730.svg",
+      "output": "assets/synapse/direction-cw.svg",
+      "source_sha256": "57b6cb9f6f45d016788d6045013b7979970b314fffb12bc9f0d19600aeed7ba6",
+      "sha256": "57b6cb9f6f45d016788d6045013b7979970b314fffb12bc9f0d19600aeed7ba6"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_cw_1.0d8f9301.svg",
+      "output": "assets/synapse/direction-cw-active.svg",
+      "source_sha256": "682abb4cfcbe0b193e318a5fef73438d4a9455bd9d6530628e6e30f771ca8a42",
+      "sha256": "682abb4cfcbe0b193e318a5fef73438d4a9455bd9d6530628e6e30f771ca8a42"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_ccw.e34b12f6.svg",
+      "output": "assets/synapse/direction-ccw.svg",
+      "source_sha256": "ae872f3333639d2ed72c3032c3a453dacde00292e4c0bcc63b997275d0bdc341",
+      "sha256": "ae872f3333639d2ed72c3032c3a453dacde00292e4c0bcc63b997275d0bdc341"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_ccw_1.3dffaadc.svg",
+      "output": "assets/synapse/direction-ccw-active.svg",
+      "source_sha256": "289e47a4c1b43c7f8c5e5547407225c18380e350aa967be56663c5e5d4d4834c",
+      "sha256": "289e47a4c1b43c7f8c5e5547407225c18380e350aa967be56663c5e5d4d4834c"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_outward_999.4cd91b14.svg",
+      "output": "assets/synapse/direction-out.svg",
+      "source_sha256": "c362a890befc5be8d1e68d64cb8cedf19b8ec84baacd7a7a412cb74eda40530c",
+      "sha256": "c362a890befc5be8d1e68d64cb8cedf19b8ec84baacd7a7a412cb74eda40530c"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_outward.7c388a12.svg",
+      "output": "assets/synapse/direction-out-active.svg",
+      "source_sha256": "50f258b2b96f029c4ec8b13dc44c406469b3c0b1247a87560a112db5b1ef5641",
+      "sha256": "50f258b2b96f029c4ec8b13dc44c406469b3c0b1247a87560a112db5b1ef5641"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_inward_999.29221403.svg",
+      "output": "assets/synapse/direction-in.svg",
+      "source_sha256": "cf4eba18daa0d2956194fe9d9536c0cf4faa22594e5c5574b6324033037bfd15",
+      "sha256": "cf4eba18daa0d2956194fe9d9536c0cf4faa22594e5c5574b6324033037bfd15"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_direction_inward.29c0ed8a.svg",
+      "output": "assets/synapse/direction-in-active.svg",
+      "source_sha256": "de79d250140e091299d02d8b3378e3ab4b3a3ef49f2239277dec40bb72742566",
+      "sha256": "de79d250140e091299d02d8b3378e3ab4b3a3ef49f2239277dec40bb72742566"
+    },
+    {
+      "source": ".ref/devices/653/static/media/disable_palette.03c60895.svg",
+      "output": "assets/synapse/palette-none.svg",
+      "source_sha256": "793ea7df657ff93a46d2c48f977934c308a647ff5958d0de19f5b14cb1d77482",
+      "sha256": "793ea7df657ff93a46d2c48f977934c308a647ff5958d0de19f5b14cb1d77482"
+    },
+    {
+      "source": ".ref/devices/182/static/css/main.48c20423.css",
+      "output": "assets/synapse/mapping-lighting.png",
+      "source_sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e",
+      "sha256": "3be437d0343c9263a22fbd605903f6c61517b3865c2743cb8845357d77bda595",
+      "width": 60,
+      "height": 60,
+      "mode": "RGBA",
+      "purpose": "SWITCH_LIGHTING category icon from CSS data URL"
+    },
+    {
+      "source": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "output": "assets/synapse/help-less.svg",
+      "source_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "sha256": "80b44627c86c4a2447e6edc898bfe2473d4255084b7d645be8f793db25fcc621",
+      "inline_symbol": "Ed"
+    },
+    {
+      "source": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "output": "assets/synapse/help-more.svg",
+      "source_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "sha256": "fb97f9dd362fecee5134ae3ce548c6f4c54deca56c55c0c2217febecc283abf8",
+      "inline_symbol": "qR"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "output": "assets/synapse/help-default.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "sha256": "65fdecaf078e0f583fe8e8f48a146ff1bf44ec1f179a491016c2b2452301fa00",
+      "fragment": "default"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "output": "assets/synapse/help-hover.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "sha256": "9bb34c3b65a8b209f66af052eb77b798b5ed9b10407c32b6f6e715ec53efbb3c",
+      "fragment": "hover"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "output": "assets/synapse/help-active.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "sha256": "ac37d4c59d4fa9d845915f9b92ae81a58c1a57902ee8b3d1cef9e53dc95446b5",
+      "fragment": "active"
+    },
+    {
+      "source": ".ref/synapse-asar/electron/assets/fonts/Roboto-Regular.woff2",
+      "output": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "3e253b66056519aa065b00a453bac37ac5ed8f3e6fe7b542e93a9dcdcc11d0bc",
+      "sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a"
+    },
+    {
+      "source": ".ref/synapse-asar/electron/assets/fonts/Roboto-Medium.woff2",
+      "output": "assets/synapse/Roboto-Medium.ttf",
+      "source_sha256": "5a8c1e7681318caa29e9f44e8a6e271f6a4067a2703e9916dfd4fe9099241db7",
+      "sha256": "71939d40f2b78d92007559090373ff6953095eddb53744a07a9dd795c496d235"
+    },
+    {
+      "source": ".ref/synapse-asar/electron/assets/fonts/Roboto-Bold.woff2",
+      "output": "assets/synapse/Roboto-Bold.ttf",
+      "source_sha256": "1d5b7c64458f4af91dcfee0354be47adde1f739b5aded03a7ab6068a1bb6ca97",
+      "sha256": "fc8488b1de752bbdc008caa2b731dd5a1721cdddf170ad78138e81694ca292a2"
+    },
+    {
+      "source": ".ref/synapse-asar/electron/assets/fonts/RazerF5-Regular.woff2",
+      "output": "assets/synapse/RazerF5-Regular.ttf",
+      "source_sha256": "f74f5837dec1729e960a3a04bbde7ca706b4c938f71516630767089f5ca9bd0b",
+      "sha256": "90cb41b5dfd6449ffbb4780da707d3bced328ab2f60b05c69f90e37dedcec3bf"
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "117ea76aba63a73cfc7700ac451d2e4be817ed6451a17e392350e1aacb84ca53",
+      "module": 21368,
+      "layout_id": 1,
+      "symbol": "o",
+      "source_range": [
+        588230,
+        659106
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-2.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "46ba935c917f9dfc8da77be075d0610c810e686681187e11f841ced648d62db4",
+      "module": 30387,
+      "layout_id": 2,
+      "symbol": "Ne",
+      "source_range": [
+        1811389,
+        1881521
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-3.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "6f429262c7d0f6376b06554cfb5343c55ca441d98a1923b7ba939afd596622f5",
+      "module": 30387,
+      "layout_id": 3,
+      "symbol": "Le",
+      "source_range": [
+        1881555,
+        1952950
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-4.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "92d15346fd75c672858e0705f62322367f3de8e100aa6bc7594aae3921ee5d11",
+      "module": 30387,
+      "layout_id": 4,
+      "symbol": "X",
+      "source_range": [
+        1173061,
+        1244269
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-5.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "a04683fd7f3ccc2a0ca5ebc4afa5b71ac957e64c96180df1ce2ca896f2c7db12",
+      "module": 30387,
+      "layout_id": 5,
+      "symbol": "Oe",
+      "source_range": [
+        1671081,
+        1741199
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-6.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "87c273bce8120d2b31d3cef0c963926ae3a1011e8cb43cf8c8ea4ef3ce8cc6f4",
+      "module": 30387,
+      "layout_id": 6,
+      "symbol": "k",
+      "source_range": [
+        1102161,
+        1173029
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-7.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "55431655c9875360a2f2fc2124f77a9ef8f148887d481385e0d9644cec98bd47",
+      "module": 30387,
+      "layout_id": 7,
+      "symbol": "ne",
+      "source_range": [
+        1386612,
+        1457414
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-8.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "f551b52b7ab47390a8d04cf15d54cd7ff5409146115c7800132cfd7e13f16ca3",
+      "module": 30387,
+      "layout_id": 8,
+      "symbol": "F",
+      "source_range": [
+        889226,
+        959371
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-9.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "927a744cd501cd1ae255f714df564186116319bcfefea97b6f594f2adfe13a7a",
+      "module": 30387,
+      "layout_id": 9,
+      "symbol": "K",
+      "source_range": [
+        959403,
+        1029548
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-10.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "c7c087e9f09e1a0db73f430f128fa95600a970f0b112722ee57a2e2dfa59c318",
+      "module": 30387,
+      "layout_id": 10,
+      "symbol": "_e",
+      "source_range": [
+        1529103,
+        1599902
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-11.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "961b654f07f0c4235b11b5b8949a8b9e74fb83b4f8cac3b49256fdfc4abc313b",
+      "module": 30387,
+      "layout_id": 11,
+      "symbol": "ue",
+      "source_range": [
+        1741233,
+        1811355
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-12.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "d6209e71e6851f27d25cf9de9c34415a9d4bad23b34016cacc525499f7bb85b4",
+      "module": 30387,
+      "layout_id": 12,
+      "symbol": "Y",
+      "source_range": [
+        1029580,
+        1102129
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-15.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "000f23b658fd645472b345e70d368545d4397ec71c471180a3083bc61ad9df61",
+      "module": 30387,
+      "layout_id": 15,
+      "symbol": "oe",
+      "source_range": [
+        1457448,
+        1529069
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-16.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "f26e3f2009dc31285143d36aef128b87119787603744269e94cf57981656f0e6",
+      "module": 30387,
+      "layout_id": 16,
+      "symbol": "$",
+      "source_range": [
+        1315310,
+        1386578
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-17.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "a3e6da7123670029665837b977df3a10eb5b01f01a3fe46427426e7610c86f45",
+      "module": 30387,
+      "layout_id": 17,
+      "symbol": "q",
+      "source_range": [
+        1244301,
+        1315278
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-18.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "38793230cc5ed141c30ece28f5ad451a6733964b3deb084dad8393026be2604f",
+      "module": 30387,
+      "layout_id": 18,
+      "symbol": "Te",
+      "source_range": [
+        1599936,
+        1671047
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/965.8f16fe94.chunk.js",
+      "output": "assets/synapse/keyboard-653-layout-1.svg",
+      "source_sha256": "93da3a6ece99065ae7039f762024dff68802e3718b18616d0af95eb6d5c239ff",
+      "sha256": "600937ffa0e61203e93f567d7349ac4c4e9d060251bb333d86480d78a45716ff",
+      "purpose": "Chroma regions; not Customize hit geometry"
+    },
+    {
+      "source": ".ref/devices/653/static/js/965.8f16fe94.chunk.js",
+      "output": "assets/synapse/keyboard-653-deviceconfig.json",
+      "source_sha256": "93da3a6ece99065ae7039f762024dff68802e3718b18616d0af95eb6d5c239ff",
+      "sha256": "b4b6f0bc21e33fe50e0ec065b29a354dead8fe8d70319237f307da502bdc6402",
+      "purpose": "Chroma regions; not Customize hit geometry"
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-keys.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "0a2d32e7747adacf7e59f6bbda472c4f4413b93142b48c330e9e406e15b57c05",
+      "module": 21368,
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-customize-layouts.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "783378ad71a908346dc23bd43f73e70b33bd2a0ef20b22720d2c80bc44a3eadc",
+      "modules": [
+        13254,
+        21368,
+        30387
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "output": "assets/synapse/keyboard-653-layouts.json",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "sha256": "533af041ec66a9add7bafccfecb01f9de03742ef00816d8c33ef444f9a4fe2a3",
+      "modules": [
+        13254,
+        21368,
+        30387
+      ],
+      "viewBox": [
+        0,
+        0,
+        730,
+        340
+      ]
+    },
+    {
+      "asset": "synapse/pairing-keyboard.svg",
+      "output": "assets/synapse/pairing-keyboard.svg",
+      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
+      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_keyboard__J1Q8r",
+      "source_character_offset": 27073,
+      "sha256": "02935d5730ea0d15991a667d7048883de85da9a022fa3779782e9ac33ce7cd90",
+      "transform": "decode original CSS SVG data URL"
+    },
+    {
+      "asset": "synapse/pairing-mouse.svg",
+      "output": "assets/synapse/pairing-mouse.svg",
+      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
+      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_mouse__Ijr7F",
+      "source_character_offset": 27429,
+      "sha256": "0ee65f2ca3646ac4d3a74dc854a4730a95deb85408c836185ca3a9bc4bdaccca",
+      "transform": "decode original CSS SVG data URL"
+    },
+    {
+      "asset": "synapse/pairing-paired.svg",
+      "output": "assets/synapse/pairing-paired.svg",
+      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
+      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
+      "source_symbol": "Ps",
+      "source_character_offset": 82820,
+      "sha256": "3f372ecd94710632444b4306fdc6755d6d89b04cd43fbe8fa8455b3bb32b4235",
+      "transform": "serialize original React SVG attributes and path without geometry changes"
+    },
+    {
+      "asset": "synapse/pairing-unpair.svg",
+      "output": "assets/synapse/pairing-unpair.svg",
+      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
+      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
+      "source_symbol": "Bs",
+      "source_character_offset": 84632,
+      "sha256": "d414799888192c550106b48264549d3a1156f8f41166a8c2e686fa38e13102c8",
+      "transform": "serialize original React SVG attributes and path without geometry changes"
+    }
+  ]
+}

@@ -1,20 +1,17 @@
-# Razer Synapse 4 (雷云 4) — Electron main ↔ renderer contract (IPC / API surface)
+# Electron 宿主 IPC / API 清单与 GPUI Kit 接入边界
 
-Scope of this document: the **Electron main-process ⇄ renderer contract** of Razer Synapse 4
-(`RazerAppEngine`). It is a reverse-engineering artefact produced from the extracted `app.asar`.
 
-Source root: `.ref/synapse-asar/`
+审计对象是 [.ref/synapse-asar](../../.ref/synapse-asar) 的 Electron 宿主（razerappengine 4.0.563）。本文件保留静态 IPC / wrapper 清单，用于查找窗口、系统、存储和设备适配边界。页面规格另见 [总规格](../RAZER-SYNAPSE-UI-SPEC.md) 和 [逐页文档](../screens/README.md)。
 
-Everything is **production-minified into single-line bundles**. Because `Read` truncates long
-lines, every "location" below is given as a **byte offset inside the single-line file** (plus the
-literal search anchor). Offsets were measured with
-`[System.IO.File]::ReadAllText($p).IndexOf("<anchor>")`.
+2026-09-30 修订：更正“必须重写全部 Electron API”“只有 HID 能通信”“行为全在几个 DLL”及偏移单位等结论。已有函数清单是静态调用面，不等于每一项都被当前三个产品调用，更不代表本轮验证过 DLL ABI 或设备成功执行。
+
+下列旧定位数值来自 .NET ReadAllText(...).IndexOf(...)，单位是 **UTF-16 字符串索引，不是字节偏移**。以文件和搜索锚点为准；表中的 Bytes 仅表示文件字节大小，不能用于解释函数 offset。
 
 | File | Bytes | Role |
 |---|---|---|
 | `electron/preload.js` | 26 992 | `contextBridge` surface (`window.apiElectron`) — the entire renderer-visible API |
 | `electron/main.js` | 50 726 | All `ipcMain.handle` registrations + window/tab/app lifecycle |
-| `electron/constants.js` | 9 008 | `actionEnum`, `razerAppPathEnum`, `razerAppInfo`, `windowEvent` |
+| `electron/constants.js` | 9 530 | `actionEnum`, `razerAppPathEnum`, `razerAppInfo`, `windowEvent` |
 | `electron/UsbRzDeviceAction.js` | 29 868 | `hid.*` / `usb.*` (node-rz-hid, rz-usb-detect) |
 | `electron/WssAction.js` | 3 948 | Embedded **WebSocket server** for plugin clients |
 | `electron/serviceFunction.js` | 1 563 | Windows service start/stop/status via `RzPowerTool.exe` |
@@ -25,20 +22,15 @@ literal search anchor). Offsets were measured with
 | `electron/modules/*` | — | serial / noble(BLE) / wifi / IoT / LampArray / lighting / mapping_engine / simple_service / sysutil / storage / FFI |
 | `electron/Protocol/*` | — | Protocol-25 HID command encoding + protocol logger |
 
-> **Critical structural finding.** The Synapse *UI itself is not in this bundle*. `public/` contains
-> only `index.html`, `favicon.ico`, `manifest.json`. Every RAZER window is loaded from a **remote
-> origin** (`https://apps.razer.com` by default). The Electron app is therefore a **thin native
-> bridge + window manager for a remotely hosted web UI**. Replacing the UI (the user's stated goal)
-> means re-implementing, in `gpui-kit`, only the *contract documented here* — the web content is a
-> separate deliverable.
+> 宿主包主要提供 native bridge 和窗口管理；UI 由应用 URL 加载。当前工作区已经另行取得 `.ref/frontend` 与三个 `.ref/devices` 产品包，必须同时使用这些资料。替换为 GPUI Kit 需要实现实际页面及其所需行为；本 IPC 清单不能独立充当 UI 规格，也不要求原样复刻所有宿主服务。
 
 ---
 
-## 0. Transport model (answering question 4)
+## 0. Transport model / 传输边界
 
 There are **four** distinct transports:
 
-### 0.1 Renderer → main: Electron IPC (`ipcRenderer.invoke`) — the only UI path
+### 0.1 Renderer → main: Electron IPC (`ipcRenderer.invoke`)
 `preload.js` builds one object and exposes it as `window.apiElectron`
 (`preload.js` offset **3060** = `exposeInMainWorld("apiElectron"`). It carries:
 
@@ -99,7 +91,7 @@ Other argv flags that alter behaviour: `--url-params=apps=a,b,c`, `--launch-forc
 
 ## 1. IPC channel inventory (`ipcMain.handle`)
 
-| # | Channel | Registered at (`main.js` byte offset) | Backing module | Purpose |
+| # | Channel | Registered at (`main.js` UTF-16 offset) | Backing module | Purpose |
 |---|---|---|---|---|
 | 1 | `electronAction` | 31 754 | `main.js` inline + `memory_storage` + `window_storage` + `sysutil` | **The catch-all.** Window/app/tab lifecycle, displays, dialogs, storage, login state, sysutil pass-through |
 | 2 | `mappingEngineAction` | 48 672 | `modules/mapping_engine/win/index.js` via FFI | Key/macro/input-hook engine (`mapping_engine.dll`) |
@@ -155,7 +147,7 @@ traffic (`preload.js` offsets ≈ 2 600–3 000).
 
 ---
 
-## 2. `electronAction` — full action inventory
+## 2. `electronAction` — 静态 action 清单
 
 ### 2.1 Login / session / environment (main.js 31 838 – 32 235)
 | action | Behavior |
@@ -694,7 +686,7 @@ Companion pieces:
 
 ---
 
-## 17. `actionEnum` (complete, `constants.js` offset 1 442)
+## 17. `actionEnum`（constants.js 静态清单，offset 1 442）
 
 | Constant | Value |
 |---|---|
@@ -775,7 +767,7 @@ Exit / Exit All Apps. Labels are localised (`constants.js` `string_translation`,
 
 ---
 
-## 19. Main → renderer push events (complete)
+## 19. Main → renderer push events（静态清单）
 
 | Channel | Payload | Source |
 |---|---|---|
@@ -857,28 +849,41 @@ treated as Razer-owned when re-implementing.
 
 ---
 
-## 21. Minimal contract to re-implement in `gpui-kit`
+## 21. 当前项目应实现的契约
 
-If the goal is to *replace the UI* while keeping the same native capability, a Rust/`gpui-kit` shell
-must provide, at minimum:
+### 21.1 按实际页面选择适配范围
 
-1. **Window/app manager** for the eight `razerAppInfo` apps + `razer-id` + `systray-left`, with the
-   exact routes in §18.1 and the window options in §18.2, driven by
-   `--url-params=apps=a,b,c` and `--application-host=`.
-2. **The `electronAction` window/dispatch table** (§2.2, §2.3) — 60+ actions, of which
-   ~25 are pure window geometry/visibility and can be trivially re-implemented.
-3. **Tabs** (§3) — 9 actions. This is the single most complex UI-level piece
-   (`TabStore`, hibernation, force-focus, manual-close, tooltips).
-4. **The three key/value stores** (§2.4, §14) with URL-scoped change events.
-5. **HID transport** (§4) — 34 actions over `node-rz-hid`'s Windows HID backend. This is the only
-   part that *cannot* be avoided: nothing else talks to the hardware.
-6. **Mapping engine, simple service, sysutils** (§11, §12, §2.7) — the bulk of *behaviour* lives in
-   those three DLLs (`mapping_engine.dll`, `simple_service.dll`, `SysUtilsNative.dll`). They can be
-   called through FFI unchanged; none of them are Electron-specific.
-7. The **plugin WebSocket server** on `:5426/synapse` (§15) if third-party plugins must keep working.
-8. **`rzNotification.exe --toast=<JSON>`** (§16) and the `RazerAppEngine://` URI scheme.
+本项目不需要为了“UI 替换”自动重写这里的每个 IPC channel。GPUI Kit 也不要求保留 Electron 的 channel 名；可以由 Rust 领域接口适配原服务或自行实现相同业务行为。是否兼容第三方 WebSocket、其它 Razer 应用或原宿主命令行，是独立范围，不能从三个产品页面推导。
 
-Not required for a UI replacement: `rzWifiAction`, `rzSerialDeviceAction`, `rzBleDeviceAction`
-(unless those product lines are in scope), and the IoT / LampArray FFI channels (they are only used
-by the Chroma lighting engine, which is itself a separate window).
+| 页面需求 | 已确认原版边界 | Rust 实现要求 |
+|---|---|---|
+| 应用/产品导航 | app/window/tab 服务与实际根路由 | 应用身份、产品 route、历史和关闭分开 |
+| Profile / 映射 | 前端 profile/mapping 数据、映射引擎、状态事件 | 草稿、保存/丢弃、profile 隔离与映射加载 |
+| DPI / polling / Smart Tracking / Power | 产品 bundle 的具体 setter 与设备配置 | 保留父组件参数、连接/固件门槛、回读/失败 |
+| Pairing | DUALLINK_BIND_INFO / SCAN_DEVICE / BIND_DEVICE / UNBIND_DEVICE / CANCEL | 以请求响应更新状态，保留单/双设备通道 |
+| Sound / Mic | 独立 audioEq / micEq action | 预设、频率、自定义、设备差异确认彼此隔离 |
+| Lighting | 产品 quick/advanced 数据、Chroma 安装/接管、engine 与 driver | 分清 effect ID、engine action、driver Configure JSON |
+| Windows 属性/混合器 | 对应宿主系统操作 | 调用明确系统入口，报告失败 |
+| 安装/固件入口 | 清单、安装进度、连接要求、外部更新器 | 不由按钮点击伪造完成 |
 
+产品行为契约见逐页文档；硬件协议不能只按这一层 IPC 名称猜测。
+
+### 21.2 传输与 DLL
+
+USB/HID、BLE、serial、Wi-Fi、IoT、LampArray 等均在本包存在。**HID 不是本清单唯一的设备路径**。是否需要其中某条路径，由目标设备、连接和实际调用链决定；例如当前 777 配置已有 BLE 相关分支，不能一概将 BLE 排除。
+
+mapping_engine、simple_service、sysutil、lighting driver 等是不同边界。JS 绑定能证明函数名/声明的参数形状，不能单凭此证明 Rust 可无条件复用：还要核对实际 DLL 版本、ABI、字符串分配/释放、回调生命周期、线程和初始化依赖。本轮没有执行这些验证。
+
+当前 [backend/lighting.rs](../../src/backend/lighting.rs) 有绑定，普通 [lighting.rs](../../src/features/lighting.rs) 仍主要改变本地状态；命令行演示路径不等于 UI 端到端完成。[灯光协议](02-lighting-actions.md) 分开记录三个 ID/调用层级。
+
+### 21.3 存储与确认
+
+memory/window/keyStorage 的实现不能代表原版所有持久化：前端还使用 localStorage、profile 数据与其它服务。不能从这些宿主 Map 得出“原版没有保存功能”或“必须保存到唯一指定 JSON 格式”。
+
+当前 [store.rs](../../src/store.rs) 将 Vec<Device> 写入 `%APPDATA%/razer_ui/profiles.json`，是本项目自有存储。它不自动保存 AppShell 的全部全局字段，不自动与原版 profile 兼容，也不证明设备已应用。
+
+每项应分开报告：草稿更新、写本地文件、发出设备请求、收到确认/回读。失败、取消、断连、目标 profile 改变和旧响应都需要处理。
+
+### 21.4 下一步验证
+
+优先按 [差异表](03-implementation-gap.md) 修正实际路由和领域语义，再建立页面事件 → 领域操作 → 后端请求 → 响应/回读 → 页面反馈的可追踪链。协议枚举/静态字符串只能定位实现；真实设备成功必须另行验证。

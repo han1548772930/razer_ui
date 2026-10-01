@@ -1,66 +1,220 @@
-//! 本地配置持久化。
-//!
-//! # 为什么必须自建
-//!
-//! 逆向确认（主规范 §8，证据 `docs/re/01-ipc-api-surface.md` §20.8）：
-//! 雷云的 IPC 层**不提供任何配置持久化**——`memory_storage` / `window_storage` /
-//! `keyStorage` 全是按窗口 URL 索引的**内存** Map，窗口销毁即清空；
-//! 真正的落盘在远程前端与 C++ 引擎内部，我们无法复用。
-//!
-//! 因此替代 UI 必须自建配置存储。
-
-use std::path::PathBuf;
-
+//! Local, versioned storage. This format does not claim compatibility with Synapse profiles.
+//! Preserve legacy DeviceFeatures and migrate old top-level Vec<Device> files on save.
 use crate::model::Device;
-
-/// 配置文件名。
-const FILE_NAME: &str = "profiles.json";
-
-/// 配置存储位置。
-///
-/// 优先 `%APPDATA%\razer_ui\profiles.json`；拿不到环境变量时退化到当前目录，
-/// 保证在任何环境下都能落盘而不是静默失败。
-pub fn store_path() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("razer_ui").join(FILE_NAME)
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+const VERSION: u32 = 2;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceFile {
+    version: u32,
+    pub(crate) devices: Vec<Device>,
+    #[serde(default)]
+    pub(crate) tracking_intro_seen: bool,
+    #[serde(default)]
+    pub(crate) shortcuts: Vec<crate::features::shortcuts::Shortcut>,
+    #[serde(default)]
+    pub(crate) preferences: crate::preferences::AppPreferences,
 }
-
-/// 读取已保存的设备配置。
-///
-/// 文件不存在或内容损坏时返回 `None`，由调用方回退到本机实测快照。
-pub fn load() -> Option<Vec<Device>> {
-    load_from(&store_path())
-}
-
-/// 从指定路径读取（便于自检与测试）。
-pub fn load_from(path: &std::path::Path) -> Option<Vec<Device>> {
-    let text = std::fs::read_to_string(path).ok()?;
-    // 容忍 UTF-8 BOM（外部工具写出来的文件常带）。
-    let text = text.trim_start_matches('\u{feff}');
-    match serde_json::from_str(text) {
-        Ok(devices) => Some(devices),
-        Err(err) => {
-            eprintln!("配置文件解析失败（{}）：{err}", path.display());
-            None
+impl WorkspaceFile {
+    pub(crate) fn new(devices: Vec<Device>, tracking_intro_seen: bool) -> Self {
+        Self {
+            version: VERSION,
+            devices,
+            tracking_intro_seen,
+            shortcuts: vec![],
+            preferences: crate::preferences::AppPreferences::default(),
         }
     }
+    pub(crate) fn with_shortcuts(
+        mut self,
+        shortcuts: Vec<crate::features::shortcuts::Shortcut>,
+    ) -> Self {
+        self.shortcuts = shortcuts;
+        self
+    }
+    pub(crate) fn with_preferences(
+        mut self,
+        preferences: crate::preferences::AppPreferences,
+    ) -> Self {
+        self.preferences = preferences;
+        self
+    }
+}
+pub fn store_path() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("razer_ui")
+        .join("profiles.json")
+}
+pub(crate) fn read_workspace(path: &Path) -> anyhow::Result<Option<WorkspaceFile>> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+    decode_workspace(&text).map(Some)
 }
 
-/// 保存设备配置，返回实际写入的路径。
-pub fn save(devices: &[Device]) -> anyhow::Result<PathBuf> {
-    let path = store_path();
-    save_to(&path, devices)?;
-    Ok(path)
+fn decode_known<T: serde::de::DeserializeOwned>(text: &str) -> anyhow::Result<T> {
+    let mut unknown = Vec::new();
+    let mut deserializer = serde_json::Deserializer::from_str(text);
+    let value =
+        serde_ignored::deserialize(&mut deserializer, |path| unknown.push(path.to_string()))?;
+    deserializer.end()?;
+    anyhow::ensure!(
+        unknown.is_empty(),
+        "配置含当前版本无法保留的字段：{}",
+        unknown.join(", ")
+    );
+    Ok(value)
 }
 
-/// 写入指定路径（便于自检与测试）。
-pub fn save_to(path: &std::path::Path, devices: &[Device]) -> anyhow::Result<()> {
-    if let Some(parent) = path.parent() {
+fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
+    let text = text.trim_start_matches('\u{feff}');
+    let file = if text.trim_start().starts_with('[') {
+        WorkspaceFile::new(decode_known(text)?, false)
+    } else {
+        let file: WorkspaceFile = decode_known(text)?;
+        anyhow::ensure!(
+            file.version == VERSION,
+            "Unsupported profile version {}",
+            file.version
+        );
+        file
+    };
+    crate::features::shortcuts::validate_shortcuts(&file.shortcuts).map_err(anyhow::Error::msg)?;
+    file.preferences.validate().map_err(anyhow::Error::msg)?;
+    Ok(file)
+}
+pub(crate) fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Result<()> {
+    file.preferences.validate().map_err(anyhow::Error::msg)?;
+    // Recheck the current disk file, not just the version loaded at startup.
+    // A newer app or external edit must not be silently replaced by this one.
+    let previous = match std::fs::read(path) {
+        Ok(bytes) => {
+            decode_workspace(std::str::from_utf8(&bytes)?)?;
+            Some(bytes)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error.into()),
+    };
+    crate::features::shortcuts::validate_shortcuts(&file.shortcuts).map_err(anyhow::Error::msg)?;
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)?;
     }
-    let text = serde_json::to_string_pretty(devices)?;
-    std::fs::write(path, text)?;
+    let text = serde_json::to_vec_pretty(file)?;
+    let tmp = path.with_extension(format!("json.{}.tmp", std::process::id()));
+    use std::io::Write;
+    let mut output = std::fs::File::create(&tmp)?;
+    output.write_all(&text)?;
+    output.sync_all()?;
+    drop(output);
+    let current = match std::fs::read(path) {
+        Ok(bytes) => Some(bytes),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error.into()),
+    };
+    anyhow::ensure!(
+        current == previous,
+        "配置文件在保存期间被其他程序修改；本次更改未写入，请重新读取后再保存。"
+    );
+    if let Some(previous) = previous {
+        std::fs::write(path.with_extension("json.bak"), previous)?;
+    }
+    std::fs::rename(&tmp, path)?;
     Ok(())
+}
+// Kept for the existing explicit CLI self-test.
+pub fn load_from(path: &Path) -> Option<Vec<Device>> {
+    read_workspace(path).ok().flatten().map(|s| s.devices)
+}
+pub fn save_to(path: &Path, devices: &[Device]) -> anyhow::Result<()> {
+    write_workspace(path, &WorkspaceFile::new(devices.to_vec(), false))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn test_path(name: &str) -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/test-data");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir.join(format!("{name}-{}.json", std::process::id()))
+    }
+    #[test]
+    fn legacy_migration_preserves_device_data_and_rejects_future_versions() {
+        let path = test_path("migrate");
+        let devices = crate::model::measured_devices();
+        std::fs::write(
+            &path,
+            format!("\u{feff}{}", serde_json::to_string(&devices).unwrap()),
+        )
+        .unwrap();
+        let mut file = read_workspace(&path).unwrap().unwrap();
+        file.tracking_intro_seen = true;
+        assert_eq!(file.devices[0].serial_number, devices[0].serial_number);
+        write_workspace(&path, &file).unwrap();
+        let saved = read_workspace(&path).unwrap().unwrap();
+        assert!(saved.tracking_intro_seen);
+        assert_eq!(
+            serde_json::to_value(&saved.devices).unwrap(),
+            serde_json::to_value(&devices).unwrap()
+        );
+        std::fs::write(&path, r#"{"version":999,"devices":[]}"#).unwrap();
+        assert!(read_workspace(&path).is_err());
+        std::fs::remove_file(&path).unwrap();
+        std::fs::remove_file(path.with_extension("json.bak")).unwrap();
+    }
+    #[test]
+    fn corrupt_storage_is_reported_instead_of_becoming_an_empty_device_list() {
+        let path = test_path("corrupt");
+        std::fs::write(&path, "{").unwrap();
+        assert!(read_workspace(&path).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn unknown_fields_cannot_be_lost_when_loading_or_saving() {
+        let file = WorkspaceFile::new(crate::model::measured_devices(), false);
+        let mut value = serde_json::to_value(&file).unwrap();
+        value["future_options"] = serde_json::json!({"enabled": true});
+        assert!(decode_workspace(&value.to_string()).is_err());
+        value.as_object_mut().unwrap().remove("future_options");
+        value["devices"][0]["features"]["future_options"] = serde_json::json!(true);
+        assert!(decode_workspace(&value.to_string()).is_err());
+
+        let path = test_path("preserve-future");
+        let original = r#"{"version":999,"devices":[]}"#;
+        std::fs::write(&path, original).unwrap();
+        assert!(write_workspace(&path, &file).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn aliases_and_new_shortcuts_survive_strict_legacy_loading() {
+        let mut value =
+            serde_json::to_value(WorkspaceFile::new(crate::model::measured_devices(), false))
+                .unwrap();
+        let device = value["devices"][0].as_object_mut().unwrap();
+        let edition = device.remove("edition_id").unwrap();
+        device.insert("editionId".into(), edition);
+        let layout = device.remove("layout_id").unwrap();
+        device.insert("layoutId".into(), layout);
+        value["shortcuts"] = serde_json::json!([{
+            "id":"example", "input":"KEY_K", "modifiers":["CTRL"], "hypershift":false,
+            "output":{"kind":"text","text":"你好\n保存"}
+        }]);
+        let restored = decode_workspace(&value.to_string()).unwrap();
+        assert_eq!(
+            serde_json::to_value(&restored.shortcuts).unwrap(),
+            value["shortcuts"]
+        );
+        value.as_object_mut().unwrap().remove("shortcuts");
+        assert!(
+            decode_workspace(&value.to_string())
+                .unwrap()
+                .shortcuts
+                .is_empty()
+        );
+    }
 }

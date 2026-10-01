@@ -1,4 +1,4 @@
-﻿//! 设备与配置的数据模型。
+//! 设备与配置的数据模型。
 //!
 //! 本文件的字段**逐字对应**雷云 4 在运行日志中真实吐出的 JSON，
 //! 不是凭空设计的。证据见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2 与 `.ref/notes/device-model.json`。
@@ -12,16 +12,13 @@
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
 
-
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::domain::DeviceFeatures;
 
 /// 雷云支持的语言区（实测设备 `name` 字段里出现的全部 key）。
-pub const LOCALES: [&str; 9] = [
-    "en", "zh-cn", "de", "es", "fr", "ja", "kr", "pt-br", "ru",
-];
+pub const LOCALES: [&str; 9] = ["en", "zh-cn", "de", "es", "fr", "ja", "kr", "pt-br", "ru"];
 
 /// 多语言字符串。雷云把它作为对象下发，例如
 /// `{"en":"Razer Deathadder V3 Pro","zh-cn":"Razer 炼狱蝰蛇 V3专业版",...}`
@@ -152,6 +149,9 @@ impl DpiStages {
 /// 一个配置文件。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
+    /// Audited local settings; absent in the legacy Vec<Device> store.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<crate::features::settings::ProfileSettings>,
     pub name: String,
     /// 雷云用它做跨设备同步的标识。
     pub guid: String,
@@ -221,6 +221,12 @@ pub struct Device {
     pub product_id: u32,
     /// 雷云上报的原始 productId（可能与 `product_id` 不同，例如接收器场景）。
     pub real_product_id: u32,
+    /// Product artwork variant from the original device manifest. Old stores use edition 0.
+    #[serde(default, alias = "editionId")]
+    pub edition_id: u32,
+    /// Keyboard layout identity; 0 means unknown, not automatically ANSI layout 1.
+    #[serde(default, alias = "layoutId")]
+    pub layout_id: u32,
     pub device_container_id: String,
     pub category: DeviceCategory,
     pub setup_status: SetupStatus,
@@ -294,7 +300,11 @@ impl Device {
             .profiles
             .iter()
             .position(|p| p.id == self.active_profile)
-            .or(if self.profiles.is_empty() { None } else { Some(0) })?;
+            .or(if self.profiles.is_empty() {
+                None
+            } else {
+                Some(0)
+            })?;
         self.profiles[index].dpi_stages.as_mut()
     }
 
@@ -325,11 +335,8 @@ impl Device {
         if self.features_initialized {
             return;
         }
-        self.features = DeviceFeatures::for_category(
-            self.category,
-            self.is_chroma_device,
-            self.is_keyboard(),
-        );
+        self.features =
+            DeviceFeatures::for_category(self.category, self.is_chroma_device, self.is_keyboard());
         // 鼠标默认给一组 DPI 档位，否则 DPI 页没有可编辑对象。
         if self.is_mouse() {
             let active = self.active_profile.clone();
@@ -424,11 +431,14 @@ pub fn measured_devices() -> Vec<Device> {
             serial_number: "PM2132H00000000".to_string(),
             product_id: 182,
             real_product_id: 182,
+            edition_id: 0,
+            layout_id: 0,
             device_container_id: "{0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0}".to_string(),
             category: DeviceCategory::Mouse,
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
+                settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),
                 id: "profile-1".to_string(),
@@ -487,11 +497,14 @@ pub fn measured_devices() -> Vec<Device> {
             serial_number: "HP10-0000000".to_string(),
             product_id: 179,
             real_product_id: 179,
+            edition_id: 0,
+            layout_id: 0,
             device_container_id: "{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}".to_string(),
             category: DeviceCategory::Accessory,
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
+                settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),
                 id: "profile-1".to_string(),
@@ -604,4 +617,3 @@ mod tests {
         }
     }
 }
-

@@ -1,104 +1,76 @@
-# 正在配对（`TAB_PAIRING`，productId `182`）
+# 配对：独立窗口与共享配对状态机
 
-> 本文只审计 `.ref/devices/182` 的配对实现。`HYPERPOLLING_*` 语言 key 的存在，不足以证明某个产品实际显示该页面或某个按钮。
+> Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
-## 1. 入口与真实条件
+## 1. 路由和源码
 
-- 页面属于 `182` 鼠标模块的 `TAB_PAIRING` 路由。
-- 真实组件使用设备类别、dongle/master/slave 数据、扫描状态、已连接序列号和 `canPairTwoDevices` 决定显示内容。
-- 共享多设备配对代码包含键盘、鼠标和其他 dongle 分支；本文只记录其中 `MOUSE` / `182` 实际可命中的分支。
-- 页面可见不等于配对动作可用：没有 master dongle、扫描结果或连接状态时，按钮/确认区域会进入禁用或空状态。
+`[JS]` [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js) 中，根 displayMode 为 `multiDevicePairing` 时进入 `GG → UG`。此容器的导航只有 TAB_PAIRING，历史含 deviceRoot / TAB_PAIRING。它不是 182 普通导航第五/第六项。
 
-## 2. 实际组件树
+`PG`（memo 包装为 mG）创建 `/synapse/multipairing/` iframe。真正扫描/绑定/解绑视图在 [frontend 4130 chunk](../../.ref/frontend/static/js/4130.155387bf.chunk.js)，不是仅靠 182 bundle 就能说明完整配对。
 
-独立配对逻辑在 `main.db20a7c4.js` 中以 `PairingContent_*` CSS module 类和 `Kg` 组件出现；其核心结构为：
+## 2. 容器通信
 
-```text
-PairingContent
-└─ .PairingContent_pairingContent
-   ├─ .PairingContent_instruction
-   ├─ .PairingContent_devicesContainer
-   │  ├─ device card / dongle card × scan devices
-   │  └─ empty state 或 skeleton state
-   └─ 当前选中设备的确认/解除配对区域
-```
+iframe query 包含 displayMode、containerId、productId、pid、category、canPairTwoDevices、isProductivity、deviceName、serialNumber、lang、allMasters。`hG` 解析并整理 allMasters 数组；不能直接信任任意 JSON 形状。
 
-同时，HyperPolling/Dual-link 分支使用：
+父子通过 `multiDevicePairingInit` / `multiDevicePairingReady` 握手，并校验 origin 和 event.source。容器监听 registerWindowListChange；对应设备窗口消失时关闭配对视图，并通过 generation / cleanup 防止旧订阅继续更新。
 
-```text
-duallink-device-content
-├─ duallink-device-dongle
-│  ├─ duallink-master-dongle（只有 master 分支）
-│  ├─ duallink-keyboard-dongle（键盘分支，不属于 182 结论）
-│  └─ duallink-mouse-dongle（鼠标分支）
-├─ dongle image + dongle-info
-└─ contect-animated-dot / mouse-mat connection lines
-```
+GPUI Kit 可用原生页面/窗口重建这个领域流程，不必保留 iframe，但需要保留设备身份、初始化就绪、生命周期和请求响应边界。
 
-JS 中对鼠标分支明确检查 `category === "MOUSE"`，并用 `productId`、`deviceContainerId`/`dongleId` 生成配对身份键。
+## 3. 状态与设备列表
 
-## 3. 配对流程
+共享状态含 status、status2、bindInfo、scanedInfo、selectedIndex、dongleId、lang。原始常量对应：
 
-### 3.1 扫描
-
-- 扫描状态由 `scan`、`status`、`status2`、`scandevices` 传入；页面不自行伪造候选设备。
-- 扫描中的设备卡可以显示 skeleton：`.PairingContent_skeletonBox`、`.skeletonBadge`、`.skeletonImage`、`.skeletonText`。
-- 无候选时使用 `.PairingContent_emptyStateBox`，尺寸 `width:290px; height:220px; border:2px dashed #666; border-radius:5px; padding:36px`。
-- 扫描结果通过 `onSelectDevice` 更新选中索引，再由 `onConfirmPair` 执行配对。
-
-### 3.2 确认和解除配对
-
-- `onConfirmPair` 接收鼠标/键盘不同 pairing device key；182 只记录鼠标命中路径。
-- `onUnpair`、`onUnpairExternal`、`onReclaimExternal` 是不同操作，不能合并成一个“取消全部配对”按钮。
-- 解除配对前使用确认弹层；CSS 中 `.ConfirmDialog_unpairDialog` 为深色弹窗，内联版本为 `.ConfirmDialog_unpairDialogInline`，不是普通页面卡片。
-- 配对成功、失败和取消状态由设备服务参数更新；前端不能点击后直接追加一台“已配对设备”。
-
-## 4. 样式证据
-
-### 4.1 PairingContent
-
-| 选择器 | 已确认样式 |
+| 值 / 符号 | 已确认用途 |
 |---|---|
-| `.PairingContent_pairingContent` | `width:100%` |
-| `.PairingContent_instruction` | `color:#ccc; font-size:14px; margin-bottom:10px` |
-| `.PairingContent_devicesContainer` | `display:flex; flex-wrap:wrap; gap:20px` |
-| `.PairingContent_emptyStateBox` | `290px × 220px; border:2px dashed #666; border-radius:5px` |
-| `.PairingContent_emptyStateText` | `#ccc; Roboto; 14px; line-height:17px; text-align:center` |
-| `.PairingContent_skeletonBox` | 半透明黑底 `#0000004d`，纵向排列，`padding:10px` |
-| `.PairingContent_skeletonImage` | `248px × 99px`，底色 `#ffffff08`，圆角 `3px` |
+| 0 / Ge | 初始化加载 |
+| 1 / Ve | 就绪；尚无绑定或回到可操作状态 |
+| 2 / Ke | 扫描中 |
+| 3 / Ze | 扫描完成/返回结果，允许空列表 |
+| 4 / ze | 绑定中 |
+| 5 / Ye | 已绑定状态 |
+| 6 / qe | 绑定错误 |
+| 7 / Je | 卡片的解绑/收回处理中状态；由列表投影也会生成 |
+| 8 / Xe | 发起解绑后的主流程状态 |
+| 9 / Qe | 已解绑/卡片未绑定 |
+| 10 / $e | 解绑错误 |
+| 11 / et | 收到绑定响应并合入 bindInfo 后的状态；卡片按已配对展示 |
 
-### 4.2 设备卡和连线
+状态 7 与 8 不能合并成一个“成功”值。状态 11 来自 DUALLINK_BIND_DEVICE 响应，不应由按钮点击直接设定；它也不等于已经另行验证设备所有功能可用。
 
-- `.duallink-device-content` 是配对内容区域，不是通用 `.widget` 的替代实现。
-- `dongle-img-box` 与 `dongle-info` 同时显示接收器图像和产品名称；不能只显示 productId 文本。
-- `contect-animated-dot`、`master-mousemat`、`master-mousemat-dot` 负责鼠标/接收器连接动画和状态线。
-- CSS 中存在 `connected`、`connecting`、`free-state`、`right_to_left`、`left_to_right` 状态资源；状态不同必须使用对应类，不能恒定显示成功连线。
+canPairTwoDevices 时 status / status2 分别对应键盘和鼠标通道。绑定数据、扫描数据和 allMasters 候选共同生成卡片；有同产品排重、外部已配对设备、收回/重新配对及无结果分支，不能简单用一条 Vec<String> 代替。
 
-### 4.3 按钮和弹窗
+## 4. 请求与回调
 
-- 取消配对按钮使用次色 `#707070`，鼠标悬停为 `#9b9b9b`；disabled 状态降低 opacity 并禁止 pointer events。
-- 普通确认弹窗：背景 `#1a1a1a`、半透明边框、圆角 `8px`、阴影；内联确认框背景同样为深色，边框使用警示色。
-- 主页面整体仍遵循该模块实际命中的 `.body-wrapper` / `.body-widgets` 外壳；不要在文档中重复复制所有产品页公共 CSS。
+| 操作 | 真实消息 / payload | 成功处理 |
+|---|---|---|
+| 初次读取 | DUALLINK_BIND_INFO，{} | 合并有效数组，双设备按 category 设置通道，再触发扫描 |
+| 扫描 | DUALLINK_SCAN_DEVICE，{status:1, category} | 合并扫描结果，双设备按 KEYBOARD/MOUSE 通道更新 |
+| 绑定 | DUALLINK_BIND_DEVICE，{mode:1, device} | 必须存在 payload.device；按 category 替换 bindInfo，设置 et |
+| 解绑 | DUALLINK_UNBIND_DEVICE，{productId, category} | 对应设备 connected=0，通道进入 Qe |
+| 取消 | DUALLINK_CANCEL，{} | 再发 DUALLINK_BIND_INFO 刷新 |
 
-## 5. 状态矩阵
+单设备时 category 为 null。双设备按 status 通道选 KEYBOARD/MOUSE。dongleId=713 有特殊绑定续接路径，不应把所有设备都统一为同一种一次性请求。
 
-| 状态 | 页面行为 |
-|---|---|
-| 无 dongle/master | 显示不可用或空状态，不显示可执行的成功按钮 |
-| 扫描中 | 显示 skeleton/connecting 状态，候选列表等待服务返回 |
-| 有候选设备 | 显示设备卡，可选择后确认 |
-| 已配对 | 显示已连接关系和解除配对入口 |
-| 解除确认中 | 显示确认弹窗，取消不会改变服务状态 |
-| 操作失败 | 保留原状态并显示失败反馈，不写入伪造配对结果 |
+错误处理：
 
-## 6. 不应推导的内容
+- 绑定信息错误：回就绪，清空绑定/扫描数组。
+- 扫描错误：进入扫描结果态，按通道保留/过滤其他类别结果，可能显示空结果。
+- 绑定错误：进入 qe，约 4 秒后回就绪并清理列表。
+- 解绑错误：进入 $e，约 4 秒后回到 Ye。
+- 监听在卸载时注销；重复打开不能叠加响应 handler。
 
-- 不因 `HYPERPOLLING_WIRELESS_DONGLE_HEADER` 存在就断言所有 Razer 设备都有该页。
-- 不把键盘分支、通用 MultiDevicePairing 分支写进 182 鼠标的实际布局。
-- 不把当前仓库的本地 dongle 快照当成原页面的扫描/配对成功证据。
+这些定时器是错误展示/恢复，不是模拟硬件成功。
 
-## 7. 证据文件
+## 5. 画面、键盘与资源
 
-- `.ref/devices/182/static/js/main.db20a7c4.js`
-- `.ref/devices/182/static/css/main.48c20423.css`
-- `.ref/devices/182/manifest.json`
+视图以主设备、从设备、扫描候选和连接状态卡片组织。已配对卡 hover 提供 Unpair；错误/已解绑提供 Pair；扫描/绑定/解绑时显示对应忙碌状态。确认弹窗处理 Tab、Escape、Enter/Space，不能只实现鼠标点击。
+
+[4130 CSS](../../.ref/frontend/static/css/4130.6bdf8dd0.chunk.css) 包含 PairingContent / MultiDevicePairing 的模块样式。产品图来自动态产品资源与卡片数据，不是统一通用鼠标图。
+
+原引用 `frontend/static/media/dongle-pairing.62f44d13.svg` 在本地缺失，其他目录也未找到；不能写成资源已到位。内嵌状态 SVG、原 CSS 以及可定位的产品图可以继续使用。详见 [资源缺口](../re/04-resource-index.md)。
+
+## 6. 重构前基线与验收
+
+`[RUST 基线]` [pairing.rs](../../src/features/pairing.rs) 与 AppShell::toggle_pairing/complete_pairing/unpair_all 仅更新本地状态；complete_pairing 拼出“已配对设备 n”，不是扫描结果，也没有 DUALLINK 响应驱动。
+
+`[建议]` 用明确状态机和类型化请求保存设备身份；界面只根据结果变更配对结论。验收覆盖空结果、多候选、双通道、绑定确认、解绑失败、取消、关闭设备窗口、重开去重、键盘焦点及断连。当前静态审计不证明上述硬件请求已在 Rust 实现。

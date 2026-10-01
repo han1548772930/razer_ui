@@ -1,186 +1,164 @@
-# 主前端入口与 Dashboard 规格
+# 主前端：Dashboard、Gamer Room、设备与模块、全局快捷键
 
-> 本文只记录 `.ref/frontend/` 中能够由 JavaScript、CSS、locale 和 manifest 互相印证的主前端事实。它不是产品设备页规格；产品页必须继续以 `.ref/devices/<productId>/` 的页面 bundle 为准。
+> Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
-## 证据范围
+## 1. 路由和证据
 
-| 证据 | 用途 |
+`[JS]` [App.eb32d7cd.chunk.js](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js) 的 HomePage 根据 active_view 切换页面；name 对应 [main.7897a4cf.js](../../.ref/frontend/static/js/main.7897a4cf.js) 的 locale 导出。
+
+| 页面 | locale / 导出 | 模块 | 异步 chunk |
+|---|---|---|---|
+| Dashboard | DASHBOARD_HEADER / Rav | 73435 | 8302、1031、2973、4130 |
+| Gamer Room | GAMER_ROOM_HEADER / BSg | 19388 | 8302、9388 |
+| Devices & Modules | DEVICES_AND_MODULES_HEADER / iwS | 44442 | 6505 |
+| Global Shortcuts | GLOBAL_SHORTCUT_HEADER / fUK | 94608 | 2973、7282 |
+
+第三项不是只有固件更新，第四项已定位，不再标为“未知”。Settings 使用独立 `/synapse/settings/` 和窗口名 settings-synapse，不在四项内。
+
+壳层布局见 [00-app-shell](00-app-shell.md)。HomePage 有 Dashboard 禁用遮罩分支（rgba(0,0,0,.5)、z-index 1000），异步加载不能伪装为可操作完整页面。
+
+## 2. Dashboard
+
+源：[4130.155387bf.chunk.js](../../.ref/frontend/static/js/4130.155387bf.chunk.js)、[55 公共 CSS](../../.ref/frontend/static/css/55.a5b041a2.chunk.css)、[4130 CSS](../../.ref/frontend/static/css/4130.6bdf8dd0.chunk.css)。
+
+```text
+dashboard [.reflow]
+└─ box-group*
+   ├─ backdrop-box
+   ├─ title：collapse、drag-div / drag-icon
+   └─ content / content-inner
+      └─ 设备卡、模块卡、推荐/服务卡
+```
+
+数据源包括 validDevices、devices、installedDevices、installedModules、推荐、新发布产品、合作伙伴、分组顺序、卡片顺序和折叠状态。原代码会按 productId、serialNumber、容器/连接状态去重，不应只按类别生成一张卡。
+
+### 布局基线
+
+| 区域 | 原值 |
 |---|---|
-| `.ref/frontend/static/js/App.eb32d7cd.chunk.js` | 主前端 `HomePage`、顶层导航、`nav-tabs`、`body-wrapper` 和异步页面入口 |
-| `.ref/frontend/static/js/4130.155387bf.chunk.js` | 设备 Dashboard、设备分组、设备卡片、推荐/模块/在线服务入口 |
-| `.ref/frontend/static/js/9388.2bec5db3.chunk.js` | Gamer Room 页面、灯光/房间营销卡、设备组及教程入口 |
-| `.ref/frontend/static/js/6505.93b828df.chunk.js` | 固件更新页面及固件详情展开内容 |
-| `.ref/frontend/static/css/55.a5b041a2.chunk.css` | 公共壳层、导航、Dashboard 分组和通用卡片样式 |
-| `.ref/frontend/static/css/4130.6bdf8dd0.chunk.css` | Dashboard 设备卡、扫描/配对/解绑状态样式 |
-| `.ref/frontend/static/css/6505.9782778c.chunk.css` | 固件更新列表样式 |
-| `.ref/frontend/locales/zh-CN.json`、`trans-zh-CN...chunk.js` | 文案来源；组件通过 locale key 和 `getTextItem` 解析，不应在实现中臆造文案 |
-| `.ref/frontend/manifest.json`、`asset-manifest.json` | 应用入口、构建版本、入口 bundle 和 PWA 外壳信息 |
+| dashboard | margin:0 auto，max-width:1220，min-width:620，纵向 |
+| reflow | max-width:2460，仅宽屏分支 |
+| 分组 | width:100%，margin:10px 0，min-height:18 |
+| 卡片排列 | flex-wrap，gap:20 |
+| 计算列数 | boxWidth=290、xOffset=310；ResizeObserver 触发重算 |
+| 通用卡 | #111、圆角 5、padding 10px 20px 9px |
+| 普通产品图区域 | 250×140、contain；商店分支可为高 120 |
+| 分组标题 | 14px #ccc，折叠图标 10，拖动图标约 22×19 |
+| 设备名 / edition | 14px/16px；edition 12px/14px #707070 |
 
-## 1. 公共前端壳层
+分组展开使用 max-height/transform，拖动时有 #3333334d 背景和 2px 绿色边。电池位于卡片状态区域，低电量有专用图标；禁用卡同时降低透明度并阻止输入。加载 spinner、安装进度、失败重试、离线状态与可点击入口分别处理。
 
-### 1.1 根容器
+分组 ID 包括 devices、recommendation、module、onlineService、partnerDeals，以及 syn2、window10、inDevelopment、noDevice、xboxHeadset、xboxController 等特殊状态。是否显示来自实际数据和过滤条件，不应永远展示空组。
 
-源码组件 `MainContainer` 只输出一个 `.main-container`，页面内容作为其子节点注入。CSS 明确规定：
+### 资源
 
-- `.main-container` 为绝对定位、`width:100%`、`height:100%`、`min-width:600px`、纵向 flex 容器。
-- 页面背景是 `#222`，不是白色，也不是产品卡片的 `#111`。
-- `.body-wrapper` 占用剩余高度，`flex:1`、`height:100%`、`min-width:600px`，默认内边距为 `10px 20px 20px`。
-- `#body-wrapper.body-wrapper.scrollable` 使用 `overflow:auto`；`no-scroll` 和 `custom-scrollable` 分支会关闭垂直滚动，不能一律强制显示滚动条。
-- `.body-wrapper` 的 `background-edition` 与 `background-edition-gradient` 只在带版本/背景图的入口使用；不能把它们当成所有页面都存在的背景层。
+设备卡使用动态产品 URL，常见形式：
 
-### 1.2 产品顶栏 `.nav-tabs`
+```text
+/synapse/products/{productId}/ui/{productId}_{editionId}/PluginImages/
+{productId}_{editionId}_{layoutId}_dashboard1x.png
+```
 
-这是页面产品导航，不是 Windows/Electron 系统标题栏。Electron 外层标签栏和系统按钮属于 `.ref/synapse-asar/electron/`，不在本文的前端 `.nav-tabs` 内。
+这是 Dashboard 图，不能用 Customize 的 prd 图名称替代。资源索引单独列出本地下载情况。教程视频 `Synapse Dashboard Tutorial.4d4e2f9c.mp4` 当前缺失；有引用不表示视频能播放。
 
-实际 CSS：
+## 3. Gamer Room
 
-- `display:flex`、`align-items:center`、`min-height:48px`、`width:100%`、`position:relative`、`z-index:106`。
-- 背景 `#222`，底部 `2px solid #000`，默认文字色 `#5d5d5d`。
-- `.profile-wrapper` 左侧和 `.right` 右侧分别承担 `flex` 空间；普通布局中两侧约为 `25%`，中间 `.navs-wrapper` 按导航内容宽度布局并居中。
-- `.navs-wrapper` 使用 `Roboto, sans-serif`、`font-size:12px`；导航项 `.nav` 为大写文本、`margin-right:20px`、`padding:7px 10px`、`border-radius:14px`、`line-height:14px`、`white-space:nowrap`。
-- 普通导航色为 `#999`，激活项背景 `#44d62c`、文字 `#111`；导航项存在 `background-color` 和文字颜色过渡。
-- 更多菜单 `.dots3` 为圆角按钮；悬停背景 `#2d2d2d`，激活菜单使用绿色背景/图标。不能把隐藏导航简单渲染成第二行。
-- 右侧可能出现帮助、Tutorial、THX 警告、重启警告、电池图标和筛选条；这些元素由 props 和能力状态决定，不是固定控件。
-- `disabled` 或 `showLinkedGames` 状态会降低 `.nav-tabs` 透明度并阻止交互；不能仍然显示为可操作的成功状态。
+源：[9388.2bec5db3.chunk.js](../../.ref/frontend/static/js/9388.2bec5db3.chunk.js)。根 #gamerRoom，含条件 gr-banner、营销内容、教程入口、设备组和连接 popup。
 
-### 1.3 页面状态约束
+状态来自 gamerRoomReducer 与 IoT/实际设备数据。group 会根据列数、设备过滤、全部组是否为空等更新 banner；不是固定一张横幅。设备卡有 skeleton/安装状态，popup 与目标容器 ID 关联，点击外部关闭；卸载应清理相关监听。
 
-- 主前端使用 React 异步路由，加载中或加载失败时不能凭空渲染完整产品页。
-- `HomePage` 可能在 Dashboard 禁用时叠加全屏半透明层：源码为 `rgba(0,0,0,.5)`，层级 `1000`。
-- 帮助、提示、教程和弹窗应在对应组件真正出现时渲染；源码没有证据的“保存成功”“连接成功”“自动完成”状态不得写入页面。
+教程使用多步骤弹窗、视频、指示器、Skip/Next；关闭仅更新教程状态，不代表设备设置保存。原引用：
 
-## 2. HomePage 的真实顶层导航
+- `Gamer Room Dashboard Tutorial 1.080f80fb.mp4`
+- `Gamer Room Dashboard Tutorial 2.b4e338ae.mp4`
 
-`App.eb32d7cd.chunk.js` 中的 `HomePage` 创建四个导航项，并用 `active_view` 切换异步页面。导航项名称来自 locale 模块导出，不应把变量名误当成最终显示文案。
+两条原视频的 `https://apps.razer.com/synapse/dashboard/static/media/` 地址均已只读核查返回 200 和 `video/mp4`，当前提供明确的“播放原教程视频”外链，未在 GPUI 中内嵌播放器。Aether 背景、灯泡/灯带/台灯图片、添加设备和手机应用/二维码资源已从原构建路径取得；普通台灯图来自 9388 模块 71610 的内嵌 PNG。资源由统一生成器纳入嵌入表和清单。
 
-| 源码导航常量 | 异步加载入口 | 当前可确认内容 |
+`[RUST 当前实现]` [service_pages.rs](../../src/shell/service_pages.rs) 的 `GamerRoomPage` 已实现 531px 营销背景、三处热点与四种产品详情、原产品链接、Synapse 覆盖和 Gamer Room 应用控制两个可折叠组，以及两步教程的上一步/下一步/跳过/完成；完成事件与设置页的教程重置入口分开管理。热点支持鼠标预览和键盘点击详情，普通台灯与专业版都可从详情到达。没有 IoT 数据时显示分组说明和有效的添加入口，不生成设备卡。
+
+添加流程的完整来源实际在 [IotPopupRoot.290be417.chunk.js](../../.ref/frontend/static/js/IotPopupRoot.290be417.chunk.js)，模块 **28256**。`gt` 按 query 的 `iotPopupType` 选择类型；Gamer Room 的 `ze.handleOpenAddModel` 传 `GAMER_ROOM_DEVICE`，因此进入 `dt → lt/ct`，不是通用类型选择或 Key Light 分支。当前已接入准备说明 → 手机应用/原二维码 → 返回，以及准备说明 → 设备搜索页面 → 返回/关闭；原兼容列表和帮助链接可访问，切步重置到保留的焦点容器。
+
+原 `dt` 的发现列表由 `ze/He` 调用 IoTNative 扫描与事件，选择已有网络设备后才进入 `at` 并写 `iot_devices`。本地未接通该 transport，搜索页面明确显示“设备搜索服务未连接”，不启动假计时器、不把未查询结果称为“没有设备”，也不启用识别/添加成功。`CHOOSE_NETWORK`、Wi-Fi 密码、短时切换网络等属于 `rt` 的 Key Light 流程，不能加到 Gamer Room 直接入口。设备卡内 `S/Q` 的电源、覆盖设置与原设备页入口同样需要真实 IoT 身份和状态。
+
+## 4. Devices & Modules
+
+源：[6505.93b828df.chunk.js](../../.ref/frontend/static/js/6505.93b828df.chunk.js)、[6505 CSS](../../.ref/frontend/static/css/6505.9782778c.chunk.css)。
+
+模块读取 installedDevices、installedModules、availableModules、connectedDevices、deviceRuntimeData、deviceManifest、cachedDeviceInfo、uninstallingDevices/Modules、firmwareUpdateDevices、installerStatus。
+
+实际 return 依次包含：
+
+1. 固件可更新组（hasFWUpdate）。
+2. 新设备组（showDescription、installerStatus）。
+3. 可用模块组（showDescription）。
+4. 已安装/卸载中等项目合并组（noProgressBar）。
+
+内部虽计算 hasUpdateItems，本地这段 return 中还有显式 null；不能按变量名补出额外一定显示的组。
+
+设备项按 productId、序列号、容器和缓存匹配；是否 connected、removable、同产品另有已连接实例，以及 IoT 的 isPowerOn/isLocked/isOnline 都影响操作。安装进度含 downloadedPercent、installedFiles、phase、totalFiles。模块名、包大小和描述来自清单，不是硬编码产品知识。
+
+固件项区分设备/接收器、当前版本/目标版本、支持的更新连接方式。升级按钮只有条件满足才启用；外部 guide 打开系统链接，release notes 可展开。
+
+| 视觉区域 | 基线 |
+|---|---|
+| .items | 宽 1220，纵向，居中，底部 40 |
+| header-title | RazerF5、24px、#44d62c、uppercase |
+| item-main-content | 高 80，#111，padding 0 30px 0 20px |
+| 图标 | 40×40 |
+| 项目名 | 16px #ccc，flex 基础 500，过长省略 |
+| 操作按钮 | min-width 90，高 27 |
+| 展开详情 | #2d2d2d，padding 20 |
+| 警告 | #fd8611；release notes 分类有不同标签色 |
+
+固件更新是有状态的外部/设备操作，不能“点按钮立即显示最新版本”。
+
+`[RUST 当前实现]` 设备行保留从当前工作区打开设备的操作，并提供设备快照详情：产品、序列号、当前设备/接收器固件和本地 Profile 数量。更新固件和移除操作因缺少真实安装/连接/目标版本状态保持禁用。
+
+`ModuleCatalog` 按本 chunk 的 `ne/te` 建立宏、Alexa、已关联的游戏、反馈、工坊目录，使用实际模块图标；宏/Alexa 的原说明图、中文描述和 Alexa 链接已接入。每行可展开/收起详情并保留状态。目录不是安装结果：安装状态、包大小、版本和可用更新均明确尚未读取，安装按钮禁用，不虚构已安装/可更新/卸载中分组。原 `O` 的卸载确认与清除设置勾选、`L` 的固件 release notes 和 `w` 的进度/重试依赖真实服务项目，尚未获得这些数据。
+
+## 5. Global Shortcuts
+
+源：[7282.873c10ab.chunk.js](../../.ref/frontend/static/js/7282.873c10ab.chunk.js)，模块 94608 导出 GlobalShortcutsContainer。
+
+`Fe` 组织 custom-global-shortcuts 容器、左列快捷键内容、保存提示和映射编辑器。`Oe` 创建 global_shortcuts_container：说明、添加图标、快捷键列表、底部 Add 卡。选中/编辑某项时，添加入口受限。快捷键卡支持编辑和删除确认。
+
+数据包含 guid、inputID、inputModifiers、isHyperShift 和输出 mapping。初始化系统键盘布局、默认 turbos，从本地 synapseGlobalShortcuts 数据加载，并通过 generateAppEngineMappings 生成引擎映射和 hash。宏、Chroma profile、设备变动会触发有效性检查和显示更新；失去焦点/隐藏时调整按键监听。
+
+保存/不保存/关闭有独立路径；宏和 Chroma 功能受模块安装状态影响。不能用“按键文本 + 动作文本”的无状态列表覆盖捕获、草稿、校验、删除和引擎同步。
+
+共有映射编辑器的所有能力不代表全局快捷键都支持；应依 isGlobalShortcut / displayMode 分支裁剪。
+
+`[RUST 当前实现]` [shortcuts.rs](../../src/features/shortcuts.rs) 已提供独立快捷键实体：顶部和底部添加入口、列表编辑/复制、删除确认、292px 编辑器、录制键盘组合、选择四种鼠标输入、Ctrl/Alt/Shift/Win 与 Hypershift 修饰。输出包含启动程序、打开网站、多媒体、Windows 快捷方式和 1–250 个 UTF-16 单元文本；程序使用本机文件选择，网站保存时补全并校验 HTTP(S)，重复输入组合和非法草稿不能保存。录制在 Escape 或失焦时取消，文件选择返回时检查仍在编辑原快捷键。
+
+关闭编辑器和主应用导航均有保存/丢弃/继续编辑；快捷键加入本地 WorkspaceFile，与设备配置共用异步“保存到本机”，后续编辑不会被较早的保存完成事件清除。删除可在保存前通过丢弃恢复。以上是本地编辑能力，宏和 Chroma 仍需真实服务。
+
+[shortcut_engine.rs](../../src/features/shortcut_engine.rs) 已按原 `generateAppEngineMappings` 和后续 reducer 生成输入/输出、DKM 别名、设备变体及稳定 JSON/MD5 hash。每次整表编码，未支持输出、碰撞输入或无法安全编码的目标使整次失败，不部分生成。部分 Windows 操作依赖原生 Turbo GUID 与已注册事件，当前明确报错；已实现输出和逐项证据见[引擎编码审计](../re/12-global-shortcut-encoding.md)。
+
+已证实的宿主 ABI 尚不能读取现有 `synapseGlobalShortcuts`/引擎配置，而原写入是替换整份配置。运行时“提交快捷键”入口因此保持禁用，不以本地列表覆盖未知原配置。编码完成不代表快捷键已注册；后台连接及服务边界见[运行时接入](../re/10-runtime-integration.md)。
+
+## 6. Settings 证据边界
+
+宿主 constants / app 路由证明设置应用存在；公共 CSS 中也有 .main-setting、.side-navigation、.setting-content。此前“完全不存在这些样式”的说法不准确。
+
+但本地未取得独立 `/synapse/settings/` 的完整渲染代码，因此 CSS 只能作为样式线索，不能证明账户、启动、通知、迁移等全部选项的顺序/处理。当前 [shell.rs](../../src/shell.rs) 中的设置内容属于本项目实现，不能反过来当原版证据；旧 `setting.rs` 不在当前编译入口中。
+
+[runtime_page.rs](../../src/shell/runtime_page.rs) 已挂载“服务连接”面板：初始状态不启动服务，点击“连接并读取”后才由后台线程持有独立 worker，依次请求 HID 接口、服务版本和音频设备。每项结果与错误独立显示，支持刷新、展开读取详情和断开；断开/窗口退出的原生关闭和子进程等待留在后台，最近结果继续显示。HID 内容按接口呈现，包含 USB 标识、产品及序列号等元数据，同一物理设备可有多项；不把它们直接添加为 Dashboard 卡或设备工作区。版本与音频查询目前展示服务信息，未据此修改 Help 或产品 EQ。全部路径只做静态检查，本轮没有运行连接、DLL 或 HID API。
+
+manifest 的 background_color=#ffffff 是 PWA 元信息，不代表应用内白底；运行布局仍以实际 CSS #222 为准。
+
+## 7. 当前 Rust 入口与剩余差异
+
+2026-10-01 已核对 [shell.rs](../../src/shell.rs) 与 [main_pages.rs](../../src/shell/main_pages.rs) 的实际编译入口。主应用四个路由可以分别切换，Settings 从右侧设置入口进入，不再追加进产品导航。旧 [dashboard.rs](../../src/features/dashboard.rs) 未被当前 features 模块声明，不再作为运行界面的判断依据。
+
+| 页面 | 当前已落实的代码 | 尚未接入 |
 |---|---|---|
-| `Rav` | `8302`、`1031`、`2973`、`4130` | 设备 Dashboard / 设备与模块分组 |
-| `BSg` | `8302`、`9388` | Gamer Room 页面 |
-| `iwS` | `6505` | 固件更新列表 |
-| `fUK` | `2973`、`7282` | 存在独立异步视图，但仅凭当前压缩 bundle 未稳定映射其中文标题和完整布局，标为未验证 |
+| Dashboard | 290px 整卡打开设备、250×140 图区、20px 间距、设备分组折叠；区分本地快照/预览 | 服务分组、拖动排序、教程、真实接口合并与设备状态；设置中的 HID 元数据查询不生成设备卡；专用 Dashboard 图不完整时保留占位 |
+| Devices & Modules | 80px 设备行、40px 图区、打开和快照详情；原五模块目录、图标、说明图、详情展开/收起与相关链接 | 真实安装/版本/更新清单、固件检查/升级、卸载/清除设置确认、进度和失败恢复 |
+| Gamer Room | 原营销背景/热点、四产品详情、两个折叠组；添加准备/二维码/搜索页面的返回与关闭；两步教程和原视频外链 | IoT 网络发现、识别/添加、真实设备卡及电源/覆盖设置；内嵌教程播放器 |
+| Global Shortcuts | 600px 内容区、顶部添加与 70px 添加卡；捕获/验证、编辑/复制/删除确认、292px 映射面板、保存/丢弃/继续、本地持久化；原引擎映射与 hash 编码 | 原快捷键读取协议未证实，整表替换提交禁用；宏/Chroma、原生 Turbo 事件及注册回执仍未接入 |
 
-因此，本文删除以下无源码依据的假设：
+资源显示按实际用途区分：Dashboard 走专用产品卡资源，Customize 与设备设置页根据设备产品、edition、layout 动态选择其产品图；缺少一种 Dashboard 图不会用 Customize 的 `prd` 图充当同一资源。未连接的服务不显示安装或连接成功。
 
-- 不存在可由主前端证实的通用 `.main-setting`、`.side-navigation`、`.setting-content` 页面骨架。
-- `TAB_SETTING`、`TAB_AUDIO`、`TAB_GAMING`、`TAB_EQ`、`TAB_MIXER`、`TAB_HAPTICS`、`TAB_DEMO` 等名称不能单凭词汇或 locale 导出推导出页面布局。
-- 电池、音频、灯光、OLED、EQ、混音、触觉等能力属于具体设备/模块条件；主前端的警告、图标或文案不能替代产品页面证据。
+全部 **14 个普通页面实例**，以及 HELP、独立 Pairing、Profile/板载/关联游戏、抽屉、映射编辑与教程的覆盖记录见[全部页面与附属界面](../re/07-page-coverage.md)。后续验证继续覆盖动态设备增减/去重、卡片目标、安装/升级/失败、分组排序/缩放、快捷键捕获和失焦、草稿保护及资源缺失状态。
 
-## 3. 设备 Dashboard
-
-### 3.1 页面树
-
-```text
-.main-container
-├── .nav-tabs
-└── #body-wrapper.body-wrapper
-    └── .dashboard[.reflow]
-        └── .box-group*
-            ├── .backdrop-box
-            ├── .title
-            │   ├── .collapse > .icon
-            │   └── .drag-div / .drag-icon
-            └── .content
-                └── .content-inner
-                    └── 设备卡或入口卡
-```
-
-`4130.155387bf.chunk.js` 的 Dashboard 通过 store 中的设备、安装模块、分组顺序、卡片顺序和折叠状态构建内容；源码还存在推荐、在线服务、合作伙伴和模块等分组类型。不能将它简化成两个固定的 `600px widget`。
-
-### 3.2 尺寸和布局
-
-- `.dashboard` `margin:0 auto`、`max-width:1220px`、`min-width:620px`、`flex-direction:column`。
-- 当进入 reflow 状态时，`.dashboard.reflow` 的 `max-width` 为 `2460px`；这是宽窗口重排分支，不是默认宽度。
-- `.box-group` `width:100%`、`margin:10px 0`、`min-height:18px`，组之间不是无间距堆叠。
-- `.content-inner` 使用 flex、`gap:20px`、`flex-wrap:wrap`；卡片数量和窗口宽度决定换行。
-- 分组背景 `.backdrop-box` 为 `#333`、`border-radius:5px`，默认透明/不可见；展开后最大高度 `2000px`，拖动中使用半透明 `#3333334d` 和 `2px solid #44d62c`。
-- 标题 `.title` 使用 `14px`、`#ccc`；折叠图标为 `10px`，展开时旋转；拖拽图标约 `22×19px`，只在 hover/拖拽状态显现。
-- 分组内容默认 `max-height:0` 并通过 `transform`、`max-height` 动画展开；不能通过静态 `display:none` 取代所有状态。
-
-### 3.3 设备卡和入口卡
-
-通用 `.box-item` 的源码样式为：
-
-- 背景 `#111`、圆角 `5px`、`box-sizing:border-box`、内边距 `10px 20px 9px`。
-- 产品图区域通常为 `250×140px`，`object-fit:contain`；有商店入口的图片高度可为 `120px`。
-- 加载图使用 `27×27px` spinner；失败时图片降低透明度并显示重试入口。
-- 名称区 `.name-tag` 为纵向 flex；名称 `14px/16px`、大写、居中；edition 名称 `12px/14px`、颜色 `#707070`；状态文字 `12px/14px`，可为 `#44d62c`、`#ccc`、`#707070`、`#fd8611` 或取消/错误红色。
-- 禁用卡使用 `opacity:.3` 和 `pointer-events:none`，不能只降低文字颜色而保留点击。
-- 电池图标/电量位于卡片右上角，低电量使用专用 warning 图标；不是固定显示一个百分比文本。
-
-`4130` 中的双链设备卡另有明确尺寸：`.duallink-device-content .box-item` 为 `250×210px`，`.box-inner` 填满卡片并纵向布局。扫描、绑定、解绑和错误状态使用不同的文字颜色及操作区。
-
-### 3.4 Dashboard 分组内容
-
-源码可确认的分组/入口类型包括：
-
-- `devices`：设备卡和设备连接/安装状态。
-- `recommendation`：推荐入口或产品卡；不能与已安装设备卡混用。
-- `module`：模块安装/打开相关入口。
-- `onlineService`、`partnerDeals`：在线服务和合作伙伴入口。
-- `syn2`、`window10`、`inDevelopment`、`noDevice`、`xboxHeadset`、`xboxController`：源码中的特殊组/状态标识。
-
-卡片行为可能包括打开设备 UI、打开外部链接、安装/升级、重试、显示 tooltip 或展开详情。实际是否出现由 store 数据、安装状态、设备能力和 locale 决定。
-
-## 4. Gamer Room 页面
-
-Gamer Room 不是通用“设置页”。`9388.2bec5db3.chunk.js` 导出 `GamerRoom`，其页面包含：
-
-- `#gamerRoom` 根节点。
-- 可关闭的 `gr-banner`，包含营销内容、文本、链接和 Gamer Room Tutorial 入口。
-- `dashboard` 设备组，复用设备分组模型，但设备卡使用 `wrapper-box-item`、`.box-item`、`.gr-device-img`、`.gr-device-name`、`.gr-device-status` 和连接按钮。
-- 设备卡加载中会显示 skeleton/状态文本；安装完成后才显示对应连接弹出层。
-- 页面会按窗口宽度计算列数，并从设备组中排除特定产品后判断是否移除营销 banner；不能固定渲染一张 Gamer Room 横幅。
-
-CSS/组件明确存在 `gr-marketing`、`gr-marketing__image`、`gr-marketing__name`、`gr-marketing__description`、`gr-banner-content`、`.popup` 等结构。教程由状态控制，关闭后不代表设备或房间设置已保存。
-
-## 5. 固件更新页面
-
-`6505.93b828df.chunk.js` 的页面使用 `.items` 列表，不是侧边设置页，也不是产品页 widget 网格。
-
-### 5.1 结构
-
-```text
-.items
-├── .item-header
-│   ├── .header-title
-│   └── .header-link（可选）
-└── .item.firmware*
-    ├── .item-main-content
-    │   ├── .item-icon
-    │   ├── .item-name
-    │   ├── .to-left
-    │   └── .item-action
-    └── .firmwareDescription（展开时）
-        ├── .leftContent
-        └── .rightContent
-```
-
-### 5.2 样式和交互
-
-- `.items` 宽 `1220px`、纵向 flex、水平居中、底部间距 `40px`。
-- `.header-title` 使用 `RazerF5`、`24px`、绿色 `#44d62c`、大写；链接使用 `Roboto`、`14px`、`#ccc`，hover 绿色。
-- `.item-main-content` 高 `80px`、背景 `#111`、水平内边距 `0 30px 0 20px`；设备图标 `40×40px`。
-- 项目名使用 `16px`、`#ccc`，固定 flex 基础宽度 `500px`，过长时省略；信息文字使用 `14px`、`#707070`。
-- 操作按钮位于右侧，最小宽度 `90px`、高度 `27px`；维护中或不可用时显示 disabled/警告，而不是可点击的假按钮。
-- 展开详情使用 `#2d2d2d` 背景和 `20px` 内边距；版本、日期、大小与 release notes 分区排列。
-- 更新警告使用 `#fd8611`；release notes 分类标签使用 `#28aadc`、`#8b7add`、`#44d62c` 等源码颜色。
-- 更新项可能有 warning、最近更新后断开、详情展开、外部帮助链接和固件升级动作；这些状态由固件数据决定。
-
-## 6. 未验证与禁止推断
-
-以下内容在当前 `.ref/frontend` 证据中不能作为主前端页面规格：
-
-- 独立的应用设置左侧导航，以及固定的 `.main-setting`、`.side-navigation`、`.setting-content` 布局。
-- 主前端统一提供的音频、EQ、混音、OLED、触觉、Gaming Mode 或电池详细设置页。
-- 固定的“设备卡约 `290×220px`”；通用卡片图像区实际为 `250×140px`，双链卡另有 `250×210px`。
-- 所有页面共用 `600px` 两列 widget、所有页面都有保存按钮、所有页面都有预览区。
-- 仅由 `TAB_*` 文案、locale key、截图或当前 Rust 页面名称推导出的组件顺序和能力。
-
-当某个入口只有异步 chunk 编号而没有可读组件/样式证据时，文档必须保留“未验证”，实现也必须隐藏该入口或使用真实加载状态，不能用通用占位页面冒充原版。
-
-## 7. Manifest 与入口边界
-
-`.ref/frontend/manifest.json` 只证明这是 `dashboard` 应用、`display: standalone`、`theme_color:#000000`、`background_color:#ffffff`，并包含构建版本和资源清单；它不能证明应用内页面使用白色背景。应用内背景仍以 `.main-container` 的 `#222` CSS 为准。
-
-`.ref/frontend/asset-manifest.json` 将 `main.js` 指向 `static/js/main.7897a4cf.js`，并列出 `App.js`、`App.css` 及上述异步 chunk。页面实现应沿用这些入口关系，不应引用已经删除的 `src/pages/...` 路径或自行发明主前端路由。
+当前保留[快捷键交互](../../src/features/shortcuts_tests.rs)与[引擎编码](../../src/features/shortcut_engine_tests.rs)回归源码。本轮只做 `cargo check`；未运行测试、应用、DLL 或原生注册，也未启动快捷键目标程序。

@@ -27,7 +27,8 @@
 // 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
-
+pub(crate) mod system;
+pub(crate) mod runtime;
 
 pub mod dll;
 pub mod lighting;

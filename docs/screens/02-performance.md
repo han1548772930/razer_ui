@@ -1,113 +1,88 @@
-# 性能（`TAB_PERFORMANCE`，productId `182`）
+# 性能：182 独立页面与 653 回报率入口
 
-> 本文只记录 `182` 模块实际进入性能页面的内容。共享 CSS、共享 locale key、其他产品的性能组件和未触发的 lazy chunk 均不视为页面证据。
+> Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
-## 1. 入口与显示条件
+## 1. 实际页面树
 
-- 模块：`.ref/devices/182`，产品：Razer DeathAdder V3 Pro，`productId=182`。
-- 标签：`TAB_PERFORMANCE`。
-- 性能页面使用该设备的 `DeviceInfo`、当前 profile、DPI stages、连接方式和设备能力决定可见控件。
-- `HyperPolling` 相关轮询档位受接收器/连接状态约束；不能因为语言包存在 `HYPERPOLLING` 就默认显示所有高频档位。
-- 键盘的 Actuation、Snap Tap、Dynamic Keystroke 等能力不属于本文，不能从共享组件名推导到 182 鼠标。
-
-## 2. 鼠标性能页面的实际分区
-
-`main.db20a7c4.js` 和 `MapSensitivity.ed0c234c.chunk.js` 确认的页面语义为：
+`[JS]` [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js)：`GM.navs → lM → OM`。
 
 ```text
-Performance
-├─ DPI / sensitivity 区
-│  ├─ DPI 当前值（X；支持 XY 时才有 Y）
-│  ├─ XY 开关（由 DeviceInfo.supportXYDPI 决定）
-│  ├─ X/Y slider
-│  └─ DPI stages / 由阶段动作打开的阶段配置入口
-├─ Polling rate 区
-│  ├─ 可用轮询率按钮组
-│  ├─ 当前选中状态
-│  └─ 连接限制/电量/CPU 提示（仅满足条件时显示）
-├─ Lift-off / Smart Tracking 区
-│  ├─ tracking distance 说明
-│  ├─ asymmetric cut-off 开关或相关配置
-│  └─ surface distance / lift-off distance 控件（取决于设备状态）
-└─ 其他鼠标能力
-   └─ 只有主页面条件和对应组件实际进入时才出现
+Ls / body-widgets
+├─ hs(direction=left) → AM → IM：DPI / 灵敏度阶段
+└─ hs(direction=right)
+   ├─ !isBle → dm → Rm：回报率
+   └─ Dm → Cm：Windows 鼠标属性
 ```
 
-不要把该页实现成“所有能力均存在的设置表”。原页面由设备能力和当前映射状态决定分支。
+653 的 `km → Um → Pm` 是 Customize 内回报率卡，不是独立 Performance。777 无此页。Lift-off 属于 182 Calibration。
 
-## 3. DPI 与阶段
+## 2. DPI、阶段与 profile
 
-### 3.1 `MapSensitivity` 的已确认行为
+`[CONFIG]` 模块 1057：minDPI=100、maxDPI=30000、dpiStep=50、supportXYDPI=true。默认 profile 五阶段为 **400、800、1600、3200、6400**，active=3、visible=true、independent=false。它们是初始值，不是运行时唯一配置。
 
-`MapSensitivity.ed0c234c.chunk.js` 实际 render：
+数字输入由模块 4230 的 stepper 处理，`parseInput` 按步长向上取整后限制范围，例如 `101 → 150`；当前本地 DPI 归一化与此一致。滑条本身以 50 为步长。
 
-- 使用 `DeviceInfo.minDPI`、`maxDPI`、`dpiStep` 作为 slider 边界和步进；缺失时才使用组件默认回退。
-- `supportXYDPI` 为真时渲染 X、Y 两个 slider；否则只渲染单轴。
-- XY 开关切换时，关闭 XY 会令 Y 跟随 X；不是两个永远独立的输入框。
-- DPI 输入框类为 `.stage-input`，源码限制 `maxLength=5`，并在 blur/key handling 时校正数值。
-- 阶段配置的数据集会排除 `DPI_Clutch` / `DPI_OnTheFly` 等不适用于 `CycleUpSensitivityStages` 的动作；Hypershift 也会改变可用动作集合。
-- `configure-sensitivity` / `config-sensitivity` 点击会跳转到性能设置，而不是伪造一个本地弹窗。
+`AM` 读取 DPI、dpiStages、profileReducer、customizeReducer。`IM` 使用 `stages[activeStage - 1]`，不能固定读第一个。
 
-### 3.2 阶段视觉
+| 操作 | 源码调用 | 行为 |
+|---|---|---|
+| 选择阶段 | setPerformanceSelectedSensitivityStage、setActiveDPI | 同步当前 X/Y 与 independent |
+| 修改 X | changeDpiValueX → setDotsPerInchStageValueX | XY 联动时同时同步 Y |
+| 修改 Y | changeDpiValueY → setDotsPerInchStageValueY | 只在独立分支有效 |
+| 切换 XY | toggleY → setPerformanceIsSensitivityXYEnabled | 切换独立状态，联动分支将 Y 对齐 X |
+| 显示阶段 | toggleStages → setPerformanceIsSensitivityStagesEnabled | 影响阶段选择区域 |
+| 阶段启用/更新 | setEnableStage / updateStages → updateDPIStage | 更新当前 profile 阶段集合 |
 
-主 CSS 的阶段列表确认：
+缺 dpiStages 时 IM.render 返回 null；selectedProfile 变化需要重新同步。共有 props 如 useTwoWayTab、noHeader 不应自动推广为 182 当前页面配置。阶段数量/有效项须按原数组和禁用逻辑处理，不能删到没有有效阶段。
 
-| 选择器 | 值 |
+## 3. 回报率与运行条件
+
+182 基础 POLLING_RATE / POLLING_RATE_WIRELESS 为 **125、500、1000 Hz**，不含 250。HyperPolling 候选还有 2000、4000，8K 条件满足才有 8000。
+
+`Rm.checkAndUpdateHyperPollingRateList` 核查：
+
+1. duallink-devices 中与 DeviceInfo.dongleId 对应的接收器。
+2. 产品是否属于 HyperPolling 支持集合。
+3. isDongle / isDongleHyperpollingDevice 路径。
+4. POLLING_RATE_8K_FW_VERSION 与 DEVICE_RUNTIME_DATA 的固件门槛。
+
+不能仅写 `productId == 179` 决定显示。checkActivePollingRateValue 根据 dongle/连接状态选择 pollingRateWireless 或 pollingRate，并调用相应 setter。BLE 下当前 182 页不渲染此卡。
+
+1000 Hz 以上存在性能/功耗提示；是否有 in-game polling 由 supportInGamePollingRate 等配置决定，不能因为共享组件有分支就固定显示。
+
+653 Customize 的候选为 **125、250、500、1000、2000、4000、8000 Hz**，与 182 分开建模。
+
+## 4. 系统属性、视觉与资源
+
+`Cm.openMouseProperties()` 调用 `pt.A.OpenMouseProperties()`，是宿主系统操作。
+
+[182 CSS](../../.ref/devices/182/static/css/main.48c20423.css) 中，左右 widget-col 常用 600 宽，DPI 卡在左，回报率和系统属性纵向堆在右。polling-btn-set 是选项组，polling-warn 是提示；本页不应额外插入设备大图。
+
+| 用途 | 来源 |
 |---|---|
-| `.stages` | `display:flex; flex-direction:column` |
-| `.stages .stage` | `height:68px; display:flex; align-items:center; border-radius:3px; margin-bottom:4px` |
-| `.stage-ordinal` | `30px × 30px` |
-| `.stage-input` | `60px × 26px; background:#111; border:1px solid #5d5d5d; color:#ccc; font-size:14px` |
-| `.stage.drag-over` | 绿色底边 `#44d62c` |
-| `.description-stages` | `color:#999; line-height:17px` |
+| DPI 阶段、轴标签、状态 | IM / Zm + CSS |
+| Windows 鼠标属性图 | `Cm → um → Nm` 根据系统版本输出 `windows/windows-11` 类；CSS 引用 `windows_logo.8fb1e7e2.svg` / `common-windows-11.d477cadb.svg`，不是 JS 内嵌 SVG |
+| 外部链接图标 | external-link-icon 样式/资源 |
+| 字体 | 原包 Roboto，见 [资源索引](../re/04-resource-index.md) |
 
-## 4. 轮询率
+## 5. 重构前基线与验收
 
-`main.48c20423.css` 的实际选择器：
+`[RUST 基线]` [performance.rs](../../src/features/performance.rs) 读取 stages.first()，缺活动阶段选择与完整 X/Y 编辑；polling_panel 以 productId 179 判断 HyperPolling，漏掉接收器/固件规则；Lift-off 卡归属错误；setter 只更新 AppShell 内存。
 
-```css
-.polling-rate { padding-top:10px; position:relative; z-index:1 }
-.polling-rate .dropdown-area { margin-left:0; width:100px }
-.customize-polling-rate-button {
-  align-items:center; background-color:#222; border:1px solid #5d5d5d;
-  border-radius:3px; color:#ccc; display:flex; font-size:14px;
-  height:27px; justify-content:center; text-transform:uppercase; width:72px
-}
-.customize-polling-rate-button.configWidth { min-width:90px }
-.customize-polling-rate-button.active,
-.customize-polling-rate-button:hover { border-color:#44d62c }
-```
+`[建议]` 每个 profile 保留阶段和 active ID；GPUI Kit Slider/数值输入共享领域值，避免在 render 重建 Entity。验收覆盖阶段选择、XY 联动、范围/步长、切 profile、BLE 隐藏、普通/HyperPolling/8K 条件、系统属性打开、失败回读。
 
-因此轮询率是按钮组，不应改成普通下拉框；每个按钮可能有 6px 圆形速率指示点（`.customize-polling-rate-button-color`）。高轮询率的可用性由当前连接/接收器状态决定。
+## 6. 2026-10-01 样式接入
 
-## 5. Lift-off / Smart Tracking
+本轮直接复核 `IM → Zm/jm → Wm/Vm` 的 render 与 CSS，未使用旧截图。阶段不是横向标签：`.stages` 是纵向列表，普通行高 68、间隔 4，X-Y 行高 114；左侧序号为 30px 圆形，包含原版 8×6 阶段三角。`stage-header` 高 20，分别显示 DPI、100 和 30000。`stage-control` 高 27、上距 25，阶段显隐使用 Switch。
 
-已确认的 CSS 与文案语义：
+[当前代码](../../src/features/sensitivity.rs) 按固定五槽实现纵排阶段：每槽数字输入与 250px 滑条在同一行，该槽独立 X-Y 时增加第二行，并使用原版 sensitivity-xy 默认/active/disabled 三态 SVG。所有可编辑槽位均保留各自 InputState/SliderState；修改非当前槽位时将该槽设为当前阶段，无需先点序号才可编辑。五种阶段三角、XY 图标与 Windows 图标均从 `.ref/devices/182/static/media` 打包。
 
-- `.lift-off-wrapper` 最大宽度 `290px`。
-- `.lift-off`：`width:290px; padding:20px; background:#111; border-radius:5px; font-size:14px; line-height:17px`。
-- `.lift-off .title`：`#44d62c`、RazerF5、`16px`、大写、底部间距 `20px`。
-- `Smart Tracking`、`Asymmetric cut-off`、`surface distance`、`lift-off distance` 是不同语义，不能合并为一个“抬升距离”字段。
-- `CALIBRATION` 相关文字在 locale 中存在，但性能页面是否打开校准流程必须由实际性能组件条件触发；不能仅凭 key 认定有按钮。
+回报率改为原版 72×27、间隔 10 的数字按钮，选择和悬停只强调绿色边框，不再以绿色实心底替代原样式。鼠标属性恢复 44px Windows 图标、20px 间隔和下划线入口，保持真实系统属性调用；当前图形使用 Windows 11 资源，未接入原宿主版本查询。
 
-## 6. 颜色、密度与操作状态
+每个槽位保留稳定 ID、enabled、independent 和 X/Y 数值；关闭槽位只禁用并保留数值，至少保留两个启用槽位。关闭总阶段显示时只显示当前槽，其他槽值和启用状态保留。停用当前槽自动选择下一个启用槽。原拖动图标支持拖放排序，另提供 Alt+上下方向键排序；槽位值、XY 状态、控件实体和当前槽身份随排序保留。
 
-- 页面底色 `#222`，主文字 `#ccc`，卡片/输入底色 `#111`，主色 `#44d62c`，通用边框 `#5d5d5d`。
-- 主卡片来自 `.widget`：`600px`、`padding:30px 40px`、`border-radius:5px`；产品模块页面外壳的 `.body-widgets` 最大宽 `1240px`。
-- slider 的 disabled 状态必须降低透明度并阻止交互；不能显示为可编辑但不写回设备状态。
-- 轮询率 active 是绿色边框，不是绿色实心按钮。
-- 修改 DPI/轮询率/追踪距离后，保存状态由原页面的设备服务/保存机制确认；不能直接显示“成功”而没有服务回传。
+旧本地配置缺少 slots 时按原阶段值、阶段数量与既有 independent 字段迁移，补齐未使用槽位；旧设备 DPI 配置按各阶段自己的 independent 迁移。被禁用或隐藏槽位的延迟控件事件不能改写值。
 
-## 7. 明确排除
+数字框已改用 Base NumberInput 承担输入、焦点和步进动作，应用提供原 `.stepper` 的 62×26 外观、上下两个 14×12 箭头和原 8×4 图标。箭头在 hover/聚焦时显示，边界降为 0.3 透明度；保留滚轮和键盘步进、Enter/失焦提交、向上取整和范围归一化。鼠标按下立即修改一次，此后每 300ms 连续步进；松开、移出、输入失焦或窗口停用时停止，重复任务也检查设备/Profile、当前页、可编辑槽位及数值边界。鼠标点击路径抑制对应语义 click 的重复修改，键盘动作仍由框架处理。
 
-- 不把 `TAB_PERFORMANCE` 共享 key 当作 653/777 的实际页面结构。
-- 不把键盘专属 Actuation/Snap Tap/Dynamic Keystroke 填进 182 鼠标页面。
-- 不把独立 `Map*.chunk.js` 文件存在等同于默认 render；它们由当前 mapping type 或设备条件动态加载。
-
-## 8. 证据文件
-
-- `.ref/devices/182/static/js/main.db20a7c4.js`
-- `.ref/devices/182/static/js/MapSensitivity.ed0c234c.chunk.js`
-- `.ref/devices/182/static/js/MapMouse.d4aa1eba.chunk.js`
-- `.ref/devices/182/static/css/main.48c20423.css`
-- `.ref/devices/182/manifest.json`
+[sensitivity_tests.rs](../../src/features/sensitivity_tests.rs) 和领域测试保留数值草稿、步进、状态迁移、稳定身份和延迟事件路径的用例。本轮仅做 `cargo check`，不执行测试、应用或 DLL，不能把编译检查视为长按事件顺序或视觉验收。HyperPolling/8K 条件及硬件回读仍未接入。

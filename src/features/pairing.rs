@@ -1,25 +1,18 @@
-﻿//! 配对页。
+//! productId 182 鼠标的无线配对页。
 //!
-//! 布局依据 `docs/screens/03-pairing.md`：
-//!
-//! | 分区 | 雷云真实文案 |
-//! |---|---|
-//! | ① 接收器与固件 | `HYPERPOLLING_WIRELESS` / `DONGLE_IS_LATEST` |
-//! | ② 配对指引 | `HYPERPOLLING_WIRELESS_DONGLE_HEADER`、`..._NOTE_FOUR` = 将设备放在接收器附近 |
-//! | ③ 已配对设备 | `PAIRED` = 已配对 |
-//! | ④ 取消配对 | `HYPERPOLLING_WIRELESS_DONGLE_UNPAIR_CONFIRM_TEXT` |
-//!
-//! 该页**只在鼠标上**出现（实测：182 有、653 无、777 无）。
-//! 本机确实插着接收器：productId 179 `HyperPolling Wireless Dongle`。
+//! 页面只表达 182 PairingContent 能证明的接收器、扫描、设备卡和解除配对状态。
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::shell::AppShell;
-use crate::ui::widgets::{card_title, PageLayout, card, EmptyState, SettingRow, btn};
+use crate::ui::widgets::{btn, widget_slot, EmptyState, PageLayout};
 
-/// 渲染配对页。
+const DEVICE_CARD_W: f32 = 290.0;
+const DEVICE_CARD_H: f32 = 220.0;
+
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
@@ -27,129 +20,171 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     if device.product_id != 182 {
         return EmptyState::new("配对页当前只为 productId 182 鼠标实现").into_any_element();
     }
-
-    let Some(pairing) = device.features.pairing.as_ref() else {
-        return EmptyState::new("该设备没有无线配对设置。")
-            .into_any_element();
+    let Some(_pairing) = device.features.pairing.as_ref() else {
+        return EmptyState::new("该设备没有无线配对设置").into_any_element();
     };
 
-    let dongle = pairing.dongle;
-    let is_latest = pairing.dongle_is_latest;
-    let paired: Vec<String> = pairing.paired_devices.clone();
-    let pairing_now = pairing.pairing;
-
-    // 本机实测的接收器：productId 179。
-    let dongle_device = app
-        .devices
-        .iter()
-        .find(|d| d.product_id == 179)
-        .map(|d| d.display_name().to_string());
-    let dongle_connected = dongle_device.is_some();
-    let pairing_status = if pairing_now {
-        "正在扫描/等待设备确认"
-    } else if paired.is_empty() {
-        "空闲，尚未连接兼容设备"
-    } else {
-        "已连接"
-    };
-
-    PageLayout::new("正在配对", device.display_name())
+    PageLayout::new("配对", device.display_name())
         .without_product_banner()
-        // ① 接收器
-        .widget(
-            card()
-                .child(card_title("接收器"))
-                .child(SettingRow::new("类型", dongle.zh()))
-                .child(SettingRow::new(
-                    "固件",
-                    if is_latest {
-                        "已是最新".to_string()
-                    } else {
-                        "有更新".to_string()
-                    },
-                ))
-                .when_some(dongle_device, |this, name| {
-                    this.child(SettingRow::new("本机检测到", name))
-                        .child(SettingRow::new("productId", "179".to_string()))
-                })
-                .when(!dongle_connected, |this| {
-                    this.child(SettingRow::new(
-                        "连接状态",
-                        "未检测到 HyperPolling 接收器；扫描与配对操作不可用".to_string(),
-                    ))
-                }),
+        .widget(widget_slot(pairing_content(app, cx)))
+        .into_any_element()
+}
+
+fn pairing_content(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
+    let Some(device) = app.current() else {
+        return EmptyState::new("配对数据不可用").into_any_element();
+    };
+    let Some(pairing) = device.features.pairing.as_ref() else {
+        return EmptyState::new("配对数据不可用").into_any_element();
+    };
+
+    let dongle_connected = app.devices.iter().any(|device| device.product_id == 179);
+    let pairing_now = pairing.pairing;
+    let paired_devices = pairing.paired_devices.clone();
+
+    let mut devices = h_flex()
+        .w_full()
+        .flex_wrap()
+        .gap(px(20.))
+        .child(dongle_card(pairing.dongle.zh(), pairing.dongle_is_latest, dongle_connected, cx));
+
+    for (index, name) in paired_devices.iter().cloned().enumerate() {
+        devices = devices.child(device_card(index, name, cx));
+    }
+
+    if pairing_now {
+        devices = devices.child(skeleton_card(cx));
+    } else if paired_devices.is_empty() {
+        devices = devices.child(empty_pairing_card("扫描后会在这里显示兼容设备", cx));
+    }
+
+    v_flex()
+        .w_full()
+        .gap_3()
+        .p(px(30.))
+        .rounded(px(5.))
+        .bg(cx.theme().group_box)
+        .child(div().text_size(px(16.)).font_bold().child("无线配对"))
+        .child(
+            div()
+                .text_sm()
+                .text_color(cx.theme().foreground)
+                .child("将设备放在 HyperPolling 无线接收器附近，然后开始扫描。"),
         )
-        // ② 配对指引
-        .widget(
-            card()
-                .child(card_title("配对指引"))
-                .child(div().text_sm().child(
-                    "雷云原文：使用 Razer HyperPolling 无线接收器，你可以配对兼容的设备以获得更优秀的性能。",
-                ))
-                .child(SettingRow::new(
-                    "注意",
-                    "将设备放在 HyperPolling 无线接收器附近".to_string(),
-                )),
-        )
-        // ③ 当前流程状态
-        .widget(
-            card()
-                .child(card_title("配对状态"))
-                .child(SettingRow::new("当前状态", pairing_status.to_string()))
-                .child(SettingRow::new(
-                    "候选设备",
-                    if pairing_now {
-                        "正在等待设备服务返回候选列表".to_string()
-                    } else {
-                        "暂无候选设备".to_string()
-                    },
-                ))
-                .when(!dongle_connected, |this| {
-                    this.child(div().text_xs().child(
-                        "当前页面只展示本地快照；设备扫描、候选发现和配对结果需要真实设备服务回传。",
-                    ))
-                }),
-        )
-        // ④ 已配对设备
-        .widget(
-            card()
-                .child(card_title("已配对设备"))
-                .when(paired.is_empty(), |this| {
-                    this.child(div().text_sm().child("尚无已配对设备"))
-                })
-                .children(paired.iter().map(|name| {
-                    h_flex()
-                        .w_full()
-                        .justify_between()
-                        .text_sm()
-                        .child(div().child(name.clone()))
-                        .child(div().child("已配对"))
-                        .into_any_element()
-                }))
+        .child(devices)
+        .child(
+            h_flex()
+                .gap_2()
                 .child(
-                    h_flex()
-                        .gap_2()
-                        .flex_wrap()
-                        .child(
-                            btn("pair-start", if pairing_now { "停止扫描" } else { "开始扫描" })
-                                .disabled(!dongle_connected)
-                                .on_click(cx.listener(|this, _, _, cx| this.toggle_pairing(cx))),
-                        )
-                        .child(
-                            btn("pair-unpair", "取消全部配对").disabled(true),
-                        ),
+                    btn("pair-scan", if pairing_now { "停止扫描" } else { "开始扫描" })
+                        .disabled(!dongle_connected)
+                        .on_click(cx.listener(|this, _, _, cx| this.toggle_pairing(cx))),
                 )
-                .when(pairing_now, |this| {
-                    this.child(div().text_sm().child(
-                        "扫描已开始，等待设备服务返回候选设备；本页面不会伪造配对成功。",
-                    ))
-                })
-                .when(!dongle_connected, |this| {
-                    this.child(div().text_xs().child("取消配对需要真实接收器和设备服务确认。"))
-                })
-                .child(div().text_xs().child(
-                    "取消配对前雷云会弹确认框：你即将取消 Razer 雷蛇设备与接收器的配对。确定要继续吗？",
-                )),
+                .child(
+                    btn("pair-unpair", "取消配对")
+                        .disabled(paired_devices.is_empty() || !dongle_connected)
+                        .on_click(cx.listener(|this, _, _, cx| this.unpair_all(cx))),
+                ),
         )
+        .when(!dongle_connected, |this| {
+            this.child(
+                div()
+                    .text_xs()
+                    .text_color(cx.theme().muted_foreground)
+                    .child("未检测到 HyperPolling 无线接收器；扫描和解除配对不可用。"),
+            )
+        })
+        .when(pairing_now, |this| {
+            this.child(
+                div()
+                    .text_xs()
+                    .text_color(cx.theme().muted_foreground)
+                    .child("正在等待设备服务返回扫描结果；未收到结果前不会显示配对成功。"),
+            )
+        })
+        .into_any_element()
+}
+
+fn dongle_card(
+    name: String,
+    latest: bool,
+    connected: bool,
+    cx: &mut Context<AppShell>,
+) -> AnyElement {
+    device_card_base(cx)
+        .child(Icon::new(IconName::Cable).w(px(64.)).h(px(64.)))
+        .child(div().text_sm().child(name))
+        .child(
+            div()
+                .text_xs()
+                .text_color(if connected {
+                    cx.theme().success
+                } else {
+                    cx.theme().muted_foreground
+                })
+                .child(if connected { "已连接" } else { "未检测到" }),
+        )
+        .child(
+            div()
+                .text_xs()
+                .text_color(cx.theme().muted_foreground)
+                .child(if latest { "固件已是最新" } else { "固件有更新" }),
+        )
+        .into_any_element()
+}
+
+fn device_card(index: usize, name: String, cx: &mut Context<AppShell>) -> AnyElement {
+    device_card_base(cx)
+        .id(format!("paired-device-{index}"))
+        .child(Icon::new(IconName::Mouse).w(px(64.)).h(px(64.)))
+        .child(div().text_sm().child(name))
+        .child(div().text_xs().text_color(cx.theme().success).child("已配对"))
+        .into_any_element()
+}
+
+fn device_card_base(cx: &mut Context<AppShell>) -> Div {
+    v_flex()
+        .flex_shrink_0()
+        .w(px(DEVICE_CARD_W))
+        .h(px(DEVICE_CARD_H))
+        .items_center()
+        .justify_center()
+        .gap_2()
+        .p(px(20.))
+        .rounded(px(5.))
+        .bg(cx.theme().background)
+        .text_color(cx.theme().foreground)
+}
+
+fn skeleton_card(cx: &mut Context<AppShell>) -> AnyElement {
+    v_flex()
+        .flex_shrink_0()
+        .w(px(DEVICE_CARD_W))
+        .h(px(DEVICE_CARD_H))
+        .gap_3()
+        .p(px(10.))
+        .rounded(px(5.))
+        .bg(rgba(0x0000004d))
+        .child(div().w(px(76.)).h(px(20.)).rounded_full().border_1().border_color(cx.theme().muted_foreground))
+        .child(div().w(px(248.)).h(px(99.)).rounded(px(3.)).bg(rgba(0xffffff08)))
+        .child(div().w(px(248.)).h(px(16.)).rounded(px(3.)).bg(rgba(0xffffff08)))
+        .into_any_element()
+}
+
+fn empty_pairing_card(text: &'static str, cx: &mut Context<AppShell>) -> AnyElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .flex_shrink_0()
+        .w(px(DEVICE_CARD_W))
+        .h(px(DEVICE_CARD_H))
+        .p(px(36.))
+        .rounded(px(5.))
+        .border_1()
+        .border_color(cx.theme().muted_foreground)
+        .text_sm()
+        .text_center()
+        .child(text)
         .into_any_element()
 }

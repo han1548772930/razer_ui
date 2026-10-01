@@ -24,7 +24,7 @@
 
 #![allow(dead_code)]
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{CStr, CString, c_char};
 
 use super::dll::{EngineLibrary, EnginePaths};
 
@@ -73,7 +73,9 @@ impl LightingDriver {
         if ptr.is_null() {
             return None;
         }
-        let text = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        let text = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
         // 该 DLL 返回的字符串必须由它自己的 FreeString 释放。
         if let Some(free_string) = unsafe { self.lib.func::<FnFreeString>("FreeString") } {
             unsafe { free_string(ptr) };
@@ -118,7 +120,9 @@ impl LightingDriver {
         if out.is_null() {
             anyhow::bail!("Configure 返回空指针");
         }
-        let text = unsafe { CStr::from_ptr(out) }.to_string_lossy().into_owned();
+        let text = unsafe { CStr::from_ptr(out) }
+            .to_string_lossy()
+            .into_owned();
         unsafe { free_string(out) };
 
         serde_json::from_str(&text)

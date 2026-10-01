@@ -1,214 +1,86 @@
-//! 宏页：录制入口、宏步骤编辑和失败草稿保护。
+//! 653 Customize 内嵌的 MapMacro 组件。
 //!
-//! 设备录制事件流尚未在当前 feature API 暴露，因此页面不伪造“录制成功”或“已下发”。
-//! 已有步骤仍然可以编辑为本地草稿，并通过统一保存流程提交。
+//! 原版不是独立的宏列表、录制卡片或步骤编辑页。MapMacro 只在 keyboard-svg
+//! 选中支持宏的按键映射时出现，包含宏选择、执行选项以及条件显示的重复次数。
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::domain::MACRO_ACTIONS;
 use crate::shell::AppShell;
-use crate::ui::widgets::{
-    btn, card, card_title, not_wired_hint, select_row, EmptyState, PageLayout, SettingRow,
-    slider_row,
-};
+use crate::ui::widgets::{card, card_title, EmptyState, PageLayout, SettingRow};
 
-const MACRO_DELAY_ID: &str = "macro-delay-slider";
-
-pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
+pub fn render(app: &AppShell, _cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
 
-    let macros: Vec<(String, bool, u32, Vec<(String, u32)>)> = device
-        .features
-        .macros
-        .iter()
-        .map(|mac| {
-            (
-                mac.name.clone(),
-                mac.loop_until_release,
-                mac.total_ms(),
-                mac.steps
-                    .iter()
-                    .map(|step| (step.action.clone(), step.delay_ms))
-                    .collect(),
-            )
-        })
-        .collect();
-
-    let cards: Vec<AnyElement> = macros
-        .into_iter()
-        .enumerate()
-        .map(|(index, mac)| macro_card(index, mac, app.open_select.as_deref(), cx))
-        .collect();
+    if device.product_id != 653 {
+        return EmptyState::new("宏映射模块仅适用于 productId 653").into_any_element();
+    }
 
     PageLayout::new("宏", device.display_name())
-        .subtitle("编辑当前 profile 的宏步骤；本地修改会保留为草稿")
-        .widget(recording_card())
-        .widget(draft_status_card(app))
-        .widget(
-            card()
-                .child(
-                    h_flex()
-                        .w_full()
-                        .justify_between()
-                        .items_center()
-                        .child(card_title("宏列表"))
-                        .child(btn("macro-add", "新建宏").on_click(cx.listener(|this, _, _, cx| {
-                            this.add_macro(cx)
-                        }))),
-                )
-                .when(cards.is_empty(), |this| {
-                    this.child(div().text_sm().child("当前 profile 还没有宏步骤"))
-                }),
-        )
-        .widgets(cards)
-        .widget(not_wired_hint())
+        .without_product_banner()
+        .subtitle("MapMacro 仅作为键盘按键映射的一部分显示")
+        .widget(map_macro_card(&device.features.macros))
         .into_any_element()
 }
 
-fn recording_card() -> AnyElement {
+fn map_macro_card(macros: &[crate::domain::Macro]) -> AnyElement {
+    let macro_available = !macros.is_empty();
+    let selected_macro = macros
+        .first()
+        .map(|item| item.name.as_str())
+        .unwrap_or("无可用宏");
+
     card()
-        .child(card_title("宏录制"))
-        .child(div().text_sm().child(
-            "录制需要设备宏服务提供 startMacroRecording / stopMacroRecording 事件流。",
+        .id("map-macro")
+        .child(card_title("MapMacro"))
+        .child(div().text_xs().child(
+            "此组件由 Customize 的 activeButton 驱动；未选中支持宏的按键时，原版不会显示独立宏页面。",
         ))
-        .child(
-            h_flex()
-                .gap_2()
-                .child(btn("macro-record-start", "开始录制").disabled(true))
-                .child(btn("macro-record-stop", "停止录制").disabled(true))
-                .child(div().text_xs().child("等待设备录制服务")),
-        )
-        .into_any_element()
-}
-
-fn draft_status_card(app: &AppShell) -> AnyElement {
-    let (status, detail) = if app.dirty {
-        (
-            "草稿未保存",
-            "当前修改仍保留在本地草稿中；保存失败时不会清空步骤。",
-        )
-    } else {
-        (
-            "无未保存草稿",
-            "设备写入确认由统一保存流程返回，不在此处伪造成功状态。",
-        )
-    };
-
-    card()
-        .child(card_title("失败草稿保护"))
-        .child(SettingRow::new("当前状态", status.to_string()))
-        .child(div().text_xs().child(detail))
-        .into_any_element()
-}
-
-fn action_group(action: &str) -> &'static str {
-    if action.starts_with("key_") {
-        "键盘事件"
-    } else if action.starts_with("mouse_") {
-        "鼠标事件"
-    } else if action.starts_with("media_") {
-        "媒体事件"
-    } else {
-        "设备事件"
-    }
-}
-
-fn stable_id(value: &str) -> String {
-    value
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || character == '_' || character == '-' {
-                character
-            } else {
-                '_'
-            }
-        })
-        .collect()
-}
-
-fn macro_card(
-    index: usize,
-    mac: (String, bool, u32, Vec<(String, u32)>),
-    open_select: Option<&str>,
-    cx: &mut Context<AppShell>,
-) -> AnyElement {
-    let (name, loop_until_release, total_ms, steps) = mac;
-    let macro_id = stable_id(&name);
-    let step_count = steps.len();
-
-    card()
-        .child(
-            h_flex()
-                .w_full()
-                .justify_between()
-                .items_center()
-                .gap_3()
-                .child(v_flex().gap_1().child(card_title(name.clone())).child(
-                    div().text_xs().child(format!("{} 个步骤 · {} ms", step_count, total_ms)),
-                ))
-                .child(btn(
-                    format!("macro-delete-{macro_id}"),
-                    "删除",
-                ).on_click(cx.listener(move |this, _, _, cx| {
-                    this.remove_macro(index, cx);
-                }))),
-        )
-        .child(SettingRow::new(
-            "按住循环",
-            if loop_until_release {
-                "已启用（来自设备 profile）"
-            } else {
-                "未启用"
-            },
+        .child(static_dropdown("宏", selected_macro, macro_available))
+        .child(static_dropdown(
+            "执行选项",
+            "由当前按键映射决定",
+            macro_available,
         ))
-        .when(step_count == 0, |this| {
-            this.child(div().text_sm().child("这个宏还没有步骤；可以添加第一步开始编辑。"))
+        .when(macro_available, |this| {
+            this.child(SettingRow::new(
+                "重复次数",
+                "仅选择“多次执行”时显示，范围 1–99，步长 1",
+            ))
         })
-        .children(steps.into_iter().enumerate().map(|(step_index, (action, delay))| {
-            let action_id = format!("macro-{macro_id}-step-{step_index}-action");
-            let delay_id = format!("macro-{macro_id}-step-{step_index}-delay");
-            let action_group = action_group(&action);
+        .when(!macro_available, |this| {
+            this.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(0x707070))
+                    .child("宏不可用；原版会降低该区域透明度并禁用执行选项。"),
+            )
+        })
+        .child(div().text_xs().child(
+            "宏录制、宏删除、宏步骤列表和独立保存成功提示不属于 653 MapMacro 组件。",
+        ))
+        .into_any_element()
+}
 
-            v_flex()
-                .w_full()
-                .gap_2()
-                .mt_2()
-                .child(div().text_xs().child(format!("步骤 {} · {action_group}", step_index + 1)))
-                .child(select_row(
-                    action_id.clone(),
-                    "事件",
-                    action,
-                    &MACRO_ACTIONS,
-                    open_select == Some(action_id.as_str()),
-                    cx,
-                    move |this, picked, cx| this.set_macro_action(index, step_index, picked, cx),
-                ))
-                .child(slider_row(
-                    MACRO_DELAY_ID,
-                    "前置延迟",
-                    delay as f32,
-                    0.,
-                    2000.,
-                    10.,
-                    format!("{delay} ms"),
-                    true,
-                    cx,
-                    move |this, value, cx| this.set_macro_delay(index, step_index, value, cx),
-                ))
-                .child(div().text_xs().child(format!("步骤 ID：{delay_id}")))
-                .into_any_element()
-        }))
+fn static_dropdown(label: &'static str, value: &str, enabled: bool) -> AnyElement {
+    h_flex()
+        .w_full()
+        .justify_between()
+        .items_center()
+        .child(div().text_sm().child(label))
         .child(
-            h_flex().mt_3().child(btn(
-                format!("macro-{macro_id}-step-add"),
-                "添加步骤",
-            ).on_click(cx.listener(move |this, _, _, cx| {
-                this.add_macro_step(index, cx);
-            }))),
+            div()
+                .w(px(220.))
+                .h(px(32.))
+                .px(px(10.))
+                .border_1()
+                .border_color(if enabled { rgb(0x5D5D5D) } else { rgb(0x333333) })
+                .text_color(if enabled { rgb(0xCCCCCC) } else { rgb(0x707070) })
+                .text_sm()
+                .child(value.to_string()),
         )
         .into_any_element()
 }

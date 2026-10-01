@@ -1,106 +1,77 @@
-# 校准（`TAB_CALIBRATION`，productId `182`）
+# 校准：182 Smart Tracking
 
-> 本文只记录 182 鼠标模块实际拥有的表面校准路径。共享 locale 中的手柄、游戏控制器、耳机或其他校准文案不属于本页面结论。
+> Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
-## 1. 入口与边界
+## 1. 实际入口
 
-- 模块：`.ref/devices/182`，产品：Razer DeathAdder V3 Pro，`productId=182`。
-- 标签：`TAB_CALIBRATION`。
-- 182 的校准语义是鼠标传感器/鼠标垫表面校准，不是拇指控制杆校准，也不是耳机校准。
-- 页面会根据当前表面、传感器数据、校准状态和设备服务回传决定按钮与提示；不能由 `CALIBRATION_*` key 的数量推导完整页面。
+`[JS]` [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js)：`GM.navs → mD → PD → pD → LD`。`pD` 读取 smartOnlyCalibrationReducer.smartTracking。
 
-## 2. 实际页面内容
+本地实际入口是 Smart Tracking，不是“新增鼠标垫 → 移动扫描 → 完成/失败”的表面校准向导。共享 manualCalibration 数据、CSS 和完成图片不证明此路由使用它们。653、777 均无 Calibration 根页面。
 
-182 主 bundle 的实际文案集合明确包含以下鼠标表面校准流程：
+## 2. 结构
 
 ```text
-Calibration
-├─ surface/profile 选择
-│  ├─ 预校准 Razer 表面数据说明
-│  ├─ 自定义表面入口
-│  └─ selected / calibrated 状态
-├─ manual calibration action
-│  ├─ CALIBRATE / START
-│  ├─ 单击鼠标左键并移动鼠标
-│  ├─ 以 Z 字形覆盖整个鼠标垫
-│  └─ 不抬起鼠标持续移动至少 3 秒（对应特定传感器流程）
-└─ 结果状态
-   ├─ calibrating / calculating tolerance
-   ├─ moving too fast
-   ├─ completed
-   ├─ error / retry
-   └─ Esc 取消或再次单击左键结束（按当前流程分支）
+LD / body-widgets
+├─ 条件首次提示 DD
+│  └─ welcome / calibration-welcome / mouse-mat-calibration
+└─ ms / widget：SMARTTRACKING
+   ├─ SMART_TRACKING_DISC
+   ├─ enableAsym checkbox + ENABLEASYMMETRICCUTOFF + tooltip
+   ├─ 对称：TRACKINGDISTANCE
+   ├─ 非对称：LIFTOFFDISTANCE + LANDINGDISTANCE + 提示
+   └─ RESET 标题 + RESET_DESC1 说明
 ```
 
-注意：`main.db20a7c4.js` 中这些文案是同一个校准功能族的不同状态/版本；不能把每条文案同时显示成独立卡片。
+最后的 RESET 在此 render 树中是说明区，没有实际 reset 按钮/handler，不能把标题改成可点击重置。
 
-## 3. 表面卡片布局
+## 3. 数值与联动
 
-主 CSS 对 182 的 `.surface` 给出明确几何：
+| 字段 | 范围 | setter |
+|---|---|---|
+| isAsymmetric | bool | setIsAsymmetricCutOff |
+| trackingDistance | 1–3，step 1 | setTrackingDistance |
+| liftOffDistance | 2–26，step 1 | setLiftOffDistance |
+| landingDistance | 1–25，step 1 | setLandingDistance |
 
-| 选择器 | 已确认值 |
+lift/landing 上限存在 prop 覆盖能力；上述为当前 LD 的默认边界。事件还调用 `setSmartOnlyCalibrationValues` 保存整组 smartTracking。
+
+```text
+抬升值 a <= landingDistance：
+    landingDistance = max(1, a - 1)
+着陆值 a >= liftOffDistance：
+    liftOffDistance = min(a + 1, 26)
+```
+
+不变量为 `landingDistance < liftOffDistance`。原 UI 没有证明这些数字是毫米，不得自行附加 mm。对称的 1–3 是等级范围。slider 存在 cancelMouseUpOnValueChange 约定，需要避免连续拖动和 mouseup 重复提交。
+
+## 4. 首次提示
+
+LD.useEffect 从 `eE.A` 读取 `Ze.jU0` 持久化标记，已确认后不再显示；关闭/确认走对应回调。它是介绍提示，不是 Running/Completed 校准状态机。
+
+`DD` 只有右上关闭入口、标题和正文，没有确认按钮。`.welcome .title` 为 RazerF5、26px、行高 30、下距 10、绿色居中；正文 14px、行高 16、居中。提示使用 #2d2d2d 底、圆角 5、padding 20px 30px；36×36 指关闭命中区，关闭图标本身为 20px。此前把标题记为 20px、把整个 36px 区域记为图标的描述不准确。
+
+## 5. 资源
+
+| 用途 | 路径 / 锚点 |
 |---|---|
-| `.mats.flex` | `align-self:flex-start; flex-wrap:wrap` |
-| `.mats.flex > div` | `flex:0 0 auto` |
-| `.surface` | `width:290px; height:200px; margin:0 20px 20px 0; padding:8px 20px; background:#111; border-radius:5px; position:relative` |
-| `.surface:hover` | `top:-4px`，过渡 `.2s` |
-| `.surface.add` | `background:#222; border:2px dashed #5d5d5d` |
-| `.surface.add:hover` | 边框变为 `#44d62c`，不抬升 |
-| `.surface .img` | `width:250px; height:140px` |
-| `.surface.selected .check-circle` | 背景 `#44d62c`，伪元素绘制选中勾 |
+| 页面与提示 | main 的 LD / DD |
+| 布局 | [main.48c20423.css](../../.ref/devices/182/static/css/main.48c20423.css) 的 calibration-welcome、calibration_tool_tip |
+| 提示关闭 | [icon_close_white.8ab462b8.svg](../../.ref/devices/182/static/media/icon_close_white.8ab462b8.svg) |
+| hover/active 关闭 | [icon_close_green.45f61360.svg](../../.ref/devices/182/static/media/icon_close_green.45f61360.svg) |
+| slider / checkbox | 组件和 CSS，不需要扫描背景图 |
 
-因此表面列表是横向 wrap 的 `290px` 卡片，不是单列 `SettingRow`；添加表面是虚线卡片，不是普通绿色主按钮。
+mouse_calibration_complete/error 等虽然在包内，但当前路由未引用为完成流程，见 [资源索引](../re/04-resource-index.md)。
 
-## 4. 说明区与弹层
+## 6. 重构前基线与验收
 
-- `.calibration-body` 的 CSS 为 `margin:auto; max-width:600px`，它是校准说明/内容区域的宽度约束。
-- 预校准表面信息包含传感器微调说明，以及 `pre-calibrated Razer surface profile` 语义；只有当当前选择的是预校准表面时才应显示对应说明。
-- `.choose-a-mat` 是选择表面相关弹层/区域，默认样式包含 `background:#000; border:1px solid #5d5d5d; font-size:14px; padding:8px 10px`；它不是普通 widget 卡片。
-- `exclamation` 为 `14px` 圆形提示图标，底色 `#5d5d5d`，使用 warning SVG；提示内容由当前校准状态决定。
+`[RUST 基线]` [calibration.rs](../../src/features/calibration.rs) 和 AppShell::start_calibration/add_surface/finish_calibration 围绕表面/校准流程，与本地 LD 路由不一致。
 
-## 5. 操作与状态
+`[建议]` 用独立 smartTracking 领域状态、Checkbox 和 retained SliderState 表达。验收覆盖两种模式、边界自动调整、profile 隔离、首次提示持久化、禁用/加载和后端失败。不要为本页添加无源码依据的成功动画。
 
-### 5.1 空闲
+## 7. 2026-10-01 样式接入
 
-- 显示当前表面及其是否已校准。
-- 可选择已存在的表面。
-- 可进入 `ADD_MAT` / `CREATE_OWN_SURFACE_PROFILE` 流程；自定义表面与预置表面需要区别对待。
+[当前代码](../../src/features/device_pages.rs) 已恢复 `DD` 的居中介绍区、26px 标题及右上关闭入口，并接入原白色/绿色关闭 SVG；关闭继续触发 `WorkspaceEvent::IntroDismissed`，使用既有独立持久化流程。标题与正文读取原语言键 `MOUSE_MAT_CALIBRATION_HEADER` / `MOUSE_MAT_CALIBRATION`。
 
-### 5.2 校准中
+Smart Tracking 卡按 `LD` 的间距组织：正文下距 20、非对称 checkbox 与帮助提示同一行、各距离标题上距 20/下距 10。对称追踪采用 36px 无数值气泡滑条，低/中/高标签分布在下方；抬升与着陆采用 64px 滑条区域，在轨道上方显示随当前数值位置移动的气泡，下方保留低/高标签。保留原 SliderState、联动边界和框架拖动行为；`control-Tracking/Lift/Landing` 身份不变。气泡尖角和框架滑块悬停动画尚未与源 CSS 完全一致。
 
-- 显示 `CALIBRATING`、`CALIBRATE_MAX_HEIGHT`、`CALIBRATING_MAX_DEPTH` 或 `CALIBRATE_CALCULATING_TOLERANCE` 等当前阶段文案之一。
-- 显示鼠标操作指导；移动过快时显示 `CALIBRATE_WARNING_TOO_FAST`。
-- 校准中不能把表面状态直接标为成功，也不能允许删除/切换导致流程失去目标。
-
-### 5.3 完成、错误、重试
-
-- 成功使用 `CALIBRATION_COMPLETED` / `CALIBRATION_SUCCESSFUL` 语义；成功后才将当前表面标为已校准。
-- 失败使用 `CALIBRATION_ERROR` / `CALIBRATION_ERROR_MSG`，并提供 `CALIBRATION_RETRY`/`RETRY` 语义。
-- `CALIBRATE_END`、`ESC` 取消是流程控制，不等同于失败。
-- 当前实现必须等待设备服务确认结果；不能点击开始后立即显示“校准成功”。
-
-## 6. 颜色和通用密度
-
-仅记录实际命中选择器的值：
-
-| 角色 | 值 |
-|---|---|
-| 页面底色 | `#222` |
-| 主文字 | `#ccc` |
-| 表面卡片底色 | `#111` |
-| 添加卡片底色 | `#222` |
-| 通用边框/虚线 | `#5d5d5d` |
-| selected / hover accent | `#44d62c` |
-| 警示提示 | 使用当前 warning/exclamation 资源和对应状态，不将所有警示都硬编码为绿色 |
-
-## 7. 明确排除
-
-- 不把 `CALIBRATION_STEP0..5` 的拇指控制杆文案写进 182 鼠标表面校准页面。
-- 不把 777 的校准分支、PlayStation/手柄分支和通用校准 key 当成 182 的 DOM。
-- 不因 CSS 中存在 `.calibration-body`、`.surface` 就声称所有设备都渲染这些节点；本文结论限定在 182 的页面路由和实际鼠标文案。
-
-## 8. 证据文件
-
-- `.ref/devices/182/static/js/main.db20a7c4.js`
-- `.ref/devices/182/static/css/main.48c20423.css`
-- `.ref/devices/182/manifest.json`
+非对称模式的次要说明改用原 `WARNING_SETTING_LANDING_DISTANCE`，重置区使用原 `RESET_DESC1` 正文并保持不可点击。样式结论来自 JS/CSS 和资源文件，不采用旧截图。

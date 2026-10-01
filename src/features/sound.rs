@@ -1,180 +1,114 @@
-//! 777 耳机的声音页：音量、游戏/聊天混音、均衡器、增强和音频功能。
+//! 777 声音页：音频 EQ 编辑器。
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::shell::AppShell;
-use crate::ui::widgets::{
-    card, card_title, not_wired_hint, select_row, slider_row, toggle_button, EmptyState,
-    PageLayout, SettingRow,
-};
+use crate::ui::widgets::{card_title, slider_row, EmptyState, PageLayout};
+
+const EQ_WIDTH: f32 = 940.0;
+const EQ_MIN_HEIGHT: f32 = 473.0;
+const EQ_MIN: f32 = -5.0;
+const EQ_MAX: f32 = 5.0;
+const EQ_STEP: f32 = 1.0;
+
+const AUDIO_PRESETS: [&str; 6] = [
+    "默认",
+    "增强",
+    "人声",
+    "低音增强",
+    "清晰度增强",
+    "自定义",
+];
 
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
     };
+
+    if device.product_id != 777 {
+        return PageLayout::new("声音", device.display_name())
+            .widget(EmptyState::new("声音 EQ 页面仅适用于 productId 777。"))
+            .into_any_element();
+    }
+
     let Some(sound) = device.features.sound.as_ref() else {
         return PageLayout::new("声音", device.display_name())
-            .subtitle("当前设备未声明声音能力")
-            .widget(EmptyState::new("该设备没有声音设置"))
+            .widget(EmptyState::new("该设备没有声音 EQ 设置。"))
             .into_any_element();
     };
 
-    let equalizer = &sound.equalizer;
-    let volume = sound.volume;
-    let chat_mix = sound.chat_mix;
-    let enhancement = sound.enhancement;
+    let bands = sound.equalizer.bands.clone();
+    let active_preset = sound.equalizer.preset.clone();
 
-    let mut layout = PageLayout::new("声音", device.display_name())
-        .subtitle("输出音量、均衡器和声音处理")
-        .widget(
-            card()
-                .child(card_title("音量"))
-                .child(slider_row(
-                    "sound-volume",
-                    "主音量",
-                    volume as f32,
-                    0.,
-                    100.,
-                    1.,
-                    format!("{volume}%"),
-                    true,
-                    cx,
-                    |this, value, cx| this.set_volume(value, cx),
-                ))
-                .child(slider_row(
-                    "sound-chat-mix",
-                    "游戏 / 聊天混音",
-                    chat_mix as f32,
-                    0.,
-                    100.,
-                    1.,
-                    format!("{chat_mix}%"),
-                    true,
-                    cx,
-                    |this, value, cx| this.set_chat_mix(value, cx),
-                )),
-        )
-        .widget(
-            card()
-                .child(card_title("音频均衡器"))
-                .child(toggle_button(
-                    "sound-eq-enabled",
-                    "启用均衡器",
-                    equalizer.enabled,
-                    cx,
-                    |this, cx| this.toggle_eq(cx),
-                ))
-                .child(toggle_button(
-                    "sound-eq-esports",
-                    "电竞均衡器",
-                    equalizer.esports,
-                    cx,
-                    |this, cx| this.toggle_eq_esports(cx),
-                ))
-                .child(SettingRow::new("当前预设", equalizer.preset.clone()))
-                .child(div().text_xs().child(
-                    "电竞均衡器调整保存在耳机上；标准均衡器保存到当前 profile。",
-                )),
-        )
-        .widget(
-            card()
-                .child(card_title("音效增强"))
-                .child(select_row(
-                    "sound-enhancement",
-                    "模式",
-                    enhancement.zh().to_string(),
-                    &crate::domain::AudioEnhancement::LABELS,
-                    app.open_select.as_deref() == Some("sound-enhancement"),
-                    cx,
-                    |this, index, cx| {
-                        if let Some(value) = crate::domain::AudioEnhancement::ALL.get(index).copied() {
-                            this.set_enhancement(value, cx);
-                        }
-                    },
-                ))
-                .child(div().text_xs().child(
-                    "使用可用的声音处理模式修改音频播放。",
-                )),
-        )
-        .widget(
-            card()
-                .child(card_title("音频功能"))
-                .child(toggle_button(
-                    "sound-audio-meter",
-                    "音频计",
-                    sound.audio_meter,
-                    cx,
-                    |this, cx| this.toggle_audio_meter(cx),
-                ))
-                .child(toggle_button(
-                    "sound-audio-mirroring",
-                    "立体声镜像",
-                    sound.audio_mirroring,
-                    cx,
-                    |this, cx| this.toggle_audio_mirroring(cx),
-                ))
-                .child(toggle_button(
-                    "sound-power-saving",
-                    "无线省电时降低音频",
-                    sound.power_saving,
-                    cx,
-                    |this, cx| this.toggle_audio_power_saving(cx),
-                ))
-                .child(div().text_xs().child(
-                    "立体声镜像适用于前置/后置扬声器；多声道内容播放时应关闭。",
-                )),
-        )
-        ;
-
-    if device.features.key_shifter.is_some() {
-        layout = layout.widget(key_shifter_card(device, cx));
-    }
-
-    layout.widget(not_wired_hint()).into_any_element()
+    PageLayout::new("声音", device.display_name())
+        .subtitle("Audio EQ · narrow · -5dB 至 +5dB · 步长 1")
+        .widget(audio_eq_panel(&bands, &active_preset, cx))
+        .into_any_element()
 }
 
-fn key_shifter_card(device: &crate::model::Device, cx: &mut Context<AppShell>) -> AnyElement {
-    let Some(shifter) = device.features.key_shifter.as_ref() else {
-        return EmptyState::new("未声明变调能力").into_any_element();
-    };
+fn audio_eq_panel(
+    bands: &[i8],
+    active_preset: &str,
+    cx: &mut Context<AppShell>,
+) -> AnyElement {
+    let theme = cx.theme().clone();
 
-    card()
-        .child(card_title("变调"))
-        .child(div().text_xs().child(
-            "启用后调整线路输入端口音频的音高和速度。",
-        ))
-        .child(toggle_button(
-            "sound-key-shifter",
-            "启用变调",
-            shifter.enabled,
-            cx,
-            |this, cx| this.toggle_key_shifter(cx),
-        ))
-        .child(slider_row(
-            "sound-key-shifter-pitch",
-            "音高",
-            shifter.pitch as f32,
-            -12.,
-            12.,
-            1.,
-            format!("{:+} 半音", shifter.pitch),
-            shifter.enabled,
-            cx,
-            |this, value, cx| this.set_key_shifter_pitch(value, cx),
-        ))
-        .child(slider_row(
-            "sound-key-shifter-speed",
-            "速度",
-            shifter.speed as f32,
-            50.,
-            150.,
-            1.,
-            format!("{}%", shifter.speed),
-            shifter.enabled,
-            cx,
-            |this, value, cx| this.set_key_shifter_speed(value, cx),
-        ))
+    div()
+        .id("sound-eqBox")
+        .w(px(EQ_WIDTH))
+        .min_w(px(EQ_WIDTH))
+        .min_h(px(EQ_MIN_HEIGHT))
+        .my(px(10.0))
+        .p(px(30.0))
+        .rounded(px(5.0))
+        .bg(theme.group_box)
+        .text_size(px(14.0))
+        .child(card_title("音频 EQ"))
+        .child(
+            h_flex()
+                .mt(px(18.0))
+                .gap(px(6.0))
+                .children(AUDIO_PRESETS.iter().enumerate().map(|(index, preset)| {
+                    let active = active_preset == *preset
+                        || (active_preset.is_empty() && index == 0);
+                    div()
+                        .id(SharedString::from(format!("sound-eq-preset-{index}")))
+                        .px(px(10.0))
+                        .py(px(6.0))
+                        .rounded(px(3.0))
+                        .text_size(px(12.0))
+                        .text_color(if active {
+                            theme.foreground
+                        } else {
+                            theme.muted_foreground
+                        })
+                        .when(active, |this| {
+                            this.bg(theme.primary).text_color(rgb(0x000000))
+                        })
+                        .child(*preset)
+                })),
+        )
+        .child(
+            v_flex()
+                .mt(px(28.0))
+                .gap(px(18.0))
+                .children(bands.iter().enumerate().map(|(index, gain)| {
+                    let value = (*gain as f32).clamp(EQ_MIN, EQ_MAX);
+                    slider_row(
+                        Box::leak(format!("sound-eq-band-{index}").into_boxed_str()),
+                        format!("频段 {}", index + 1).as_str(),
+                        value,
+                        EQ_MIN,
+                        EQ_MAX,
+                        EQ_STEP,
+                        format!("{:+} dB", value as i8),
+                        true,
+                        cx,
+                        move |this, value, cx| this.set_eq_band(index, value, cx),
+                    )
+                })),
+        )
         .into_any_element()
 }

@@ -1,4 +1,4 @@
-﻿//! 鼠标与键盘的功能模型。
+//! 鼠标与键盘的功能模型。
 //!
 //! # 证据等级说明
 //!
@@ -13,7 +13,6 @@
 // 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
-
 
 use serde::{Deserialize, Serialize};
 
@@ -94,9 +93,7 @@ impl LiftOffDistance {
     ];
 
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
-    pub const LABELS: [&'static str; 3] = [
-        "低", "中", "高",
-    ];
+    pub const LABELS: [&'static str; 3] = ["低", "中", "高"];
 
     pub fn zh(self) -> &'static str {
         match self {
@@ -373,15 +370,11 @@ pub enum ProfileSwitchMode {
 }
 
 impl ProfileSwitchMode {
-    pub const ALL: [ProfileSwitchMode; 2] = [
-        ProfileSwitchMode::Automatic,
-        ProfileSwitchMode::Manual,
-    ];
+    pub const ALL: [ProfileSwitchMode; 2] =
+        [ProfileSwitchMode::Automatic, ProfileSwitchMode::Manual];
 
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
-    pub const LABELS: [&'static str; 2] = [
-        "自动", "手动",
-    ];
+    pub const LABELS: [&'static str; 2] = ["自动", "手动"];
 
     /// 说明文案 key，界面上直接引用雷云原文。
     pub fn desc_key(self) -> &'static str {
@@ -485,7 +478,11 @@ impl SnapTapMode {
 
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
     pub const LABELS: [&'static str; 5] = [
-        "最后输入优先", "优先左侧", "优先右侧", "同时释放", "按深度优先",
+        "最后输入优先",
+        "优先左侧",
+        "优先右侧",
+        "同时释放",
+        "按深度优先",
     ];
 
     /// 说明文案 key：界面直接引用雷云原文，不改写措辞。
@@ -808,7 +805,16 @@ impl LightingEffect {
 
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
     pub const LABELS: [&'static str; 10] = [
-        "关闭", "静态", "光谱循环", "波浪", "呼吸", "响应", "星光", "音频计", "涟漪", "萤火",
+        "关闭",
+        "静态",
+        "光谱循环",
+        "波浪",
+        "呼吸",
+        "响应",
+        "星光",
+        "音频计",
+        "涟漪",
+        "萤火",
     ];
 
     pub fn zh(self) -> &'static str {
@@ -936,7 +942,6 @@ pub const OLED_TIMEOUT_STEPS: [u16; 5] = [0, 30, 60, 300, 600];
 /// 这是产品规则，不是实现细节，所以单独具名而不是在界面里写 `2`。
 pub const SCROLL_MAX_DISABLED_STAGES: usize = 2;
 
-
 // ---------------------------------------------------------------------------
 // 聚合
 // ---------------------------------------------------------------------------
@@ -966,9 +971,7 @@ impl ScrollingMode {
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
     ///
     /// 文案取自 `zh()` 里 `t_or` 的兜底值（`SCROLL_MODE` / `FREE_SPIN`）。
-    pub const LABELS: [&'static str; 2] = [
-        "滚动模式", "自由滚动",
-    ];
+    pub const LABELS: [&'static str; 2] = ["滚动模式", "自由滚动"];
 
     /// 雷云文案 key（`FREE_SPIN` / `SCROLL_MODE`）。
     pub fn key(self) -> &'static str {
@@ -1241,9 +1244,7 @@ impl AudioEnhancement {
     ];
 
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
-    pub const LABELS: [&'static str; 3] = [
-        "无", "THX 空间音效", "杜比虚拟音箱",
-    ];
+    pub const LABELS: [&'static str; 3] = ["无", "THX 空间音效", "杜比虚拟音箱"];
 
     pub fn zh(self) -> &'static str {
         match self {
@@ -1345,9 +1346,7 @@ impl SamplingRate {
     /// 下拉（`.s3-dropdown`）的选项文案，**与 [`Self::ALL`] 同序**。
     ///
     /// 显示文案与 `self.label()` 的 `format!("{} Hz", …)` 一致。
-    pub const LABELS: [&'static str; 3] = [
-        "44100 Hz", "48000 Hz", "96000 Hz",
-    ];
+    pub const LABELS: [&'static str; 3] = ["44100 Hz", "48000 Hz", "96000 Hz"];
 
     pub fn hz(self) -> u32 {
         match self {
@@ -1642,7 +1641,11 @@ fn default_lighting_zones(category: DeviceCategory) -> Vec<LightingZone> {
             LightingEffect::Wave,
             RAZER_GREEN,
         )],
-        _ => vec![LightingZone::new("整机", LightingEffect::Static, RAZER_GREEN)],
+        _ => vec![LightingZone::new(
+            "整机",
+            LightingEffect::Static,
+            RAZER_GREEN,
+        )],
     }
 }
 
@@ -1682,7 +1685,11 @@ mod tests {
 
         let mut snap = SnapTap::default();
         for _ in 0..SNAP_TAP_MAX_PAIRS {
-            assert!(snap.can_add(), "第 {} 组之前都应该还能加", snap.pairs.len() + 1);
+            assert!(
+                snap.can_add(),
+                "第 {} 组之前都应该还能加",
+                snap.pairs.len() + 1
+            );
             snap.pairs.push(SnapTapPair::new("A", "D"));
         }
         assert!(!snap.can_add(), "到 4 组后不能再加");
@@ -1759,10 +1766,16 @@ mod tests {
         assert!(keyboard.key_shifter.is_none(), "键盘不该有变调");
 
         let mouse = DeviceFeatures::for_category(DeviceCategory::Mouse, false, false);
-        assert!(mouse.boss_key.is_some(), "BOSS_KEY_CONFIGURATION_TIP 说的是鼠标");
+        assert!(
+            mouse.boss_key.is_some(),
+            "BOSS_KEY_CONFIGURATION_TIP 说的是鼠标"
+        );
 
         let headset = DeviceFeatures::for_category(DeviceCategory::Headset, false, false);
-        assert!(headset.key_shifter.is_some(), "KEY_SHIFTER_TOOLTIP 说的是线路输入端口");
+        assert!(
+            headset.key_shifter.is_some(),
+            "KEY_SHIFTER_TOOLTIP 说的是线路输入端口"
+        );
     }
 
     /// 键盘必备的三项进阶功能。
@@ -1777,4 +1790,3 @@ mod tests {
         assert!(settings.actuation.is_some());
     }
 }
-

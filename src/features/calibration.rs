@@ -1,27 +1,18 @@
-﻿//! 校准页。
+//! productId 182 鼠标表面校准页。
 //!
-//! 布局依据 `docs/screens/04-calibration.md`：
-//!
-//! | 分区 | 雷云真实文案 |
-//! |---|---|
-//! | ① 校准信息 | `CALIBRATION_INFORMATION` = 校准信息 |
-//! | ② 表面配置文件列表 | `ADD_MAT` = 添加、`CREATE_OWN_SURFACE_PROFILE` |
-//! | ③ 校准步骤 | `CALIBRATE_STEP1` = 单击鼠标左键，并移动鼠标。 |
-//! | ④ 状态与结果 | `CALIBRATING` 校准中 / `CALIBRATION_COMPLETED` / `CALIBRATION_FAILED` |
-//!
-//! 该页在**鼠标与耳机**上出现（实测：182 有、777 有、653 无）。
+//! 表面卡片和校准弹层状态来自 182 原模块；不把其它设备的校准文案混入此页。
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::*;
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::shell::AppShell;
 use crate::domain::CalibrationState;
-use crate::ui::widgets::{
-    EmptyState, PageLayout, SettingRow, btn, card, card_title,
-};
+use crate::shell::AppShell;
+use crate::ui::widgets::{btn, widget_slot, EmptyState, PageLayout};
 
-/// 渲染校准页。
+const SURFACE_W: f32 = 290.0;
+const SURFACE_H: f32 = 200.0;
+
 pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     let Some(device) = app.current() else {
         return EmptyState::new("未检测到设备").into_any_element();
@@ -29,172 +20,189 @@ pub fn render(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
     if device.product_id != 182 {
         return EmptyState::new("校准页当前只为 productId 182 鼠标实现").into_any_element();
     }
+    if device.features.calibration.is_none() {
+        return EmptyState::new("该设备没有表面校准设置").into_any_element();
+    }
 
+    PageLayout::new("校准", device.display_name())
+        .without_product_banner()
+        .widget(widget_slot(calibration_content(app, cx)))
+        .into_any_element()
+}
+
+fn calibration_content(app: &AppShell, cx: &mut Context<AppShell>) -> AnyElement {
+    let Some(device) = app.current() else {
+        return EmptyState::new("校准数据不可用").into_any_element();
+    };
     let Some(calibration) = device.features.calibration.as_ref() else {
-        return EmptyState::new(
-            "该设备没有校准设置。",
-        )
-        .into_any_element();
+        return EmptyState::new("校准数据不可用").into_any_element();
     };
 
     let state = calibration.state;
     let selected = calibration.selected;
-    let surfaces: Vec<(String, bool, bool, String)> = calibration
-        .surfaces
-        .iter()
-        .map(|s| {
-            (
-                s.name.clone(),
-                s.builtin,
-                s.calibrated,
-                surface_element_id(&s.name, s.builtin),
-            )
-        })
-        .collect();
-    let can_remove = calibration.current().map(|s| !s.builtin).unwrap_or(false);
-    let workflow_locked = state == CalibrationState::Running;
+    let locked = state == CalibrationState::Running;
+    let can_remove = calibration
+        .current()
+        .map(|surface| !surface.builtin)
+        .unwrap_or(false);
+    let selected_builtin = calibration.current().map(|surface| surface.builtin).unwrap_or(false);
+
+    let mut surfaces = h_flex().w_full().flex_wrap().gap(px(20.));
+    for (index, surface) in calibration.surfaces.iter().cloned().enumerate() {
+        surfaces = surfaces.child(surface_card(
+            index,
+            surface.name,
+            surface.builtin,
+            surface.calibrated,
+            index == selected,
+            locked,
+            cx,
+        ));
+    }
+    surfaces = surfaces.child(add_surface_card(locked, cx));
+
     let start_label = match state {
         CalibrationState::Idle => "开始校准",
+        CalibrationState::Running => "校准进行中",
         CalibrationState::Completed => "重新校准",
         CalibrationState::Failed => "重试校准",
-        CalibrationState::Running => "校准进行中",
     };
 
-    PageLayout::new("校准", device.display_name())
-        .without_product_banner()
-        // ① 校准信息
-        .widget(
-            card()
-                .child(card_title("校准信息"))
-                .child(div().text_sm().child(
-                    "雷云原文：你的鼠标传感器需要进行微调，才能有效使用此预先校准的 Razer 雷蛇表面配置文件。",
-                ))
-                .child(SettingRow::new("当前状态", state.zh())),
+    let mut content = v_flex()
+        .w_full()
+        .gap_3()
+        .p(px(30.))
+        .rounded(px(5.))
+        .bg(cx.theme().group_box)
+        .child(div().text_size(px(16.)).font_bold().child("表面校准"))
+        .child(
+            div()
+                .w_full()
+                .max_w(px(600.))
+                .mx_auto()
+                .text_sm()
+                .child(if selected_builtin {
+                    "你的鼠标传感器需要进行微调，才能有效使用此预先校准的 Razer 表面配置文件。"
+                } else {
+                    "选择一个表面配置文件，然后开始校准。"
+                }),
         )
-        // ② 表面配置文件
-        .widget(
-            card()
-                .child(card_title("表面配置文件"))
-                .children(surfaces.into_iter().enumerate().map(
-                    |(index, (name, builtin, calibrated, element_id))| {
-                        h_flex()
-                            .w_full()
-                            .justify_between()
-                            .items_center()
-                            .gap_3()
-                            .child(
-                                div().text_sm().child(format!(
-                                    "{}{}",
-                                    name,
-                                    if builtin { "（预置）" } else { "" }
-                                )),
-                            )
-                            .child(
-                                h_flex()
-                                    .gap_3()
-                                    .items_center()
-                                    .child(div().text_xs().child(if calibrated {
-                                        "已校准"
-                                    } else {
-                                        "未校准"
-                                    }))
-                                    .child(
-                                        btn(element_id, if selected == index { "已选中" } else { "选择" })
-                                            .disabled(workflow_locked)
-                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                this.select_surface(index, cx)
-                                            })),
-                                    ),
-                            )
-                            .into_any_element()
-                    },
-                ))
+        .child(surfaces)
+        .child(
+            h_flex()
+                .gap_2()
                 .child(
-                    h_flex()
-                        .gap_2()
-                        .child(
-                            btn("surface-add", "添加")
-                                .disabled(workflow_locked)
-                                .on_click(cx.listener(|this, _, _, cx| this.add_surface(cx))),
-                        )
-                        .child(
-                            btn("surface-remove", "删除")
-                                .disabled(!can_remove || workflow_locked)
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    if can_remove && !workflow_locked {
-                                        this.remove_surface(cx);
-                                    }
-                                })),
-                        ),
+                    btn("calibration-start", start_label)
+                        .disabled(locked || calibration.current().is_none())
+                        .on_click(cx.listener(|this, _, _, cx| this.start_calibration(cx))),
                 )
-                .child(div().text_xs().child(
-                    "预置表面不可删除；「添加」对应雷云 ADD_MAT。校准进行中不能切换或删除表面。",
-                )),
-        )
-        // ③ 校准步骤
-        .widget(
-            card()
-                .child(card_title("校准步骤"))
-                .child(SettingRow::new(
-                    "第 1 步",
-                    "单击鼠标左键，并移动鼠标。".to_string(),
-                ))
-                .child(SettingRow::new(
-                    "第 2 步",
-                    "以 Z 字形方式移动鼠标，并覆盖整个鼠标垫表面。".to_string(),
-                ))
-                .child(SettingRow::new(
-                    "提示",
-                    "鼠标移动过快会中断校准（雷云会提示「鼠标移动过快！」）".to_string(),
-                )),
-        )
-        // ④ 操作与结果
-        .widget(
-            card()
-                .child(card_title("开始校准"))
                 .child(
-                    h_flex()
-                        .gap_2()
-                        .flex_wrap()
-                        .child(
-                            btn("cali-start", start_label)
-                                .disabled(workflow_locked)
-                                .on_click(cx.listener(|this, _, _, cx| this.start_calibration(cx))),
-                        )
+                    btn("surface-add-inline", "添加表面")
+                        .disabled(locked)
+                        .on_click(cx.listener(|this, _, _, cx| this.add_surface(cx))),
                 )
-                .child(match state {
-                    CalibrationState::Idle => div()
-                        .text_sm()
-                        .child("尚未开始；选择表面后启动校准流程。"),
-                    CalibrationState::Running => div().text_sm().child(
-                        "校准进行中，等待设备服务返回阶段和进度；页面不会伪造完成结果。",
-                    ),
-                    CalibrationState::Completed => div().text_sm().child(
-                        "校准成功；当前有效结果已保留。需要再次校准时可重新启动流程。",
-                    ),
-                    CalibrationState::Failed => div().text_sm().child(
-                        "校准失败；上一次有效校准仍保留，可重试或更换表面。",
-                    ),
+                .child(
+                    btn("surface-remove-inline", "删除表面")
+                        .disabled(locked || !can_remove)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if can_remove {
+                                this.remove_surface(cx);
+                            }
+                        })),
+                ),
+        );
+
+    content = content.child(state_message(state, cx));
+    content.into_any_element()
+}
+
+fn surface_card(
+    index: usize,
+    name: String,
+    builtin: bool,
+    calibrated: bool,
+    selected: bool,
+    locked: bool,
+    cx: &mut Context<AppShell>,
+) -> AnyElement {
+    v_flex()
+        .id(format!("surface-{index}"))
+        .flex_shrink_0()
+        .w(px(SURFACE_W))
+        .h(px(SURFACE_H))
+        .items_center()
+        .gap_2()
+        .p(px(8.))
+        .rounded(px(5.))
+        .bg(cx.theme().background)
+        .border_1()
+        .border_color(if selected {
+            cx.theme().primary
+        } else {
+            cx.theme().background
+        })
+        .child(Icon::new(IconName::Mouse).w(px(64.)).h(px(64.)))
+        .child(div().text_sm().child(format!("{}{}", name, if builtin { "（预置）" } else { "" })))
+        .child(
+            div()
+                .text_xs()
+                .text_color(if calibrated {
+                    cx.theme().primary
+                } else {
+                    cx.theme().muted_foreground
                 })
-                .child(SettingRow::new(
-                    "设备回传",
-                    "完成、失败和进度由设备服务确认；当前前端不提供手动结束按钮。".to_string(),
-                )),
+                .child(if calibrated { "已校准" } else { "未校准" }),
+        )
+        .child(
+            btn(
+                format!("surface-select-{index}"),
+                if selected { "已选择" } else { "选择" },
+            )
+            .disabled(locked || selected)
+            .on_click(cx.listener(move |this, _, _, cx| this.select_surface(index, cx))),
         )
         .into_any_element()
 }
 
-fn surface_element_id(name: &str, builtin: bool) -> String {
-    let prefix = if builtin { "surface-builtin" } else { "surface-custom" };
-    let suffix: String = name
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() {
-                character.to_ascii_lowercase()
-            } else {
-                '-'
-            }
+fn add_surface_card(locked: bool, cx: &mut Context<AppShell>) -> AnyElement {
+    div()
+        .id("surface-add")
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .flex_shrink_0()
+        .w(px(SURFACE_W))
+        .h(px(SURFACE_H))
+        .gap_2()
+        .rounded(px(5.))
+        .border_1()
+        .border_color(cx.theme().border)
+        .text_sm()
+        .child("创建自己的表面配置文件")
+        .child(
+            btn("surface-add-card", "添加")
+                .disabled(locked)
+                .on_click(cx.listener(|this, _, _, cx| this.add_surface(cx))),
+        )
+        .into_any_element()
+}
+
+fn state_message(state: CalibrationState, cx: &mut Context<AppShell>) -> AnyElement {
+    let text = match state {
+        CalibrationState::Idle => "校准尚未开始。单击左键并移动鼠标，然后按提示覆盖整个表面。",
+        CalibrationState::Running => "校准进行中。请按照校准弹层的图示移动鼠标；结果等待设备服务回传。",
+        CalibrationState::Completed => "校准已完成。当前表面已标记为已校准。",
+        CalibrationState::Failed => "校准失败。请检查鼠标移动速度后重试。",
+    };
+    div()
+        .w_full()
+        .text_sm()
+        .text_color(if state == CalibrationState::Failed {
+            cx.theme().warning
+        } else {
+            cx.theme().muted_foreground
         })
-        .collect();
-    format!("{prefix}-{suffix}")
+        .child(text)
+        .into_any_element()
 }

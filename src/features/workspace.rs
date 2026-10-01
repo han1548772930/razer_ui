@@ -1,0 +1,1024 @@
+//! A device instance owns profile drafts, retained controls and mapping continuations.
+//! Rendering never creates SliderState/SelectState entities or performs device I/O.
+use super::{controls::*, settings::*};
+use crate::{
+    model::{Device, Profile},
+    nav::Tab,
+    ui::surface,
+};
+use gpui_kit::component::{
+    button::{Button, ButtonVariants},
+    color_picker::{ColorPickerEvent, ColorPickerState},
+    input::{InputEvent, InputState},
+    scroll::{ScrollableElement as _, ScrollbarAxis},
+    select::{SelectEvent, SelectState},
+    slider::{Slider, SliderEvent, SliderState},
+    *,
+};
+use gpui_kit::*;
+use std::collections::BTreeMap;
+
+pub enum WorkspaceEvent {
+    Changed,
+    SaveRequested,
+    IntroDismissed,
+}
+pub(super) struct MappingDraft {
+    pub(super) input: String,
+    pub(super) value: String,
+    pub(super) original: String,
+    pub(super) dial_mode: Option<String>,
+}
+#[derive(Clone)]
+pub(super) enum Continue {
+    NewProfile,
+    DuplicateProfile,
+    ImportProfile(Profile),
+    ExportProfile,
+    DeleteProfile(String),
+    ResetProfile { id: String, bindings_only: bool },
+    Page(Tab),
+    Profile(String),
+    Input(String),
+    DrawerInput(String),
+    DialInput { mode_uid: String, input: String },
+    SnapCapture { pair: usize, key: usize },
+    AddSnapPair,
+    DeleteDial(String),
+    ResetDial,
+    Drawer(bool),
+    Layer(bool),
+    CloseMapping,
+}
+
+pub struct DeviceWorkspace {
+    device: Device,
+    saved: Device,
+    pub(super) page: Tab,
+    pub(super) controls: Controls,
+    pub(super) sensitivity_controls: super::sensitivity::SensitivityControls,
+    pub(super) keyboard_controls: super::keyboard_controls::KeyboardControls,
+    subscriptions: Vec<Subscription>,
+    body_scroll: ScrollHandle,
+    pub(super) customize_drawer: super::customize_drawer::CustomizeDrawer,
+    pub(super) hypershift: bool,
+    pub(super) mapping: Option<MappingDraft>,
+    mapping_expanded: bool,
+    mapping_key_group: String,
+    mapping_recording: bool,
+    mapping_modifiers_enabled: bool,
+    mapping_optional_modifiers: Vec<String>,
+    mapping_focus: FocusHandle,
+    mapping_return_focus: Option<FocusHandle>,
+    workspace_focus: FocusHandle,
+    pub(super) intro_seen: bool,
+    pub(super) dial_highlight: Option<String>,
+    pub(super) hovered_input: Option<String>,
+    profile_name: Entity<InputState>,
+    profile_rename: Option<String>,
+    profile_menu: Entity<gpui_kit::component::list::ListState<profile::ProfileCommands>>,
+    profile_confirmation: Option<profile::ProfileConfirmation>,
+    profile_confirm_focus: FocusHandle,
+    pub(super) help: super::help_page::HelpState,
+}
+impl EventEmitter<WorkspaceEvent> for DeviceWorkspace {}
+#[path = "mapping_editor.rs"]
+mod mapping_editor;
+pub(super) use mapping_editor::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website};
+#[cfg(test)]
+#[path = "mapping_focus_tests.rs"]
+mod mapping_focus_tests;
+#[path = "profile.rs"]
+mod profile;
+#[cfg(test)]
+#[path = "sensitivity_tests.rs"]
+mod sensitivity_tests;
+#[cfg(test)]
+#[path = "workspace_tests.rs"]
+mod tests;
+impl DeviceWorkspace {
+    pub fn new(
+        mut device: Device,
+        intro_seen: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        if device.profiles.is_empty() {
+            device.profiles.push(Profile {
+                id: "local-default".into(),
+                guid: "local-default".into(),
+                name: "Default".into(),
+                dpi_stages: None,
+                settings: None,
+            });
+        }
+        if !device
+            .profiles
+            .iter()
+            .any(|p| p.id == device.active_profile)
+        {
+            device.active_profile = device.profiles[0].id.clone();
+        }
+        for index in 0..device.profiles.len() {
+            let mut settings = device.profiles[index]
+                .settings
+                .clone()
+                .unwrap_or_else(|| ProfileSettings::from_legacy(&device, &device.profiles[index]));
+            settings.normalize(device.product_id);
+            device.profiles[index].settings = Some(settings);
+        }
+        let choices = device
+            .profiles
+            .iter()
+            .map(|p| Choice::new(&p.id, p.name.clone()))
+            .collect::<Vec<_>>();
+        let selected = device
+            .profiles
+            .iter()
+            .position(|p| p.id == device.active_profile)
+            .map(IndexPath::new);
+        let profile = cx.new(|cx| SelectState::new(choices, selected, window, cx));
+        let profile_name = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("配置文件名称")
+                .validate(|value, _| value.encode_utf16().count() <= 32)
+        });
+        let profile_menu =
+            profile::command_list(device.product_id, cx.entity().downgrade(), window, cx);
+        let customize_drawer = super::customize_drawer::CustomizeDrawer::new(&device, window, cx);
+        let effects = Effect::list(Self::product(&device), device.use_ble, false);
+        let effect = cx.new(|cx| {
+            SelectState::new(
+                effects
+                    .iter()
+                    .map(|e| Choice::new(e.id(), e.label()))
+                    .collect::<Vec<_>>(),
+                None,
+                window,
+                cx,
+            )
+        });
+        let mapping = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
+        let mapping_text =
+            cx.new(|cx| InputState::new(window, cx).placeholder("程序路径或网站地址"));
+        let mapping_paragraph =
+            cx.new(|cx| gpui_kit::component::input::TextareaState::new(window, cx));
+        let mapping_group =
+            cx.new(|cx| SelectState::new(mapping_editor::key_groups(), None, window, cx));
+        let mapping_x = cx.new(|cx| InputState::new(window, cx).placeholder("X DPI"));
+        let mapping_y = cx.new(|cx| InputState::new(window, cx).placeholder("Y DPI"));
+        let mapping_rate = cx.new(|cx| InputState::new(window, cx).placeholder("1–20"));
+        let mapping_sliders = [
+            cx.new(|_| {
+                SliderState::new()
+                    .min(100.)
+                    .max(30000.)
+                    .step(50.)
+                    .default_value(800.)
+            }),
+            cx.new(|_| {
+                SliderState::new()
+                    .min(100.)
+                    .max(30000.)
+                    .step(50.)
+                    .default_value(800.)
+            }),
+            cx.new(|_| {
+                SliderState::new()
+                    .min(1.)
+                    .max(20.)
+                    .step(1.)
+                    .default_value(7.)
+            }),
+        ];
+        let snap_left = cx.new(|cx| InputState::new(window, cx).placeholder("左键 ID"));
+        let snap_right = cx.new(|cx| InputState::new(window, cx).placeholder("右键 ID"));
+        let color_boost = cx.new(|cx| {
+            InputState::new(window, cx)
+                .validate(|text, _| super::lighting_input::valid_color_boost_draft(text))
+        });
+        let color = cx.new(|cx| ColorPickerState::new(window, cx));
+        let color2 = cx.new(|cx| ColorPickerState::new(window, cx));
+        let page = Tab::for_product(device.product_id)
+            .first()
+            .copied()
+            .unwrap_or(Tab::Home);
+        let sensitivity_controls = super::sensitivity::SensitivityControls::new(window, cx);
+        let keyboard_controls = super::keyboard_controls::KeyboardControls::new(window, cx);
+        let mut this = Self {
+            saved: device.clone(),
+            device,
+            page,
+            controls: Controls {
+                sliders: BTreeMap::new(),
+                profile,
+                effect,
+                mapping,
+                mapping_text,
+                mapping_paragraph,
+                mapping_group,
+                mapping_x,
+                mapping_y,
+                mapping_rate,
+                mapping_sliders,
+                snap_left,
+                snap_right,
+                color_boost,
+                color,
+                color2,
+            },
+            sensitivity_controls,
+            keyboard_controls,
+            subscriptions: vec![],
+            body_scroll: ScrollHandle::default(),
+            customize_drawer,
+            hypershift: false,
+            mapping: None,
+            mapping_expanded: false,
+            mapping_key_group: "record".into(),
+            mapping_recording: false,
+            mapping_modifiers_enabled: false,
+            mapping_optional_modifiers: vec![],
+            mapping_focus: cx.focus_handle().tab_stop(true),
+            mapping_return_focus: None,
+            workspace_focus: cx.focus_handle(),
+            intro_seen,
+            dial_highlight: None,
+            hovered_input: None,
+            profile_name,
+            profile_rename: None,
+            profile_menu,
+            profile_confirmation: None,
+            profile_confirm_focus: cx.focus_handle().tab_stop(true),
+            help: super::help_page::HelpState::default(),
+        };
+        this.install_profile_controls(window, cx);
+        this.install_mapping_controls(window, cx);
+        this.install_controls(window, cx);
+        this.install_keyboard_controls(window, cx);
+        this.sync_controls(window, cx);
+        this
+    }
+    fn product(device: &Device) -> u32 {
+        if device.product_id == crate::demo::DEMO_PRODUCT_ID {
+            653
+        } else {
+            device.product_id
+        }
+    }
+    pub(super) fn pid(&self) -> u32 {
+        Self::product(&self.device)
+    }
+    pub fn device(&self) -> &Device {
+        &self.device
+    }
+    pub fn snapshot(&self) -> Device {
+        self.device.clone()
+    }
+    pub fn saved_snapshot(&self) -> Device {
+        self.saved.clone()
+    }
+    pub fn set_intro_seen(&mut self, seen: bool, cx: &mut Context<Self>) {
+        self.intro_seen = seen;
+        cx.notify();
+    }
+    pub fn identity(&self) -> String {
+        format!(
+            "{}:{}:{}",
+            self.device.product_id, self.device.serial_number, self.device.device_container_id
+        )
+    }
+    pub fn dirty(&self) -> bool {
+        self.device.active_profile != self.saved.active_profile
+            || self.device.profiles.len() != self.saved.profiles.len()
+            || self
+                .device
+                .profiles
+                .iter()
+                .zip(&self.saved.profiles)
+                .any(|(a, b)| a.id != b.id || a.name != b.name || a.settings != b.settings)
+            || self.mapping_dirty()
+    }
+    pub fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
+        self.saved = snapshot;
+        cx.notify();
+    }
+    pub fn discard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_snap_capture(window, cx);
+        let mapping_focused = self.mapping_focus.contains_focused(window, cx);
+        self.device = self.saved.clone();
+        self.mapping = None;
+        self.mapping_recording = false;
+        if mapping_focused {
+            self.restore_mapping_focus(window, cx);
+        } else {
+            self.mapping_return_focus = None;
+        }
+        self.customize_drawer.source_input = None;
+        self.profile_rename = None;
+        let items = self
+            .device
+            .profiles
+            .iter()
+            .map(|p| Choice::new(&p.id, p.name.clone()))
+            .collect();
+        self.controls
+            .profile
+            .update(cx, |s, cx| s.set_items(items, window, cx));
+        self.sync_controls(window, cx);
+        self.changed(cx);
+    }
+    pub fn set_page(&mut self, page: Tab, window: &mut Window, cx: &mut Context<Self>) {
+        if Tab::for_product(self.device.product_id).contains(&page)
+            || (page == Tab::Help && !Tab::for_product(self.device.product_id).is_empty())
+        {
+            self.continue_with(Continue::Page(page), window, cx);
+        }
+    }
+    pub(super) fn settings(&self) -> &ProfileSettings {
+        self.device
+            .profiles
+            .iter()
+            .find(|p| p.id == self.device.active_profile)
+            .and_then(|p| p.settings.as_ref())
+            .expect("normalized profile")
+    }
+    fn settings_mut(&mut self) -> &mut ProfileSettings {
+        self.device
+            .profiles
+            .iter_mut()
+            .find(|p| p.id == self.device.active_profile)
+            .and_then(|p| p.settings.as_mut())
+            .expect("normalized profile")
+    }
+    pub(super) fn edit(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&mut ProfileSettings),
+    ) {
+        f(self.settings_mut());
+        self.sync_controls(window, cx);
+        self.changed(cx);
+    }
+    fn changed(&self, cx: &mut Context<Self>) {
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+    }
+    pub(super) fn slider(
+        &self,
+        key: Control,
+        label: impl Into<SharedString>,
+        disabled: bool,
+        cx: &App,
+    ) -> AnyElement {
+        let state = &self.controls.sliders[&key];
+        surface::note(label, cx)
+            .id(SharedString::from(format!("control-{key:?}")))
+            .child(
+                v_flex()
+                    .gap_2()
+                    .mt_2()
+                    .child(
+                        div()
+                            .text_color(cx.theme().foreground)
+                            .child(format!("{}", state.read(cx).value().start())),
+                    )
+                    .child(Slider::new(state).disabled(disabled)),
+            )
+            .into_any_element()
+    }
+    pub(super) fn poll_rates(&self) -> &'static [u32] {
+        // Higher mouse rates require a runtime dongle + firmware capability report.
+        // No runtime transport exists yet; a PID 179 snapshot is not such a report.
+        if self.pid() == 653 {
+            &[125, 250, 500, 1000, 2000, 4000, 8000]
+        } else {
+            &[125, 500, 1000]
+        }
+    }
+    fn install_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let mut sliders = vec![
+            (Control::Volume, 0., 100., 1.),
+            (Control::Tracking, 1., 3., 1.),
+            (Control::Lift, 2., 26., 1.),
+            (Control::Landing, 1., 25., 1.),
+            (
+                Control::Idle,
+                if self.pid() == 777 { 5. } else { 1. },
+                if self.pid() == 777 { 60. } else { 15. },
+                1.,
+            ),
+            (Control::LowPower, 5., 100., 5.),
+            (Control::Brightness, 0., 100., 1.),
+            (Control::LightingIdle, 1., 15., 1.),
+            (Control::EffectDuration, 1., 3., 1.),
+        ];
+        for b in &self.settings().audio.bands {
+            sliders.push((Control::Audio(b.frequency), -5., 5., 1.));
+        }
+        for b in &self.settings().mic.bands {
+            sliders.push((Control::Mic(b.frequency), -5., 5., 1.));
+        }
+        for (key, min, max, step) in sliders {
+            self.install_slider(key, min, max, step, window, cx);
+        }
+        self.subscriptions.push(cx.subscribe_in(
+            &self.controls.profile,
+            window,
+            |this, _, event, window, cx| {
+                if let SelectEvent::Confirm(Some(id)) = event {
+                    this.continue_with(Continue::Profile(id.clone()), window, cx);
+                }
+            },
+        ));
+        self.subscriptions.push(cx.subscribe_in(
+            &self.controls.effect,
+            window,
+            |this, _, event, window, cx| {
+                if let SelectEvent::Confirm(Some(id)) = event {
+                    if let Some(effect) = Effect::list(this.pid(), this.device.use_ble, false)
+                        .iter()
+                        .find(|e| e.id() == id)
+                        .copied()
+                    {
+                        this.edit(window, cx, |s| s.lighting.effect = effect);
+                    }
+                }
+            },
+        ));
+        self.subscriptions.push(cx.subscribe_in(
+            &self.controls.color_boost,
+            window,
+            |this, _, event, window, cx| {
+                if matches!(event, InputEvent::PressEnter { .. } | InputEvent::Blur) {
+                    this.commit_color_boost(window, cx);
+                }
+            },
+        ));
+        for (input, index) in [
+            (&self.controls.snap_left, 0usize),
+            (&self.controls.snap_right, 1usize),
+        ] {
+            self.subscriptions.push(cx.subscribe_in(
+                input,
+                window,
+                move |this, input, event, window, cx| {
+                    if matches!(event, InputEvent::PressEnter { .. }) {
+                        let value = input.read(cx).value().to_string();
+                        this.edit(window, cx, |s| s.keyboard.set_snap_key(index, &value));
+                        this.sync_controls(window, cx);
+                    }
+                },
+            ));
+        }
+        for (index, picker) in [&self.controls.color, &self.controls.color2]
+            .into_iter()
+            .enumerate()
+        {
+            self.subscriptions.push(cx.subscribe_in(
+                picker,
+                window,
+                move |this, _, event, window, cx| {
+                    let ColorPickerEvent::Change(color) = event;
+                    let color = color.map(|color| {
+                        let rgb = gpui_kit::Rgba::from(color);
+                        [
+                            (rgb.r * 255.).round() as u8,
+                            (rgb.g * 255.).round() as u8,
+                            (rgb.b * 255.).round() as u8,
+                        ]
+                    });
+                    this.edit(window, cx, |s| {
+                        let params = s.lighting.params_mut();
+                        if index == 0 {
+                            params.color1 = color;
+                        } else {
+                            params.color2 = color;
+                        }
+                    });
+                },
+            ));
+        }
+    }
+    fn install_slider(
+        &mut self,
+        key: Control,
+        min: f32,
+        max: f32,
+        step: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.controls.sliders.contains_key(&key) {
+            return;
+        }
+        let state = cx.new(|_| {
+            SliderState::new()
+                .min(min)
+                .max(max)
+                .step(step)
+                .default_value(min)
+        });
+        let target = key.clone();
+        self.subscriptions.push(cx.subscribe_in(
+            &state,
+            window,
+            move |this, _, event, window, cx| {
+                if let SliderEvent::Change(value) = event {
+                    let value = value.start();
+                    this.edit(window, cx, |s| match target {
+                        Control::Volume => s.volume = value.round() as u8,
+                        Control::Tracking => s.tracking.tracking = value.round() as u8,
+                        Control::Lift => s.tracking.set_lift(value.round() as u8),
+                        Control::Landing => s.tracking.set_landing(value.round() as u8),
+                        Control::Idle => s.idle_minutes = value.round() as u8,
+                        Control::LowPower => s.low_power = value.round() as u8,
+                        Control::Brightness => {
+                            s.lighting.brightness = value.round() as u8;
+                            s.lighting.enabled = value > 0.;
+                        }
+                        Control::LightingIdle => s.lighting.idle_minutes = value.round() as u8,
+                        Control::EffectDuration => {
+                            s.lighting.params_mut().duration = value.round() as u8
+                        }
+                        Control::Audio(f) => s.audio.edit(f, value.round() as i8),
+                        Control::Mic(f) => s.mic.edit(f, value.round() as i8),
+                    });
+                }
+            },
+        ));
+        self.controls.sliders.insert(key, state);
+    }
+    pub(super) fn sync_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let s = self.settings().clone();
+        self.sensitivity_controls.sync(&s.sensitivity, window, cx);
+        let mut values = vec![
+            (Control::Volume, s.volume as f32),
+            (Control::Tracking, s.tracking.tracking as f32),
+            (Control::Lift, s.tracking.lift as f32),
+            (Control::Landing, s.tracking.landing as f32),
+            (Control::Idle, s.idle_minutes as f32),
+            (Control::LowPower, s.low_power as f32),
+            (Control::Brightness, s.lighting.brightness as f32),
+            (Control::LightingIdle, s.lighting.idle_minutes as f32),
+        ];
+        for b in &s.audio.bands {
+            values.push((Control::Audio(b.frequency), b.decibel as f32));
+        }
+        for b in &s.mic.bands {
+            values.push((Control::Mic(b.frequency), b.decibel as f32));
+        }
+        let params = s.lighting.params();
+        values.push((Control::EffectDuration, params.duration as f32));
+        for (key, value) in values {
+            self.install_slider(key.clone(), -5., 5., 1., window, cx);
+            let state = &self.controls.sliders[&key];
+            if state.read(cx).value().start() != value {
+                state.update(cx, |state, cx| state.set_value(value, window, cx));
+            }
+        }
+        self.controls.profile.update(cx, |state, cx| {
+            state.set_selected_value(&self.device.active_profile, window, cx)
+        });
+        self.controls.effect.update(cx, |state, cx| {
+            state.set_selected_value(&s.lighting.effect.id().to_string(), window, cx)
+        });
+        for (input, value) in [
+            (&self.controls.snap_left, s.keyboard.snap_keys[0].clone()),
+            (&self.controls.snap_right, s.keyboard.snap_keys[1].clone()),
+            (&self.controls.color_boost, params.color_boost.to_string()),
+        ] {
+            if input.read(cx).value().to_string() != value {
+                input.update(cx, |state, cx| state.set_value(value, window, cx));
+            }
+        }
+        for (picker, color) in [
+            (&self.controls.color, params.color1),
+            (&self.controls.color2, params.color2),
+        ] {
+            picker.update(cx, |state, cx| match color {
+                Some(color) => state.set_value(
+                    rgb((color[0] as u32) << 16 | (color[1] as u32) << 8 | color[2] as u32),
+                    window,
+                    cx,
+                ),
+                None => state.clear_value(window, cx),
+            });
+        }
+        self.sync_keyboard_controls(window, cx);
+    }
+    pub fn add_profile(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.continue_with(Continue::NewProfile, window, cx);
+    }
+    fn duplicate_profile(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        profile::create_local_profile(&mut self.device, &self.saved, true);
+        self.refresh_profile_choices(window, cx);
+    }
+    pub(super) fn mapping_dirty(&self) -> bool {
+        self.mapping.as_ref().is_some_and(|m| m.value != m.original)
+    }
+    pub(super) fn commit_mapping(&mut self, cx: &mut Context<Self>) -> bool {
+        if !self.mapping_valid() {
+            return false;
+        }
+        if let Some(draft) = self.mapping.take() {
+            let layer = self.hypershift;
+            let settings = self.settings_mut();
+            let bindings = if let Some(uid) = &draft.dial_mode {
+                &mut settings
+                    .keyboard
+                    .dial_modes
+                    .iter_mut()
+                    .find(|mode| &mode.uid == uid && mode.is_custom)
+                    .expect("validated custom dial mapping")
+                    .mappings
+            } else if layer {
+                &mut settings.hypershift_bindings
+            } else {
+                &mut settings.bindings
+            };
+            bindings.insert(draft.input, draft.value);
+            self.changed(cx);
+        }
+        true
+    }
+    pub fn prepare_save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        self.finish_mapping(window, cx)
+    }
+    pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_controls(window, cx);
+        cx.notify();
+    }
+    fn restore_mapping_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // A Default assignment disappears immediately from the Customized
+        // list. Check the committed rows, not only last frame's focus tree.
+        let removed_drawer_input = self
+            .customize_drawer
+            .source_input
+            .as_ref()
+            .is_some_and(|id| !self.drawer_input_visible(id, cx));
+        let previous = self.mapping_return_focus.take();
+        let target = if removed_drawer_input {
+            self.customize_drawer.filter_focus(cx)
+        } else {
+            previous
+                .filter(|focus| {
+                    self.workspace_focus.contains(focus, window)
+                        && !self.mapping_focus.contains(focus, window)
+                })
+                .unwrap_or_else(|| self.workspace_focus.clone())
+        };
+        window.focus(&target, cx);
+    }
+    pub(super) fn finish_mapping(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        // Saving all devices must not focus an editor in an inactive workspace.
+        let restore_focus =
+            self.mapping.is_some() && self.workspace_focus.contains_focused(window, cx);
+        if !self.commit_mapping(cx) {
+            return false;
+        }
+        self.mapping_recording = false;
+        if restore_focus {
+            self.restore_mapping_focus(window, cx);
+        } else {
+            self.mapping_return_focus = None;
+        }
+        self.customize_drawer.source_input = None;
+        true
+    }
+    pub(super) fn continue_with(
+        &mut self,
+        next: Continue,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Re-activating the current target must not discard a mapping draft
+        // or ask for a decision when no navigation will take place.
+        let unchanged = match &next {
+            Continue::Page(page) => self.page == *page,
+            Continue::Profile(id) => self.device.active_profile == *id,
+            Continue::Layer(layer) => self.hypershift == *layer,
+            Continue::Drawer(open) => self.customize_drawer.open == *open,
+            Continue::Input(input) | Continue::DrawerInput(input) => self
+                .mapping
+                .as_ref()
+                .is_some_and(|mapping| mapping.input == *input && mapping.dial_mode.is_none()),
+            Continue::DialInput { mode_uid, input } => {
+                self.mapping.as_ref().is_some_and(|mapping| {
+                    mapping.input == *input && mapping.dial_mode.as_ref() == Some(mode_uid)
+                })
+            }
+            _ => false,
+        };
+        if unchanged {
+            return;
+        }
+        self.finish_profile_rename(window, cx);
+        if self.mapping_dirty() {
+            let entity = cx.entity();
+            let discard = entity.clone();
+            let save_next = next.clone();
+            let discard_next = next.clone();
+            let invalid = !self.mapping_valid();
+            window.open_dialog(cx, move |dialog, _, _| {
+                let entity = entity.clone();
+                let discard = discard.clone();
+                let save_next = save_next.clone();
+                let discard_next = discard_next.clone();
+                dialog
+                    .title("尚未保存的按键映射")
+                    .child("保存此映射后继续，或丢弃本次映射编辑。")
+                    .footer(h_flex().gap_3().justify_end().children(vec![
+                            Button::new("mapping-keep-editing")
+                                .label("继续编辑")
+                                .on_click(|_, w, cx| w.close_dialog(cx))
+                                .into_any_element(),
+                            Button::new("mapping-discard")
+                                .label("丢弃并继续")
+                                .on_click({
+                                    let entity = discard.clone();
+                                    let next = discard_next.clone();
+                                    move |_, w, cx| {
+                                        w.close_dialog(cx);
+                                        entity.update(cx, |this, cx| {
+                                            this.mapping = None;
+                                            this.apply_continue(next.clone(), w, cx);
+                                        });
+                                    }
+                                })
+                                .into_any_element(),
+                            Button::new("mapping-save")
+                                .label("保存映射并继续")
+                                .primary()
+                                .disabled(invalid)
+                                .on_click({
+                                    let entity = entity.clone();
+                                    let next = save_next.clone();
+                                    move |_, w, cx| {
+                                        w.close_dialog(cx);
+                                        entity.update(cx, |this, cx| {
+                                            if this.commit_mapping(cx) {
+                                                this.apply_continue(next.clone(), w, cx);
+                                            }
+                                        });
+                                    }
+                                })
+                                .into_any_element(),
+                        ]))
+            });
+            // Restore trigger while the continuation is awaiting a decision.
+            self.controls.profile.update(cx, |s, cx| {
+                s.set_selected_value(&self.device.active_profile, window, cx)
+            });
+        } else {
+            self.apply_continue(next, window, cx);
+        }
+    }
+    fn apply_continue(&mut self, next: Continue, window: &mut Window, cx: &mut Context<Self>) {
+        let editor_focused = self.mapping_focus.contains_focused(window, cx);
+        let closing_drawer_mapping =
+            matches!(next, Continue::Drawer(false)) && self.customize_drawer.source_input.is_some();
+        let closing_mapping = matches!(next, Continue::CloseMapping);
+        let starting_snap = matches!(next, Continue::SnapCapture { .. } | Continue::AddSnapPair);
+        // Capture only accepted navigation. A rejected dirty-draft switch must
+        // retain the original return target, including through the dialog.
+        if matches!(
+            next,
+            Continue::Input(_) | Continue::DrawerInput(_) | Continue::DialInput { .. }
+        ) && !editor_focused
+        {
+            self.mapping_return_focus = window.focused(cx);
+        }
+        if !matches!(next, Continue::Drawer(_)) {
+            self.cancel_snap_capture(window, cx);
+            self.mapping = None;
+            self.hovered_input = None;
+            if !closing_mapping {
+                self.customize_drawer.source_input = None;
+            }
+        }
+        match next {
+            Continue::NewProfile => {
+                profile::create_local_profile(&mut self.device, &self.saved, false);
+                self.refresh_profile_choices(window, cx);
+            }
+            Continue::DuplicateProfile => self.duplicate_profile(window, cx),
+            Continue::ImportProfile(profile) => self.import_local_profile(profile, window, cx),
+            Continue::ExportProfile => self.export_local_profile(window, cx),
+            Continue::DeleteProfile(id) => {
+                profile::delete_local_profile(&mut self.device, &id);
+                self.refresh_profile_choices(window, cx);
+            }
+            Continue::ResetProfile { id, bindings_only } => {
+                profile::reset_local_profile(&mut self.device, &id, bindings_only);
+            }
+            Continue::Page(page) => self.page = page,
+            Continue::Profile(id) => {
+                if self.device.profiles.iter().any(|p| p.id == id) {
+                    self.device.active_profile = id;
+                }
+            }
+            Continue::Layer(layer) => {
+                self.hypershift = layer;
+                self.customize_drawer.reset_scroll();
+                // KP closes the mouse drawer on layer change; keyboard km
+                // deliberately keeps its input list available.
+                if self.pid() == 182 {
+                    self.apply_drawer_toggle(false);
+                }
+            }
+            Continue::Drawer(open) => self.apply_drawer_toggle(open),
+            Continue::DrawerInput(input) => {
+                self.customize_drawer.source_input = Some(input.clone());
+                self.open_mapping(input, window, cx);
+            }
+            Continue::CloseMapping => {
+                self.mapping_recording = false;
+                self.restore_mapping_focus(window, cx);
+            }
+            Continue::Input(input) => self.open_mapping(input, window, cx),
+            Continue::DialInput { mode_uid, input } => {
+                self.open_dial_mapping(mode_uid, input, window, cx)
+            }
+            Continue::SnapCapture { pair, key } => self.start_snap_capture(pair, key, window, cx),
+            Continue::AddSnapPair => self.start_add_snap_pair(window, cx),
+            Continue::DeleteDial(uid) => {
+                self.settings_mut().keyboard.delete_dial(&uid);
+                self.dial_highlight = None;
+            }
+            Continue::ResetDial => {
+                self.settings_mut().keyboard.reset_dial();
+                self.dial_highlight = None;
+            }
+        }
+        if self.mapping.is_none() {
+            self.mapping_recording = false;
+            self.customize_drawer.source_input = None;
+            if closing_drawer_mapping {
+                self.customize_drawer.focus_toggle(window, cx);
+            } else if editor_focused && !closing_mapping && !starting_snap {
+                // Page, profile and layer changes may remove the old trigger.
+                window.focus(&self.workspace_focus, cx);
+            }
+            self.mapping_return_focus = None;
+        }
+        self.sync_controls(window, cx);
+        self.changed(cx);
+    }
+    fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
+        h_flex()
+            .id("device-navigation")
+            .test_support()
+            .h(surface::css(48.))
+            .flex_shrink_0()
+            .border_b_2()
+            .border_color(cx.theme().title_bar)
+            .child(
+                h_flex().flex_1().min_w_0().children(
+                    (!matches!(self.page, Tab::Power | Tab::Calibration | Tab::Help))
+                        .then(|| self.profile_toolbar(cx)),
+                ),
+            )
+            .child(
+                gpui_kit::base::Tabs::new("device-tabs")
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .gap(surface::css(20.))
+                    .children(Tab::for_product(self.device.product_id).iter().map(|page| {
+                        let page = *page;
+                        surface::navigation_button(
+                            SharedString::from(format!("device-tab-{}", page.id())),
+                            page.label(),
+                            page == self.page,
+                            cx,
+                        )
+                        .role(Role::Tab)
+                        .on_click(cx.listener(move |this, _, w, cx| this.set_page(page, w, cx)))
+                    })),
+            )
+            .child(
+                h_flex().flex_1().min_w_0().justify_end().child(
+                    surface::asset_button(
+                        "device-help",
+                        if self.page == Tab::Help {
+                            "synapse/help-active.svg"
+                        } else {
+                            "synapse/help-default.svg"
+                        },
+                        "帮助",
+                        cx,
+                    )
+                    .size(surface::css(24.))
+                    .mr(surface::css(10.))
+                    .selected(self.page == Tab::Help)
+                    .on_click(
+                        cx.listener(|this, _, window, cx| this.set_page(Tab::Help, window, cx)),
+                    ),
+                ),
+            )
+            .into_any_element()
+    }
+}
+impl Render for DeviceWorkspace {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let stacked = surface::stacked_device_columns(
+            f32::from(window.viewport_size().width),
+            f32::from(window.rem_size()),
+        );
+        // Fixed source canvases and cards scroll horizontally instead of shrinking.
+        // The 20px body padding is device CSS; frontend pages have another narrow rule.
+        let content_min_width = match self.page {
+            Tab::Customize if self.pid() == 653 => 830.8,
+            Tab::Customize => surface::CONFIG_WRAPPER_MIN_WIDTH,
+            Tab::Sound => 1024.,
+            Tab::Mic => 940.,
+            _ if stacked => surface::WIDGET_WIDTH + surface::COMPACT_COLUMN_MARGIN * 2.,
+            _ => surface::WIDGET_WIDTH,
+        };
+        let body = if self.page == Tab::Customize {
+            self.customize_surface(window, cx)
+        } else {
+            let page = match self.page {
+                Tab::Performance => self.performance_page(cx),
+                Tab::Power => self.power_page(cx),
+                Tab::Calibration => self.calibration_page(cx),
+                Tab::Lighting => self.lighting_page(cx),
+                Tab::Sound => self.sound_page(cx),
+                Tab::Mic => self.eq_page(EqKind::Mic, cx),
+                Tab::Help => self.help_page(cx),
+                _ => surface::note("此产品的页面尚未接入。", cx).into_any_element(),
+            };
+            div()
+                .id(SharedString::from(format!(
+                    "device-body-{}",
+                    self.identity()
+                )))
+                .test_support()
+                .relative()
+                .flex_1()
+                .min_w(surface::css(surface::BODY_MIN_WIDTH))
+                .min_h_0()
+                .overflow_scroll()
+                .track_scroll(&self.body_scroll)
+                .child(
+                    v_flex()
+                        .w_full()
+                        .min_w(surface::css(content_min_width + 40.))
+                        .max_w(surface::css(surface::BODY_MAX_WIDTH + 40.))
+                        .mx_auto()
+                        .pt(surface::css(10.))
+                        .px(surface::css(20.))
+                        .pb(surface::css(20.))
+                        .gap_5()
+                        .child(page),
+                )
+                .scrollbar(&self.body_scroll, ScrollbarAxis::Both)
+                .into_any_element()
+        };
+        v_flex()
+            .id("device-workspace")
+            .test_support()
+            .track_focus(&self.workspace_focus)
+            .size_full()
+            .tab_group()
+            .child(self.toolbar(cx))
+            .child(body)
+            .children(self.dirty().then(|| {
+                h_flex()
+                    .px_5()
+                    .py_2()
+                    .gap_3()
+                    .border_t_1()
+                    .border_color(cx.theme().border)
+                    .child(surface::note(
+                        if self.dirty() {
+                            "有未保存的本地更改"
+                        } else {
+                            "本地配置 · 未连接设备服务"
+                        },
+                        cx,
+                    ))
+                    .child(div().flex_1())
+                    .child(
+                        Button::new("discard-profile")
+                            .label("丢弃更改")
+                            .outline()
+                            .disabled(!self.dirty())
+                            .on_click(cx.listener(|this, _, w, cx| this.discard(w, cx))),
+                    )
+                    .child(
+                        Button::new("save-profile")
+                            .label("保存到本机")
+                            .primary()
+                            .disabled(!self.dirty() || !self.mapping_valid())
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                if this.finish_mapping(window, cx) {
+                                    cx.emit(WorkspaceEvent::SaveRequested);
+                                }
+                            })),
+                    )
+            }))
+    }
+}

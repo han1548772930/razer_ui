@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 27 26 26" width="26" height="26">
+  <symbol id="bg" viewBox="0 0 26 26">
+    <circle cx="13" cy="13" r="10" />
+  </symbol>
+  <symbol id="shape" viewBox="0 0 26 26">
+    <path d="M13 0C5.798 0 0 5.798 0 13s5.798 13 13 13 13-5.798 13-13S20.202 0 13 0Zm0 3a10 10 0 0 1 10 10A10 10 0 1 1 13 3Zm.684 4.25a4.086 4.086 0 0 0-3.653 1.592 2.03 2.03 0 0 0-.455 1.388.971.971 0 0 0 .541.83 1.121 1.121 0 0 0 1.17-.195 4.325 4.325 0 0 0 .594-1.017 1.61 1.61 0 0 1 1.879-.702 1.232 1.232 0 0 1 .681.377A1.333 1.333 0 0 1 14.6 11a2.39 2.39 0 0 1-.621.705c-.304.244-.61.477-.91.72a2.109 2.109 0 0 0-.987 1.958.939.939 0 0 0 .518.699.983.983 0 0 0 1.369-.44 1.792 1.792 0 0 1 .56-1 16.17 16.17 0 0 0 1.78-1.417 2.669 2.669 0 0 0 .746-2.194c-.133-1.67-1.89-2.737-3.371-2.781Zm-.205 9.102A1.25 1.25 0 1 0 13 18.756a1.25 1.25 0 0 0 1.25-1.25 1.25 1.25 0 0 0-.771-1.154z" />
+  </symbol>
+  <symbol id="d" viewBox="0 0 26 26">
+    <use xlink:href="#bg" fill="#ccc" />
+    <use xlink:href="#shape" fill="#222222" />
+  </symbol>
+  <symbol id="h" viewBox="0 0 26 26">
+    <use xlink:href="#bg" fill="#ccc" />
+    <use xlink:href="#shape" fill="#2d2d2d" />
+  </symbol>
+  <symbol id="a" viewBox="0 0 26 26">
+    <use xlink:href="#bg" fill="#111" />
+    <use xlink:href="#shape" fill="#44d62c" />
+  </symbol>
+
+  
+  <view id="default" viewBox="0 0 26 26" />
+  <view id="hover" viewBox="0 27 26 26" />
+  <view id="active" viewBox="0 53 26 26" />
+
+  <use xlink:href="#d" x="0" y="0" width="26" height="26" />
+  <use xlink:href="#h" x="0" y="27" width="26" height="26" />
+  <use xlink:href="#a" x="0" y="53" width="26" height="26" />
+</svg>

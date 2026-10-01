@@ -1,55 +1,25 @@
-# 逐界面原版规格
+# 逐页规格索引
 
-这些文件只记录雷蛇原始前端的页面事实：页面归属、页面顺序、布局分区、CSS 类名、尺寸、颜色、状态和原始文案来源；不记录当前 Rust 项目的完成度，也不把未验证能力写成已实现功能。
+页面是否存在，以产品根 `navs` 和实际组件树为准。以下链接包含交互、资源和当前实现差异。
 
-## 证据优先级
-
-1. `.ref/devices/<productId>/static/js` 与 `.ref/devices/<productId>/static/css`：产品页面最终依据。
-2. `.ref/frontend/static/js` 与 `.ref/frontend/static/css`：主前端 Dashboard、产品顶栏、Gamer Room、固件更新和全局入口依据。
-3. `.ref/frontend/locales/`、`trans-*.chunk.js`：文案 key 和本地化文本依据。
-4. `.ref/frontend/manifest.json`、`asset-manifest.json`：入口 bundle、构建版本和应用壳信息。
-5. `.ref/tools/`：只作为审计辅助，不能覆盖实际 bundle 中的组件和 CSS 证据。
-
-截图、当前 Rust 文件名、旧版 MD 或通用产品经验都不能推翻原始 bundle。没有 JavaScript/CSS/locale/manifest 证据的能力必须标记为“未验证”，不能继续保留为确定布局或功能。
-
-## 文档索引
-
-| 文档 | 范围 |
+| 文档 | 适用范围 |
 |---|---|
-| [00-app-shell.md](00-app-shell.md) | Electron 外层标签栏、产品顶栏、Dashboard、产品窗口和全局弹窗 |
-| [01-customize.md](01-customize.md) | 自定义、按键绑定、Hypershift、动作编辑器 |
-| [02-performance.md](02-performance.md) | DPI、轮询率、传感器和键盘性能 |
-| [03-pairing.md](03-pairing.md) | 无线接收器、配对、扫描和解绑 |
-| [04-calibration.md](04-calibration.md) | 182 鼠标表面校准、校准中/完成/失败状态；其他设备变体需重新核对 bundle |
-| [05-power.md](05-power.md) | 电池、充电、睡眠和省电 |
-| [06-scrolling.md](06-scrolling.md) | 182/653 已证实的滚轮模式、阶段选择、阻尼/触觉分支 |
-| [07-lighting.md](07-lighting.md) | Chroma 效果、资源状态和设备灯光分支 |
-| [08-sound.md](08-sound.md) | 777 音频页面及其已证实的 EQ 组件 |
-| [09-mic.md](09-mic.md) | 777 麦克风页面及其已证实的组件 |
-| [10-main-frontend-pages.md](10-main-frontend-pages.md) | 主前端壳层、四个顶层入口、设备 Dashboard、Gamer Room 和固件更新 |
+| [00 应用壳层](00-app-shell.md) | Electron 标签栏、前端工具栏、导航、profile、内容布局 |
+| [01 自定义](01-customize.md) | 182 鼠标与 653 键盘；按键图、映射、Hypershift、游戏模式、Snap Tap、Command Dial |
+| [02 性能](02-performance.md) | 182 独立页面；653 的回报率仅作为 Customize 中的关联功能 |
+| [03 配对](03-pairing.md) | 182 独立 multiDevicePairing 模式及 frontend 共享配对状态机 |
+| [04 校准](04-calibration.md) | 182 Smart Tracking |
+| [05 电源](05-power.md) | 182 / 777，范围和开关行为不同 |
+| [07 灯光](07-lighting.md) | 653 / 777，灯效列表和附属卡片不同 |
+| [08 声音](08-sound.md) | 777 音量、Windows 属性、audioEq |
+| [09 麦克风](09-mic.md) | 777 micEq、原包频率数据矛盾；当前入口只有 EQ |
+| [10 主前端页面](10-main-frontend-pages.md) | Dashboard、Gamer Room、Devices & Modules、Global Shortcuts、Settings 边界 |
+| [11 设备帮助](11-help.md) | 182 / 653 / 777 帮助路由、产品支持、序列号、版本和注册；恢复出厂服务边界 |
 
-## 产品页面矩阵
+产品导航顺序：
 
-| 设备 | productId | 当前由产品 bundle 证实的页面顺序 |
-|---|---:|---|
-| Razer DeathAdder V3 Pro | `182` | 自定义、性能、配对、校准、电源、滚动 |
-| BlackWidow V4 Pro | `653` | 自定义、性能、灯光、电源、滚动 |
-| RAZER KRAKEN BT SANRIO LIMITED EDITION | `777` | 自定义、灯光、校准、电源、声音、麦克风 |
+- 182：Customize → Performance → Power → Calibration；HELP；Pairing 为独立模式。
+- 653：Customize → Lighting；HELP。
+- 777：Sound → Mic → Lighting → Power；HELP。
 
-该矩阵只描述已审计产品模块的入口顺序；页面内部的控件、状态和颜色以对应文档及产品源码为准。主前端的 locale key 不能扩大产品能力。
-
-## 每个产品页面文档的固定结构
-
-1. 出现设备和模块的源码条件与顺序。
-2. 产品页面共用骨架和该页自己的卡片排列。
-3. 不同 `productId` 的分区、控件、能力 flag 和隐藏条件。
-4. CSS 类名、布局、尺寸、颜色、字体、圆角、状态和过渡。
-5. locale 中可定位的功能 key、中文原文和英文原文；无法定位的文案不补写。
-6. 明确列出未验证项，避免实现把推断内容做成可点击功能。
-
-## 维护规则
-
-- 修改前先检查 `.ref` 的真实文件名和入口关系。
-- 只保留能回溯到源码的布局和功能；错误、过时或仅由截图推断的段落直接删除或改为未验证。
-- 不恢复已经删除的旧页面文件、旧截图或 `src/pages/...` 实现路径。
-- 文档变化完成后至少执行 `git diff --check`，并确认没有修改本次范围之外的 Markdown、Rust 或资源文件。
+文中数值首先表示原始 CSS px 或原始业务数值。后续 GPUI Kit 实现统一换算缩放，并通过领域事件更新状态；不要把页面文档中的 React 符号直接设计成 Rust 公共 API。
