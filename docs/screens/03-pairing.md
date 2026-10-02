@@ -1,12 +1,13 @@
 # 配对：独立窗口与共享配对状态机
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](../re/20-current-source-version.md)为准。
 > Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
 ## 1. 路由和源码
 
 `[JS]` [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js) 中，根 displayMode 为 `multiDevicePairing` 时进入 `GG → UG`。此容器的导航只有 TAB_PAIRING，历史含 deviceRoot / TAB_PAIRING。它不是 182 普通导航第五/第六项。
 
-`PG`（memo 包装为 mG）创建 `/synapse/multipairing/` iframe。真正扫描/绑定/解绑视图在 [frontend 4130 chunk](../../.ref/frontend/static/js/4130.155387bf.chunk.js)，不是仅靠 182 bundle 就能说明完整配对。
+`PG`（memo 包装为 mG）创建 `/synapse/multipairing/` iframe。真正扫描/绑定/解绑视图在 [frontend 4130 chunk](../../.ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js)，不是仅靠 182 bundle 就能说明完整配对。
 
 ## 2. 容器通信
 
@@ -65,7 +66,7 @@ canPairTwoDevices 时 status / status2 分别对应键盘和鼠标通道。绑�
 
 视图以主设备、从设备、扫描候选和连接状态卡片组织。已配对卡 hover 提供 Unpair；错误/已解绑提供 Pair；扫描/绑定/解绑时显示对应忙碌状态。确认弹窗处理 Tab、Escape、Enter/Space，不能只实现鼠标点击。
 
-[4130 CSS](../../.ref/frontend/static/css/4130.6bdf8dd0.chunk.css) 包含 PairingContent / MultiDevicePairing 的模块样式。产品图来自动态产品资源与卡片数据，不是统一通用鼠标图。
+[4130 CSS](../../.ref/applications/synapse/dashboard/static/css/7861.a49b4dc6.chunk.css) 包含 PairingContent / MultiDevicePairing 的模块样式。产品图来自动态产品资源与卡片数据，不是统一通用鼠标图。
 
 原引用 `frontend/static/media/dongle-pairing.62f44d13.svg` 在本地缺失，其他目录也未找到；不能写成资源已到位。内嵌状态 SVG、原 CSS 以及可定位的产品图可以继续使用。详见 [资源缺口](../re/04-resource-index.md)。
 

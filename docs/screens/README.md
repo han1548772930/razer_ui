@@ -23,6 +23,8 @@
 | [15 账户菜单](15-account-menu.md) | 访客菜单的原版外观、焦点、退出保护及账户服务边界 |
 | [16 Introduction Tour](16-introduction-tour.md) | Synapse 五步视频及 Chroma 三步原图教程、独立页签状态、导航关闭与短窗口滚动；宿主接入边界 |
 | [17 鼠标垫灯光](17-mouse-mat-lighting.md) | 七款 Firefly/Goliathus/Strider 的灯光、帮助、产品资源和本地预览；保留各型号差异 |
+| [18 Alexa](18-alexa.md) | 独立 Home / Skills / Settings / Help、认证分支、安装与更新说明预览、原控件及服务边界 |
+| [19 更多应用](19-app-picker.md) | 独立应用选择弹层的布局、排序、安装条件、Alexa 启动与工具栏录音边界 |
 
 产品导航顺序：
 

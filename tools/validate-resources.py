@@ -6,6 +6,7 @@ import re
 import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import unquote, urljoin, urlparse
 from keyboard_geometry import geometry_for
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -13,6 +14,42 @@ directory = ROOT / "assets/synapse"
 entries = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))["entries"]
 embedded = (directory / "embedded.rs").read_text(encoding="utf-8")
 expected = set()
+
+# Reject obsolete provenance before opening any referenced source. A passing hash
+# from an old snapshot must never certify an asset as current.
+def validate_provenance(value):
+    if isinstance(value, dict):
+        for nested in value.values():
+            validate_provenance(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            validate_provenance(nested)
+    elif isinstance(value, str):
+        assert not value.startswith((".ref/frontend/", ".ref/synapse-asar/",
+                                     ".ref/host-4.0.821/")), value
+        prefix = ".ref/applications/synapse/dashboard/"
+        if value.startswith(prefix + "static/"):
+            assert value[len(prefix):] in dashboard_assets, value
+
+
+dashboard_assets = set(json.loads((ROOT / ".ref/applications/synapse/dashboard/asset-manifest.json")
+    .read_text(encoding="utf-8"))["files"].values())
+dashboard_assets = {name.removeprefix("./") for name in dashboard_assets}
+for manifest in directory.glob("*.json"):
+    validate_provenance(json.loads(manifest.read_text(encoding="utf-8")))
+
+for entry in json.loads((directory / "tutorial-media-manifest.json").read_text(encoding="utf-8"))["entries"]:
+    if "resource_manifest" not in entry:
+        continue
+    manifest_path = entry["resource_manifest"]
+    prefix = ".ref/applications/"
+    assert manifest_path.startswith(prefix), manifest_path
+    route = manifest_path[len(prefix):].removesuffix("asset-manifest.json")
+    manifest = json.loads((ROOT / manifest_path).read_text(encoding="utf-8"))
+    declared_urls = {unquote(urljoin("https://apps.razer.com/" + route, value))
+                     for value in manifest["files"].values()}
+    assert unquote(entry["source_url"]) in declared_urls, entry["source_url"]
+    assert Path(unquote(urlparse(entry["source_url"]).path)).name == Path(entry["source"]).name
 
 
 def webp_metadata(data):

@@ -3,7 +3,7 @@ use crate::features::settings::Effect;
 use crate::{demo::mouse_mat_preview, nav::Tab, product::AUDITED_MOUSE_MAT_IDS};
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt;
-use gpui_kit::{AppContext, TestAppContext, px, size};
+use gpui_kit::{AppContext, ScrollDelta, SharedString, TestAppContext, point, px, size};
 
 #[test]
 fn new_mat_profiles_use_product_defaults_and_preserve_edited_profiles() {
@@ -166,4 +166,58 @@ fn mat_reactive_requires_a_connected_mouse_and_keeps_its_parameters(cx: &mut Tes
         assert_eq!(lighting.effect, Effect::Reactive);
         assert_eq!(lighting.params().duration, 3);
     });
+}
+
+#[gpui_kit::test]
+fn mat_product_art_precedes_controls_and_scrolls_with_the_page(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    for (index, pid) in AUDITED_MOUSE_MAT_IDS.into_iter().enumerate() {
+        let scale = if index % 2 == 0 { 1. } else { 1.25 };
+        cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16. * scale)));
+        let mut workspace = None;
+        let handle = cx.open_window(size(px(1280. * scale), px(1000. * scale)), |window, cx| {
+            let view = cx
+                .new(|cx| DeviceWorkspace::new(mouse_mat_preview(pid).unwrap(), true, window, cx));
+            workspace = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let view = workspace.unwrap();
+        let body_id = cx.update(|cx| format!("device-body-{}", view.read(cx).identity()));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let banner = window.find("lighting-product-banner").bounds();
+            let columns = window.find("page-columns").bounds();
+            assert_eq!(banner.size, size(px(1220. * scale), px(250. * scale)));
+            assert!((columns.top() - banner.bottom() - px(20. * scale)).abs() <= px(1.));
+            assert!(window.try_find("lighting-product-image").is_some());
+            window.click("device-help", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("lighting-product-banner").is_none());
+            window.click("device-tab-lighting", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.simulate_window_resize(handle.into(), size(px(700. * scale), px(1000. * scale)));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let before = window.find("lighting-product-banner").bounds();
+            assert_eq!(before.size, size(px(1024. * scale), px(250. * scale)));
+            window.scroll(
+                SharedString::from(body_id.clone()),
+                ScrollDelta::Pixels(point(px(-200. * scale), px(0.))),
+                cx,
+            );
+            let after = window.find("lighting-product-banner").bounds();
+            assert!(after.left() < before.left());
+            assert_eq!(after.size, before.size);
+        })
+        .unwrap();
+    }
 }

@@ -13,13 +13,13 @@ fn adding_a_device_suspends_the_tutorial_and_restores_its_step(cx: &mut TestAppC
     let mut page = None;
     let handle = cx.open_window(size(px(1280.), px(1200.)), |window, cx| {
         let view = cx.new(|_| GamerRoomPage::new());
+        view.update(cx, |page, cx| page.set_tutorial_seen(false, cx));
         page = Some(view.clone());
         Root::new(view, window, cx)
     });
     let page = page.unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        window.click("gamer-room-tutorial", cx);
         window.click("gr-tour-next", cx);
         window.click("gamer-room-add", cx);
     })
@@ -60,6 +60,7 @@ fn gamer_room_steps_keep_source_controls_indicator_anchors_and_completion(cx: &m
     let mut page = None;
     let handle = cx.open_window(size(px(1280.), px(1200.)), |window, cx| {
         let view = cx.new(|_| GamerRoomPage::new());
+        view.update(cx, |page, cx| page.set_tutorial_seen(false, cx));
         page = Some(view.clone());
         Root::new(view, window, cx)
     });
@@ -77,8 +78,19 @@ fn gamer_room_steps_keep_source_controls_indicator_anchors_and_completion(cx: &m
         ] {
             assert_eq!(window.find(id).bounds().size.height, px(33.));
         }
-        window.click("gamer-room-tutorial", cx);
         let first = window.find("gamer-room-tour").bounds();
+        let wrapper = window.find("gamer-room-tutorial-wrapper").bounds();
+        let groups = window.find("gamer-room-groups").bounds();
+        let banner = window.find("gamer-room-banner").bounds();
+        assert_eq!(wrapper.size.height, px(0.));
+        assert_eq!(wrapper.origin, groups.origin);
+        assert_eq!(groups.top(), banner.bottom());
+        assert_eq!(first.left() - wrapper.left(), px(220.));
+        assert_eq!(first.top() - wrapper.top(), px(22.));
+        assert_eq!(
+            window.find("gr-group-0").bounds().top() - wrapper.top(),
+            px(10.)
+        );
         let indicator = window.find("gamer-room-tutorial-indicator").bounds();
         assert!(
             (indicator.center().x - (first.left() + px(1.) - (first.size.width - px(2.)) * 0.09))
@@ -119,10 +131,55 @@ fn gamer_room_steps_keep_source_controls_indicator_anchors_and_completion(cx: &m
         assert_eq!(page.read(cx).tour_step, None);
         assert_eq!(page.read(cx).stored_seen, Some(true));
         assert!(window.try_find("gamer-room-tour").is_none());
-        window.click("gamer-room-tutorial", cx);
+        page.update(cx, |page, cx| page.reset_tutorial(cx));
+        window.render_frame(cx);
         window.click("gr-tour-skip", cx);
         assert_eq!(page.read(cx).tour_step, None);
         assert!(window.try_find("gamer-room-tutorial-indicator").is_none());
     })
     .unwrap();
+}
+
+#[gpui_kit::test]
+fn gamer_room_tutorial_keeps_its_group_anchor_when_the_viewport_is_short_or_narrow(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+    });
+    let handle = cx.open_window(size(px(1280.), px(1200.)), |window, cx| {
+        let view = cx.new(|_| GamerRoomPage::new());
+        view.update(cx, |page, cx| page.set_tutorial_seen(false, cx));
+        Root::new(view, window, cx)
+    });
+    let mut panel_size = None;
+    for (width, height, groups_width) in [
+        (1280., 1200., 1220.),
+        (1000., 700., 910.),
+        (600., 600., 290.),
+    ] {
+        cx.simulate_window_resize(handle.into(), size(px(width), px(height)));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let panel = window.find("gamer-room-tour").bounds();
+            let groups = window.find("gamer-room-groups").bounds();
+            let banner = window.find("gamer-room-banner").bounds();
+            assert_eq!(groups.size.width, px(groups_width));
+            assert_eq!(groups.center().x, banner.center().x);
+            assert_eq!(panel.left() - groups.left(), px(220.));
+            assert_eq!(panel.top() - groups.top(), px(22.));
+            if let Some(previous) = panel_size {
+                assert_eq!(panel.size, previous);
+            }
+            panel_size = Some(panel.size);
+            if height <= 700. {
+                // The page scrolls to this source-positioned panel; it must
+                // neither shrink nor detach from the group to fit the window.
+                assert!(panel.bottom() > px(height));
+            }
+        })
+        .unwrap();
+    }
 }

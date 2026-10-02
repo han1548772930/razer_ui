@@ -1,6 +1,9 @@
 //! Reviewable source 6505/44442 `H → w/O/L` states. Every record in this surface
 //! is explicitly a preview; production ModuleCatalog retains its unknown service state.
-use super::{MODULES, Module, ModuleAction, module_action, module_detail_action, source_link};
+use super::{
+    MODULES, Module, ModuleAction, ModuleCatalog, ModuleCatalogEvent, module_action,
+    module_detail_action, source_link,
+};
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::Choice,
@@ -76,8 +79,8 @@ fn choices() -> Vec<Choice> {
         .collect()
 }
 
-pub(super) fn open(window: &mut Window, cx: &mut App) {
-    let preview = cx.new(|cx| ModulePreview::new(window, cx));
+pub(super) fn open(owner: WeakEntity<ModuleCatalog>, window: &mut Window, cx: &mut App) {
+    let preview = cx.new(|cx| ModulePreview::new(owner, window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
             .title("设备与模块 · 界面预览")
@@ -90,6 +93,7 @@ pub(super) fn open(window: &mut Window, cx: &mut App) {
 }
 
 struct ModulePreview {
+    owner: WeakEntity<ModuleCatalog>,
     selected: Entity<SelectState<Vec<Choice>>>,
     scenario: String,
     scene: Scene,
@@ -105,7 +109,7 @@ struct ModulePreview {
     _subscriptions: Vec<Subscription>,
 }
 impl ModulePreview {
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    fn new(owner: WeakEntity<ModuleCatalog>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let selected =
             cx.new(|cx| SelectState::new(choices(), Some(IndexPath::new(0)), window, cx));
         let subscription = cx.subscribe(&selected, |this: &mut Self, _, event, cx| {
@@ -115,6 +119,7 @@ impl ModulePreview {
             }
         });
         Self {
+            owner,
             selected,
             scenario: "unknown".into(),
             scene: Scene::Installer,
@@ -716,14 +721,20 @@ impl ModulePreview {
                             warning.is_some(),
                             cx,
                         )
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.last_action = if this.sdk_update {
-                                "已预览启动设备固件更新程序。"
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            if this.sdk_update {
+                                window.close_dialog(cx);
+                                let _ = this.owner.update(cx, |_, cx| {
+                                    cx.emit(ModuleCatalogEvent::FirmwareUpdate {
+                                        device: None,
+                                        preview: true,
+                                    });
+                                });
                             } else {
-                                "已预览打开在线固件更新指南。"
+                                this.last_action =
+                                    "预览指南未关联真实设备，因此没有可打开的地址。".into();
+                                cx.notify();
                             }
-                            .into();
-                            cx.notify();
                         })),
                     ),
             )

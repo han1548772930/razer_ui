@@ -1,17 +1,19 @@
 # 全局快捷键：原生引擎编码
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 实现为 [shortcut_engine.rs](../../src/features/shortcut_engine.rs)。`encode_shortcuts(&[Shortcut])` 生成原引擎的 `{mappings,hash}`，不访问设备、不注册快捷键、不启动进程。整个列表全部编码成功后才返回；任一不支持项返回错误，调用方可继续保留本地配置和原引擎状态。
 
 ## 已对照的调用链
 
 | 原始位置 | 证据与实现 |
 |---|---|
-| [7282](../../.ref/frontend/static/js/7282.873c10ab.chunk.js) `Oe.setDataToMappingEngine` | 先调用 `generateAppEngineMappings`，再对只有 mappings 的对象计算 hash。 |
-| [2280](../../.ref/frontend/static/js/2280.d4f2f9d4.chunk.js) 模块 36383 / 42358 | `getAppEngineMapping` 按输出组分派，`Ot` 将 downInput/downOutput 和 upInput/upOutput 组成两条映射。引擎条目只包含 input/output，不包含本地 profile 或快捷键身份。 |
+| [当前4608](../../.ref/applications/synapse/dashboard/static/js/4608.e973916f.chunk.js) `94608` 内 `setDataToMappingEngine` | 先调用 `generateAppEngineMappings`，再对只有 mappings 的对象计算 hash。 |
+| [2280](../../.ref/applications/synapse/dashboard/static/js/2280.4d9e22ab.chunk.js) 模块 36383 / 42358 | `getAppEngineMapping` 按输出组分派，`Ot` 将 downInput/downOutput 和 upInput/upOutput 组成两条映射。引擎条目只包含 input/output，不包含本地 profile 或快捷键身份。 |
 | 42358 `vt` / `Qe` | 键盘输入 `{type:"keyboard",scancode,hypershift,flag,modifiers}`；按下使用 `outputFlag ?? flag`，松开再加 1。泛化 ALT/CTRL/SHIFT/GUI 掩码为 1/2/4/8；左侧为 256/512/1024/2048，右侧为 16/32/64/128。这些不能和 Win32 RegisterHotKey 掩码混用。 |
 | 42358 `rt` / `Dt` | RightClick 4/8，ScrollButton 16/32，Button4 64/128，Button5 256/512。它们是引擎鼠标位域。rt 的这些分支返回对象没有 data，序列化必须省略，不能补 0。 |
 | 2280 模块 629 | 原始键表以 scancode 和 outputFlag 提供编码，不从 Windows 虚拟键或 HID 编号推算。静态提取 127 个非零扫描码输入，包含国际键和原始扩展标记。 |
-| [55](../../.ref/frontend/static/js/55.4acb3322.chunk.js) 模块 59007 `customizeReducer` | 真正调用 `localStorageSetItem` 前，对 Backspace/B/Space 追加 DKM_SB_251/252/253 别名，再通过 `ye` 追加两套输入：mouse/keyboard 的 unitId 为 0、43981；razerKey 的 reportId 为 4、8。顺序为原输入、别名、第一套变体、第二套变体，之后才算 hash。 |
+| [55](../../.ref/applications/synapse/dashboard/static/js/55.3f1ab18c.chunk.js) 模块 59007 `customizeReducer` | 真正调用 `localStorageSetItem` 前，对 Backspace/B/Space 追加 DKM_SB_251/252/253 别名，再通过 `ye` 追加两套输入：mouse/keyboard 的 unitId 为 0、43981；razerKey 的 reportId 为 4、8。顺序为原输入、别名、第一套变体、第二套变体，之后才算 hash。 |
 | 7282 `Oe.componentDidMount` / 42358 `mt` | `setDKMKeys` 提供 251/252/253 的真实 key，mt 生成 `{type:"razerKey",key,hypershift,flag,modifiers}`，flag 为 0/1。 |
 
 因此仅调用 `generateAppEngineMappings` 的中间结果还不是此页面完整的服务提交对象。本实现保留 59007 的变体，而不是从扫描码猜测设备标识。不同本地按键若解析为同一原生扫描码、标记和辅助键组合，整次编码拒绝，以免生成重复输入覆盖。
@@ -50,7 +52,7 @@ GPUI 的键事件只有 Ctrl/Alt/Shift/Win 布尔值，没有原生录制器的�
 
 ## 哈希算法
 
-2280 模块 19019 `getHash` 浅删除顶层 `hash` 和 `gamemode`，再调用 [main](../../.ref/frontend/static/js/main.7897a4cf.js) 模块 5371 的稳定 JSON stringify：对象键按 JavaScript UTF-16 顺序递归排序，数组保留顺序，紧凑序列化。然后把所有 `<` 替换成字面 `\u003C`，交给模块 32937 的 MD5，以小写十六进制表示。
+2280 模块 19019 `getHash` 浅删除顶层 `hash` 和 `gamemode`，再调用 [main](../../.ref/applications/synapse/dashboard/static/js/main.01550b17.js) 模块 5371 的稳定 JSON stringify：对象键按 JavaScript UTF-16 顺序递归排序，数组保留顺序，紧凑序列化。然后把所有 `<` 替换成字面 `\u003C`，交给模块 32937 的 MD5，以小写十六进制表示。
 
 Rust 实现显式排序，不依赖 serde_json 是否启用 preserve_order；摘要依赖 `md5` crate。空对象映射 `{ "mappings": [] }` 的原规范摘要是 `de2ccb2014607a84df08306567cd96f0`。包含 `<`、中文、emoji 的完整输入变体摘要另作为固定回归向量，避免 Unicode、转义和排序差异。
 

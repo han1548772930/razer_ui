@@ -1,10 +1,11 @@
 # 主前端：Dashboard、Gamer Room、设备与模块、全局快捷键
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](../re/20-current-source-version.md)为准。
 > Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
 ## 1. 路由和证据
 
-`[JS]` [App.eb32d7cd.chunk.js](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js) 的 HomePage 根据 active_view 切换页面；name 对应 [main.7897a4cf.js](../../.ref/frontend/static/js/main.7897a4cf.js) 的 locale 导出。
+`[JS]` [App.72827d47.chunk.js](../../.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js) 的 HomePage 根据 active_view 切换页面；name 对应 [main.01550b17.js](../../.ref/applications/synapse/dashboard/static/js/main.01550b17.js) 的 locale 导出。
 
 | 页面 | locale / 导出 | 模块 | 异步 chunk |
 |---|---|---|---|
@@ -19,7 +20,7 @@
 
 ## 2. Dashboard
 
-源：[4130.155387bf.chunk.js](../../.ref/frontend/static/js/4130.155387bf.chunk.js)、[55 公共 CSS](../../.ref/frontend/static/css/55.a5b041a2.chunk.css)、[4130 CSS](../../.ref/frontend/static/css/4130.6bdf8dd0.chunk.css)。
+源：[7861.1b0e99a4.chunk.js](../../.ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js)、[55 公共 CSS](../../.ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css)、[4130 CSS](../../.ref/applications/synapse/dashboard/static/css/7861.a49b4dc6.chunk.css)。
 
 ```text
 dashboard [.reflow]
@@ -77,7 +78,7 @@ dashboard [.reflow]
 
 ## 3. Gamer Room
 
-源：[9388.2bec5db3.chunk.js](../../.ref/frontend/static/js/9388.2bec5db3.chunk.js)。根 #gamerRoom，含条件 gr-banner、营销内容、教程入口、设备组和连接 popup。
+源：[9388.974b5d43.chunk.js](../../.ref/applications/synapse/dashboard/static/js/9388.974b5d43.chunk.js)。根 #gamerRoom，含条件 gr-banner、营销内容、教程入口、设备组和连接 popup。
 
 状态来自 gamerRoomReducer 与 IoT/实际设备数据。group 会根据列数、设备过滤、全部组是否为空等更新 banner；不是固定一张横幅。设备卡有 skeleton/安装状态，popup 与目标容器 ID 关联，点击外部关闭；卸载应清理相关监听。
 
@@ -86,19 +87,21 @@ dashboard [.reflow]
 - `Gamer Room Dashboard Tutorial 1.080f80fb.mp4`
 - `Gamer Room Dashboard Tutorial 2.b4e338ae.mp4`
 
-两条原视频的 `https://apps.razer.com/synapse/dashboard/static/media/` 地址均已只读核查返回 200 和 `video/mp4`，当前提供明确的“播放原教程视频”外链，未在 GPUI 中内嵌播放器。Aether 背景、灯泡/灯带/台灯图片、添加设备和手机应用/二维码资源已从原构建路径取得；普通台灯图来自 9388 模块 71610 的内嵌 PNG。资源由统一生成器纳入嵌入表和清单。
+两条原视频已从 `https://apps.razer.com/synapse/dashboard/static/media/` 取得，并转换为无损动画 WebP 在 GPUI 内嵌播放；保持原 250×190 比例、静音循环及源帧延时，详见[教程媒体说明](16-introduction-tour.md)。Aether 背景、灯泡/灯带/台灯图片、添加设备和手机应用/二维码资源已纳入嵌入表和来源清单。
 
 `[RUST 当前实现]` [service_pages.rs](../../src/shell/service_pages.rs) 的 `GamerRoomPage` 已实现 531px 营销背景、三处热点与四种产品详情、原产品链接、Synapse 覆盖和 Gamer Room 应用控制两个可折叠组，以及两步教程的上一步/下一步/跳过/完成；完成事件与设置页的教程重置入口分开管理。2026-10-02 根据公共 CSS 修正居中的绿色 24px 标题、16px 副标题、底部外链和四段渐变遮罩；灯泡热点恢复 `left:10%;top:37%`，灯带与台灯保留原位置。热点支持鼠标预览和键盘点击详情，普通台灯与专业版都可从详情到达。没有 IoT 数据时显示分组说明和有效的添加入口，不生成设备卡。
 
-教程使用受控 GPUI Base `Popover` 保存两步状态，Escape 和点外部关闭由组件处理并恢复此前焦点；跳过、完成及关闭均只标记教程已读，不改变设备设置。教程保留原橙色强调，通过产品主题 token 取色。视频仍为外链；媒体区域明确显示浏览器播放入口，没有假装在 GPUI 内播放。原热点 SVG 依赖 SMIL 椭圆半径动画，嵌入资源使用原动画采样后的静态帧，避免 GPUI 无动画支持时圆环完全不可见；没有加入持续重绘计时器。两个空设备组也按 `.gr-add-device` 恢复为 186×176 虚线说明卡，只有 Synapse 组显示 `ADD_NEW_DEVICE` 并允许添加；56px 添加图标属于准备弹窗，不再放入空组卡。
+教程保留两步状态，并使用 GPUI Base `PopoverState` 管理 Escape 和焦点生命周期；点外部不关闭。跳过、完成及 Escape 只标记教程已读，不改变设备设置。2026-10-02 沿当前 `19388 / He → je → ze → Pe` 重新核对后，面板直接按原相对 wrapper 的绝对坐标绘制，移除中间无源码依据的说明/重播行、窗口边缘吸附及内部高度压缩。正文滚动区负责窄/短窗口访问，重播仍可通过 Settings 重置教程。具体当前符号、字符偏移与包含块推导见[当前教程审计](../re/gamer-room-current-audit.md)。
 
-添加流程的完整来源实际在 [IotPopupRoot.290be417.chunk.js](../../.ref/frontend/static/js/IotPopupRoot.290be417.chunk.js)，模块 **28256**。`gt` 按 query 的 `iotPopupType` 选择类型；Gamer Room 的 `ze.handleOpenAddModel` 传 `GAMER_ROOM_DEVICE`，因此进入 `dt → lt/ct`，不是通用类型选择或 Key Light 分支。当前已接入准备说明 → 手机应用/原二维码 → 返回，以及准备说明 → 设备搜索页面 → 返回/关闭；原兼容列表和帮助链接可访问，切步重置到保留的焦点容器。准备说明使用原 520px 内容宽度，二维码使用 600px 内容宽度和 `B` 的 `LIGHTING_DEVICE_MOBILE_QR_DOWNLOAD_APP` 文案。服务不可用页另外提供手机应用设置入口，返回保留搜索页来源，而不是一律退到准备页。
+教程保留原橙色强调，通过产品主题 token 取色。原热点 SVG 依赖 SMIL 椭圆半径动画，嵌入资源使用原动画采样后的静态帧；没有加入持续重绘计时器。两个空设备组按 `.gr-add-device` 恢复为 186×176 虚线说明卡，只有 Synapse 组显示 `ADD_NEW_DEVICE` 并允许添加；56px 添加图标属于准备弹窗，不放入空组卡。
+
+添加流程的完整来源实际在 [IotPopupRoot.daaa97ef.chunk.js](../../.ref/applications/synapse/dashboard/static/js/IotPopupRoot.daaa97ef.chunk.js)，模块 **28256**。`gt` 按 query 的 `iotPopupType` 选择类型；Gamer Room 的 `ze.handleOpenAddModel` 传 `GAMER_ROOM_DEVICE`，因此进入 `dt → lt/ct`，不是通用类型选择或 Key Light 分支。当前已接入准备说明 → 手机应用/原二维码 → 返回，以及准备说明 → 设备搜索页面 → 返回/关闭；原兼容列表和帮助链接可访问，切步重置到保留的焦点容器。准备说明使用原 520px 内容宽度，二维码使用 600px 内容宽度和 `B` 的 `LIGHTING_DEVICE_MOBILE_QR_DOWNLOAD_APP` 文案。服务不可用页另外提供手机应用设置入口，返回保留搜索页来源，而不是一律退到准备页。
 
 原 `dt` 的发现列表由 `ze/He` 调用 IoTNative 扫描与事件，选择已有网络设备后才进入 `at` 并写 `iot_devices`。本地未接通该 transport，搜索页面明确显示“设备搜索服务未连接”，不启动假计时器、不把未查询结果称为“没有设备”，也不启用识别/添加成功。`CHOOSE_NETWORK`、Wi-Fi 密码、短时切换网络等属于 `rt` 的 Key Light 流程，不能加到 Gamer Room 直接入口。设备卡内 `S/Q` 的电源、覆盖设置与原设备页入口同样需要真实 IoT 身份和状态。
 
 ### 弹出层样式核对（2026-10-02）
 
-外层入口证据还包括 [App 的 `z` 组件](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js)：它以 `iot-device-popup iot-device-popup__mt` 包裹 IotPopup iframe，不能只看 iframe 内的通用 Modal。下表列出源码几何和当前实现；这是静态核对，未运行窗口进行像素测量。
+外层入口证据还包括 [App 的 `z` 组件](../../.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js)：它以 `iot-device-popup iot-device-popup__mt` 包裹 IotPopup iframe，不能只看 iframe 内的通用 Modal。下表列出源码几何和当前实现；这是静态核对，未运行窗口进行像素测量。
 
 | 表面 | 原 JS/CSS 细节 | 当前 Rust |
 |---|---|---|
@@ -106,14 +109,14 @@ dashboard [.reflow]
 | 添加标题与关闭 | 标题栏高 36、居中、下边框 `#5d5d5d`；右上关闭区 36×36，白色图标 20×20 | 单独标题栏和原 `icon_close_white`；移除额外底部关闭按钮。原 backdrop 无关闭回调，因此点外不关闭；X/Escape 关闭并恢复打开前焦点 |
 | 准备页 | 内容宽 520；图标距顶 30、56×56；说明距图 24；帮助链接上 6/下 22；手机操作条 420×60、40px 图/24px 箭头；第二说明距上 60；搜索按钮距上 27、居中 | 按各区域单独设置间距；恢复下划线外链和原箭头，避免统一 gap 或 outline 外链改变布局 |
 | 二维码页 | 内容宽 600；应用图 32、顶部 10；二维码 110×110，下 20；返回居中、距上 30 | 保留真实二维码与下载 URL，扫码说明使用 `B` 的原 key；搜索页进入此处时返回原搜索页 |
-| 两步教程 | `#111`、橙色 1px、圆角 5、总宽 290、padding `40px 20px 20px`；两步原锚点 `(220,22)` / `(213,-25)`；36px 指示图；按钮 100×27、间距 10 | Base Popover 锚定第一组，不再放在右侧教程按钮下；根据组的 30px margin 换算锚点。去除 Kit 默认面板阴影/内边距；步骤、跳过和页数位于原位置 |
+| 两步教程 | `#111`、橙色 1px、圆角 5、总宽 290、padding `40px 20px 20px`；两步原锚点 `(220,22)` / `(213,-25)`；36px 指示图；按钮 100×27、间距 10 | `Pe` 的零高 wrapper 位于第一组10px上外距之前；`ie.boxGroup` 的30px被逗号表达式丢弃。以独立设备组容器为原点，不移动面板适应窗口、不固定高度；Base PopoverState 保留焦点/关闭生命周期 |
 | 商品营销卡 | `.gr-display` 黑色 50%、圆角 5、min-height 312、min-width 400、padding `36px 24px`；台灯双卡间隔 36；`translateX(-23.5%/-86.5%)`、垂直居中 | Hover Base Popup 与键盘点击 Base Popover 共用同一营销内容和锚点；整张商品卡是外部链接，不再另开带重复标题/关闭 footer 的 Kit Dialog |
 
-原营销卡的 `backdrop-filter:blur(30px)` 没有在当前 GPUI 层实现；静态热点没有 SMIL 动画；两步教程已内嵌原视频的无损动画版本，保持 250×190 比例，短窗口下内容可滚动。Base Popup 会保护窗口边缘可达性，窗口缩小、缩放和焦点回归仍需真实窗口验收。宽屏 Gamer Room 在标准化视口宽度达到 2560 时恢复 2500×930 横幅，壳层相应解除 1260 内容上限。
+原营销卡的 `backdrop-filter:blur(30px)` 没有在当前 GPUI 层实现；静态热点没有 SMIL 动画；两步教程已内嵌原视频的无损动画版本，保持250×190比例，并随正文滚动。商品营销卡仍使用 Base Popup 的窗口边缘策略；教程已按当前源码保留组内坐标。字体基线、最终面板高度、窗口缩放、滚动与焦点回归仍需真实窗口验收。宽屏 Gamer Room 在标准化视口宽度达到2560时恢复2500×930横幅，壳层相应解除1260内容上限。
 
 ## 4. Devices & Modules
 
-源：[6505.93b828df.chunk.js](../../.ref/frontend/static/js/6505.93b828df.chunk.js)、[6505 CSS](../../.ref/frontend/static/css/6505.9782778c.chunk.css)。
+源：[6505.84205103.chunk.js](../../.ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js)、[6505 CSS](../../.ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css)。
 
 模块读取 installedDevices、installedModules、availableModules、connectedDevices、deviceRuntimeData、deviceManifest、cachedDeviceInfo、uninstallingDevices/Modules、firmwareUpdateDevices、installerStatus。
 
@@ -155,7 +158,7 @@ Gamer Room 热点按 14px / 17px 文字和四周 8px 内边距确定宽度，添
 
 ## 5. Global Shortcuts
 
-源：[7282.873c10ab.chunk.js](../../.ref/frontend/static/js/7282.873c10ab.chunk.js)，模块 94608 导出 GlobalShortcutsContainer。
+源：[4608.e973916f.chunk.js](../../.ref/applications/synapse/dashboard/static/js/4608.e973916f.chunk.js)，模块 94608 导出 GlobalShortcutsContainer。
 
 `Fe` 组织 custom-global-shortcuts 容器、左列快捷键内容、保存提示和映射编辑器。`Oe` 创建 global_shortcuts_container：说明、添加图标、快捷键列表、底部 Add 卡。选中/编辑某项时，添加入口受限。快捷键卡支持编辑和删除确认。
 

@@ -140,6 +140,7 @@ fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordi
         assert_eq!(view.read(cx).snapshot()[0].modifiers, ["KEY_LEFT_CTRL"]);
         assert!(view.read(cx).snapshot()[0].chord().contains("左 Ctrl"));
         assert!(!view.read(cx).dirty());
+        assert!(!view.read(cx).committed_pending());
     });
     cx.update_window(handle.into(), |_, w, cx| {
         w.render_frame(cx);
@@ -152,7 +153,9 @@ fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordi
         assert_eq!(
             view.read(cx).draft.as_ref().unwrap().value.modifiers,
             ["CTRL"]
-        )
+        );
+        assert!(view.read(cx).draft_dirty());
+        assert!(!view.read(cx).committed_pending());
     });
     cx.update_window(handle.into(), |_, w, cx| {
         w.click("shortcut-record", cx);
@@ -164,6 +167,7 @@ fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordi
         let value = &view.read(cx).items[0];
         assert_eq!(value.input, "KEY_A");
         assert_eq!(value.modifiers, ["CTRL", "SHIFT"]);
+        assert!(view.read(cx).committed_pending());
     });
     cx.update_window(handle.into(), |_, w, cx| {
         w.click("shortcut-edit-existing", cx);
@@ -280,6 +284,7 @@ fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppConte
         w.click("shortcut-delete-existing", cx);
         w.click("shortcut-delete-confirm", cx);
         assert!(w.try_find("shortcut-row-existing").is_none());
+        assert!(view.read(cx).committed_pending());
         w.click("shortcuts-discard-all", cx);
         assert!(w.try_find("shortcut-row-existing").is_some());
     })
@@ -288,4 +293,61 @@ fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppConte
         assert_eq!(view.read(cx).items, [shortcut("existing")]);
         assert!(!view.read(cx).dirty());
     });
+}
+
+#[gpui_kit::test]
+fn completing_an_older_shortcut_write_keeps_later_commits_and_drafts_pending(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let original = shortcut("existing");
+    let mut shortcuts = None;
+    let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
+        let view = cx.new(|cx| Shortcuts::new(vec![original.clone()], window, cx));
+        shortcuts = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let view = shortcuts.unwrap();
+    let first_write = cx
+        .update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("shortcut-edit-existing", cx);
+            window.click("shortcut-record", cx);
+            window.press("ctrl-a", cx);
+            assert!(view.read(cx).draft_dirty());
+            assert!(!view.read(cx).committed_pending());
+            assert_eq!(view.read(cx).snapshot(), [original]);
+            window.click("shortcut-apply", cx);
+            assert!(view.read(cx).committed_pending());
+            view.read(cx).snapshot()
+        })
+        .unwrap();
+    let second_write = cx
+        .update_window(handle.into(), |_, window, cx| {
+            window.click("shortcut-edit-existing", cx);
+            window.click("shortcut-record", cx);
+            window.press("ctrl-b", cx);
+            window.click("shortcut-apply", cx);
+            view.update(cx, |state, cx| state.mark_saved(first_write, cx));
+            assert!(view.read(cx).committed_pending());
+            assert_eq!(view.read(cx).saved_snapshot()[0].input, "KEY_A");
+            assert_eq!(view.read(cx).snapshot()[0].input, "KEY_B");
+            view.read(cx).snapshot()
+        })
+        .unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.click("shortcut-edit-existing", cx);
+        window.click("shortcut-record", cx);
+        window.press("ctrl-c", cx);
+        view.update(cx, |state, cx| state.mark_saved(second_write, cx));
+        assert!(!view.read(cx).committed_pending());
+        assert!(view.read(cx).draft_dirty());
+        assert!(view.read(cx).dirty());
+        assert_eq!(view.read(cx).snapshot()[0].input, "KEY_B");
+        assert_eq!(view.read(cx).draft.as_ref().unwrap().value.input, "KEY_C");
+    })
+    .unwrap();
 }

@@ -245,7 +245,7 @@
         33
       ],
       "loop": 0,
-      "resource_manifest": ".ref/frontend/asset-manifest.json",
+      "resource_manifest": ".ref/applications/synapse/dashboard/asset-manifest.json",
       "conversion": "Decoded original frames, lossless animated WebP, original dimensions/timing, audio omitted because source video is muted"
     },
     {
@@ -492,7 +492,7 @@
         33
       ],
       "loop": 0,
-      "resource_manifest": ".ref/frontend/asset-manifest.json",
+      "resource_manifest": ".ref/applications/synapse/dashboard/asset-manifest.json",
       "conversion": "Decoded original frames, lossless animated WebP, original dimensions/timing, audio omitted because source video is muted"
     },
     {
@@ -820,7 +820,7 @@
         33
       ],
       "loop": 0,
-      "resource_manifest": ".ref/frontend/asset-manifest.json",
+      "resource_manifest": ".ref/applications/synapse/dashboard/asset-manifest.json",
       "conversion": "Decoded original frames, lossless animated WebP, original dimensions/timing, audio omitted because source video is muted"
     },
     {

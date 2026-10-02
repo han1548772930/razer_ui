@@ -21,7 +21,7 @@ def _svg(width, height):
 
 def prepare(root, out, record):
     root, out = Path(root), Path(out)
-    source = root / ".ref/frontend/static/js/9388.2bec5db3.chunk.js"
+    source = root / ".ref/applications/synapse/dashboard/static/js/9388.974b5d43.chunk.js"
     text = source.read_text(encoding="utf-8")
     out.mkdir(parents=True, exist_ok=True)
 

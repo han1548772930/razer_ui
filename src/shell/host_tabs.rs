@@ -35,24 +35,32 @@ mod host_window;
 pub(super) enum HostTab {
     Device(String),
     Tour(super::TourKind),
+    Alexa,
+    FirmwareUpdate,
 }
 impl HostTab {
     fn location(&self) -> Location {
         match self {
             Self::Device(key) => Location::Device(key.clone()),
             Self::Tour(kind) => Location::Tour(*kind),
+            Self::Alexa => Location::Alexa,
+            Self::FirmwareUpdate => Location::FirmwareUpdate,
         }
     }
     fn id(&self) -> SharedString {
         match self {
             Self::Device(key) => format!("host-{key}").into(),
             Self::Tour(kind) => kind.id().into(),
+            Self::Alexa => "host-alexa".into(),
+            Self::FirmwareUpdate => "host-firmware-update".into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
         match location {
             Location::Device(key) => Some(Self::Device(key.clone())),
             Location::Tour(kind) => Some(Self::Tour(*kind)),
+            Location::Alexa => Some(Self::Alexa),
+            Location::FirmwareUpdate => Some(Self::FirmwareUpdate),
             _ => None,
         }
     }
@@ -191,6 +199,14 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if tab == HostTab::FirmwareUpdate {
+            if let Some((page, _)) = &self.firmware_update {
+                if !page.update(cx, |page, cx| page.allow_close(window, cx)) {
+                    self.navigate(Location::FirmwareUpdate, window, cx);
+                    return;
+                }
+            }
+        }
         let Some(entry) = self.host_tabs.open.iter().find(|entry| entry.tab == tab) else {
             return;
         };
@@ -226,6 +242,13 @@ impl AppShell {
         self.history.retain(|location| *location != closed);
         if let HostTab::Tour(kind) = tab {
             self.introduction_tours.remove(&kind);
+        }
+        if tab == HostTab::Alexa {
+            self.alexa = None;
+            self.alexa_subscription = None;
+        }
+        if tab == HostTab::FirmwareUpdate {
+            self.firmware_update = None;
         }
         cx.notify();
     }
@@ -335,6 +358,8 @@ impl AppShell {
                         .map(|device| device.read(cx).device().display_name())
                         .unwrap_or_default(),
                     HostTab::Tour(kind) => kind.title(),
+                    HostTab::Alexa => "Alexa".into(),
+                    HostTab::FirmwareUpdate => "固件更新".into(),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -467,6 +492,8 @@ impl AppShell {
         let group = id.clone();
         let icon = match tab {
             Some(HostTab::Tour(_)) => "synapse/tour-app-icon.svg",
+            Some(HostTab::Alexa) => "synapse/module-alexa.svg",
+            Some(HostTab::FirmwareUpdate) => "synapse/synapse.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()

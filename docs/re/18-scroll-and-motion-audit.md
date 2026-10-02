@@ -1,5 +1,7 @@
 # 滚动与弹层时序复核
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 更新日期：2026-10-02。按用户反馈自行检查已编译页面的布局树、原始 JS 挂载路径和 CSS 最终覆盖。仅编译与静态核对；没有运行应用或测试，以下不是实际窗口验收结果。
 
 ## 滚动区域
@@ -36,7 +38,7 @@ Kit 0.7 的 `overflow_*_scrollbar` 包装会将高度约束复制到外层，同
 | 颜色预设板 | `.dropdown-color .s3-options` 的 `transition:all .1s,width 0` | 100ms ease 淡入；箭头 300ms ease；二级拾色器维持原 `display:none/block` 的即时切换 |
 | 账户菜单 | `rz-user-profile-menu/Root.012dd389.chunk.js` 的 `m.showDropdown/hideDropdown`；`main.090e2108.css` 的 `.dropdown-razer` | 挂载后等 100ms 加 show；透明度 200ms linear、上移 7px 到原位 200ms ease-out；关闭立即停止接收输入，100ms 后卸载。重开取消旧任务；窗口失焦关闭；Escape 与触发器关闭恢复焦点 |
 | Profile 删除／重置 | 182 `main.db20a7c4.js` 的 Profile 组件常驻挂载 `Vu/Gs`，653/777 对应分支；`.profile-del` | 300ms linear 淡入；关闭的 visibility 立即隐藏。没有套用默认 Dialog 滑入 |
-| Wi-Fi 添加 | `9388 ze → commonReducer → App.K → App.z`；外层 `82830` 的 `isMounted`，内层 iframe `gt` 的固定 `isMounted:true`；`55.a5b041a2.chunk.css` | 挂载后 100ms，面板和遮罩分别以 150ms linear 淡入，无位置变化。外层关闭立即移除 `.show`，以 150ms linear 淡出并在 300ms 后卸载；关闭取消入场任务，重复关闭不重启计时。减少动态效果时立即结束 |
+| Wi-Fi 添加 | `9388 ze → commonReducer → App.K → App.z`；外层 `82830` 的 `isMounted`，内层 iframe `gt` 的固定 `isMounted:true`；`55.4e8559cb.chunk.css` | 挂载后 100ms，面板和遮罩分别以 150ms linear 淡入，无位置变化。外层关闭立即移除 `.show`，以 150ms linear 淡出并在 300ms 后卸载；关闭取消入场任务，重复关闭不重启计时。减少动态效果时立即结束 |
 | 板载配置／映射编辑器 | `.obm-menu.key-config` 和 `.key-config` 的 opacity/visibility/left 过渡为 0s | 保持即时显示 |
 | 通用确认、发布说明及其他弹层 | 必须结合实际挂载判断，不能只凭 CSS 中存在 transition | 保留已审计位置及样式；不统一添加动画 |
 

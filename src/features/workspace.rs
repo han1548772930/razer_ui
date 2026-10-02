@@ -4,6 +4,7 @@ use super::{controls::*, settings::*};
 use crate::{
     model::{Device, Profile},
     nav::Tab,
+    ui::scroll::SourceScrollable as _,
     ui::source_alert::{AlertAction, AlertPlacement, SourceAlert},
     ui::surface,
 };
@@ -11,7 +12,6 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants},
     color_picker::{ColorPickerEvent, ColorPickerState},
     input::{InputEvent, InputState},
-    scroll::{ScrollableElement as _, ScrollbarAxis},
     select::{SelectEvent, SelectState},
     slider::{Slider, SliderEvent, SliderState},
     *,
@@ -297,6 +297,9 @@ impl DeviceWorkspace {
         )
     }
     pub fn dirty(&self) -> bool {
+        self.committed_pending() || self.mapping_dirty()
+    }
+    pub(crate) fn committed_pending(&self) -> bool {
         self.device.active_profile != self.saved.active_profile
             || self.device.profiles.len() != self.saved.profiles.len()
             || self
@@ -305,11 +308,82 @@ impl DeviceWorkspace {
                 .iter()
                 .zip(&self.saved.profiles)
                 .any(|(a, b)| a.id != b.id || a.name != b.name || a.settings != b.settings)
-            || self.mapping_dirty()
     }
     pub fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
         self.saved = snapshot;
         cx.notify();
+    }
+    fn saved_mapping_value(&self) -> Option<String> {
+        let draft = self.mapping.as_ref()?;
+        if self.device.active_profile != self.saved.active_profile {
+            return None;
+        }
+        let settings = self
+            .saved
+            .profiles
+            .iter()
+            .find(|profile| profile.id == self.saved.active_profile)?
+            .settings
+            .as_ref()?;
+        if let Some(mode_uid) = &draft.dial_mode {
+            let mode = settings
+                .keyboard
+                .dial_modes
+                .iter()
+                .find(|mode| mode.uid == *mode_uid && mode.is_custom)?;
+            Some(
+                mode.mappings
+                    .get(&draft.input)
+                    .cloned()
+                    .unwrap_or_else(|| "disable".into()),
+            )
+        } else {
+            let bindings = if self.hypershift {
+                &settings.hypershift_bindings
+            } else {
+                &settings.bindings
+            };
+            Some(
+                bindings
+                    .get(&draft.input)
+                    .cloned()
+                    .unwrap_or_else(|| "default".into()),
+            )
+        }
+    }
+    pub(crate) fn discard_would_remove_mapping(&self) -> bool {
+        self.mapping_dirty() && self.saved_mapping_value().is_none()
+    }
+    pub(crate) fn discard_committed(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if self.discard_would_remove_mapping() {
+            return false;
+        }
+        let Some(original) = self.saved_mapping_value() else {
+            self.discard(window, cx);
+            return true;
+        };
+        // The raw editor belongs to the same restored profile/input. Preserve
+        // its text, recording and focus, updating only its comparison baseline.
+        self.device = self.saved.clone();
+        if let Some(draft) = &mut self.mapping {
+            draft.original = original;
+        }
+        let items = self
+            .device
+            .profiles
+            .iter()
+            .map(|profile| Choice::new(&profile.id, profile.name.clone()))
+            .collect();
+        self.controls
+            .profile
+            .update(cx, |state, cx| state.set_items(items, window, cx));
+        self.sync_controls(window, cx);
+        self.changed(cx);
+        true
     }
     pub fn discard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.cancel_snap_capture(window, cx);
@@ -933,6 +1007,9 @@ impl Render for DeviceWorkspace {
             Tab::Customize => surface::CONFIG_WRAPPER_MIN_WIDTH,
             Tab::Sound => 1024.,
             Tab::Mic => 940.,
+            Tab::Lighting if crate::product::audited_mouse_mat(self.pid()).is_some() => 1024.,
+            // Calibration has no .widget-col or its narrow-window side margins.
+            Tab::Calibration => surface::WIDGET_WIDTH,
             _ if stacked => surface::WIDGET_WIDTH + surface::COMPACT_COLUMN_MARGIN * 2.,
             _ => surface::WIDGET_WIDTH,
         };
@@ -959,7 +1036,7 @@ impl Render for DeviceWorkspace {
                 .flex_1()
                 .min_w(surface::css(surface::BODY_MIN_WIDTH))
                 .min_h_0()
-                .overflow_scroll()
+                .scrollable_both()
                 .track_scroll(&self.body_scroll)
                 .child(
                     v_flex()
@@ -973,7 +1050,6 @@ impl Render for DeviceWorkspace {
                         .gap_5()
                         .child(page),
                 )
-                .scrollbar(&self.body_scroll, ScrollbarAxis::Both)
                 .into_any_element()
         };
         v_flex()

@@ -1,7 +1,8 @@
 # Electron 宿主 IPC / API 清单与 GPUI Kit 接入边界
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
 
-审计对象是 [.ref/synapse-asar](../../.ref/synapse-asar) 的 Electron 宿主（razerappengine 4.0.563）。本文件保留静态 IPC / wrapper 清单，用于查找窗口、系统、存储和设备适配边界。页面规格另见 [总规格](../RAZER-SYNAPSE-UI-SPEC.md) 和 [逐页文档](../screens/README.md)。
+本文是旧宿主4.0.563的历史 IPC / wrapper 审计清单，不是当前4.0.827的完整复核。当前源码位置为 [.ref/host-4.0.827](../../.ref/host-4.0.827)，已重新确认的范围见[当前宿主审计](current-host-version-audit.md)。下文仅用于定位窗口、系统、存储和设备适配边界；页面规格另见 [总规格](../RAZER-SYNAPSE-UI-SPEC.md) 和 [逐页文档](../screens/README.md)。
 
 2026-09-30 修订：更正“必须重写全部 Electron API”“只有 HID 能通信”“行为全在几个 DLL”及偏移单位等结论。已有函数清单是静态调用面，不等于每一项都被当前三个产品调用，更不代表本轮验证过 DLL ABI 或设备成功执行。
 
@@ -22,7 +23,7 @@
 | `electron/modules/*` | — | serial / noble(BLE) / wifi / IoT / LampArray / lighting / mapping_engine / simple_service / sysutil / storage / FFI |
 | `electron/Protocol/*` | — | Protocol-25 HID command encoding + protocol logger |
 
-> 宿主包主要提供 native bridge 和窗口管理；UI 由应用 URL 加载。当前工作区已经另行取得 `.ref/frontend` 与三个 `.ref/devices` 产品包，必须同时使用这些资料。替换为 GPUI Kit 需要实现实际页面及其所需行为；本 IPC 清单不能独立充当 UI 规格，也不要求原样复刻所有宿主服务。
+> 宿主包主要提供 native bridge 和窗口管理；UI 由应用 URL 加载。当前工作区已经另行取得 `.ref/applications/synapse/dashboard` 与三个 `.ref/devices` 产品包，必须同时使用这些资料。替换为 GPUI Kit 需要实现实际页面及其所需行为；本 IPC 清单不能独立充当 UI 规格，也不要求原样复刻所有宿主服务。
 
 ---
 

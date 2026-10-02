@@ -1,12 +1,13 @@
 # Razer Synapse 4 UI 与行为规格
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](re/20-current-source-version.md)为准。
 > 文档审计后已接入新的 Rust 设备工作区，当前实施进度见[重构状态](re/03-implementation-gap.md)。本文中“本轮仅审计”指前一轮文档任务。
 
 ## 1. 依据与范围
 
-本规格重新审计了 `.ref/synapse-asar` 的 Electron 宿主、`.ref/frontend` 的主应用，以及 `.ref/devices/182、653、777` 的产品应用。以实际入口、render 树、事件处理函数、产品配置和 CSS 为证据，不能再从 `TAB_*` 翻译词汇表推导产品路由。
+本规格汇总宿主、Dashboard 和182、653、777产品应用的历次审计，包含历史结论。当前官方宿主源码为 `.ref/host-4.0.827`，Dashboard 为 `.ref/applications/synapse/dashboard`；本轮重新审计的明确范围见[当前版本与用户问题复核](re/20-current-source-version.md)。以实际入口、render 树、事件处理函数、产品配置和 CSS 为证据，不能从 `TAB_*` 翻译词汇表推导产品路由。
 
-本地宿主包 `razerappengine` 版本为 **4.0.563**。三个产品模块有独立构建号；详见 [源码审计](re/00-source-audit.md)。本文反映这些本地文件，不代表全部 Synapse 产品或所有固件版本。
+早期宿主审计使用4.0.563；本机安装为4.0.821；当前正式更新流为 **4.0.827**。三个产品模块另有独立构建号，详见[源码审计](re/00-source-audit.md)。本文不代表全部 Synapse 产品或所有固件版本。
 
 当前项目使用 [Cargo.toml](../Cargo.toml) 中的 **gpui-kit 0.7.0**。实现规范依据项目内 [GPUI Kit skill](../skills/gpui-kit/SKILL.md) 和 [Design Guides skill](../skills/gpui-kit-design-guides/SKILL.md)。网页 CSS 数值是复现基线；Rust 中的控件行为、焦点和状态应遵循 GPUI Kit，而不是模拟 DOM。
 

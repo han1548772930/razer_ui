@@ -13,6 +13,7 @@
 | [/cortex/](https://apps.razer.com/cortex/) | not_found | 待追踪 | 0/0 |
 | [/natalie/](https://apps.razer.com/natalie/) | ok | 齐备 | 5/5 |
 | [/profile-migration/](https://apps.razer.com/profile-migration/) | ok | 齐备 | 67/67 |
+| [/rz-app-menu/](https://apps.razer.com/rz-app-menu/) | ok | 齐备 | 11/11 |
 | [/rz-user-profile-menu/](https://apps.razer.com/rz-user-profile-menu/) | ok | 齐备 | 10/10 |
 | [/settings/](https://apps.razer.com/settings/) | ok | 齐备 | 44/44 |
 | [/sophie-lite/](https://apps.razer.com/sophie-lite/) | ok | 齐备 | 6/6 |
@@ -29,3 +30,5 @@
 | [/systray/systrayv2/](https://apps.razer.com/systray/systrayv2/) | ok | 齐备 | 44/44 |
 
 没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。
+
+`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。发现脚本只提取静态路径，不执行模板或下载的代码。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。

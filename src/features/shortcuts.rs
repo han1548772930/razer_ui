@@ -403,7 +403,10 @@ impl Shortcuts {
         cx.notify();
     }
     pub(crate) fn dirty(&self) -> bool {
-        self.items != self.saved || self.draft_dirty()
+        self.committed_pending() || self.draft_dirty()
+    }
+    pub(crate) fn committed_pending(&self) -> bool {
+        self.items != self.saved
     }
     pub(crate) fn draft_dirty(&self) -> bool {
         self.draft.as_ref().is_some_and(|draft| {

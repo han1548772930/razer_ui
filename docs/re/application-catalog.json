@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-10-02T06:07:58Z",
+  "generated_at_utc": "2026-10-02T14:15:12Z",
   "summary": {
-    "routes": 21,
-    "html_found": 19,
-    "manifest_code_complete": 19,
+    "routes": 22,
+    "html_found": 20,
+    "manifest_code_complete": 20,
     "code_results": {
-      "ok": 839
+      "ok": 850
     }
   },
   "scope": "Source-defined route literals. Routes can share an app. Manifest completeness excludes dynamically composed resources and is not UI implementation coverage.",
@@ -15,10 +15,10 @@
       "route": "/alisha/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 163,
           "literal": "/alisha",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
@@ -399,16 +399,16 @@
       "route": "/background-manager/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 19967,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 19957,
           "literal": "/background-manager/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73533,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73523,
           "literal": "/background-manager/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -901,16 +901,16 @@
       "route": "/chroma-app/dashboard/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 115,
           "literal": "/chroma-app/dashboard",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 27447,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 27437,
           "literal": "/chroma-app/dashboard/index.html",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -1658,10 +1658,10 @@
       "route": "/chroma-app/settings/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 190310,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 190300,
           "literal": "/chroma-app/settings/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -1963,41 +1963,13 @@
       "route": "/cortex/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 214,
           "literal": "/cortex",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
-        "asset-manifest.json": {
-          "source_url": "https://apps.razer.com/cortex/asset-manifest.json",
-          "final_url": "https://apps.razer.com/cortex/asset-manifest.json",
-          "redirected": false,
-          "http_status": 404,
-          "fetched_at_utc": "2026-10-02T06:04:45Z",
-          "content_type": "text/html; charset=utf-8",
-          "last_modified": null,
-          "etag": null,
-          "result": "not_found",
-          "sha256": "ec78a26cf2cd87cee7e5af3cf392d32a0c1c0444b8ee94ee8c743ca41434dd82",
-          "bytes": 381,
-          "validation": null,
-          "attempts": [
-            {
-              "attempt": 1,
-              "started_at_utc": "2026-10-02T06:04:44Z",
-              "completed_at_utc": "2026-10-02T06:04:45Z",
-              "status": 404,
-              "result": "not_found",
-              "error": null,
-              "final_url": "https://apps.razer.com/cortex/asset-manifest.json",
-              "redirect_chain": []
-            }
-          ],
-          "error": null,
-          "body_file": "asset-manifest.json.response"
-        },
         "index.html": {
           "source_url": "https://apps.razer.com/cortex/index.html",
           "final_url": "https://apps.razer.com/cortex/index.html",
@@ -2025,6 +1997,34 @@
           ],
           "error": null,
           "body_file": "index.html.response"
+        },
+        "asset-manifest.json": {
+          "source_url": "https://apps.razer.com/cortex/asset-manifest.json",
+          "final_url": "https://apps.razer.com/cortex/asset-manifest.json",
+          "redirected": false,
+          "http_status": 404,
+          "fetched_at_utc": "2026-10-02T06:04:45Z",
+          "content_type": "text/html; charset=utf-8",
+          "last_modified": null,
+          "etag": null,
+          "result": "not_found",
+          "sha256": "ec78a26cf2cd87cee7e5af3cf392d32a0c1c0444b8ee94ee8c743ca41434dd82",
+          "bytes": 381,
+          "validation": null,
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T06:04:44Z",
+              "completed_at_utc": "2026-10-02T06:04:45Z",
+              "status": 404,
+              "result": "not_found",
+              "error": null,
+              "final_url": "https://apps.razer.com/cortex/asset-manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "asset-manifest.json.response"
         },
         "manifest.json": {
           "source_url": "https://apps.razer.com/cortex/manifest.json",
@@ -2063,10 +2063,10 @@
       "route": "/natalie/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 58,
           "literal": "/natalie",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
@@ -2225,10 +2225,10 @@
       "route": "/profile-migration/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 74250,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 74240,
           "literal": "/profile-migration/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
           "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
@@ -2238,42 +2238,6 @@
         }
       ],
       "endpoints": {
-        "manifest.json": {
-          "source_url": "https://apps.razer.com/profile-migration/manifest.json",
-          "final_url": "https://apps.razer.com/profile-migration/manifest.json",
-          "redirected": false,
-          "http_status": 200,
-          "fetched_at_utc": "2026-10-02T06:07:54Z",
-          "content_type": "application/json",
-          "last_modified": "Thu, 01 Oct 2026 00:44:45 GMT",
-          "etag": "\"b7155e2a3cad3539954ede95f102220a\"",
-          "result": "ok",
-          "sha256": "0edaaec494f397fd76c370c6795223f7af75249e054fa31a59be0e193b09ae62",
-          "bytes": 2016,
-          "validation": {
-            "valid": true,
-            "kind": "manifest",
-            "reason": null,
-            "declared_product_ids": [],
-            "requested_product_id_declared": null,
-            "identity_warning": null,
-            "application_name": "S3-PROFILE-MIGRATION"
-          },
-          "attempts": [
-            {
-              "attempt": 1,
-              "started_at_utc": "2026-10-02T06:07:52Z",
-              "completed_at_utc": "2026-10-02T06:07:54Z",
-              "status": 200,
-              "result": "ok",
-              "error": null,
-              "final_url": "https://apps.razer.com/profile-migration/manifest.json",
-              "redirect_chain": []
-            }
-          ],
-          "error": null,
-          "body_file": "manifest.json"
-        },
         "index.html": {
           "source_url": "https://apps.razer.com/profile-migration/index.html",
           "final_url": "https://apps.razer.com/profile-migration/index.html",
@@ -2354,6 +2318,42 @@
           ],
           "error": null,
           "body_file": "asset-manifest.json"
+        },
+        "manifest.json": {
+          "source_url": "https://apps.razer.com/profile-migration/manifest.json",
+          "final_url": "https://apps.razer.com/profile-migration/manifest.json",
+          "redirected": false,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-02T06:07:54Z",
+          "content_type": "application/json",
+          "last_modified": "Thu, 01 Oct 2026 00:44:45 GMT",
+          "etag": "\"b7155e2a3cad3539954ede95f102220a\"",
+          "result": "ok",
+          "sha256": "0edaaec494f397fd76c370c6795223f7af75249e054fa31a59be0e193b09ae62",
+          "bytes": 2016,
+          "validation": {
+            "valid": true,
+            "kind": "manifest",
+            "reason": null,
+            "declared_product_ids": [],
+            "requested_product_id_declared": null,
+            "identity_warning": null,
+            "application_name": "S3-PROFILE-MIGRATION"
+          },
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T06:07:52Z",
+              "completed_at_utc": "2026-10-02T06:07:54Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
+              "final_url": "https://apps.razer.com/profile-migration/manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "manifest.json"
         }
       },
       "files": [
@@ -2831,8 +2831,229 @@
       "manifest_code_complete": true
     },
     {
+      "route": "/rz-app-menu/",
+      "evidence": [
+        {
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 157674,
+          "literal": "/rz-app-menu/",
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
+        },
+        {
+          "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+          "offset": 243747,
+          "literal": "/rz-app-menu/",
+          "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64"
+        }
+      ],
+      "endpoints": {
+        "index.html": {
+          "source_url": "https://apps.razer.com/rz-app-menu/index.html",
+          "final_url": "https://apps.razer.com/rz-app-menu/index.html",
+          "redirected": false,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-02T12:38:01Z",
+          "content_type": "text/html",
+          "last_modified": "Fri, 02 Oct 2026 08:50:38 GMT",
+          "etag": "\"cc3074f6101a9cadab9767395ba14e7c\"",
+          "result": "ok",
+          "sha256": "03eaa0df93e93890f2e6ebaa448fb62b0fa4e9d92573b71d7dfb2565ea281768",
+          "bytes": 4042,
+          "validation": {
+            "valid": true,
+            "kind": "app_html",
+            "reason": null,
+            "scripts": [
+              "/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+              "/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+              "/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+              "/synapse/assets/js/@sentry/react@7.72.0/react.js",
+              "/synapse/assets/js/@sentry/tracing@6.19.7/tracing.js",
+              "/synapse/assets/js/manifest.js",
+              "./static/js/main.83ced465.js"
+            ],
+            "styles": [
+              "./static/css/main.3f2a3e21.css"
+            ],
+            "manifests": [
+              "./manifest.json"
+            ]
+          },
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T12:38:00Z",
+              "completed_at_utc": "2026-10-02T12:38:01Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
+              "final_url": "https://apps.razer.com/rz-app-menu/index.html",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "index.html"
+        },
+        "asset-manifest.json": {
+          "source_url": "https://apps.razer.com/rz-app-menu/asset-manifest.json",
+          "final_url": "https://apps.razer.com/rz-app-menu/asset-manifest.json",
+          "redirected": false,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-02T12:38:01Z",
+          "content_type": "application/json",
+          "last_modified": "Fri, 02 Oct 2026 08:50:38 GMT",
+          "etag": "\"24250affd78ffffb013dd364d0f76f10\"",
+          "result": "ok",
+          "sha256": "77af850850b68eb03be8634767e8fa0edc5b7ac104e23f5fa77aeb3ec2c64262",
+          "bytes": 25967,
+          "validation": {
+            "valid": true,
+            "kind": "assets",
+            "reason": null
+          },
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T12:38:00Z",
+              "completed_at_utc": "2026-10-02T12:38:01Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
+              "final_url": "https://apps.razer.com/rz-app-menu/asset-manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "asset-manifest.json"
+        },
+        "manifest.json": {
+          "source_url": "https://apps.razer.com/rz-app-menu/manifest.json",
+          "final_url": "https://apps.razer.com/rz-app-menu/manifest.json",
+          "redirected": false,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-02T12:38:01Z",
+          "content_type": "application/json",
+          "last_modified": "Fri, 02 Oct 2026 08:50:38 GMT",
+          "etag": "\"7678bcebf8ae21664ad0a267c2f291b9\"",
+          "result": "ok",
+          "sha256": "f5269eb63e4e74ebf320c99a9e42c60dd66e878d9cb77dfd882a2b1daa1445f1",
+          "bytes": 1234,
+          "validation": {
+            "valid": true,
+            "kind": "manifest",
+            "reason": null,
+            "declared_product_ids": [],
+            "requested_product_id_declared": null,
+            "identity_warning": null,
+            "application_name": "Rz App Menu"
+          },
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T12:38:00Z",
+              "completed_at_utc": "2026-10-02T12:38:01Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
+              "final_url": "https://apps.razer.com/rz-app-menu/manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "manifest.json"
+        }
+      },
+      "files": [
+        {
+          "url": "https://apps.razer.com/rz-app-menu/service-worker.js",
+          "path": ".ref/applications/rz-app-menu/service-worker.js",
+          "result": "ok",
+          "sha256": "0aea13e0457b659a9a9d1a2c1fdeeae69d90c9123d82b9b5087d34e5c1f689b0",
+          "bytes": 49302
+        },
+        {
+          "url": "https://apps.razer.com/rz-app-menu/static/css/main.3f2a3e21.css",
+          "path": ".ref/applications/rz-app-menu/static/css/main.3f2a3e21.css",
+          "result": "ok",
+          "sha256": "244d88f072b69faebbce68d0d92ddda972d5058c6e2ba80e12caeebdb4a08767",
+          "bytes": 368389
+        },
+        {
+          "url": "https://apps.razer.com/rz-app-menu/static/js/AppFolderInstallationChecker.34ed98f2.chunk.js",
+          "path": ".ref/applications/rz-app-menu/static/js/AppFolderInstallationChecker.34ed98f2.chunk.js",
+          "result": "ok",
+          "sha256": "9f3e6f3bfec38d8ba5b3b66a7fb268fa5a8f1099f8151d200aaadd48f6c82005",
+          "bytes": 2770
+        },
+        {
+          "url": "https://apps.razer.com/rz-app-menu/static/js/Root.fddb4c8a.chunk.js",
+          "path": ".ref/applications/rz-app-menu/static/js/Root.fddb4c8a.chunk.js",
+          "result": "ok",
+          "sha256": "f885dca0ff49a55e6005da911cb59677588f1adb130b50f0e0eaa4238f2c783c",
+          "bytes": 92112
+        },
+        {
+          "url": "https://apps.razer.com/rz-app-menu/static/js/main.83ced465.js",
+          "path": ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
+          "result": "ok",
+          "sha256": "421b5d6900421a99c0520e1fe63d4a83072799ac4bb45d848fa0e8170bf70716",
+          "bytes": 3769351
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/@sentry/react@7.72.0/react.js",
+          "path": ".ref/applications/synapse/assets/js/@sentry/react@7.72.0/react.js",
+          "result": "ok",
+          "sha256": "ed59fb1e8b34b48fc3d6b8b8009c7bdd91126efee0cbecfd530967b232fd852d",
+          "bytes": 310060
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/@sentry/tracing@6.19.7/tracing.js",
+          "path": ".ref/applications/synapse/assets/js/@sentry/tracing@6.19.7/tracing.js",
+          "result": "ok",
+          "sha256": "ac0bf3aa324579a38a4dd2e57c2f976683ff5459cc92736dd327742d4df132ee",
+          "bytes": 92233
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/manifest.js",
+          "path": ".ref/applications/synapse/assets/js/manifest.js",
+          "result": "ok",
+          "sha256": "679467dcd799d92ad996c4945913ea7620c911bc804ca10358bf269a8553c9b1",
+          "bytes": 10260
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+          "path": ".ref/applications/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+          "result": "ok",
+          "sha256": "21758ed084cd0e37e735722ee4f3957ea960628a29dfa6c3ce1a1d47a2d6e4f7",
+          "bytes": 131882
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+          "path": ".ref/applications/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+          "result": "ok",
+          "sha256": "d7a12ddd229d8f62fd6fc3ec8a0d8255f03974165bd4508147311458a98728da",
+          "bytes": 15241
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+          "path": ".ref/applications/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+          "result": "ok",
+          "sha256": "4b4969fa4ef3594324da2c6d78ce8766fbbc2fd121fff395aedf997db0a99a06",
+          "bytes": 10737
+        }
+      ],
+      "skipped": [],
+      "manifest_code_complete": true
+    },
+    {
       "route": "/rz-user-profile-menu/",
       "evidence": [
+        {
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 169887,
+          "literal": "/rz-user-profile-menu/",
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
+        },
         {
           "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
           "offset": 230264,
@@ -3036,10 +3257,10 @@
       "route": "/settings/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 302,
           "literal": "/settings",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
@@ -3476,10 +3697,10 @@
       "route": "/sophie-lite/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 244,
           "literal": "/sophie-lite",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
@@ -3645,10 +3866,10 @@
       "route": "/sophie/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 192,
           "literal": "/sophie",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {
@@ -3914,16 +4135,16 @@
       "route": "/synapse/alexa/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73440,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73430,
           "literal": "/synapse/alexa/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 74336,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 74326,
           "literal": "/synapse/alexa/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -4123,10 +4344,10 @@
       "route": "/synapse/armory/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73839,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73829,
           "literal": "/synapse/armory/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -4481,16 +4702,16 @@
       "route": "/synapse/dashboard/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 82,
           "literal": "/synapse/dashboard",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 67068,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 67058,
           "literal": "/synapse/dashboard",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
           "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
@@ -5571,19 +5792,51 @@
       "route": "/synapse/introduction-tour/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 24483,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 24473,
           "literal": "/synapse/introduction-tour/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 74026,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 74016,
           "literal": "/synapse/introduction-tour/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
+        "asset-manifest.json": {
+          "source_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
+          "final_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
+          "redirected": false,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-02T06:05:14Z",
+          "content_type": "application/json",
+          "last_modified": "Thu, 01 Oct 2026 00:45:01 GMT",
+          "etag": "\"fb945a54d051b886245b3e910e38131d\"",
+          "result": "ok",
+          "sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973",
+          "bytes": 29787,
+          "validation": {
+            "valid": true,
+            "kind": "assets",
+            "reason": null
+          },
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-02T06:05:13Z",
+              "completed_at_utc": "2026-10-02T06:05:14Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
+              "final_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": null,
+          "body_file": "asset-manifest.json"
+        },
         "index.html": {
           "source_url": "https://apps.razer.com/synapse/introduction-tour/index.html",
           "final_url": "https://apps.razer.com/synapse/introduction-tour/index.html",
@@ -5628,38 +5881,6 @@
           ],
           "error": null,
           "body_file": "index.html"
-        },
-        "asset-manifest.json": {
-          "source_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
-          "final_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
-          "redirected": false,
-          "http_status": 200,
-          "fetched_at_utc": "2026-10-02T06:05:14Z",
-          "content_type": "application/json",
-          "last_modified": "Thu, 01 Oct 2026 00:45:01 GMT",
-          "etag": "\"fb945a54d051b886245b3e910e38131d\"",
-          "result": "ok",
-          "sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973",
-          "bytes": 29787,
-          "validation": {
-            "valid": true,
-            "kind": "assets",
-            "reason": null
-          },
-          "attempts": [
-            {
-              "attempt": 1,
-              "started_at_utc": "2026-10-02T06:05:13Z",
-              "completed_at_utc": "2026-10-02T06:05:14Z",
-              "status": 200,
-              "result": "ok",
-              "error": null,
-              "final_url": "https://apps.razer.com/synapse/introduction-tour/asset-manifest.json",
-              "redirect_chain": []
-            }
-          ],
-          "error": null,
-          "body_file": "asset-manifest.json"
         },
         "manifest.json": {
           "source_url": "https://apps.razer.com/synapse/introduction-tour/manifest.json",
@@ -5896,10 +6117,10 @@
       "route": "/synapse/macro/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73362,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73352,
           "literal": "/synapse/macro/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -6626,10 +6847,10 @@
       "route": "/synapse/profiles/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73152,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73142,
           "literal": "/synapse/profiles/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -7292,16 +7513,16 @@
       "route": "/synapse/settings/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 74142,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 74132,
           "literal": "/synapse/settings/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 190219,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 190209,
           "literal": "/synapse/settings/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         },
         {
           "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
@@ -7622,10 +7843,10 @@
       "route": "/synapse/update-fw/",
       "evidence": [
         {
-          "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
-          "offset": 73930,
+          "source": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "offset": 73920,
           "literal": "/synapse/update-fw/",
-          "sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384"
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a"
         }
       ],
       "endpoints": {
@@ -8194,10 +8415,10 @@
       "route": "/systray/systrayv2/",
       "evidence": [
         {
-          "source": ".ref/synapse-asar/electron/constants.js",
+          "source": ".ref/host-4.0.827/electron/constants.js",
           "offset": 272,
           "literal": "/systray/systrayv2",
-          "sha256": "f84f84a6acd7b966aacb50f19ea3951448be135952be8f2f7c48133e5ac5923c"
+          "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6"
         }
       ],
       "endpoints": {

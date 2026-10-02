@@ -1,0 +1,177 @@
+{
+  "manifest": ".ref/applications/synapse/update-fw/asset-manifest.json",
+  "manifest_sha256": "b9f4c0cf32d27f504e561f764c78e6a04130498df5c0daf0297e1ff8cc984911",
+  "namespace": "FIRMWARE_SOURCE",
+  "method": "Acorn AST: module-local string literals, aliases and explicit export getters; no execution",
+  "fallback": {
+    "source": ".ref/applications/synapse/update-fw/static/js/main.69cc5fbd.js",
+    "source_sha256": "af6f716bd8e37774bac6d5a18d9f8f314ed3865d74c55740761452610543f772",
+    "behavior": "Ee/Ue: selected locale, then en, then the unqualified source key",
+    "absent_from_all": [
+      "DEVICE_IS_UPGRADING"
+    ],
+    "english_only": [
+      "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+      "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+    ]
+  },
+  "keys": [
+    "UPDATE",
+    "RETRY",
+    "NEXT",
+    "SKIP",
+    "UPDATE_REQUIRED",
+    "NO_UPDATE_REQUIRED",
+    "UPDATE_DONGLE",
+    "UPDATE_SUCCESSFUL_HEADER",
+    "UPGRADE_MOUSE_COMPLETED_NOTE",
+    "UPGRADE_KEYBOARD_COMPLETED_NOTE",
+    "UPDATE_IN_PROGRESS",
+    "DEVICE_IS_DISCONNECTED",
+    "CANCEL_UPDATE",
+    "UPDATE_FAILED",
+    "UPDATE_FAILED_DETAIL",
+    "SHOW_WIRELESS_CONNECTION_TIPS",
+    "WAIT_FOR_OTHER_DEVICES",
+    "CONTINUE_WITH_UPDATE",
+    "DEVICE_IS_UPGRADING",
+    "DEVICE_IS_DISCONNECTED_DETAIL",
+    "FW_UPDATER_UTILITY",
+    "PLEASE_NOTE",
+    "LAPTOP_NOTE",
+    "CURRENT_VERSION",
+    "LATEST_VERSION",
+    "PENDING",
+    "UPDATING",
+    "UPDATING_NOTE",
+    "UPDATE_SUCCESSFUL",
+    "MOUSE_LATEST",
+    "KEYBOARD_LATEST",
+    "DONGLE_IS_LATEST",
+    "NEXT_UPGRADE_MOUSE",
+    "NEXT_UPGRADE_KEYBOARD",
+    "NEXT_UPGRADE_DONGLE",
+    "PLEASE_FOLLOW_STEPS",
+    "SWITCH_MOUSE_OFF",
+    "SWITCH_KEYBOARD_OFF",
+    "CONNECT_MOUSE_WITH_CABLE",
+    "CONNECT_KEYBOARD_WITH_CABLE",
+    "PLUGGED_HYPERSPEED_WIRELESS_DONGLE",
+    "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+    "SWITCH_KEYBOARD_CONNECT_TO_DONGLE",
+    "UPDATE_FAILED_HEADER",
+    "UPDATE_FINISHED",
+    "START_OVER",
+    "CLOSE"
+  ],
+  "locales": [
+    {
+      "locale": "de",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-de.19eed664.chunk.js",
+      "source_sha256": "608af8a078d0760d2a51504a293b39252e32402d33981412f28735b65c995c1c",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "en",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-en.e9aaac53.chunk.js",
+      "source_sha256": "397222f7c6afef45f952e135e292aa9b84e4a81ba00e2226a843e1d310c7602a",
+      "keys": 46,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING"
+      ]
+    },
+    {
+      "locale": "es",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-es.2401d181.chunk.js",
+      "source_sha256": "3505f9319de7908173c01543d804b64aace7375268e1640aaa3288bea656e323",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "fr",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-fr.93b0a926.chunk.js",
+      "source_sha256": "10c9ad5ffb5d6d89b0fd46f1c4ca9ac21bfd5bcfec1a6370f5a91e2baf346033",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "ja",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-ja.d6162ae3.chunk.js",
+      "source_sha256": "16b4839a84b263ded48f51e0ceff7246afb652f237fa153ae49521a094b24acc",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "kr",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-kr.684720b3.chunk.js",
+      "source_sha256": "244029fc7c10beca72cb59503a17ec5363e431b74341149e0de629a73281d5e6",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "pt-BR",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-pt-BR.642f9826.chunk.js",
+      "source_sha256": "2734106fe367727ec4fd00e8274ac293cee95401c4ee64446bfbc25265f820c5",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "ru",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-ru.1356ab4f.chunk.js",
+      "source_sha256": "adb57340d2a83084f8c2cf3c9db6f503caae9bd401e0d68b75e3f49c1882e88f",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-zh-CN.1c2c6409.chunk.js",
+      "source_sha256": "b4fef66a429687bf3356829e0242136264e09e1004481ffbb62279522e5cdce6",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    },
+    {
+      "locale": "zh-TW",
+      "source": ".ref/applications/synapse/update-fw/static/js/trans-zh-TW.d39459db.chunk.js",
+      "source_sha256": "761fa57155a29f7fa250f39617347d7115a98edbeecf171fcc546ea80dbb5ac2",
+      "keys": 44,
+      "missing_exports": [
+        "DEVICE_IS_UPGRADING",
+        "SWITCH_MOUSE_CONNECT_TO_DONGLE",
+        "SWITCH_KEYBOARD_CONNECT_TO_DONGLE"
+      ]
+    }
+  ]
+}

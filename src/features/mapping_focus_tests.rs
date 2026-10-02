@@ -44,6 +44,7 @@ fn rejected_mapping_switch_keeps_the_original_return_target(cx: &mut TestAppCont
         assert_eq!(state.mapping.as_ref().unwrap().input, "RightButton");
         assert_eq!(state.mapping_return_focus, original_focus);
         assert!(state.mapping_dirty());
+        assert!(!state.committed_pending());
     });
     cx.update_window(handle.into(), |_, window, cx| {
         window.click("mapping-cancel", cx);
@@ -53,6 +54,48 @@ fn rejected_mapping_switch_keeps_the_original_return_target(cx: &mut TestAppCont
             window.find("drawer-input-RightButton").focused(),
             Some(true)
         );
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn discarding_committed_profiles_keeps_mapping_drafts_or_requires_a_decision(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let (handle, view) = open_mouse(cx);
+    cx.update_window(handle.into(), |_, window, cx| {
+        view.update(cx, |state, cx| {
+            state.edit(window, cx, |settings| settings.lighting.brightness = 12);
+        });
+        window.render_frame(cx);
+        window.click("mouse-input-RightButton", cx);
+        window.click("mapping-category-disable", cx);
+        let return_focus = view.read(cx).mapping_return_focus.clone();
+        assert!(view.read(cx).committed_pending());
+        assert!(view.read(cx).mapping_dirty());
+        view.update(cx, |state, cx| assert!(state.discard_committed(window, cx)));
+        assert!(!view.read(cx).committed_pending());
+        assert!(view.read(cx).mapping_dirty());
+        assert_eq!(view.read(cx).mapping.as_ref().unwrap().value, "disable");
+        assert_eq!(view.read(cx).mapping_return_focus, return_focus);
+
+        // A rollback must not retarget a draft from an unsaved profile.
+        view.update(cx, |state, _| {
+            let mut profile = state.device.profiles[0].clone();
+            profile.id = "unsaved-profile".into();
+            state.device.active_profile = profile.id.clone();
+            state.device.profiles.push(profile);
+        });
+        assert!(view.read(cx).discard_would_remove_mapping());
+        view.update(cx, |state, cx| {
+            assert!(!state.discard_committed(window, cx))
+        });
+        assert_eq!(view.read(cx).device.active_profile, "unsaved-profile");
+        assert_eq!(view.read(cx).mapping.as_ref().unwrap().value, "disable");
     })
     .unwrap();
 }

@@ -4,6 +4,7 @@ Run from the repository root after tools/extract-keyboard.cjs.
 """
 import base64, hashlib, json, re, shutil
 from pathlib import Path
+from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 from PIL import Image
 from fontTools.ttLib import TTFont
@@ -11,6 +12,7 @@ from fontTools.svgLib.path import parse_path
 from fontTools.pens.boundsPen import BoundsPen
 from keyboard_geometry import geometry_for
 from gamer_room_assets import prepare as prepare_gamer_room_devices
+from pairing_assets import prepare as prepare_pairing
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/"assets"/"synapse"
@@ -25,13 +27,13 @@ for name in ("minimize", "maximize", "restore", "close", "close-original",
              "close_active_tab", "close_active_tab_hover", "close_pressed",
              "left-arrow", "left-arrow-hover", "left-arrow-active", "left-arrow-disabled",
              "right-arrow", "right-arrow-hover", "right-arrow-active", "right-arrow-disabled"):
-    src = ROOT / ".ref/synapse-asar/electron/assets/image/tab" / (name + ".svg")
+    src = ROOT / ".ref/host-4.0.827/electron/assets/image/tab" / (name + ".svg")
     dst = OUT / ("host-" + name + ".svg")
     shutil.copyfile(src, dst)
     record(src, dst)
 
 for category in ("MOUSE", "KEYBOARD", "AUDIO", "MOUSEMAT"):
-    src = ROOT / ".ref/frontend/shared-favicon" / (category + ".svg")
+    src = ROOT / ".ref/applications/synapse/dashboard/shared-favicon" / (category + ".svg")
     dst = OUT / ("host-category-" + category.lower() + ".svg")
     shutil.copyfile(src, dst)
     record(src, dst, source_url="https://apps.razer.com/synapse/assets/imgs/favicon/" + category + ".svg")
@@ -100,7 +102,7 @@ frontend_media = {
     "module-alexa.png": "alexa.110b43c3.avif",
 }
 for name, original in frontend_media.items():
-    src = ROOT / ".ref/frontend/static/media" / original
+    src = ROOT / ".ref/applications/synapse/dashboard/static/media" / original
     dst = OUT / name
     source_url = "https://apps.razer.com/synapse/dashboard/static/media/" + original
     if dst.suffix == ".png":
@@ -114,9 +116,97 @@ for name, original in frontend_media.items():
         record(src, dst, source_url=source_url)
 
 prepare_gamer_room_devices(ROOT, OUT, record)
+
+# The picker is an independent iframe. Its app icons are shared host assets;
+# the empty-state picture and trigger are from its own manifest.
+picker_media = ROOT / ".ref/applications/rz-app-menu/static/media"
+for name, original in {
+    "app-picker.svg": "icon_app.b648a5e5.svg",
+    "app-picker-empty.png": "discover-more-razer-apps-2x.2f6a6bb1.avif",
+}.items():
+    src, dst = picker_media / original, OUT / name
+    source_url = "https://apps.razer.com/rz-app-menu/static/media/" + original
+    if dst.suffix == ".png":
+        with Image.open(src) as im:
+            im = im.convert("RGBA")
+            im.save(dst, optimize=True)
+            record(src, dst, width=im.width, height=im.height, mode=im.mode,
+                   source_url=source_url)
+    else:
+        shutil.copyfile(src, dst)
+        record(src, dst, source_url=source_url)
+
+for name, original in {
+    "module-chroma-studio.svg": "logo_chromastudio.svg",
+    "module-add-wifi.svg": "logo_add_wifi.svg",
+    "module-synapse.svg": "logo_synapse.svg",
+    "module-chroma-connect.svg": "logo_chromaconnect.svg",
+    "module-audio-visualizer.svg": "logo_visualizer.svg",
+    "module-streamer-companion.svg": "logo_streamer_app.svg",
+    "module-virtual-ring-light.svg": "logo_natalie.svg",
+    "module-philips-hue.svg": "logo_hue.svg",
+    "module-profile-migration.svg": "profile_migration_logo.svg",
+    "module-sensa-hd.svg": "logo_sensa.svg",
+    "module-armory-exchange.svg": "logo_armory_exchange.svg",
+}.items():
+    src = ROOT / ".ref/applications/synapse/dashboard/shared-apps" / original
+    dst = OUT / name
+    shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/assets/imgs/apps/" + original)
+
+src = ROOT / ".ref/applications/rz-app-menu/static/css/main.3f2a3e21.css"
+picker_css = src.read_text(encoding="utf-8")
+spinner_rule = re.search(
+    r'(?:^|})\.app-module-wrapper \.app-module\.installing \.item \.item-title:after\{([^}]+)\}',
+    picker_css)
+assert spinner_rule, "Missing app picker installation spinner"
+spinner = re.search(r"url\('data:image/svg\+xml;utf8,([^']+)'\)", spinner_rule[1])
+assert spinner, "Missing app picker spinner SVG"
+dst = OUT / "app-picker-spinner.svg"
+dst.write_text(unquote(spinner[1]), encoding="utf-8")
+record(src, dst, extraction=".app-module.installing .item-title:after SVG data URI")
+
+# The firmware updater's wired/wireless connection instruction diagrams.
+firmware_media = {
+    "firmware-switch-usb-mouse.svg": "switch-usb-mouse.c0fb1869.svg",
+    "firmware-switch-usb-kb.svg": "switch-usb-kb.38516b2f.svg",
+    "firmware-pc-usb.svg": "pc_usb.4c9e79d7.svg",
+    "firmware-switch-dongle-mouse.svg": "switch-2.4G-mouse.5efc3002.svg",
+    "firmware-switch-dongle-kb.svg": "switch-2.4G-kb.e4c047f6.svg",
+    "firmware-dongle-small.svg": "standard_small_dongle.53dad11e.svg",
+    "firmware-dongle-large.svg": "standard_large_dongle.393bf86d.svg",
+}
+firmware_root = ROOT / ".ref/applications/synapse/update-fw"
+firmware_manifest = json.loads((firmware_root / "asset-manifest.json").read_text(encoding="utf-8"))
+firmware_declared = {value.removeprefix("./") for value in firmware_manifest["files"].values()}
+for name, original in firmware_media.items():
+    assert "static/media/" + original in firmware_declared, original
+    src, dst = firmware_root / "static/media" / original, OUT / name
+    shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/update-fw/static/media/" + original)
+
+# Alexa's own header and skill icons, from its application manifest and CSS.
+for name, original in {
+    "alexa-header.svg": "alexa-3.2a54a651.svg",
+    "alexa-skill-lighting.svg": "light-gray.307e0f5c.svg",
+    "alexa-skill-chroma.svg": "razer-chroma-studio.2a720daf.svg",
+    "alexa-skill-launch.svg": "launch-gray.ab4d66e1.svg",
+    "alexa-skill-media.svg": "multimedia-gray.cd91e5eb.svg",
+    "alexa-skill-power.svg": "power-gray.18fcdba0.svg",
+    "alexa-spinner.svg": "spinner.ef2d0235.svg",
+    "alexa-close-gray.svg": "close-gray.6ad35362.svg",
+    "alexa-close-green.svg": "close-green.e11b8be3.svg",
+    "alexa-close-white.svg": "close-white.b993dd05.svg",
+    "alexa-refresh.svg": "icon_refresh_white.80aa16c3.svg",
+}.items():
+    src = ROOT / ".ref/applications/synapse/alexa/static/media" / original
+    dst = OUT / name
+    shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/alexa/static/media/" + original)
+
 for category in ("KEY_LIGHT", "BULB", "LAMP", "STRIP"):
     name = f"IOT_{category}.svg"
-    src = ROOT / ".ref/frontend/shared-favicon" / name
+    src = ROOT / ".ref/applications/synapse/dashboard/shared-favicon" / name
     dst = OUT / ("iot-category-" + category.lower().replace("_", "-") + ".svg")
     shutil.copyfile(src, dst)
     record(src, dst, source_url="https://apps.razer.com/synapse/assets/imgs/favicon/" + name)
@@ -130,7 +220,7 @@ with Image.open(src) as im:
            source_url="https://apps.razer.com/synapse/products/780/ui/780_0/PluginImages/780_0_0_dashboard1x.avif")
 
 # Header compatibility dialog's inline warning triangle (not Settings' circle).
-src = ROOT / ".ref/frontend/static/js/App.eb32d7cd.chunk.js"
+src = ROOT / ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js"
 header_source = src.read_text(encoding="utf-8")
 header_start = header_source.index("27875:")
 header_end = header_source.index("},28648:", header_start)
@@ -141,7 +231,7 @@ dst.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="27" v
 record(src, dst, module=27875, viewBox=[0, 0, 20, 20], purpose="Compatibility mode warning")
 
 # Ve's new-device help uses an inline 285x145 MAC-address illustration.
-src = ROOT / ".ref/frontend/static/js/IotPopupRoot.290be417.chunk.js"
+src = ROOT / ".ref/applications/synapse/dashboard/static/js/IotPopupRoot.daaa97ef.chunk.js"
 iot_source = src.read_text(encoding="utf-8")
 mac_image = re.search(r'src:"data:image/png;base64,([A-Za-z0-9+/=]+)"', iot_source)
 assert mac_image, "Missing new-device MAC illustration"
@@ -155,7 +245,7 @@ with Image.open(dst) as im:
 # Category icons used by 6505's device/install/firmware rows are generated by
 # App module 96689's renderer c, not the similarly named key-mapping SVGs.
 # Keep extraction within that module and use its final `i` transform table.
-src = ROOT / ".ref/frontend/static/js/App.eb32d7cd.chunk.js"
+src = ROOT / ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js"
 category_source = src.read_text(encoding="utf-8")
 category_start = category_source.index("96689:")
 category_end = category_source.index("},96776:", category_start)
@@ -180,6 +270,7 @@ for name, original in {
     "settings-warning.svg": "exclamation_icon.53d6d40b.svg",
     "header-offline.svg": "cloud-yellow.3957bb55.svg",
     "header-update.svg": "icon_download.1e6d735a.svg",
+    "header-unsaved.svg": "save-white.783e6aa4.svg",
 }.items():
     src = ROOT / ".ref/settings/static/media" / original
     dst = OUT / name
@@ -287,7 +378,7 @@ record(src, dst,
 
 # Module 71610 exports a literal PNG data URL. Decode the bytes without
 # evaluating any source module or changing the original image.
-src = ROOT / ".ref/frontend/static/js/9388.2bec5db3.chunk.js"
+src = ROOT / ".ref/applications/synapse/dashboard/static/js/9388.974b5d43.chunk.js"
 lamp = re.search(r'71610:\w+=>\{"use strict";\w+\.exports="data:image/png;base64,([A-Za-z0-9+/=]+)"',
                  src.read_text(encoding="utf-8"))
 assert lamp, "Missing Gamer Room Aether Lamp module 71610"
@@ -408,7 +499,7 @@ for pid, edition, layout in dashboard_variants:
                                    source_url=source_url, asset="synapse/" + dst.name,
                                    output=dst.relative_to(ROOT).as_posix()))
 (OUT / "dashboard-image-map.json").write_text(json.dumps(dict(
-    version=1, url_rule_source=".ref/frontend/static/js/4130.155387bf.chunk.js",
+    version=1, url_rule_source=".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
     requests=dashboard_requests), indent=2), encoding="utf-8")
 (OUT / "dashboard-images.rs").write_text(
     "// Generated from downloaded PluginImages sources; never substitute Customize artwork.\n&[\n"
@@ -589,7 +680,7 @@ for state in ("default", "hover", "active"):
     ET.ElementTree(root).write(dst, encoding="utf-8", xml_declaration=True)
     record(src, dst, fragment=state)
 for name in ["Roboto-Regular","Roboto-Medium","Roboto-Bold","RazerF5-Regular"]:
-    src=ROOT/".ref/synapse-asar/electron/assets/fonts"/(name+".woff2")
+    src=ROOT/".ref/host-4.0.827/electron/assets/fonts"/(name+".woff2")
     font=TTFont(src, recalcTimestamp=False); font.flavor=None
     dst=OUT/(name+".ttf");font.save(dst);record(src,dst)
 def keyboard_keys(groups):
@@ -637,6 +728,7 @@ for name in ["keyboard-653-customize-layouts.json", "keyboard-653-layouts.json"]
 
 # Pairing SVGs are statically extracted from CSS data URLs / React SVG paths.
 # Validate both source and output hashes before merging their provenance.
+prepare_pairing(ROOT, OUT)
 pairing = json.loads((OUT / "pairing-manifest.json").read_text(encoding="utf-8"))["assets"]
 for entry in pairing:
     assert digest(ROOT / entry["source"]) == entry["source_sha256"], entry["source"]

@@ -15,11 +15,14 @@ spec = importlib.util.spec_from_file_location("discovery", Path(__file__).with_n
 discovery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(discovery)
 SOURCES = (
-    ".ref/synapse-asar/electron/constants.js",
-    ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
+    ".ref/host-4.0.827/electron/constants.js",
+    ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
     ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
 )
-PATH_LITERAL = re.compile(r'''["']((?:https://apps\.razer\.com)?/(?:synapse|chroma-app|natalie|alisha|sophie|sophie-lite|settings|cortex|rz-user-profile-menu|systray|release-patch-note|profile-migration|background-manager)[^"'<>\s]*)["']''')
+ROUTE_PATH = r'/(?:synapse|chroma-app|natalie|alisha|sophie|sophie-lite|settings|cortex|rz-app-menu|rz-user-profile-menu|systray|release-patch-note|profile-migration|background-manager)[^"\x27`<>\s$]*'
+PATH_LITERAL = re.compile(r'''["']((?:https://apps\.razer\.com)?''' + ROUTE_PATH + r''')["']''')
+# Only the origin is interpolated: preserve the static route without evaluating JS.
+ORIGIN_TEMPLATE = re.compile(r'`\$\{window\.location\.origin\}(' + ROUTE_PATH + r')`')
 
 
 def route_seeds():
@@ -29,7 +32,11 @@ def route_seeds():
         if not path.is_file():
             continue
         source = path.read_text(encoding="utf-8")
-        for match in PATH_LITERAL.finditer(source):
+        matches = sorted(
+            (match for pattern in (PATH_LITERAL, ORIGIN_TEMPLATE) for match in pattern.finditer(source)),
+            key=lambda match: match.start(1),
+        )
+        for match in matches:
             route = urlparse(match[1]).path
             if "/assets" in route or "/products/" in route:
                 continue
@@ -125,7 +132,8 @@ def main():
         "| 路由 | HTML | 清单中的 JS/CSS | JS/CSS 取得 |", "| --- | --- | --- | ---: |"]
     for row in records:
         lines.append(f"| [{row['route']}](https://apps.razer.com{row['route']}) | {row['endpoints']['index.html']['result']} | {'齐备' if row['manifest_code_complete'] else '待追踪'} | {sum(f['result'] == 'ok' for f in row['files'])}/{len(row['files'])} |")
-    lines += ["", "没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。", ""]
+    lines += ["", "没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。", "",
+        "`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。发现脚本只提取静态路径，不执行模板或下载的代码。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。", ""]
     (ROOT / "docs/re/17-application-catalog.md").write_text("\n".join(lines), encoding="utf-8")
     print(json.dumps(summary))
 

@@ -3,42 +3,42 @@
     {
       "asset": "synapse/pairing-keyboard.svg",
       "output": "assets/synapse/pairing-keyboard.svg",
-      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
-      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "source": ".ref/applications/synapse/dashboard/static/css/7861.a49b4dc6.chunk.css",
+      "source_sha256": "814b7dfc3a22da280164d9e42fc4dbeca59aa31bad1d42b95123fb5daf177460",
       "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_keyboard__J1Q8r",
       "source_character_offset": 27073,
-      "sha256": "02935d5730ea0d15991a667d7048883de85da9a022fa3779782e9ac33ce7cd90",
-      "transform": "decode original CSS SVG data URL"
+      "transform": "decode original CSS SVG data URL",
+      "sha256": "02935d5730ea0d15991a667d7048883de85da9a022fa3779782e9ac33ce7cd90"
     },
     {
       "asset": "synapse/pairing-mouse.svg",
       "output": "assets/synapse/pairing-mouse.svg",
-      "source": ".ref/frontend/static/css/4130.6bdf8dd0.chunk.css",
-      "source_sha256": "f191a18d2562636fbe5ccf45ade87bafaa90bbfb8f14f5a35161504da2364fc9",
+      "source": ".ref/applications/synapse/dashboard/static/css/7861.a49b4dc6.chunk.css",
+      "source_sha256": "814b7dfc3a22da280164d9e42fc4dbeca59aa31bad1d42b95123fb5daf177460",
       "selector": ".DeviceCard_categoryIcon__HomVd.DeviceCard_mouse__Ijr7F",
       "source_character_offset": 27429,
-      "sha256": "0ee65f2ca3646ac4d3a74dc854a4730a95deb85408c836185ca3a9bc4bdaccca",
-      "transform": "decode original CSS SVG data URL"
+      "transform": "decode original CSS SVG data URL",
+      "sha256": "0ee65f2ca3646ac4d3a74dc854a4730a95deb85408c836185ca3a9bc4bdaccca"
     },
     {
       "asset": "synapse/pairing-paired.svg",
       "output": "assets/synapse/pairing-paired.svg",
-      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
-      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
-      "source_symbol": "Ps",
-      "source_character_offset": 82820,
-      "sha256": "3f372ecd94710632444b4306fdc6755d6d89b04cd43fbe8fa8455b3bb32b4235",
-      "transform": "serialize original React SVG attributes and path without geometry changes"
+      "source": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "source_sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "source_symbol": "Os",
+      "source_character_offset": 83584,
+      "transform": "serialize original React SVG attributes and path without geometry changes",
+      "sha256": "8633fb23a0dced541faf9e2ec7ebd4c2a65f7d08d8c0dc75709a86f1f8f7d6bb"
     },
     {
       "asset": "synapse/pairing-unpair.svg",
       "output": "assets/synapse/pairing-unpair.svg",
-      "source": ".ref/frontend/static/js/4130.155387bf.chunk.js",
-      "source_sha256": "aaeec8a19c4dfe44577ae067af63cf22f7840de04a8dd78a297813e8f62471fe",
-      "source_symbol": "Bs",
-      "source_character_offset": 84632,
-      "sha256": "d414799888192c550106b48264549d3a1156f8f41166a8c2e686fa38e13102c8",
-      "transform": "serialize original React SVG attributes and path without geometry changes"
+      "source": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "source_sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "source_symbol": "Ls",
+      "source_character_offset": 85396,
+      "transform": "serialize original React SVG attributes and path without geometry changes",
+      "sha256": "5be02970a0f88d4a86889fff31d23f0493dcad51e6b675b56c2aae7bb2b97992"
     }
   ]
 }

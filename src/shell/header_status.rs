@@ -1,4 +1,4 @@
-//! Source Home `x -> T` and shared Header `N/x` in App.eb32d7cd.chunk.js.
+//! Source Home `x -> T` and shared Header `N/x` in App.72827d47.chunk.js.
 //! Host OS, connectivity and EngineUpgrade readback remain unknown. All states
 //! in this separate surface are explicitly selected examples, never host facts.
 use crate::{
@@ -17,6 +17,14 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
+
+#[cfg(test)]
+#[path = "header_unsaved_tests.rs"]
+mod unsaved_tests;
+
+#[path = "header_unsaved.rs"]
+mod unsaved;
+pub(super) use unsaved::unsaved_profiles;
 
 actions!(header_status_preview, [DismissStatus]);
 

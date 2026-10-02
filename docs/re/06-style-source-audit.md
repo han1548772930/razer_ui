@@ -1,5 +1,7 @@
 # UI 样式复核与资源同步（2026-10-01）
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 本轮只以 `.ref` 的原版 JS、CSS 和实际资源为依据。项目中的旧截图不作为规格、尺寸或验收依据。本文记录本轮新增的源码结论及实现；完整功能缺口仍见[重构状态](03-implementation-gap.md)。
 
 ## 1. 原版定位入口
@@ -10,7 +12,7 @@
 | 鼠标绘图与按钮文案 | [182 JS](../../.ref/devices/182/static/js/main.db20a7c4.js)：`KP.render/drawLines/getCycleImage`、`Yp.render`、`wp`；模块 6482 的 `h5` 导出 |
 | 键盘图和高亮 | [653 JS](../../.ref/devices/653/static/js/main.7b71cce5.js)：`km → TM/IM`、`Wp → Yp`；[653 CSS](../../.ref/devices/653/static/css/main.5425442a.css)：`.custom-keyboard-svg`、`.svg-key`、`.isAssignment` |
 | Sound/Mic EQ、音量和直播灯效 | [777 JS](../../.ref/devices/777/static/js/main.eb70ce38.js)：`VM`、`GM → uM → cM`、`UM`、`dM`、`qM`、`VG`；[777 CSS](../../.ref/devices/777/static/css/main.e4bab2aa.css)：`.sliderChart__*`、`.vertical-slider__*`、`#eqBox`、`.stream-*` |
-| 宿主条 | [Electron index.css](../../.ref/synapse-asar/electron/index.css)：`.etabs-tabgroup` 及系统按钮 |
+| 宿主条 | [Electron index.css](../../.ref/host-4.0.827/electron/index.css)：`.etabs-tabgroup` 及系统按钮 |
 
 压缩 JS 的符号只在对应的文件版本内有意义。CSS 应检查所有同名规则及媒体查询；例如 653 后部覆盖了共享的 config-wrapper 高度，不能只取首次命中。
 
@@ -120,7 +122,7 @@ python -B tools/validate-resources.py
 
 ## 10. 原版响应式规则与正文滚动
 
-本次逐条读取 media 外层后再判断规则，避免把窄屏覆盖当作全局尺寸。来源为 [182 CSS](../../.ref/devices/182/static/css/main.48c20423.css)、[653 CSS](../../.ref/devices/653/static/css/main.5425442a.css)、[777 CSS](../../.ref/devices/777/static/css/main.e4bab2aa.css)，以及主应用 [55 CSS](../../.ref/frontend/static/css/55.a5b041a2.chunk.css)、[6505 CSS](../../.ref/frontend/static/css/6505.9782778c.chunk.css)。
+本次逐条读取 media 外层后再判断规则，避免把窄屏覆盖当作全局尺寸。来源为 [182 CSS](../../.ref/devices/182/static/css/main.48c20423.css)、[653 CSS](../../.ref/devices/653/static/css/main.5425442a.css)、[777 CSS](../../.ref/devices/777/static/css/main.e4bab2aa.css)，以及主应用 [55 CSS](../../.ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css)、[6505 CSS](../../.ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css)。
 
 | 范围与媒体条件 | 原版实际规则 | 本轮生产代码 |
 |---|---|---|

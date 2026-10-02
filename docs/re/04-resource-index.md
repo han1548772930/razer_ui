@@ -1,5 +1,7 @@
 # 资源索引：实际引用、变体和本地缺口
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 ## Rust 已打包资源（重构后补充）
 
 2026-10-02 复核：当前 [manifest.json](../../assets/synapse/manifest.json) 包含 **234 条源/输出记录**（94 PNG、116 SVG、4 TTF、20 JSON），其中 **191 项有当前生产代码消费者**，43 项没有当前消费者。源文件来自 `.ref` 原始包、原 JS/CSS 的静态内嵌数据，以及原代码指向的精确下载 URL。每条记录保留源路径及源/输出 SHA-256；位图另有像素尺寸和实际色彩模式。下文原始库存表保留此前快照，Settings、Gamer Room、Dashboard、配对及映射选中态的当前消费者见[资源使用审计](13-resource-usage.md)。同步依据是原版代码、CSS 与资源引用，旧截图不作为依据；本轮样式使用方式见 [UI 样式复核](06-style-source-audit.md)。
@@ -63,27 +65,27 @@
 
 ## 3. 字体和窗口图标
 
-原字体目录：`.ref/synapse-asar/electron/assets/fonts/`。Roboto 用于正文/控件；部分主应用组标题使用 RazerF5。RazerF5-Ligth 是文件的实际拼写，不应按英文纠正路径。WOFF 和 WOFF2 都存在。
+原字体目录：`.ref/host-4.0.827/electron/assets/fonts/`。Roboto 用于正文/控件；部分主应用组标题使用 RazerF5。RazerF5-Ligth 是文件的实际拼写，不应按英文纠正路径。WOFF 和 WOFF2 都存在。
 
 | 字体 | WOFF | WOFF2 |
 |---|---|---|
-| RazerF5-Bold | [RazerF5-Bold.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Bold.woff) | [RazerF5-Bold.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Bold.woff2) |
-| RazerF5-BoldItalic | [RazerF5-BoldItalic.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-BoldItalic.woff) | [RazerF5-BoldItalic.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-BoldItalic.woff2) |
-| RazerF5-Ligth | [RazerF5-Ligth.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Ligth.woff) | [RazerF5-Ligth.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Ligth.woff2) |
-| RazerF5-RegItalic | [RazerF5-RegItalic.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-RegItalic.woff) | [RazerF5-RegItalic.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-RegItalic.woff2) |
-| RazerF5-Regular | [RazerF5-Regular.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Regular.woff) | [RazerF5-Regular.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Regular.woff2) |
-| RazerF5-SemiBold | [RazerF5-SemiBold.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-SemiBold.woff) | [RazerF5-SemiBold.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-SemiBold.woff2) |
-| RazerF5-Thin | [RazerF5-Thin.woff](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Thin.woff) | [RazerF5-Thin.woff2](../../.ref/synapse-asar/electron/assets/fonts/RazerF5-Thin.woff2) |
-| Roboto-Bold | [Roboto-Bold.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Bold.woff) | [Roboto-Bold.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Bold.woff2) |
-| Roboto-BoldItalic | [Roboto-BoldItalic.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-BoldItalic.woff) | [Roboto-BoldItalic.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-BoldItalic.woff2) |
-| Roboto-Italic | [Roboto-Italic.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Italic.woff) | [Roboto-Italic.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Italic.woff2) |
-| Roboto-Light | [Roboto-Light.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Light.woff) | [Roboto-Light.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Light.woff2) |
-| Roboto-LightItalic | [Roboto-LightItalic.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-LightItalic.woff) | [Roboto-LightItalic.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-LightItalic.woff2) |
-| Roboto-Medium | [Roboto-Medium.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Medium.woff) | [Roboto-Medium.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Medium.woff2) |
-| Roboto-MediumItalic | [Roboto-MediumItalic.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-MediumItalic.woff) | [Roboto-MediumItalic.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-MediumItalic.woff2) |
-| Roboto-Regular | [Roboto-Regular.woff](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Regular.woff) | [Roboto-Regular.woff2](../../.ref/synapse-asar/electron/assets/fonts/Roboto-Regular.woff2) |
+| RazerF5-Bold | [RazerF5-Bold.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Bold.woff) | [RazerF5-Bold.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Bold.woff2) |
+| RazerF5-BoldItalic | [RazerF5-BoldItalic.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-BoldItalic.woff) | [RazerF5-BoldItalic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-BoldItalic.woff2) |
+| RazerF5-Ligth | [RazerF5-Ligth.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Ligth.woff) | [RazerF5-Ligth.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Ligth.woff2) |
+| RazerF5-RegItalic | [RazerF5-RegItalic.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-RegItalic.woff) | [RazerF5-RegItalic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-RegItalic.woff2) |
+| RazerF5-Regular | [RazerF5-Regular.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Regular.woff) | [RazerF5-Regular.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Regular.woff2) |
+| RazerF5-SemiBold | [RazerF5-SemiBold.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-SemiBold.woff) | [RazerF5-SemiBold.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-SemiBold.woff2) |
+| RazerF5-Thin | [RazerF5-Thin.woff](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Thin.woff) | [RazerF5-Thin.woff2](../../.ref/host-4.0.827/electron/assets/fonts/RazerF5-Thin.woff2) |
+| Roboto-Bold | [Roboto-Bold.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Bold.woff) | [Roboto-Bold.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Bold.woff2) |
+| Roboto-BoldItalic | [Roboto-BoldItalic.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-BoldItalic.woff) | [Roboto-BoldItalic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-BoldItalic.woff2) |
+| Roboto-Italic | [Roboto-Italic.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Italic.woff) | [Roboto-Italic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Italic.woff2) |
+| Roboto-Light | [Roboto-Light.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Light.woff) | [Roboto-Light.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Light.woff2) |
+| Roboto-LightItalic | [Roboto-LightItalic.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-LightItalic.woff) | [Roboto-LightItalic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-LightItalic.woff2) |
+| Roboto-Medium | [Roboto-Medium.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Medium.woff) | [Roboto-Medium.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Medium.woff2) |
+| Roboto-MediumItalic | [Roboto-MediumItalic.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-MediumItalic.woff) | [Roboto-MediumItalic.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-MediumItalic.woff2) |
+| Roboto-Regular | [Roboto-Regular.woff](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Regular.woff) | [Roboto-Regular.woff2](../../.ref/host-4.0.827/electron/assets/fonts/Roboto-Regular.woff2) |
 
-字体样式入口：[Roboto.css](../../.ref/synapse-asar/electron/assets/style/Roboto.css)。当前 Rust 已通过 `resources::register_fonts` 注册上述四份 TTF，不能仅靠设置 `font_family` 判断其它字重也已接入；GPUI 格式兼容性见 [GPUI Kit 映射](05-gpui-kit-mapping.md)。
+字体样式入口：[Roboto.css](../../.ref/host-4.0.827/electron/assets/style/Roboto.css)。当前 Rust 已通过 `resources::register_fonts` 注册上述四份 TTF，不能仅靠设置 `font_family` 判断其它字重也已接入；GPUI 格式兼容性见 [GPUI Kit 映射](05-gpui-kit-mapping.md)。
 
 窗口/标签图标完整状态表见 [壳层资源](../screens/00-app-shell.md)：minimize、maximize、restore、窗口 close、活动标签 close、左右箭头的 normal/hover/active/disabled、wordmark、spinner。不要把窗口关闭图和映射面板关闭图混用。
 
@@ -307,7 +309,7 @@ CSS 生成的内容包括 dot-bg 点阵、控件轨道/滑块、部分三角/边
 
 ## 8. 语言资源
 
-产品翻译 context 位于各产品 `./{pid}_{edition}/translations/*.js`；组件先使用 locale key，再由 language reducer/翻译函数解析。主前端完整中文/英文包位于 `.ref/frontend/locales`；当前项目运行期语言数据位于 `locales/`。
+产品翻译 context 位于各产品 `./{pid}_{edition}/translations/*.js`；组件先使用 locale key，再由 language reducer/翻译函数解析。主前端完整中文/英文包位于 `.ref/applications/synapse/dashboard/locales`；当前项目运行期语言数据位于 `locales/`。
 
 下面给出当前产品的 en / zh-CN / index 入口，避免只从共有词汇表推断页面：
 
@@ -355,7 +357,7 @@ GPUI Kit 的解码和 WOFF 注册能力需要按目标构建核对；锁文件�
 
 ## 10. 主前端缺失资源明细
 
-原目录基准为 `.ref/frontend/`。下表完整列出 asset-manifest 中非 map 缺失路径。84 项在本轮检索的 `.ref` 和 `assets` 中没有同名文件；189 项有同名候选，仍未恢复到原目录。来源 manifest：[asset-manifest.json](../../.ref/frontend/asset-manifest.json)。
+原目录基准为 `.ref/applications/synapse/dashboard/`。下表完整列出 asset-manifest 中非 map 缺失路径。84 项在本轮检索的 `.ref` 和 `assets` 中没有同名文件；189 项有同名候选，仍未恢复到原目录。来源 manifest：[asset-manifest.json](../../.ref/applications/synapse/dashboard/asset-manifest.json)。
 
 ### 10.1 未找到同名候选（84）
 

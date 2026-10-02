@@ -247,11 +247,6 @@ impl AppShell {
                 "尚未连接设备与模块服务，无法读取安装和固件更新状态。",
                 cx,
             )))
-            .child(surface::external(
-                "module-information",
-                "Razer 应用",
-                "https://www.razer.com/software",
-            ))
             .child(self.module_catalog.clone())
             .into_any_element()
     }

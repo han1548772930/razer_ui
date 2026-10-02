@@ -1,5 +1,7 @@
 # 资源使用与未接入清单
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 统计快照：**2026-10-02**。本页区分原始文件、导入资源、加载注册和实际页面消费者。已注册不等于已显示；条件分支可达也不等于服务已连接。动态产品图、映射图标、方向和 DPI 图标不能只用完整文件名字面量判断。
 
 ## 可复核的统计入口
@@ -15,7 +17,7 @@
 | 范围 | 文件数 | 说明 |
 | --- | ---: | --- |
 | `.ref` 全部 | 10291 | 含前端、Electron、依赖、源码映射、日志及提取记录，并非图片数量 |
-| `.ref/frontend` | 319 | 含 166 项 static/media |
+| `.ref/applications/synapse/dashboard` | 319 | 含 166 项 static/media |
 | `.ref/settings` | 329 | 新取得的 Settings 前端，含 303 项 static/media |
 | `.ref/profile-migration` | 73 | 独立迁移应用，含10项static/media |
 | `.ref/release-patch-note` | 5 | 独立发行说明应用，含1项static/media |
@@ -58,7 +60,7 @@
 
 ### Dashboard 与 Customize 是不同图片来源
 
-原 `4130.155387bf.chunk.js` 的卡片请求走 `products/{pid}/ui/{pid}_{edition}/PluginImages/{pid}_{edition}_{layout}_dashboard3x.avif`；设备 Customize 走 `img_prods` 的 Webpack context，不能互换。
+原 `7861.1b0e99a4.chunk.js` 的卡片请求走 `products/{pid}/ui/{pid}_{edition}/PluginImages/{pid}_{edition}_{layout}_dashboard3x.avif`；设备 Customize 走 `img_prods` 的 Webpack context，不能互换。
 
 已从原 URL 取得 **41 个真实 Dashboard AVIF**：182 的 6 个 edition、653 的 34 个 edition/layout 组合、777 标准图，去重后嵌入 19 张 PNG。[dashboard-image-map.json](../../assets/synapse/dashboard-image-map.json) 逐项记录身份、URL、原 AVIF 哈希及目标；`dashboard-images.rs` 是原生索引。`dashboard-182.png` 也已从此次可追溯 AVIF 重新转换，不再依赖缺失转换记录的历史 PNG。
 

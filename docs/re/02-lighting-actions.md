@@ -1,10 +1,12 @@
 # 灯光协议：引擎 action、effect 和 driver 分层
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 ## 1. 来源与适用范围
 
-数字常量来自 [frontend 2973.2f1d1e6a.chunk.js](../../.ref/frontend/static/js/2973.2f1d1e6a.chunk.js)，搜索 `LightingEngine_ActionId`、`LightingEngine_EffectId`、`LightingDevice_FlushFrame` 可定位导出和赋值。
+数字常量来自 [frontend 2973.acc7b128.chunk.js](../../.ref/applications/synapse/dashboard/static/js/2973.acc7b128.chunk.js)，搜索 `LightingEngine_ActionId`、`LightingEngine_EffectId`、`LightingDevice_FlushFrame` 可定位导出和赋值。
 
-宿主 driver 绑定来自 [ffiLightingDriver.js](../../.ref/synapse-asar/electron/modules/lighting/ffiLightingDriver.js)。产品实际灯效来自 653 模块 78193、777 模块 7816，见 [灯光页面](../screens/07-lighting.md)。
+宿主 driver 绑定来自 [ffiLightingDriver.js](../../.ref/host-4.0.827/electron/modules/lighting/ffiLightingDriver.js)。产品实际灯效来自 653 模块 78193、777 模块 7816，见 [灯光页面](../screens/07-lighting.md)。
 
 本表是静态协议定位，不表示当前 Rust UI 已调用这些动作，也不提供未经验证的通用“发一个数字即可改灯”方案。
 

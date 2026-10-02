@@ -334,7 +334,8 @@ impl RenderOnce for KeyRegion {
             })
             .on_hover(move |inside, window, cx| {
                 enter(
-                    &(enabled && *inside
+                    &(enabled
+                        && *inside
                         && key.contains_window_point(window.mouse_position(), for_enter.get())),
                     window,
                     cx,
@@ -370,8 +371,7 @@ impl RenderOnce for KeyRegion {
                     .disabled(!enabled)
                     .size_full()
                     .on_mouse_down(MouseButton::Left, move |event, window, cx| {
-                        if enabled && key.contains_window_point(event.position, for_down.get())
-                        {
+                        if enabled && key.contains_window_point(event.position, for_down.get()) {
                             window.focus(&pointer_focus, cx);
                         }
                         // Suppress rectangular automatic focus, without stopping events:
@@ -417,10 +417,19 @@ mod tests {
     fn iso_and_japanese_enter_cutouts_are_not_active_keys() {
         for layout in [3, 4, 6, 7, 10, 12, 15, 16, 17, 18] {
             let enter = layout_key(layout, "KEY_ENTER");
-            assert!(enter.geometry.contains_source([435., 155.]), "layout {layout}");
-            assert!(enter.geometry.contains_source([450., 180.]), "layout {layout}");
+            assert!(
+                enter.geometry.contains_source([435., 155.]),
+                "layout {layout}"
+            );
+            assert!(
+                enter.geometry.contains_source([450., 180.]),
+                "layout {layout}"
+            );
             // This point is inside Enter's bounding box, below its upper arm.
-            assert!(!enter.geometry.contains_source([435., 180.]), "layout {layout}");
+            assert!(
+                !enter.geometry.contains_source([435., 180.]),
+                "layout {layout}"
+            );
             let neighbor = if layout == 12 {
                 "KEY_BACKSLASH"
             } else {
@@ -432,11 +441,20 @@ mod tests {
                     .contains_source([435., 180.]),
                 "layout {layout}"
             );
-            assert!(enter.geometry.contains_source([438., 180.]), "layout {layout}");
-            assert!(!enter.geometry.contains_source([437.99, 180.]), "layout {layout}");
+            assert!(
+                enter.geometry.contains_source([438., 180.]),
+                "layout {layout}"
+            );
+            assert!(
+                !enter.geometry.contains_source([437.99, 180.]),
+                "layout {layout}"
+            );
         }
         assert_eq!(crate::resources::keyboard_keys_for_layout(12).len(), 122);
-        assert_ne!(layout_key(1, "KEY_ENTER").bounds, layout_key(2, "KEY_ENTER").bounds);
+        assert_ne!(
+            layout_key(1, "KEY_ENTER").bounds,
+            layout_key(2, "KEY_ENTER").bounds
+        );
     }
 
     fn ring() -> &'static KeyboardKey {
@@ -602,9 +620,11 @@ mod tests {
         cx: &mut TestAppContext,
     ) {
         cx.update(gpui_kit::init);
-        for (index, layout) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 999]
-            .into_iter()
-            .enumerate()
+        for (index, layout) in [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 999,
+        ]
+        .into_iter()
+        .enumerate()
         {
             let scale = if index % 2 == 0 { 1. } else { 1.25 };
             cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16. * scale)));

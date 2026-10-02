@@ -1,7 +1,6 @@
 //! 653: fR → LR / UR / gR. Board readback is independent of local Profile drafts.
 //! Slot IDs are 2–5; the white row is the current hybrid-memory Profile.
 use super::*;
-use crate::ui::scroll::SourceScrollable as _;
 use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use crate::ui::theme::TooltipColors;
 use crate::{i18n, ui::theme::OnboardMemoryColors};

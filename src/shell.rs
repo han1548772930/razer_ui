@@ -14,9 +14,17 @@ use gpui_kit::component::{
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
+
+#[cfg(test)]
+#[path = "shell/save_queue_tests.rs"]
+mod save_queue_tests;
 
 mod account_menu;
+mod alexa_page;
+mod app_picker;
+mod app_picker_host;
+mod firmware_update;
 mod header_status;
 mod host_tabs;
 mod introduction_tour;
@@ -36,11 +44,55 @@ enum Location {
     Device(String),
     Pairing,
     Tour(TourKind),
+    Alexa,
+    FirmwareUpdate,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SaveScope {
     Workspace,
+    Profiles,
     Settings,
+}
+struct PreparedSave {
+    scope: SaveScope,
+    window: AnyWindowHandle,
+    file: store::WorkspaceFile,
+}
+#[derive(Debug, PartialEq, Eq)]
+enum SaveContinuation {
+    Queued,
+    Auxiliary,
+    Close,
+    Idle,
+}
+fn save_continuation(
+    close_requested: &mut bool,
+    succeeded: bool,
+    queued: bool,
+    auxiliary_pending: bool,
+    dirty: bool,
+) -> SaveContinuation {
+    if !succeeded {
+        // A later successful write in another scope must not hide this failure
+        // by closing the app. Keep queued requests, but do not spin on autosave.
+        *close_requested = false;
+        return if queued {
+            SaveContinuation::Queued
+        } else {
+            SaveContinuation::Idle
+        };
+    }
+    if queued {
+        SaveContinuation::Queued
+    } else if auxiliary_pending {
+        SaveContinuation::Auxiliary
+    } else if std::mem::take(close_requested) && !dirty {
+        SaveContinuation::Close
+    } else {
+        // Uncaptured edits keep the app open. Consume the old close request so
+        // a later, unrelated ordinary Save does not unexpectedly exit.
+        SaveContinuation::Idle
+    }
 }
 pub struct AppShell {
     devices: Vec<Entity<DeviceWorkspace>>,
@@ -52,12 +104,17 @@ pub struct AppShell {
     saved_intro_seen: bool,
     subscriptions: Vec<Subscription>,
     save_task: Option<Task<()>>,
+    pending_saves: VecDeque<PreparedSave>,
+    close_requested: bool,
     storage_error: Option<String>,
     status: String,
     dashboard_state: Entity<main_pages::DashboardState>,
     dashboard_tutorial: Entity<main_pages::DashboardTutorial>,
     introduction_tours:
         BTreeMap<TourKind, (Entity<introduction_tour::IntroductionTour>, Subscription)>,
+    alexa: Option<Entity<alexa_page::AlexaPage>>,
+    alexa_subscription: Option<Subscription>,
+    firmware_update: Option<(Entity<firmware_update::FirmwareUpdate>, Subscription)>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -68,6 +125,7 @@ pub struct AppShell {
     release_notes: Option<Entity<release_notes::ReleaseNotes>>,
     iot_popup: Option<Entity<iot_popup::IotPopup>>,
     account_menu: Entity<account_menu::AccountMenu>,
+    app_picker: Entity<app_picker::AppPicker>,
 }
 impl AppShell {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -122,11 +180,16 @@ impl AppShell {
             saved_intro_seen: intro,
             subscriptions: vec![],
             save_task: None,
+            pending_saves: VecDeque::new(),
+            close_requested: false,
             storage_error: error,
             status: "本地配置预览 · 尚未写入硬件".into(),
             dashboard_state: cx.new(|_| main_pages::DashboardState::new(dashboard)),
             dashboard_tutorial: cx.new(|_| main_pages::DashboardTutorial::new(dashboard_seen)),
             introduction_tours: BTreeMap::new(),
+            alexa: None,
+            alexa_subscription: None,
+            firmware_update: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -137,17 +200,25 @@ impl AppShell {
             release_notes: None,
             iot_popup: None,
             account_menu: cx.new(|cx| account_menu::AccountMenu::new(window, cx)),
+            app_picker: cx.new(|cx| app_picker::AppPicker::new(window, cx)),
         };
         this.gamer_room
             .update(cx, |page, cx| page.set_tutorial_seen(gamer_room_seen, cx));
         this.sync_persistence_state(cx);
         this.subscriptions
             .push(cx.observe(&this.dashboard_state, |_, _, cx| cx.notify()));
-        this.subscriptions.push(cx.subscribe(
+        this.subscriptions.push(cx.subscribe_in(
             &this.dashboard_state,
-            |this, _, _: &main_pages::DashboardChanged, cx| {
+            window,
+            |this, _, _: &main_pages::DashboardChanged, window, cx| {
+                this.sync_app_picker(window, cx);
                 this.save_auxiliary_preferences(cx);
             },
+        ));
+        this.subscriptions.push(cx.subscribe_in(
+            &this.app_picker,
+            window,
+            |this, _, event, window, cx| this.handle_app_picker(event, window, cx),
         ));
         this.subscriptions.push(cx.subscribe_in(
             &this.account_menu,
@@ -187,6 +258,12 @@ impl AppShell {
                 settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
                 settings_page::SettingsEvent::PreviewChromaTour => {
                     this.navigate(Location::Tour(TourKind::Chroma), window, cx);
+                }
+                settings_page::SettingsEvent::PreviewAlexa => {
+                    this.navigate(Location::Alexa, window, cx);
+                }
+                settings_page::SettingsEvent::PreviewAppPicker => {
+                    app_picker::open_preview(window, cx);
                 }
                 settings_page::SettingsEvent::PreviewModules => {
                     this.module_catalog
@@ -245,9 +322,23 @@ impl AppShell {
                 this.navigate(Location::Main(Tab::Home), window, cx);
             },
         ));
+        this.subscriptions.push(cx.subscribe_in(
+            &this.module_catalog,
+            window,
+            |this, _, event: &service_pages::ModuleCatalogEvent, window, cx| match event {
+                service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
+                    this.open_firmware_update(device.clone(), *preview, window, cx);
+                }
+            },
+        ));
         this.subscriptions.push(cx.subscribe(
             &this.shortcuts,
-            |_, _, _: &crate::features::shortcuts::ShortcutsChanged, cx| cx.notify(),
+            |this, _, _: &crate::features::shortcuts::ShortcutsChanged, cx| {
+                if this.shortcuts.read(cx).committed_pending() {
+                    this.save_auxiliary_preferences(cx);
+                }
+                cx.notify();
+            },
         ));
         for device in devices {
             this.add_device(device, window, cx);
@@ -347,6 +438,7 @@ impl AppShell {
                 .open(host_tabs::HostTab::Device(entity.read(cx).identity()), cx);
         }
         self.devices.push(entity);
+        self.sync_app_picker(window, cx);
     }
     fn dirty(&self, cx: &App) -> bool {
         self.tracking_intro_seen != self.saved_intro_seen
@@ -368,6 +460,17 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if next == self.location {
+            self.host_tabs.focus_location(&next, window, cx);
+            if next == Location::Alexa {
+                if let Some(page) = &self.alexa {
+                    page.update(cx, |page, cx| page.focus(window, cx));
+                }
+            }
+            if next == Location::FirmwareUpdate {
+                if let Some((page, _)) = &self.firmware_update {
+                    page.update(cx, |page, cx| page.focus(window, cx));
+                }
+            }
             return;
         }
         if self.location == Location::Main(Tab::Shortcuts) && self.shortcuts.read(cx).draft_dirty()
@@ -434,6 +537,8 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.app_picker
+            .update(cx, |picker, cx| picker.dismiss(window, cx));
         self.host_tabs.visit(&next, cx);
         if next != self.location {
             self.host_tabs.focus_location(&next, window, cx);
@@ -471,6 +576,25 @@ impl AppShell {
                     .0
                     .update(cx, |tour, cx| tour.focus(window, cx));
             }
+            if next == Location::Alexa {
+                if self.alexa.is_none() {
+                    let page = cx.new(|cx| alexa_page::AlexaPage::new(window, cx));
+                    self.alexa_subscription = Some(cx.observe(&page, |_, _, cx| cx.notify()));
+                    self.alexa = Some(page);
+                }
+                self.alexa
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |page, cx| page.focus(window, cx));
+            }
+            if next == Location::FirmwareUpdate {
+                if self.firmware_update.is_none() {
+                    self.initialize_firmware_update(None, false, window, cx);
+                }
+                if let Some((page, _)) = &self.firmware_update {
+                    page.update(cx, |page, cx| page.focus(window, cx));
+                }
+            }
             if let Some(index) = history_index {
                 self.history_index = index;
             } else {
@@ -483,6 +607,18 @@ impl AppShell {
         }
     }
     fn move_history(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
+        if self.location == Location::Alexa {
+            if let Some(page) = &self.alexa {
+                page.update(cx, |page, cx| {
+                    if delta < 0 {
+                        page.go_back(window, cx);
+                    } else {
+                        page.go_forward(window, cx);
+                    }
+                });
+            }
+            return;
+        }
         let target = self.history_index as isize + delta;
         if target >= 0 && target < self.history.len() as isize {
             self.request_navigation(
@@ -495,6 +631,78 @@ impl AppShell {
     }
     fn save(&mut self, close_after: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.save_with_scope(SaveScope::Workspace, close_after, window, cx);
+    }
+    fn save_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.save_with_scope(SaveScope::Profiles, false, window, cx);
+    }
+    fn discard_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.save_task.is_some() {
+            return;
+        }
+        let mut identities = Vec::new();
+        let mut blocked = Vec::new();
+        for device in &self.devices {
+            let device = device.read(cx);
+            if !device.committed_pending() {
+                continue;
+            }
+            identities.push(device.identity());
+            if device.discard_would_remove_mapping() {
+                blocked.push(device.device().display_name());
+            }
+        }
+        if blocked.is_empty() {
+            self.apply_profile_discard(&identities, false, window, cx);
+            return;
+        }
+        let owner = cx.entity().downgrade();
+        self.source_alert = Some(SourceAlert::open(
+            "放弃正在编辑的按键映射？",
+            format!(
+                "恢复已保存配置会移除以下设备正在编辑的配置文件或旋钮模式：\n{}\n\n继续编辑可保留这些映射草稿。",
+                blocked.join("\n")
+            ),
+            "profiles-keep-editing",
+            vec![
+                AlertAction::new(
+                    "profiles-discard-mapping",
+                    "丢弃映射并回退配置",
+                    move |window, cx| {
+                        let _ = owner.update(cx, |this, cx| {
+                            this.apply_profile_discard(&identities, true, window, cx);
+                        });
+                    },
+                ),
+                AlertAction::new("profiles-cancel-discard", "继续编辑", |_, _| {}).primary(),
+            ],
+            AlertPlacement::AboveCenter,
+            window,
+            cx,
+        ));
+        cx.notify();
+    }
+    fn apply_profile_discard(
+        &mut self,
+        identities: &[String],
+        allow_mapping_discard: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.save_task.is_some() {
+            self.status = "正在保存，请等待完成后再丢弃配置。".into();
+            cx.notify();
+            return;
+        }
+        for device in &self.devices {
+            if identities.contains(&device.read(cx).identity()) {
+                device.update(cx, |device, cx| {
+                    if !device.discard_committed(window, cx) && allow_mapping_discard {
+                        device.discard(window, cx);
+                    }
+                });
+            }
+        }
+        cx.notify();
     }
     fn sync_persistence_state(&self, cx: &mut Context<Self>) {
         let saving = self.save_task.is_some();
@@ -509,6 +717,7 @@ impl AppShell {
             || self.host_tabs.order_pending()
             || self.settings.read(cx).tutorial_pending()
             || cx.global::<CustomColors>().dirty()
+            || self.shortcuts.read(cx).committed_pending()
     }
     fn save_with_scope(
         &mut self,
@@ -517,9 +726,6 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.save_task.is_some() {
-            return;
-        }
         if let Some(error) = &self.storage_error {
             self.status = format!("未保存：原配置文件无法读取（{error}）。请先修复配置文件。");
             cx.notify();
@@ -546,7 +752,7 @@ impl AppShell {
             .devices
             .iter()
             .map(|d| {
-                if scope == SaveScope::Workspace {
+                if scope != SaveScope::Settings {
                     d.read(cx).snapshot()
                 } else {
                     d.read(cx).saved_snapshot()
@@ -558,34 +764,85 @@ impl AppShell {
         } else {
             self.shortcuts.read(cx).saved_snapshot()
         };
-        let preferences = self.settings.read(cx).snapshot();
+        let preferences = if scope == SaveScope::Profiles {
+            self.settings.read(cx).tutorial_snapshot()
+        } else {
+            self.settings.read(cx).snapshot()
+        };
         let custom_colors = cx.global::<CustomColors>().colors();
         let intro = self.tracking_intro_seen;
         let host_order = self.host_tabs.order();
         let dashboard = self.dashboard_state.read(cx).snapshot();
-        let file = store::WorkspaceFile::new(devices.clone(), intro)
-            .with_shortcuts(shortcuts.clone())
-            .with_preferences(preferences.clone())
+        let file = store::WorkspaceFile::new(devices, intro)
+            .with_shortcuts(shortcuts)
+            .with_preferences(preferences)
             .with_custom_colors(custom_colors)
-            .with_host_tab_order(host_order.clone())
-            .with_dashboard(dashboard.clone());
+            .with_host_tab_order(host_order)
+            .with_dashboard(dashboard);
+        self.close_requested |= close_after;
+        self.pending_saves.push_back(PreparedSave {
+            scope,
+            window: window.window_handle(),
+            file,
+        });
+        self.start_pending_save(cx);
+    }
+    fn start_pending_save(&mut self, cx: &mut Context<Self>) -> bool {
+        if self.save_task.is_some() {
+            return true;
+        }
+        let Some(mut request) = self.pending_saves.pop_front() else {
+            return false;
+        };
+        // Capture and validate editable drafts at the original click. A queued
+        // Settings save then uses the latest persisted device/shortcut baseline
+        // so it cannot overwrite a preceding write or commit unrelated drafts.
+        if request.scope == SaveScope::Settings {
+            request.file.devices = self
+                .devices
+                .iter()
+                .map(|device| device.read(cx).saved_snapshot())
+                .collect();
+            request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
+        } else if request.scope == SaveScope::Profiles {
+            request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
+            request.file.preferences = self.settings.read(cx).tutorial_snapshot();
+        }
+        let PreparedSave {
+            scope,
+            window,
+            file,
+        } = request;
+        let snapshot = file.clone();
         let path = store::store_path();
         self.status = "正在保存到本机…".into();
         cx.notify();
-        self.save_task = Some(cx.spawn_in(window, async move |this, cx| {
+        self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
                 .background_spawn(async move { store::write_workspace(&path, &file) })
                 .await;
-            let _ = this.update_in(cx, |this, window, cx| {
+            let _ = this.update(cx, |this, cx| {
                 this.save_task = None;
                 this.sync_persistence_state(cx);
                 match result {
                     Ok(()) => {
+                        let store::WorkspaceFile {
+                            devices,
+                            shortcuts,
+                            preferences,
+                            custom_colors,
+                            tracking_intro_seen: intro,
+                            host_tab_order: host_order,
+                            dashboard,
+                            ..
+                        } = snapshot;
                         // Commit exactly the captured revision. New edits during I/O stay dirty.
-                        if scope == SaveScope::Workspace {
+                        if scope != SaveScope::Settings {
                             for (entity, snapshot) in this.devices.iter().zip(devices) {
                                 entity.update(cx, |d, cx| d.mark_saved(snapshot, cx));
                             }
+                        }
+                        if scope == SaveScope::Workspace {
                             this.shortcuts
                                 .update(cx, |s, cx| s.mark_saved(shortcuts, cx));
                         }
@@ -602,25 +859,51 @@ impl AppShell {
                             "已保存到本机 · 尚未发送到设备"
                         }
                         .into();
-                        if this.settings.read(cx).snapshot().notifications && !close_after {
-                            window.push_notification("配置已保存到本机。", cx);
+                        if this.settings.read(cx).snapshot().notifications && !this.close_requested
+                        {
+                            // Persistence completes without needing the original
+                            // window; a closed window only suppresses its toast.
+                            cx.defer(move |cx| {
+                                let _ = window.update(cx, |_, window, cx| {
+                                    window.push_notification("配置已保存到本机。", cx);
+                                });
+                            });
                         }
-                        if close_after && !this.dirty(cx) {
-                            cx.quit();
-                        } else if this.auxiliary_preferences_pending(cx) {
-                            this.save_auxiliary_preferences(cx);
-                        }
+                        this.continue_save_queue(true, cx);
                     }
-                    Err(error) => this.status = format!("保存失败：{error}"),
+                    Err(error) => {
+                        this.status = format!("保存失败：{error}");
+                        this.continue_save_queue(false, cx);
+                    }
                 }
                 cx.notify();
             });
         }));
         self.sync_persistence_state(cx);
+        true
+    }
+    fn continue_save_queue(&mut self, succeeded: bool, cx: &mut Context<Self>) {
+        let queued = !self.pending_saves.is_empty();
+        let auxiliary_pending = self.auxiliary_preferences_pending(cx);
+        let dirty = self.dirty(cx);
+        match save_continuation(
+            &mut self.close_requested,
+            succeeded,
+            queued,
+            auxiliary_pending,
+            dirty,
+        ) {
+            SaveContinuation::Queued => {
+                self.start_pending_save(cx);
+            }
+            SaveContinuation::Auxiliary => self.save_auxiliary_preferences(cx),
+            SaveContinuation::Close => cx.quit(),
+            SaveContinuation::Idle => {}
+        }
     }
     fn save_auxiliary_preferences(&mut self, cx: &mut Context<Self>) {
-        // Tutorial flags and saved palette edits use the same serialized writer,
-        // keeping device, shortcut and Settings form drafts out of this snapshot.
+        // Tutorial flags, palette edits and committed shortcuts share the
+        // serialized writer. Editor, device and Settings drafts stay out.
         if self.save_task.is_some() || self.storage_error.is_some() {
             cx.notify();
             return;
@@ -630,6 +913,8 @@ impl AppShell {
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
         let custom_colors = cx.global::<CustomColors>().colors();
+        let shortcuts = self.shortcuts.read(cx).snapshot();
+        let shortcuts_pending = self.shortcuts.read(cx).committed_pending();
         let host_order = self.host_tabs.order();
         let dashboard = self.dashboard_state.read(cx).snapshot();
         let file = store::WorkspaceFile::new(
@@ -639,7 +924,7 @@ impl AppShell {
                 .collect(),
             intro,
         )
-        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
+        .with_shortcuts(shortcuts.clone())
         .with_preferences(preferences)
         .with_custom_colors(custom_colors)
         .with_host_tab_order(host_order.clone())
@@ -659,14 +944,21 @@ impl AppShell {
                         this.dashboard_state
                             .update(cx, |state, _| state.mark_saved(dashboard));
                         CustomColors::mark_saved(custom_colors, cx);
+                        this.shortcuts.update(cx, |shortcuts_state, cx| {
+                            shortcuts_state.mark_saved(shortcuts, cx)
+                        });
                         this.settings.update(cx, |settings, cx| {
                             settings.mark_tutorial_saved(gamer_room_seen, dashboard_seen, cx)
                         });
-                        if this.auxiliary_preferences_pending(cx) {
-                            this.save_auxiliary_preferences(cx);
+                        if shortcuts_pending {
+                            this.status = "快捷键已保存到本机 · 尚未应用到引擎".into();
                         }
+                        this.continue_save_queue(true, cx);
                     }
-                    Err(error) => this.status = format!("本地偏好保存失败：{error}"),
+                    Err(error) => {
+                        this.status = format!("本地偏好保存失败：{error}");
+                        this.continue_save_queue(false, cx);
+                    }
                 }
                 cx.notify();
             });
@@ -674,6 +966,12 @@ impl AppShell {
         self.sync_persistence_state(cx);
     }
     fn request_exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some((page, _)) = &self.firmware_update {
+            if !page.update(cx, |page, cx| page.allow_close(window, cx)) {
+                self.navigate(Location::FirmwareUpdate, window, cx);
+                return;
+            }
+        }
         if self.dirty(cx) || self.save_task.is_some() {
             self.confirm_close(window, cx);
         } else {
@@ -684,6 +982,7 @@ impl AppShell {
         let entity = cx.entity();
         window.open_dialog(cx, move |dialog, _, cx| {
             let entity = entity.clone();
+            let cancel = entity.clone();
             let saving = entity.read(cx).save_task.is_some();
             dialog
                 .title("保存本地更改？")
@@ -692,11 +991,12 @@ impl AppShell {
                     h_flex()
                         .gap_3()
                         .justify_end()
-                        .child(
-                            Button::new("close-cancel")
-                                .label("取消")
-                                .on_click(|_, w, cx| w.close_dialog(cx)),
-                        )
+                        .child(Button::new("close-cancel").label("取消").on_click(
+                            move |_, w, cx| {
+                                cancel.update(cx, |this, _| this.close_requested = false);
+                                w.close_dialog(cx);
+                            },
+                        ))
                         .child(
                             Button::new("close-discard")
                                 .label("不保存并关闭")
@@ -760,6 +1060,8 @@ impl AppShell {
         self.navigate(Location::Device(key), window, cx);
     }
     fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
+        let save_profiles = cx.entity().downgrade();
+        let discard_profiles = save_profiles.clone();
         let title = match &self.location {
             Location::Device(key) => self
                 .devices
@@ -771,6 +1073,19 @@ impl AppShell {
             Location::Main(_) => "RAZER SYNAPSE".into(),
             Location::Pairing => "多设备配对".into(),
             Location::Tour(kind) => kind.title().into(),
+            Location::Alexa => "Alexa".into(),
+            Location::FirmwareUpdate => "固件更新".into(),
+        };
+        let (has_previous, has_next) = if self.location == Location::Alexa {
+            self.alexa.as_ref().map_or((false, false), |page| {
+                let page = page.read(cx);
+                (page.has_previous_page(), page.has_next_page())
+            })
+        } else {
+            (
+                self.history_index > 0,
+                self.history_index + 1 < self.history.len(),
+            )
         };
         h_flex()
             .id("app-toolbar")
@@ -791,7 +1106,14 @@ impl AppShell {
                         )
                         .w(surface::css(40.))
                         .h_full()
-                        .disabled(self.history_index == 0)
+                        .rounded(ButtonRounded::None)
+                        .custom(
+                            ButtonCustomVariant::new(cx)
+                                .color(cx.theme().transparent)
+                                .hover(cx.theme().secondary_hover)
+                                .active(cx.theme().secondary_hover),
+                        )
+                        .disabled(!has_previous)
                         .on_click(
                             cx.listener(|this, _, window, cx| this.move_history(-1, window, cx)),
                         ),
@@ -805,11 +1127,44 @@ impl AppShell {
                         )
                         .w(surface::css(40.))
                         .h_full()
-                        .disabled(self.history_index + 1 >= self.history.len())
+                        .rounded(ButtonRounded::None)
+                        .custom(
+                            ButtonCustomVariant::new(cx)
+                                .color(cx.theme().transparent)
+                                .hover(cx.theme().secondary_hover)
+                                .active(cx.theme().secondary_hover),
+                        )
+                        .disabled(!has_next)
                         .on_click(
                             cx.listener(|this, _, window, cx| this.move_history(1, window, cx)),
                         ),
-                    ),
+                    )
+                    .when(self.location == Location::Alexa, |navigation| {
+                        navigation.child(
+                            surface::asset_button(
+                                "alexa-refresh",
+                                "synapse/alexa-refresh.svg",
+                                crate::i18n::t("REFRESH"),
+                                cx,
+                            )
+                            .w(surface::css(40.))
+                            .h_full()
+                            .rounded(ButtonRounded::None)
+                            .custom(
+                                ButtonCustomVariant::new(cx)
+                                    .color(cx.theme().transparent)
+                                    .hover(cx.theme().secondary_hover)
+                                    .active(cx.theme().secondary_hover),
+                            )
+                            .on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    if let Some(page) = &this.alexa {
+                                        page.update(cx, |page, cx| page.refresh(window, cx));
+                                    }
+                                },
+                            )),
+                        )
+                    }),
             )
             .child(
                 div()
@@ -821,7 +1176,15 @@ impl AppShell {
                     .text_color(cx.theme().muted_foreground)
                     .text_center()
                     .text_ellipsis()
-                    .child(title),
+                    .when(self.location == Location::Alexa, |title| {
+                        title.flex().items_center().justify_center().child(
+                            img("synapse/alexa-header.svg")
+                                .h(surface::css(16.))
+                                .w(surface::css(205.382 * 16. / 30.))
+                                .object_fit(ObjectFit::Contain),
+                        )
+                    })
+                    .when(self.location != Location::Alexa, |view| view.child(title)),
             )
             .child(
                 h_flex()
@@ -829,6 +1192,28 @@ impl AppShell {
                     .min_w_0()
                     .h_full()
                     .justify_end()
+                    .child(header_status::unsaved_profiles(
+                        self.devices
+                            .iter()
+                            .filter_map(|device| {
+                                let device = device.read(cx);
+                                device
+                                    .committed_pending()
+                                    .then(|| (device.identity(), device.device().display_name()))
+                            })
+                            .collect(),
+                        self.save_task.is_some(),
+                        move |window, cx| {
+                            let _ =
+                                save_profiles.update(cx, |this, cx| this.save_profiles(window, cx));
+                        },
+                        move |window, cx| {
+                            let _ = discard_profiles
+                                .update(cx, |this, cx| this.discard_profiles(window, cx));
+                        },
+                        cx,
+                    ))
+                    .child(self.app_picker.clone())
                     .child(
                         surface::asset_button("app-settings", "synapse/settings.svg", "设置", cx)
                             .w(surface::css(46.))
@@ -845,19 +1230,6 @@ impl AppShell {
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.navigate(Location::Main(Tab::Setting), window, cx)
                             })),
-                    )
-                    .child(
-                        Button::new("save-all")
-                            .label("保存")
-                            .small()
-                            .disabled(
-                                !self.dirty(cx)
-                                    || self.save_task.is_some()
-                                    || self.storage_error.is_some(),
-                            )
-                            .on_click(
-                                cx.listener(|this, _, window, cx| this.save(false, window, cx)),
-                            ),
                     )
                     .child(self.account_menu.clone()),
             )
@@ -967,6 +1339,16 @@ impl Render for AppShell {
                 .introduction_tours
                 .get(kind)
                 .map(|(tour, _)| tour.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::Alexa => self
+                .alexa
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::FirmwareUpdate => self
+                .firmware_update
+                .as_ref()
+                .map(|(page, _)| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Pairing => div()
                 .id("pairing-page-scroll")

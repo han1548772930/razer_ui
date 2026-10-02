@@ -1,5 +1,7 @@
 # 源码审计依据与更正记录
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 > 文档审计后已接入新的 Rust 设备工作区，当前实施进度见[重构状态](03-implementation-gap.md)。本文中“本轮仅审计”指前一轮文档任务。
 
 ## 1. 范围与证据等级
@@ -19,7 +21,7 @@ locale 只能解释文案。共享组件、导出常量和资源存在，均不�
 
 ## 2. 原包版本
 
-宿主：[package.json](../../.ref/synapse-asar/package.json)，应用名 `razerappengine`，版本 **4.0.563**。
+当前官方宿主：[package.json](../../.ref/host-4.0.827/package.json)，应用名 `razerappengine`，版本 **4.0.827**，来自正式站点更新清单。本机安装仍为4.0.821；本文早期宿主审计基于4.0.563，不能借链接更新视为重新审计。完整版本和复核范围见[当前来源](20-current-source-version.md)。
 
 | 产品 | 主 JS | 主 CSS | 模块版本 / 构建号 | commit |
 |---|---|---|---|---|
@@ -27,7 +29,7 @@ locale 只能解释文案。共享组件、导出常量和资源存在，均不�
 | 653 | [main.7b71cce5.js](../../.ref/devices/653/static/js/main.7b71cce5.js) | [main.5425442a.css](../../.ref/devices/653/static/css/main.5425442a.css) | 1.0.1 / 2607280325 | `e80b682b145095965d03075fdbc5ea279422716b` |
 | 777 | [main.eb70ce38.js](../../.ref/devices/777/static/js/main.eb70ce38.js) | [main.e4bab2aa.css](../../.ref/devices/777/static/css/main.e4bab2aa.css) | 1.0.1 / 2607021103 | `53bab6de991026377087c363c0e27fdba42869ee` |
 
-主前端：[main.7897a4cf.js](../../.ref/frontend/static/js/main.7897a4cf.js)、[App.eb32d7cd.chunk.js](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js)。独立产品不共享同一份短符号命名；不能跨 bundle 搜同名类后认定行为相同。
+主前端：[main.01550b17.js](../../.ref/applications/synapse/dashboard/static/js/main.01550b17.js)、[App.72827d47.chunk.js](../../.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js)。独立产品不共享同一份短符号命名；不能跨 bundle 搜同名类后认定行为相同。
 
 ## 3. 可复核的定位步骤
 
@@ -110,7 +112,7 @@ Settings 使用 `/synapse/settings/`、窗口名 `settings-synapse`。2026-10-02
 
 | 文件 | SHA-256 |
 |---|---|
-| frontend main.7897a4cf.js | `31ddd5fea766268af557f35cbc45aee127f6571c6f0e42907780686324592aa3` |
+| frontend main.01550b17.js | `31ddd5fea766268af557f35cbc45aee127f6571c6f0e42907780686324592aa3` |
 | 182 main.db20a7c4.js | `7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7` |
 | 182 main.48c20423.css | `dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e` |
 | 653 main.7b71cce5.js | `5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab` |

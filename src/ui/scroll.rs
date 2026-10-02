@@ -3,10 +3,11 @@
 //! Kit 0.7's overflow_*_scrollbar wrapper copies max_size to its outer node but
 //! also retains it on an auto-sized content node. In height-limited dialogs that
 //! can cap the measured content at the viewport height. Use GPUI's native scroll
-//! container and Kit's scrollbar on the same node instead. Both still own all
-//! wheel, gesture, hit testing and thumb-drag behavior.
+//! container and Kit's scrollbar on the same node instead. The scrollbar reads
+//! its fixed viewport from the scroll handle, not its scrolled child layout.
+//! GPUI and Kit still own wheel, gesture, hit testing and thumb-drag behavior.
 use gpui_kit::base::InteractiveElementExt as _;
-use gpui_kit::component::scroll::{ScrollableElement as _, ScrollbarAxis};
+use gpui_kit::component::scroll::{Scrollbar, ScrollbarAxis};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::panic::Location;
 
@@ -80,6 +81,7 @@ impl<E: InteractiveElement + Styled + ParentElement + Element + 'static> RenderO
                 .read(cx)
                 .clone()
         });
+        let scrollbar_id = (self.id.clone(), "scrollbar");
         self.element
             .id(self.id)
             .relative()
@@ -88,7 +90,18 @@ impl<E: InteractiveElement + Styled + ParentElement + Element + 'static> RenderO
                 _ => element.overflow_scroll(),
             })
             .track_scroll(&scroll)
-            .scrollbar(&scroll, self.axis)
+            .when(!window.is_inspector_picking(cx), |element| {
+                // Kit's `.scrollbar()` opts into `viewport_from_layout()`. As
+                // a child of the scroll owner that layout moves with content,
+                // lifting the track behind the fixed navigation. The default
+                // Scrollbar viewport comes from this frame's ScrollHandle.
+                element.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(Scrollbar::new(&scroll).id(scrollbar_id).axis(self.axis)),
+                )
+            })
     }
 }
 

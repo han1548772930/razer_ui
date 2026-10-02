@@ -7,13 +7,12 @@ use super::{
 };
 use crate::{
     model::Device,
-    ui::{surface, theme::DrawerColors},
+    ui::{scroll::SourceScrollable as _, surface, theme::DrawerColors},
 };
 use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
     ActiveTheme, IndexPath,
     button::{Button, ButtonCustomVariant, ButtonVariants},
-    scroll::{ScrollableElement, ScrollbarAxis},
     select::{SelectEvent, SelectState},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -293,7 +292,7 @@ impl DeviceWorkspace {
             .h_full()
             .min_w_0()
             .min_h_0()
-            .overflow_scroll()
+            .scrollable_both()
             .track_scroll(&self.customize_drawer.body_scroll)
             .child(
                 div()
@@ -312,8 +311,7 @@ impl DeviceWorkspace {
                     .px(surface::css(20.))
                     .pb(surface::css(20.))
                     .child(self.customize_page(cx)),
-            )
-            .scrollbar(&self.customize_drawer.body_scroll, ScrollbarAxis::Both);
+            );
         let from_drawer = open
             && self.mapping.as_ref().is_some_and(|mapping| {
                 self.customize_drawer.source_input.as_ref() == Some(&mapping.input)
@@ -511,10 +509,9 @@ impl DeviceWorkspace {
                     .relative()
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .scrollable_y()
                     .track_scroll(&self.customize_drawer.scroll)
-                    .children(rows.into_iter().map(|row| self.drawer_row(row, cx)))
-                    .scrollbar(&self.customize_drawer.scroll, ScrollbarAxis::Vertical),
+                    .children(rows.into_iter().map(|row| self.drawer_row(row, cx))),
             )
             .into_any_element()
     }

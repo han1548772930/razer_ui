@@ -6,7 +6,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
-pub(crate) use super::synapse_select::select;
+pub(crate) use super::synapse_select::{select, select_alexa};
 
 #[cfg(test)]
 #[path = "surface_tests.rs"]
@@ -75,9 +75,10 @@ pub(crate) fn navigation_button(
 pub(crate) fn asset_button(
     id: &'static str,
     asset: &'static str,
-    label: &'static str,
+    label: impl Into<SharedString>,
     cx: &App,
 ) -> Button {
+    let label = label.into();
     let states = match asset {
         "synapse/eq-reset.svg" => {
             Some(("synapse/eq-reset-hover.svg", "synapse/eq-reset-active.svg"))
@@ -99,7 +100,7 @@ pub(crate) fn asset_button(
         .border_0()
         .rounded(cx.theme().radius)
         .size(css(28.))
-        .accessibility_label(label)
+        .accessibility_label(label.clone())
         .tooltip(label)
         .custom(
             ButtonCustomVariant::new(cx)
@@ -358,12 +359,26 @@ pub(crate) fn dot_background(cx: &App) -> AnyElement {
             let width = f32::from(bounds.size.width);
             let height = f32::from(bounds.size.height);
             let step = f32::from(step);
-            let start_x = (width / 2. - step / 2.).rem_euclid(step);
-            let start_y = (height / 2. - step / 2.).rem_euclid(step);
-            for row in 0..=(height / step) as usize {
-                for col in 0..=(width / step) as usize {
+            if width <= 0. || height <= 0. {
+                return;
+            }
+            let dot_size = f32::from(scale * 2.);
+            // The two CSS gradients expose the final 2px of a centered
+            // 22px tile, rather than a dot at the tile's origin. Include
+            // the preceding tile so partially visible edge dots survive.
+            let start_x = ((width - step) / 2. + f32::from(scale * 20.)).rem_euclid(step) - step;
+            let start_y = ((height - step) / 2. + f32::from(scale * 20.)).rem_euclid(step) - step;
+            for row in 0..=(height / step) as usize + 1 {
+                for col in 0..=(width / step) as usize + 1 {
                     let x = start_x + col as f32 * step;
                     let y = start_y + row as f32 * step;
+                    let left = x.max(0.);
+                    let top = y.max(0.);
+                    let right = (x + dot_size).min(width);
+                    let bottom = (y + dot_size).min(height);
+                    if right <= left || bottom <= top {
+                        continue;
+                    }
                     // CSS radial-gradient defaults to an ellipse reaching the corners.
                     let radius = (((x - width / 2.) / (width / 2.)).powi(2)
                         + ((y - height / 2.) / (height / 2.)).powi(2))
@@ -371,8 +386,8 @@ pub(crate) fn dot_background(cx: &App) -> AnyElement {
                         / 2_f32.sqrt();
                     window.paint_quad(fill(
                         Bounds::new(
-                            bounds.origin + point(px(x), px(y)),
-                            size(scale * 2., scale * 2.),
+                            bounds.origin + point(px(left), px(top)),
+                            size(px(right - left), px(bottom - top)),
                         ),
                         color.opacity((1. - radius).clamp(0., 1.)),
                     ));

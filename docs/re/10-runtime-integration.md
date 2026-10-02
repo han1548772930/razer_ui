@@ -1,10 +1,12 @@
 # 运行时接入：静态签名与真实服务边界
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 2026-10-01 审计只读取 `.ref`、已安装 PE 文件及依赖源码，未加载 DLL、未运行 worker、未写设备。以下“已证实”指调用声明和本机导出相互吻合，不代表真实设备执行已验证。
 
 ## 1. 当前安装与原宿主
 
-原宿主来自 [.ref/synapse-asar](../../.ref/synapse-asar)，版本 4.0.563；本机最新安装为 `C:\Program Files\Razer\RazerAppEngine\app-4.0.821`，另保留 4.0.662。版本不能混为同一份二进制。
+本节保留早期4.0.563宿主与本机4.0.821原生文件的历史静态审计。本机安装路径为 `C:\Program Files\Razer\RazerAppEngine\app-4.0.821`，另保留4.0.662；本轮新取得的官方宿主是 [.ref/host-4.0.827](../../.ref/host-4.0.827)。安装的DLL、旧wrapper结论和当前宿主源码不能混为同一份二进制或同一轮验证。
 
 本轮用 Python `struct` 只读解析 PE 导出表：
 
@@ -24,17 +26,17 @@
 
 | 边界 | 已证实声明 | 来源与限制 |
 |---|---|---|
-| 映射生命周期 | `void mappingEngineInitialize(cb0)` / `void mappingEngineShutdown(cb0)` | [mapping_engine/win/index.js](../../.ref/synapse-asar/electron/modules/mapping_engine/win/index.js) 的 `initDll` 和同名 action；没有宿主 nonce 参数 |
+| 映射生命周期 | `void mappingEngineInitialize(cb0)` / `void mappingEngineShutdown(cb0)` | [mapping_engine/win/index.js](../../.ref/host-4.0.827/electron/modules/mapping_engine/win/index.js) 的 `initDll` 和同名 action；没有宿主 nonce 参数 |
 | 映射查询 | `void getGlobalMode(cb3)` / `void getGlobalShortcuts(cb3)` | 同文件对应方法；返回 JSON/字符串需再解析，失败保留 `result/reason` |
 | 按键通知注册 | `void registerGlobalShortcut(uint32 vkeyCode, uint32 modifiers, const char *argument, cb2)`；注销前两项加 `cb2` | 同文件 `registerGlobalShortcut`；事件回调为 `void(int, const char *, uint64)`，通过 `setGlobalShortcutEventCallback(event_cb, cb2)` 安装 |
 | 原全局映射提交 | `void localStorageSetItem(const char *key, const char *value, cb2)` | 同文件同名方法；页面使用键 `synapseGlobalShortcuts`，值包含 `{appEngine: {mappings, hash}}` |
-| 简单服务生命周期 | `void simpleServiceInitialize(cb0)` / `void simpleServiceShutdown(cb0)` | [simple_service/win/index.js](../../.ref/synapse-asar/electron/modules/simple_service/win/index.js) |
+| 简单服务生命周期 | `void simpleServiceInitialize(cb0)` / `void simpleServiceShutdown(cb0)` | [simple_service/win/index.js](../../.ref/host-4.0.827/electron/modules/simple_service/win/index.js) |
 | 版本、系统音频枚举 | `void simpleGetVersionInfo(cb3)` / `void simpleEnumerateAudioDevices(cb3)` | 同文件同名方法，结果分别叫 `versionInfo` / `deviceList`；不等于 Razer USB 设备枚举 |
 | 进程启动 | `void simpleLaunchUserAppProcess(const char *folderName, const char *filePath, const char *params, void(bool,const char *,int))` | 同文件；`NoWait` 变体回调为 `cb2`，不能混用 |
-| 灯光 driver | `void Startup()` / `void Shutdown()` / `char *Configure(const char *)` / `void FreeString(void *)` | [ffiLightingDriver.js](../../.ref/synapse-asar/electron/modules/lighting/ffiLightingDriver.js)；现有 [lighting.rs](../../src/backend/lighting.rs) 仅覆盖部分 driver 调用 |
-| 系统工具 | `bool Initialize()`、`void Terminate()`、`void *GetDLLVersion()`、`void FreeMalloc(void *)`、`bool SetNodeFFIEvent(void *)` | [sysutil/win/index.js](../../.ref/synapse-asar/electron/modules/sysutil/win/index.js) 与 [ffiMain.js](../../.ref/synapse-asar/electron/modules/ffi/ffiMain.js)；已有旧探测记录显示加载阻塞，本轮不重新探测 |
+| 灯光 driver | `void Startup()` / `void Shutdown()` / `char *Configure(const char *)` / `void FreeString(void *)` | [ffiLightingDriver.js](../../.ref/host-4.0.827/electron/modules/lighting/ffiLightingDriver.js)；现有 [lighting.rs](../../src/backend/lighting.rs) 仅覆盖部分 driver 调用 |
+| 系统工具 | `bool Initialize()`、`void Terminate()`、`void *GetDLLVersion()`、`void FreeMalloc(void *)`、`bool SetNodeFFIEvent(void *)` | 历史 `sysutil/win/index.js`（当前4.0.827已变化，本文未重审其ABI） 与 [ffiMain.js](../../.ref/host-4.0.827/electron/modules/ffi/ffiMain.js)；已有旧探测记录显示加载阻塞，本轮不重新探测 |
 
-[7282 的 GlobalShortcutsContainer](../../.ref/frontend/static/js/7282.873c10ab.chunk.js) 用 `generateAppEngineMappings` 生成原引擎映射，再计算 hash。`registerGlobalShortcut(..., argument)` 是独立的通知 API；把任意 UI JSON 塞入 argument 不能证明原输出已经配置。提交接口可以接收已经生成的 `appEngine`，但不得编造 mapping/hash 协议。
+[当前4608的 GlobalShortcutsContainer](../../.ref/applications/synapse/dashboard/static/js/4608.e973916f.chunk.js) 用 `generateAppEngineMappings` 生成原引擎映射，再计算 hash。`registerGlobalShortcut(..., argument)` 是独立的通知 API；把任意 UI JSON 塞入 argument 不能证明原输出已经配置。提交接口可以接收已经生成的 `appEngine`，但不得编造 mapping/hash 协议。
 
 ### 2.1 全局快捷键现有配置不能通过已验证接口读回
 
@@ -74,7 +76,7 @@
 
 [runtime_job.rs](../../src/backend/runtime_job.rs) 按 `windows-sys 0.61.2` 的官方 Win32 声明创建 Job Object，设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`。父进程通过不可继承的 `OwnedHandle` 持有唯一 Job 句柄；worker 在启动请求线程前加入 Job，加入失败则清理 child 并返回错误，不降级到无保护模式。只有加入成功后才可能送出加载 vendor DLL 的请求。父程序即使通过 `cx.quit` 直接退出、没有执行 Rust Drop，操作系统仍会关闭句柄并终止该 worker；不依赖卡死的 DLL 返回或 worker 再次读取 EOF。新增特性仅为 `Win32_System_JobObjects`，版本仍用现有锁定依赖。
 
-请求包括 `SimpleVersion`、`AudioDevices`、`HidDevices`、`GlobalMode`、`GlobalShortcuts`、`RegisterShortcut`、`UnregisterShortcut`、`SubmitGlobalShortcutMappings`、`ShortcutEvents` 和 `Shutdown`。提交只有收到原生成功回调才返回 `accepted`；这不是设备回读。原引擎映射的生成器位于 [2280 chunk](../../.ref/frontend/static/js/2280.d4f2f9d4.chunk.js) 的 `generateAppEngineMappings → getAppEngineMapping`，worker 不编造它的输出。
+请求包括 `SimpleVersion`、`AudioDevices`、`HidDevices`、`GlobalMode`、`GlobalShortcuts`、`RegisterShortcut`、`UnregisterShortcut`、`SubmitGlobalShortcutMappings`、`ShortcutEvents` 和 `Shutdown`。提交只有收到原生成功回调才返回 `accepted`；这不是设备回读。原引擎映射的生成器位于 [2280 chunk](../../.ref/applications/synapse/dashboard/static/js/2280.4d9e22ab.chunk.js) 的 `generateAppEngineMappings → getAppEngineMapping`，worker 不编造它的输出。
 
 父子通信使用带请求序号的 JSON 行，单帧上限 4 MiB。仅解析带 `RAZER_UI_SERVICE ` 前缀的响应；无关原生日志使用非 UTF-8 Windows 编码时也不会误判成协议帧。独立 writer 避免在 pipe 写入时挂死；完整请求限时 15 秒，单个原生回调限时 4 秒。即使 DllMain 或原生函数本身在返回前阻塞，父进程的完整请求期限仍然生效。回调超时后 worker 标为不可复用并退出，父进程结束自己持有的 child；终止后的 OS `wait` 放在独立回收线程，不会再次阻塞请求线程。终止失败返回明确错误，不称为已成功结束；关闭 Job 句柄同时提供终止保障。`is_stopped()` 表示该客户端连接已关闭，不能用它推断每项设备服务已经初始化。
 

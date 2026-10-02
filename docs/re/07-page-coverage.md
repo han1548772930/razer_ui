@@ -1,12 +1,14 @@
 # 已取得源码的页面入口与附属界面覆盖
 
-更新日期：2026-10-02。范围来自本地原版根路由、实际 render、父组件传参和 CSS；旧截图不参与比较。这里统计 **21 个普通页面实例**：主应用 4 个、182 鼠标 4 个、653 键盘 2 个、777 耳机 4 个、七款鼠标垫各 1 个灯光页。同名 Lighting/Power 按产品分别统计，因为父组件、字段和控件不同。帮助、独立配对、Settings、Introduction Tour 及弹层另列，不能用一个 Tab 数量代表完整 UI。
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
+更新日期：2026-10-02。范围来自本地原版根路由、实际 render、父组件传参和 CSS；旧截图不参与比较。这里统计 **21 个主应用及产品普通页面实例**：主应用 4 个、182 鼠标 4 个、653 键盘 2 个、777 耳机 4 个、七款鼠标垫各 1 个灯光页。同名 Lighting/Power 按产品分别统计，因为父组件、字段和控件不同。帮助、独立配对、Settings、Introduction Tour、Alexa 的四页与安装器、更多应用弹层另列，不能用一个 Tab 数量代表完整 UI。
 
 当前 Rust 产品入口包括原三款及 3072/3073/3074/3076/3077/3078/3080；新增七款的效果、默认值、帮助与资源差异见[鼠标垫规格](../screens/17-mouse-mat-lighting.md)，这些仍不是原版全部产品。目前沿官方目录和明确声明核查 596 个 ID，已取得 331 个产品资源清单所列的 JS/CSS，331 个入口已解析出实际导航数组；下载不计作界面实现。来源与统计边界见[最新产品目录](16-product-catalog.md)。原宿主另有独立子应用。
 
 ## 1. 根路由和当前页面
 
-主应用原始文件是 [App.eb32d7cd.chunk.js](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js)。HomePage 的 nav 数组使用 `Rav/BSg/iwS/fUK`，render 按同一 `active_view` 进入四个 lazy 模块。产品根分别在 [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js)、[653 main](../../.ref/devices/653/static/js/main.7b71cce5.js)、[777 main](../../.ref/devices/777/static/js/main.eb70ce38.js)。Rust 正常入口以 [nav.rs](../../src/nav.rs)、[shell.rs](../../src/shell.rs)、[workspace.rs](../../src/features/workspace.rs) 为准。
+主应用原始文件是 [App.72827d47.chunk.js](../../.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js)。HomePage 的 nav 数组使用 `Rav/BSg/iwS/fUK`，render 按同一 `active_view` 进入四个 lazy 模块。产品根分别在 [182 main](../../.ref/devices/182/static/js/main.db20a7c4.js)、[653 main](../../.ref/devices/653/static/js/main.7b71cce5.js)、[777 main](../../.ref/devices/777/static/js/main.eb70ce38.js)。Rust 正常入口以 [nav.rs](../../src/nav.rs)、[shell.rs](../../src/shell.rs)、[workspace.rs](../../src/features/workspace.rs) 为准。
 
 | 页面实例 | 原版实际入口 | 当前 Rust 画面与交互 | 仍有差异 |
 |---|---|---|---|
@@ -31,6 +33,8 @@
 
 | 界面 | 原版挂载证据与边界 | 当前状态 |
 |---|---|---|
+| Alexa | `/synapse/alexa/` 的 `QE` 按安装数据选择 `qE` 或 `zE`；后者挂载 `Bp/Yp/yE/OE` | Home、Skills、Settings、Help、账户分支、安装器、更新说明和退出确认已接入独立页签；重复进入复用实体，关闭后重开重置；未知安装/账户不伪装成功，示例状态通过明确预览选择器查看，见[Alexa 规格](../screens/18-alexa.md) |
+| 更多应用 | 主前端 `96776` → 独立 `/rz-app-menu/` iframe | 原 410px 三列弹层、设备/模块/其他应用/推荐条件、未读提示、禁用和安装态预览；本地设备可打开已有工作区，安装与原生应用查询仍未知，见[应用选择器](../screens/19-app-picker.md) |
 | 三产品 HELP | 根 navs 分别为 182 `KN`、653 `Jd`、777 `Tv`；header 将 HELP 移到右侧入口 | 已实现设备内帮助页、产品支持/指南、序列号复制及2秒复位、固件版本和注册，Profile 在此隐藏；恢复出厂、序列号重试和产品 UI/MW/Synapse 字段绑定待接，设置中的独立版本查询不代替该绑定，见[帮助规格](../screens/11-help.md) |
 | 多设备配对 | 182 `displayMode === multiDevicePairing` → `GG/UG`；`PG/mG` 创建 `/synapse/multipairing/`；主前端 4130 挂载扫描/绑定视图 | DUALLINK 0–11 状态机、候选卡、取消/超时/重试、713 警告、解绑确认及生命周期保护已实现；真实 transport 未接入，无虚构设备或成功状态 |
 | Settings | 独立 720 chunk 的 `ho/uo` 组件树与对应 CSS | Synapse / General 的启动、通知、推荐、教程、语言、关于区域及偏好保存已实现；推荐重置与即时教程标记保持原范围；原启动、迁移、灯光服务未接入，见[设置规格](../screens/12-settings.md) |
@@ -41,10 +45,10 @@
 | 映射右侧编辑器 | `QP.renderPopup` 根据 activeButton 和 Chroma 加载状态挂载模块 5107；TwoTap 等有独立能力条件 | 292px 分类编辑器、录制、修饰键、Turbo、灵敏度、文本、Profile、Launch 等本地编辑已接入；宏/跨设备/Chroma 缺服务时不可保存，见[映射审计](09-mapping-editor.md) |
 | 映射未保存确认 | `QP.renderSaveAlert` 保存 nextAction/dontSave 回调；主全局快捷键另有 `Fe.renderSaveAlert` | 设备内部切键、切页及 Profile 管理走保存/丢弃/继续编辑；跨宿主标签保留设备 Entity 与映射草稿；主应用四页切换保护快捷键草稿；非法草稿禁存 |
 | Windows 登录映射警告/冲突提示 | `QP.renderWindowsLoginWarningAlert`、`isConflictedQuickRemapping` 条件组件 | 已审计真实条件；本地保存未应用映射，故不显示登录影响提示；Quick Remapping 缺实际小组件与冲突事件，见[警告审计](11-mapping-warnings.md) |
-| Calibration 介绍 | 182 `LD` 根据持久化标记显示 `DD`；这是关闭式说明弹层 | 本地首次提示标记已持久化；不是校准扫描进度/完成页面 |
+| Calibration 介绍 | 当前182 `LD` 根据全局持久化标记显示 `DD`；这是页面流中的介绍卡片，只有关闭按钮，无模态遮罩 | 本地首次标记已持久化，介绍与600px widget分别布局，窄窗最小宽度及关闭后键盘焦点已修正；见[当前专项审计](smart-tracking-current-audit.md)，未运行窗口验收 |
 | Snap Tap 键对编辑 | 653 `wm` → `Ym`，读取 keyList/isEnabled，源码限制最多四组，adjustmentModeRunning 阻止操作 | 最多四组顺序录制/删除，跨组去重和禁键校验；Escape/失焦取消未完成键对；布局选择器补充左右修饰键与数字键盘 Enter；设备调整状态待接 |
 | Command Dial 模式编辑 | 653 `km → Am/Tm` 未传 `hasSynapseCustom`，实际自定义输入为 ScrollRight/ScrollLeft；选用 uid 与高亮 uid 分开 | 已实现最多 100 个自定义模式、名称/颜色、启用/选用/高亮、拖放/键盘排序、删除/重置确认及双方向独立映射；至少保留一个启用预设，硬件写入待接 |
-| Dashboard 教程 | chunk 4130 的教程状态与视频入口 | 原视频未完整取得，未实现完整教程播放器 |
+| Dashboard 教程 | chunk 4130 的教程状态与视频入口 | 已嵌入原视频帧，保留教程步骤与已读状态；独立五步 Synapse 和三步 Chroma 教程另有各自页签，见[教程规格](../screens/16-introduction-tour.md)；未运行播放验收 |
 | Gamer Room 教程/连接 popup | chunk 9388 的 `ce` 教程、多步控制；添加入口挂载 `IotPopupRoot` | 两步教程 Base Popover 与添加流程 Base Dialog 已接入；原设备扫描服务未接通，不生成房间设备或连接成功 |
 | 快捷键删除确认 | chunk 7282 的快捷键卡 `deleteShortcut`/onDeleteShortcut 和删除确认组件 | 本地删除确认、取消及保存前丢弃恢复已实现；原生配置读取/替换仍受 ABI 边界限制 |
 

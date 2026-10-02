@@ -1,6 +1,91 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Alexa's account button and sample response bubbles, from main.bbca16c4.css.
+pub(crate) struct AlexaColors;
+impl AlexaColors {
+    pub(crate) fn amazon_button() -> Hsla {
+        rgb(0x31c4f3).into()
+    }
+    pub(crate) fn amazon_button_hover() -> Hsla {
+        rgb(0x6fd6f7).into()
+    }
+    pub(crate) fn amazon_button_active() -> Hsla {
+        rgb(0x3589aa).into()
+    }
+    pub(crate) fn amazon_button_text() -> Hsla {
+        rgb(0x232f3e).into()
+    }
+    pub(crate) fn bubble_blue() -> Hsla {
+        rgb(0x2445f7).into()
+    }
+    pub(crate) fn skill_text() -> Hsla {
+        rgb(0xdadada).into()
+    }
+    pub(crate) fn checkbox_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+    pub(crate) fn checkbox_hover() -> Hsla {
+        rgb(0x7ce26b).into()
+    }
+    pub(crate) fn checkbox_active() -> Hsla {
+        rgb(0x2f951e).into()
+    }
+    pub(crate) fn progress_track() -> Hsla {
+        rgb(0x2c5824).into()
+    }
+    pub(crate) fn improvement() -> Hsla {
+        rgb(0x8b7add).into()
+    }
+    pub(crate) fn fixed() -> Hsla {
+        rgb(0x28aadc).into()
+    }
+    pub(crate) fn dropdown_hover() -> Hsla {
+        rgb(0x1a1a1a).into()
+    }
+    pub(crate) fn dropdown_disabled() -> Hsla {
+        rgb(0x454545).into()
+    }
+    pub(crate) fn dropdown_arrow() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn tooltip_background() -> Hsla {
+        rgb(0x5c5c5c).into()
+    }
+    pub(crate) fn tooltip_text() -> Hsla {
+        rgb(0xf4f4f4).into()
+    }
+    pub(crate) fn bubble_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+}
+
+/// Independent `/rz-app-menu/` group surfaces and the source New badge.
+pub(crate) struct AppPickerColors;
+impl AppPickerColors {
+    pub(crate) fn surface() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn hover() -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+    pub(crate) fn title() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn badge_background() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn badge_text() -> Hsla {
+        rgb(0x000000).into()
+    }
+}
+
 /// Settings `.thx-btn.test` has its own gray fill and translucent black border.
 pub(crate) struct SettingsButtonColors;
 impl SettingsButtonColors {
@@ -284,6 +369,19 @@ impl HeaderStatusColors {
     pub(crate) fn update_tooltip_border() -> Hsla {
         rgb(0x383838).into()
     }
+}
+
+/// The independent firmware updater's current main.3e3077d6.css palette.
+pub(crate) struct FirmwareColors;
+impl FirmwareColors {
+    pub(crate) fn background() -> Hsla { rgb(0x222222).into() }
+    pub(crate) fn foreground() -> Hsla { rgb(0xcccccc).into() }
+    pub(crate) fn highlight() -> Hsla { rgb(0x44d62c).into() }
+    pub(crate) fn track() -> Hsla { rgb(0x2c5824).into() }
+    pub(crate) fn tile() -> Hsla { rgb(0x111111).into() }
+    pub(crate) fn warning() -> Hsla { rgb(0xfd8611).into() }
+    pub(crate) fn border() -> Hsla { rgb(0x000000).into() }
+    pub(crate) fn button_gray() -> Hsla { rgb(0x707070).into() }
 }
 
 /// rz-user-profile-menu's .dropdown-razer and the host avatar trigger.

@@ -66,7 +66,7 @@ def source_jobs(root, pid):
         if not re.fullmatch(r"/synapse/assets/imgs/favicon/[A-Z_]+\.svg", relative):
             raise ValueError(f"Unexpected manifest favicon: {pid}:{relative}")
         jobs.append(("https://apps.razer.com" + relative,
-                     root / ".ref/frontend/shared-favicon" / Path(relative).name, "svg"))
+                     root / ".ref/applications/synapse/dashboard/shared-favicon" / Path(relative).name, "svg"))
     return jobs
 
 

@@ -36,6 +36,8 @@ pub(super) enum SettingsEvent {
     Save,
     Preview(u32),
     PreviewChromaTour,
+    PreviewAlexa,
+    PreviewAppPicker,
     PreviewModules,
     PreviewHeader,
     ReleaseNotes,
@@ -612,6 +614,22 @@ impl SettingsPage {
                                     }))
                                 },
                             ))
+                            .child(
+                                Button::new("preview-app-picker")
+                                    .label("预览更多应用…")
+                                    .outline()
+                                    .on_click(cx.listener(|_, _, _, cx| {
+                                        cx.emit(SettingsEvent::PreviewAppPicker)
+                                    })),
+                            )
+                            .child(
+                                Button::new("preview-alexa")
+                                    .label("预览 Alexa…")
+                                    .outline()
+                                    .on_click(cx.listener(|_, _, _, cx| {
+                                        cx.emit(SettingsEvent::PreviewAlexa)
+                                    })),
+                            )
                             .child(
                                 Button::new("preview-chroma-tour")
                                     .label("预览 Chroma 入门教程…")

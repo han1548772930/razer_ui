@@ -1,16 +1,17 @@
 # Wi-Fi 添加设备：Gamer Room / Key Light
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](../re/20-current-source-version.md)为准。
 本页记录 `src/shell/iot_popup.rs` 与原版 IoT 弹层的静态核对结果。真实扫描、网络状态、配网和安装服务尚未接入；默认入口显示状态未读取，设备、网络、扫描动画和成功页只能通过明确标注的界面预览进入。
 
 ## 来源和入口
 
 | 来源 | 核对内容 |
 | --- | --- |
-| `.ref/frontend/static/js/IotPopupRoot.290be417.chunk.js`，模块 `28256` | `gt` 类型选择；`dt` Gamer Room 流程；`rt` Key Light 流程；`B` 手机二维码；`ze` 扫描选择；`Fe` / `Be` 列表分区；`it` 网络表单；`st` 网络错误；`Ze` 设备错误；`at` 成功页 |
-| `.ref/frontend/static/js/App.eb32d7cd.chunk.js`，`z` | 外层 `iot-device-popup iot-device-popup__mt`、关闭按钮、嵌入 IoT 页；`focusIotDeviceTab` 后关闭弹层并定位产品页 |
-| `.ref/frontend/static/css/55.a5b041a2.chunk.css` | 实际生效的弹层、表单、列表、按钮、二维码与成功页样式 |
-| `.ref/frontend/static/css/IotPopupRoot.56b22315.chunk.css` | `NoGamerRoomDevice` / `NoKeyLightDevice` 的空列表样式 |
-| `.ref/frontend/static/js/main.7897a4cf.js`，模块 `54693` | `M.kEL` 对应 `NO_DEVICE_FOUND`，用于一个分区为空而另一分区有设备的普通提示行 |
+| `.ref/applications/synapse/dashboard/static/js/IotPopupRoot.daaa97ef.chunk.js`，模块 `28256` | `gt` 类型选择；`dt` Gamer Room 流程；`rt` Key Light 流程；`B` 手机二维码；`ze` 扫描选择；`Fe` / `Be` 列表分区；`it` 网络表单；`st` 网络错误；`Ze` 设备错误；`at` 成功页 |
+| `.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js`，`z` | 外层 `iot-device-popup iot-device-popup__mt`、关闭按钮、嵌入 IoT 页；`focusIotDeviceTab` 后关闭弹层并定位产品页 |
+| `.ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css` | 实际生效的弹层、表单、列表、按钮、二维码与成功页样式 |
+| `.ref/applications/synapse/dashboard/static/css/IotPopupRoot.56b22315.chunk.css` | `NoGamerRoomDevice` / `NoKeyLightDevice` 的空列表样式 |
+| `.ref/applications/synapse/dashboard/static/js/main.01550b17.js`，模块 `54693` | `M.kEL` 对应 `NO_DEVICE_FOUND`，用于一个分区为空而另一分区有设备的普通提示行 |
 
 原版 `gt` 仅将 `iotPopupType=GAMER_ROOM_DEVICE` 作为直接入口，其余值初始进入 `GENERAL`。从通用入口进入 Gamer Room 时有类型返回按钮；从 Gamer Room 直接进入时不显示该按钮。Key Light 的准备页始终保留回到类型选择的按钮。
 

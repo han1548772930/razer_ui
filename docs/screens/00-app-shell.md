@@ -1,10 +1,11 @@
 # 应用外壳、工具栏与产品导航
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](../re/20-current-source-version.md)为准。
 > Rust 已进入重构版本。本文的原版 JS/CONFIG/CSS 证据继续适用；旧 Rust 对照已作为重构前基线保留，当前代码、已完成项和剩余差异见[重构状态](../re/03-implementation-gap.md)。
 
 ## 1. 原版证据和层次
 
-`[JS/CSS]` 宿主 [index.css](../../.ref/synapse-asar/electron/index.css)、[TabUI.js](../../.ref/synapse-asar/electron/components/Tab/TabUI.js)，前端 [App chunk](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js)、[公共 CSS](../../.ref/frontend/static/css/55.a5b041a2.chunk.css)，以及各产品 main JS/CSS。
+`[JS/CSS]` 宿主 [index.css](../../.ref/host-4.0.827/electron/index.css)、[TabUI.js](../../.ref/host-4.0.827/electron/components/Tab/TabUI.js)，前端 [App chunk](../../.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js)、[公共 CSS](../../.ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css)，以及各产品 main JS/CSS。
 
 ```text
 Electron 宿主
@@ -82,16 +83,16 @@ body-widgets 常见 max-width:1240。`.widget-col` 是纵向列容器，每列�
 
 ## 6. 本页资源
 
-位于 `.ref/synapse-asar/electron/assets/image/tab/`：
+位于 `.ref/host-4.0.827/electron/assets/image/tab/`：
 
 | 用途 | 文件 |
 |---|---|
-| 最小化 | [minimize.svg](../../.ref/synapse-asar/electron/assets/image/tab/minimize.svg) |
-| 最大化 / 还原 | [maximize.svg](../../.ref/synapse-asar/electron/assets/image/tab/maximize.svg)、[restore.svg](../../.ref/synapse-asar/electron/assets/image/tab/restore.svg) |
-| 窗口关闭相关 | [close.svg](../../.ref/synapse-asar/electron/assets/image/tab/close.svg)、[close-hover.svg](../../.ref/synapse-asar/electron/assets/image/tab/close-hover.svg)、[close-original.svg](../../.ref/synapse-asar/electron/assets/image/tab/close-original.svg) |
-| 活动标签关闭 | [close_active_tab.svg](../../.ref/synapse-asar/electron/assets/image/tab/close_active_tab.svg)、[close_active_tab_hover.svg](../../.ref/synapse-asar/electron/assets/image/tab/close_active_tab_hover.svg)、[close_pressed.svg](../../.ref/synapse-asar/electron/assets/image/tab/close_pressed.svg) |
-| 历史 | [left-arrow.svg](../../.ref/synapse-asar/electron/assets/image/tab/left-arrow.svg)、[right-arrow.svg](../../.ref/synapse-asar/electron/assets/image/tab/right-arrow.svg)，同目录另有 active / disabled / hover |
-| 品牌 / 加载 | [razer_wordmark.svg](../../.ref/synapse-asar/electron/assets/image/tab/razer_wordmark.svg)、[progress_spinner.svg](../../.ref/synapse-asar/electron/assets/image/tab/progress_spinner.svg) |
+| 最小化 | [minimize.svg](../../.ref/host-4.0.827/electron/assets/image/tab/minimize.svg) |
+| 最大化 / 还原 | [maximize.svg](../../.ref/host-4.0.827/electron/assets/image/tab/maximize.svg)、[restore.svg](../../.ref/host-4.0.827/electron/assets/image/tab/restore.svg) |
+| 窗口关闭相关 | [close.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close.svg)、[close-hover.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close-hover.svg)、[close-original.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close-original.svg) |
+| 活动标签关闭 | [close_active_tab.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close_active_tab.svg)、[close_active_tab_hover.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close_active_tab_hover.svg)、[close_pressed.svg](../../.ref/host-4.0.827/electron/assets/image/tab/close_pressed.svg) |
+| 历史 | [left-arrow.svg](../../.ref/host-4.0.827/electron/assets/image/tab/left-arrow.svg)、[right-arrow.svg](../../.ref/host-4.0.827/electron/assets/image/tab/right-arrow.svg)，同目录另有 active / disabled / hover |
+| 品牌 / 加载 | [razer_wordmark.svg](../../.ref/host-4.0.827/electron/assets/image/tab/razer_wordmark.svg)、[progress_spinner.svg](../../.ref/host-4.0.827/electron/assets/image/tab/progress_spinner.svg) |
 
 当前 Rust 的 `assets/window-*.svg` 应与原图内容核对，不能按名称判定相同。Roboto 字体和实际接入关系见 [资源索引](../re/04-resource-index.md)。
 

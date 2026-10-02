@@ -2,7 +2,7 @@ use super::{
     DashboardCard, DashboardChanged, DashboardGrid, DashboardState, clamp_position, target_index,
 };
 use crate::{preferences::DashboardPreferences, ui::scroll::SourceScrollable as _};
-use gpui_kit::component::{Root, Theme, v_flex};
+use gpui_kit::component::{Root, Theme, scroll::ScrollbarMode, v_flex};
 use gpui_kit::test::{TestSupportExt as _, TestWindowExt as _};
 use gpui_kit::{
     App, AppContext, Context, Entity, InputEvent as _, InteractiveElement, IntoElement,
@@ -105,7 +105,7 @@ fn collapsed_groups_restore_and_persist_independently_from_card_order(cx: &mut T
         );
         assert!(
             !window.find("a").visible(),
-            "deferred cards retain the collapse clip"
+            "locally layered cards retain the collapse clip"
         );
         let id = (gpui_kit::ElementId::from("fixture-devices"), "toggle");
         window.click(id, cx);
@@ -378,6 +378,31 @@ fn wheel_during_press_moves_card_in_source_direction_without_scrolling_page(
             view.read(cx).scroll.offset().y < px(0.),
             "normal wheel scrolling resumes after release"
         );
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn viewport_scrollbar_receives_clicks_over_clipped_dashboard_cards(cx: &mut TestAppContext) {
+    let (view, handle) = open(cx, true, DashboardPreferences::default());
+    cx.update(|cx| Theme::set_scrollbar_mode(ScrollbarMode::Always, cx));
+    cx.simulate_window_resize(handle.into(), size(px(310.), px(400.)));
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.scroll(
+            "dashboard-scroll",
+            ScrollDelta::Pixels(point(px(0.), px(-120.))),
+            cx,
+        );
+        let viewport = window.find("dashboard-scroll").bounds();
+        let offset = point(viewport.size.width - px(3.), viewport.size.height * 0.8);
+        assert!(window.find("b").bounds().contains(&(viewport.origin + offset)));
+        let before = view.read(cx).scroll.offset();
+        assert!(before.y < px(0.));
+        window.click_at("dashboard-scroll", offset, cx);
+        assert!(view.read(cx).scroll.offset().y < before.y);
+        assert!(view.read(cx).calls.borrow().is_empty());
+        assert!(view.read(cx).state.read(cx).press.is_none());
     })
     .unwrap();
 }

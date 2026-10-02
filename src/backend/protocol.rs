@@ -4,7 +4,7 @@
 //!
 //! 灯光引擎的调用方式是**动作 ID 分发**：调用方送一个数字动作，
 //! 引擎按表分发到具体函数。这张表**原样提取自雷云前端**
-//! （`.ref/frontend/static/js/2973.2f1d1e6a.chunk.js`），
+//! （`.ref/applications/synapse/dashboard/static/js/2973.acc7b128.chunk.js`），
 //! 全量清单见 [`docs/re/02-lighting-actions.md`](../../docs/re/02-lighting-actions.md)。
 //!
 //! 效果 ID 与 Razer 老版 Chroma SDK 的 `EFFECT_TYPE` 同源，可交叉印证。

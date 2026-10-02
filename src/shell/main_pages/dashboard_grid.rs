@@ -514,16 +514,27 @@ impl RenderOnce for DashboardGrid {
             }))
             .child(
                 canvas(
-                    move |_, window, _| {
-                        // Flush a local CSS stacking order at one global layer below
-                        // popovers, while keeping each card's layout/identity unchanged.
+                    move |_, window, cx| {
+                        // Sort within this grid's normal paint phase. Deferring cards
+                        // globally puts them above the viewport's scrollbar as well.
                         let mut cards = std::mem::take(&mut *flush.borrow_mut());
                         cards.sort_by_key(|card: &CardPaint| card.rank);
-                        for card in cards {
-                            window.defer_draw(card.child, card.offset, 20, Some(card.mask));
+                        for card in &mut cards {
+                            window.with_absolute_element_offset(card.offset, |window| {
+                                window.with_content_mask(Some(card.mask), |window| {
+                                    card.child.prepaint(window, cx);
+                                });
+                            });
+                        }
+                        cards
+                    },
+                    |_, cards, window, cx| {
+                        for mut card in cards {
+                            window.with_content_mask(Some(card.mask), |window| {
+                                card.child.paint(window, cx);
+                            });
                         }
                     },
-                    |_, _, _, _| {},
                 )
                 .absolute()
                 .size_0(),
@@ -620,8 +631,8 @@ fn wire_card<T: StatefulInteractiveElement + Styled>(
         })
 }
 
-/// Local z-index ordering preserves page/collapse clipping. Ordinary deferred()
-/// escapes the clip; globally assigning card ranks would also cover popovers.
+/// Retain layout order, then prepaint and paint cards in local z-index order.
+/// Cards stay below viewport controls and popovers, with page/collapse clipping.
 struct CardPaint {
     rank: usize,
     child: AnyElement,

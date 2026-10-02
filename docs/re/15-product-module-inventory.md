@@ -1,5 +1,7 @@
 # 产品模块清单与源码取得范围
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 更新日期：2026-10-02。本页保留旧探测来源，当前取得范围已按官方目录和明确的连接／manifest 声明补查；仅下载和静态解析，未启动应用、执行原版脚本或加载驱动。
 
 最新目录：六份官方清单包含 **449 个主产品 ID**，与旧记录合并为 450 个候选；沿连接别名及 manifest 声明共核查 **596 个 ID**。其中 **331 个产品入口**存在，其资源清单中的 **30,658 份 JS/CSS** 已下载并离线核验。331 个产品在入口或明确 lazy 根组件中找到实际导航数组，共 77 种组合；各入口内部的条件界面仍须继续逐项追踪。完整证据见[官方目录与界面清单](16-product-catalog.md)。
@@ -8,7 +10,7 @@ Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076�
 
 “200”是这些旧探测记录的去重结果，不是官方产品总数，也不是 200 套互不相同的界面。同名产品、配色、键盘布局、接收器、系统设备及内部代号可能对应不同 ID。探测脚本把所有请求异常都跳过，因此记录之外的 ID 也不能直接判定为不支持。
 
-独立应用也已从宿主、主前端和 Settings 的明确路径继续取得，当前逐条结果见[独立应用目录](17-application-catalog.md)。新快照保存在 `.ref/applications`，原先用于适配的 `.ref/frontend` 等资料保持原版本，避免混用不同版本的模块编号或哈希。
+独立应用也已从宿主、主前端和 Settings 的明确路径继续取得，当前逐条结果见[独立应用目录](17-application-catalog.md)。新快照保存在 `.ref/applications`，原先用于适配的 `.ref/applications/synapse/dashboard` 等资料保持原版本，避免混用不同版本的模块编号或哈希。
 
 ## 统计证据与边界
 
@@ -27,7 +29,7 @@ Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076�
 
 | 源码范围 | JS | CSS | JS/CSS 路径齐备 | 页面边界 |
 | --- | ---: | ---: | --- | --- |
-| [.ref/frontend](../../.ref/frontend/asset-manifest.json) | 115 | 12 | 是 | 主应用四页、共享 App/Header、IotPopupRoot、Dashboard 配对及共享映射等 |
+| [.ref/applications/synapse/dashboard](../../.ref/applications/synapse/dashboard/asset-manifest.json) | 115 | 12 | 是 | 主应用四页、共享 App/Header、IotPopupRoot、Dashboard 配对及共享映射等 |
 | [.ref/settings](../../.ref/settings/asset-manifest.json) | 19 | 1 | 是 | 原版 Synapse / General 两页；[下载记录](../../.ref/settings/source.json) |
 | [产品 182](../../.ref/devices/182/asset-manifest.json) | 110 | 8 | 是 | Razer DeathAdder V3 Pro |
 | [产品 653](../../.ref/devices/653/asset-manifest.json) | 204 | 8 | 是 | Blackwidow V4 Pro |
@@ -35,7 +37,7 @@ Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076�
 | [Profile Migration](../../.ref/profile-migration/asset-manifest.json) | 58 | 1 | 是 | 独立迁移单页及状态弹层；[下载记录](../../.ref/profile-migration/source.json)、[界面规格](../screens/13-profile-migration.md) |
 | [账户菜单](../../.ref/rz-user-profile-menu/asset-manifest.json) | 3 | 1 | 是 | 独立头像菜单；[下载记录](../../.ref/rz-user-profile-menu/source.json)、[界面规格](../screens/15-account-menu.md) |
 
-本地另有 `.ref/background-manager/assets/index-8d39b3d5.js` 单个 bundle、`.ref/release-patch-note` 的入口及 main JS/CSS，以及解包的 `.ref/synapse-asar` 宿主代码。这些资料各自提供服务、窗口入口或界面证据，不能计作更多已完整取得的产品 UI。Settings 清单使用 `/synapse/settings/` 绝对 URL 前缀，核对本地文件时已去除该前缀。
+本地另有 `.ref/background-manager/assets/index-8d39b3d5.js` 单个 bundle、`.ref/release-patch-note` 的入口及 main JS/CSS，以及解包的 `.ref/host-4.0.827` 宿主代码。这些资料各自提供服务、窗口入口或界面证据，不能计作更多已完整取得的产品 UI。Settings 清单使用 `/synapse/settings/` 绝对 URL 前缀，核对本地文件时已去除该前缀。
 
 上表保留最初三款产品及独立应用资料；新增七款鼠标垫见[逐页规格](../screens/17-mouse-mat-lighting.md)，其余 321 个产品的 JS/CSS 取得情况见最新目录。原宿主还声明 Chroma、Streamer Companion、THX Spatial Audio、Virtual Ring Light、Cortex、7.1 Surround Sound、Razer Settings 等独立应用路由，详见[子应用与路由](01-ipc-api-surface.md#18-razer-sub-applications-and-routes)。已知启动入口不等于已取得目标应用的完整渲染源码。头像菜单 `/rz-user-profile-menu/` 的入口与清单所列 JS/CSS 已取得；账户会话与反馈宿主仍未接入。
 
@@ -45,12 +47,12 @@ Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076�
 
 | 范围 | 原版挂载证据 | 可行动项 |
 | --- | --- | --- |
-| 添加 Wi-Fi 设备总入口 | `IotPopupRoot.290be417.chunk.js`，28256 的 `gt` 读取 `iotPopupType`，默认 `GENERAL` | 已接 Dashboard 添加卡及 Gamer Room／Key Light 分支选择、返回路径 |
+| 添加 Wi-Fi 设备总入口 | `IotPopupRoot.daaa97ef.chunk.js`，28256 的 `gt` 读取 `iotPopupType`，默认 `GENERAL` | 已接 Dashboard 添加卡及 Gamer Room／Key Light 分支选择、返回路径 |
 | Key Light 添加 | 同一 bundle 的 `rt` | 准备、扫码、扫描列表、新设备、网络选择、密码显示与错误、连接进度、成功、无网络及设备异常均有明确状态界面；真实扫描未接入，见[Wi-Fi 添加](../screens/14-iot-add.md) |
 | Gamer Room 添加 | 同一 bundle 的 `dt → ze/at/st` | 已补设备列表卡、成功、无网络及分区为空的显式预览；二维码返回准备页，扫描页按有无新设备决定取消/返回 |
-| Gamer Room 已连接卡 | `9388.2bec5db3.chunk.js` 的 `je → ue → ne/fe → Q/S` | 补在线／离线／断电／安装卡、两种接管分组、接管开关及卡旁详情弹层；不能只用空组说明代替 |
-| 主应用共享 Header | `App.eb32d7cd.chunk.js` 的 Home `x.render`、Header 子组件 | 补兼容模式警告 `T`、离线下拉、待重启更新提示；头像外层入口与独立菜单源码取得范围分开 |
-| Dashboard 多设备配对入口 | `4130.155387bf.chunk.js` 的 `box-multi-paring` | 已有独立配对状态机；继续核对 Dashboard 实际入口和绑定状态，仅有 Settings 入口不代表原入口完整 |
+| Gamer Room 已连接卡 | `9388.974b5d43.chunk.js` 的 `je → ue → ne/fe → Q/S` | 补在线／离线／断电／安装卡、两种接管分组、接管开关及卡旁详情弹层；不能只用空组说明代替 |
+| 主应用共享 Header | `App.72827d47.chunk.js` 的 Home `x.render`、Header 子组件 | 补兼容模式警告 `T`、离线下拉、待重启更新提示；头像外层入口与独立菜单源码取得范围分开 |
+| Dashboard 多设备配对入口 | `7861.1b0e99a4.chunk.js` 的 `box-multi-paring` | 已有独立配对状态机；继续核对 Dashboard 实际入口和绑定状态，仅有 Settings 入口不代表原入口完整 |
 | Settings | `720.1e5d1c8f.chunk.js` 的 `ho/uo` | 原版只有 Synapse／General 两页；项目额外“服务连接”页不计入原版覆盖。迁移、灯光、更新说明等条件面板分别核对 |
 
 Key Light 有新设备入网和密码输入；Gamer Room 从既有网络设备列表添加。两者状态集合不同，不能直接套用同一入网流程。

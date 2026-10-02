@@ -16,7 +16,9 @@
 
 各产品 `.ref/devices/<pid>/static/js/main.*.js` 的 DeviceInfo（module 8193）和 QUICK_EFFECTS 定义确认上述差异；module 9228 的方向缺省表是 `{CWCCW:12, UPDOWN:4, LEFTRIGHT:2}`。数据集中在 [product.rs](../../src/product.rs)，效果列表和新建配置缺省值在 [settings.rs](../../src/features/settings.rs)。新建、复制、切换及本地保存配置继续使用每台 Device 的 Profile，方向 11/12 不再被通用 1/2 校验截断。
 
-实际页面复用 [device_pages.rs](../../src/features/device_pages.rs) 的两列灯光布局和受约束的内容滚动区。左列为亮度及关闭灯光，右列为快速/高级效果。
+实际页面复用 [device_pages.rs](../../src/features/device_pages.rs) 的两列灯光布局和受约束的内容滚动区。顶部先显示产品图和点阵背景；下方左列为亮度及关闭灯光，右列为快速/高级效果。
+
+七款原入口都在控件列前实际挂载 ProductImage：3072/3074/3076/3077 的 Lighting 位于 module 3288，3078 位于 6665，3080 位于 5937，均引用 module 7855；3073 的 `xd` 入口挂载同等的内联 `_l`。原图区域 `.widget-prod` 高 250px、宽 1024–1220px、上下各 10px 外距，使用 22px 周期的点阵及径向淡出。图片只固定高度，按原始宽高比计算宽度；325px 宽仅属于这些入口未启用的 `customDotPattern`，不能套在 Goliathus Extended、Strider 或 Firefly V2 Pro 上。本地按产品与 edition 解析嵌入图，缺少 edition 时遵循原 edition 0 回退；图与控件归属同一个滚动区。
 
 - 原 SwitchOffLighting 只渲染 `checkDisplay`，`disabled:!brightnessOn`。不显示键盘闲置复选框与滑条；原状态仍保留 `isIdleEnabled:false,idleMinutes:1`。3072/3074/3076/3077 的该组件在 module 3288，3078 在 6665，3080 在 5937，3073 为内联 `xd`。
 - 亮度关闭不禁用快速效果的选择；页面不添加源码没有的这类限制。
@@ -34,7 +36,7 @@
 
 ## 验证与剩余范围
 
-[回归用例](../../src/features/mouse_mat_tests.rs)覆盖新建配置默认值、编辑配置保存往返、产品实例能力、实际亮度/关闭灯光控件、两类方向和 Help 往返、Reactive 提示及参数保留；数据层另覆盖效果归一化和旧配置迁移。只编译测试，不运行测试、应用或服务。
+[回归用例](../../src/features/mouse_mat_tests.rs)覆盖新建配置默认值、编辑配置保存往返、产品实例能力、实际亮度/关闭灯光控件、两类方向和 Help 往返、Reactive 提示及参数保留；新增七款产品图区域的挂载、250px 高度、20px 图文区域间距、缩放和窄窗口水平滚动检查。数据层另覆盖效果归一化和旧配置迁移。只编译测试，不运行测试、应用或服务；新增用例并不构成实际图片解码或窗口验收结果。
 
 本次静态复核逐一读取七款 module 8193，检查 QUICK_EFFECTS 顺序、DEFAULTPROFILE、DeviceInfo、Wave/Tidal 初始方向、Reactive 判断和 SwitchOffLighting；并对照共享 `main.93c574c8.css` 的 `.warning`、`.toggle-btn`、`.twoway-lighting` 和配置工具栏规则。新发现并修正的是上述提示图标、Tidal 间距与缩放圆角；这些检查不替代实际窗口验收。
 

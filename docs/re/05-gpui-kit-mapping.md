@@ -1,5 +1,7 @@
 # 按项目 skills 实现原版 UI：GPUI Kit 映射
 
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](20-current-source-version.md)为准。
+
 > 文档审计后已接入新的 Rust 设备工作区，当前实施进度见[重构状态](03-implementation-gap.md)，本轮样式与资源依据见[UI 样式源码复核](06-style-source-audit.md)。以下区分已接入代码与后续扩展建议。
 
 ## 1. 依据和已确认的版本
@@ -98,7 +100,7 @@ CSS px 在逐页文档中用于建立原版基线，当前 `surface::css` 以 16
 
 当前[资源生成器](../../tools/prepare-resources.py) 已把 `.ref/devices` 内所需 AVIF 转成 RGBA PNG，保留源路径、源/输出 SHA-256、尺寸和用途映射。产品图、图标和字体由同一清单生成嵌入表；运行时不读取 `.ref`。帮助 SVG 原为 URL fragment 选择状态的精灵，生成时按 default/hover/active 设置根 viewBox，保留源路径。
 
-四份字体由 `.ref/synapse-asar/electron/assets/fonts` 的 WOFF2 转成 TTF 并在启动时注册；设备资源目录未提供这些字体，因此仍沿用该已确认来源。转换保留原字体时间戳，确保重复生成不因执行时间改变字节。当前 160 条资源记录、98 个原 Webpack 请求、56 条动态资源解析项，以及 16 布局 / 1901 个命中形状和生成嵌入表，已由[资源校验器](../../tools/validate-resources.py) 只读核对。
+四份字体由 `.ref/host-4.0.827/electron/assets/fonts` 的 WOFF2 转成 TTF 并在启动时注册；设备资源目录未提供这些字体，因此仍沿用该已确认来源。转换保留原字体时间戳，确保重复生成不因执行时间改变字节。当前 160 条资源记录、98 个原 Webpack 请求、56 条动态资源解析项，以及 16 布局 / 1901 个命中形状和生成嵌入表，已由[资源校验器](../../tools/validate-resources.py) 只读核对。
 
 653 的 Chroma SVG_PRODUCT 包含灯光选择分组；Customize 则读取 main 模块 21368（布局 1）及 30387（其余布局）的 groupList，在 730×340 内生成输入路径，不能把 Chroma 的 960×360 SVG 当作 Customize 命中图。两类几何与 DEVICECONFIG 均保留来源。
 

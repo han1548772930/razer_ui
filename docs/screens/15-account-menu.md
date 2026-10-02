@@ -1,6 +1,7 @@
 # 账户菜单
 
-依据 `.ref/frontend/static/js/App.eb32d7cd.chunk.js` 的 `K/X`，头像打开独立 `/rz-user-profile-menu/` iframe；实际菜单来自 [Root.012dd389.chunk.js](../../.ref/rz-user-profile-menu/static/js/Root.012dd389.chunk.js) 的 `N`，样式来自同应用 `main.090e2108.css`。
+> 来源迁移（2026-10-02）：旧参考版本已停用，链接已切换到当前核验源码。本文历史压缩符号及未重新审计的结论不得作为最新版确认；以[当前来源与复核记录](../re/20-current-source-version.md)为准。
+依据 `.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js` 的 `K/X`，头像打开独立 `/rz-user-profile-menu/` iframe；实际菜单来自 [Root.012dd389.chunk.js](../../.ref/rz-user-profile-menu/static/js/Root.012dd389.chunk.js) 的 `N`，样式来自同应用 `main.090e2108.css`。
 
 当前 [account_menu.rs](../../src/shell/account_menu.rs) 恢复本地访客分支：登录、分隔、反馈、分隔、退出。登录在原代码调用 `logOut` 重新进入宿主登录流程，不能替换为随意打开账户网页。反馈也需要原宿主窗口协议；当前两项禁用并说明原因。没有真实账户时不显示用户名、余额、修改密码或退出登录；评分项仍由原 `canShowRating` 条件约束，不默认增加。
 

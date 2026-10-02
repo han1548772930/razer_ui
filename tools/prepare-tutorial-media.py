@@ -23,9 +23,9 @@ spec = importlib.util.spec_from_file_location("discovery", Path(__file__).with_n
 discovery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(discovery)
 SOURCES = (
-    ("tutorial-dashboard", "frontend", "Synapse Dashboard Tutorial.mp4"),
-    ("tutorial-gamer-room-1", "frontend", "Gamer Room Dashboard Tutorial 1.mp4"),
-    ("tutorial-gamer-room-2", "frontend", "Gamer Room Dashboard Tutorial 2.mp4"),
+    ("tutorial-dashboard", "applications/synapse/dashboard", "Synapse Dashboard Tutorial.mp4"),
+    ("tutorial-gamer-room-1", "applications/synapse/dashboard", "Gamer Room Dashboard Tutorial 1.mp4"),
+    ("tutorial-gamer-room-2", "applications/synapse/dashboard", "Gamer Room Dashboard Tutorial 2.mp4"),
     ("tour-quick-effects", "applications/synapse/introduction-tour", "quick_effect_advanced_effect.mp4"),
     ("tour-devices-modules", "applications/synapse/introduction-tour", "devices_and_modules_tab.mp4"),
     ("tour-razer-apps", "applications/synapse/introduction-tour", "razer_more_apps.mp4"),
@@ -53,7 +53,7 @@ def main():
         matches = [value for request, value in manifest["files"].items() if request == "static/media/" + key]
         if len(matches) != 1:
             raise ValueError(f"Missing or ambiguous media request: {folder}/{key}")
-        route = "synapse/dashboard/" if folder == "frontend" else "synapse/introduction-tour/"
+        route = folder.removeprefix("applications/") + "/"
         url = urljoin("https://apps.razer.com/" + route, quote(matches[0], safe="/%:._-"))
         source = ROOT / ".ref/tutorial-media" / unquote(Path(urlparse(url).path).name)
         jobs.append((name, url, source, manifest_path))
@@ -75,7 +75,8 @@ def main():
         destination = output / (name + {".avif": ".png", ".svg": ".svg"}.get(source.suffix, ".webp"))
         previous = prior.get(destination.relative_to(ROOT).as_posix())
         if previous and destination.is_file() and previous["source_sha256"] == discovery.sha256(source.read_bytes()) and previous["sha256"] == discovery.sha256(destination.read_bytes()):
-            entries.append(previous)
+            entries.append({**previous, "source_url": url,
+                "resource_manifest": manifest.relative_to(ROOT).as_posix()})
             print(f"Verified existing {name}", flush=True)
             continue
         if source.suffix == ".svg":

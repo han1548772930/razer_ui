@@ -173,92 +173,127 @@ impl DeviceWorkspace {
 
     pub(super) fn calibration_page(&self, cx: &mut Context<Self>) -> AnyElement {
         let tracking = &self.settings().tracking;
-        v_flex()
-            .gap(surface::css(20.))
+        // 182 LD renders the welcome and the fixed-width widget as direct
+        // children of `.body-widgets.flex`, not inside a 600px widget column.
+        h_flex()
+            .id("smart-tracking-content")
+            .test_support()
             .w_full()
-            .max_w(surface::css(surface::WIDGET_WIDTH))
+            .max_w(surface::css(surface::BODY_MAX_WIDTH))
             .mx_auto()
+            .flex_wrap()
+            .items_start()
+            .justify_center()
             .when(!self.intro_seen, |this| {
                 this.child(
-                    v_flex()
-                        .id("tracking-intro")
+                    div()
+                        .id("tracking-welcome")
                         .test_support()
-                        .relative()
-                        .px(surface::css(30.))
-                        .py(surface::css(20.))
-                        .rounded(surface::css(5.))
-                        .border_1()
-                        .border_color(cx.theme().secondary_hover)
-                        .bg(cx.theme().secondary_hover)
+                        .flex()
+                        .flex_grow(1.)
+                        .flex_shrink(1.)
+                        .justify_center()
+                        .mb(surface::css(20.))
                         .child(
-                            Button::new("tracking-intro-dismiss")
-                                .absolute()
-                                .top_0()
-                                .right_0()
-                                .size(surface::css(36.))
-                                .border_0()
-                                .rounded_none()
-                                .p_0()
-                                .accessibility_label("关闭校准介绍")
-                                .custom(ButtonCustomVariant::new(cx))
+                            v_flex()
+                                .id("tracking-intro")
+                                .test_support()
+                                .relative()
+                                .px(surface::css(30.))
+                                .py(surface::css(20.))
+                                .rounded(surface::css(5.))
+                                .border_1()
+                                .border_color(cx.theme().secondary_hover)
+                                .bg(cx.theme().secondary_hover)
+                                .child(
+                                    Button::new("tracking-intro-dismiss")
+                                        .absolute()
+                                        .top_0()
+                                        .right_0()
+                                        .size(surface::css(36.))
+                                        .border_0()
+                                        .rounded_none()
+                                        .p_0()
+                                        .accessibility_label("关闭校准介绍")
+                                        .custom(ButtonCustomVariant::new(cx))
+                                        .child(
+                                            div()
+                                                .group("calibration-close")
+                                                .relative()
+                                                .size_full()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .child(
+                                                    img("synapse/calibration-close.svg")
+                                                        .size(surface::css(20.))
+                                                        .group_active("calibration-close", |s| {
+                                                            s.opacity(0.)
+                                                        }),
+                                                )
+                                                .child(
+                                                    img("synapse/calibration-close-active.svg")
+                                                        .absolute()
+                                                        .top(surface::css(8.))
+                                                        .left(surface::css(8.))
+                                                        .size(surface::css(20.))
+                                                        .opacity(0.)
+                                                        .group_hover("calibration-close", |s| {
+                                                            s.opacity(1.)
+                                                        })
+                                                        .group_active("calibration-close", |s| {
+                                                            s.opacity(0.7)
+                                                        }),
+                                                ),
+                                        )
+                                        .on_click(cx.listener(|this, event, window, cx| {
+                                            // The keyboard trigger is about to disappear;
+                                            // continue to the existing calibration controls.
+                                            // Pointer dismissal keeps the prior focus.
+                                            if matches!(event, ClickEvent::Keyboard(_)) {
+                                                window.focus_next(cx);
+                                            }
+                                            this.intro_seen = true;
+                                            cx.emit(WorkspaceEvent::IntroDismissed);
+                                            cx.notify();
+                                        })),
+                                )
                                 .child(
                                     div()
-                                        .group("calibration-close")
-                                        .relative()
-                                        .size_full()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
+                                        .font_family("RazerF5")
+                                        .text_size(surface::css(26.))
+                                        .font_weight(FontWeight::LIGHT)
+                                        .line_height(surface::css(30.))
+                                        .text_color(cx.theme().primary)
+                                        .text_center()
+                                        .mb(surface::css(10.))
                                         .child(
-                                            img("synapse/calibration-close.svg")
-                                                .size(surface::css(20.))
-                                                .group_active("calibration-close", |s| {
-                                                    s.opacity(0.)
-                                                }),
-                                        )
-                                        .child(
-                                            img("synapse/calibration-close-active.svg")
-                                                .absolute()
-                                                .top(surface::css(8.))
-                                                .left(surface::css(8.))
-                                                .size(surface::css(20.))
-                                                .opacity(0.)
-                                                .group_hover("calibration-close", |s| s.opacity(1.))
-                                                .group_active("calibration-close", |s| {
-                                                    s.opacity(0.7)
-                                                }),
+                                            crate::i18n::t("MOUSE_MAT_CALIBRATION_HEADER")
+                                                .to_uppercase(),
                                         ),
                                 )
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.intro_seen = true;
-                                    cx.emit(WorkspaceEvent::IntroDismissed);
-                                    cx.notify();
-                                })),
-                        )
-                        .child(
-                            div()
-                                .font_family("RazerF5")
-                                .text_size(surface::css(26.))
-                                .font_weight(FontWeight::LIGHT)
-                                .line_height(surface::css(30.))
-                                .text_color(cx.theme().primary)
-                                .text_center()
-                                .mb(surface::css(10.))
                                 .child(
-                                    crate::i18n::t("MOUSE_MAT_CALIBRATION_HEADER").to_uppercase(),
+                                    div()
+                                        .text_size(surface::css(14.))
+                                        .line_height(surface::css(16.))
+                                        .text_color(cx.theme().foreground)
+                                        .text_center()
+                                        .child(crate::i18n::t("MOUSE_MAT_CALIBRATION")),
                                 ),
-                        )
-                        .child(
-                            div()
-                                .text_size(surface::css(14.))
-                                .line_height(surface::css(16.))
-                                .text_center()
-                                .child(crate::i18n::t("MOUSE_MAT_CALIBRATION")),
                         ),
                 )
             })
             .child(
                 surface::panel(crate::i18n::t_or("SMARTTRACKING", "智能追踪"), cx)
+                    .id("smart-tracking-widget")
+                    .test_support()
+                    .flex_grow(0.)
+                    .flex_shrink_0()
+                    .w(surface::css(surface::WIDGET_WIDTH))
+                    .min_w(surface::css(surface::WIDGET_WIDTH))
+                    .max_w(surface::css(surface::WIDGET_WIDTH))
+                    .my(surface::css(10.))
+                    .mx_auto()
                     .gap_0()
                     .child(div().mt(surface::css(16.)).mb(surface::css(20.)).child(
                         crate::i18n::t_or(
@@ -421,7 +456,7 @@ impl DeviceWorkspace {
     }
     pub(super) fn lighting_page(&self, cx: &mut Context<Self>) -> AnyElement {
         let lighting = &self.settings().lighting;
-        surface::page_columns()
+        let columns = surface::page_columns()
             .child(surface::page_column(
                 v_flex()
                     .flex_1()
@@ -540,6 +575,67 @@ impl DeviceWorkspace {
                         .child(surface::note("高级效果需要 Razer Chroma。当前未连接该应用。", cx).mt(surface::css(10.)))
                     }),
             ))
+            .into_any_element();
+        if crate::product::audited_mouse_mat(self.pid()).is_some() {
+            v_flex()
+                .w_full()
+                .min_w(surface::css(1024.))
+                .max_w(surface::css(surface::BODY_MAX_WIDTH))
+                .mx_auto()
+                .child(self.mouse_mat_product_banner(cx))
+                // The source image and widgets each have 10px vertical margins.
+                .child(
+                    div()
+                        .mt(surface::css(10.))
+                        .mb(surface::css(10.))
+                        .child(columns),
+                )
+                .into_any_element()
+        } else {
+            columns
+        }
+    }
+
+    fn mouse_mat_product_banner(&self, cx: &App) -> AnyElement {
+        let device = self.device();
+        // ProductImage (7855; inline _l for 3073) precedes the lighting columns
+        // in every audited mat root. Its normal .widget-prod art has height 250
+        // and intrinsic width; the 325px width belongs only to customDotPattern.
+        div()
+            .id("lighting-product-banner")
+            .test_support()
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w_full()
+            .min_w(surface::css(1024.))
+            .max_w(surface::css(1220.))
+            .h(surface::css(250.))
+            .flex_shrink_0()
+            .mx_auto()
+            .my(surface::css(10.))
+            .child(surface::dot_background(cx))
+            .when_some(
+                crate::resources::device_image(
+                    self.pid(),
+                    device.edition_id,
+                    device.layout_id,
+                    crate::resources::DeviceImage::Product,
+                ),
+                |banner, path| {
+                    banner.child(
+                        img(path)
+                            .id("lighting-product-image")
+                            .test_support()
+                            .relative()
+                            .aria_label(device.display_name())
+                            .h(surface::css(250.))
+                            .w_auto()
+                            .flex_shrink_0(),
+                    )
+                },
+            )
             .into_any_element()
     }
     fn lighting_mode_button(&self, id: &'static str, selected: bool, cx: &App) -> Button {

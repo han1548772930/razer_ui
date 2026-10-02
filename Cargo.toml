@@ -14,6 +14,7 @@ libloading = "0.8"
 # 与 gpui-component 内部使用的是同一套 i18n（`rust_i18n::i18n!` + `t!`）。
 rust-i18n = "4"
 
+
 [target.'cfg(windows)'.dependencies]
 raw-window-handle = "0.6.2"
 windows-sys = { version = "0.61.2", features = [
@@ -29,6 +30,11 @@ windows-sys = { version = "0.61.2", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+
+[profile.dev]
+codegen-units = 16
+debug = "limited"
+split-debuginfo = "unpacked"
 
 [profile.release]
 lto = true
