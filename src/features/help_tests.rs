@@ -35,7 +35,10 @@ fn guide_links_use_each_product_and_requested_language() {
 
 #[gpui_kit::test]
 fn help_reflows_at_source_breakpoint_and_preserves_the_device(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     for (pid, scale) in [(182, 1.), (653, 1.25), (777, 1.)] {
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16. * scale)));
         let mut workspace = None;
@@ -126,7 +129,10 @@ fn help_reflows_at_source_breakpoint_and_preserves_the_device(cx: &mut TestAppCo
 
 #[gpui_kit::test]
 fn copy_serial_uses_real_value_and_reenables_after_two_seconds(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let mut device = crate::demo::demo_keyboard();

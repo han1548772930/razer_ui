@@ -150,12 +150,15 @@ impl HeaderStatusPreview {
             .focus_visible(|button| button.border_1().border_color(cx.theme().primary))
             .child(
                 div()
+                    .id("header-offline-icon")
                     .size(surface::css(32.))
                     .rounded_full()
                     .flex()
                     .items_center()
                     .justify_center()
                     .bg(HeaderStatusColors::status_surface())
+                    .hover(|icon| icon.bg(HeaderStatusColors::offline_hover()))
+                    .active(|icon| icon.bg(HeaderStatusColors::offline_hover()))
                     .child(img("synapse/header-offline.svg").size(surface::css(20.))),
             )
             .on_click(cx.listener(|this, _, _, cx| {

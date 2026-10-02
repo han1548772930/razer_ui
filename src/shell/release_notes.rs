@@ -1,8 +1,9 @@
 //! Original `/release-patch-note/`: Ie renders firstPost as hr/h2 sections.
 //! The installed version and its host-provided content are not read locally.
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{i18n, ui::surface};
 use gpui_kit::base::{Button as BaseButton, Dialog as BaseDialog, Link, TextView, TextViewStyle};
-use gpui_kit::component::{scroll::ScrollableElement as _, *};
+use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 #[cfg(test)]
@@ -255,7 +256,6 @@ impl ReleaseNotes {
             .py(surface::css(if compact { 0. } else { 20. }))
             .pl(surface::css(if compact { 12. } else { 30. }))
             .pr(surface::css(if compact { 12. } else { 16. }))
-            .track_scroll(&self.scroll)
             .child(div()
                 .h(surface::css(24.))
                 .flex_shrink_0()
@@ -326,7 +326,9 @@ impl ReleaseNotes {
                 );
             }
         }
-        body.overflow_y_scrollbar().into_any_element()
+        body.scrollable_y()
+            .track_scroll(&self.scroll)
+            .into_any_element()
     }
 }
 

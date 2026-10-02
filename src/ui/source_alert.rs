@@ -1,11 +1,11 @@
 //! Original `.save-alert` composition on Base Dialog's modal/focus lifecycle.
+use crate::ui::scroll::SourceScrollable as _;
 #[cfg(test)]
 #[path = "source_alert_tests.rs"]
 mod tests;
 use super::surface;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
-    scroll::ScrollableElement as _,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -138,7 +138,7 @@ impl Render for SourceAlert {
                 div()
                     .id("source-save-alert-body")
                     .min_h_0()
-                    .overflow_y_scrollbar()
+                    .scrollable_y()
                     .child(self.body.clone()),
             )
             .child(
@@ -171,15 +171,14 @@ impl Render for SourceAlert {
                     })),
             )
             .child(
-                Button::new(self.close_id)
-                    .ghost()
+                gpui_kit::base::Button::new(self.close_id)
                     .absolute()
                     .top(surface::css(8.))
                     .right(surface::css(8.))
                     .size(surface::css(20.))
                     .p_0()
                     .accessibility_label("继续编辑")
-                    .tooltip("继续编辑")
+                    .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
                     .child(img("synapse/mapping-close.svg").size_full())
                     .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
             );

@@ -218,7 +218,10 @@ fn imported_names_are_unique_and_export_never_overwrites_an_existing_file() {
 fn native_file_dialogs_export_and_import_a_profile_without_overwriting_existing_profiles(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let files = Files::new();
     let path = files.path("copy.json");
     let mut workspace = None;
@@ -287,7 +290,10 @@ fn native_file_dialogs_export_and_import_a_profile_without_overwriting_existing_
 
 #[gpui_kit::test]
 fn cancelling_or_changing_profile_during_import_keeps_existing_drafts(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let files = Files::new();
     let path = files.path("source.json");
     let data = device();
@@ -333,7 +339,10 @@ fn cancelling_or_changing_profile_during_import_keeps_existing_drafts(cx: &mut T
 
 #[gpui_kit::test]
 fn confirming_an_import_preserves_a_mapping_when_the_user_keeps_editing(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let files = Files::new();
     let path = files.path("source.json");
     let data = device();

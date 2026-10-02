@@ -1,6 +1,10 @@
 //! Separate Settings app 720/ho/uo, static snapshot retrieved 2026-10-01.
+use crate::ui::scroll::SourceScrollable as _;
 #[path = "settings_lighting.rs"]
 mod lighting;
+#[path = "settings_button.rs"]
+mod source_button;
+use source_button::settings_button;
 #[cfg(test)]
 #[path = "settings_tests.rs"]
 mod tests;
@@ -13,7 +17,6 @@ use crate::{
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,
-    scroll::ScrollableElement as _,
     select::{SelectEvent, SelectState},
     tooltip::Tooltip,
     *,
@@ -205,7 +208,7 @@ impl SettingsPage {
                     .child(control),
             )
     }
-    fn synapse(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn synapse(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         h_flex()
             .items_start()
             .flex_wrap()
@@ -312,17 +315,22 @@ impl SettingsPage {
                             .child(
                                 h_flex()
                                     .gap(surface::css(20.))
-                                    .items_start()
+                                    .items_center()
                                     .child(
-                                        Button::new("settings-reset-tutorials")
-                                            .label(i18n::t("RESET"))
-                                            .outline()
-                                            .disabled(self.tutorial_reset)
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        settings_button(
+                                            "settings-reset-tutorials",
+                                            i18n::t("RESET"),
+                                            self.tutorial_reset,
+                                            window,
+                                            cx,
+                                        )
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.tutorial_reset = true;
                                                 cx.emit(SettingsEvent::ResetTutorials);
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     )
                                     .child(
                                         div().flex_1().child(i18n::t("SYNAPSE_TUTORIAL_RESET_MSG")),
@@ -335,15 +343,21 @@ impl SettingsPage {
                     .child(
                         self.panel("PROFILE_MIGRATION", cx).child(
                             h_flex()
-                                .items_start()
+                                .items_center()
                                 .gap(surface::css(20.))
                                 .child(
-                                    Button::new("settings-migration")
-                                        .label(i18n::t("LAUNCH"))
-                                        .outline()
-                                        .on_click(|_, window, cx| {
+                                    settings_button(
+                                        "settings-migration",
+                                        i18n::t("LAUNCH"),
+                                        false,
+                                        window,
+                                        cx,
+                                    )
+                                    .on_click(
+                                        |_, window, cx| {
                                             super::profile_migration::open(window, cx);
-                                        }),
+                                        },
+                                    ),
                                 )
                                 .child(div().flex_1().child(i18n::t("PROFILE_MIGRATION_DESC"))),
                         ),
@@ -665,7 +679,7 @@ fn policy_link(id: &'static str, label: String, url: &'static str, cx: &App) -> 
         .child(label)
 }
 impl Render for SettingsPage {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .id("settings-page")
             .test_support()
@@ -695,7 +709,7 @@ impl Render for SettingsPage {
                         }),
                     ),
             )
-            .child(div().id("settings-scroll").flex_1().min_h_0().overflow_scrollbar()
+            .child(div().id("settings-scroll").flex_1().min_h_0().scrollable_both()
                 .child(v_flex().w_full().min_w(surface::css(660.)).max_w(surface::css(1280.))
                     .mx_auto().px(surface::css(30.)).py(surface::css(20.)).gap(surface::css(20.))
             .child(surface::note(
@@ -703,7 +717,7 @@ impl Render for SettingsPage {
                 cx,
             ))
             .child(match self.page {
-                Page::Synapse => self.synapse(cx),
+                Page::Synapse => self.synapse(window, cx),
                 Page::General => self.general(cx),
                 Page::Connection => self.connection(cx),
             })))

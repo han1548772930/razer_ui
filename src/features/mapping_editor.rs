@@ -2,7 +2,10 @@
 //! These are local profile assignments, never a native Synapse wire format.
 use super::*;
 use crate::i18n;
-use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::{
+    Button as BaseButton,
+    motion::{self, Easing, Transition},
+};
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, Textarea},
@@ -1559,7 +1562,11 @@ impl DeviceWorkspace {
         self.mapping_recording = false;
         cx.notify();
     }
-    pub(in crate::features) fn render_mapping_editor(&self, cx: &mut Context<Self>) -> AnyElement {
+    pub(in crate::features) fn render_mapping_editor(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let Some(draft) = &self.mapping else {
             return div().into_any_element();
         };
@@ -1987,20 +1994,40 @@ impl DeviceWorkspace {
                         })),
                 ),
         );
-        let rail_width = if self.mapping_expanded { 230. } else { 40. };
+        // .actions has a fixed 250px width, revealed by max-width 40→250.
+        // Its body stays at margin-left:40px while the categories cover it.
+        let rail_width = motion::transition(
+            "mapping-categories-max-width",
+            if self.mapping_expanded {
+                250_f32
+            } else {
+                40_f32
+            },
+            Transition::new(std::time::Duration::from_millis(200)).easing(Easing::Ease),
+            window,
+            cx,
+        );
         let rail = v_flex()
             .id("mapping-categories")
             .absolute()
             .left_0()
             .top_0()
             .bottom_0()
-            .w(surface::css(rail_width))
+            .w(surface::css(250.))
+            .max_w(surface::css(rail_width))
             .bg(cx.theme().sidebar)
-            .overflow_y_scroll()
+            .rounded_bl(surface::css(4.))
+            .overflow_hidden()
+            .when(self.mapping_expanded, |rail| {
+                rail.overflow_y_scroll().lock_scroll_axis()
+            })
             .on_hover(cx.listener(|this, hover, _, cx| {
-                this.mapping_expanded = *hover;
-                cx.notify();
+                if this.mapping_expanded != *hover {
+                    this.mapping_expanded = *hover;
+                    cx.notify();
+                }
             }))
+            .test_support()
             .children(self.mapping_categories().into_iter().map(|category| {
                 let active = selected == Some(category);
                 BaseButton::new(SharedString::from(format!(
@@ -2013,9 +2040,12 @@ impl DeviceWorkspace {
                 .flex_shrink_0()
                 .flex()
                 .items_center()
+                .justify_start()
                 .gap(surface::css(20.))
                 .px(surface::css(10.))
                 .text_size(surface::css(12.))
+                .whitespace_nowrap()
+                .overflow_hidden()
                 .text_color(if active {
                     cx.theme().primary
                 } else {
@@ -2042,7 +2072,7 @@ impl DeviceWorkspace {
                     .flex_shrink_0(),
                 )
                 .when(self.mapping_expanded, |button| {
-                    button.child(category.label())
+                    button.child(div().min_w_0().truncate().child(category.label()))
                 })
             }));
         v_flex()
@@ -2090,21 +2120,10 @@ impl DeviceWorkspace {
                             .child(input_label),
                     )
                     .child(
-                        BaseButton::new("mapping-close")
-                            .accessibility_label("关闭按键映射")
+                        surface::keymap_close_button("mapping-close", "关闭按键映射", window, cx)
                             .absolute()
                             .right_0()
                             .top_0()
-                            .w(surface::css(36.))
-                            .h(surface::css(36.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .hover(|button| {
-                                button.bg(crate::ui::theme::DropdownColors::new().hover())
-                            })
-                            .active(|button| button.bg(cx.theme().title_bar.opacity(0.1)))
-                            .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.continue_with(Continue::CloseMapping, window, cx)
                             })),
@@ -2120,9 +2139,12 @@ impl DeviceWorkspace {
                     .child(
                         div()
                             .id("mapping-body")
-                            .ml(surface::css(40.))
+                            .test_support()
+                            .absolute()
+                            .left(surface::css(40.))
+                            .top_0()
+                            .bottom_0()
                             .w(surface::css(250.))
-                            .h_full()
                             .overflow_y_scroll()
                             .p(surface::css(20.))
                             .child(body),

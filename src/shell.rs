@@ -1,4 +1,5 @@
 //! App navigation and persistence. Device feature state lives in DeviceWorkspace.
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::{DeviceWorkspace, WorkspaceEvent},
     model::Device,
@@ -9,14 +10,15 @@ use crate::{
     ui::surface,
 };
 use gpui_kit::component::{
-    button::{Button, ButtonCustomVariant, ButtonVariants},
-    scroll::ScrollableElement as _,
+    button::{Button, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 mod account_menu;
 mod header_status;
+mod host_tabs;
+mod introduction_tour;
 mod iot_popup;
 mod main_pages;
 mod pairing_page;
@@ -31,6 +33,7 @@ enum Location {
     Main(Tab),
     Device(String),
     Pairing,
+    Tour,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SaveScope {
@@ -39,6 +42,7 @@ enum SaveScope {
 }
 pub struct AppShell {
     devices: Vec<Entity<DeviceWorkspace>>,
+    host_tabs: host_tabs::HostTabs,
     location: Location,
     history: Vec<Location>,
     history_index: usize,
@@ -48,9 +52,11 @@ pub struct AppShell {
     save_task: Option<Task<()>>,
     storage_error: Option<String>,
     status: String,
-    dashboard_collapsed: bool,
-    dashboard_aux_collapsed: [bool; 2],
+    dashboard_state: Entity<main_pages::DashboardState>,
     dashboard_tutorial: Entity<main_pages::DashboardTutorial>,
+    introduction_tour: Option<Entity<introduction_tour::IntroductionTour>>,
+    tour_subscription: Option<Subscription>,
+    tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
     gamer_room: Entity<service_pages::GamerRoomPage>,
@@ -63,7 +69,7 @@ pub struct AppShell {
 }
 impl AppShell {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let (devices, intro, shortcuts, preferences, custom_colors, error) =
+        let (devices, intro, shortcuts, preferences, custom_colors, host_order, dashboard, error) =
             match store::read_workspace(&store::store_path()) {
                 Ok(Some(file)) => (
                     file.devices,
@@ -71,6 +77,8 @@ impl AppShell {
                     file.shortcuts,
                     file.preferences,
                     file.custom_colors,
+                    file.host_tab_order,
+                    file.dashboard,
                     None,
                 ),
                 Ok(None) => (
@@ -79,6 +87,8 @@ impl AppShell {
                     vec![],
                     Default::default(),
                     [None; 16],
+                    vec![],
+                    Default::default(),
                     None,
                 ),
                 Err(error) => (
@@ -87,6 +97,8 @@ impl AppShell {
                     vec![],
                     Default::default(),
                     [None; 16],
+                    vec![],
+                    Default::default(),
                     Some(error.to_string()),
                 ),
             };
@@ -100,6 +112,7 @@ impl AppShell {
             cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime, window, cx));
         let mut this = Self {
             devices: vec![],
+            host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
             history: vec![],
             history_index: 0,
@@ -109,9 +122,11 @@ impl AppShell {
             save_task: None,
             storage_error: error,
             status: "本地配置预览 · 尚未写入硬件".into(),
-            dashboard_collapsed: false,
-            dashboard_aux_collapsed: [false; 2],
+            dashboard_state: cx.new(|_| main_pages::DashboardState::new(dashboard)),
             dashboard_tutorial: cx.new(|_| main_pages::DashboardTutorial::new(dashboard_seen)),
+            introduction_tour: None,
+            tour_subscription: None,
+            tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
             gamer_room: cx.new(|_| service_pages::GamerRoomPage::new()),
@@ -125,6 +140,14 @@ impl AppShell {
         this.gamer_room
             .update(cx, |page, cx| page.set_tutorial_seen(gamer_room_seen, cx));
         this.sync_persistence_state(cx);
+        this.subscriptions
+            .push(cx.observe(&this.dashboard_state, |_, _, cx| cx.notify()));
+        this.subscriptions.push(cx.subscribe(
+            &this.dashboard_state,
+            |this, _, _: &main_pages::DashboardChanged, cx| {
+                this.save_auxiliary_preferences(cx);
+            },
+        ));
         this.subscriptions.push(cx.subscribe_in(
             &this.account_menu,
             window,
@@ -265,6 +288,17 @@ impl AppShell {
                 this.status = "所选页面不适用于当前设备。".into();
             }
         }
+        this.host_tabs.visit(&this.location, cx);
+        this.host_tabs.restore_order(&host_order);
+        this.host_tabs.reveal_active(&this.location);
+        this.subscriptions
+            .push(cx.observe_window_bounds(window, |this, _, cx| {
+                this.host_tabs.reveal_active(&this.location);
+                cx.notify();
+            }));
+        if window.focused(cx).is_none() {
+            this.host_tabs.focus_location(&this.location, window, cx);
+        }
         this.history = vec![this.location.clone()];
         let weak = cx.entity().downgrade();
         window.on_window_should_close(cx, move |window, cx| {
@@ -304,10 +338,16 @@ impl AppShell {
                 }
             }),
         );
+        if !Tab::for_product(entity.read(cx).device().product_id).is_empty() {
+            self.host_tabs
+                .open(host_tabs::HostTab::Device(entity.read(cx).identity()), cx);
+        }
         self.devices.push(entity);
     }
     fn dirty(&self, cx: &App) -> bool {
         self.tracking_intro_seen != self.saved_intro_seen
+            || self.dashboard_state.read(cx).pending()
+            || self.host_tabs.order_pending()
             || cx.global::<CustomColors>().dirty()
             || self.settings.read(cx).dirty()
             || self.shortcuts.read(cx).dirty()
@@ -390,7 +430,9 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.host_tabs.visit(&next, cx);
         if next != self.location {
+            self.host_tabs.focus_location(&next, window, cx);
             if let Location::Device(key) = &self.location {
                 if let Some(device) = self
                     .devices
@@ -406,6 +448,23 @@ impl AppShell {
             if next == Location::Pairing {
                 self.pairing
                     .update(cx, |page, cx| page.activate(window, cx));
+            }
+            if next == Location::Tour {
+                if self.introduction_tour.is_none() {
+                    let tour = cx.new(introduction_tour::IntroductionTour::new);
+                    self.tour_subscription = Some(cx.subscribe_in(
+                        &tour,
+                        window,
+                        |this, _, _: &introduction_tour::CloseRequested, window, cx| {
+                            this.close_tour(window, cx);
+                        },
+                    ));
+                    self.introduction_tour = Some(tour);
+                }
+                self.introduction_tour
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |tour, cx| tour.focus(window, cx));
             }
             if let Some(index) = history_index {
                 self.history_index = index;
@@ -429,6 +488,9 @@ impl AppShell {
             );
         }
     }
+    fn close_tour(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_host_tab(host_tabs::HostTab::Tour, window, cx);
+    }
     fn save(&mut self, close_after: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.save_with_scope(SaveScope::Workspace, close_after, window, cx);
     }
@@ -441,6 +503,8 @@ impl AppShell {
     }
     fn auxiliary_preferences_pending(&self, cx: &App) -> bool {
         self.tracking_intro_seen != self.saved_intro_seen
+            || self.dashboard_state.read(cx).pending()
+            || self.host_tabs.order_pending()
             || self.settings.read(cx).tutorial_pending()
             || cx.global::<CustomColors>().dirty()
     }
@@ -495,10 +559,14 @@ impl AppShell {
         let preferences = self.settings.read(cx).snapshot();
         let custom_colors = cx.global::<CustomColors>().colors();
         let intro = self.tracking_intro_seen;
+        let host_order = self.host_tabs.order();
+        let dashboard = self.dashboard_state.read(cx).snapshot();
         let file = store::WorkspaceFile::new(devices.clone(), intro)
             .with_shortcuts(shortcuts.clone())
             .with_preferences(preferences.clone())
-            .with_custom_colors(custom_colors);
+            .with_custom_colors(custom_colors)
+            .with_host_tab_order(host_order.clone())
+            .with_dashboard(dashboard.clone());
         let path = store::store_path();
         self.status = "正在保存到本机…".into();
         cx.notify();
@@ -520,6 +588,9 @@ impl AppShell {
                                 .update(cx, |s, cx| s.mark_saved(shortcuts, cx));
                         }
                         this.saved_intro_seen = intro;
+                        this.host_tabs.mark_order_saved(host_order);
+                        this.dashboard_state
+                            .update(cx, |state, _| state.mark_saved(dashboard));
                         CustomColors::mark_saved(custom_colors, cx);
                         this.settings
                             .update(cx, |settings, cx| settings.mark_saved(preferences, cx));
@@ -557,6 +628,8 @@ impl AppShell {
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
         let custom_colors = cx.global::<CustomColors>().colors();
+        let host_order = self.host_tabs.order();
+        let dashboard = self.dashboard_state.read(cx).snapshot();
         let file = store::WorkspaceFile::new(
             self.devices
                 .iter()
@@ -566,7 +639,9 @@ impl AppShell {
         )
         .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
         .with_preferences(preferences)
-        .with_custom_colors(custom_colors);
+        .with_custom_colors(custom_colors)
+        .with_host_tab_order(host_order.clone())
+        .with_dashboard(dashboard.clone());
         let path = store::store_path();
         self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
@@ -578,6 +653,9 @@ impl AppShell {
                 match result {
                     Ok(()) => {
                         this.saved_intro_seen = intro;
+                        this.host_tabs.mark_order_saved(host_order);
+                        this.dashboard_state
+                            .update(cx, |state, _| state.mark_saved(dashboard));
                         CustomColors::mark_saved(custom_colors, cx);
                         this.settings.update(cx, |settings, cx| {
                             settings.mark_tutorial_saved(gamer_room_seen, dashboard_seen, cx)
@@ -673,113 +751,6 @@ impl AppShell {
             .identity();
         self.navigate(Location::Device(key), window, cx);
     }
-    fn title_bar(&self, cx: &mut Context<Self>) -> AnyElement {
-        h_flex()
-            .id("host-titlebar")
-            .h(rems(2.625))
-            .flex_shrink_0()
-            .bg(cx.theme().title_bar)
-            .child(
-                Button::new("host-main")
-                    .accessibility_label("雷云")
-                    .custom(
-                        ButtonCustomVariant::new(cx)
-                            .color(if matches!(self.location, Location::Main(_)) {
-                                cx.theme().background
-                            } else {
-                                cx.theme().transparent
-                            })
-                            .hover(cx.theme().secondary_hover)
-                            .active(cx.theme().background),
-                    )
-                    .min_w(surface::css(90.))
-                    .px(surface::css(20.))
-                    .child(
-                        h_flex()
-                            .gap(surface::css(8.))
-                            .child(img("synapse/synapse.svg").size(surface::css(20.)))
-                            .child("雷云"),
-                    )
-                    .h_full()
-                    .selected(matches!(self.location, Location::Main(_)))
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.navigate(Location::Main(Tab::Home), window, cx)
-                    })),
-            )
-            .children(
-                self.devices
-                    .iter()
-                    .filter(|d| !Tab::for_product(d.read(cx).device().product_id).is_empty())
-                    .map(|device| {
-                        let state = device.read(cx);
-                        let key = state.identity();
-                        Button::new(SharedString::from(format!("host-{key}")))
-                            .label(state.device().display_name())
-                            .text_size(surface::css(12.))
-                            .min_w(surface::css(90.))
-                            .max_w(surface::css(240.))
-                            .mt(surface::css(7.))
-                            .h(surface::css(35.))
-                            .custom(
-                                ButtonCustomVariant::new(cx)
-                                    .color(if self.location == Location::Device(key.clone()) {
-                                        cx.theme().background
-                                    } else {
-                                        cx.theme().transparent
-                                    })
-                                    .hover(cx.theme().secondary_hover)
-                                    .active(cx.theme().background),
-                            )
-                            .border_t_1()
-                            .border_color(if self.location == Location::Device(key.clone()) {
-                                cx.theme().primary
-                            } else {
-                                cx.theme().transparent
-                            })
-                            .selected(self.location == Location::Device(key.clone()))
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                this.navigate(Location::Device(key.clone()), window, cx)
-                            }))
-                    }),
-            )
-            .child(
-                div()
-                    .flex_1()
-                    .h_full()
-                    .window_control_area(WindowControlArea::Drag),
-            )
-            .child(
-                Button::new("window-minimize")
-                    .icon(gpui_kit::assets::IconName::Minus)
-                    .ghost()
-                    .w(surface::css(48.))
-                    .h_full()
-                    .rounded(px(0.))
-                    .accessibility_label("最小化")
-                    .on_click(|_, w, _| w.minimize_window()),
-            )
-            .child(
-                Button::new("window-maximize")
-                    .icon(gpui_kit::assets::IconName::Square)
-                    .ghost()
-                    .w(surface::css(48.))
-                    .h_full()
-                    .rounded(px(0.))
-                    .accessibility_label("最大化或还原")
-                    .on_click(|_, w, _| w.zoom_window()),
-            )
-            .child(
-                Button::new("window-close")
-                    .icon(gpui_kit::assets::IconName::X)
-                    .ghost()
-                    .w(surface::css(48.))
-                    .h_full()
-                    .rounded(px(0.))
-                    .accessibility_label("关闭窗口")
-                    .on_click(cx.listener(|this, _, w, cx| this.request_exit(w, cx))),
-            )
-            .into_any_element()
-    }
     fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
         let title = match &self.location {
             Location::Device(key) => self
@@ -791,6 +762,7 @@ impl AppShell {
             Location::Main(Tab::Setting) => "设置".into(),
             Location::Main(_) => "RAZER SYNAPSE".into(),
             Location::Pairing => "多设备配对".into(),
+            Location::Tour => crate::i18n::t("INTRODUCTION_TOUR").into(),
         };
         h_flex()
             .id("app-toolbar")
@@ -948,7 +920,7 @@ impl AppShell {
                     .id("main-page-scroll")
                     .flex_1()
                     .min_h_0()
-                    .overflow_scrollbar()
+                    .scrollable_both()
                     .child(
                         v_flex()
                             .w_full()
@@ -974,15 +946,41 @@ impl Render for AppShell {
                 .map(|d| d.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Main(page) => self.main_page(*page, window, cx),
-            Location::Pairing => self.pairing.clone().into_any_element(),
+            Location::Tour => self
+                .introduction_tour
+                .as_ref()
+                .map(|tour| tour.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::Pairing => div()
+                .id("pairing-page-scroll")
+                .size_full()
+                .scrollable_both()
+                .child(self.pairing.clone())
+                .into_any_element(),
         };
         v_flex()
+            .key_context("AppShell")
+            .track_focus(&self.host_tabs.focus)
+            .on_action(cx.listener(Self::close_current_host_tab))
+            .on_action(cx.listener(Self::reopen_host_tab))
+            .on_action(cx.listener(Self::next_host_tab))
+            .on_action(cx.listener(Self::previous_host_tab))
+            .on_action(cx.listener(Self::move_host_tab_left))
+            .on_action(cx.listener(Self::move_host_tab_right))
             .size_full()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
-            .child(self.title_bar(cx))
+            .child(self.title_bar(window, cx))
             .child(self.toolbar(cx))
-            .child(div().flex_1().min_h_0().child(content))
+            .child(
+                div()
+                    .id("shell-content-viewport")
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0()
+                    .child(div().absolute().inset_0().child(content)),
+            )
             .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
             .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
             .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))

@@ -612,18 +612,35 @@ impl DeviceWorkspace {
                             });
                         }
                     })
-                    .content(move |_, _, cx| {
+                    .content(move |_, window, cx| {
                         let popup = cx.entity().downgrade();
                         if let Some(confirmation) = confirmation {
-                            return profile_confirmation(
-                                confirmation,
-                                pid,
-                                popup,
-                                workspace,
-                                confirmation_focus,
-                                cx,
+                            // Source bP keeps the reset/delete nodes mounted
+                            // and toggles .show: opacity .3s linear; hiding
+                            // immediately sets visibility:hidden.
+                            let opacity = gpui_kit::base::motion::Presence::new(
+                                "profile-confirm-opacity",
+                                true,
                             )
-                            .into_any_element();
+                            .transition(
+                                gpui_kit::base::motion::Transition::new(
+                                    std::time::Duration::from_millis(300),
+                                )
+                                .easing(gpui_kit::base::motion::Easing::Linear),
+                            )
+                            .sample(window, cx)
+                            .progress;
+                            return div()
+                                .opacity(opacity)
+                                .child(profile_confirmation(
+                                    confirmation,
+                                    pid,
+                                    popup,
+                                    workspace,
+                                    confirmation_focus,
+                                    cx,
+                                ))
+                                .into_any_element();
                         }
                         list.update(cx, |list, _| list.delegate_mut().popup = Some(popup));
                         // List sections share footer geometry. Clip its last separator,
@@ -742,7 +759,7 @@ fn profile_confirmation(
 /// ImportExportModal's original shell. Base owns focus and dismissal; keeping
 /// the presentation here avoids Component Dialog's inset title and fixed shadow.
 /// The local linked-program editor shares this shell; the original linked-games
-/// command opened the separate /profiles application, whose UI is not bundled.
+/// command opened the separate /profiles application, whose UI is not yet adapted.
 pub(super) struct ProfileDialog {
     title: String,
     content: AnyView,
@@ -906,10 +923,11 @@ impl Render for ProfileDialog {
                     )
                     .child(
                         div()
+                            .relative()
                             .flex_1()
                             .min_h_0()
                             .w_full()
-                            .child(self.content.clone()),
+                            .child(div().absolute().inset_0().child(self.content.clone())),
                     ),
             )
     }

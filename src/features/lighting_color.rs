@@ -554,88 +554,97 @@ impl LightingColorView {
                         ),
                 )
             })
-            .child(h_flex().flex_wrap().h(surface::css(60.)).flex_shrink_0().justify_center().children(
-                colors.into_iter().enumerate().map(|(slot, color)| {
-                    let selected = self.selected_slot == Some(slot)
-                        || (self.selected_slot.is_none()
-                            && !has_preset
-                            && color.is_some()
-                            && current == color);
-                    let trigger = self
-                        .swatch(
-                            format!("custom-slot-{slot}").into(),
-                            color.map(color_value).unwrap_or(palette.surface()),
-                            selected,
-                            color.is_none(),
-                            cx,
+            .child(
+                h_flex()
+                    .flex_wrap()
+                    .h(surface::css(60.))
+                    .flex_shrink_0()
+                    .justify_center()
+                    .children(colors.into_iter().enumerate().map(|(slot, color)| {
+                        let selected = self.selected_slot == Some(slot)
+                            || (self.selected_slot.is_none()
+                                && !has_preset
+                                && color.is_some()
+                                && current == color);
+                        let trigger = self
+                            .swatch(
+                                format!("custom-slot-{slot}").into(),
+                                color.map(color_value).unwrap_or(palette.surface()),
+                                selected,
+                                color.is_none(),
+                                cx,
+                            )
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                if let Some(color) = cx.global::<CustomColors>().colors()[slot] {
+                                    this.select(Some(color), Some(slot), window, cx);
+                                } else {
+                                    this.open_editor(slot, window, cx);
+                                }
+                            }));
+                        div().m(surface::css(5.)).child(
+                            Popover::new(("custom-menu", slot))
+                                .mouse_button(MouseButton::Right)
+                                .open(self.context_slot == Some(slot))
+                                .offset(surface::css(-11.).to_pixels(cx.theme().font_size))
+                                .on_open_change(cx.listener(move |this, open, _, cx| {
+                                    this.context_slot = (*open && color.is_some()).then_some(slot);
+                                    cx.notify();
+                                }))
+                                .trigger(trigger)
+                                .when(self.context_slot == Some(slot), |menu| {
+                                    let content = v_flex()
+                                        .ml(surface::css(9.))
+                                        .w(surface::css(90.))
+                                        .h(surface::css(58.))
+                                        .overflow_hidden()
+                                        .border_1()
+                                        .border_color(palette.picker_border())
+                                        .bg(palette.surface())
+                                        .child(
+                                            Button::new("edit-color")
+                                                .label(crate::i18n::t("EDIT"))
+                                                .w_full()
+                                                .h(surface::css(29.))
+                                                .px(surface::css(10.))
+                                                .py_0()
+                                                .rounded(px(0.))
+                                                .justify_start()
+                                                .custom(
+                                                    ButtonCustomVariant::new(cx)
+                                                        .color(palette.surface())
+                                                        .hover(cx.theme().foreground.opacity(0.1)),
+                                                )
+                                                .on_click(cx.listener(
+                                                    move |this, _, window, cx| {
+                                                        this.open_editor(slot, window, cx)
+                                                    },
+                                                )),
+                                        )
+                                        .child(
+                                            Button::new("delete-color")
+                                                .label(crate::i18n::t("DELETE"))
+                                                .w_full()
+                                                .h(surface::css(29.))
+                                                .px(surface::css(10.))
+                                                .py_0()
+                                                .rounded(px(0.))
+                                                .justify_start()
+                                                .custom(
+                                                    ButtonCustomVariant::new(cx)
+                                                        .color(palette.surface())
+                                                        .hover(cx.theme().foreground.opacity(0.1)),
+                                                )
+                                                .on_click(cx.listener(
+                                                    move |this, _, window, cx| {
+                                                        this.delete_slot(slot, window, cx)
+                                                    },
+                                                )),
+                                        );
+                                    menu.content(move |_, _, _| content)
+                                }),
                         )
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            if let Some(color) = cx.global::<CustomColors>().colors()[slot] {
-                                this.select(Some(color), Some(slot), window, cx);
-                            } else {
-                                this.open_editor(slot, window, cx);
-                            }
-                        }));
-                    div().m(surface::css(5.)).child(
-                        Popover::new(("custom-menu", slot))
-                            .mouse_button(MouseButton::Right)
-                            .open(self.context_slot == Some(slot))
-                            .offset(surface::css(-11.).to_pixels(cx.theme().font_size))
-                            .on_open_change(cx.listener(move |this, open, _, cx| {
-                                this.context_slot = (*open && color.is_some()).then_some(slot);
-                                cx.notify();
-                            }))
-                            .trigger(trigger)
-                            .when(self.context_slot == Some(slot), |menu| {
-                                let content = v_flex()
-                                    .ml(surface::css(9.))
-                                    .w(surface::css(90.))
-                                    .h(surface::css(58.))
-                                    .overflow_hidden()
-                                    .border_1()
-                                    .border_color(palette.picker_border())
-                                    .bg(palette.surface())
-                                    .child(
-                                        Button::new("edit-color")
-                                            .label(crate::i18n::t("EDIT"))
-                                            .w_full()
-                                            .h(surface::css(29.))
-                                            .px(surface::css(10.))
-                                            .py_0()
-                                            .rounded(px(0.))
-                                            .justify_start()
-                                            .custom(
-                                                ButtonCustomVariant::new(cx)
-                                                    .color(palette.surface())
-                                                    .hover(cx.theme().foreground.opacity(0.1)),
-                                            )
-                                            .on_click(cx.listener(move |this, _, window, cx| {
-                                                this.open_editor(slot, window, cx)
-                                            })),
-                                    )
-                                    .child(
-                                        Button::new("delete-color")
-                                            .label(crate::i18n::t("DELETE"))
-                                            .w_full()
-                                            .h(surface::css(29.))
-                                            .px(surface::css(10.))
-                                            .py_0()
-                                            .rounded(px(0.))
-                                            .justify_start()
-                                            .custom(
-                                                ButtonCustomVariant::new(cx)
-                                                    .color(palette.surface())
-                                                    .hover(cx.theme().foreground.opacity(0.1)),
-                                            )
-                                            .on_click(cx.listener(move |this, _, window, cx| {
-                                                this.delete_slot(slot, window, cx)
-                                            })),
-                                    );
-                                menu.content(move |_, _, _| content)
-                            }),
-                    )
-                }),
-            ))
+                    })),
+            )
             .into_any_element()
     }
 
@@ -1028,11 +1037,21 @@ impl Render for LightingColorView {
                                             .path("synapse/expand.svg")
                                             .w(surface::css(10.))
                                             .h(surface::css(5.))
-                                            .transform(Transformation::rotate(radians(if open {
-                                                std::f32::consts::PI
-                                            } else {
-                                                0.
-                                            }))),
+                                            .transform(Transformation::rotate(radians(
+                                                gpui_kit::base::motion::transition(
+                                                    ElementId::from((
+                                                        "palette-arrow",
+                                                        cx.entity_id(),
+                                                    )),
+                                                    if open { std::f32::consts::PI } else { 0. },
+                                                    gpui_kit::base::motion::Transition::new(
+                                                        std::time::Duration::from_millis(300),
+                                                    )
+                                                    .easing(gpui_kit::base::motion::Easing::Ease),
+                                                    window,
+                                                    cx,
+                                                ),
+                                            ))),
                                     ),
                             )
                             .child(
@@ -1047,7 +1066,25 @@ impl Render for LightingColorView {
                         } else {
                             self.render_palette(cx)
                         };
-                        popover.content(move |_, _, _| content)
+                        let editing = self.editing.is_some();
+                        popover.content(move |_, window, cx| {
+                            // The secondary picker uses display:none/block;
+                            // only the palette has the .1s opacity transition.
+                            let opacity = if editing {
+                                1.
+                            } else {
+                                gpui_kit::base::motion::Presence::new("palette-fade", true)
+                                    .transition(
+                                        gpui_kit::base::motion::Transition::new(
+                                            std::time::Duration::from_millis(100),
+                                        )
+                                        .easing(gpui_kit::base::motion::Easing::Ease),
+                                    )
+                                    .sample(window, cx)
+                                    .progress
+                            };
+                            div().opacity(opacity).child(content)
+                        })
                     }),
             )
     }

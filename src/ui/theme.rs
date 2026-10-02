@@ -1,6 +1,103 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Settings `.thx-btn.test` has its own gray fill and translucent black border.
+pub(crate) struct SettingsButtonColors;
+impl SettingsButtonColors {
+    pub(crate) fn background() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn foreground() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+}
+
+/// Electron host tab strip, distinct from the product frontend buttons.
+pub(crate) struct HostColors;
+impl HostColors {
+    pub(crate) fn background() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn surface() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn hover() -> Hsla {
+        rgb(0x444444).into()
+    }
+    pub(crate) fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn active_text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn inactive_text() -> Hsla {
+        rgb(0x999999).into()
+    }
+}
+
+/// Source `[tooltip]` and `.tip` surfaces, independent of the application title bar.
+pub(crate) struct TooltipColors;
+impl TooltipColors {
+    pub(crate) fn help_background() -> Hsla {
+        rgb(0x4a4a4a).into()
+    }
+    pub(crate) fn help_hover() -> Hsla {
+        rgb(0x6c6c6c).into()
+    }
+    pub(crate) fn background() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn foreground() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+}
+
+/// `.keymap-head .close` in the product frontend.
+pub(crate) struct KeymapCloseColors;
+impl KeymapCloseColors {
+    pub(crate) fn modal_pressed() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn idle() -> Hsla {
+        rgba(0x00000000).into()
+    }
+    pub(crate) fn hover() -> Hsla {
+        rgba(0xffffff1a).into()
+    }
+    pub(crate) fn pressed() -> Hsla {
+        rgba(0x0000001a).into()
+    }
+}
+
+/// Introduction Tour's `.rz-btn`, `.rz-dot` and black photographic surface.
+pub(crate) struct TourColors;
+impl TourColors {
+    pub(crate) fn background() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn button_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn primary_text() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn paragraph() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+}
+
 /// Main frontend's photographic banner, module details, and tutorial emphasis.
 pub(crate) struct MainPageColors;
 impl MainPageColors {

@@ -18,7 +18,10 @@ fn open_mouse(cx: &mut TestAppContext) -> (WindowHandle<Root>, Entity<DeviceWork
 
 #[gpui_kit::test]
 fn rejected_mapping_switch_keeps_the_original_return_target(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx);
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
@@ -56,7 +59,10 @@ fn rejected_mapping_switch_keeps_the_original_return_target(cx: &mut TestAppCont
 
 #[gpui_kit::test]
 fn closing_a_drawer_mapping_returns_focus_to_the_visible_toggle(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx);
     for dirty in [false, true] {
         cx.update_window(handle.into(), |_, window, cx| {
@@ -87,7 +93,10 @@ fn closing_a_drawer_mapping_returns_focus_to_the_visible_toggle(cx: &mut TestApp
 
 #[gpui_kit::test]
 fn mapping_navigation_and_global_save_release_editor_focus(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx);
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
@@ -120,7 +129,10 @@ fn mapping_navigation_and_global_save_release_editor_focus(cx: &mut TestAppConte
 
 #[gpui_kit::test]
 fn global_save_does_not_steal_focus_from_a_separate_surface(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx);
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
@@ -144,7 +156,10 @@ fn global_save_does_not_steal_focus_from_a_separate_surface(cx: &mut TestAppCont
 fn saving_from_the_close_dialog_returns_focus_when_a_filtered_row_disappears(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx);
     cx.update_window(handle.into(), |_, window, cx| {
         view.update(cx, |state, _| {

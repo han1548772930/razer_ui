@@ -21,6 +21,7 @@
 | [13 配置迁移](13-profile-migration.md) | Settings打开的独立迁移应用、分组卡片、选择与状态弹层；真实扫描/转换边界 |
 | [14 Wi-Fi 添加](14-iot-add.md) | Key Light／Gamer Room 分支、网络与设备列表、返回与密码清理、显式状态预览 |
 | [15 账户菜单](15-account-menu.md) | 访客菜单的原版外观、焦点、退出保护及账户服务边界 |
+| [16 Introduction Tour](16-introduction-tour.md) | Synapse 五步独立教程、内嵌原片段、导航关闭与短窗口滚动；Chroma 分支边界 |
 
 产品导航顺序：
 

@@ -33,7 +33,10 @@ fn open_mouse(
 
 #[gpui_kit::test]
 fn dpi_slot_controls_reject_disabled_edits_and_keep_each_axis(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx, 1.);
     cx.update_window(handle.into(), |_, w, cx| {
         w.render_frame(cx);
@@ -116,7 +119,10 @@ fn dpi_slot_controls_reject_disabled_edits_and_keep_each_axis(cx: &mut TestAppCo
 
 #[gpui_kit::test]
 fn dpi_stepper_commits_drafts_and_handles_buttons_keys_and_wheel(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx, 1.);
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
@@ -213,7 +219,10 @@ fn dpi_stepper_commits_drafts_and_handles_buttons_keys_and_wheel(cx: &mut TestAp
 
 #[gpui_kit::test]
 fn dpi_pointer_hold_repeats_at_300ms_and_stops_on_release_or_blur(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let (handle, view) = open_mouse(cx, 1.);
     cx.update_window(handle.into(), |_, window, _| window.activate_window())
         .unwrap();
@@ -305,7 +314,10 @@ fn dpi_pointer_hold_repeats_at_300ms_and_stops_on_release_or_blur(cx: &mut TestA
 
 #[gpui_kit::test]
 fn dpi_reorder_and_resizing_preserve_selection_and_profile_values(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     for scale in [1., 1.25] {
         let (handle, view) = open_mouse(cx, scale);
         cx.update_window(handle.into(), |_, w, cx| {

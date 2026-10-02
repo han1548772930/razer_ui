@@ -462,8 +462,8 @@ impl DeviceWorkspace {
             })
             .into_any_element()
     }
-    pub(super) fn mapping_panel(&self, cx: &mut Context<Self>) -> AnyElement {
-        self.render_mapping_editor(cx)
+    pub(super) fn mapping_panel(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        self.render_mapping_editor(window, cx)
     }
     fn keyboard_panels(&self, cx: &mut Context<Self>) -> AnyElement {
         surface::page_columns()

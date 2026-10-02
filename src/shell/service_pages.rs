@@ -2,14 +2,18 @@
 //! Browsing and navigation are local. Native discovery/install results are never
 //! synthesized from clicks, timers, or the catalogue of supported products.
 use super::iot_popup;
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     i18n,
     model::Device,
-    ui::{surface, theme::MainPageColors},
+    ui::{
+        surface,
+        theme::MainPageColors,
+        tutorial::{TutorialIndicator, tutorial_button},
+    },
 };
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
-    scroll::ScrollableElement as _,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -17,6 +21,10 @@ use std::collections::BTreeSet;
 
 #[path = "module_preview.rs"]
 mod module_preview;
+
+#[cfg(test)]
+#[path = "gamer_room_tutorial_tests.rs"]
+mod tutorial_tests;
 
 struct Product {
     name: &'static str,
@@ -467,6 +475,7 @@ impl GamerRoomPage {
                 gpui_kit::base::Popover::new("gamer-room-tutorial-popover")
                     .anchor(Anchor::TopLeft)
                     .offset(px(0.))
+                    .overlay_closable(false)
                     .open(self.tour_step.is_some())
                     .trigger_with(|_, _, _| div().size_0().into_any_element())
                     .on_open_change(cx.listener(|this, open: &bool, _, cx| {
@@ -474,9 +483,11 @@ impl GamerRoomPage {
                             this.complete_tutorial(cx);
                         }
                     }))
-                    .content(move |_, _, cx| {
+                    .content(move |_, window, cx| {
                         owner
-                            .update(cx, |this, cx| this.tour(this.tour_step.unwrap_or(0), cx))
+                            .update(cx, |this, cx| {
+                                this.tour(this.tour_step.unwrap_or(0), window, cx)
+                            })
                             .unwrap_or_else(|_| div().into_any_element())
                     }),
             )
@@ -529,126 +540,129 @@ impl GamerRoomPage {
                 .into_any_element()
         }
     }
-    fn tour(&self, step: usize, cx: &mut Context<Self>) -> AnyElement {
+    fn tour(&self, step: usize, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let texts = [
             "GAMER_ROOM_TUTORIAL_HEADER_DESC_1",
             "GAMER_ROOM_TUTORIAL_HEADER_DESC_2",
         ];
         let videos = [
-            "https://apps.razer.com/synapse/dashboard/static/media/Gamer%20Room%20Dashboard%20Tutorial%201.080f80fb.mp4",
-            "https://apps.razer.com/synapse/dashboard/static/media/Gamer%20Room%20Dashboard%20Tutorial%202.b4e338ae.mp4",
+            "synapse/tutorial-gamer-room-1.webp",
+            "synapse/tutorial-gamer-room-2.webp",
         ];
         v_flex()
             .id("gamer-room-tour")
             .test_support()
             .relative()
             .w(surface::css(290.))
-            .pt(surface::css(40.))
-            .px(surface::css(20.))
-            .pb(surface::css(20.))
             .bg(cx.theme().group_box)
             .border_1()
             .border_color(MainPageColors.tutorial_accent())
             .rounded(cx.theme().font_size * (5. / 16.))
             .child(
-                img("synapse/gr-tutorial-indicator.svg")
+                TutorialIndicator::new("gamer-room-tutorial-indicator")
                     .absolute()
-                    .size(surface::css(36.))
-                    .left(surface::css(if step == 0 { -44.1 } else { -47. }))
+                    .left(relative(if step == 0 { -0.09 } else { -0.1 }))
+                    .ml(surface::css(-18.))
                     .when(step == 0, |view| view.top_0())
                     .when(step != 0, |view| {
                         view.top(relative(0.5)).mt(surface::css(-18.))
                     }),
             )
             .child(
-                Button::new("gr-tour-skip")
-                    .ghost()
+                gpui_kit::base::Button::new("gr-tour-skip")
+                    .accessibility_label(i18n::t("TUTORIAL_SKIP"))
                     .absolute()
-                    .top(surface::css(10.))
-                    .right(surface::css(15.))
-                    .h(surface::css(25.))
-                    .px(surface::css(5.))
+                    .top(surface::css(15.))
+                    .right(surface::css(20.))
+                    .p_0()
                     .text_size(surface::css(12.))
-                    .label("跳过")
+                    .line_height(relative(1.5))
+                    .text_color(cx.theme().foreground)
+                    .underline()
+                    .hover(|style| style.text_color(cx.theme().primary))
+                    .focus_visible(|style| style.text_color(cx.theme().primary))
+                    .child(i18n::t("TUTORIAL_SKIP").to_uppercase())
                     .on_click(cx.listener(|this, _, _, cx| this.complete_tutorial(cx))),
             )
             .child(
-                v_flex()
-                    .h(surface::css(141.))
+                div()
+                    .id("gamer-room-tutorial-scroll")
                     .w_full()
-                    .items_center()
-                    .justify_center()
-                    .gap(surface::css(10.))
-                    .bg(MainPageColors.banner_shade())
-                    .child("教程视频")
-                    .child(source_link(
-                        "gr-tour-video",
-                        "在浏览器中播放",
-                        videos[step],
-                        cx,
-                    )),
-            )
-            .child(
-                div()
-                    .text_size(surface::css(16.))
-                    .text_color(MainPageColors.tutorial_accent())
-                    .mb(surface::css(5.))
-                    .child(i18n::t("GAMER_ROOM_TUTORIAL_HEADER")),
-            )
-            .child(
-                div()
-                    .text_size(surface::css(14.))
-                    .whitespace_normal()
-                    .child(i18n::t(texts[step])),
-            )
-            .child(
-                h_flex()
-                    .mt(surface::css(20.))
-                    .justify_center()
-                    .gap(surface::css(10.))
+                    .max_h((window.viewport_size().height - window.rem_size() * 2.5).max(px(1.)))
+                    .scrollable_y()
                     .child(
-                        Button::new("gr-tour-back")
-                            .label("上一步")
-                            .w(surface::css(100.))
-                            .h(surface::css(27.))
-                            .text_size(surface::css(12.))
-                            .rounded(cx.theme().font_size * (3. / 16.))
-                            .disabled(step == 0)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.tour_step = Some(0);
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        Button::new("gr-tour-next")
-                            .primary()
-                            .w(surface::css(100.))
-                            .h(surface::css(27.))
-                            .text_size(surface::css(12.))
-                            .rounded(cx.theme().font_size * (3. / 16.))
-                            .custom(
-                                ButtonCustomVariant::new(cx)
-                                    .color(MainPageColors.tutorial_accent())
-                                    .hover(MainPageColors.tutorial_hover())
-                                    .foreground(MainPageColors.banner_shade()),
+                        v_flex()
+                            .pt(surface::css(40.))
+                            .px(surface::css(20.))
+                            .pb(surface::css(20.))
+                            .child(crate::ui::tutorial_media::clip(
+                                videos[step],
+                                i18n::t("GAMER_ROOM_TUTORIAL_HEADER"),
+                                250. / 190.,
+                            ))
+                            .child(
+                                div()
+                                    .text_size(surface::css(16.))
+                                    .text_color(MainPageColors.tutorial_accent())
+                                    .mb(surface::css(5.))
+                                    .child(i18n::t("GAMER_ROOM_TUTORIAL_HEADER")),
                             )
-                            .label(if step == 0 { "下一步" } else { "完成" })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if step == 0 {
-                                    this.tour_step = Some(1);
-                                    cx.notify();
-                                } else {
-                                    this.complete_tutorial(cx);
-                                }
-                            })),
+                            .child(
+                                div()
+                                    .text_size(surface::css(14.))
+                                    .whitespace_normal()
+                                    .child(i18n::t(texts[step])),
+                            )
+                            .child(
+                                h_flex()
+                                    .mt(surface::css(20.))
+                                    .justify_center()
+                                    .gap(surface::css(10.))
+                                    .child(
+                                        tutorial_button(
+                                            "gr-tour-back",
+                                            i18n::t("BACK"),
+                                            false,
+                                            step == 0,
+                                            window,
+                                            cx,
+                                        )
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
+                                                this.tour_step = Some(0);
+                                                cx.notify();
+                                            }),
+                                        ),
+                                    )
+                                    .child(
+                                        tutorial_button(
+                                            "gr-tour-next",
+                                            i18n::t(if step == 0 { "NEXT" } else { "DONE" }),
+                                            true,
+                                            false,
+                                            window,
+                                            cx,
+                                        )
+                                        .on_click(
+                                            cx.listener(move |this, _, _, cx| {
+                                                if step == 0 {
+                                                    this.tour_step = Some(1);
+                                                    cx.notify();
+                                                } else {
+                                                    this.complete_tutorial(cx);
+                                                }
+                                            }),
+                                        ),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .mt(surface::css(10.))
+                                    .text_size(surface::css(12.))
+                                    .text_center()
+                                    .child(format!("{} / 2", step + 1)),
+                            ),
                     ),
-            )
-            .child(
-                div()
-                    .mt(surface::css(10.))
-                    .text_size(surface::css(12.))
-                    .text_center()
-                    .child(format!("{} / 2", step + 1)),
             )
             .into_any_element()
     }
@@ -953,7 +967,7 @@ impl Render for DeviceDetails {
                 v_flex()
                     .id("device-details-scroll")
                     .min_h_0()
-                    .overflow_y_scrollbar()
+                    .scrollable_y()
                     .gap(surface::css(14.))
                     .children(values.into_iter().map(|(label, value)| {
                         h_flex()

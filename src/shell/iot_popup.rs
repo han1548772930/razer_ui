@@ -2,6 +2,7 @@
 //! Network/device results below exist only in explicitly selected preview scenes.
 //! No native discovery, Wi-Fi configuration, localStorage or identify call is made.
 use super::service_pages::source_link;
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::Choice,
     i18n,
@@ -14,13 +15,16 @@ use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     input::{Input, InputState},
-    scroll::ScrollableElement as _,
     select::{SelectEvent, SelectState},
     spinner::Spinner,
     tooltip::Tooltip,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+
+#[cfg(test)]
+#[path = "iot_popup_tests.rs"]
+mod tests;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum DeviceKind {
@@ -1257,6 +1261,16 @@ impl Render for IotPopup {
         if !self.open {
             return div().into_any_element();
         }
+        // Shared modal 82830 adds .show 100ms after mounting; 55 CSS fades
+        // the surface and backdrop over 150ms linear, with no slide/scale.
+        let opacity = gpui_kit::base::motion::Presence::new("iot-modal-opacity", true)
+            .transition(
+                gpui_kit::base::motion::Transition::new(std::time::Duration::from_millis(150))
+                    .delay(std::time::Duration::from_millis(100))
+                    .easing(gpui_kit::base::motion::Easing::Linear),
+            )
+            .sample(window, cx)
+            .progress;
         let body = match self.screen {
             Screen::General => self.general(cx),
             Screen::Prepare => self.prepare(cx),
@@ -1291,12 +1305,13 @@ impl Render for IotPopup {
                 div()
                     .absolute()
                     .size_full()
-                    .bg(MainPageColors.banner_shade().opacity(0.7)),
+                    .bg(MainPageColors.banner_shade().opacity(0.7 * opacity)),
             )
             .popup(
                 v_flex()
                     .id("gamer-room-add-dialog")
                     .test_support()
+                    .opacity(opacity)
                     .absolute()
                     .top(top)
                     .left((viewport.width - width) / 2.)
@@ -1320,27 +1335,18 @@ impl Render for IotPopup {
                             .font_weight(FontWeight::LIGHT)
                             .child(self.kind.title().to_uppercase())
                             .child(
-                                Button::new("gr-add-close")
-                                    .ghost()
-                                    .absolute()
-                                    .top_0()
-                                    .right_0()
-                                    .size(surface::css(36.))
-                                    .p_0()
-                                    .rounded(px(0.))
-                                    .custom(
-                                        ButtonCustomVariant::new(cx)
-                                            .color(cx.theme().transparent)
-                                            .hover(PaletteColors.white().opacity(0.1)),
-                                    )
-                                    .accessibility_label("关闭添加设备")
-                                    .child(
-                                        img("synapse/calibration-close.svg")
-                                            .size(surface::css(20.)),
-                                    )
-                                    .on_click(
-                                        cx.listener(|this, _, window, cx| this.close(window, cx)),
-                                    ),
+                                surface::modal_close_button(
+                                    "gr-add-close",
+                                    "关闭添加设备",
+                                    window,
+                                    cx,
+                                )
+                                .absolute()
+                                .top_0()
+                                .right_0()
+                                .on_click(
+                                    cx.listener(|this, _, window, cx| this.close(window, cx)),
+                                ),
                             ),
                     )
                     .child(
@@ -1378,7 +1384,7 @@ impl Render for IotPopup {
                             .flex_1()
                             .min_h_0()
                             .w_full()
-                            .overflow_y_scrollbar()
+                            .scrollable_y()
                             .items_center()
                             .child(div().w_full().child(body))
                             .when(!self.notice.is_empty(), |column| {

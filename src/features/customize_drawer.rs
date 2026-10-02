@@ -271,6 +271,16 @@ impl DeviceWorkspace {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let open = self.customize_drawer.open;
+        // Retain the 230px drawer while its left edge and the remaining body
+        // width transition over .2s (the source CSS's default ease curve).
+        let drawer_width = gpui_kit::base::motion::transition(
+            ElementId::from(("customize-drawer-width", cx.entity_id())),
+            if open { 230_f32 } else { 0. },
+            gpui_kit::base::motion::Transition::new(std::time::Duration::from_millis(200))
+                .easing(gpui_kit::base::motion::Easing::Ease),
+            window,
+            cx,
+        );
         let min_width = if self.pid() == 653 { 830.8 } else { 770. };
         let content = div()
             .id(SharedString::from(format!(
@@ -341,7 +351,25 @@ impl DeviceWorkspace {
             .min_h_0()
             .min_w_0()
             .overflow_hidden()
-            .when(open, |this| this.child(self.drawer_panel(cx)))
+            .when(drawer_width > 0., |this| {
+                this.child(
+                    div()
+                        .relative()
+                        .w(surface::css(drawer_width))
+                        .h_full()
+                        .flex_shrink_0()
+                        .overflow_hidden()
+                        .child(
+                            div()
+                                .absolute()
+                                .top_0()
+                                .left(surface::css(drawer_width - 230.))
+                                .w(surface::css(230.))
+                                .h_full()
+                                .child(self.drawer_panel(cx)),
+                        ),
+                )
+            })
             .child(content)
             .when(self.mapping.is_some(), |this| {
                 this.child(
@@ -355,7 +383,7 @@ impl DeviceWorkspace {
                         .h_full()
                         .max_h_full()
                         .pb(surface::css(8.))
-                        .child(self.mapping_panel(cx)),
+                        .child(self.mapping_panel(window, cx)),
                 )
             })
             .into_any_element()
@@ -623,7 +651,10 @@ mod tests {
 
     #[gpui_kit::test]
     fn drawer_activation_preserves_dirty_continuations_and_primary_click(cx: &mut TestAppContext) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
         let mut workspace = None;
         let handle = cx.open_window(size(px(1080.), px(800.)), |window, cx| {
@@ -710,7 +741,10 @@ mod tests {
     fn keyboard_drawer_filters_each_layer_and_scrolls_independently_after_resize(
         cx: &mut TestAppContext,
     ) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
         let mut workspace = None;
         let handle = cx.open_window(size(px(1100.), px(900.)), |window, cx| {
@@ -836,7 +870,10 @@ mod tests {
 
     #[gpui_kit::test]
     fn mouse_drawer_close_and_layer_change_preserve_pending_mapping(cx: &mut TestAppContext) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         let mut workspace = None;
         let handle = cx.open_window(size(px(1080.), px(800.)), |window, cx| {
             let mut device = crate::model::measured_devices().remove(0);
@@ -896,7 +933,10 @@ mod tests {
 
     #[gpui_kit::test]
     fn japanese_keyboard_drawer_and_product_use_the_same_input_set(cx: &mut TestAppContext) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         let handle = cx.open_window(size(px(1200.), px(850.)), |window, cx| {
             let mut device = crate::demo::demo_keyboard();
             device.layout_id = 12;
@@ -935,7 +975,10 @@ mod tests {
     fn tab_reveals_drawer_rows_and_filtering_preserves_a_visible_focus_target(
         cx: &mut TestAppContext,
     ) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
         let mut workspace = None;
         let handle = cx.open_window(size(px(1100.), px(850.)), |window, cx| {

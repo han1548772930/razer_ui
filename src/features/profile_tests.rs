@@ -126,7 +126,10 @@ fn resetting_bindings_keeps_other_settings_and_full_reset_keeps_identity() {
 
 #[gpui_kit::test]
 fn profile_menu_rename_enter_escape_and_delete_are_real_ui_flows(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
         let view = cx.new(|cx| DeviceWorkspace::new(device(), true, window, cx));
@@ -241,7 +244,10 @@ fn profile_menu_rename_enter_escape_and_delete_are_real_ui_flows(cx: &mut TestAp
 
 #[gpui_kit::test]
 fn new_profile_and_delete_preserve_pending_mapping_until_a_decision(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| DeviceWorkspace::new(device(), true, window, cx));

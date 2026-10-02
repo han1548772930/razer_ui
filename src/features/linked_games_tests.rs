@@ -60,7 +60,10 @@ fn linked_paths_are_absolute_executables_and_never_command_lines() {
 fn adding_duplicate_removing_and_cancelling_linked_games_uses_the_real_dialog(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let file = GameFile::new();
     let game = game_from_path(&file.0).unwrap();
     let mut workspace = None;
@@ -132,7 +135,10 @@ fn adding_duplicate_removing_and_cancelling_linked_games_uses_the_real_dialog(
 
 #[gpui_kit::test]
 fn a_late_file_selection_does_not_link_the_new_active_profile(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let file = GameFile::new();
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {

@@ -9,7 +9,10 @@ use gpui_kit::{AppContext, ScrollDelta, SharedString, TestAppContext, point, px,
 fn source_widget_breakpoint_reflows_real_lighting_without_resetting_controls(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     for scale in [1., 1.25] {
         cx.update(|cx| {
             gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16. * scale))
@@ -104,7 +107,10 @@ fn source_widget_breakpoint_reflows_real_lighting_without_resetting_controls(
 fn narrow_short_workspace_keeps_mapping_overlay_fixed_while_product_scrolls(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1080.), px(800.)), |window, cx| {
@@ -206,7 +212,10 @@ fn narrow_short_workspace_keeps_mapping_overlay_fixed_while_product_scrolls(
 
 #[gpui_kit::test]
 fn narrow_mic_workspace_keeps_eq_width_and_reaches_retained_last_band(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1100.), px(800.)), |window, cx| {
@@ -327,7 +336,10 @@ fn narrow_mic_workspace_keeps_eq_width_and_reaches_retained_last_band(cx: &mut T
 
 #[gpui_kit::test]
 fn source_navigation_and_mouse_overlay_keep_geometry_when_scaled(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     for (width, scale) in [(1080., 1.), (1280., 1.), (1350., 1.25)] {
         cx.update(|cx| {
             gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16. * scale))
@@ -370,7 +382,10 @@ fn source_navigation_and_mouse_overlay_keep_geometry_when_scaled(cx: &mut TestAp
 
 #[gpui_kit::test]
 fn source_eq_spacing_reset_position_and_switch_keyboard_activation(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1100.)), |window, cx| {
@@ -434,7 +449,10 @@ fn source_eq_spacing_reset_position_and_switch_keyboard_activation(cx: &mut Test
 
 #[gpui_kit::test]
 fn mic_drag_presets_reset_and_profile_switch_are_isolated(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1240.), px(860.)), |window, cx| {
         let mut device = crate::demo::demo_keyboard();
@@ -505,7 +523,10 @@ fn mic_drag_presets_reset_and_profile_switch_are_isolated(cx: &mut TestAppContex
 }
 #[gpui_kit::test]
 fn calibration_checkbox_and_drag_keep_landing_below_lift(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1240.), px(860.)), |window, cx| {
         let view = cx.new(|cx| {
@@ -544,7 +565,10 @@ fn calibration_checkbox_and_drag_keep_landing_below_lift(cx: &mut TestAppContext
 }
 #[gpui_kit::test]
 fn keyboard_hit_target_and_mapping_cancel_preserve_layer(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(960.)), |window, cx| {
         let view =
@@ -620,7 +644,10 @@ fn keyboard_hit_target_and_mapping_cancel_preserve_layer(cx: &mut TestAppContext
 fn same_pid_different_instances_keep_distinct_identity_and_saved_revisions(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.open_window(size(px(1000.), px(720.)), |window, cx| {
         let original = crate::model::measured_devices().remove(0);
         let mut another = original.clone();
@@ -645,7 +672,10 @@ fn same_pid_different_instances_keep_distinct_identity_and_saved_revisions(
 
 #[gpui_kit::test]
 fn lighting_parameters_and_disabled_brightness_follow_real_controls(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(860.)), |window, cx| {
         let view =

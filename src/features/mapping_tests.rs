@@ -5,7 +5,95 @@ use super::{
 use crate::features::workspace::{Continue, DeviceWorkspace};
 use gpui_kit::component::Root;
 use gpui_kit::test::TestWindowExt;
-use gpui_kit::{AnyWindowHandle, AppContext, TestAppContext, px, size};
+use gpui_kit::{AnyWindowHandle, AppContext, ScrollDelta, TestAppContext, point, px, size};
+use std::time::Duration;
+
+#[gpui_kit::test]
+fn mapping_categories_animate_over_a_stationary_body_and_scroll_in_a_short_window(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+        gpui_kit::component::Theme::update(cx, |theme| theme.font_size = px(16.));
+    });
+    let handle = cx.open_window(size(px(1280.), px(440.)), |window, cx| {
+        let view = cx.new(|cx| {
+            DeviceWorkspace::new(crate::model::measured_devices().remove(0), true, window, cx)
+        });
+        Root::new(view, window, cx)
+    });
+    let body = cx
+        .update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("customize-drawer-toggle", cx);
+            window.click("drawer-input-RightButton", cx);
+            let body = window.find("mapping-body").bounds();
+            assert_eq!(
+                window.find("mapping-categories").bounds().size.width,
+                px(40.)
+            );
+            cx.set_reduce_motion(false);
+            window.hover("mapping-category-default", cx);
+            window.render_frame(cx);
+            assert_eq!(
+                window.find("mapping-categories").bounds().size.width,
+                px(40.)
+            );
+            body
+        })
+        .unwrap();
+    cx.executor().advance_clock(Duration::from_millis(100));
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        let width = window.find("mapping-categories").bounds().size.width;
+        assert!(width > px(40.) && width < px(250.));
+        assert_eq!(window.find("mapping-body").bounds(), body);
+        window.hover("mapping-close", cx);
+        window.render_frame(cx);
+        assert!((window.find("mapping-categories").bounds().size.width - width).abs() < px(1.));
+    })
+    .unwrap();
+    cx.executor().advance_clock(Duration::from_millis(200));
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert_eq!(
+            window.find("mapping-categories").bounds().size.width,
+            px(40.)
+        );
+        window.hover("mapping-category-default", cx);
+        window.render_frame(cx);
+    })
+    .unwrap();
+    cx.executor().advance_clock(Duration::from_millis(200));
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        let rail = window.find("mapping-categories").bounds();
+        assert_eq!(rail.size.width, px(250.));
+        let first_top = window.find("mapping-category-default").bounds().top();
+        assert!(window.find("mapping-category-disable").bounds().bottom() > rail.bottom());
+        window.scroll(
+            "mapping-categories",
+            ScrollDelta::Pixels(point(px(0.), px(-2000.))),
+            cx,
+        );
+        window.render_frame(cx);
+        assert!(window.find("mapping-category-default").bounds().top() < first_top);
+        assert!(window.find("mapping-category-disable").bounds().bottom() <= rail.bottom());
+        assert_eq!(window.find("mapping-body").bounds(), body);
+        window.scroll(
+            "mapping-categories",
+            ScrollDelta::Pixels(point(px(0.), px(2000.))),
+            cx,
+        );
+        window.render_frame(cx);
+        assert_eq!(
+            window.find("mapping-category-default").bounds().top(),
+            first_top
+        );
+    })
+    .unwrap();
+}
 
 fn move_mapping_selection(
     cx: &mut TestAppContext,
@@ -181,7 +269,10 @@ fn changing_symbols_retains_explicit_shift_but_drops_implicit_shift() {
 
 #[gpui_kit::test]
 fn symbol_dropdown_and_modifier_buttons_preserve_the_saved_chord(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1100.)), |window, cx| {
         let view =
@@ -315,7 +406,10 @@ fn keyboard_categories_follow_every_bundled_layout_and_hidden_dial_inputs() {
 
 #[gpui_kit::test]
 fn mouse_scroll_and_bottom_button_offer_only_supported_mapping_controls(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| {
@@ -361,7 +455,10 @@ fn mouse_scroll_and_bottom_button_offer_only_supported_mapping_controls(cx: &mut
 
 #[gpui_kit::test]
 fn closing_or_saving_a_mapping_restores_focus_to_its_input(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| {
             DeviceWorkspace::new(crate::model::measured_devices().remove(0), true, window, cx)
@@ -419,7 +516,10 @@ fn committed_numeric_input_restores_or_clamps_and_websites_get_a_scheme() {
 
 #[gpui_kit::test]
 fn source_capabilities_and_legacy_reverts_preserve_profile_drafts(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| {
             DeviceWorkspace::new(crate::model::measured_devices().remove(0), true, window, cx)
@@ -492,7 +592,10 @@ fn source_capabilities_and_legacy_reverts_preserve_profile_drafts(cx: &mut TestA
 
 #[gpui_kit::test]
 fn empty_operation_ids_cannot_be_saved_as_assignments(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view =
             cx.new(|cx| DeviceWorkspace::new(crate::demo::demo_keyboard(), true, window, cx));
@@ -538,7 +641,10 @@ fn empty_operation_ids_cannot_be_saved_as_assignments(cx: &mut TestAppContext) {
 
 #[gpui_kit::test]
 fn recorded_chord_obeys_save_discard_and_layer_continuations(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1100.)), |window, cx| {
         let view =
@@ -632,7 +738,10 @@ fn recorded_chord_obeys_save_discard_and_layer_continuations(cx: &mut TestAppCon
 
 #[gpui_kit::test]
 fn invalid_values_cannot_commit_and_opening_legacy_does_not_rewrite_it(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| {
             DeviceWorkspace::new(crate::model::measured_devices().remove(0), true, window, cx)

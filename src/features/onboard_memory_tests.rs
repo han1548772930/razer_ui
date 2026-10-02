@@ -6,7 +6,10 @@ use gpui_kit::{AppContext, TestAppContext, px, size};
 
 #[gpui_kit::test]
 fn preview_slot_assignment_and_conflict_leave_workspace_untouched(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut entities = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
         let mut device = crate::demo::demo_keyboard();
@@ -74,7 +77,10 @@ fn preview_slot_assignment_and_conflict_leave_workspace_untouched(cx: &mut TestA
 
 #[gpui_kit::test]
 fn live_device_cannot_enter_preview_or_accept_another_devices_readback(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut entities = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
         let workspace =

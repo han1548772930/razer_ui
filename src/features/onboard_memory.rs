@@ -1,6 +1,9 @@
 //! 653: fR → LR / UR / gR. Board readback is independent of local Profile drafts.
 //! Slot IDs are 2–5; the white row is the current hybrid-memory Profile.
 use super::*;
+use crate::ui::scroll::SourceScrollable as _;
+use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
+use crate::ui::theme::TooltipColors;
 use crate::{i18n, ui::theme::OnboardMemoryColors};
 use gpui_kit::component::{spinner::Spinner, tooltip::Tooltip};
 use serde::Deserialize;
@@ -581,17 +584,32 @@ impl OnboardMemoryPanel {
     }
 }
 
-fn help(id: impl Into<ElementId>, text: String, width: f32, cx: &App) -> impl IntoElement {
-    BaseButton::new(id)
-        .size(surface::css(14.))
-        .flex_shrink_0()
-        .p_0()
-        .rounded_full()
-        .bg(cx.theme().secondary)
-        .accessibility_label(text.clone())
-        .hover(|button| button.bg(cx.theme().foreground.opacity(0.3)))
-        .tooltip(move |window, cx| source_tooltip(text.clone(), width, cx).build(window, cx))
-        .child(img("synapse/onboard-help.svg").size_full())
+fn help(id: impl Into<ElementId>, text: String, width: f32) -> impl IntoElement {
+    use gpui_kit::base::motion::{self, Easing, Transition};
+    let id = id.into();
+    SourceTooltip::new(id.clone(), text.clone(), width).trigger(move |hovered, window, cx| {
+        let background = motion::transition(
+            (id.clone(), "help-background"),
+            if hovered {
+                TooltipColors::help_hover()
+            } else {
+                TooltipColors::help_background()
+            },
+            Transition::new(std::time::Duration::from_millis(300)).easing(Easing::Ease),
+            window,
+            cx,
+        );
+        BaseButton::new(id)
+            .size(surface::css(14.))
+            .flex_shrink_0()
+            .p_0()
+            .rounded_full()
+            .bg(background)
+            .accessibility_label(text)
+            .hover(|button| button.cursor_pointer())
+            .child(img("synapse/onboard-help.svg").size_full())
+            .into_any_element()
+    })
 }
 
 fn slot_name(slot: u8) -> &'static str {
@@ -644,7 +662,7 @@ fn render_macro(entry: &BoardMacro, failed: bool, cx: &App) -> impl IntoElement 
 }
 
 fn profile_icon(slot: Option<u8>, warning: bool, cx: &App) -> AnyElement {
-    div()
+    let icon = div()
         .id(("onboard-profile-icon", usize::from(slot.unwrap_or(0))))
         .relative()
         .size(surface::css(20.))
@@ -668,26 +686,21 @@ fn profile_icon(slot: Option<u8>, warning: bool, cx: &App) -> AnyElement {
                     .inset_0()
                     .size_full(),
             )
-            .tooltip(|window, cx| {
-                source_tooltip(i18n::t("OBM_PROFILE_PANEL_TIP_1"), 300., cx).build(window, cx)
-            })
         })
         .text_color(cx.theme().foreground)
+        .into_any_element();
+    if warning {
+        SourceTooltip::new(
+            ("onboard-profile-warning", usize::from(slot.unwrap_or(0))),
+            i18n::t("OBM_PROFILE_PANEL_TIP_1"),
+            300.,
+        )
+        .kind(SourceTooltipKind::ProfileWarning)
+        .trigger(move |_, _, _| icon)
         .into_any_element()
-}
-
-fn source_tooltip(text: String, width: f32, cx: &App) -> Tooltip {
-    Tooltip::new(text)
-        .w(surface::css(width))
-        .m_0()
-        .px(surface::css(10.))
-        .py(surface::css(8.))
-        .rounded_none()
-        .shadow_none()
-        .bg(cx.theme().title_bar)
-        .text_color(cx.theme().foreground)
-        .text_size(surface::css(14.))
-        .line_height(surface::css(16.))
+    } else {
+        icon
+    }
 }
 
 impl OnboardMemoryPanel {
@@ -708,17 +721,19 @@ impl OnboardMemoryPanel {
             .id("onboard-slot-list")
             .min_h(surface::css(239.))
             .max_h((window.viewport_size().height - window.rem_size() * (276. / 16.)).max(px(100.)))
-            .overflow_y_scrollbar()
+            .scrollable_y()
             .child(
                 h_flex()
                     .h(surface::css(50.))
                     .flex_shrink_0()
                     .px(surface::css(20.))
-                    .gap(surface::css(10.))
                     .child(profile_icon(None, hybrid_warning, cx))
                     .child(
                         div()
-                            .flex_1()
+                            // `.white-text`: only a leading 10px margin; the
+                            // help follows the 179px name without a second gap.
+                            .ml(surface::css(10.))
+                            .w(surface::css(179.))
                             .min_w_0()
                             .truncate()
                             .text_color(cx.theme().foreground.opacity(0.3))
@@ -728,7 +743,6 @@ impl OnboardMemoryPanel {
                         "onboard-hybrid-help",
                         i18n::t("OBM_PROFILE_PANEL_TIP_2"),
                         290.,
-                        cx,
                     )),
             );
         for (index, slot) in SLOTS.into_iter().enumerate() {
@@ -746,45 +760,54 @@ impl OnboardMemoryPanel {
                 .gap(surface::css(10.))
                 .child(profile_icon(Some(slot), false, cx));
             if let Some(profile) = assigned.filter(|profile| profile.locked) {
-                row = row
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .truncate()
-                            .child(profile.name.clone()),
-                    )
-                    .child(
-                        BaseButton::new(("onboard-slot-lock", slot as usize))
-                            .size(surface::css(20.))
-                            .p_0()
-                            .accessibility_label("查看锁定配置的恢复说明")
-                            .tooltip(|window, cx| {
-                                source_tooltip(
+                let lock = BaseButton::new(("onboard-slot-lock", slot as usize))
+                    .size(surface::css(20.))
+                    .p_0()
+                    .accessibility_label("查看锁定配置的恢复说明")
+                    .child(img("synapse/onboard-lock.svg").size_full())
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.close(window, cx);
+                        if let Some(workspace) = this.current(cx) {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.continue_with(
+                                    Continue::Page(crate::nav::Tab::Help),
+                                    window,
+                                    cx,
+                                )
+                            });
+                        }
+                    }));
+                row = row.child(
+                    // Source `.lock` has one 200px lane (allowed to shrink),
+                    // a 170px text limit and an icon fixed at its right edge.
+                    div()
+                        .relative()
+                        .w(surface::css(200.))
+                        .min_w_0()
+                        .h(surface::css(20.))
+                        .line_height(surface::css(20.))
+                        .child(
+                            div()
+                                .max_w(surface::css(170.))
+                                .truncate()
+                                .child(profile.name.clone()),
+                        )
+                        .child(
+                            div().absolute().right_0().top_0().child(
+                                SourceTooltip::new(
+                                    ("onboard-lock-help", slot as usize),
                                     format!(
                                         "{}\n\n{}",
                                         i18n::t("OBM_LOCK_ICON_TOOLTIP_V1"),
                                         i18n::t("OBM_LOCK_ICON_TOOLTIP_V2")
                                     ),
                                     305.,
-                                    cx,
                                 )
-                                .build(window, cx)
-                            })
-                            .child(img("synapse/onboard-lock.svg").size_full())
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.close(window, cx);
-                                if let Some(workspace) = this.current(cx) {
-                                    workspace.update(cx, |workspace, cx| {
-                                        workspace.continue_with(
-                                            Continue::Page(crate::nav::Tab::Help),
-                                            window,
-                                            cx,
-                                        )
-                                    });
-                                }
-                            })),
-                    );
+                                .kind(SourceTooltipKind::LockedProfile)
+                                .trigger(move |_, _, _| lock.into_any_element()),
+                            ),
+                        ),
+                );
             } else {
                 let mut choices = if self.readback.is_none() {
                     vec![Choice::new("unread", "未读取")]
@@ -928,23 +951,20 @@ impl OnboardMemoryPanel {
                     .child(help(
                         "onboard-memory-help",
                         i18n::t("ON_BOARD_MEMORY_TOOLTIP"),
-                        270.,
-                        cx,
+                        // Hidden `.tip` is 100% of the 270px header's padding box.
+                        268.,
                     ))
                     .child(
-                        BaseButton::new("onboard-memory-close")
-                            .absolute()
-                            .right_0()
-                            .top_0()
-                            .size(surface::css(36.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .accessibility_label("关闭板载内存")
-                            .hover(|button| button.bg(cx.theme().foreground.opacity(0.1)))
-                            .active(|button| button.bg(cx.theme().title_bar.opacity(0.1)))
-                            .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
-                            .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
+                        surface::keymap_close_button(
+                            "onboard-memory-close",
+                            "关闭板载内存",
+                            window,
+                            cx,
+                        )
+                        .absolute()
+                        .right_0()
+                        .top_0()
+                        .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
                     ),
             )
             .child(rows);
@@ -975,7 +995,7 @@ impl OnboardMemoryPanel {
                                 v_flex()
                                     .id("onboard-macro-list")
                                     .min_h_0()
-                                    .overflow_y_scrollbar()
+                                    .scrollable_y()
                                     .children(
                                         snapshot
                                             .macros
@@ -1012,22 +1032,23 @@ impl OnboardMemoryPanel {
                 .border_color(cx.theme().border)
                 .child(i18n::t("AVAILABLE"))
                 .child(if is_ble {
-                    BaseButton::new("onboard-ble-memory-help")
-                        .size(surface::css(20.))
-                        .p_0()
-                        .accessibility_label(i18n::t(
-                            "SWITCH_TO_WIRED_OR_HYPERSPEED_TO_VIEW_AVAILABLE_SPACE",
-                        ))
-                        .tooltip(|window, cx| {
-                            source_tooltip(
-                                i18n::t("SWITCH_TO_WIRED_OR_HYPERSPEED_TO_VIEW_AVAILABLE_SPACE"),
-                                210.,
-                                cx,
-                            )
-                            .build(window, cx)
-                        })
-                        .child(img("synapse/onboard-info.svg").size_full())
-                        .into_any_element()
+                    SourceTooltip::new(
+                        "onboard-ble-memory-help",
+                        i18n::t("SWITCH_TO_WIRED_OR_HYPERSPEED_TO_VIEW_AVAILABLE_SPACE"),
+                        210.,
+                    )
+                    .trigger(|_, _, _| {
+                        BaseButton::new("onboard-ble-memory-help")
+                            .size(surface::css(20.))
+                            .p_0()
+                            .accessibility_label(i18n::t(
+                                "SWITCH_TO_WIRED_OR_HYPERSPEED_TO_VIEW_AVAILABLE_SPACE",
+                            ))
+                            .child(img("synapse/onboard-info.svg").size_full())
+                            .hover(|button| button.cursor_pointer())
+                            .into_any_element()
+                    })
+                    .into_any_element()
                 } else {
                     div()
                         .child(available.unwrap_or_else(|| "未读取".into()))
@@ -1089,7 +1110,7 @@ impl OnboardMemoryPanel {
                         (window.viewport_size().height - window.rem_size() * (40. / 16.))
                             .max(px(200.)),
                     )
-                    .overflow_y_scrollbar()
+                    .scrollable_y()
                     .into_any_element()
                 } else {
                     view.into_any_element()

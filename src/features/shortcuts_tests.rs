@@ -39,7 +39,10 @@ fn shortcut_storage_rejects_invalid_or_duplicate_chords_without_losing_unicode()
 
 #[gpui_kit::test]
 fn captures_saves_and_duplicates_a_global_shortcut_through_real_controls(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut shortcuts = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |w, cx| {
         let view = cx.new(|cx| Shortcuts::new(vec![], w, cx));
@@ -122,7 +125,10 @@ fn captures_saves_and_duplicates_a_global_shortcut_through_real_controls(cx: &mu
 fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordings(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut shortcuts = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |w, cx| {
         let view = cx.new(|cx| Shortcuts::new(vec![shortcut("existing")], w, cx));
@@ -181,7 +187,10 @@ fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordi
 fn local_encoding_check_reports_native_dependency_without_mutating_saved_shortcuts(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut item = shortcut("copy");
     item.output = ShortcutOutput::Windows {
         action: "Copy".into(),
@@ -213,7 +222,10 @@ fn local_encoding_check_reports_native_dependency_without_mutating_saved_shortcu
 
 #[gpui_kit::test]
 fn late_program_picker_cannot_change_a_reopened_draft_with_the_same_id(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     let mut item = shortcut("program");
     item.output = ShortcutOutput::Program {
         target: r"C:\Apps\original.exe".into(),
@@ -240,7 +252,10 @@ fn late_program_picker_cannot_change_a_reopened_draft_with_the_same_id(cx: &mut 
 
 #[gpui_kit::test]
 fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut shortcuts = None;
     let handle = cx.open_window(size(px(700.), px(600.)), |w, cx| {

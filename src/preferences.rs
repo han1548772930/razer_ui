@@ -2,6 +2,14 @@
 use gpui_kit::{App, BorrowAppContext, Global};
 use serde::{Deserialize, Serialize};
 
+/// Source group-item-order and groupsCollapsed, kept outside Settings drafts.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub(crate) struct DashboardPreferences {
+    pub(crate) items_order: std::collections::BTreeMap<String, Vec<String>>,
+    pub(crate) groups_collapsed: std::collections::BTreeMap<String, bool>,
+}
+
 /// The source palette has sixteen slots shared by the connected color pickers.
 /// These are saved independently of device/profile and Settings form drafts.
 pub(crate) type CustomColorSlots = [Option<[u8; 3]>; 16];

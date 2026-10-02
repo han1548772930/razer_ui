@@ -6,4 +6,16 @@
 # 构建日志
 *.log
 *.work
-/tools
+/tools/*
+!/tools/discover-razer-products.py
+!/tools/fetch-razer-sources.py
+!/tools/inventory-razer-interfaces.cjs
+!/tools/report-razer-discovery.py
+!/tools/discover-razer-applications.py
+!/tools/prepare-tutorial-media.py
+!/tools/requirements-tutorial-media.txt
+!/tools/prepare-resources.py
+!/tools/validate-resources.py
+!/tools/keyboard_geometry.py
+!/tools/gamer_room_assets.py
+!/tools/requirements-resources.txt

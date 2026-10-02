@@ -1,6 +1,7 @@
 //! Reviewable source 6505/44442 `H → w/O/L` states. Every record in this surface
 //! is explicitly a preview; production ModuleCatalog retains its unknown service state.
 use super::{MODULES, Module, source_link};
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::Choice,
     i18n,
@@ -13,7 +14,6 @@ use gpui_kit::base::{Popover, Progress, ProgressIndicator, ProgressTrack};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     checkbox::Checkbox,
-    scroll::ScrollableElement as _,
     select::{SelectEvent, SelectState},
     spinner::Spinner,
     *,
@@ -884,7 +884,7 @@ impl Render for ModulePreview {
                         (window.viewport_size().height - window.rem_size() * 16.)
                             .max(window.rem_size() * 12.),
                     )
-                    .overflow_scrollbar()
+                    .scrollable_both()
                     .child(
                         div()
                             .w(surface::css(1220.))

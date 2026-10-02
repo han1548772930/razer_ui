@@ -13,7 +13,7 @@
 | 控件 | [controls.rs](../../src/features/controls.rs) 保存通用控件和订阅；[sensitivity.rs](../../src/features/sensitivity.rs) 按稳定槽位 ID 保留 DPI 输入与滑条 | render 引用已有 Entity；程序同步不重复发送用户 Change；排序不重建 DPI 控件 |
 | 页面 | [audio_page.rs](../../src/features/audio_page.rs)、[device_pages.rs](../../src/features/device_pages.rs)、[customize_page.rs](../../src/features/customize_page.rs) | 页面不导入 AppShell |
 | 服务连接 | [runtime_page.rs](../../src/shell/runtime_page.rs) 的设置面板通过后台线程持有 [ServiceClient](../../src/backend/runtime.rs)，点击连接后才启动独立 worker | 分别读取 HID 接口元数据、服务版本和音频列表；各项失败独立显示；断开在后台关闭 worker，保留最近结果；未实际启动验证 |
-| 资源 | [resources.rs](../../src/resources.rs)、[打包清单](../../assets/synapse/manifest.json) | include_bytes 打包 PNG / SVG / TTF；不在运行时读取 .ref |
+| 资源 | [resources.rs](../../src/resources.rs)、[打包清单](../../assets/synapse/manifest.json) | include_bytes 打包 PNG / SVG / 动画 WebP / TTF；不在运行时读取 .ref |
 
 旧的 free-function feature 页面和 ui/widgets.rs 不再列入模块声明；文件保留以免删除已有工作区改动。它们不能作为当前运行 UI 的入口依据。domain.rs 中旧的 DeviceFeatures 暂用于旧配置反序列化和 CLI 探测，不能据其字段给新页面增加控件。
 
@@ -96,4 +96,8 @@ Gamer Room 添加流程、教程及配对弹层按实际 JS 挂载与 CSS 最终
 - Settings补齐语言选项、布局、内嵌社交图标的常态/悬停，以及Windows动态灯光界面。迁移与发布说明取得独立原版源码并接入界面；Synapse 3扫描、转换、导入及真实发布说明读取尚未接通。
 - 777删除框按实际挂载修正为top52，并恢复不同的标题、边框、按钮颜色及白色按钮文字；导入/导出不再点击遮罩关闭。
 
-原版不止三个产品模块。本地完整取得的产品前端为182、653、777，历史探测另有200个产品ID；详见[产品模块清单](15-product-module-inventory.md)。上述界面补齐不等于所有产品或真实宿主服务已完成。
+原版不止三个产品模块。官方目录有449个主产品ID；沿明确别名与声明共核查596个ID，已取得331个产品清单所列的30,658份JS/CSS。入口AST识别出331个产品的实际导航数组，但Rust适配仍为182、653、777；详见[最新产品目录](16-product-catalog.md)。上述界面补齐不等于所有产品或真实宿主服务已完成。
+
+滚动与弹层反馈已定位到内容高度约束、滚动句柄和动画生命周期，修复范围及未验证项见[专项复核](18-scroll-and-motion-audit.md)。本轮仍只执行编译与静态检查。
+
+2026-10-02 补齐 Synapse Introduction Tour 的五步页面和宿主页签，Dashboard／Gamer Room 三段原教程媒体改为内嵌动画播放；Dashboard 分组恢复源码折叠时序。详见[滚动与动态效果复核](18-scroll-and-motion-audit.md)。未适配产品、Chroma 教程分支及真实服务缺口仍保留。

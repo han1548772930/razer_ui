@@ -208,7 +208,10 @@ fn alt_tab_can_disable_the_only_preset_and_empty_cycles_keep_a_valid_identity() 
 fn gaming_alt_tab_checkbox_disables_the_source_preset_without_selecting_another(
     cx: &mut TestAppContext,
 ) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1300.), px(1600.)), |window, cx| {
@@ -267,7 +270,10 @@ fn gaming_alt_tab_checkbox_disables_the_source_preset_without_selecting_another(
 
 #[gpui_kit::test]
 fn snap_tap_captures_native_keys_and_cancels_an_incomplete_pair(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1300.), px(1600.)), |window, cx| {
@@ -332,7 +338,10 @@ fn snap_tap_captures_native_keys_and_cancels_an_incomplete_pair(cx: &mut TestApp
 
 #[gpui_kit::test]
 fn dial_highlight_and_mapping_edits_do_not_replace_the_current_mode(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1300.), px(1600.)), |window, cx| {
@@ -444,7 +453,10 @@ fn dial_highlight_and_mapping_edits_do_not_replace_the_current_mode(cx: &mut Tes
 
 #[gpui_kit::test]
 fn snap_layout_picker_distinguishes_numpad_enter_and_filters_used_keys(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1300.), px(1600.)), |window, cx| {
@@ -519,7 +531,10 @@ fn snap_layout_picker_distinguishes_numpad_enter_and_filters_used_keys(cx: &mut 
 
 #[gpui_kit::test]
 fn dial_confirmations_follow_their_icons_and_escape_preserves_modes(cx: &mut TestAppContext) {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
     cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut workspace = None;
     let handle = cx.open_window(size(px(1300.), px(2000.)), |window, cx| {

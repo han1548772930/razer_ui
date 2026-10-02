@@ -59,7 +59,7 @@ dashboard [.reflow]
 {productId}_{editionId}_{layoutId}_dashboard1x.png
 ```
 
-这是 Dashboard 图，不能用 Customize 的 prd 图名称替代。资源索引单独列出本地下载情况。教程视频 `Synapse Dashboard Tutorial.4d4e2f9c.mp4` 未嵌入本地；2026-10-02 对原 `https://apps.razer.com/synapse/dashboard/static/media/` 地址的 HEAD 返回 200、`video/mp4`、393264 bytes，现提供浏览器播放入口，未在 GPUI 中内嵌或自动播放。
+这是 Dashboard 图，不能用 Customize 的 prd 图名称替代。资源索引单独列出本地下载情况。教程视频 `Synapse Dashboard Tutorial.4d4e2f9c.mp4` 已从原地址取得并转换为无损动画 WebP，按原 250×190 比例内嵌、静音循环；尺寸、帧延时及源／输出哈希记录在 `tutorial-media-manifest.json`。播放器使用 GPUI 原生动画图像和按片段释放的缓存。
 
 `[RUST 当前实现]` Dashboard 卡片和设备与模块行现在共用 `resources::dashboard_image(product_id, edition_id, layout_id)`，按产品、配色和键盘布局选择原 `PluginImages` 图。2026-10-02 原 URL 核实后覆盖 41 个映射、19 张去重图片；包括 182、653、777 的标准图及已确认的配色/键盘布局。键盘 `layoutId:0` 依原规则按布局 1 处理，未知非零布局或配色保持占位，不暗换其他配色，也不使用 Customize 的产品图。
 
@@ -67,11 +67,11 @@ dashboard [.reflow]
 
 [main_pages.rs](../../src/shell/main_pages.rs) 已恢复设备、模块、在线服务三个可折叠组。三个标题都由 Base Button 提供键盘激活和 `aria_expanded`，按原 `.collapse` 左对齐，避免 styled Button 内部居中的内容容器改变位置；每组 `margin:10px 0`，展开内容距标题 10，卡间距 20。折叠保留在当前 AppShell 生命周期中，尚未读取原服务的分组持久化或排序。设备名恢复 uppercase 和 10px 横向内边距；本地快照/预览标记保留，不宣称连接或安装状态。空列表采用原 `ee` 的 290×220 虚线卡，提供兼容设备列表和 Razer Store 原链接；标题保留“没有可显示的设备”，避免把未扫描的本地空列表称为硬件未发现。
 
-模块静态项的证据是 `main` 模块 **22431** 的 `AVAILABLE_MODULES`，以及 4130 的 `Li.updateGroupModuleItems`：`iotModule`、`tourModule` 不依赖 installedModules，armory 则另受能力条件过滤。Wi-Fi 卡打开通用添加设备类型选择流程；Tour 卡对应 `X.showModules` / `focusTab` 的独立应用注册项，当前保留原标志和名称、禁用并解释尚未接入，未把它改成下述 Dashboard 教程。未知安装状态的其他模块及 armory 不伪造为已安装。
+模块静态项的证据是 `main` 模块 **22431** 的 `AVAILABLE_MODULES`，以及 4130 的 `Li.updateGroupModuleItems`：`iotModule`、`tourModule` 不依赖 installedModules，armory 则另受能力条件过滤。Wi-Fi 卡打开通用添加设备类型选择流程；Tour 卡对应 `X.showModules` / `focusTab` 的独立应用注册项，现打开或聚焦独立的五步 Introduction Tour 页签，详见[教程规格](16-introduction-tour.md)，不共用下述 Dashboard 教程的已读状态。未知安装状态的其他模块及 armory 不伪造为已安装。
 
 四个在线服务来自 `Li.updateGroupServiceItems`，按 Razer Store、Gold & Silver、社区、支持的原顺序、图片、locale 描述和 URL 呈现。`de` 与 `.box-item-full-image` 使用 290×220 整卡、140px 图片、下方 10px 空隙和 14/12px 名称/描述；图片按原 contain 比例显示，描述允许换行，整卡是可键盘访问的外部 Link。
 
-[dashboard_tutorial.rs](../../src/shell/main_pages/dashboard_tutorial.rs) 已实现 `Si` 的一个步骤。`DASHBOARD_TUTORIAL_HEADER` 原文就是 **Gamer Room Dashboard**，正文介绍在 Gamer Room 查看设备；它指向第二个主导航，而不是模块 Tour。导航带上的零尺寸 Base Popover 锚点恢复 `left = 第二导航左侧 − 92`，内容顶部按前端坐标 108（另加宿主 42px）、宽 290、padding 20、橙色 1px 边、圆角 5；36px 指示器中心为第二导航左侧 +50，前端顶部 70。标题 16px、正文 14px、关闭按钮 100×27、距正文 20，使用原 `CLOSE` key。媒体区明确提供已核查的原视频外链。关闭按钮、Escape 和点外部均完成本步骤并恢复焦点；独立 `dashboard_tutorial_seen` 参与本地串行辅助保存和设置页重置，设置页丢弃其他编辑不回滚已完成教程。
+[dashboard_tutorial.rs](../../src/shell/main_pages/dashboard_tutorial.rs) 已实现 `Si` 的一个步骤。`DASHBOARD_TUTORIAL_HEADER` 原文就是 **Gamer Room Dashboard**，正文介绍在 Gamer Room 查看设备；它指向第二个主导航，而不是模块 Tour。导航带上的零尺寸 Base Popover 锚点恢复 `left = 第二导航左侧 − 92`，内容顶部按前端坐标 108（另加宿主 42px）、宽 290、padding 20、橙色 1px 边、圆角 5；36px 指示器中心为第二导航左侧 +50，前端顶部 70。标题 16px、正文 14px、关闭按钮 100×27、距正文 20，使用原 `CLOSE` key。媒体区内嵌原片段，短窗口下正文和操作可独立滚动，指示器保留在滚动层外。关闭按钮、Escape 完成本步骤；点外部不关闭，符合当前 `overlay_closable(false)` 策略，焦点恢复仍待真实窗口验证；独立 `dashboard_tutorial_seen` 参与本地串行辅助保存和设置页重置，设置页丢弃其他编辑不回滚已完成教程。
 
 以上为源码、资源和类型检查范围内的对照；未运行真实窗口测量。推荐/合作伙伴、真实设备去重/状态、安装进度、拖动排序和原服务持久化仍需真实数据链路；Base Popover 的窗口边缘修正及多语言、缩放、焦点恢复仍需窗口验收。
 
@@ -109,7 +109,7 @@ dashboard [.reflow]
 | 两步教程 | `#111`、橙色 1px、圆角 5、总宽 290、padding `40px 20px 20px`；两步原锚点 `(220,22)` / `(213,-25)`；36px 指示图；按钮 100×27、间距 10 | Base Popover 锚定第一组，不再放在右侧教程按钮下；根据组的 30px margin 换算锚点。去除 Kit 默认面板阴影/内边距；步骤、跳过和页数位于原位置 |
 | 商品营销卡 | `.gr-display` 黑色 50%、圆角 5、min-height 312、min-width 400、padding `36px 24px`；台灯双卡间隔 36；`translateX(-23.5%/-86.5%)`、垂直居中 | Hover Base Popup 与键盘点击 Base Popover 共用同一营销内容和锚点；整张商品卡是外部链接，不再另开带重复标题/关闭 footer 的 Kit Dialog |
 
-原营销卡的 `backdrop-filter:blur(30px)` 没有在当前 GPUI 层实现；静态热点没有 SMIL 动画；教程没有内嵌视频播放能力。Base Popup 会保护窗口边缘可达性，窗口缩小、缩放和焦点回归仍需真实窗口验收。宽屏 Gamer Room 在标准化视口宽度达到 2560 时恢复 2500×930 横幅，壳层相应解除 1260 内容上限。
+原营销卡的 `backdrop-filter:blur(30px)` 没有在当前 GPUI 层实现；静态热点没有 SMIL 动画；两步教程已内嵌原视频的无损动画版本，保持 250×190 比例，短窗口下内容可滚动。Base Popup 会保护窗口边缘可达性，窗口缩小、缩放和焦点回归仍需真实窗口验收。宽屏 Gamer Room 在标准化视口宽度达到 2560 时恢复 2500×930 横幅，壳层相应解除 1260 内容上限。
 
 ## 4. Devices & Modules
 
@@ -183,9 +183,9 @@ manifest 的 background_color=#ffffff 是 PWA 元信息，不代表应用内白�
 
 | 页面 | 当前已落实的代码 | 尚未接入 |
 |---|---|---|
-| Dashboard | 290px 整卡打开设备、250×140 图区、20px 间距；设备/模块/在线服务折叠；空列表原双链接；Wi-Fi 与独立 Tour 边界、四个在线服务原卡；单步教程与独立本地已读状态；区分快照/预览 | 拖动排序、推荐/合作伙伴、安装服务分组、真实接口合并与设备状态、原分组持久化；Tour 独立应用；设置中的 HID 元数据查询不生成设备卡；未覆盖的专用 Dashboard 图保留占位 |
+| Dashboard | 290px 整卡打开设备、250×140 图区、20px 间距；设备/模块/在线服务折叠；空列表原双链接；Wi-Fi 与独立 Tour 边界、四个在线服务原卡；单步教程与独立本地已读状态；区分快照/预览 | 拖动排序、推荐/合作伙伴、安装服务分组、真实接口合并与设备状态、原分组持久化；设置中的 HID 元数据查询不生成设备卡；未覆盖的专用 Dashboard 图保留占位 |
 | Devices & Modules | 80px 设备行、40px 图区、打开和快照详情；原五模块目录、图标、说明图、详情展开/收起与相关链接 | 真实安装/版本/更新清单、固件检查/升级、卸载/清除设置确认、进度和失败恢复 |
-| Gamer Room | 原营销背景/热点、四产品详情、两个折叠组；添加准备/二维码/搜索页面的返回与关闭；两步教程和原视频外链 | IoT 网络发现、识别/添加、真实设备卡及电源/覆盖设置；内嵌教程播放器 |
+| Gamer Room | 原营销背景/热点、四产品详情、两个折叠组；添加准备/二维码/搜索页面的返回与关闭；两步教程和原片段内嵌播放 | IoT 网络发现、识别/添加、真实设备卡及电源/覆盖设置 |
 | Global Shortcuts | 600px 内容区、顶部添加与 70px 添加卡；捕获/验证、编辑/复制/删除确认、292px 映射面板、保存/丢弃/继续、本地持久化；原引擎映射与 hash 编码 | 原快捷键读取协议未证实，整表替换提交禁用；宏/Chroma、原生 Turbo 事件及注册回执仍未接入 |
 
 资源显示按实际用途区分：Dashboard 走专用产品卡资源，Customize 与设备设置页根据设备产品、edition、layout 动态选择其产品图；缺少一种 Dashboard 图不会用 Customize 的 `prd` 图充当同一资源。未连接的服务不显示安装或连接成功。
@@ -193,3 +193,5 @@ manifest 的 background_color=#ffffff 是 PWA 元信息，不代表应用内白�
 全部 **14 个普通页面实例**，以及 HELP、独立 Pairing、Profile/板载/关联游戏、抽屉、映射编辑与教程的覆盖记录见[全部页面与附属界面](../re/07-page-coverage.md)。后续验证继续覆盖动态设备增减/去重、卡片目标、安装/升级/失败、分组排序/缩放、快捷键捕获和失焦、草稿保护及资源缺失状态。
 
 当前保留[快捷键交互](../../src/features/shortcuts_tests.rs)与[引擎编码](../../src/features/shortcut_engine_tests.rs)回归源码。本轮只做 `cargo check`；未运行测试、应用、DLL 或原生注册，也未启动快捷键目标程序。
+
+2026-10-02：Dashboard 三个分组改用 [dashboard_group.rs](../../src/shell/main_pages/dashboard_group.rs)。原卡片持续挂载，max-height 300ms ease-in 与 translateY／箭头 300ms linear 分别采样，沿当前值反转；overflow 使用 1s ease 离散关键帧。拖动排序的 show-overflow 分支仍未接入。

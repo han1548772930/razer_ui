@@ -5524,6 +5524,7 @@ dependencies = [
  "gpui-kit",
  "libloading",
  "md5",
+ "raw-window-handle",
  "rust-i18n",
  "serde",
  "serde_ignored",

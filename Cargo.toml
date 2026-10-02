@@ -15,6 +15,7 @@ libloading = "0.8"
 rust-i18n = "4"
 
 [target.'cfg(windows)'.dependencies]
+raw-window-handle = "0.6.2"
 windows-sys = { version = "0.61.2", features = [
   "Win32_Foundation",
   "Win32_Devices_HumanInterfaceDevice",

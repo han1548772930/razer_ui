@@ -987,6 +987,7 @@ impl Render for DeviceWorkspace {
             })
             .children(self.dirty().then(|| {
                 h_flex()
+                    .flex_shrink_0()
                     .px_5()
                     .py_2()
                     .gap_3()

@@ -1,10 +1,16 @@
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use std::time::Duration;
 
 pub(crate) use super::synapse_select::select;
+
+#[cfg(test)]
+#[path = "surface_tests.rs"]
+mod tests;
 
 pub(crate) const BODY_MIN_WIDTH: f32 = 600.;
 pub(crate) const BODY_MAX_WIDTH: f32 = 1240.;
@@ -76,10 +82,18 @@ pub(crate) fn asset_button(
         "synapse/eq-reset.svg" => {
             Some(("synapse/eq-reset-hover.svg", "synapse/eq-reset-active.svg"))
         }
-        "synapse/help-default.svg" => Some(("synapse/help-hover.svg", "synapse/help-active.svg")),
+        // Help's active SVG is selected-page state, not a pointer-down state.
+        "synapse/help-default.svg" => Some(("synapse/help-hover.svg", "synapse/help-hover.svg")),
         _ => None,
     };
+    let source_icon = states.is_some() || asset == "synapse/help-active.svg";
+    let icon_size = if asset.starts_with("synapse/help-") {
+        24.
+    } else {
+        20.
+    };
     Button::new(id)
+        .group(id)
         .ghost()
         .p_0()
         .border_0()
@@ -89,15 +103,22 @@ pub(crate) fn asset_button(
         .tooltip(label)
         .custom(
             ButtonCustomVariant::new(cx)
-                .hover(cx.theme().secondary_hover)
-                .active(cx.theme().group_box),
+                .hover(if source_icon {
+                    cx.theme().transparent
+                } else {
+                    cx.theme().secondary_hover
+                })
+                .active(if source_icon {
+                    cx.theme().transparent
+                } else {
+                    cx.theme().group_box
+                }),
         )
         .child(
             div()
                 .id("source-icon")
-                .group("source-icon")
                 .relative()
-                .size(css(20.))
+                .size(css(icon_size))
                 .child(img(asset).size_full().object_fit(ObjectFit::Contain))
                 .when_some(states, |this, (hover, active)| {
                     this.child(
@@ -106,7 +127,7 @@ pub(crate) fn asset_button(
                             .inset_0()
                             .size_full()
                             .opacity(0.)
-                            .group_hover("source-icon", |s| s.opacity(1.)),
+                            .group_hover(id, |s| s.opacity(1.)),
                     )
                     .child(
                         img(active)
@@ -115,9 +136,121 @@ pub(crate) fn asset_button(
                             .inset_0()
                             .size_full()
                             .opacity(0.)
-                            .group_active("source-icon", |s| s.opacity(1.)),
+                            .group_active(id, |s| s.opacity(1.)),
                     )
                 }),
+        )
+}
+
+#[derive(Default)]
+struct CloseButtonState {
+    hovered: bool,
+    pressed: bool,
+}
+
+/// `.keymap-head .close`: 36px target, 20px icon, background 200ms CSS ease.
+/// Base Button still owns activation, keyboard focus and accessibility.
+pub(crate) fn keymap_close_button(
+    id: &'static str,
+    label: &'static str,
+    window: &mut Window,
+    cx: &mut App,
+) -> gpui_kit::base::Button {
+    source_close_button(id, label, false, window, cx)
+}
+
+/// Main `.modal-content .btn-close` uses a distinct 100ms ease-in-out and
+/// a darker pressed state than the product keymap close button.
+pub(crate) fn modal_close_button(
+    id: &'static str,
+    label: &'static str,
+    window: &mut Window,
+    cx: &mut App,
+) -> gpui_kit::base::Button {
+    source_close_button(id, label, true, window, cx).rounded_tr(css(4.))
+}
+
+fn source_close_button(
+    id: &'static str,
+    label: &'static str,
+    modal: bool,
+    window: &mut Window,
+    cx: &mut App,
+) -> gpui_kit::base::Button {
+    use super::theme::KeymapCloseColors;
+    let transition = if modal {
+        Transition::new(Duration::from_millis(100)).easing(Easing::EaseInOut)
+    } else {
+        Transition::new(Duration::from_millis(200)).easing(Easing::Ease)
+    };
+    let state = window.use_keyed_state((ElementId::from(id), "close-state"), cx, |_, _| {
+        CloseButtonState::default()
+    });
+    let current = state.read(cx);
+    let target = if current.pressed {
+        if modal {
+            KeymapCloseColors::modal_pressed()
+        } else {
+            KeymapCloseColors::pressed()
+        }
+    } else if current.hovered {
+        KeymapCloseColors::hover()
+    } else {
+        KeymapCloseColors::idle()
+    };
+    // CSS interpolates transparent colors in premultiplied space. Interpolating
+    // HSL channels directly would introduce a dark flash on the way to white.
+    let premultiplied_lightness = motion::transition(
+        (id, "close-lightness"),
+        target.l * target.a,
+        transition.clone(),
+        window,
+        cx,
+    );
+    let alpha = motion::transition((id, "close-alpha"), target.a, transition, window, cx);
+    let mut background = target;
+    background.a = alpha;
+    background.l = if alpha > 0. {
+        premultiplied_lightness / alpha
+    } else {
+        0.
+    };
+    gpui_kit::base::Button::new(id)
+        .accessibility_label(label)
+        .size(css(36.))
+        .p_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(background)
+        .child(img("synapse/mapping-close.svg").size(css(20.)))
+        .on_hover(window.listener_for(&state, |state, hovered, _, cx| {
+            state.hovered = *hovered;
+            if !hovered {
+                state.pressed = false;
+            }
+            cx.notify();
+        }))
+        .on_mouse_down(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = true;
+                cx.notify();
+            }),
+        )
+        .on_mouse_up(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = false;
+                cx.notify();
+            }),
+        )
+        .on_mouse_up_out(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = false;
+                cx.notify();
+            }),
         )
 }
 
@@ -177,10 +310,26 @@ impl Disableable for SynapseSwitch {
 impl RenderOnce for SynapseSwitch {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let focus = window
-            .use_keyed_state(self.id, cx, |_, cx| cx.focus_handle())
+            .use_keyed_state(self.id.clone(), cx, |_, cx| cx.focus_handle())
             .read(cx)
             .clone();
         let focused = focus.is_focused(window);
+        // Source .switch and .handle have separate CSS ease transitions. Keep
+        // the controlled value immediate while only its presentation moves.
+        let background_mix = motion::transition(
+            (self.id.clone(), "switch-background"),
+            if self.checked { 1_f32 } else { 0_f32 },
+            Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+            window,
+            cx,
+        );
+        let left = motion::transition(
+            (self.id, "switch-handle-left"),
+            if self.checked { 15_f32 } else { 1_f32 },
+            Transition::new(Duration::from_millis(200)).easing(Easing::Ease),
+            window,
+            cx,
+        );
         self.base
             .track_focus(&focus)
             .flex()
@@ -197,9 +346,7 @@ impl RenderOnce for SynapseSwitch {
                     .w(css(32.))
                     .h(css(18.))
                     .flex_shrink_0()
-                    .flex()
-                    .items_center()
-                    .p(css(1.))
+                    .relative()
                     .border_1()
                     .border_color(if focused {
                         cx.theme().ring
@@ -207,14 +354,19 @@ impl RenderOnce for SynapseSwitch {
                         cx.theme().title_bar.opacity(0.3)
                     })
                     .rounded(css(16.))
-                    .bg(if self.checked {
-                        cx.theme().primary
-                    } else {
-                        cx.theme().switch
-                    })
-                    .when(self.checked, |s| s.justify_end())
+                    // Blend opaque endpoints in sRGB, as this Chromium CSS does.
+                    // Hsla's generic Lerp would travel through unrelated hues.
+                    .bg(cx
+                        .theme()
+                        .switch
+                        .blend(cx.theme().primary.opacity(background_mix)))
                     .child(
                         div()
+                            .id("switch-handle")
+                            .test_support()
+                            .absolute()
+                            .left(css(left))
+                            .top(css(1.))
                             .size(css(14.))
                             .rounded_full()
                             .bg(cx.theme().switch_thumb),

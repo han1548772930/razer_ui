@@ -2,6 +2,7 @@
 //!
 //! SelectState remains the committed value and event source. The owner supplies its current
 //! options because Kit 0.7 does not expose SelectState's delegate or its menu renderer.
+use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::base::{Popover, Select as BaseSelect};
 use gpui_kit::component::{
     ActiveTheme, Disableable, ElementExt, Icon, IndexPath, Selectable, StyledExt,
@@ -11,6 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 use super::{surface::css, theme::DropdownColors};
+use std::time::Duration;
 
 pub(crate) fn select<I: SelectItem<Value = String> + 'static>(
     state: &Entity<SelectState<Vec<I>>>,
@@ -276,11 +278,13 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                         Icon::default()
                             .path("synapse/expand.svg")
                             .size(css(10.))
-                            .transform(Transformation::rotate(radians(if open {
-                                std::f32::consts::PI
-                            } else {
-                                0.
-                            }))),
+                            .transform(Transformation::rotate(radians(motion::transition(
+                                (self.id.clone(), "arrow-angle"),
+                                if open { std::f32::consts::PI } else { 0. },
+                                Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+                                window,
+                                cx,
+                            )))),
                     ),
             );
 
@@ -338,20 +342,33 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                                 _ = popup_change
                                     .update(cx, |view, cx| view.set_open(*open, window, cx));
                             })
-                            .content(move |_, _, cx| {
-                                div()
-                                    .id("source-options")
-                                    .test_support()
-                                    .w(width)
-                                    .h(css(menu_height))
-                                    .max_h(css(180.))
-                                    .ml(-px(1.))
-                                    .border_1()
-                                    .border_color(cx.theme().input)
-                                    .rounded_none()
-                                    .bg(colors.surface())
-                                    .overflow_hidden()
-                                    .child(List::new(&list).p_0().max_h(css(178.)))
+                            .content(move |_, window, cx| {
+                                // height:auto; max-height:0 -> 180px, CSS ease.
+                                // Closing sets height:0 without a slide or fade.
+                                let reveal = Presence::new("options-reveal", true)
+                                    .transition(
+                                        Transition::new(Duration::from_millis(200))
+                                            .easing(Easing::Ease),
+                                    )
+                                    .sample(window, cx)
+                                    .progress;
+                                // Resolve placement against the final size, so
+                                // a popup near the bottom cannot flip mid-animation.
+                                div().w(width).h(css(menu_height)).child(
+                                    div()
+                                        .id("source-options")
+                                        .test_support()
+                                        .w(width)
+                                        .h(css(menu_height.min(180. * reveal)))
+                                        .max_h(css(180.))
+                                        .ml(-px(1.))
+                                        .border_1()
+                                        .border_color(cx.theme().input)
+                                        .rounded_none()
+                                        .bg(colors.surface())
+                                        .overflow_hidden()
+                                        .child(List::new(&list).p_0().h(css(menu_height - 2.))),
+                                )
                             })
                             .into_any_element()
                     }),
@@ -553,8 +570,48 @@ mod tests {
     }
 
     #[gpui_kit::test]
-    fn pointer_and_keyboard_confirm_update_the_existing_state(cx: &mut TestAppContext) {
+    fn options_reveal_without_sliding_and_escape_restores_focus(cx: &mut TestAppContext) {
         cx.update(gpui_kit::init);
+        let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
+            let view = cx.new(|cx| SelectFixture::new(window, cx));
+            Root::new(view, window, cx)
+        });
+        let top = cx
+            .update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                window.within("choice").click("input", cx);
+                let menu = window.find("source-options").bounds();
+                assert!(menu.size.height < px(180.));
+                menu.top()
+            })
+            .unwrap();
+        cx.executor()
+            .advance_clock(std::time::Duration::from_millis(100));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let menu = window.find("source-options").bounds();
+            assert_eq!(menu.top(), top);
+            assert!(menu.size.height > px(0.) && menu.size.height < px(180.));
+        })
+        .unwrap();
+        cx.executor()
+            .advance_clock(std::time::Duration::from_millis(100));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert_eq!(window.find("source-options").bounds().size.height, px(180.));
+            window.press("escape", cx);
+            assert!(window.try_find("source-options").is_none());
+            assert_eq!(window.find("choice").focused(), Some(true));
+        })
+        .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn pointer_and_keyboard_confirm_update_the_existing_state(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         let mut fixture = None;
         let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
             let view = cx.new(|cx| SelectFixture::new(window, cx));
@@ -646,7 +703,10 @@ mod tests {
 
     #[gpui_kit::test]
     fn disabled_select_and_cancel_preserve_owner_supplied_value(cx: &mut TestAppContext) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         let mut fixture = None;
         let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
             let view = cx.new(|cx| SelectFixture::new(window, cx));
@@ -714,7 +774,10 @@ mod tests {
     fn changing_options_refreshes_open_and_reopened_menu_without_losing_cursor(
         cx: &mut TestAppContext,
     ) {
-        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
         let mut fixture = None;
         let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
             let view = cx.new(|cx| SelectFixture::new(window, cx));

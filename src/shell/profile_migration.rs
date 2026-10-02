@@ -2,6 +2,7 @@
 //!
 //! The DLL-backed scanner/import queue is not connected. Preview records and
 //! callbacks stay inside this entity and never enter device/profile storage.
+use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::Choice,
     i18n,
@@ -16,7 +17,6 @@ use gpui_kit::base::{
 };
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
-    scroll::ScrollableElement as _,
     select::{SelectEvent, SelectState},
     spinner::Spinner,
     tooltip::Tooltip,
@@ -568,7 +568,7 @@ impl MigrationPage {
                         .w(surface::css(250.))
                         .pl(surface::css(28.))
                         .when(group.module, |items| items.mt(surface::css(10.)))
-                        .overflow_y_scrollbar()
+                        .scrollable_y()
                         .children(group.items.iter().map(|item| self.item(group, item, cx))),
                 )
             })
@@ -749,7 +749,7 @@ impl MigrationPage {
                 })
             .min(window.viewport_size().width - window.rem_size() * 2.))
             .max_h(window.viewport_size().height - window.rem_size() * 5.)
-            .overflow_y_scrollbar()
+            .scrollable_y()
             .px(surface::css(20.))
             .py(surface::css(24.))
             .bg(cx.theme().popover)
@@ -1070,7 +1070,7 @@ impl Render for MigrationPage {
             .child(
                 v_flex()
                     .id("migration-page-scroll")
-                    .overflow_y_scrollbar()
+                    .scrollable_y()
                     .max_h(
                         (window.viewport_size().height - window.rem_size() * 13.)
                             .max(window.rem_size() * 12.),

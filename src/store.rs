@@ -16,6 +16,10 @@ pub struct WorkspaceFile {
     pub(crate) preferences: crate::preferences::AppPreferences,
     #[serde(default)]
     pub(crate) custom_colors: crate::preferences::CustomColorSlots,
+    #[serde(default)]
+    pub(crate) host_tab_order: Vec<String>,
+    #[serde(default)]
+    pub(crate) dashboard: crate::preferences::DashboardPreferences,
 }
 impl WorkspaceFile {
     pub(crate) fn new(devices: Vec<Device>, tracking_intro_seen: bool) -> Self {
@@ -26,6 +30,8 @@ impl WorkspaceFile {
             shortcuts: vec![],
             preferences: crate::preferences::AppPreferences::default(),
             custom_colors: [None; 16],
+            host_tab_order: vec![],
+            dashboard: Default::default(),
         }
     }
     pub(crate) fn with_shortcuts(
@@ -47,6 +53,17 @@ impl WorkspaceFile {
         colors: crate::preferences::CustomColorSlots,
     ) -> Self {
         self.custom_colors = colors;
+        self
+    }
+    pub(crate) fn with_host_tab_order(mut self, order: Vec<String>) -> Self {
+        self.host_tab_order = order;
+        self
+    }
+    pub(crate) fn with_dashboard(
+        mut self,
+        dashboard: crate::preferences::DashboardPreferences,
+    ) -> Self {
+        self.dashboard = dashboard;
         self
     }
 }
@@ -145,6 +162,39 @@ pub fn save_to(path: &Path, devices: &[Device]) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dashboard_layout_is_optional_and_leaves_device_data_unchanged() {
+        let original = WorkspaceFile::new(crate::model::measured_devices(), false);
+        let mut old = serde_json::to_value(&original).unwrap();
+        old.as_object_mut().unwrap().remove("dashboard");
+        let loaded = decode_workspace(&old.to_string()).unwrap();
+        assert_eq!(loaded.dashboard, Default::default());
+        let devices = serde_json::to_value(&loaded.devices).unwrap();
+        let mut dashboard = crate::preferences::DashboardPreferences::default();
+        dashboard
+            .items_order
+            .insert("devices".into(), vec!["second".into(), "first".into()]);
+        dashboard.groups_collapsed.insert("module".into(), true);
+        let saved = loaded.with_dashboard(dashboard.clone());
+        let restored = decode_workspace(&serde_json::to_string(&saved).unwrap()).unwrap();
+        assert_eq!(restored.dashboard, dashboard);
+        assert_eq!(serde_json::to_value(restored.devices).unwrap(), devices);
+        assert_eq!(restored.preferences, original.preferences);
+    }
+    #[test]
+    fn host_order_is_optional_in_older_files_and_round_trips_with_device_data() {
+        let original = WorkspaceFile::new(crate::model::measured_devices(), true);
+        let mut old = serde_json::to_value(&original).unwrap();
+        old.as_object_mut().unwrap().remove("host_tab_order");
+        let mut loaded = decode_workspace(&old.to_string()).unwrap();
+        assert!(loaded.host_tab_order.is_empty());
+        let device_data = serde_json::to_value(&loaded.devices).unwrap();
+        loaded = loaded.with_host_tab_order(vec!["host-second".into(), "host-first".into()]);
+        let restored = decode_workspace(&serde_json::to_string(&loaded).unwrap()).unwrap();
+        assert_eq!(restored.host_tab_order, ["host-second", "host-first"]);
+        assert_eq!(serde_json::to_value(restored.devices).unwrap(), device_data);
+        assert!(restored.tracking_intro_seen);
+    }
     fn test_path(name: &str) -> PathBuf {
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/test-data");
         std::fs::create_dir_all(&dir).unwrap();
