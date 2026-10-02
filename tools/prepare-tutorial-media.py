@@ -33,6 +33,9 @@ SOURCES = (
     ("tour-linked-games", "applications/synapse/introduction-tour", "linked_games.mp4"),
     ("tour-background", "applications/synapse/introduction-tour", "large_background_image.cd5f51c6.avif"),
     ("tour-app-icon", "applications/synapse/introduction-tour", "icon_app.svg"),
+    ("tour-chroma-quick-effects", "applications/synapse/introduction-tour", "quick_effects.9f9806eb.avif"),
+    ("tour-chroma-advanced-effects", "applications/synapse/introduction-tour", "chroma_studio.abd5d541.avif"),
+    ("tour-chroma-apps", "applications/synapse/introduction-tour", "chroma_apps.ca901740.avif"),
 )
 
 

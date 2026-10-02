@@ -12,6 +12,7 @@
 | 关闭推荐总开关不清除各分类及发布/优惠选择 | 保留原值、禁用子控件 |
 | `Ia` 重置清空 `ignoredPid` 和 `ownedPid`，不清空 `ignoredList` | 分别保存忽略产品、已拥有产品、忽略分类；重置只清前两者 |
 | `Un` 在查看教程后重新允许重置 | 本地追踪介绍及Gamer Room教程联动；自动保存仅写教程标记，不提交其他设置或设备草稿 |
+| 教程重置与迁移使用 `.setting-block .thx-btn.test` | [settings_button.rs](../../src/shell/settings_button.rs) 保留 100px 最小宽、27px 高、两侧10px内边距、12px大写文字及 `#707070` 背景；hover/按下改变整个按钮的透明度为0.8/0.6，禁用为0.3，过渡为300ms CSS ease，禁用时不响应激活 |
 | `Fs` 的标志、版权、政策链接及社交行 | Synapse标志按原SVG自然尺寸294.366×70显示，120px是上限；Insider为270×50字标，另7个图标各28×28、间距24px。政策链接使用行内分隔符，Privacy另起一行，恢复20/30/10px段间距 |
 | `Fs` 真正渲染inline SVG，并共享Facebook/YouTube样式 | 从720内联形状和实际CSS级联生成8组常态/hover；7个圆图标常态为灰色，hover为绿色1.5px描边；Insider只增加原绿色边框。独立media文件中不同的绿色样式不作为最终呈现依据 |
 | `Te` 的发行说明入口嵌在 `RELEASE_PATCH_NOTE_WHATS_NEW` 原文中 | 保留可点击的Release Notes片段及前后译文，向Shell发出 `ReleaseNotes` 事件 |

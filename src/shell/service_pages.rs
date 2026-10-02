@@ -12,12 +12,17 @@ use crate::{
         tutorial::{TutorialIndicator, tutorial_button},
     },
 };
+use gpui_kit::base::{
+    Button as BaseButton,
+    motion::{self, Easing, Transition},
+};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
+    tooltip::Tooltip,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, time::Duration};
 
 #[path = "module_preview.rs"]
 mod module_preview;
@@ -25,6 +30,10 @@ mod module_preview;
 #[cfg(test)]
 #[path = "gamer_room_tutorial_tests.rs"]
 mod tutorial_tests;
+
+#[cfg(test)]
+#[path = "service_button_tests.rs"]
+mod button_tests;
 
 struct Product {
     name: &'static str,
@@ -82,6 +91,179 @@ pub(super) fn source_link(
         .child(label)
 }
 
+/// 6505's `.item-action.btn`: max-content width, 90px minimum, 27px border box.
+/// Base owns activation; a direct text child keeps the source 12px measurement
+/// independent of Component Button's full-size label slot and default type size.
+pub(super) fn module_action(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    primary: bool,
+    disabled: bool,
+    cx: &App,
+) -> ModuleAction {
+    let id = id.into();
+    let label = label.into().to_uppercase();
+    let button = BaseButton::new(id.clone())
+        .accessibility_label(label.clone())
+        .disabled(disabled)
+        .w_auto()
+        .min_w(surface::css(90.))
+        .h(surface::css(27.))
+        .flex_shrink_0()
+        .px(surface::css(16.))
+        .pt(surface::css(7.))
+        .pb(surface::css(6.))
+        .border_1()
+        .border_color(crate::ui::theme::PaletteColors.swatch_border())
+        .rounded(surface::css(2.))
+        .text_size(surface::css(12.))
+        .line_height(surface::css(12.))
+        .whitespace_nowrap()
+        .bg(if primary {
+            cx.theme().primary
+        } else {
+            MainPageColors.module_action_gray()
+        })
+        .text_color(if primary {
+            MainPageColors.banner_shade()
+        } else {
+            MainPageColors.banner_heading()
+        })
+        .cursor_default()
+        .when(!disabled, |button| {
+            button.focus_visible(|style| style.border_color(cx.theme().foreground))
+        })
+        .child(label);
+    ModuleAction {
+        id,
+        button,
+        disabled,
+    }
+}
+
+/// Keeps the source opacity transition on the whole button, including its label
+/// and border. Rendering supplies Window only for retained presentation state;
+/// command activation, keyboard handling and focus remain owned by Base Button.
+#[derive(IntoElement)]
+pub(super) struct ModuleAction {
+    id: ElementId,
+    button: BaseButton,
+    disabled: bool,
+}
+
+impl ModuleAction {
+    pub(super) fn on_click(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.button = self.button.on_click(handler);
+        self
+    }
+}
+
+impl Styled for ModuleAction {
+    fn style(&mut self) -> &mut StyleRefinement {
+        self.button.style()
+    }
+}
+
+impl InteractiveElement for ModuleAction {
+    fn interactivity(&mut self) -> &mut Interactivity {
+        self.button.interactivity()
+    }
+}
+
+impl StatefulInteractiveElement for ModuleAction {}
+
+#[derive(Default)]
+struct ModuleActionInteraction {
+    hovered: bool,
+    pressed: bool,
+}
+
+impl RenderOnce for ModuleAction {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let disabled = self.disabled;
+        let state = window.use_keyed_state(
+            (self.id.clone(), "module-button-interaction"),
+            cx,
+            |_, _| ModuleActionInteraction::default(),
+        );
+        let interaction = state.read(cx);
+        let target = if disabled {
+            0.3
+        } else if interaction.pressed && interaction.hovered {
+            0.6
+        } else if interaction.hovered {
+            0.8
+        } else {
+            1.
+        };
+        let opacity = motion::transition(
+            (self.id, "module-button-opacity"),
+            target,
+            Transition::new(Duration::from_millis(200)).easing(Easing::EaseOut),
+            window,
+            cx,
+        );
+        self.button
+            .opacity(opacity)
+            .on_hover(window.listener_for(&state, |state, hovered, _, cx| {
+                state.hovered = *hovered;
+                if !hovered {
+                    state.pressed = false;
+                }
+                cx.notify();
+            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                window.listener_for(&state, move |state, _, _, cx| {
+                    state.pressed = !disabled;
+                    cx.notify();
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                window.listener_for(&state, |state, _, _, cx| {
+                    state.pressed = false;
+                    cx.notify();
+                }),
+            )
+            .on_mouse_up_out(
+                MouseButton::Left,
+                window.listener_for(&state, |state, _, _, cx| {
+                    state.pressed = false;
+                    cx.notify();
+                }),
+            )
+    }
+}
+
+/// The source's underlined `.info-text.link` is a text-sized in-app command.
+pub(super) fn module_detail_action(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    cx: &App,
+) -> BaseButton {
+    let label = label.into();
+    BaseButton::new(id)
+        .accessibility_label(label.clone())
+        .w_auto()
+        .h_auto()
+        .flex_shrink_0()
+        .p_0()
+        .text_size(surface::css(14.))
+        .line_height(surface::css(17.))
+        .whitespace_nowrap()
+        .text_color(MainPageColors.card_caption())
+        .underline()
+        .cursor_default()
+        .hover(|style| style.text_color(cx.theme().primary))
+        .active(|style| style.text_color(cx.theme().primary.opacity(0.7)))
+        .focus_visible(|style| style.text_color(cx.theme().primary))
+        .child(label)
+}
+
 fn product_info(index: usize, cx: &App) -> AnyElement {
     let item = &PRODUCTS[index];
     let content = v_flex()
@@ -100,12 +282,14 @@ fn product_info(index: usize, cx: &App) -> AnyElement {
             div()
                 .font_family("RazerF5")
                 .text_size(surface::css(18.))
+                .font_weight(FontWeight::BOLD)
                 .text_center()
-                .child(i18n::t(item.name)),
+                .child(i18n::t(item.name).to_uppercase()),
         )
         .child(
             div()
                 .text_size(surface::css(14.))
+                .line_height(surface::css(17.))
                 .text_center()
                 .whitespace_normal()
                 .child(i18n::t(item.description)),
@@ -128,6 +312,7 @@ pub(super) struct GamerRoomPage {
     tour_step: Option<usize>,
     stored_seen: Option<bool>,
     add_dialog: Option<Entity<iot_popup::IotPopup>>,
+    add_dialog_subscription: Option<Subscription>,
 }
 pub(super) enum GamerRoomEvent {
     TutorialCompleted,
@@ -142,6 +327,7 @@ impl GamerRoomPage {
             tour_step: None,
             stored_seen: None,
             add_dialog: None,
+            add_dialog_subscription: None,
         }
     }
     pub(super) fn set_tutorial_seen(&mut self, seen: bool, cx: &mut Context<Self>) {
@@ -180,6 +366,16 @@ impl GamerRoomPage {
             return;
         }
         let view = iot_popup::open(kind, window, cx);
+        // Background marketing popups do not belong to the modal's focus or
+        // pointer interaction. Keep the tutorial step for after it closes.
+        self.hovered_product = None;
+        self.active_product = None;
+        self.add_dialog_subscription =
+            Some(cx.subscribe(&view, |this, _, _: &DismissEvent, cx| {
+                this.add_dialog = None;
+                this.add_dialog_subscription = None;
+                cx.notify();
+            }));
         self.add_dialog = Some(view);
         cx.notify();
     }
@@ -300,21 +496,31 @@ impl GamerRoomPage {
                                 )
                             })
                             .child(
-                                Button::new(SharedString::from(format!(
+                                BaseButton::new(SharedString::from(format!(
                                     "gr-hotspot-{}",
                                     PRODUCTS[index].name
                                 )))
-                                .outline()
+                                .accessibility_label(i18n::t(PRODUCTS[index].name))
+                                .w_auto()
                                 .h_auto()
+                                .flex_shrink_0()
                                 .px(surface::css(8.))
                                 .py(surface::css(8.))
                                 .text_size(surface::css(14.))
-                                .custom(
-                                    ButtonCustomVariant::new(cx)
-                                        .color(colors.banner_shade().opacity(0.5))
-                                        .hover(colors.banner_shade().opacity(0.7)),
-                                )
-                                .label(i18n::t(PRODUCTS[index].name))
+                                .line_height(surface::css(17.))
+                                .whitespace_nowrap()
+                                .rounded(surface::css(5.))
+                                .bg(colors.banner_shade().opacity(0.5))
+                                .text_color(cx.theme().foreground)
+                                .shadow(vec![BoxShadow {
+                                    color: colors.banner_heading().opacity(0.2),
+                                    offset: point(px(0.), px(0.)),
+                                    blur_radius: surface::css(15.).to_pixels(cx.theme().font_size),
+                                    spread_radius: px(0.),
+                                    inset: false,
+                                }])
+                                .focus_visible(|style| style.bg(colors.banner_shade().opacity(0.7)))
+                                .child(i18n::t(PRODUCTS[index].name))
                                 .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
                                     if *hovered {
                                         this.hovered_product = Some(index);
@@ -425,10 +631,18 @@ impl GamerRoomPage {
             .w_full()
             .mt(surface::css(30.))
             .child(
-                Button::new(SharedString::from(format!("gr-group-toggle-{index}")))
-                    .ghost()
+                BaseButton::new(SharedString::from(format!("gr-group-toggle-{index}")))
+                    .accessibility_label(i18n::t(title))
+                    .aria_expanded(!self.collapsed[index])
+                    .self_start()
+                    .h(surface::css(18.))
                     .justify_start()
                     .p_0()
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(18.))
+                    .text_color(cx.theme().foreground)
+                    .hover(|style| style.text_color(MainPageColors.banner_heading()))
+                    .focus_visible(|style| style.bg(cx.theme().secondary_hover))
                     .child(
                         h_flex()
                             .gap(surface::css(10.))
@@ -446,7 +660,7 @@ impl GamerRoomPage {
                             )
                             .child(i18n::t(title)),
                     )
-                    .tooltip(i18n::t(tip))
+                    .tooltip(move |window, cx| Tooltip::new(i18n::t(tip)).build(window, cx))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.collapsed[index] = !this.collapsed[index];
                         cx.notify();
@@ -459,7 +673,9 @@ impl GamerRoomPage {
                     cx,
                 )))
             })
-            .when(index == 0, |view| view.child(self.tutorial_popover(cx)))
+            .when(index == 0 && self.add_dialog.is_none(), |view| {
+                view.child(self.tutorial_popover(cx))
+            })
             .into_any_element()
     }
     fn tutorial_popover(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -500,6 +716,8 @@ impl GamerRoomPage {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let content = v_flex()
+            .w_full()
+            .min_w_0()
             .items_center()
             .justify_center()
             .gap(surface::css(8.))
@@ -508,19 +726,34 @@ impl GamerRoomPage {
             .text_center()
             .whitespace_normal()
             .text_color(MainPageColors.empty_group_text())
-            .child(i18n::t(description))
-            .when(index == 0, |view| view.child(i18n::t("ADD_NEW_DEVICE")));
+            .child(
+                div()
+                    .w_full()
+                    .whitespace_normal()
+                    .child(i18n::t(description)),
+            )
+            .when(index == 0, |view| {
+                view.child(
+                    div()
+                        .w_full()
+                        .whitespace_normal()
+                        .underline()
+                        .child(i18n::t("ADD_NEW_DEVICE")),
+                )
+            });
         if index == 0 {
-            Button::new("gamer-room-add")
-                .ghost()
+            BaseButton::new("gamer-room-add")
                 .accessibility_label(i18n::t("ADD_OTHER_WIFI_DEVICE"))
+                .self_start()
                 .w(surface::css(186.))
                 .h(surface::css(176.))
+                .flex_shrink_0()
                 .p(surface::css(15.))
                 .border_2()
                 .border_dashed()
                 .border_color(cx.theme().border)
                 .rounded(cx.theme().font_size * (5. / 16.))
+                .focus_visible(|style| style.border_color(cx.theme().primary))
                 .child(content)
                 .on_click(cx.listener(|this, _, w, cx| this.open_add(w, cx)))
                 .into_any_element()
@@ -811,23 +1044,30 @@ impl ModuleCatalog {
                             .text_ellipsis()
                             .child(item.title),
                     )
-                    .child(div().flex_1().when(item.image.is_some(), |view| {
-                        view.child(
-                            Button::new(SharedString::from(format!("module-details-{}", item.id)))
-                                .ghost()
-                                .label(i18n::t(if expanded {
-                                    "CLOSE"
-                                } else {
-                                    "MORE_INFORMATION"
-                                }))
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    if !this.expanded.remove(item.id) {
-                                        this.expanded.insert(item.id);
-                                    }
-                                    cx.notify();
-                                })),
-                        )
-                    }))
+                    .child(div().flex_1().min_w_0().flex().items_center().when(
+                        item.image.is_some(),
+                        |view| {
+                            view.child(
+                                module_detail_action(
+                                    SharedString::from(format!("module-details-{}", item.id)),
+                                    i18n::t(if expanded {
+                                        "CLOSE"
+                                    } else {
+                                        "MORE_INFORMATION"
+                                    }),
+                                    cx,
+                                )
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        if !this.expanded.remove(item.id) {
+                                            this.expanded.insert(item.id);
+                                        }
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                        },
+                    ))
                     .child(
                         div()
                             .text_size(surface::css(14.))
@@ -835,13 +1075,17 @@ impl ModuleCatalog {
                             .child("安装状态未读取"),
                     )
                     .child(
-                        Button::new(SharedString::from(format!("module-install-{}", item.id)))
-                            .label("安装")
-                            .min_w(surface::css(90.))
-                            .h(surface::css(27.))
-                            .ml(surface::css(30.))
-                            .disabled(true)
-                            .tooltip("此版本尚未接入模块安装服务"),
+                        module_action(
+                            SharedString::from(format!("module-install-{}", item.id)),
+                            "安装",
+                            true,
+                            true,
+                            cx,
+                        )
+                        .ml(surface::css(30.))
+                        .tooltip(|window, cx| {
+                            Tooltip::new("此版本尚未接入模块安装服务").build(window, cx)
+                        }),
                     ),
             )
             .when(expanded && item.image.is_some(), |view| {

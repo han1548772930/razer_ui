@@ -156,43 +156,14 @@ pub(crate) fn keymap_close_button(
     window: &mut Window,
     cx: &mut App,
 ) -> gpui_kit::base::Button {
-    source_close_button(id, label, false, window, cx)
-}
-
-/// Main `.modal-content .btn-close` uses a distinct 100ms ease-in-out and
-/// a darker pressed state than the product keymap close button.
-pub(crate) fn modal_close_button(
-    id: &'static str,
-    label: &'static str,
-    window: &mut Window,
-    cx: &mut App,
-) -> gpui_kit::base::Button {
-    source_close_button(id, label, true, window, cx).rounded_tr(css(4.))
-}
-
-fn source_close_button(
-    id: &'static str,
-    label: &'static str,
-    modal: bool,
-    window: &mut Window,
-    cx: &mut App,
-) -> gpui_kit::base::Button {
     use super::theme::KeymapCloseColors;
-    let transition = if modal {
-        Transition::new(Duration::from_millis(100)).easing(Easing::EaseInOut)
-    } else {
-        Transition::new(Duration::from_millis(200)).easing(Easing::Ease)
-    };
+    let transition = Transition::new(Duration::from_millis(200)).easing(Easing::Ease);
     let state = window.use_keyed_state((ElementId::from(id), "close-state"), cx, |_, _| {
         CloseButtonState::default()
     });
     let current = state.read(cx);
     let target = if current.pressed {
-        if modal {
-            KeymapCloseColors::modal_pressed()
-        } else {
-            KeymapCloseColors::pressed()
-        }
+        KeymapCloseColors::pressed()
     } else if current.hovered {
         KeymapCloseColors::hover()
     } else {

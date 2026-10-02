@@ -9,6 +9,16 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DISCOVERY = ROOT / ".ref/discovery"
+MOUSE_MATS = (3072, 3073, 3074, 3076, 3077, 3078, 3080)
+ADAPTED_PRODUCTS = (182, 653, 777, *MOUSE_MATS)
+
+
+def implementation(pid):
+    if pid in MOUSE_MATS:
+        return "已接入本地灯光及帮助，设备与 Chroma 服务仍未接通"
+    if pid in ADAPTED_PRODUCTS:
+        return "已适配，服务及部分条件界面仍有缺口"
+    return "未适配"
 
 
 def read(path, fallback=None):
@@ -90,7 +100,7 @@ def main():
             "ui_entry_found": product["ui_exists"], "code_files_expected": len(code_files),
             "code_files_acquired": acquired, "code_complete": bool(code_files) and acquired == len(code_files),
             "navigation": navigations,
-            "implementation": "已适配，服务及部分条件界面仍有缺口" if pid in (182, 653, 777) else "未适配"})
+            "implementation": implementation(pid)})
     summary = {**discovery["summary"], "code_complete_products": sum(p["code_complete"] for p in records),
         "code_files_acquired": sum(p["code_files_acquired"] for p in records),
         "products_with_navigation_arrays": sum(bool(p["navigation"]) for p in records),
@@ -120,8 +130,8 @@ def main():
         if not source:
             source = "连接／声明引用" if row["referenced_by"] else "历史探测"
         ui = "有入口" if row["ui_entry_found"] else row["endpoints"]["ui/index.html"]["result"]
-        text.append(f"| {row['product_id']} | {escape(row['name'])} | {escape(source)} | {ui} | {row['code_files_acquired']}/{row['code_files_expected']} | {escape(navigation or '待追踪' if row['ui_entry_found'] else '—')} | {'已有适配' if row['product_id'] in (182, 653, 777) else '未适配'} |")
-    text += ["", "## 尚未完成", "", f"- 导航中仍有 {summary['unresolved_navigation_names']} 个名称表达式未化简；保留原表达式与源码偏移。条件弹窗、子应用和各显示模式继续逐项追踪。", "- 此表不是应用实现清单；目前 Rust 产品适配仍只有 182/653/777，不能把下载完成计作功能完成。", "- 图像、视频、字体、source map 和原生服务不在 JS/CSS 齐备统计内。", "- 目录是已记录版本的官方来源，不能证明未来或未公开产品的完整性。", ""]
+        text.append(f"| {row['product_id']} | {escape(row['name'])} | {escape(source)} | {ui} | {row['code_files_acquired']}/{row['code_files_expected']} | {escape(navigation or '待追踪' if row['ui_entry_found'] else '—')} | {'已有适配' if row['product_id'] in ADAPTED_PRODUCTS else '未适配'} |")
+    text += ["", "## 尚未完成", "", f"- 导航中仍有 {summary['unresolved_navigation_names']} 个名称表达式未化简；保留原表达式与源码偏移。条件弹窗、子应用和各显示模式继续逐项追踪。", "- 此表不是完整功能验收清单；当前 Rust 产品入口为 182/653/777 及 3072/3073/3074/3076/3077/3078/3080。新增鼠标垫的本地灯光、帮助和资源见[逐页规格](../screens/17-mouse-mat-lighting.md)，设备与 Chroma 服务仍未接通。不能把下载或编译完成计作实际界面验收。", "- 图像、视频、字体、source map 和原生服务不在 JS/CSS 齐备统计内。", "- 目录是已记录版本的官方来源，不能证明未来或未公开产品的完整性。", ""]
     (ROOT / "docs/re/16-product-catalog.md").write_text("\n".join(text), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False))
 

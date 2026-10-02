@@ -1,21 +1,22 @@
 //! Reviewable source 6505/44442 `H → w/O/L` states. Every record in this surface
 //! is explicitly a preview; production ModuleCatalog retains its unknown service state.
-use super::{MODULES, Module, source_link};
+use super::{MODULES, Module, ModuleAction, module_action, module_detail_action, source_link};
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     features::Choice,
     i18n,
     ui::{
         surface,
-        theme::{MainPageColors, PaletteColors, ProfileAlertColors},
+        theme::{MainPageColors, ProfileAlertColors},
     },
 };
-use gpui_kit::base::{Popover, Progress, ProgressIndicator, ProgressTrack};
+use gpui_kit::base::{Button as BaseButton, Popover, Progress, ProgressIndicator, ProgressTrack};
 use gpui_kit::component::{
-    button::{Button, ButtonCustomVariant, ButtonVariants},
+    button::{Button, ButtonVariants},
     checkbox::Checkbox,
     select::{SelectEvent, SelectState},
     spinner::Spinner,
+    tooltip::Tooltip,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -206,38 +207,10 @@ impl ModulePreview {
         id: impl Into<ElementId>,
         label: impl Into<SharedString>,
         primary: bool,
+        disabled: bool,
         cx: &App,
-    ) -> Button {
-        Button::new(id)
-            .label(label)
-            .min_w(surface::css(90.))
-            .h(surface::css(27.))
-            .px(surface::css(16.))
-            .py_0()
-            .rounded(cx.theme().font_size * (3. / 16.))
-            .text_size(surface::css(12.))
-            .line_height(surface::css(12.))
-            .border_1()
-            .border_color(PaletteColors.swatch_border())
-            .ml(surface::css(30.))
-            .custom(
-                ButtonCustomVariant::new(cx)
-                    .color(if primary {
-                        cx.theme().primary
-                    } else {
-                        PaletteColors.secondary()
-                    })
-                    .foreground(if primary {
-                        cx.theme().title_bar
-                    } else {
-                        PaletteColors.white()
-                    })
-                    .hover(if primary {
-                        cx.theme().primary.opacity(0.8)
-                    } else {
-                        PaletteColors.secondary().opacity(0.8)
-                    }),
-            )
+    ) -> ModuleAction {
+        module_action(id, label, primary, disabled, cx).ml(surface::css(30.))
     }
     fn row_title(
         &self,
@@ -341,13 +314,17 @@ impl ModulePreview {
         } else {
             match self.phase {
                 InstallerPhase::Downloading { percent, .. } => self
-                    .action("cancel-download", i18n::t("CANCEL"), false, cx)
-                    .disabled(percent >= 100.)
+                    .action(
+                        "cancel-download",
+                        i18n::t("CANCEL"),
+                        false,
+                        percent >= 100.,
+                        cx,
+                    )
                     .on_click(cx.listener(|this, _, _, cx| this.preview_cancel(cx)))
                     .into_any_element(),
                 InstallerPhase::Installing { .. } => self
-                    .action("cancel-install", i18n::t("CANCEL"), false, cx)
-                    .disabled(true)
+                    .action("cancel-install", i18n::t("CANCEL"), false, true, cx)
                     .into_any_element(),
                 _ => self
                     .action(
@@ -358,16 +335,19 @@ impl ModulePreview {
                             "INSTALL"
                         }),
                         true,
+                        !self.online || self.phase == InstallerPhase::Unknown,
                         cx,
                     )
-                    .disabled(!self.online || self.phase == InstallerPhase::Unknown)
                     .when(
                         !self.online || self.phase == InstallerPhase::Unknown,
                         |button| {
-                            button.tooltip(if self.phase == InstallerPhase::Unknown {
+                            let message = if self.phase == InstallerPhase::Unknown {
                                 "尚未连接模块安装服务".into()
                             } else {
                                 i18n::t("INTERNET_CONNECTION_REQUIRED")
+                            };
+                            button.tooltip(move |window, cx| {
+                                Tooltip::new(message.clone()).build(window, cx)
                             })
                         },
                     )
@@ -398,23 +378,29 @@ impl ModulePreview {
                         false,
                         cx,
                     ))
-                    .child(div().w(surface::css(145.)).when(!is_device, |d| {
-                        d.child(
-                            Button::new("module-more-info")
-                                .ghost()
-                                .p_0()
-                                .justify_start()
-                                .w(surface::css(145.))
-                                .label(i18n::t(if expanded {
-                                    "CLOSE"
-                                } else {
-                                    "MORE_INFORMATION"
-                                }))
-                                .on_click(
-                                    cx.listener(move |this, _, _, cx| this.toggle(item.id, cx)),
-                                ),
-                        )
-                    }))
+                    .child(
+                        div()
+                            .w(surface::css(145.))
+                            .flex_shrink_0()
+                            .flex()
+                            .items_center()
+                            .when(!is_device, |d| {
+                                d.child(
+                                    module_detail_action(
+                                        "module-more-info",
+                                        i18n::t(if expanded {
+                                            "CLOSE"
+                                        } else {
+                                            "MORE_INFORMATION"
+                                        }),
+                                        cx,
+                                    )
+                                    .on_click(
+                                        cx.listener(move |this, _, _, cx| this.toggle(item.id, cx)),
+                                    ),
+                                )
+                            }),
+                    )
                     .child(h_flex().flex_1().justify_end().child(progress))
                     .child(action),
             )
@@ -481,21 +467,28 @@ impl ModulePreview {
         let removing = self.scene == Scene::Removing || self.removed.contains(key);
         let disconnected = device && removable;
         let owner = cx.entity().downgrade();
-        let remove = Button::new(SharedString::from(format!("remove-{key}")))
-            .label(i18n::t("REMOVE"))
-            .ghost()
-            .h(surface::css(27.))
+        let remove = BaseButton::new(SharedString::from(format!("remove-{key}")))
+            .accessibility_label(i18n::t("REMOVE"))
+            .w_auto()
+            .h_auto()
+            .flex_shrink_0()
             .ml(surface::css(30.))
-            .min_w(surface::css(45.))
             .underline()
-            .px_0()
+            .p_0()
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .text_color(MainPageColors.card_caption())
             .disabled(!removable)
-            .custom(
-                ButtonCustomVariant::new(cx)
-                    .foreground(cx.theme().muted_foreground)
-                    .hover(cx.theme().transparent),
-            )
-            .hover(|style| style.text_color(ProfileAlertColors::new().headphone_danger()));
+            .opacity(if removable { 1. } else { 0.3 })
+            .when(removable, |button| {
+                button
+                    .hover(|style| style.text_color(ProfileAlertColors::new().headphone_danger()))
+                    .active(|style| style.text_color(ProfileAlertColors::new().headphone_danger()))
+                    .focus_visible(|style| {
+                        style.text_color(ProfileAlertColors::new().headphone_danger())
+                    })
+            })
+            .child(i18n::t("REMOVE"));
         let panel = v_flex()
             .id(SharedString::from(format!("remove-confirm-{key}")))
             .w(surface::css(300.))
@@ -560,14 +553,11 @@ impl ModulePreview {
                 )
             })
             .child(
-                self.action("confirm-module-remove", i18n::t("REMOVE"), false, cx)
+                self.action("confirm-module-remove", i18n::t("REMOVE"), false, false, cx)
                     .ml_0()
-                    .custom(
-                        ButtonCustomVariant::new(cx)
-                            .color(ProfileAlertColors::new().danger())
-                            .foreground(cx.theme().title_bar)
-                            .hover(ProfileAlertColors::new().danger().opacity(0.8)),
-                    )
+                    .self_center()
+                    .bg(ProfileAlertColors::new().danger())
+                    .text_color(cx.theme().title_bar)
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.removal = None;
                         this.removed.insert(key);
@@ -680,17 +670,25 @@ impl ModulePreview {
                             ),
                     )
                     .child(
-                        Button::new("firmware-info")
-                            .ghost()
-                            .p_0()
-                            .justify_start()
+                        div()
                             .w(surface::css(145.))
-                            .label(i18n::t(if expanded {
-                                "CLOSE"
-                            } else {
-                                "MORE_INFORMATION"
-                            }))
-                            .on_click(cx.listener(|this, _, _, cx| this.toggle("firmware", cx))),
+                            .flex_shrink_0()
+                            .flex()
+                            .items_center()
+                            .child(
+                                module_detail_action(
+                                    "firmware-info",
+                                    i18n::t(if expanded {
+                                        "CLOSE"
+                                    } else {
+                                        "MORE_INFORMATION"
+                                    }),
+                                    cx,
+                                )
+                                .on_click(
+                                    cx.listener(|this, _, _, cx| this.toggle("firmware", cx)),
+                                ),
+                            ),
                     )
                     .child(
                         h_flex()
@@ -715,9 +713,9 @@ impl ModulePreview {
                             "launch-firmware-preview",
                             i18n::t("LAUNCH_UPDATER"),
                             false,
+                            warning.is_some(),
                             cx,
                         )
-                        .disabled(warning.is_some())
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.last_action = if this.sdk_update {
                                 "已预览启动设备固件更新程序。"

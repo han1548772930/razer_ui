@@ -8,7 +8,7 @@ use crate::{
     i18n,
     ui::{
         surface,
-        theme::{IotColors, MainPageColors, PaletteColors, ProfileAlertColors},
+        theme::{IotColors, KeymapCloseColors, MainPageColors, PaletteColors, ProfileAlertColors},
     },
 };
 use gpui_kit::base::Button as BaseButton;
@@ -192,9 +192,20 @@ pub(super) struct IotPopup {
     notice: String,
     focus: FocusHandle,
     open: bool,
+    shown: bool,
+    closing: bool,
+    lifecycle_task: Option<Task<()>>,
     return_focus: Option<FocusHandle>,
     _subscriptions: Vec<Subscription>,
 }
+impl EventEmitter<DismissEvent> for IotPopup {}
+
+// Kit 0.7 paints Dialog at 10 + layer and Popup at POPUP_PRIORITY. The IoT
+// modal is mounted after the page's popups, so sharing their priority puts its
+// backdrop above them, while dropdowns mounted inside this modal remain above
+// it. A higher priority would paint the modal over its own dropdowns.
+const IOT_MODAL_LAYER: usize = gpui_kit::base::POPUP_PRIORITY - 10;
+
 impl IotPopup {
     fn new(kind: DeviceKind, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let scenes =
@@ -211,6 +222,22 @@ impl IotPopup {
         let return_focus = window.focused(cx);
         let focus = cx.focus_handle();
         focus.focus(window, cx);
+        let shown = cx.reduce_motion();
+        // App.K -> z keeps the outer modal mounted and changes isMounted.
+        // Shared modal 82830 adds .show after 100ms; its iframe is not a
+        // standalone window that disappears synchronously on close.
+        let lifecycle_task = (!shown).then(|| {
+            cx.spawn_in(window, async move |this, cx| {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(100))
+                    .await;
+                _ = this.update_in(cx, |this, _, cx| {
+                    this.shown = true;
+                    this.lifecycle_task = None;
+                    cx.notify();
+                });
+            })
+        });
         Self {
             initial_kind: kind,
             kind,
@@ -228,6 +255,9 @@ impl IotPopup {
             notice: String::new(),
             focus,
             open: true,
+            shown,
+            closing: false,
+            lifecycle_task,
             return_focus,
             _subscriptions: vec![subscription],
         }
@@ -236,11 +266,34 @@ impl IotPopup {
         self.open
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.open || self.closing {
+            return;
+        }
+        self.closing = true;
+        self.shown = false;
+        self.lifecycle_task = None;
+        if cx.reduce_motion() {
+            self.finish_close(window, cx);
+        } else {
+            // 82830 removes .show immediately, then removes the outer modal
+            // and iframe after 300ms. Keep its backdrop and focus until then.
+            self.lifecycle_task = Some(cx.spawn_in(window, async move |this, cx| {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(300))
+                    .await;
+                _ = this.update_in(cx, |this, window, cx| this.finish_close(window, cx));
+            }));
+            cx.notify();
+        }
+    }
+    fn finish_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.lifecycle_task = None;
         self.reset_network_form(window, cx);
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
         self.open = false;
+        cx.emit(DismissEvent);
         cx.notify();
     }
     fn show(&mut self, screen: Screen, window: &mut Window, cx: &mut Context<Self>) {
@@ -1261,12 +1314,11 @@ impl Render for IotPopup {
         if !self.open {
             return div().into_any_element();
         }
-        // Shared modal 82830 adds .show 100ms after mounting; 55 CSS fades
-        // the surface and backdrop over 150ms linear, with no slide/scale.
-        let opacity = gpui_kit::base::motion::Presence::new("iot-modal-opacity", true)
+        // 55 CSS fades .show over 150ms linear in both directions. The owner
+        // handles the separate 100ms entrance and 300ms removal deadlines.
+        let opacity = gpui_kit::base::motion::Presence::new("iot-modal-opacity", self.shown)
             .transition(
                 gpui_kit::base::motion::Transition::new(std::time::Duration::from_millis(150))
-                    .delay(std::time::Duration::from_millis(100))
                     .easing(gpui_kit::base::motion::Easing::Linear),
             )
             .sample(window, cx)
@@ -1297,14 +1349,19 @@ impl Render for IotPopup {
             .min(viewport.width);
         let top = (window.rem_size() * (106. / 16.)).min(viewport.height);
         gpui_kit::base::Dialog::new(cx)
+            .layer(IOT_MODAL_LAYER, true)
             .focus_handle(self.focus.clone())
             .close_on_backdrop_press(false)
             .on_ok(|_, _, _| false)
             .on_close(cx.listener(|this, _, window, cx| this.close(window, cx)))
             .backdrop(
                 div()
+                    .id("iot-modal-backdrop")
+                    .test_support()
                     .absolute()
                     .size_full()
+                    .occlude()
+                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
                     .bg(MainPageColors.banner_shade().opacity(0.7 * opacity)),
             )
             .popup(
@@ -1335,18 +1392,33 @@ impl Render for IotPopup {
                             .font_weight(FontWeight::LIGHT)
                             .child(self.kind.title().to_uppercase())
                             .child(
-                                surface::modal_close_button(
-                                    "gr-add-close",
-                                    "关闭添加设备",
-                                    window,
-                                    cx,
-                                )
-                                .absolute()
-                                .top_0()
-                                .right_0()
-                                .on_click(
-                                    cx.listener(|this, _, window, cx| this.close(window, cx)),
-                                ),
+                                // App.z mounts `.close`, not the inner
+                                // `.modal-content .btn-close` variant.
+                                BaseButton::new("gr-add-close")
+                                    .accessibility_label("关闭添加设备")
+                                    .size(surface::css(36.))
+                                    .p_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .bg(KeymapCloseColors::idle())
+                                    .hover(|style| style.bg(KeymapCloseColors::hover()))
+                                    .active(|style| style.bg(KeymapCloseColors::pressed()))
+                                    .focus_visible(|style| {
+                                        style.border_1().border_color(cx.theme().ring)
+                                    })
+                                    // This embedded asset is byte-identical to
+                                    // icon_close_white.8ab462b8.svg referenced by z.
+                                    .child(
+                                        img("synapse/calibration-close.svg")
+                                            .size(surface::css(20.)),
+                                    )
+                                    .absolute()
+                                    .top_0()
+                                    .right_0()
+                                    .on_click(
+                                        cx.listener(|this, _, window, cx| this.close(window, cx)),
+                                    ),
                             ),
                     )
                     .child(
@@ -1373,6 +1445,7 @@ impl Render for IotPopup {
                             )
                             .child(
                                 surface::select(&self.scenes)
+                                    .id("iot-preview-scene")
                                     .items(scene_choices())
                                     .w(surface::css(340.))
                                     .accessibility_label("添加 Wi-Fi 设备界面预览"),

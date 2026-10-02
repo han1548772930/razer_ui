@@ -282,17 +282,26 @@ fn closing_tabs_selects_neighbors_and_reopening_preserves_order(cx: &mut TestApp
         tabs.visit(&Location::Main(Tab::Setting), cx);
         tabs.open(first.clone(), cx);
         tabs.open(second.clone(), cx);
-        tabs.open(HostTab::Tour, cx);
+        tabs.open(HostTab::Tour(crate::shell::TourKind::Synapse), cx);
         // Inactive close preserves the active tab; reopening appends exactly once.
         assert!(tabs.remove(&first, &second.location()).is_none());
         tabs.visit(&first.location(), cx);
         tabs.visit(&first.location(), cx);
         assert_eq!(
             tabs.open.iter().map(|entry| &entry.tab).collect::<Vec<_>>(),
-            vec![&second, &HostTab::Tour, &first]
+            vec![
+                &second,
+                &HostTab::Tour(crate::shell::TourKind::Synapse),
+                &first
+            ]
         );
         // Active middle closes toward the right; active last closes toward the left.
-        assert!(tabs.remove(&HostTab::Tour, &Location::Tour) == Some(first.location()));
+        assert!(
+            tabs.remove(
+                &HostTab::Tour(crate::shell::TourKind::Synapse),
+                &Location::Tour(crate::shell::TourKind::Synapse)
+            ) == Some(first.location())
+        );
         assert!(tabs.remove(&first, &first.location()) == Some(second.location()));
         assert!(tabs.remove(&second, &second.location()) == Some(Location::Main(Tab::Setting)));
         // Closing an already closed tab cannot change the undo stack.
@@ -300,7 +309,34 @@ fn closing_tabs_selects_neighbors_and_reopening_preserves_order(cx: &mut TestApp
             tabs.remove(&second, &Location::Main(Tab::Setting))
                 .is_none()
         );
-        assert_eq!(tabs.closed, vec![HostTab::Tour, first, second]);
+        assert_eq!(
+            tabs.closed,
+            vec![
+                HostTab::Tour(crate::shell::TourKind::Synapse),
+                first,
+                second
+            ]
+        );
+    });
+}
+
+#[gpui_kit::test]
+fn synapse_and_chroma_tours_keep_distinct_tabs_and_close_independently(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        let mut tabs = HostTabs::new(cx);
+        let synapse = HostTab::Tour(crate::shell::TourKind::Synapse);
+        let chroma = HostTab::Tour(crate::shell::TourKind::Chroma);
+        tabs.visit(&Location::Main(Tab::Setting), cx);
+        tabs.visit(&synapse.location(), cx);
+        tabs.visit(&chroma.location(), cx);
+        tabs.visit(&synapse.location(), cx);
+        assert_eq!(tabs.order(), ["host-tour", "host-chroma-tour"]);
+        assert!(tabs.remove(&chroma, &synapse.location()).is_none());
+        assert_eq!(tabs.order(), ["host-tour"]);
+        tabs.visit(&chroma.location(), cx);
+        assert_eq!(tabs.order(), ["host-tour", "host-chroma-tour"]);
+        assert!(tabs.remove(&synapse, &synapse.location()) == Some(chroma.location()));
+        assert!(tabs.remove(&chroma, &chroma.location()) == Some(Location::Main(Tab::Setting)));
     });
 }
 
@@ -314,7 +350,7 @@ fn restored_positions_ignore_missing_tabs_and_save_completion_keeps_newer_order_
         let second = HostTab::Device("second".into());
         tabs.open(first.clone(), cx);
         tabs.open(second.clone(), cx);
-        tabs.open(HostTab::Tour, cx);
+        tabs.open(HostTab::Tour(crate::shell::TourKind::Synapse), cx);
         tabs.restore_order(&[
             "host-missing".into(),
             "host-second".into(),
@@ -330,7 +366,10 @@ fn restored_positions_ignore_missing_tabs_and_save_completion_keeps_newer_order_
         assert!(tabs.order_pending());
         tabs.mark_order_saved(tabs.order());
         assert!(!tabs.order_pending());
-        tabs.remove(&HostTab::Tour, &first.location());
+        tabs.remove(
+            &HostTab::Tour(crate::shell::TourKind::Synapse),
+            &first.location(),
+        );
         assert!(
             !tabs.order_pending(),
             "closing a tab alone is not an unsaved layout edit"

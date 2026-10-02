@@ -21,12 +21,14 @@
 | [13 配置迁移](13-profile-migration.md) | Settings打开的独立迁移应用、分组卡片、选择与状态弹层；真实扫描/转换边界 |
 | [14 Wi-Fi 添加](14-iot-add.md) | Key Light／Gamer Room 分支、网络与设备列表、返回与密码清理、显式状态预览 |
 | [15 账户菜单](15-account-menu.md) | 访客菜单的原版外观、焦点、退出保护及账户服务边界 |
-| [16 Introduction Tour](16-introduction-tour.md) | Synapse 五步独立教程、内嵌原片段、导航关闭与短窗口滚动；Chroma 分支边界 |
+| [16 Introduction Tour](16-introduction-tour.md) | Synapse 五步视频及 Chroma 三步原图教程、独立页签状态、导航关闭与短窗口滚动；宿主接入边界 |
+| [17 鼠标垫灯光](17-mouse-mat-lighting.md) | 七款 Firefly/Goliathus/Strider 的灯光、帮助、产品资源和本地预览；保留各型号差异 |
 
 产品导航顺序：
 
 - 182：Customize → Performance → Power → Calibration；HELP；Pairing 为独立模式。
 - 653：Customize → Lighting；HELP。
 - 777：Sound → Mic → Lighting → Power；HELP。
+- 3072/3073/3074/3076/3077/3078/3080：Lighting；HELP。
 
 文中数值首先表示原始 CSS px 或原始业务数值。后续 GPUI Kit 实现统一换算缩放，并通过领域事件更新状态；不要把页面文档中的 React 符号直接设计成 Rust 公共 API。

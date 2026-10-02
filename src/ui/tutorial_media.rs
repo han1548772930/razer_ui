@@ -5,9 +5,10 @@ pub(crate) fn clip(
     asset: &'static str,
     label: impl Into<SharedString>,
     ratio: f32,
-) -> Stateful<Div> {
+) -> gpui_kit::base::ObservedElement<Stateful<Div>> {
     div()
         .id(asset)
+        .test_support()
         .role(Role::Image)
         .aria_label(label)
         .relative()

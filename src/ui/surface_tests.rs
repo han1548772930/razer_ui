@@ -15,29 +15,17 @@ struct Switches {
 }
 
 struct CloseControls {
-    colors: [Rc<Cell<Hsla>>; 2],
+    color: Rc<Cell<Hsla>>,
     calls: Rc<Cell<usize>>,
 }
 impl Render for CloseControls {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let calls = self.calls.clone();
-        let mut modal = super::modal_close_button("modal-close", "Close modal", window, cx)
+        let mut keymap = super::keymap_close_button("keymap-close", "Close mapping", window, cx)
             .on_click(move |_, _, _| calls.set(calls.get() + 1));
-        let mut keymap = super::keymap_close_button("keymap-close", "Close mapping", window, cx);
-        // Capture the very styles applied to these production Button instances;
+        // Capture the very style applied to this production Button instance;
         // snapshots expose geometry but not color. No duplicate motion model.
-        self.colors[0].set(
-            modal
-                .style()
-                .background
-                .as_ref()
-                .unwrap()
-                .color()
-                .unwrap()
-                .as_solid()
-                .unwrap(),
-        );
-        self.colors[1].set(
+        self.color.set(
             keymap
                 .style()
                 .background
@@ -51,52 +39,47 @@ impl Render for CloseControls {
         h_flex()
             .p(px(20.))
             .gap(px(20.))
-            .child(modal)
             .child(keymap)
             .child(div().id("outside-close").test_support().size(px(40.)))
     }
 }
 
 #[gpui_kit::test]
-fn modal_and_keymap_close_follow_distinct_source_hover_press_timings(cx: &mut TestAppContext) {
+fn keymap_close_preserves_hover_press_timing_and_cancels_release_outside(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
         Theme::update(cx, |theme| theme.font_size = px(16.));
     });
-    let colors = [
-        Rc::new(Cell::new(Hsla::default())),
-        Rc::new(Cell::new(Hsla::default())),
-    ];
+    let color = Rc::new(Cell::new(Hsla::default()));
     let calls = Rc::new(Cell::new(0));
     let handle = cx.open_window(size(px(400.), px(200.)), |window, cx| {
         let view = cx.new(|_| CloseControls {
-            colors: colors.clone(),
+            color: color.clone(),
             calls: calls.clone(),
         });
         Root::new(view, window, cx)
     });
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        window.hover("modal-close", cx);
+        window.hover("keymap-close", cx);
         window.render_frame(cx);
-        assert_eq!(colors[0].get().a, 0.);
+        assert_eq!(color.get().a, 0.);
     })
     .unwrap();
-    cx.executor().advance_clock(Duration::from_millis(50));
+    cx.executor().advance_clock(Duration::from_millis(100));
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        let color = colors[0].get();
-        // 100ms ease-in-out reaches exactly half alpha at 50ms, keeping white
-        // throughout the transparent->white fade (no dark HSL interpolation).
-        assert!((color.a - 13. / 255.).abs() < 0.001);
-        assert!((color.l - 1.).abs() < 0.001);
+        // 200ms CSS ease has reached about 80% at its midpoint. White stays
+        // white throughout the transparent fade (no dark HSL interpolation).
+        assert!(color.get().a > 0.07 && color.get().a < 0.09);
+        assert!((color.get().l - 1.).abs() < 0.001);
     })
     .unwrap();
-    cx.executor().advance_clock(Duration::from_millis(50));
+    cx.executor().advance_clock(Duration::from_millis(100));
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        assert!((colors[0].get().a - 26. / 255.).abs() < 0.001);
-        let position = window.find("modal-close").bounds().center();
+        assert!((color.get().a - 26. / 255.).abs() < 0.001);
+        let position = window.find("keymap-close").bounds().center();
         window.dispatch_event(
             MouseDownEvent {
                 button: MouseButton::Left,
@@ -110,11 +93,11 @@ fn modal_and_keymap_close_follow_distinct_source_hover_press_timings(cx: &mut Te
         window.render_frame(cx);
     })
     .unwrap();
-    cx.executor().advance_clock(Duration::from_millis(100));
+    cx.executor().advance_clock(Duration::from_millis(200));
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        assert!((colors[0].get().a - 77. / 255.).abs() < 0.001);
-        assert_eq!(colors[0].get().l, 0.);
+        assert!((color.get().a - 26. / 255.).abs() < 0.001);
+        assert_eq!(color.get().l, 0.);
         assert_eq!(calls.get(), 0, "press alone does not close");
         let position = window.find("outside-close").bounds().center();
         window.dispatch_event(
@@ -127,25 +110,16 @@ fn modal_and_keymap_close_follow_distinct_source_hover_press_timings(cx: &mut Te
             .to_platform_input(),
             cx,
         );
-        window.hover("keymap-close", cx);
+        window.hover("outside-close", cx);
         window.render_frame(cx);
         assert_eq!(calls.get(), 0, "releasing outside cancels the close");
     })
     .unwrap();
-    cx.executor().advance_clock(Duration::from_millis(100));
+    cx.executor().advance_clock(Duration::from_millis(200));
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        assert!(
-            colors[1].get().a > 0.07 && colors[1].get().a < 0.09,
-            "keymap uses 200ms ease, not modal's 100ms ease-in-out"
-        );
-    })
-    .unwrap();
-    cx.executor().advance_clock(Duration::from_millis(100));
-    cx.update_window(handle.into(), |_, window, cx| {
-        window.render_frame(cx);
-        assert!((colors[1].get().a - 26. / 255.).abs() < 0.001);
-        window.click("modal-close", cx);
+        assert_eq!(color.get().a, 0.);
+        window.click("keymap-close", cx);
         assert_eq!(calls.get(), 1);
         window.press("space", cx);
         assert_eq!(calls.get(), 2);

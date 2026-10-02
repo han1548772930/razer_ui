@@ -29,7 +29,7 @@ fn guide_links_use_each_product_and_requested_language() {
     assert!(
         [182, 653, 777]
             .iter()
-            .any(|pid| Tab::for_product(*pid).contains(&Tab::Help))
+            .all(|pid| !Tab::for_product(*pid).contains(&Tab::Help))
     );
 }
 

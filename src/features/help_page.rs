@@ -35,7 +35,10 @@ fn support_links(pid: u32, locale: &str) -> Option<(&'static str, String)> {
             "https://mysupport.razer.com/app/answers/detail/a_id/3851",
             "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENBTSANRIOLIMITEDEDITION-00000777-",
         ),
-        _ => return None,
+        _ => {
+            let product = crate::product::audited_mouse_mat(pid)?;
+            (product.support_url(), product.guide_prefix())
+        }
     };
     let language = if locale.is_empty() {
         "en".to_string()
@@ -191,9 +194,9 @@ impl DeviceWorkspace {
                         .px_0()
                         .py(surface::css(15.))
                         .justify_start()
-                    .gap(surface::css(4.))
-                    .text_size(surface::css(14.))
-                    .hover(|s| s.text_color(cx.theme().primary))
+                        .gap(surface::css(4.))
+                        .text_size(surface::css(14.))
+                        .hover(|s| s.text_color(cx.theme().primary))
                         .child(div().underline().child(view_more_label))
                         .child(
                             svg()

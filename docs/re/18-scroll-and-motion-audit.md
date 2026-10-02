@@ -36,7 +36,7 @@ Kit 0.7 的 `overflow_*_scrollbar` 包装会将高度约束复制到外层，同
 | 颜色预设板 | `.dropdown-color .s3-options` 的 `transition:all .1s,width 0` | 100ms ease 淡入；箭头 300ms ease；二级拾色器维持原 `display:none/block` 的即时切换 |
 | 账户菜单 | `rz-user-profile-menu/Root.012dd389.chunk.js` 的 `m.showDropdown/hideDropdown`；`main.090e2108.css` 的 `.dropdown-razer` | 挂载后等 100ms 加 show；透明度 200ms linear、上移 7px 到原位 200ms ease-out；关闭立即停止接收输入，100ms 后卸载。重开取消旧任务；窗口失焦关闭；Escape 与触发器关闭恢复焦点 |
 | Profile 删除／重置 | 182 `main.db20a7c4.js` 的 Profile 组件常驻挂载 `Vu/Gs`，653/777 对应分支；`.profile-del` | 300ms linear 淡入；关闭的 visibility 立即隐藏。没有套用默认 Dialog 滑入 |
-| Wi-Fi 添加 | frontend `IotPopupRoot` 的 `gt` 使用 `82830`；`55.4acb3322.chunk.js` 的 modal show 计时器及 `55.a5b041a2.chunk.css` | 挂载后 100ms，面板和遮罩分别以 150ms linear 淡入，无位置变化。当前退出销毁根窗口，没有擅加一个原调用路径未触发的 isMounted=false 退出序列 |
+| Wi-Fi 添加 | `9388 ze → commonReducer → App.K → App.z`；外层 `82830` 的 `isMounted`，内层 iframe `gt` 的固定 `isMounted:true`；`55.a5b041a2.chunk.css` | 挂载后 100ms，面板和遮罩分别以 150ms linear 淡入，无位置变化。外层关闭立即移除 `.show`，以 150ms linear 淡出并在 300ms 后卸载；关闭取消入场任务，重复关闭不重启计时。减少动态效果时立即结束 |
 | 板载配置／映射编辑器 | `.obm-menu.key-config` 和 `.key-config` 的 opacity/visibility/left 过渡为 0s | 保持即时显示 |
 | 通用确认、发布说明及其他弹层 | 必须结合实际挂载判断，不能只凭 CSS 中存在 transition | 保留已审计位置及样式；不统一添加动画 |
 
@@ -117,10 +117,10 @@ OBM 提示已替换原生光标定位，按实际门户／CSS 两条路径分别
 | Gamer Room 两步指示 | `9388 ce`，55 `.gamer-room-tutorial-modal` 与 override | 用同一原生指示器；第一步 left−9%/top0，第二步 left−10%/top50%，保留原平移与两个弹框锚点；外点不再意外完成教程 |
 | 教程按钮和跳过 | 55 教程 CSS；9388 `P.nSM/IUp/DHM/K29` 对应 `TUTORIAL_SKIP/BACK/DONE/NEXT` | Base Button 保留原 100×27 边框盒、12px 字号、黑边、灰／橙背景，不受 Component 默认字号和内距影响，也不被 flex 压窄。禁用状态立即影响交互，透明度用 300ms ease；主按钮 hover 背景立即变化。跳过恢复右20/top15、下划线与绿色 hover，并使用源语言键 |
 | 宿主右上关闭／还原拉伸 | Electron `index.css .etabs-window-control-btns`、`TabUI.addWindowControlBtns`、`assets/image/tab/*.svg` | 命中区域仍为 48×42；关闭资源按 12.7×12.7、还原按 13×13 居中。最小化／最大化保留资源自身 48×32 画布，不再把紧裁剪图标拉伸到该画布 |
-| Wi-Fi 添加关闭 | 55 `.modal-content .btn-close` | 使用原 `icon_close.55fe41f1.svg`（mapping-close）、36px 目标、20px 图标、右上4px圆角。背景透明→白10%→黑30%，100ms ease-in-out；与 keymap 的 200ms ease、黑10%按下态分开 |
+| Wi-Fi 添加关闭 | `App.z` 的 `.modal.iot-device-popup .close` | 使用原 `icon_close_white.8ab462b8.svg`（复用字节一致的 calibration-close，填充 #ccc）、36px 目标、20px 图标；背景透明→白10%→黑10%，即时变化、无圆角。内层 `.btn-close` 的 100ms ease-in-out 与黑30%按下态不适用该入口 |
 | 未保存确认关闭 | `.save-alert .close` | 保留20px目标、top/right8；移除 Component ghost 额外的悬停背景和原生提示，继续编辑且不提交保存动作 |
 
-本次新增 9 个回归用例，覆盖 [指示动画及按钮尺寸／禁用过渡](../../src/ui/tutorial_tests.rs)、[Dashboard 首次等待和窗口缩放](../../src/shell/main_pages/dashboard_tutorial_tests.rs)、[Gamer Room 步骤和锚点](../../src/shell/gamer_room_tutorial_tests.rs)、[宿主图标与关闭命中](../../src/shell/host_tabs_tests.rs)、[两类关闭过渡和移出取消](../../src/ui/surface_tests.rs)、[Wi-Fi 三种入口关闭](../../src/shell/iot_popup_tests.rs)、[未保存确认继续编辑](../../src/ui/source_alert_tests.rs)。颜色时序用例读取实际生产 Button 实例上应用的样式，交互仍经原生鼠标／键盘事件，不直接调用处理函数。
+此前新增的回归源码覆盖 [指示动画及按钮尺寸／禁用过渡](../../src/ui/tutorial_tests.rs)、[Dashboard 首次等待和窗口缩放](../../src/shell/main_pages/dashboard_tutorial_tests.rs)、[Gamer Room 步骤和锚点](../../src/shell/gamer_room_tutorial_tests.rs)、[宿主图标与关闭命中](../../src/shell/host_tabs_tests.rs)、[keymap 关闭过渡和移出取消](../../src/ui/surface_tests.rs)、[Wi-Fi 三种入口关闭](../../src/shell/iot_popup_tests.rs)、[未保存确认继续编辑](../../src/ui/source_alert_tests.rs)。颜色时序用例读取实际生产 Button 实例上应用的样式，交互仍经原生鼠标／键盘事件，不直接调用处理函数。此次纠正外层 IoT 路径后，删除不再有生产调用的通用 modal close helper，补充模态内下拉、焦点、叠层与外层退出计时的回归源码，详见 [Wi-Fi 添加复核](../screens/14-iot-add.md#外层挂载关闭与叠层复核2026-10-02)。
 
 `cargo check --locked --all-targets` 通过，无警告。用例仅编译，未执行；没有启动应用、服务或 DLL。像素外观、原生窗口关闭与完整焦点链仍须动态验收，不能由这些编译结果推断全部界面完成。
 

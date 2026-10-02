@@ -34,25 +34,25 @@ mod host_window;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum HostTab {
     Device(String),
-    Tour,
+    Tour(super::TourKind),
 }
 impl HostTab {
     fn location(&self) -> Location {
         match self {
             Self::Device(key) => Location::Device(key.clone()),
-            Self::Tour => Location::Tour,
+            Self::Tour(kind) => Location::Tour(*kind),
         }
     }
     fn id(&self) -> SharedString {
         match self {
             Self::Device(key) => format!("host-{key}").into(),
-            Self::Tour => "host-tour".into(),
+            Self::Tour(kind) => kind.id().into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
         match location {
             Location::Device(key) => Some(Self::Device(key.clone())),
-            Location::Tour => Some(Self::Tour),
+            Location::Tour(kind) => Some(Self::Tour(*kind)),
             _ => None,
         }
     }
@@ -224,9 +224,8 @@ impl AppShell {
             .count()
             .saturating_sub(1);
         self.history.retain(|location| *location != closed);
-        if tab == HostTab::Tour {
-            self.introduction_tour = None;
-            self.tour_subscription = None;
+        if let HostTab::Tour(kind) = tab {
+            self.introduction_tours.remove(&kind);
         }
         cx.notify();
     }
@@ -335,7 +334,7 @@ impl AppShell {
                         .find(|device| device.read(cx).identity() == *key)
                         .map(|device| device.read(cx).device().display_name())
                         .unwrap_or_default(),
-                    HostTab::Tour => crate::i18n::t("INTRODUCTION_TOUR").to_owned(),
+                    HostTab::Tour(kind) => kind.title(),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -467,7 +466,7 @@ impl AppShell {
         let middle_close = close.clone();
         let group = id.clone();
         let icon = match tab {
-            Some(HostTab::Tour) => "synapse/tour-app-icon.svg",
+            Some(HostTab::Tour(_)) => "synapse/tour-app-icon.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()
@@ -476,6 +475,9 @@ impl AppShell {
             {
                 Some(653) => "synapse/host-category-keyboard.svg",
                 Some(777) => "synapse/host-category-audio.svg",
+                Some(pid) if crate::product::audited_mouse_mat(pid).is_some() => {
+                    "synapse/host-category-mousemat.svg"
+                }
                 _ => "synapse/host-category-mouse.svg",
             },
             None => "synapse/synapse.svg",

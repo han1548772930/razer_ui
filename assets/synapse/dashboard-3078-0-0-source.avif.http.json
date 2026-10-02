@@ -1,0 +1,32 @@
+{
+  "source_url": "https://apps.razer.com/synapse/products/3078/ui/3078_0/PluginImages/3078_0_0_dashboard3x.avif",
+  "final_url": "https://apps.razer.com/synapse/products/3078/ui/3078_0/PluginImages/3078_0_0_dashboard3x.avif",
+  "redirected": false,
+  "http_status": 200,
+  "fetched_at_utc": "2026-10-02T11:08:15Z",
+  "content_type": "image/avif",
+  "last_modified": "Fri, 02 Oct 2026 08:59:13 GMT",
+  "etag": "\"be91a816f9723113100f99ead07fa941\"",
+  "result": "ok",
+  "sha256": "d8a99164c5139bbe7f198d68c2b57f64110ff02ae3dec31c7a3430e088e01843",
+  "bytes": 42225,
+  "validation": {
+    "valid": true,
+    "kind": "media",
+    "reason": null
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at_utc": "2026-10-02T11:08:15Z",
+      "completed_at_utc": "2026-10-02T11:08:15Z",
+      "status": 200,
+      "result": "ok",
+      "error": null,
+      "final_url": "https://apps.razer.com/synapse/products/3078/ui/3078_0/PluginImages/3078_0_0_dashboard3x.avif",
+      "redirect_chain": []
+    }
+  ],
+  "error": null,
+  "body_file": "dashboard-3078-0-0-source.avif"
+}

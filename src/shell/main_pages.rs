@@ -6,10 +6,7 @@ use crate::{
     nav::Tab,
     ui::{surface, theme::MainPageColors},
 };
-use gpui_kit::component::{
-    button::{Button, ButtonVariants},
-    *,
-};
+use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 mod dashboard_cards;
@@ -219,27 +216,31 @@ impl AppShell {
                             }),
                     )
                     .child(
-                        Button::new(SharedString::from(format!("module-info-{key}")))
-                            .ghost()
-                            .label("详情")
-                            .h(surface::css(27.))
-                            .on_click(move |_, window, cx| {
-                                catalog.update(cx, |catalog, cx| {
-                                    catalog.open_device_details(detail_device.clone(), window, cx)
-                                });
-                            }),
+                        super::service_pages::module_detail_action(
+                            SharedString::from(format!("module-info-{key}")),
+                            "详情",
+                            cx,
+                        )
+                        .on_click(move |_, window, cx| {
+                            catalog.update(cx, |catalog, cx| {
+                                catalog.open_device_details(detail_device.clone(), window, cx)
+                            });
+                        }),
                     )
                     .child(
-                        Button::new(SharedString::from(format!("module-open-{key}")))
-                            .label("打开")
-                            .h(surface::css(27.))
-                            .min_w(surface::css(90.))
-                            .ml(surface::css(30.))
-                            .text_size(surface::css(12.))
-                            .disabled(!supported)
-                            .on_click(cx.listener(move |this, _, window, cx| {
+                        super::service_pages::module_action(
+                            SharedString::from(format!("module-open-{key}")),
+                            "打开",
+                            false,
+                            !supported,
+                            cx,
+                        )
+                        .ml(surface::css(30.))
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
                                 this.navigate(Location::Device(key.clone()), window, cx);
-                            })),
+                            },
+                        )),
                     )
             }))
             .child(div().mt(surface::css(20.)).child(surface::note(

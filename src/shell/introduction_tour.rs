@@ -14,7 +14,43 @@ struct Step {
     media: &'static str,
 }
 
-const STEPS: &[Step] = &[
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum TourKind {
+    Synapse,
+    Chroma,
+}
+
+impl TourKind {
+    fn steps(self) -> &'static [Step] {
+        match self {
+            Self::Synapse => SYNAPSE_STEPS,
+            Self::Chroma => CHROMA_STEPS,
+        }
+    }
+
+    fn media_size(self) -> (f32, f32) {
+        match self {
+            Self::Synapse => (640., 360.),
+            Self::Chroma => (570., 420.),
+        }
+    }
+
+    pub(super) fn id(self) -> &'static str {
+        match self {
+            Self::Synapse => "host-tour",
+            Self::Chroma => "host-chroma-tour",
+        }
+    }
+
+    pub(super) fn title(self) -> String {
+        match self {
+            Self::Synapse => i18n::t("INTRODUCTION_TOUR"),
+            Self::Chroma => format!("Chroma · {}", i18n::t("INTRODUCTION_TOUR")),
+        }
+    }
+}
+
+const SYNAPSE_STEPS: &[Step] = &[
     Step {
         header: "QUICK_EFFECTS_AND_ADVANCED_EFFECT_HEADER",
         paragraphs: &[
@@ -52,7 +88,27 @@ const STEPS: &[Step] = &[
     },
 ];
 
+// jn uses three static AVIFs through modules 2980, 7469 and 3623.
+const CHROMA_STEPS: &[Step] = &[
+    Step {
+        header: "QUICK_EFFECTS",
+        paragraphs: &["QUICK_EFFECTS_TOUR_CONTENT_1"],
+        media: "synapse/tour-chroma-quick-effects.png",
+    },
+    Step {
+        header: "ADVANCED_EFFECTS",
+        paragraphs: &["ADVANCED_EFFECTS_TOUR_CONTENT_1"],
+        media: "synapse/tour-chroma-advanced-effects.png",
+    },
+    Step {
+        header: "CHROMA_APPS",
+        paragraphs: &["CHROMA_APPS_TOUR_CONTENT_1"],
+        media: "synapse/tour-chroma-apps.png",
+    },
+];
+
 pub(super) struct IntroductionTour {
+    kind: TourKind,
     selected_ix: usize,
     next_focus: FocusHandle,
     scroll: ScrollHandle,
@@ -62,8 +118,9 @@ pub(super) struct CloseRequested;
 impl EventEmitter<CloseRequested> for IntroductionTour {}
 
 impl IntroductionTour {
-    pub(super) fn new(cx: &mut Context<Self>) -> Self {
+    pub(super) fn new(kind: TourKind, cx: &mut Context<Self>) -> Self {
         Self {
+            kind,
             selected_ix: 0,
             next_focus: cx.focus_handle().tab_stop(true),
             scroll: ScrollHandle::new(),
@@ -82,7 +139,7 @@ impl IntroductionTour {
     }
 
     fn next(&mut self, cx: &mut Context<Self>) {
-        if self.selected_ix + 1 == STEPS.len() {
+        if self.selected_ix + 1 == self.kind.steps().len() {
             cx.emit(CloseRequested);
         } else {
             self.selected_ix += 1;
@@ -91,7 +148,7 @@ impl IntroductionTour {
     }
 
     fn navigation(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let last = self.selected_ix + 1 == STEPS.len();
+        let last = self.selected_ix + 1 == self.kind.steps().len();
         v_flex()
             .id("introduction-tour-controls")
             .test_support()
@@ -101,7 +158,7 @@ impl IntroductionTour {
                 h_flex()
                     .gap(surface::css(12.))
                     .mb(surface::css(14.))
-                    .children(STEPS.iter().enumerate().map(|(ix, step)| {
+                    .children(self.kind.steps().iter().enumerate().map(|(ix, step)| {
                         div()
                             .id(step.header)
                             .size(surface::css(4.))
@@ -156,7 +213,7 @@ impl IntroductionTour {
                             .disabled(last)
                             .when(last, |view| view.opacity(0.3))
                             .on_click(cx.listener(|this, _, _, cx| {
-                                if this.selected_ix + 1 < STEPS.len() {
+                                if this.selected_ix + 1 < this.kind.steps().len() {
                                     cx.emit(CloseRequested);
                                 }
                             })),
@@ -295,7 +352,8 @@ fn paragraph(key: &'static str, window: &Window) -> AnyElement {
 
 impl Render for IntroductionTour {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let step = &STEPS[self.selected_ix];
+        let step = &self.kind.steps()[self.selected_ix];
+        let (media_width, media_height) = self.kind.media_size();
         div()
             .id("introduction-tour-scroll")
             .test_support()
@@ -374,8 +432,12 @@ impl Render for IntroductionTour {
                                     .child(self.navigation(window, cx)),
                             )
                             .child(
-                                tutorial_media::clip(step.media, i18n::t(step.header), 640. / 360.)
-                                    .w(surface::css(640.)),
+                                tutorial_media::clip(
+                                    step.media,
+                                    i18n::t(step.header),
+                                    media_width / media_height,
+                                )
+                                .w(surface::css(media_width)),
                             ),
                     ),
             )

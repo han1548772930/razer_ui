@@ -538,13 +538,13 @@
 | 2685 | 未提供名称 | 连接／声明引用 | not_found | 0/0 | — | 未适配 |
 | 2689 | Razer Hammerhead V3 X HyperSpeed Kuromi Edition | Available | 有入口 | 17/17 | TAB_SOUND / TAB_ENHANCEMENT / TAB_MIC / TAB_POWER / HELP | 未适配 |
 | 2690 | 未提供名称 | 连接／声明引用 | not_found | 0/0 | — | 未适配 |
-| 3072 | Razer Firefly Hard Edition | Available | 有入口 | 14/14 | TAB_LIGHTING / HELP | 未适配 |
-| 3073 | Razer Goliathus Chroma | Available | 有入口 | 21/21 | TAB_LIGHTING / HELP | 未适配 |
-| 3074 | Razer Goliathus Extended Chroma | Available | 有入口 | 30/30 | TAB_LIGHTING / HELP | 未适配 |
-| 3076 | Razer Firefly V2 | Available | 有入口 | 10/10 | TAB_LIGHTING / HELP | 未适配 |
-| 3077 | Razer Strider Chroma | Available | 有入口 | 21/21 | TAB_LIGHTING / HELP | 未适配 |
-| 3078 | Razer Goliathus Chroma 3XL | Available | 有入口 | 10/10 | TAB_LIGHTING / HELP | 未适配 |
-| 3080 | Razer Firefly V2 Pro | Available | 有入口 | 29/29 | TAB_LIGHTING / HELP | 未适配 |
+| 3072 | Razer Firefly Hard Edition | Available | 有入口 | 14/14 | TAB_LIGHTING / HELP | 已有适配 |
+| 3073 | Razer Goliathus Chroma | Available | 有入口 | 21/21 | TAB_LIGHTING / HELP | 已有适配 |
+| 3074 | Razer Goliathus Extended Chroma | Available | 有入口 | 30/30 | TAB_LIGHTING / HELP | 已有适配 |
+| 3076 | Razer Firefly V2 | Available | 有入口 | 10/10 | TAB_LIGHTING / HELP | 已有适配 |
+| 3077 | Razer Strider Chroma | Available | 有入口 | 21/21 | TAB_LIGHTING / HELP | 已有适配 |
+| 3078 | Razer Goliathus Chroma 3XL | Available | 有入口 | 10/10 | TAB_LIGHTING / HELP | 已有适配 |
+| 3080 | Razer Firefly V2 Pro | Available | 有入口 | 29/29 | TAB_LIGHTING / HELP | 已有适配 |
 | 3328 | Razer Ripsaw Game Capture Card | Synapse2 | not_found | 0/0 | — | 未适配 |
 | 3331 | Razer RipSaw HD | Available | 有入口 | 6/6 | TAB_SETTING / HELP | 未适配 |
 | 3334 | Razer Stream Controller | Available | 有入口 | 32/32 | TAB_HOME / STREAM_MIXER_HEADER / HELP | 未适配 |
@@ -625,6 +625,6 @@
 ## 尚未完成
 
 - 导航中仍有 0 个名称表达式未化简；保留原表达式与源码偏移。条件弹窗、子应用和各显示模式继续逐项追踪。
-- 此表不是应用实现清单；目前 Rust 产品适配仍只有 182/653/777，不能把下载完成计作功能完成。
+- 此表不是完整功能验收清单；当前 Rust 产品入口为 182/653/777 及 3072/3073/3074/3076/3077/3078/3080。新增鼠标垫的本地灯光、帮助和资源见[逐页规格](../screens/17-mouse-mat-lighting.md)，设备与 Chroma 服务仍未接通。不能把下载或编译完成计作实际界面验收。
 - 图像、视频、字体、source map 和原生服务不在 JS/CSS 齐备统计内。
 - 目录是已记录版本的官方来源，不能证明未来或未公开产品的完整性。

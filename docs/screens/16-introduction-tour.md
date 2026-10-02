@@ -20,6 +20,20 @@
 
 内容保留在布局流内，原生双轴滚动使 450px 描述列、媒体与操作在窄／短窗口可达。未给切步加原代码没有的淡入、滑动或缩放。按钮颜色、透明度端点与 opacity 200ms ease-out 过渡已按 CSS 接入；每个按钮保持独立过渡状态，鼠标释放／移出复位，支持减少动态效果。
 
+## Chroma 分支
+
+同一根组件 `Fn` 按路径选择 `jn`，不是从 Synapse 五步中截取三步。已接入独立 Chroma 教程页签，在设置“服务连接 → 本地工作区 → 预览 Chroma 入门教程…”打开；当前提供原版教程内容，Chroma 主应用的动态注册及入口仍待适配。
+
+| 步骤 | 原标题 / 正文 key | 原静态资源 |
+| --- | --- | --- |
+| 1 | QUICK_EFFECTS / QUICK_EFFECTS_TOUR_CONTENT_1 | module 2980，quick_effects.9f9806eb.avif |
+| 2 | ADVANCED_EFFECTS / ADVANCED_EFFECTS_TOUR_CONTENT_1 | module 7469，chroma_studio.abd5d541.avif |
+| 3 | CHROMA_APPS / CHROMA_APPS_TOUR_CONTENT_1 | module 3623，chroma_apps.ca901740.avif |
+
+三幅原图均为 570×420；沿用根组件 1120px 内容列、450px 描述列、30px 间距以及最终 CSS 的左右 20px。正文使用已有 locale 的完整句子，导航仍为上一页／下一页／跳过，第三页为开始使用且禁用跳过。两套教程按应用类型分别保留 Entity、步骤、滚动和关闭订阅；切换页签不重置，关闭仅释放对应教程并清除其历史，重新打开从第一步开始。
+
+三份 AVIF 静态下载后无损转 RGBA PNG；已纳入同一媒体来源清单、嵌入表及资源校验链，未执行原版脚本。新增回归源码覆盖三步导航、570×420几何、完成通知、禁用跳过、两套状态独立及页签关闭关系；只做编译检查。
+
 ## 媒体转换和边界
 
 `tools/prepare-tutorial-media.py` 离线下载、验证并将源静音循环 MP4 转为无损动画 WebP，不降帧、不降尺寸，保留延时；相同帧由编码器合并并累加时间。Dashboard 单步与 Gamer Room 两步采用原 250×190 片段。转换依赖列于 `tools/requirements-tutorial-media.txt`。
@@ -30,6 +44,6 @@ GPUI 原生 `img` 负责动画、窗口失焦暂停和减少动态效果偏好�
 
 ## 剩余范围
 
-- `jn` 的 Chroma 分支另有 Quick Effects、Advanced Effects、Chroma Apps 三步静态图；已发现源码，尚未接入 Chroma 宿主。
+- Chroma 三步内容已可独立预览；Chroma 主应用宿主与原动态入口仍未接通。
 - 原宿主的动态应用注册、完整顶栏更多应用入口尚未适配。
 - 实际播放流畅度、缩放、焦点恢复和窗口边缘定位尚未动态验收。

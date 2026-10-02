@@ -119,6 +119,13 @@
       "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg"
     },
     {
+      "source": ".ref/frontend/shared-favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e",
+      "sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg"
+    },
+    {
       "source": ".ref/devices/182/static/media/prd-3x.674b18f0.avif",
       "output": "assets/synapse/mouse-182.png",
       "source_sha256": "f9ad5bc36e124e0ede11637f8db420dbd4ff371070322f2a7425e60001b0a1db",
@@ -2355,6 +2362,720 @@
       ]
     },
     {
+      "source": ".ref/devices/3072/static/media/prd-1x.739dc8b9.avif",
+      "output": "assets/synapse/product-3072-prd-1x.739dc8b9.png",
+      "source_sha256": "755fb337a3e79a9cad55aa21d58a54b2fd2a505a0815306cb8d871d692ee1250",
+      "sha256": "180b91ac8ac227a5d9e721d08c48a3181eb05ea5521d214234b329f0ed8fecf0",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/static/media/prd-1x.739dc8b9.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3072_0/img_prods/prd-1x.png",
+          "module": 7793,
+          "context": ".ref/devices/3072/static/js/main.22fdc9c0.js",
+          "context_sha256": "436a1d949987511e0c2b04f96058b73915a50587071405b2f6603ab65a5bae4f",
+          "module_file": ".ref/devices/3072/static/js/793.b1423e22.chunk.js",
+          "module_sha256": "a3d61fc75b68dfd0d6849e489fb572e351c174e8292157655acbe1e9cb90209a"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3072/static/media/prd-3x.9b74188f.avif",
+      "output": "assets/synapse/product-3072-prd-3x.9b74188f.png",
+      "source_sha256": "5e6174e76ba59103fc0b1148190a3b7c9948be548cbbc6f226646378224eea54",
+      "sha256": "eead83e70a24b0ab79667b4db18c253c33b72b02e874cf1a67f857ef296ce36e",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/static/media/prd-3x.9b74188f.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3072_0/img_prods/prd-3x.png",
+          "module": 7111,
+          "context": ".ref/devices/3072/static/js/main.22fdc9c0.js",
+          "context_sha256": "436a1d949987511e0c2b04f96058b73915a50587071405b2f6603ab65a5bae4f",
+          "module_file": ".ref/devices/3072/static/js/111.09360eab.chunk.js",
+          "module_sha256": "61d25de2f85dec32e4d0e60320ddc80484021ccc8f0226c70002f4ac15699c2c"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3072/static/media/prd-1x.6c83938d.avif",
+      "output": "assets/synapse/product-3072-prd-1x.6c83938d.png",
+      "source_sha256": "6b8e1f8d09182fe0dddd0e4a6f90168586d44d89d2487ba9899b16db7c5c5a2b",
+      "sha256": "7c700ef47d6d4714e6b9eddc0de46b8d7d5a65342657fb03ec00e0c395eeb72b",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/static/media/prd-1x.6c83938d.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3072_1/img_prods/prd-1x.png",
+          "module": 8870,
+          "context": ".ref/devices/3072/static/js/main.22fdc9c0.js",
+          "context_sha256": "436a1d949987511e0c2b04f96058b73915a50587071405b2f6603ab65a5bae4f",
+          "module_file": ".ref/devices/3072/static/js/870.206e2787.chunk.js",
+          "module_sha256": "3741ca9568b9ff5adfdd0d16bd16bb51aff00d681af8fbb4f29a1c1e779f2f53"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3072/static/media/prd-3x.6c83938d.avif",
+      "output": "assets/synapse/product-3072-prd-3x.6c83938d.png",
+      "source_sha256": "6b8e1f8d09182fe0dddd0e4a6f90168586d44d89d2487ba9899b16db7c5c5a2b",
+      "sha256": "7c700ef47d6d4714e6b9eddc0de46b8d7d5a65342657fb03ec00e0c395eeb72b",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/static/media/prd-3x.6c83938d.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3072_1/img_prods/prd-3x.png",
+          "module": 6076,
+          "context": ".ref/devices/3072/static/js/main.22fdc9c0.js",
+          "context_sha256": "436a1d949987511e0c2b04f96058b73915a50587071405b2f6603ab65a5bae4f",
+          "module_file": ".ref/devices/3072/static/js/76.932e4509.chunk.js",
+          "module_sha256": "4c6ffd52d57be7a5673a30eeb23637505229edb760081c945154c4d29745c35a"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3073/static/media/prd-1x.2f1c12fc.avif",
+      "output": "assets/synapse/product-3073-prd-1x.2f1c12fc.png",
+      "source_sha256": "73a0459daa0d96853501bccb4dc407c2d8f7ca739735e0ec3903153f422abf4c",
+      "sha256": "d485273800d1917ad40701d85586cf1af4363cdb27a26ee52ac93e51ac556eaa",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3073/ui/static/media/prd-1x.2f1c12fc.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3073_0/img_prods/prd-1x.png",
+          "module": 5230,
+          "context": ".ref/devices/3073/static/js/main.c88f5161.js",
+          "context_sha256": "a14c05cad69baaa91d93cdf97691f235f836f2bab7ab310d76c1fb66e2359d52",
+          "module_file": ".ref/devices/3073/static/js/230.2a6942d7.chunk.js",
+          "module_sha256": "5d1b52c54b2950fc96d82959c44adbbc97e4b2985dbfc729e8d301641df7d938"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3073/static/media/prd-3x.0668c6ac.avif",
+      "output": "assets/synapse/product-3073-prd-3x.0668c6ac.png",
+      "source_sha256": "293ddce7a9c92f13f205534327b7eef47a35b73d76885b62a60e855487812a41",
+      "sha256": "725ce2793efa80aaa13541fa2f384fd657f685e7a141c50dfe1032c2c4e43088",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3073/ui/static/media/prd-3x.0668c6ac.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3073_0/img_prods/prd-3x.png",
+          "module": 7764,
+          "context": ".ref/devices/3073/static/js/main.c88f5161.js",
+          "context_sha256": "a14c05cad69baaa91d93cdf97691f235f836f2bab7ab310d76c1fb66e2359d52",
+          "module_file": ".ref/devices/3073/static/js/764.60c140e9.chunk.js",
+          "module_sha256": "389741386eb4f330bdc2dccd6d5c6f083812b195118da96e995d906e2b719a1b"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.feff683b.avif",
+      "output": "assets/synapse/product-3074-prd-1x.feff683b.png",
+      "source_sha256": "137c08f20f8bf0e59fa37d799f68185394607a26b13c205b4b0b8a4a7aa30cd8",
+      "sha256": "7053c297cf1d91f2ff2c01656ec5a0b12a914c8e4ff46094484580b4c0f6ff25",
+      "width": 600,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.feff683b.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_0/img_prods/prd-1x.png",
+          "module": 2323,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/323.e534a456.chunk.js",
+          "module_sha256": "5c6c33e2cb089279a68a39718df88792f946fedc819fbe4987ee69bdb0109f70"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.ac3765eb.avif",
+      "output": "assets/synapse/product-3074-prd-3x.ac3765eb.png",
+      "source_sha256": "bba2fb135f05c4f2b2b06e6d11ccc6a9be6dbefdd6b808451797fbbe3fa263f6",
+      "sha256": "0ce7c5cd0a0336b9c1809b9a6b56c115d448dfc59011c1520dbf2390827a8382",
+      "width": 1800,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.ac3765eb.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_0/img_prods/prd-3x.png",
+          "module": 7821,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/821.1e5bd7ac.chunk.js",
+          "module_sha256": "cc12a5f3b687153124929dfd3b428de12dbb9dbfe54e7a8d59463d76903d3347"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.1c6da9eb.avif",
+      "output": "assets/synapse/product-3074-prd-1x.1c6da9eb.png",
+      "source_sha256": "4263a6c8a02603f1681bb7eaf5e72432bbda792ab52983fed0a06056d87b616e",
+      "sha256": "e20c39f30f9c2d0563b0e9e0711d98158b8b841507bfa6a2ab89fab089c5580b",
+      "width": 600,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.1c6da9eb.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_128/img_prods/prd-1x.png",
+          "module": 9254,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/254.67adbd97.chunk.js",
+          "module_sha256": "e5b0e2c2eefc2d9f19a79845f9eaf56f7966a840cec5ded53dc681bad6641621"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.0e28f598.avif",
+      "output": "assets/synapse/product-3074-prd-3x.0e28f598.png",
+      "source_sha256": "80c03e4eddc00dda6cda91e41750d90621a44a25a427e5cc1b4ac358c107beb8",
+      "sha256": "addbd4925f64b56265c7020295847a0dcf37f7b30c72e8ecddfbd63d2ce66dde",
+      "width": 1800,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.0e28f598.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_128/img_prods/prd-3x.png",
+          "module": 6460,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/460.fba123b3.chunk.js",
+          "module_sha256": "93087e62bad5afb95571746bbb64a79935dbcb1acc86b3d3213836dc2ca03cc9"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.b84ebc58.avif",
+      "output": "assets/synapse/product-3074-prd-1x.b84ebc58.png",
+      "source_sha256": "dc457dc9f8cf13ff3ec46bb02b4261255aab6a9a39ac5bdd33588b8cf2e6d05e",
+      "sha256": "9a76141fb5183e265e1aef9c81a5fba8e1352493b4c131542e08f59f7e015f05",
+      "width": 600,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.b84ebc58.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_129/img_prods/prd-1x.png",
+          "module": 8177,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/177.40d3dcaf.chunk.js",
+          "module_sha256": "aaaaca48b496b762bb294abbbd12f7581e795b13af39b3dc34b1e5b1f0daa3af"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.d70cf4c6.avif",
+      "output": "assets/synapse/product-3074-prd-3x.d70cf4c6.png",
+      "source_sha256": "b02d6ac397d1f8b2b948c652ae39f7a4e464913f467ce53598bed9cc5a97c467",
+      "sha256": "ffd36bbcf7959dec9946ebe6b9b9c5b9ff224d8b87f154b9fc2c653d3c201e51",
+      "width": 1800,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.d70cf4c6.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_129/img_prods/prd-3x.png",
+          "module": 1143,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/143.e66233e5.chunk.js",
+          "module_sha256": "a144343567f109878acf7fdc9a26950b53ae66074eadc1cdf8e3ae81caaf0940"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.e269f47a.avif",
+      "output": "assets/synapse/product-3074-prd-1x.e269f47a.png",
+      "source_sha256": "b9b0bfd06d254750010d555a6d4ff5fc440f663744f2e39d6051fabdf850d5b7",
+      "sha256": "fe948b201357a478c557e4cc3ba01e76210df510377dc8be7afad72e81d78e19",
+      "width": 600,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.e269f47a.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_130/img_prods/prd-1x.png",
+          "module": 7511,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/511.4e5c2062.chunk.js",
+          "module_sha256": "f5f708f8e229014465e3790e353aad9c51531905ad84a52fb377c010a5e60fd4"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.6404745b.avif",
+      "output": "assets/synapse/product-3074-prd-3x.6404745b.png",
+      "source_sha256": "0405fd7c8b16c28e862a37936563a05c284b8ad8a919209e9c2e782a70d90230",
+      "sha256": "52cfc3da8c233b5394f85b9b2f5841d44638b5ae22f626c300b7edc6cea24d44",
+      "width": 1560,
+      "height": 810,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.6404745b.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_130/img_prods/prd-3x.png",
+          "module": 3345,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/345.ef26bac8.chunk.js",
+          "module_sha256": "de507d24761715c642e3ea3211dfe2ccaa7667462a80705e752038965e02e6ee"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.e1dfb82d.avif",
+      "output": "assets/synapse/product-3074-prd-1x.e1dfb82d.png",
+      "source_sha256": "88682cfd0b436673daa267591dc06544a0cfb0e3ea7108b2741652cf57acb1d2",
+      "sha256": "a5294312bad7a66356aaee99ca2721397df0b07cd857dd1359e2f832279459cb",
+      "width": 600,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.e1dfb82d.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_132/img_prods/prd-1x.png",
+          "module": 3965,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/965.8bccbf12.chunk.js",
+          "module_sha256": "3cda884a64357369b92b8eca88fc40e9b568529974f035521e85e821808a5c76"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.a94e11b2.avif",
+      "output": "assets/synapse/product-3074-prd-3x.a94e11b2.png",
+      "source_sha256": "c769799fbc52a8eb17256882e31976245b71eed68449270c68be3c6fe881969f",
+      "sha256": "1a50bd3779676403090186564cf256fb2a57956d9d401fb4ada28306e52b1800",
+      "width": 1560,
+      "height": 810,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.a94e11b2.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_132/img_prods/prd-3x.png",
+          "module": 1123,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/123.0c47f81f.chunk.js",
+          "module_sha256": "d1cc59608b8825e7370634dd6a4cd329e451ab9af672de11bd024876c2003327"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-1x.80ac662b.avif",
+      "output": "assets/synapse/product-3074-prd-1x.80ac662b.png",
+      "source_sha256": "e62319d93ebb65562e44c0a704007f5423f5f11486685c5654d70ffff2484163",
+      "sha256": "05ba26136dcc6d56aee048d0ccd0df69fe90760005c6668062ab14df2dfe4aaf",
+      "width": 600,
+      "height": 312,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-1x.80ac662b.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_133/img_prods/prd-1x.png",
+          "module": 1970,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/970.764b6045.chunk.js",
+          "module_sha256": "3a1c5acbdc6aec7786e98060ae08589b2ffedc7cf284978f2b273205962119ed"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3074/static/media/prd-3x.6bc28404.avif",
+      "output": "assets/synapse/product-3074-prd-3x.6bc28404.png",
+      "source_sha256": "f06d28d41344fa6e1a924a1b131f76833a040709573c167de504c52064f35809",
+      "sha256": "b6dc46393f1b4dff26a99b7e81a53df113a92cf3cf4530f4bc277baae954e5e0",
+      "width": 1560,
+      "height": 810,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/static/media/prd-3x.6bc28404.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3074_133/img_prods/prd-3x.png",
+          "module": 5976,
+          "context": ".ref/devices/3074/static/js/main.85c88c49.js",
+          "context_sha256": "9d67ad686ef9ffc6e0acdf76967bf0ce6ec3c172bc618ab4fc9e24bae2170fb7",
+          "module_file": ".ref/devices/3074/static/js/976.e4e71762.chunk.js",
+          "module_sha256": "e80df2e4073e7629dba88dec318474bce36d94a0a61df57fd588130b36aec45f"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3076/static/media/prd-1x.3347fb04.avif",
+      "output": "assets/synapse/product-3076-prd-1x.3347fb04.png",
+      "source_sha256": "04d14ed362dd295add9d638bc87631a8fbf461cdd54902b15255e49da7ceb0a4",
+      "sha256": "0748767a6bf52b69151cf6aa98251d8d7e43aefd9e23f5da684df905984b8002",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3076/ui/static/media/prd-1x.3347fb04.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3076_0/img_prods/prd-1x.png",
+          "module": 2709,
+          "context": ".ref/devices/3076/static/js/main.5acaa9f5.js",
+          "context_sha256": "5b9efc704cea622410c984013483bf2b6677b7ab0849627567305faf6e3761f7",
+          "module_file": ".ref/devices/3076/static/js/709.736b6460.chunk.js",
+          "module_sha256": "3eb009b48a23da956959ab1da3c10457b34f5f5b8b37c16aba2571716b85aa88"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3076/static/media/prd-3x.2a955710.avif",
+      "output": "assets/synapse/product-3076-prd-3x.2a955710.png",
+      "source_sha256": "4835e710b5f538d29db10b2f97785e020920931cce1f86376a7c5fb784a46a00",
+      "sha256": "3b23eb908027c1451ec49435ac8f2d15d743a9a104be81f92a1dac131e67da1e",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3076/ui/static/media/prd-3x.2a955710.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3076_0/img_prods/prd-3x.png",
+          "module": 7227,
+          "context": ".ref/devices/3076/static/js/main.5acaa9f5.js",
+          "context_sha256": "5b9efc704cea622410c984013483bf2b6677b7ab0849627567305faf6e3761f7",
+          "module_file": ".ref/devices/3076/static/js/227.b8f472d8.chunk.js",
+          "module_sha256": "44897f7378d3b9415ca26b44d0a6c8f91e96c1f7245a66c1e7e0e095d6161d25"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3077/static/media/prd-1x.1f0d05d3.avif",
+      "output": "assets/synapse/product-3077-prd-1x.1f0d05d3.png",
+      "source_sha256": "7900d72e9660cb4f7ba8dcb72d7fbaa19cff7ce466361f9af53bf93c7446d36f",
+      "sha256": "d24221b91976ab2d49083fde47a6babc67801cee34a2a46fb69c4c233d8b960a",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3077/ui/static/media/prd-1x.1f0d05d3.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3077_0/img_prods/prd-1x.png",
+          "module": 7714,
+          "context": ".ref/devices/3077/static/js/main.fd1964d4.js",
+          "context_sha256": "b314a6c8658f09a6888200e74c16a75c7c67cf37fc513ca8f3fc9b6d69eb26fe",
+          "module_file": ".ref/devices/3077/static/js/714.17758d52.chunk.js",
+          "module_sha256": "e22572ca04461c118b853b61e66eae32fda8b69527de3f9ee6d1b90fa36de80c"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3077/static/media/prd-3x.edc15558.avif",
+      "output": "assets/synapse/product-3077-prd-3x.edc15558.png",
+      "source_sha256": "7c76fe442fb1a51353b386cd75f34b7cf7c30401ff2343206e959248d86b3bac",
+      "sha256": "10ed678588092d86af17333063d5bf1553a48ab22a816e4db63034113cfa71a1",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3077/ui/static/media/prd-3x.edc15558.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3077_0/img_prods/prd-3x.png",
+          "module": 1992,
+          "context": ".ref/devices/3077/static/js/main.fd1964d4.js",
+          "context_sha256": "b314a6c8658f09a6888200e74c16a75c7c67cf37fc513ca8f3fc9b6d69eb26fe",
+          "module_file": ".ref/devices/3077/static/js/992.c2d95e58.chunk.js",
+          "module_sha256": "ab1f3e883650a150f8e994971abbff3908f1b6046aa80b43e6c03502c557e08a"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3078/static/media/prd-1x.2c44ae62.avif",
+      "output": "assets/synapse/product-3078-prd-1x.2c44ae62.png",
+      "source_sha256": "5757d889643977fce72b999c3e1006da9ce68f26e0d3d667a7828ff2b800ea34",
+      "sha256": "9cedcb399904685316729d26903bfb08b8d09096b359a92fee3e54a8e514d52b",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3078/ui/static/media/prd-1x.2c44ae62.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3078_0/img_prods/prd-1x.png",
+          "module": 3079,
+          "context": ".ref/devices/3078/static/js/main.7f259c76.js",
+          "context_sha256": "07097877b1eee81355ee78915b66f420e7d488215e08b7ada18e0674e729e4fd",
+          "module_file": ".ref/devices/3078/static/js/79.6d36748f.chunk.js",
+          "module_sha256": "ecdd70260237a314796ab8aac61373e03c1633e1e41a82eb003f74abf8bce032"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3078/static/media/prd-3x.bcf9baa3.avif",
+      "output": "assets/synapse/product-3078-prd-3x.bcf9baa3.png",
+      "source_sha256": "79e69c5c1d0c8a23882ac8ee33b434eda88e6f8d6edb87d5f4fce829655bc9f9",
+      "sha256": "7608efd69fa6724b466a41c790c5bbfa3f74b4176e04287cb223f707345e33db",
+      "width": 975,
+      "height": 750,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3078/ui/static/media/prd-3x.bcf9baa3.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3078_0/img_prods/prd-3x.png",
+          "module": 4593,
+          "context": ".ref/devices/3078/static/js/main.7f259c76.js",
+          "context_sha256": "07097877b1eee81355ee78915b66f420e7d488215e08b7ada18e0674e729e4fd",
+          "module_file": ".ref/devices/3078/static/js/593.89c0a909.chunk.js",
+          "module_sha256": "7cbd0f3d986a7c0f90f3350bc69d3c2a3b76f69f5c5a47a3752c0c16e3e4e7ba"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-1x.d8cd9b3e.avif",
+      "output": "assets/synapse/product-3080-prd-1x.d8cd9b3e.png",
+      "source_sha256": "738c3affa1a9b91f037363751c48a13978f0d82627b6d912f6a3f0cc1ed3c386",
+      "sha256": "c26724bb4ebf6613f20207d90d233835ffeb091874cca07a250a8259a9a83d56",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-1x.d8cd9b3e.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_0/img_prods/prd-1x.png",
+          "module": 8412,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/412.c4a7b970.chunk.js",
+          "module_sha256": "b4e067a238913d66d8c63bb7622ea21e99a60ee7b3be2edb6f4312f0545ab648"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-3x.d8cd9b3e.avif",
+      "output": "assets/synapse/product-3080-prd-3x.d8cd9b3e.png",
+      "source_sha256": "738c3affa1a9b91f037363751c48a13978f0d82627b6d912f6a3f0cc1ed3c386",
+      "sha256": "c26724bb4ebf6613f20207d90d233835ffeb091874cca07a250a8259a9a83d56",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-3x.d8cd9b3e.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_0/img_prods/prd-3x.png",
+          "module": 8102,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/102.0919263d.chunk.js",
+          "module_sha256": "13c63bfce2cbc7d132c376f5d820d8009cc94ed17ce076126e08b7cba00ec717"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-1x.aeca8741.avif",
+      "output": "assets/synapse/product-3080-prd-1x.aeca8741.png",
+      "source_sha256": "00062d876fb6b516e0289431ff67fe03bae6a3725f47534aafae0253b893ddd4",
+      "sha256": "ff87a4f6e7eedb85f6f33dd054b7fe627fc836970f209a265460b5fe47b297d9",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-1x.aeca8741.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_128/img_prods/prd-1x.png",
+          "module": 2193,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/193.9245232e.chunk.js",
+          "module_sha256": "33cca645722f11865863fae564ededd116624bf4ea86056d29dce8acbc034499"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-3x.aeca8741.avif",
+      "output": "assets/synapse/product-3080-prd-3x.aeca8741.png",
+      "source_sha256": "00062d876fb6b516e0289431ff67fe03bae6a3725f47534aafae0253b893ddd4",
+      "sha256": "ff87a4f6e7eedb85f6f33dd054b7fe627fc836970f209a265460b5fe47b297d9",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-3x.aeca8741.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_128/img_prods/prd-3x.png",
+          "module": 3892,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/511.c98b9da5.chunk.js",
+          "module_sha256": "c4003d445f6251d615bee2dba9cdfce719099092272cd6c4294bad23b9b150b3"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-1x.4c2bcbea.avif",
+      "output": "assets/synapse/product-3080-prd-1x.4c2bcbea.png",
+      "source_sha256": "54a4b16ed93345907a376ad7321c86cce4bffcea93c6ffa4f5a7bff5610fad96",
+      "sha256": "35d4e648c8c35dd69cb766892cc29de3c82551dec71cf9e93184f2c083f80b84",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-1x.4c2bcbea.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_129/img_prods/prd-1x.png",
+          "module": 3270,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/270.a2107a72.chunk.js",
+          "module_sha256": "d0f12d9f0b7c68d62f1cb8969971a57dbfb6590d1388975d8b43f101f70b9d68"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-3x.4c2bcbea.avif",
+      "output": "assets/synapse/product-3080-prd-3x.4c2bcbea.png",
+      "source_sha256": "54a4b16ed93345907a376ad7321c86cce4bffcea93c6ffa4f5a7bff5610fad96",
+      "sha256": "35d4e648c8c35dd69cb766892cc29de3c82551dec71cf9e93184f2c083f80b84",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-3x.4c2bcbea.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_129/img_prods/prd-3x.png",
+          "module": 476,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/476.4af2f28e.chunk.js",
+          "module_sha256": "8ed8492285310d219828438c7439020e9d2faa1aab9d832408db3510947e82a0"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-1x.7bced810.avif",
+      "output": "assets/synapse/product-3080-prd-1x.7bced810.png",
+      "source_sha256": "6e2b506181164532801c272cb82c3c8341fe70f0c4aaf937a072c4a19d3aa222",
+      "sha256": "71dc21bc330f414037e2c1238e164a48f40b6538bba9fa53c2f9c4bc5ee179f4",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-1x.7bced810.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_130/img_prods/prd-1x.png",
+          "module": 7056,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/56.0efdff6d.chunk.js",
+          "module_sha256": "272446a7e725fcd68205ae26f193a8b326c6250a3f28dc257ef80a38a4b93651"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-3x.7bced810.avif",
+      "output": "assets/synapse/product-3080-prd-3x.7bced810.png",
+      "source_sha256": "6e2b506181164532801c272cb82c3c8341fe70f0c4aaf937a072c4a19d3aa222",
+      "sha256": "71dc21bc330f414037e2c1238e164a48f40b6538bba9fa53c2f9c4bc5ee179f4",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-3x.7bced810.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_130/img_prods/prd-3x.png",
+          "module": 8925,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/306.9c240d0d.chunk.js",
+          "module_sha256": "0d02e7099cb13bd664558ebba8f37eea61bd1b1cf901d662e044cf15058de28c"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-1x.79bb9883.avif",
+      "output": "assets/synapse/product-3080-prd-1x.79bb9883.png",
+      "source_sha256": "55ec660c79b8d581749a2eca504df7204cb889eabd80168bc8461a3308b83b4a",
+      "sha256": "af24b0f9bf562953612ca61e942dcb0ed5e6685f863aacce2513e94614fa4b11",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-1x.79bb9883.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_131/img_prods/prd-1x.png",
+          "module": 7475,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/475.ecd5e440.chunk.js",
+          "module_sha256": "1fbfb0f0bf372a16fce5682b66ce81f9ab575175095a1efa2e7fd467004005eb"
+        }
+      ]
+    },
+    {
+      "source": ".ref/devices/3080/static/media/prd-3x.79bb9883.avif",
+      "output": "assets/synapse/product-3080-prd-3x.79bb9883.png",
+      "source_sha256": "55ec660c79b8d581749a2eca504df7204cb889eabd80168bc8461a3308b83b4a",
+      "sha256": "af24b0f9bf562953612ca61e942dcb0ed5e6685f863aacce2513e94614fa4b11",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/static/media/prd-3x.79bb9883.avif",
+      "source_kind": "downloaded_static_asset",
+      "webpack_requests": [
+        {
+          "request": "./3080_131/img_prods/prd-3x.png",
+          "module": 6669,
+          "context": ".ref/devices/3080/static/js/main.961e0950.js",
+          "context_sha256": "9d0c2e469a6a3de10a86b1aba84c16c1eec1bb256888a01515e572311052e186",
+          "module_file": ".ref/devices/3080/static/js/669.65c1a561.chunk.js",
+          "module_sha256": "9530c6954fb91a97568eba561f511d1176b061c92c19b1d192535b9e0de4e416"
+        }
+      ]
+    },
+    {
       "source": "assets/synapse/dashboard-182-0-0-source.avif",
       "output": "assets/synapse/dashboard-182.png",
       "source_sha256": "b77e8669dd15dbd5de6776e22b5025c3655da91ad9c308e3e766c0591eed42ac",
@@ -2579,6 +3300,210 @@
       "height": 420,
       "mode": "RGBA",
       "source_url": "https://apps.razer.com/synapse/products/777/ui/777_0/PluginImages/777_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3072-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3072-0-0.png",
+      "source_sha256": "b68c3fefb3f02bfbefd1fa64a1e7ed06ca3940b192672e7dac63f685a74e8689",
+      "sha256": "75a4f31a722ac40648afede27e5371f2c87b2c2cce010b08c2aaeb436a8ff98a",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/3072_0/PluginImages/3072_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3072-1-0-source.avif",
+      "output": "assets/synapse/dashboard-3072-1-0.png",
+      "source_sha256": "7d3f670435c6a88f712c1405bbee2bc1bcba1c3fe72af8e991ddccf00bb1e51f",
+      "sha256": "97d8640b097a7f0f6c37989f1cc8f4170a8ce01e9c97d9e60899f13331ddd48d",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/3072_1/PluginImages/3072_1_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3073-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3073-0-0.png",
+      "source_sha256": "10199d530a827c9766d1db5ea7d4455ca778a714d8ab4c346d74d97cc54c82bd",
+      "sha256": "480f2298fc82e5c6b5dceed9a0b8e48d93ac8180a0de080bbf88ab2af8938318",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3073/ui/3073_0/PluginImages/3073_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-0-0.png",
+      "source_sha256": "b62144a4e518a39fe69053bcea8e36ec5c14f149c01f353a39221aac0c0bf740",
+      "sha256": "a255ceb3f72387f438265e5631b2f3989ed7f632e108c34938b913efecc8d670",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_0/PluginImages/3074_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-128-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-128-0.png",
+      "source_sha256": "132ccd2b466ea32c03f487f3cd313f879b6cd2e7b311e8f7ba28c79e03dedfea",
+      "sha256": "98185d9ff0260de68433487550d1f4c3879bcb3fe3aa58267487deff1a4d336b",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_128/PluginImages/3074_128_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-129-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-129-0.png",
+      "source_sha256": "9ff5e8050778e9242be6976e7b436da39c7811996ebd3429b4b5606bedb21d34",
+      "sha256": "05ef6a35a3258192d0d9dc675119cd4601334288bf66339ed01504da1fb5f255",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_129/PluginImages/3074_129_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-130-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-130-0.png",
+      "source_sha256": "5f0c0a90df7549a2b60093fb7d8e8b0f2b198dbe9ace24d6105c0dbaa02e7efd",
+      "sha256": "60474394cd79249f8065571a06c9c5e62244d7935a4a2f0b4505179da4d94410",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_130/PluginImages/3074_130_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-132-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-132-0.png",
+      "source_sha256": "a8cc3c0b1456ff3979df5b46c7909cd4283fb2251d771c541c2491cc213d579c",
+      "sha256": "9cb3738ebbc0a2392402322d43321152f7b66a31ea4ed96a9174b60c25ce476f",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_132/PluginImages/3074_132_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3074-133-0-source.avif",
+      "output": "assets/synapse/dashboard-3074-133-0.png",
+      "source_sha256": "3c18d720b79c6e4da430ef4fea6c58be2ab3d5e19e8445facf937f3b06f1fbbe",
+      "sha256": "bac79044e5acc45a25509ce053efbddc50a9fc534c402be5d3bdc9ea30b754f4",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_133/PluginImages/3074_133_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3076-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3076-0-0.png",
+      "source_sha256": "4ad72d916dc397cc967cf9e454f80d4dbe999791eb740c26ed0bb6bbf86dee2a",
+      "sha256": "59355540277f5ad7cc08349fbe00bfd982ad27f421cf801eefdf0ceb8f232ac3",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3076/ui/3076_0/PluginImages/3076_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3077-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3077-0-0.png",
+      "source_sha256": "587fb0a7d953afcae029a73b768a329e26bbc5de532eb57c6dc10f84d59175ab",
+      "sha256": "74f7f0f5bf46c86eea80393d51fe5bb28462d8d45ae543a01f861e0948eb99a3",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3077/ui/3077_0/PluginImages/3077_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3078-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3078-0-0.png",
+      "source_sha256": "d8a99164c5139bbe7f198d68c2b57f64110ff02ae3dec31c7a3430e088e01843",
+      "sha256": "99712acfa40ee769959df313ceecffbaf3aa26a072fee893c67496748bd53475",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3078/ui/3078_0/PluginImages/3078_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3080-0-0-source.avif",
+      "output": "assets/synapse/dashboard-3080-0-0.png",
+      "source_sha256": "5018493c56c840ce478df3fbdbf498d254be9e48afa09ea0dbc1af8c49bf5a9e",
+      "sha256": "76ca6727f1352f7130f26f943bff9082190bd32a56f04fc8469d42bd771aadb7",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_0/PluginImages/3080_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3080-128-0-source.avif",
+      "output": "assets/synapse/dashboard-3080-128-0.png",
+      "source_sha256": "a9dcf9bf3615e69aaa101f3e4e7b55d16c286557d8e93f67c684d9c07000b551",
+      "sha256": "a4e85f6ac30712033bf4ecd055904e5e8085593b04314468bb0b8a3a4f70ff1d",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_128/PluginImages/3080_128_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3080-129-0-source.avif",
+      "output": "assets/synapse/dashboard-3080-129-0.png",
+      "source_sha256": "4c2ab790293be3d335280967e90aef618dfebb2a926b208fc054aec211c97362",
+      "sha256": "b00504f674d0d887dbdfce364429b3885ea5881840b01468a5b41d35e3f40a31",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_129/PluginImages/3080_129_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3080-130-0-source.avif",
+      "output": "assets/synapse/dashboard-3080-130-0.png",
+      "source_sha256": "233b07b4463a7bcaedaf75f6f08af951d4b208dee2d72a4e53b537a4f5524eb0",
+      "sha256": "3a1bd932e0e3a8a238aa60b162a49f9453aede018288e0f660ca87887d335ca9",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_130/PluginImages/3080_130_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-3080-131-0-source.avif",
+      "output": "assets/synapse/dashboard-3080-131-0.png",
+      "source_sha256": "a9d2a3489e139416ba6fc2ff8cf7ffcad63766a5164c98308b9a0f62a426ede0",
+      "sha256": "7c9740510900578d9cbe8a13381c1a45b2dba653e4e42915d3887e4c2f5f9cee",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_131/PluginImages/3080_131_0_dashboard3x.avif",
       "source_kind": "downloaded_static_asset",
       "purpose": "Original PluginImages Dashboard/pairing card artwork"
     },
@@ -6369,6 +7294,48 @@
       "output": "assets/synapse/tour-app-icon.svg",
       "sha256": "324a93f773de181a1205213dfa8c41a12c0963be73eac2bd6a49e33b26e446a8",
       "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json"
+    },
+    {
+      "source": ".ref/tutorial-media/quick_effects.9f9806eb.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/quick_effects.9f9806eb.avif",
+      "source_sha256": "9f492206997332f05825c569f800cc8f951830463f7a4e3614e5694d5709293e",
+      "output": "assets/synapse/tour-chroma-quick-effects.png",
+      "sha256": "1ea2f243d16165669259c0e7bef24edabcd8a89cefdea1236c1fd7f052fcdb33",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
+    },
+    {
+      "source": ".ref/tutorial-media/chroma_studio.abd5d541.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/chroma_studio.abd5d541.avif",
+      "source_sha256": "5f61ca228125c3e0419a8bb76cc43a8e1664fe4ff00b94738b53946501f673db",
+      "output": "assets/synapse/tour-chroma-advanced-effects.png",
+      "sha256": "6532664d3bc512636ec7331c581850c888a7aa062f4c9e865a7c6ed6d357512e",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
+    },
+    {
+      "source": ".ref/tutorial-media/chroma_apps.ca901740.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/chroma_apps.ca901740.avif",
+      "source_sha256": "279b0c259bc27e927dcb57b24a7b7224176a952b72f575d0caae958e4571650f",
+      "output": "assets/synapse/tour-chroma-apps.png",
+      "sha256": "084cf2f48b57852d59f36c70442fb5bed6674008a76e37a8f48eb6ca8060e1b2",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
     },
     {
       "source": ".ref/tutorial-media/icon_app.b648a5e5.svg",

@@ -15,6 +15,7 @@ mod i18n;
 mod model;
 mod nav;
 mod preferences;
+mod product;
 mod resources;
 mod shell;
 mod store;

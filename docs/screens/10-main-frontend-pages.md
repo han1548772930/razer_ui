@@ -137,7 +137,7 @@ dashboard [.reflow]
 | item-main-content | 高 80，#111，padding 0 30px 0 20px |
 | 图标 | 40×40 |
 | 项目名 | 16px #ccc，flex 基础 500，过长省略 |
-| 操作按钮 | min-width 90，高 27 |
+| 操作按钮 | `width:max-content`、min-width 90、高 27；12px 大写文字、左右 padding 16、圆角 2；普通底色 `#555`、整控件 hover/pressed opacity 0.8/0.6 |
 | 展开详情 | #2d2d2d，padding 20 |
 | 警告 | #fd8611；release notes 分类有不同标签色 |
 
@@ -148,6 +148,10 @@ dashboard [.reflow]
 `ModuleCatalog` 按本 chunk 的 `ne/te` 建立 Alexa、宏、已关联的游戏、反馈、工坊目录，使用实际模块图标；宏/Alexa 的原说明图、中文描述和 Alexa 链接已接入。仅原 `ne` 中带 `detail` 的 Alexa/宏显示展开入口并保留状态，其他模块不伪造说明面板。说明图恢复 `.item-description-image` 的 288×162，说明列为 592px，项目名保持 500px 列宽。目录不是安装结果：安装状态、包大小、版本和可用更新均明确尚未读取，安装按钮禁用，不虚构已安装/可更新/卸载中分组；尤其不把静态目录的 `size:0` 格式化为真实安装包 `< 1 MB`。原 `O` 的卸载确认与清除设置勾选、`L` 的固件 release notes 和 `w` 的进度/重试依赖真实服务项目，尚未获得这些数据。设备行同时区分本地快照和预览数据。
 
 模块说明是行内 `.item-moreInfo`，不是弹窗：背景 `#2d2d2d`、padding 20、最小高 202、图片右侧间隔 20，外链恢复为下划线文字。本项目另有设备快照详情，原 6505 没有可对应的同类信息 Dialog；它只沿用通用 `.modal-content` 的 `#111`、绿色 1px 边框、5px 圆角、400px 宽、`20px 30px` 内边距和居中按钮，数据行属于本地补充界面。该弹窗改为 `ModuleCatalog` 持有的 Base Dialog entity，并保留关闭/焦点恢复；不把它称为原固件或卸载流程。
+
+2026-10-02 对按钮继续核对完整 CSS 级联。操作按钮的最终 `.btn` 来自 `55` 末段，不能只取较早的 100px / 3px 默认样式；6505 再覆盖最小宽度、实际文字宽度和内边距。[service_pages.rs](../../src/shell/service_pages.rs) 用 Base Button 的直接文字子项测量，保留原大写转换，避免 Component Button 内层满宽文字槽影响宽度。目录、设备快照行和模块预览共用该控件；整个按钮按原 `200ms ease-out` 在常态、hover、按下与禁用透明度之间过渡，禁用行为立即生效。详情与移除入口按文字宽度呈现，不再占一个默认按钮宽度。
+
+Gamer Room 热点按 14px / 17px 文字和四周 8px 内边距确定宽度，添加卡保留 186×176 边框尺寸；产品详情标题恢复 18px RazerF5 bold/uppercase，说明为 14px / 17px。[service_button_tests.rs](../../src/shell/service_button_tests.rs) 留有真实文字测量、两种缩放、禁用及键鼠激活的回归源码；本轮只做静态检查与编译检查，尚未执行这些测试或进行实际窗口像素验收。
 
 ## 5. Global Shortcuts
 

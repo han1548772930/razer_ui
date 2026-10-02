@@ -61,9 +61,6 @@ impl TooltipColors {
 /// `.keymap-head .close` in the product frontend.
 pub(crate) struct KeymapCloseColors;
 impl KeymapCloseColors {
-    pub(crate) fn modal_pressed() -> Hsla {
-        rgba(0x0000004d).into()
-    }
     pub(crate) fn idle() -> Hsla {
         rgba(0x00000000).into()
     }
@@ -101,6 +98,9 @@ impl TourColors {
 /// Main frontend's photographic banner, module details, and tutorial emphasis.
 pub(crate) struct MainPageColors;
 impl MainPageColors {
+    pub(crate) fn module_action_gray(&self) -> Hsla {
+        rgb(0x555555).into()
+    }
     pub(crate) fn card_caption(&self) -> Hsla {
         rgb(0x707070).into()
     }

@@ -10,10 +10,11 @@ use crate::{
     ui::surface,
 };
 use gpui_kit::component::{
-    button::{Button, ButtonVariants},
+    button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use std::collections::BTreeMap;
 
 mod account_menu;
 mod header_status;
@@ -27,13 +28,14 @@ mod release_notes;
 mod runtime_page;
 mod service_pages;
 mod settings_page;
+use introduction_tour::TourKind;
 
 #[derive(Clone, PartialEq)]
 enum Location {
     Main(Tab),
     Device(String),
     Pairing,
-    Tour,
+    Tour(TourKind),
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SaveScope {
@@ -54,8 +56,8 @@ pub struct AppShell {
     status: String,
     dashboard_state: Entity<main_pages::DashboardState>,
     dashboard_tutorial: Entity<main_pages::DashboardTutorial>,
-    introduction_tour: Option<Entity<introduction_tour::IntroductionTour>>,
-    tour_subscription: Option<Subscription>,
+    introduction_tours:
+        BTreeMap<TourKind, (Entity<introduction_tour::IntroductionTour>, Subscription)>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -124,8 +126,7 @@ impl AppShell {
             status: "本地配置预览 · 尚未写入硬件".into(),
             dashboard_state: cx.new(|_| main_pages::DashboardState::new(dashboard)),
             dashboard_tutorial: cx.new(|_| main_pages::DashboardTutorial::new(dashboard_seen)),
-            introduction_tour: None,
-            tour_subscription: None,
+            introduction_tours: BTreeMap::new(),
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -184,6 +185,9 @@ impl AppShell {
                     this.save_with_scope(SaveScope::Settings, false, window, cx)
                 }
                 settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
+                settings_page::SettingsEvent::PreviewChromaTour => {
+                    this.navigate(Location::Tour(TourKind::Chroma), window, cx);
+                }
                 settings_page::SettingsEvent::PreviewModules => {
                     this.module_catalog
                         .update(cx, |catalog, cx| catalog.open_preview(window, cx));
@@ -258,7 +262,7 @@ impl AppShell {
             .and_then(|p| args.get(p + 1))
             .and_then(|v| v.parse::<u32>().ok())
         {
-            if [653, 777].contains(&pid) {
+            if [653, 777].contains(&pid) || crate::product::audited_mouse_mat(pid).is_some() {
                 this.add_preview(pid, window, cx);
             }
         }
@@ -449,21 +453,22 @@ impl AppShell {
                 self.pairing
                     .update(cx, |page, cx| page.activate(window, cx));
             }
-            if next == Location::Tour {
-                if self.introduction_tour.is_none() {
-                    let tour = cx.new(introduction_tour::IntroductionTour::new);
-                    self.tour_subscription = Some(cx.subscribe_in(
+            if let Location::Tour(kind) = next {
+                self.introduction_tours.entry(kind).or_insert_with(|| {
+                    let tour = cx.new(|cx| introduction_tour::IntroductionTour::new(kind, cx));
+                    let subscription = cx.subscribe_in(
                         &tour,
                         window,
-                        |this, _, _: &introduction_tour::CloseRequested, window, cx| {
-                            this.close_tour(window, cx);
+                        move |this, _, _: &introduction_tour::CloseRequested, window, cx| {
+                            this.close_host_tab(host_tabs::HostTab::Tour(kind), window, cx);
                         },
-                    ));
-                    self.introduction_tour = Some(tour);
-                }
-                self.introduction_tour
-                    .as_ref()
+                    );
+                    (tour, subscription)
+                });
+                self.introduction_tours
+                    .get(&kind)
                     .unwrap()
+                    .0
                     .update(cx, |tour, cx| tour.focus(window, cx));
             }
             if let Some(index) = history_index {
@@ -487,9 +492,6 @@ impl AppShell {
                 cx,
             );
         }
-    }
-    fn close_tour(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.close_host_tab(host_tabs::HostTab::Tour, window, cx);
     }
     fn save(&mut self, close_after: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.save_with_scope(SaveScope::Workspace, close_after, window, cx);
@@ -714,13 +716,17 @@ impl AppShell {
         });
     }
     fn add_preview(&mut self, pid: u32, window: &mut Window, cx: &mut Context<Self>) {
+        if ![653, 777].contains(&pid) && crate::product::audited_mouse_mat(pid).is_none() {
+            return;
+        }
         let serial = format!("PREVIEW-{pid}");
         if !self
             .devices
             .iter()
             .any(|d| d.read(cx).device().serial_number == serial)
         {
-            let mut device = crate::demo::demo_keyboard();
+            let mut device =
+                crate::demo::mouse_mat_preview(pid).unwrap_or_else(crate::demo::demo_keyboard);
             device.product_id = pid;
             device.real_product_id = pid;
             device.serial_number = serial;
@@ -731,13 +737,15 @@ impl AppShell {
                 device.features =
                     crate::domain::DeviceFeatures::for_category(device.category, true, true);
             }
-            let name = if pid == 653 {
-                "Razer BlackWidow V4 Pro · 预览"
+            let name = if let Some(product) = crate::product::audited_mouse_mat(pid) {
+                format!("{} · 预览", product.name())
+            } else if pid == 653 {
+                "Razer BlackWidow V4 Pro · 预览".into()
             } else {
-                "Razer Kraken BT · 预览"
+                "Razer Kraken BT · 预览".into()
             };
             for value in device.name.values.values_mut() {
-                *value = name.into();
+                *value = name.clone();
             }
             device.product_name = device.name.clone();
             self.add_device(device, window, cx);
@@ -762,7 +770,7 @@ impl AppShell {
             Location::Main(Tab::Setting) => "设置".into(),
             Location::Main(_) => "RAZER SYNAPSE".into(),
             Location::Pairing => "多设备配对".into(),
-            Location::Tour => crate::i18n::t("INTRODUCTION_TOUR").into(),
+            Location::Tour(kind) => kind.title().into(),
         };
         h_flex()
             .id("app-toolbar")
@@ -825,6 +833,15 @@ impl AppShell {
                         surface::asset_button("app-settings", "synapse/settings.svg", "设置", cx)
                             .w(surface::css(46.))
                             .h_full()
+                            // `.toolbar .right>div:hover`: square, immediate
+                            // #2d2d2d fill; pressing keeps that same hover fill.
+                            .rounded(ButtonRounded::None)
+                            .custom(
+                                ButtonCustomVariant::new(cx)
+                                    .color(cx.theme().transparent)
+                                    .hover(cx.theme().secondary_hover)
+                                    .active(cx.theme().secondary_hover),
+                            )
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.navigate(Location::Main(Tab::Setting), window, cx)
                             })),
@@ -946,10 +963,10 @@ impl Render for AppShell {
                 .map(|d| d.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Main(page) => self.main_page(*page, window, cx),
-            Location::Tour => self
-                .introduction_tour
-                .as_ref()
-                .map(|tour| tour.clone().into_any_element())
+            Location::Tour(kind) => self
+                .introduction_tours
+                .get(kind)
+                .map(|(tour, _)| tour.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Pairing => div()
                 .id("pairing-page-scroll")

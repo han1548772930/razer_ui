@@ -144,8 +144,9 @@ impl AppShell {
                 i18n::t("TOUR"),
                 module_content("synapse/dashboard-tour.svg", "TOUR", cx),
                 move |window, cx| {
-                    let _ = tour_owner
-                        .update(cx, |shell, cx| shell.navigate(Location::Tour, window, cx));
+                    let _ = tour_owner.update(cx, |shell, cx| {
+                        shell.navigate(Location::Tour(crate::shell::TourKind::Synapse), window, cx)
+                    });
                 },
             )
             .focus(self.tour_trigger.clone()),

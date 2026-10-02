@@ -91,6 +91,9 @@ pub(super) use mapping_editor::{MEDIA, WINDOWS, canonical_key, key_label, normal
 #[cfg(test)]
 #[path = "mapping_focus_tests.rs"]
 mod mapping_focus_tests;
+#[cfg(test)]
+#[path = "mouse_mat_tests.rs"]
+mod mouse_mat_tests;
 #[path = "profile.rs"]
 mod profile;
 #[cfg(test)]

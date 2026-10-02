@@ -1,4 +1,4 @@
-use super::{CloseRequested, IntroductionTour};
+use super::{CloseRequested, IntroductionTour, TourKind};
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{AppContext, Entity, ScrollDelta, TestAppContext, WindowHandle, point, px, size};
@@ -9,6 +9,15 @@ fn open(
     width: f32,
     height: f32,
 ) -> (Entity<IntroductionTour>, WindowHandle<Root>) {
+    open_kind(cx, width, height, TourKind::Synapse)
+}
+
+fn open_kind(
+    cx: &mut TestAppContext,
+    width: f32,
+    height: f32,
+    kind: TourKind,
+) -> (Entity<IntroductionTour>, WindowHandle<Root>) {
     cx.update(|cx| {
         gpui_kit::init(cx);
         cx.set_reduce_motion(true);
@@ -16,12 +25,60 @@ fn open(
     });
     let mut tour = None;
     let handle = cx.open_window(size(px(width), px(height)), |window, cx| {
-        let view = cx.new(IntroductionTour::new);
+        let view = cx.new(|cx| IntroductionTour::new(kind, cx));
         view.update(cx, |tour, cx| tour.focus(window, cx));
         tour = Some(view.clone());
         Root::new(view, window, cx)
     });
     (tour.unwrap(), handle)
+}
+
+#[gpui_kit::test]
+fn chroma_tour_preserves_static_media_size_and_its_own_three_step_navigation(
+    cx: &mut TestAppContext,
+) {
+    let (synapse, synapse_window) = open(cx, 1280., 760.);
+    let (chroma, handle) = open_kind(cx, 1280., 760., TourKind::Chroma);
+    let closed = Rc::new(Cell::new(0));
+    let counter = closed.clone();
+    let _subscription = cx.update(|cx| {
+        cx.subscribe(&chroma, move |_, _: &CloseRequested, _| {
+            counter.set(counter.get() + 1);
+        })
+    });
+    cx.update_window(synapse_window.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("introduction-tour-next", cx);
+        assert_eq!(synapse.read(cx).selected_ix, 1);
+    })
+    .unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert_eq!(chroma.read(cx).selected_ix, 0);
+        let media = window
+            .find("synapse/tour-chroma-quick-effects.png")
+            .bounds();
+        assert_eq!(media.size, size(px(570.), px(420.)));
+        assert_eq!(window.find("introduction-tour-back").disabled(), Some(true));
+        window.press("enter", cx);
+        assert_eq!(chroma.read(cx).selected_ix, 1);
+        window.click("introduction-tour-back", cx);
+        assert_eq!(chroma.read(cx).selected_ix, 0);
+        window.click("introduction-tour-next", cx);
+        window.click("introduction-tour-next", cx);
+        assert_eq!(chroma.read(cx).selected_ix, 2);
+        assert_eq!(window.find("introduction-tour-skip").disabled(), Some(true));
+        assert_eq!(
+            window.find("introduction-tour-next").label(),
+            Some(crate::i18n::t("GET_STARTED").to_uppercase().as_str())
+        );
+        window.click("introduction-tour-skip", cx);
+        assert_eq!(closed.get(), 0);
+        window.click("introduction-tour-next", cx);
+        assert_eq!(closed.get(), 1);
+        assert_eq!(synapse.read(cx).selected_ix, 1);
+    })
+    .unwrap();
 }
 
 #[gpui_kit::test]

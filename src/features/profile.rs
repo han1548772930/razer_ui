@@ -100,8 +100,7 @@ pub(super) fn create_local_profile(device: &mut Device, saved: &Device, duplicat
         profile.name = duplicate_profile_name(&device.profiles, &profile.name);
         profile
     } else {
-        let mut settings = ProfileSettings::default();
-        settings.normalize(device.product_id);
+        let settings = ProfileSettings::for_product(device.product_id);
         Profile {
             id: String::new(),
             guid: String::new(),
@@ -165,8 +164,7 @@ pub(super) fn reset_local_profile(device: &mut Device, id: &str, bindings_only: 
             settings.hypershift_bindings.clear();
         }
     } else {
-        let mut settings = ProfileSettings::default();
-        settings.normalize(device.product_id);
+        let settings = ProfileSettings::for_product(device.product_id);
         profile.settings = Some(settings);
         profile.dpi_stages = None;
     }

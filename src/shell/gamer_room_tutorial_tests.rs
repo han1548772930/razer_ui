@@ -4,6 +4,53 @@ use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
 #[gpui_kit::test]
+fn adding_a_device_suspends_the_tutorial_and_restores_its_step(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+    });
+    let mut page = None;
+    let handle = cx.open_window(size(px(1280.), px(1200.)), |window, cx| {
+        let view = cx.new(|_| GamerRoomPage::new());
+        page = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let page = page.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("gamer-room-tutorial", cx);
+        window.click("gr-tour-next", cx);
+        window.click("gamer-room-add", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("gamer-room-tour").is_none());
+        assert!(window.try_find("gamer-room-add-dialog").is_some());
+        assert_eq!(page.read(cx).tour_step, Some(1));
+        window.within("iot-preview-scene").click("input", cx);
+        window.click("option-general", cx);
+        assert_eq!(window.find("iot-preview-scene").expanded(), Some(false));
+        window.click("gr-add-close", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("gamer-room-add-dialog").is_none());
+        assert!(window.try_find("gamer-room-tour").is_some());
+        assert_eq!(page.read(cx).tour_step, Some(1));
+        assert_eq!(
+            window.find("gr-tour-next").label(),
+            Some(crate::i18n::t("DONE").to_uppercase().as_str())
+        );
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 fn gamer_room_steps_keep_source_controls_indicator_anchors_and_completion(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
@@ -19,6 +66,17 @@ fn gamer_room_steps_keep_source_controls_indicator_anchors_and_completion(cx: &m
     let page = page.unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
+        assert_eq!(
+            window.find("gamer-room-add").bounds().size,
+            size(px(186.), px(176.))
+        );
+        for id in [
+            "gr-hotspot-AETHER_LIGHT_BULBS",
+            "gr-hotspot-AETHER_LIGHT_STRIP",
+            "gr-hotspot-AETHER_LAMP_PRO",
+        ] {
+            assert_eq!(window.find(id).bounds().size.height, px(33.));
+        }
         window.click("gamer-room-tutorial", cx);
         let first = window.find("gamer-room-tour").bounds();
         let indicator = window.find("gamer-room-tutorial-indicator").bounds();

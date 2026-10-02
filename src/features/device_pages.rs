@@ -437,7 +437,7 @@ impl DeviceWorkspace {
                             .gap_0()
                             .child(self.source_range(Control::Brightness, "0", None, "100", !lighting.enabled, cx)),
                     )
-                    .when(self.pid() == 653, |this| {
+                    .when(self.pid() == 653 || crate::product::audited_mouse_mat(self.pid()).is_some(), |this| {
                         this.child(
                             surface::panel("关闭灯光", cx).gap(surface::css(20.))
                                 .child(
@@ -449,7 +449,7 @@ impl DeviceWorkspace {
                                             this.edit(w, cx, |s| s.lighting.display_off = *value)
                                         })),
                                 )
-                                .child(
+                                .when(self.pid() == 653, |panel| panel.child(
                                     Checkbox::new("lighting-idle-enabled")
                                         .label("闲置时关闭灯光")
                                         .checked(lighting.idle_enabled)
@@ -459,7 +459,7 @@ impl DeviceWorkspace {
                                         })),
                                 )
                                 .child(self.source_range(Control::LightingIdle, "1", None, "15",
-                                    !lighting.enabled || !lighting.idle_enabled, cx)),
+                                    !lighting.enabled || !lighting.idle_enabled, cx))),
                         )
                     })
                     .when(self.pid() == 777, |this| {
@@ -548,7 +548,7 @@ impl DeviceWorkspace {
             .px(surface::css(10.))
             .py_0()
             .border_0()
-            .rounded(px(13.))
+            .map(|button| Styled::rounded(button, surface::css(13.)))
             .text_size(surface::css(14.))
             .selected(selected)
             .custom(
@@ -578,6 +578,31 @@ impl DeviceWorkspace {
     fn effect_parameters(&self, cx: &mut Context<Self>) -> AnyElement {
         let lighting = &self.settings().lighting;
         let effect = lighting.effect;
+        // Mouse mats derive Reactive availability from the service's validDevices,
+        // not from saved mouse profiles or explicit preview devices.
+        if effect == Effect::Reactive && crate::product::audited_mouse_mat(self.pid()).is_some() {
+            return h_flex()
+                .id("lighting-reactive-warning")
+                .test_support()
+                .items_start()
+                .gap(surface::css(10.))
+                .mt(surface::css(20.))
+                .text_size(surface::css(14.))
+                // Source .warning reserves 30px for warning.ad3f47f8.svg:
+                // the shared original icon is 20px with a 10px text gap.
+                .child(
+                    img("synapse/onboard-warning.svg")
+                        .size(surface::css(20.))
+                        .flex_shrink_0(),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(crate::i18n::t("REACTIVE_WARNING")),
+                )
+                .into_any_element();
+        }
         let params = lighting.params();
         let two_colors = matches!(
             effect,
@@ -597,7 +622,7 @@ impl DeviceWorkspace {
                             &self.controls.color,
                             if two_colors { "颜色 1" } else { "颜色" },
                             two_colors && params.random,
-                            effect != Effect::Reactive,
+                            !matches!(effect, Effect::Reactive | Effect::Static),
                         ))
                         .when(two_colors, |this| {
                             this.child(self.lighting_color(
@@ -656,7 +681,9 @@ impl DeviceWorkspace {
                 |this| {
                     this.child(
                         v_flex()
-                            .mt(surface::css(20.))
+                            // Tidal places direction directly below its color row (mt10).
+                            // Wave and Wheel start their parameter region with mt20.
+                            .mt(surface::css(if effect == Effect::Tidal { 10. } else { 20. }))
                             .self_start()
                             .child("方向")
                             .child(
@@ -677,6 +704,11 @@ impl DeviceWorkspace {
                                             Effect::Wheel => {
                                                 [(1, "顺时针", "cw"), (2, "逆时针", "ccw")]
                                             }
+                                            Effect::Wave if crate::product::audited_mouse_mat(self.pid())
+                                                .and_then(|product| product.wave_direction())
+                                                == Some(crate::product::MouseMatWaveDirection::ClockwiseCounterclockwise) => {
+                                                [(11, "顺时针", "cw"), (12, "逆时针", "ccw")]
+                                            }
                                             _ => [(1, "向左", "left"), (2, "向右", "right")],
                                         };
                                         choices.into_iter().map(|(direction, label, asset)| {
@@ -691,7 +723,7 @@ impl DeviceWorkspace {
                                             .h(surface::css(30.))
                                             .p_0()
                                             .border_0()
-                                            .rounded(px(15.))
+                                            .map(|button| Styled::rounded(button, surface::css(15.)))
                                             .custom(
                                                 ButtonCustomVariant::new(cx)
                                                     .color(if selected {

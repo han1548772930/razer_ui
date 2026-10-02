@@ -4,7 +4,7 @@
 
 最新目录：六份官方清单包含 **449 个主产品 ID**，与旧记录合并为 450 个候选；沿连接别名及 manifest 声明共核查 **596 个 ID**。其中 **331 个产品入口**存在，其资源清单中的 **30,658 份 JS/CSS** 已下载并离线核验。331 个产品在入口或明确 lazy 根组件中找到实际导航数组，共 77 种组合；各入口内部的条件界面仍须继续逐项追踪。完整证据见[官方目录与界面清单](16-product-catalog.md)。
 
-Rust 产品适配仍只有 **182、653、777**，且仍有服务和条件界面缺口。代码下载、入口解析、界面实现和服务接通是不同的完成度。
+Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076、3077、3078、3080**。新增七款鼠标垫的本地灯光、帮助和资源见[逐页规格](../screens/17-mouse-mat-lighting.md)，仍有服务和条件界面缺口。代码下载、入口解析、界面实现和服务接通是不同的完成度。
 
 “200”是这些旧探测记录的去重结果，不是官方产品总数，也不是 200 套互不相同的界面。同名产品、配色、键盘布局、接收器、系统设备及内部代号可能对应不同 ID。探测脚本把所有请求异常都跳过，因此记录之外的 ID 也不能直接判定为不支持。
 
@@ -37,7 +37,7 @@ Rust 产品适配仍只有 **182、653、777**，且仍有服务和条件界面�
 
 本地另有 `.ref/background-manager/assets/index-8d39b3d5.js` 单个 bundle、`.ref/release-patch-note` 的入口及 main JS/CSS，以及解包的 `.ref/synapse-asar` 宿主代码。这些资料各自提供服务、窗口入口或界面证据，不能计作更多已完整取得的产品 UI。Settings 清单使用 `/synapse/settings/` 绝对 URL 前缀，核对本地文件时已去除该前缀。
 
-上表只列已经逐页开展适配的产品及原有独立应用资料；其余 328 个产品的 JS/CSS 取得情况见最新目录。原宿主还声明 Chroma、Streamer Companion、THX Spatial Audio、Virtual Ring Light、Cortex、7.1 Surround Sound、Razer Settings 等独立应用路由，详见[子应用与路由](01-ipc-api-surface.md#18-razer-sub-applications-and-routes)。已知启动入口不等于已取得目标应用的完整渲染源码。头像菜单 `/rz-user-profile-menu/` 的入口与清单所列 JS/CSS 已取得；账户会话与反馈宿主仍未接入。
+上表保留最初三款产品及独立应用资料；新增七款鼠标垫见[逐页规格](../screens/17-mouse-mat-lighting.md)，其余 321 个产品的 JS/CSS 取得情况见最新目录。原宿主还声明 Chroma、Streamer Companion、THX Spatial Audio、Virtual Ring Light、Cortex、7.1 Surround Sound、Razer Settings 等独立应用路由，详见[子应用与路由](01-ipc-api-surface.md#18-razer-sub-applications-and-routes)。已知启动入口不等于已取得目标应用的完整渲染源码。头像菜单 `/rz-user-profile-menu/` 的入口与清单所列 JS/CSS 已取得；账户会话与反馈宿主仍未接入。
 
 ## 已取得源码的入口复核
 

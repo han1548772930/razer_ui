@@ -53,6 +53,7 @@ pub enum DeviceCategory {
     Mouse,
     Keyboard,
     Headset,
+    #[serde(rename = "MOUSEMAT", alias = "MOUSEPAD")]
     Mousepad,
     Keypad,
     Accessory,
@@ -336,7 +337,7 @@ impl Device {
             return;
         }
         self.features =
-            DeviceFeatures::for_category(self.category, self.is_chroma_device, self.is_keyboard());
+            DeviceFeatures::for_category(self.category, self.has_battery, self.is_chroma_device);
         // 鼠标默认给一组 DPI 档位，否则 DPI 页没有可编辑对象。
         if self.is_mouse() {
             let active = self.active_profile.clone();
@@ -593,6 +594,36 @@ mod tests {
         device.fill_defaults();
         assert_eq!(device.features.performance.polling_rate, first);
         assert!(device.features_initialized);
+    }
+
+    #[test]
+    fn chroma_capability_does_not_imply_a_battery() {
+        let mut mat = crate::demo::mouse_mat_preview(3076).unwrap();
+        mat.features_initialized = false;
+        mat.fill_defaults();
+        assert!(!mat.features.lighting.is_empty());
+        assert!(mat.features.power.is_none());
+        assert!(mat.features.keyboard.is_none());
+
+        let mut mouse = measured_devices()[0].clone();
+        mouse.has_battery = true;
+        mouse.is_chroma_device = false;
+        mouse.features_initialized = false;
+        mouse.fill_defaults();
+        assert!(mouse.features.lighting.is_empty());
+        assert!(mouse.features.power.is_some());
+    }
+
+    #[test]
+    fn mouse_mat_category_accepts_source_and_legacy_names() {
+        for name in ["MOUSEMAT", "MOUSEPAD"] {
+            let category: DeviceCategory = serde_json::from_value(serde_json::json!(name)).unwrap();
+            assert_eq!(category, DeviceCategory::Mousepad);
+        }
+        assert_eq!(
+            serde_json::to_value(DeviceCategory::Mousepad).unwrap(),
+            "MOUSEMAT"
+        );
     }
 
     /// 未收录的动作原样返回，不臆造译文。

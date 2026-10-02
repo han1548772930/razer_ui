@@ -30,7 +30,7 @@ for name in ("minimize", "maximize", "restore", "close", "close-original",
     shutil.copyfile(src, dst)
     record(src, dst)
 
-for category in ("MOUSE", "KEYBOARD", "AUDIO"):
+for category in ("MOUSE", "KEYBOARD", "AUDIO", "MOUSEMAT"):
     src = ROOT / ".ref/frontend/shared-favicon" / (category + ".svg")
     dst = OUT / ("host-category-" + category.lower() + ".svg")
     shutil.copyfile(src, dst)
@@ -306,7 +306,8 @@ module_export = re.compile(
 product_requests = []
 product_assets = []
 outputs = {entry["source"]: entry for entry in records}
-for pid in (182, 653, 777):
+mousemat_products = (3072, 3073, 3074, 3076, 3077, 3078, 3080)
+for pid in (182, 653, 777, *mousemat_products):
     scripts = sorted((ROOT / f".ref/devices/{pid}/static/js").glob("*.js"))
     main = next(path for path in scripts if path.name.startswith("main."))
     main_source = main.read_text(encoding="utf-8")
@@ -331,7 +332,13 @@ for pid in (182, 653, 777):
             with Image.open(src) as im:
                 im = im.convert("RGBA")
                 im.save(dst, optimize=True)
-                record(src, dst, width=im.width, height=im.height, mode=im.mode)
+                metadata = {}
+                if pid in mousemat_products:
+                    metadata = dict(
+                        source_url=f"https://apps.razer.com/synapse/products/{pid}/ui/{media}",
+                        source_kind="downloaded_static_asset",
+                    )
+                record(src, dst, width=im.width, height=im.height, mode=im.mode, **metadata)
             outputs[source_key] = records[-1]
         entry = outputs[source_key]
         reference = dict(request=request, module=int(module_id),
@@ -342,7 +349,7 @@ for pid in (182, 653, 777):
         entry.setdefault("webpack_requests", []).append(reference)
         product_requests.append(dict(product_id=pid, edition_id=int(edition),
                                      **reference, source=source_key, output=entry["output"]))
-        if name == "prd-3x.png" and pid in (182, 777):
+        if name == "prd-3x.png" and pid in (182, 777, *mousemat_products):
             layout, purpose = 0, "Product"
         elif name == "litat1-profile-button-3x.png" and pid == 182:
             layout, purpose = 0, "MouseBottom"

@@ -16,6 +16,51 @@ use crate::model::{
 /// 合成键盘的 productId（避开雷蛇真实编号区间）。
 pub const DEMO_PRODUCT_ID: u32 = 9001;
 
+/// Explicit local preview; no service identity, firmware or connected inputs.
+pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
+    let product = crate::product::audited_mouse_mat(pid)?;
+    let name = localized(&[
+        ("en", &format!("{} (preview)", product.name())),
+        ("zh-cn", &format!("{} · 预览", product.name())),
+    ]);
+    let profile_id = format!("preview-profile-{pid}");
+    Some(Device {
+        serial_number: format!("PREVIEW-{pid}"),
+        product_id: pid,
+        real_product_id: pid,
+        edition_id: 0,
+        layout_id: 0,
+        device_container_id: format!("preview-{pid}"),
+        category: DeviceCategory::Mousepad,
+        setup_status: SetupStatus::Ready,
+        active_profile: profile_id.clone(),
+        profiles: vec![Profile {
+            settings: Some(crate::features::settings::ProfileSettings::for_product(pid)),
+            name: "Default".into(),
+            guid: profile_id.clone(),
+            id: profile_id,
+            dpi_stages: None,
+        }],
+        is_single_profile: false,
+        is_chroma_device: true,
+        has_battery: false,
+        use_ble: false,
+        name: name.clone(),
+        product_name: name,
+        ui_window_name: String::new(),
+        mw_window_name: String::new(),
+        min_dpi: None,
+        max_dpi: None,
+        dpi_step: None,
+        support_xy_dpi: false,
+        power_status: None,
+        dkm_keys: vec![],
+        firmware_info: FirmwareInfo::default(),
+        features: DeviceFeatures::for_category(DeviceCategory::Mousepad, false, true),
+        features_initialized: true,
+    })
+}
+
 /// 构造一台合成键盘。
 pub fn demo_keyboard() -> Device {
     let name = localized(&[

@@ -7,7 +7,7 @@
 | 部分 | 当前代码与行为 | 验证范围 |
 |---|---|---|
 | 应用外壳 | [shell.rs](../../src/shell.rs) 负责主应用、设备标签、历史导航、关闭确认、异步保存 | 主应用四入口与独立 Settings；设备路由不混入 Home/Setting |
-| 产品路由 | [nav.rs](../../src/nav.rs) 按 PID 定义：182 Customize/Performance/Power/Calibration；653 Customize/Lighting；777 Sound/Mic/Lighting/Power | 未知 PID 不借用类别路由；Pairing 为独立入口；无 Scrolling |
+| 产品路由 | [nav.rs](../../src/nav.rs) 按 PID 定义：182 Customize/Performance/Power/Calibration；653 Customize/Lighting；777 Sound/Mic/Lighting/Power；七款已核对鼠标垫 Lighting | 未知 PID 不借用类别路由；Pairing 为独立入口；无 Scrolling |
 | 设备状态 | [workspace.rs](../../src/features/workspace.rs) 每个设备实例一个 Entity，设备身份包含 PID、serial、container | profile 草稿、控件同步和映射 continuation 留在设备 owner |
 | 领域数据 | [settings.rs](../../src/features/settings.rs) 的 ProfileSettings 存在每个 Profile 下 | Sound、Mic、DPI、校准、灯光、键盘及映射分别保存 |
 | 控件 | [controls.rs](../../src/features/controls.rs) 保存通用控件和订阅；[sensitivity.rs](../../src/features/sensitivity.rs) 按稳定槽位 ID 保留 DPI 输入与滑条 | render 引用已有 Entity；程序同步不重复发送用户 Change；排序不重建 DPI 控件 |
@@ -29,9 +29,10 @@
 | 777 Sound | 实际产品图、音量标题行开关与声音属性左列、右列独立音频 EQ；六预设、300px 纵向滑条、47px 频段间距、右侧刻度、原版 Reset 和随动数值气泡；-5..5 step 1、Custom 缓存 | 声音设备输出可用性、设备 EQ 差异确认及回读 |
 | 777 Mic | 仅独立 mic EQ；五预设、300px 纵向滑条、78px 频段间距、940/473 基线、右侧刻度、Reset 和随动数值气泡；编辑与 Reset 保留 Custom 语义 | 真实设备频率与本包预设采用音频频率这一矛盾仍需硬件验证；保留每段 frequency，未静默改成另一套 |
 | 653/777 Lighting | 产品自己的列表与数字 effect ID；profile 亮度；653 闲置/屏幕关闭条件；777 Streamer 插图和外链；按效果编辑颜色、随机、持续时间、方向、屏幕区域、Audio Meter 色彩增强 | 运行时 WDL、应用接管、adjustment mode、硬件效果条件与 special edition；Chroma 安装/激活；设备灯效输出 |
+| 七款鼠标垫 Lighting | 3072/3073/3074/3076/3077/3078/3080；按源码区分 100/66 默认亮度、五/七种效果、Wave 11/12 与 1/2、显示器关闭、Reactive 无兼容鼠标提示；独立预览和配置保存；17 种产品及 Dashboard 资源 | 硬件/Chroma/WDL 服务、真实兼容鼠标列表、应用接管和动态窗口验收；见[规格](../screens/17-mouse-mat-lighting.md) |
 | 777 Power | enabled + 5–60 分钟 step 1；禁用时滑条不可编辑 | 初始设备读取与提交确认 |
 | Pairing | 独立 display mode；DUALLINK 0–11 状态机、扫描与绑定视图、取消/超时/重试、713 警告及解绑确认；未连接时明确不可用 | 真实 DUALLINK transport 尚未接入；不生成虚构设备或配对成功 |
-| 三产品 Help | 设备内路由、原左右区块、产品支持/指南、序列号复制及2秒状态、固件版本、注册；Profile隐藏；1279px换列 | 恢复出厂和序列号重试服务；设置已有独立版本查询，但 Help 的产品 UI/MW/Synapse 字段尚未绑定服务响应；见[帮助页](../screens/11-help.md) |
+| 十款产品 Help | 设备内路由、原左右区块、产品支持/指南、序列号复制及2秒状态、固件版本、注册；Profile隐藏；1279px换列 | 恢复出厂和序列号重试服务；设置已有独立版本查询，但 Help 的产品 UI/MW/Synapse 字段尚未绑定服务响应；见[帮助页](../screens/11-help.md) |
 | 主应用 | Dashboard 原卡片布局、原产品图及折叠；Devices & Modules 独立80px行与模块详情；Gamer Room 横幅、热点、教程、添加流程及独立弹层；Global Shortcuts 捕获、增改复制、删除确认、292px 编辑器、草稿继续和本地保存；已实现原引擎映射/hash 编码；本地快照、设置内产品预览 | Gamer Room IoT服务和模块安装未接入；已证实 ABI 无法读取原快捷键配置，原生替换提交入口保持禁用；部分输出仍需原生 Turbo 事件服务，见[快捷键编码](12-global-shortcut-encoding.md)和[运行时边界](10-runtime-integration.md) |
 
 ## 3. 保存与兼容边界
@@ -96,8 +97,12 @@ Gamer Room 添加流程、教程及配对弹层按实际 JS 挂载与 CSS 最终
 - Settings补齐语言选项、布局、内嵌社交图标的常态/悬停，以及Windows动态灯光界面。迁移与发布说明取得独立原版源码并接入界面；Synapse 3扫描、转换、导入及真实发布说明读取尚未接通。
 - 777删除框按实际挂载修正为top52，并恢复不同的标题、边框、按钮颜色及白色按钮文字；导入/导出不再点击遮罩关闭。
 
-原版不止三个产品模块。官方目录有449个主产品ID；沿明确别名与声明共核查596个ID，已取得331个产品清单所列的30,658份JS/CSS。入口AST识别出331个产品的实际导航数组，但Rust适配仍为182、653、777；详见[最新产品目录](16-product-catalog.md)。上述界面补齐不等于所有产品或真实宿主服务已完成。
+原版不止三个产品模块。官方目录有449个主产品ID；沿明确别名与声明共核查596个ID，已取得331个产品清单所列的30,658份JS/CSS。入口AST识别出331个产品的实际导航数组，Rust当前接入182、653、777及3072/3073/3074/3076/3077/3078/3080；详见[最新产品目录](16-product-catalog.md)和[鼠标垫规格](../screens/17-mouse-mat-lighting.md)。上述界面补齐不等于所有产品或真实宿主服务已完成。
 
 滚动与弹层反馈已定位到内容高度约束、滚动句柄和动画生命周期，修复范围及未验证项见[专项复核](18-scroll-and-motion-audit.md)。本轮仍只执行编译与静态检查。
 
-2026-10-02 补齐 Synapse Introduction Tour 的五步页面和宿主页签，Dashboard／Gamer Room 三段原教程媒体改为内嵌动画播放；Dashboard 分组恢复源码折叠时序。详见[滚动与动态效果复核](18-scroll-and-motion-audit.md)。未适配产品、Chroma 教程分支及真实服务缺口仍保留。
+2026-10-02 补齐 Synapse Introduction Tour 的五步页面和宿主页签，Dashboard／Gamer Room 三段原教程媒体改为内嵌动画播放；Dashboard 分组恢复源码折叠时序。后续补入 Chroma 三步原图教程及独立页签，设置内提供明确预览入口；详见[教程规格](../screens/16-introduction-tour.md)。未适配产品、Chroma 主应用宿主及真实服务缺口仍保留。
+
+同日继续核对用户指出的添加设备层级、按钮宽度和右上角设置 hover：IoT 外层 Modal 与内部 Select 保持正确绘制顺序，教程在完整模态周期内暂停，恢复原外层关闭图标和100/150/300ms挂载／过渡／移除时序。模块按钮使用文字自然宽度、90px最小宽度、原大写规则和200ms整控件透明度过渡；设置齿轮保留方角与原 hover/active 背景。鼠标垫提示补齐原警告图标，Tidal 方向间距及缩放圆角按原规则修正。
+
+本批最终静态验证：`cargo check --locked --all-targets`通过；`python -B tools/validate-resources.py`核对396项资源、132个Webpack请求、73个产品图片变体、58个Dashboard变体，以及16布局/1901输入形状；`git diff --check`与修改过的Python工具语法解析通过。新增交互回归仅编译，不运行应用、测试或DLL；该结果不替代真实窗口与硬件验收。

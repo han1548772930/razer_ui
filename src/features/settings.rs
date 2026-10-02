@@ -385,6 +385,10 @@ impl Effect {
                 AudioMeter, Breathing, Reactive, Ripple, Spectrum, Starlight, Static, Wave,
             ],
             (777, false) => &[AudioMeter, Breathing, Spectrum, Static],
+            (3073 | 3074 | 3078, _) => &[AudioMeter, Breathing, Reactive, Spectrum, Static],
+            (3072 | 3076 | 3077 | 3080, _) => &[
+                AudioMeter, Breathing, Reactive, Spectrum, Static, Tidal, Wave,
+            ],
             _ => &[],
         }
     }
@@ -994,11 +998,22 @@ impl Default for ProfileSettings {
     }
 }
 impl ProfileSettings {
+    pub(crate) fn for_product(pid: u32) -> Self {
+        let mut settings = Self::default();
+        if let Some(product) = crate::product::audited_mouse_mat(pid) {
+            settings.lighting.brightness = product.brightness();
+            // Mouse mat modules retain idle data, but only render display-off.
+            settings.lighting.idle_minutes = 1;
+        }
+        settings.normalize(pid);
+        settings
+    }
+
     pub(crate) fn from_legacy(
         device: &crate::model::Device,
         profile: &crate::model::Profile,
     ) -> Self {
-        let mut settings = Self::default();
+        let mut settings = Self::for_product(device.product_id);
         if let Some(stages) = &profile.dpi_stages {
             settings.sensitivity.stages = stages.stages.iter().map(|s| [s.x, s.y]).collect();
             settings.sensitivity.visible = stages.enable;
@@ -1083,11 +1098,34 @@ impl ProfileSettings {
             self.lighting.effect = Effect::Spectrum;
         }
         self.lighting.idle_minutes = self.lighting.idle_minutes.clamp(1, 15);
+        let wave_direction =
+            crate::product::audited_mouse_mat(pid).and_then(|product| product.wave_direction());
+        if let Some(direction) = wave_direction {
+            // Quick-effect selection applies the product's direction default
+            // only when that effect has no cached setting yet.
+            self.lighting
+                .parameters
+                .entry(Effect::Wave.into())
+                .or_insert_with(|| {
+                    let mut params = EffectParameters::for_effect(Effect::Wave);
+                    params.direction = direction.default_value();
+                    params
+                });
+        }
         for (id, params) in &mut self.lighting.parameters {
             params.duration = params.duration.clamp(1, 3);
             params.color_boost = normalize_color_boost(params.color_boost);
             params.direction = if *id == 19 {
                 params.direction.min(1)
+            } else if *id == u8::from(Effect::Wave)
+                && wave_direction
+                    == Some(crate::product::MouseMatWaveDirection::ClockwiseCounterclockwise)
+            {
+                if matches!(params.direction, 11 | 12) {
+                    params.direction
+                } else {
+                    12
+                }
             } else {
                 params.direction.clamp(1, 2)
             };
@@ -1343,5 +1381,58 @@ mod tests {
         assert_eq!(restored.params().color1, Some([0, 255, 0]));
         assert_eq!(u8::from(Effect::Tidal), 19);
         assert_eq!(u8::from(Effect::Fire), 8);
+    }
+
+    #[test]
+    fn mouse_mat_wave_directions_survive_profile_round_trip_and_normalization() {
+        for (pid, direction) in [(3072, 11), (3076, 12), (3077, 11), (3080, 1)] {
+            let mut settings = ProfileSettings::for_product(pid);
+            settings.lighting.effect = Effect::Wave;
+            settings.lighting.params_mut().direction = direction;
+            settings.lighting.brightness = 37;
+            let mut restored: ProfileSettings =
+                serde_json::from_value(serde_json::to_value(&settings).unwrap()).unwrap();
+            restored.normalize(pid);
+            assert_eq!(restored, settings);
+
+            // Opening another effect must retain the product-specific Wave value.
+            restored.lighting.effect = Effect::Tidal;
+            restored.lighting.params_mut().direction = 0;
+            restored.normalize(pid);
+            restored.lighting.effect = Effect::Wave;
+            assert_eq!(restored.lighting.params().direction, direction);
+        }
+        let mut invalid = ProfileSettings::for_product(3076);
+        invalid.lighting.effect = Effect::Wave;
+        invalid.lighting.params_mut().direction = 2;
+        invalid.normalize(3076);
+        assert_eq!(invalid.lighting.params().direction, 12);
+    }
+
+    #[test]
+    fn mouse_mat_legacy_migration_uses_source_defaults_then_preserves_saved_values() {
+        let mut device = crate::model::measured_devices().remove(0);
+        device.product_id = 3076;
+        device.features.lighting.clear();
+        let defaults = ProfileSettings::from_legacy(&device, &device.profiles[0]);
+        assert_eq!(defaults.lighting.brightness, 66);
+        assert_eq!(defaults.lighting.idle_minutes, 1);
+        assert_eq!(defaults.lighting.effect, Effect::Spectrum);
+        assert!(defaults.lighting.enabled);
+        assert!(!defaults.lighting.display_off);
+        assert!(!defaults.lighting.idle_enabled);
+
+        let mut saved = defaults;
+        saved.lighting.brightness = 23;
+        saved.lighting.display_off = true;
+        saved.normalize(device.product_id);
+        assert_eq!(saved.lighting.brightness, 23);
+        assert!(saved.lighting.display_off);
+
+        saved.lighting.effect = Effect::Wave;
+        saved.normalize(3073);
+        assert_eq!(saved.lighting.effect, Effect::Spectrum);
+        assert_eq!(saved.lighting.brightness, 23);
+        assert_eq!(ProfileSettings::for_product(3073).lighting.brightness, 100);
     }
 }

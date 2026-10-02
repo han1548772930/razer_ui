@@ -411,6 +411,176 @@
       "source_url": "https://apps.razer.com/synapse/products/777/ui/777_0/PluginImages/777_0_0_dashboard3x.avif",
       "asset": "synapse/dashboard-777-0-0.png",
       "output": "assets/synapse/dashboard-777-0-0.png"
+    },
+    {
+      "product_id": 3072,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3072-0-0-source.avif",
+      "source_sha256": "b68c3fefb3f02bfbefd1fa64a1e7ed06ca3940b192672e7dac63f685a74e8689",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/3072_0/PluginImages/3072_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3072-0-0.png",
+      "output": "assets/synapse/dashboard-3072-0-0.png"
+    },
+    {
+      "product_id": 3072,
+      "edition_id": 1,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3072-1-0-source.avif",
+      "source_sha256": "7d3f670435c6a88f712c1405bbee2bc1bcba1c3fe72af8e991ddccf00bb1e51f",
+      "source_url": "https://apps.razer.com/synapse/products/3072/ui/3072_1/PluginImages/3072_1_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3072-1-0.png",
+      "output": "assets/synapse/dashboard-3072-1-0.png"
+    },
+    {
+      "product_id": 3073,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3073-0-0-source.avif",
+      "source_sha256": "10199d530a827c9766d1db5ea7d4455ca778a714d8ab4c346d74d97cc54c82bd",
+      "source_url": "https://apps.razer.com/synapse/products/3073/ui/3073_0/PluginImages/3073_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3073-0-0.png",
+      "output": "assets/synapse/dashboard-3073-0-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-0-0-source.avif",
+      "source_sha256": "b62144a4e518a39fe69053bcea8e36ec5c14f149c01f353a39221aac0c0bf740",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_0/PluginImages/3074_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-0-0.png",
+      "output": "assets/synapse/dashboard-3074-0-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 128,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-128-0-source.avif",
+      "source_sha256": "132ccd2b466ea32c03f487f3cd313f879b6cd2e7b311e8f7ba28c79e03dedfea",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_128/PluginImages/3074_128_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-128-0.png",
+      "output": "assets/synapse/dashboard-3074-128-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 129,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-129-0-source.avif",
+      "source_sha256": "9ff5e8050778e9242be6976e7b436da39c7811996ebd3429b4b5606bedb21d34",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_129/PluginImages/3074_129_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-129-0.png",
+      "output": "assets/synapse/dashboard-3074-129-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 130,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-130-0-source.avif",
+      "source_sha256": "5f0c0a90df7549a2b60093fb7d8e8b0f2b198dbe9ace24d6105c0dbaa02e7efd",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_130/PluginImages/3074_130_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-130-0.png",
+      "output": "assets/synapse/dashboard-3074-130-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 132,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-132-0-source.avif",
+      "source_sha256": "a8cc3c0b1456ff3979df5b46c7909cd4283fb2251d771c541c2491cc213d579c",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_132/PluginImages/3074_132_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-132-0.png",
+      "output": "assets/synapse/dashboard-3074-132-0.png"
+    },
+    {
+      "product_id": 3074,
+      "edition_id": 133,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3074-133-0-source.avif",
+      "source_sha256": "3c18d720b79c6e4da430ef4fea6c58be2ab3d5e19e8445facf937f3b06f1fbbe",
+      "source_url": "https://apps.razer.com/synapse/products/3074/ui/3074_133/PluginImages/3074_133_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3074-133-0.png",
+      "output": "assets/synapse/dashboard-3074-133-0.png"
+    },
+    {
+      "product_id": 3076,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3076-0-0-source.avif",
+      "source_sha256": "4ad72d916dc397cc967cf9e454f80d4dbe999791eb740c26ed0bb6bbf86dee2a",
+      "source_url": "https://apps.razer.com/synapse/products/3076/ui/3076_0/PluginImages/3076_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3076-0-0.png",
+      "output": "assets/synapse/dashboard-3076-0-0.png"
+    },
+    {
+      "product_id": 3077,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3077-0-0-source.avif",
+      "source_sha256": "587fb0a7d953afcae029a73b768a329e26bbc5de532eb57c6dc10f84d59175ab",
+      "source_url": "https://apps.razer.com/synapse/products/3077/ui/3077_0/PluginImages/3077_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3077-0-0.png",
+      "output": "assets/synapse/dashboard-3077-0-0.png"
+    },
+    {
+      "product_id": 3078,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3078-0-0-source.avif",
+      "source_sha256": "d8a99164c5139bbe7f198d68c2b57f64110ff02ae3dec31c7a3430e088e01843",
+      "source_url": "https://apps.razer.com/synapse/products/3078/ui/3078_0/PluginImages/3078_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3078-0-0.png",
+      "output": "assets/synapse/dashboard-3078-0-0.png"
+    },
+    {
+      "product_id": 3080,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3080-0-0-source.avif",
+      "source_sha256": "5018493c56c840ce478df3fbdbf498d254be9e48afa09ea0dbc1af8c49bf5a9e",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_0/PluginImages/3080_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3080-0-0.png",
+      "output": "assets/synapse/dashboard-3080-0-0.png"
+    },
+    {
+      "product_id": 3080,
+      "edition_id": 128,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3080-128-0-source.avif",
+      "source_sha256": "a9dcf9bf3615e69aaa101f3e4e7b55d16c286557d8e93f67c684d9c07000b551",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_128/PluginImages/3080_128_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3080-128-0.png",
+      "output": "assets/synapse/dashboard-3080-128-0.png"
+    },
+    {
+      "product_id": 3080,
+      "edition_id": 129,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3080-129-0-source.avif",
+      "source_sha256": "4c2ab790293be3d335280967e90aef618dfebb2a926b208fc054aec211c97362",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_129/PluginImages/3080_129_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3080-129-0.png",
+      "output": "assets/synapse/dashboard-3080-129-0.png"
+    },
+    {
+      "product_id": 3080,
+      "edition_id": 130,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3080-130-0-source.avif",
+      "source_sha256": "233b07b4463a7bcaedaf75f6f08af951d4b208dee2d72a4e53b537a4f5524eb0",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_130/PluginImages/3080_130_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3080-130-0.png",
+      "output": "assets/synapse/dashboard-3080-130-0.png"
+    },
+    {
+      "product_id": 3080,
+      "edition_id": 131,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-3080-131-0-source.avif",
+      "source_sha256": "a9d2a3489e139416ba6fc2ff8cf7ffcad63766a5164c98308b9a0f62a426ede0",
+      "source_url": "https://apps.razer.com/synapse/products/3080/ui/3080_131/PluginImages/3080_131_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-3080-131-0.png",
+      "output": "assets/synapse/dashboard-3080-131-0.png"
     }
   ]
 }

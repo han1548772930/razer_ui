@@ -34,7 +34,7 @@
 | 入网后未找到 / 无法添加 | 取消和再次扫描均返回设备选择 |
 | 成功页添加更多 | 返回设备选择 |
 | 自定义 / 查看进度 | 原版发送 `focusIotDeviceTab`；本实现仅显示预览提示，不创建或安装设备 |
-| 关闭 / Escape | 清空密码与网络选择，关闭顶层弹层并恢复之前的焦点 |
+| 关闭 / Escape | 下拉展开时先收起下拉；关闭外层时淡出并在 300 ms 后卸载，清空密码与网络选择并恢复之前的焦点；减少动态效果时立即完成 |
 
 `ze` 的页脚条件是 `!isScanning && !newDeviceList.length`，不是「设备列表为空」。当前按这一条件恢复 Gamer Room 及只有已有 Key Light 时的取消按钮、117 px 宽度和绿色刷新样式。原版扫描页刷新按钮的文案直接使用 `M.uIN`（网络设备标题），设备错误页才使用 `M.Z$Z`（再次扫描）；保留这个调用差异。
 
@@ -65,6 +65,18 @@
 按钮使用 GPUI Kit `Button` / `BaseButton` 语义和键盘行为。12 px 命令按钮使用 `.xsmall()`，14 px 手机入口使用 `.small()`：Kit 0.7 的内部文字容器会按组件尺寸设置字号，仅在外层设置 `text_size` 不足以覆盖内部文字。刷新按钮单独组合图标和文字，避免 `Button.label(...).child(icon)` 将图标排到右侧。
 
 弹层新增的状态/预览选择栏属于复刻项目的显式预览入口，不是原版 IoT 内容。保留这一说明，避免把额外一行的高度误认为已与原版实测完全一致。
+
+## 外层挂载、关闭与叠层复核（2026-10-02）
+
+实际 Gamer Room 入口是 `9388 ze.handleOpenAddModel → setOpenIOTPopup(true, "GAMER_ROOM_DEVICE") → 55 commonReducer → App.K.componentDidUpdate → App.z`。`z` 的外层 Modal 以可变化的 `isMounted` 包含 iframe；iframe 内的 `IotPopupRoot gt` 则始终传 `isMounted:true`。因此，不能从内层的固定值推断关闭时立即销毁窗口。
+
+`55` 模块 `82830` 在挂载后 100 ms 添加 `.show`，关闭时立即移除 `.show`，300 ms 后才卸载 DOM 和 iframe。CSS 的面板与遮罩透明度过渡均为 150 ms linear。当前分别保留挂载、显示和关闭中状态；延迟结束前保留模态遮罩与焦点，完成后才发送一次 `DismissEvent`。关闭会取消未完成的入场任务，重复关闭不重启退出计时。教程和营销内容在整个退出期间继续被遮挡；Gamer Room 在弹层卸载后恢复之前的教程步骤。
+
+外层关闭按钮实际是 `.modal.iot-device-popup .close`，其资源为 `icon_close_white.8ab462b8.svg`（文件名为 white，真实路径填充为 `#ccc`）。本地复用字节一致的 `calibration-close.svg`；36×36 命中区、20×20 图标、透明底，hover 白色 `#1a` 透明度、active 黑色 `#1a` 透明度，即时切换。没有 `.btn-close` 的右上 4 px 圆角、100 ms 背景过渡或黑色 30% 按下态。为键盘路径保留可见焦点框。
+
+Kit 0.7 的 Base Dialog 使用 `10 + layer` 绘制优先级，Base Popup 固定为 `POPUP_PRIORITY = 100`。GPUI 对同优先级按插入顺序稳定排序；当前外层 Dialog 使用 `POPUP_PRIORITY - 10`，并在页面弹出内容之后挂载，其自身下拉再从 Dialog 内部挂载。顺序是页面内容／弹出内容、模态遮罩与面板、模态内下拉。遮罩显式 `occlude` 并阻止滚轮传播；不以更高的无差别优先级盖住自身网络和场景下拉。焦点陷阱、Tab、Escape 及下拉的取消仍由 Kit 原语处理。
+
+回归源码位于 [iot_popup_tests.rs](../../src/shell/iot_popup_tests.rs) 和 [gamer_room_tutorial_tests.rs](../../src/shell/gamer_room_tutorial_tests.rs)：覆盖已有 Popup 上方的遮罩、滚轮隔离、下拉可点击、两层 Escape、双向 Tab 限制、触发器焦点恢复、100/300 ms 生命周期、重复关闭以及教程步骤恢复。用例尚未执行，不能作为运行成功的证据；编译结果由主任务统一记录。
 
 ## 外链
 

@@ -35,6 +35,7 @@ pub(super) enum SettingsEvent {
     ResetTutorials,
     Save,
     Preview(u32),
+    PreviewChromaTour,
     PreviewModules,
     PreviewHeader,
     ReleaseNotes,
@@ -595,6 +596,28 @@ impl SettingsPage {
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::PreviewModules)
+                                    })),
+                            )
+                            .children(crate::product::AUDITED_MOUSE_MAT_IDS.into_iter().map(
+                                |pid| {
+                                    let product = crate::product::audited_mouse_mat(pid)
+                                        .expect("audited mouse mat");
+                                    Button::new(SharedString::from(format!(
+                                        "preview-product-{pid}"
+                                    )))
+                                    .label(format!("预览 {}", product.name()))
+                                    .outline()
+                                    .on_click(cx.listener(move |_, _, _, cx| {
+                                        cx.emit(SettingsEvent::Preview(pid))
+                                    }))
+                                },
+                            ))
+                            .child(
+                                Button::new("preview-chroma-tour")
+                                    .label("预览 Chroma 入门教程…")
+                                    .outline()
+                                    .on_click(cx.listener(|_, _, _, cx| {
+                                        cx.emit(SettingsEvent::PreviewChromaTour)
                                     })),
                             )
                             .child(

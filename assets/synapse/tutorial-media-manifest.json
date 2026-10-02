@@ -2636,6 +2636,48 @@
       "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json"
     },
     {
+      "source": ".ref/tutorial-media/quick_effects.9f9806eb.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/quick_effects.9f9806eb.avif",
+      "source_sha256": "9f492206997332f05825c569f800cc8f951830463f7a4e3614e5694d5709293e",
+      "output": "assets/synapse/tour-chroma-quick-effects.png",
+      "sha256": "1ea2f243d16165669259c0e7bef24edabcd8a89cefdea1236c1fd7f052fcdb33",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
+    },
+    {
+      "source": ".ref/tutorial-media/chroma_studio.abd5d541.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/chroma_studio.abd5d541.avif",
+      "source_sha256": "5f61ca228125c3e0419a8bb76cc43a8e1664fe4ff00b94738b53946501f673db",
+      "output": "assets/synapse/tour-chroma-advanced-effects.png",
+      "sha256": "6532664d3bc512636ec7331c581850c888a7aa062f4c9e865a7c6ed6d357512e",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
+    },
+    {
+      "source": ".ref/tutorial-media/chroma_apps.ca901740.avif",
+      "source_url": "https://apps.razer.com/synapse/introduction-tour/static/media/chroma_apps.ca901740.avif",
+      "source_sha256": "279b0c259bc27e927dcb57b24a7b7224176a952b72f575d0caae958e4571650f",
+      "output": "assets/synapse/tour-chroma-apps.png",
+      "sha256": "084cf2f48b57852d59f36c70442fb5bed6674008a76e37a8f48eb6ca8060e1b2",
+      "width": 570,
+      "height": 420,
+      "frames": 1,
+      "frame_durations_ms": [],
+      "loop": null,
+      "resource_manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "conversion": "AVIF to RGBA PNG"
+    },
+    {
       "source": ".ref/tutorial-media/icon_app.b648a5e5.svg",
       "source_sha256": "324a93f773de181a1205213dfa8c41a12c0963be73eac2bd6a49e33b26e446a8",
       "output": "assets/synapse/tour-app-inline.svg",

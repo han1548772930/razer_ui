@@ -1,4 +1,4 @@
-//! Routes from GM (182), zh (653), Ov (777) and frontend HomePage.
+//! Routes from audited product roots and frontend HomePage.
 //! Pairing is a separate display mode; HELP is a toolbar action.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +31,7 @@ impl Tab {
             ],
             653 | crate::demo::DEMO_PRODUCT_ID => &[Self::Customize, Self::Lighting],
             777 => &[Self::Sound, Self::Mic, Self::Lighting, Self::Power],
+            _ if crate::product::audited_mouse_mat(pid).is_some() => &[Self::Lighting],
             _ => &[],
         }
     }
