@@ -88,7 +88,7 @@ header 将 HELP 过滤到帮助入口。三个产品都没有独立 Scrolling；
 | iwS | DEVICES_AND_MODULES_HEADER | 44442 / 6505 |
 | fUK | GLOBAL_SHORTCUT_HEADER | 94608 / 7282 |
 
-Settings 使用 `/synapse/settings/`、窗口名 `settings-synapse`。本地缺少该独立设置应用的完整 render 证据；共有 `.main-setting` CSS 不足以确定其所有选项。
+Settings 使用 `/synapse/settings/`、窗口名 `settings-synapse`。2026-10-02 已取得独立 720 chunk 的 JS/CSS，`ho/uo` 分别给出 Synapse / General 的完整组件树；不再依据共有 `.main-setting` CSS 推测其选项，详见[设置规格](../screens/12-settings.md)。
 
 ## 7. 旧推断更正
 
@@ -118,10 +118,10 @@ Settings 使用 `/synapse/settings/`、窗口名 `settings-synapse`。本地缺�
 | 777 main.eb70ce38.js | `7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4` |
 | 777 main.e4bab2aa.css | `28d5a7ea7b3c38cff5a467b325203841f21cdd14a213e274ffcddc7cf9843427` |
 
-未验证：设备通信成功、固件最终量化、真实模块安装状态、缺失资源画面、独立 Settings 和其它产品。原包内部矛盾保留记录，不能按常识静默修正后宣称一致。
+未验证：设备通信成功、固件最终量化、真实模块安装状态、缺失资源画面和其它产品。独立 Settings 已获得源码并实现本地界面，原设置服务尚未接通。原包内部矛盾保留记录，不能按常识静默修正后宣称一致。
 
-## 9. 本轮文档校验
+## 9. 前次文档校验（2026-10-01）
 
 已检查 19 份 Markdown 的 UTF-8、代码围栏、732 个本地链接，以及资源表中的 request / 模块 / 文件映射；未发现断链或编码损坏。重新计算的 manifest 缺失数量与资源索引一致，以上 7 个原始文件 SHA-256 均已复核。`git diff --check` 通过。
 
-与本轮开始时的哈希基线相比，`src`、`assets`、`locales` 文件未改变；用户此前的源码/图片改动保留。本轮删除无实际产品根路由支持的 `screens/06-scrolling.md`，有效滚轮/拨轮内容归入 Customize，并清理了索引引用。
+与该次只读文档审计开始时的哈希基线相比，`src`、`assets`、`locales` 文件未改变；用户此前的源码/图片改动保留。该次删除无实际产品根路由支持的 `screens/06-scrolling.md`，有效滚轮/拨轮内容归入 Customize，并清理了索引引用。后续实现修改及当前验证状态见[重构状态](03-implementation-gap.md#5-验证状态)。

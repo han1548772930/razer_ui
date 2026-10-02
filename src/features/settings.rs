@@ -529,12 +529,13 @@ fn default_dial_color() -> [u8; 3] {
 
 impl DialMode {
     pub(super) fn is_switch_applications(&self) -> bool {
-        !self.is_custom
-            && (self.uid == "SWITCH_APPLICATIONS"
-                || matches!(
-                    self.name.as_str(),
-                    "SWITCH_APPLICATIONS" | "Switch Applications"
-                ))
+        // Em's y() compares the displayed source name, without excluding
+        // custom modes. A custom mode named exactly "Switch Applications"
+        // therefore follows the same Alt+Tab restriction. The canonical id
+        // branch also recognizes presets in older local profiles.
+        self.name == "Switch Applications"
+            || (!self.is_custom
+                && (self.uid == "SWITCH_APPLICATIONS" || self.name == "SWITCH_APPLICATIONS"))
     }
 
     pub(super) fn label(&self) -> String {
@@ -752,13 +753,17 @@ impl Keyboard {
                 !self.dial_blocked_by_game_mode(mode)
                     && (enabled
                         || !mode.enabled
-                        || mode.is_custom
+                        // Em applies f() && isEnabled to every row. f() is
+                        // true when exactly one default mode remains enabled,
+                        // so enabled custom switches are locked in that case
+                        // too. Zero defaults is possible after the game-mode
+                        // effect and does not impose this UI restriction.
                         || self
                             .dial_modes
                             .iter()
                             .filter(|mode| mode.enabled && !mode.is_custom)
                             .count()
-                            > 1)
+                            != 1)
             })
     }
 

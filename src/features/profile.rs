@@ -9,10 +9,11 @@ use gpui_kit::component::{
     list::{List, ListDelegate, ListState},
     tooltip::Tooltip,
 };
-use gpui_kit::prelude::FluentBuilder as _;
 
 #[path = "linked_games.rs"]
 mod linked_games;
+#[path = "onboard_memory.rs"]
+mod onboard_memory;
 #[path = "profile_transfer.rs"]
 mod profile_transfer;
 
@@ -476,6 +477,7 @@ impl DeviceWorkspace {
         // product roots explicitly disable it; no slot contents are inferred.
         let has_obm = self.pid() == 653 && !self.device.use_ble;
         let list = self.profile_menu.clone();
+        let pid = self.pid();
         let confirmation = self.profile_confirmation.clone();
         let focus = if confirmation.is_some() {
             self.profile_confirm_focus.clone()
@@ -484,6 +486,7 @@ impl DeviceWorkspace {
         };
         let confirmation_focus = self.profile_confirm_focus.clone();
         let workspace = cx.entity().downgrade();
+        let obm_workspace = workspace.clone();
         let open_workspace = workspace.clone();
         let menu_height = self
             .profile_menu
@@ -568,7 +571,10 @@ impl DeviceWorkspace {
                     .flex_shrink_0()
                     .mr(surface::css(10.))
                     .offset(if confirmation.is_some() {
-                        cx.theme().font_size * (if self.pid() == 777 { 74. } else { 16. } / 16.)
+                        // The alert is nested in the relative more-menu wrapper.
+                        // 777's direct-child top:100px rule does not match it;
+                        // the effective top is 52px (42px on 182/653).
+                        cx.theme().font_size * (if pid == 777 { 26. } else { 16. } / 16.)
                     } else {
                         Pixels::ZERO
                     })
@@ -611,6 +617,7 @@ impl DeviceWorkspace {
                         if let Some(confirmation) = confirmation {
                             return profile_confirmation(
                                 confirmation,
+                                pid,
                                 popup,
                                 workspace,
                                 confirmation_focus,
@@ -637,67 +644,7 @@ impl DeviceWorkspace {
                     }),
             )
             .when(has_obm, |bar| {
-                bar.child(
-                    Popover::new("profile-obm-popover")
-                        .flex_shrink_0()
-                        .trigger_with(|open, _, cx| {
-                            BaseButton::new("profile-obm")
-                                .accessibility_label("板载内存")
-                                .size(surface::css(26.))
-                                .border_1()
-                                .border_color(if open {
-                                    cx.theme().primary
-                                } else {
-                                    cx.theme().transparent
-                                })
-                                .hover(|button| button.border_color(cx.theme().border))
-                                .tooltip(|window, cx| Tooltip::new("板载内存").build(window, cx))
-                                .child(img("synapse/profile-obm.svg").size(surface::css(20.)))
-                                .into_any_element()
-                        })
-                        .content(|_, _, cx| {
-                            v_flex()
-                                .id("profile-obm-content")
-                                .test_support()
-                                .w(surface::css(300.))
-                                .p(surface::css(20.))
-                                .gap(surface::css(14.))
-                                .bg(cx.theme().popover)
-                                .border_1()
-                                .border_color(cx.theme().border)
-                                .text_size(surface::css(14.))
-                                .child(
-                                    div()
-                                        .font_weight(FontWeight::BOLD)
-                                        .child(crate::i18n::t_or("ON_BOARD_MEMORY", "板载内存")),
-                                )
-                                .child(crate::i18n::t_or(
-                                    "ON_BOARD_MEMORY_CONTROLLER_TOOLTIP",
-                                    "使用板载内存直接将配置文件存储在 Razer 雷蛇设备上。",
-                                ))
-                                .child(surface::note(
-                                    "当前配置保存在本机。设备的板载配置尚未读取。",
-                                    cx,
-                                ))
-                                .children((1..=4).map(|slot| {
-                                    h_flex()
-                                        .justify_between()
-                                        .gap(surface::css(16.))
-                                        .py(surface::css(8.))
-                                        .border_b_1()
-                                        .border_color(cx.theme().border)
-                                        .child(format!("板载槽位 {slot}"))
-                                        .child(surface::note("未读取", cx))
-                                }))
-                                .child(
-                                    Button::new("profile-obm-write")
-                                        .label("写入设备")
-                                        .disabled(true)
-                                        .tooltip("读取设备的板载配置后才能写入"),
-                                )
-                                .into_any_element()
-                        }),
-                )
+                bar.child(onboard_memory::OnboardMemoryControl::new(obm_workspace))
             })
             .into_any_element()
     }
@@ -705,12 +652,25 @@ impl DeviceWorkspace {
 
 fn profile_confirmation(
     confirmation: ProfileConfirmation,
+    pid: u32,
     popup: WeakEntity<PopoverState>,
     workspace: WeakEntity<DeviceWorkspace>,
     focus: FocusHandle,
     cx: &App,
 ) -> impl IntoElement {
-    let danger = ProfileAlertColors::new().danger();
+    let colors = ProfileAlertColors::new();
+    // 777 overrides the border and button, but renders del-title-normal,
+    // whose #fd4949 title survives the later del-title-only override.
+    let danger = if pid == 777 {
+        colors.headphone_danger()
+    } else {
+        colors.danger()
+    };
+    let button_foreground = if pid == 777 {
+        cx.theme().button_foreground
+    } else {
+        cx.theme().primary_foreground
+    };
     let actions = if confirmation.reset {
         vec![
             (
@@ -754,7 +714,7 @@ fn profile_confirmation(
             spread_radius: Pixels::ZERO,
             inset: false,
         }])
-        .child(div().text_center().text_color(danger).mb(surface::css(10.))
+        .child(div().text_center().text_color(colors.danger()).mb(surface::css(10.))
             .when(confirmation.reset, |title| title.font_weight(FontWeight::BOLD)).child(title))
         .child(div().text_center().mb(surface::css(10.)).child(if confirmation.reset {
             "当你重置配置文件时，所有按键绑定和已配置的设置都将丢失并重置为默认值。你可以重置配置文件或选择仅重置所有按键绑定。"
@@ -764,18 +724,195 @@ fn profile_confirmation(
         .child(h_flex().justify_center().gap(surface::css(10.)).children(actions.into_iter().enumerate().map(|(index, (id, label, next))| {
             let popup = popup.clone();
             let workspace = workspace.clone();
-            Button::new(id).label(label).h(surface::css(27.)).min_w(surface::css(90.))
+            Button::new(id).label(label).xsmall().h(surface::css(27.)).min_w(surface::css(90.))
                 .when(confirmation.reset, |button| button.flex_1())
                 .when(index == 0, |button| button.track_focus(&focus))
-                .px(surface::css(5.)).py(surface::css(4.)).text_size(surface::css(12.))
-                .rounded_none().border_1().border_color(cx.theme().title_bar.opacity(0.3))
-                .custom(ButtonCustomVariant::new(cx).color(danger).foreground(cx.theme().primary_foreground)
+                .px(surface::css(if pid == 777 { 0. } else { 5. })).py(surface::css(4.)).text_size(surface::css(12.))
+                .line_height(surface::css(if pid == 777 { 17. } else { 14. }))
+                .rounded(cx.theme().font_size * (3. / 16.)).border_1().border_color(cx.theme().title_bar.opacity(0.3))
+                .custom(ButtonCustomVariant::new(cx).color(danger).foreground(button_foreground)
                     .hover(danger.opacity(0.8)).active(danger.opacity(0.6)))
                 .on_click(move |_, window, cx| {
                     _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
                     _ = workspace.update(cx, |workspace, cx| workspace.continue_with(next.clone(), window, cx));
                 })
         })))
+}
+
+/// ImportExportModal's original shell. Base owns focus and dismissal; keeping
+/// the presentation here avoids Component Dialog's inset title and fixed shadow.
+/// The local linked-program editor shares this shell; the original linked-games
+/// command opened the separate /profiles application, whose UI is not bundled.
+pub(super) struct ProfileDialog {
+    title: String,
+    content: AnyView,
+    focus: FocusHandle,
+    return_focus: Option<FocusHandle>,
+    owner: WeakEntity<DeviceWorkspace>,
+}
+
+fn dismiss_profile_dialog(owner: &WeakEntity<DeviceWorkspace>, window: &mut Window, cx: &mut App) {
+    let dialog = owner
+        .update(cx, |workspace, cx| {
+            let dialog = workspace.profile_dialog.take();
+            cx.notify();
+            dialog
+        })
+        .ok()
+        .flatten();
+    if let Some(dialog) = dialog {
+        if let Some(focus) = dialog.read(cx).return_focus.clone() {
+            window.focus(&focus, cx);
+        }
+    }
+}
+
+fn profile_dialog_footer(cx: &App) -> Div {
+    h_flex()
+        .w_full()
+        .flex_shrink_0()
+        .justify_center()
+        .gap(surface::css(10.))
+        .py(surface::css(16.))
+        .px(surface::css(20.))
+        .border_t_1()
+        .border_color(cx.theme().input)
+        .rounded_b(surface::css(4.))
+        .bg(cx.theme().sidebar)
+}
+
+fn profile_dialog_button(id: &'static str, label: impl Into<SharedString>, cx: &App) -> Button {
+    Button::new(id)
+        .label(label)
+        .xsmall()
+        .h(surface::css(27.))
+        .min_w(surface::css(90.))
+        .px(surface::css(10.))
+        .py_0()
+        .text_size(surface::css(12.))
+        .line_height(surface::css(14.))
+        .rounded(cx.theme().font_size * (3. / 16.))
+}
+
+impl DeviceWorkspace {
+    pub fn dismiss_profile_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(dialog) = self.profile_dialog.take() {
+            if let Some(focus) = dialog.read(cx).return_focus.clone() {
+                window.focus(&focus, cx);
+            }
+            cx.notify();
+        }
+    }
+
+    fn show_profile_dialog(
+        &mut self,
+        title: String,
+        content: AnyView,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let return_focus = window.focused(cx);
+        let owner = cx.entity().downgrade();
+        let dialog = cx.new(|cx| ProfileDialog {
+            title,
+            content,
+            focus: cx.focus_handle(),
+            return_focus,
+            owner,
+        });
+        let focus = dialog.read(cx).focus.clone();
+        window.focus(&focus, cx);
+        self.profile_dialog = Some(dialog);
+        cx.notify();
+    }
+}
+
+impl Render for ProfileDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let viewport = window.viewport_size();
+        let margin = window.rem_size();
+        let width =
+            (window.rem_size() * (602. / 16.)).min((viewport.width - margin * 2.).max(px(0.)));
+        let height =
+            (window.rem_size() * (481. / 16.)).min((viewport.height - margin * 2.).max(px(0.)));
+        let top =
+            (window.rem_size() * (104. / 16.)).min((viewport.height - height - margin).max(margin));
+        let close_owner = self.owner.clone();
+        let button_owner = self.owner.clone();
+        gpui_kit::base::Dialog::new(cx)
+            .focus_handle(self.focus.clone())
+            // ImportExportModal's backdrop has no dismissal handler.
+            .close_on_backdrop_press(false)
+            .on_ok(|_, _, _| false)
+            .on_close(move |_, window, cx| dismiss_profile_dialog(&close_owner, window, cx))
+            .backdrop(
+                div()
+                    .absolute()
+                    .size_full()
+                    .bg(cx.theme().title_bar.opacity(0.7)),
+            )
+            .popup(
+                v_flex()
+                    .id("profile-dialog-frame")
+                    .test_support()
+                    .aria_label(self.title.clone())
+                    .absolute()
+                    .top(top)
+                    .left((viewport.width - width) / 2.)
+                    .w(width)
+                    .h(height)
+                    .border_1()
+                    .border_color(cx.theme().input)
+                    .rounded(surface::css(5.))
+                    .bg(cx.theme().group_box)
+                    .occlude()
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .child(
+                        h_flex()
+                            .relative()
+                            .w_full()
+                            .h(surface::css(36.))
+                            .flex_shrink_0()
+                            .justify_center()
+                            .rounded_t(surface::css(4.))
+                            .bg(cx.theme().sidebar)
+                            .border_b_1()
+                            .border_color(cx.theme().input)
+                            .text_color(cx.theme().muted_foreground)
+                            .child(
+                                div()
+                                    .mx(surface::css(36.))
+                                    .truncate()
+                                    .child(self.title.clone()),
+                            )
+                            .child(
+                                BaseButton::new("profile-dialog-close")
+                                    .absolute()
+                                    .right(surface::css(5.))
+                                    .top_0()
+                                    .w(surface::css(20.))
+                                    .h(surface::css(36.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .accessibility_label("关闭配置文件窗口")
+                                    .hover(|button| button.bg(DropdownColors::new().hover()))
+                                    .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
+                                    .on_click(move |_, window, cx| {
+                                        dismiss_profile_dialog(&button_owner, window, cx)
+                                    }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .w_full()
+                            .child(self.content.clone()),
+                    ),
+            )
+    }
 }
 
 #[cfg(test)]

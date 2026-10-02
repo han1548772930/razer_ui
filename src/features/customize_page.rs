@@ -466,56 +466,12 @@ impl DeviceWorkspace {
         self.render_mapping_editor(cx)
     }
     fn keyboard_panels(&self, cx: &mut Context<Self>) -> AnyElement {
-        let keyboard = &self.settings().keyboard;
         surface::page_columns()
             .child(surface::page_column(
                 v_flex()
                     .flex_1()
                     .gap_5()
-                    .child(
-                        surface::panel("游戏模式", cx)
-                            .child(
-                                Switch::new("gaming-enabled")
-                                    .label("游戏模式")
-                                    .checked(keyboard.gaming)
-                                    .on_change(cx.listener(|this, value, w, cx| {
-                                        this.edit(w, cx, |s| s.keyboard.gaming = *value)
-                                    })),
-                            )
-                            .child(
-                                Checkbox::new("gaming-in-game")
-                                    .label("仅在游戏中启用")
-                                    .checked(keyboard.in_game)
-                                    .disabled(!keyboard.gaming)
-                                    .on_change(cx.listener(|this, value, w, cx| {
-                                        this.edit(w, cx, |s| s.keyboard.in_game = *value)
-                                    })),
-                            )
-                            .child(
-                                Checkbox::new("gaming-windows")
-                                    .label("禁用 Windows 键")
-                                    .checked(true)
-                                    .disabled(true),
-                            )
-                            .child(
-                                Checkbox::new("gaming-alt-tab")
-                                    .label("禁用 Alt+Tab")
-                                    .checked(keyboard.disable_alt_tab)
-                                    .disabled(!keyboard.gaming)
-                                    .on_change(cx.listener(|this, value, w, cx| {
-                                        this.edit(w, cx, |s| s.keyboard.set_disable_alt_tab(*value))
-                                    })),
-                            )
-                            .child(
-                                Checkbox::new("gaming-alt-f4")
-                                    .label("禁用 Alt+F4")
-                                    .checked(keyboard.disable_alt_f4)
-                                    .disabled(!keyboard.gaming)
-                                    .on_change(cx.listener(|this, value, w, cx| {
-                                        this.edit(w, cx, |s| s.keyboard.disable_alt_f4 = *value)
-                                    })),
-                            ),
-                    )
+                    .child(self.keyboard_gaming_panel(cx))
                     .child(self.snap_tap_panel(cx))
                     .child(self.polling_panel(cx))
                     .child(surface::panel("键盘属性", cx).child(
@@ -528,5 +484,100 @@ impl DeviceWorkspace {
             ))
             .child(surface::page_column(self.command_dial_panel(cx)))
             .into_any_element()
+    }
+
+    fn keyboard_gaming_panel(&self, cx: &mut Context<Self>) -> AnyElement {
+        let keyboard = &self.settings().keyboard;
+        let has_key = |id| {
+            super::customize_drawer::keyboard_mapping_input(self.device().layout_id, id).is_some()
+        };
+        // QL derives these fixed exclusions from the active layout's buttonList.
+        // Its changeGameMode sets isWindowsKeyDisabled to the enabled state;
+        // Menu and Copilot share that value instead of having independent toggles.
+        let has_menu = has_key("KEY_APPLICATION");
+        let has_copilot = has_key("DKM_D2") || has_key("DKM_F6");
+        surface::panel_with_control(
+            crate::i18n::t("GAMING_MODE_HEADER"),
+            h_flex()
+                .items_center()
+                .gap(surface::css(10.))
+                .child(
+                    Switch::new("gaming-enabled")
+                        .accessibility_label(crate::i18n::t("GAMING_MODE_HEADER"))
+                        .checked(keyboard.gaming)
+                        .on_change(cx.listener(|this, value, window, cx| {
+                            this.edit(window, cx, |settings| settings.keyboard.gaming = *value)
+                        })),
+                )
+                .child(
+                    surface::asset_button(
+                        "gaming-help",
+                        "synapse/help-default.svg",
+                        "游戏模式说明",
+                        cx,
+                    )
+                    .tooltip(crate::i18n::t("GAMING_MODE_TOOLTIP")),
+                ),
+            cx,
+        )
+        .child(
+            Checkbox::new("gaming-in-game")
+                .label(crate::i18n::t("APPLY_IN_GAME_ONLY"))
+                .checked(keyboard.in_game)
+                .disabled(!keyboard.gaming)
+                .on_change(cx.listener(|this, value, window, cx| {
+                    this.edit(window, cx, |settings| settings.keyboard.in_game = *value)
+                })),
+        )
+        .child(
+            div()
+                .when(!keyboard.gaming, |description| description.opacity(0.3))
+                .child(crate::i18n::t("GAMING_MODE_DESC")),
+        )
+        .child(
+            Checkbox::new("gaming-windows")
+                .label(crate::i18n::t("DISABLE_WINDOWS_KEY"))
+                .checked(keyboard.gaming)
+                .disabled(true),
+        )
+        .when(has_menu, |panel| {
+            panel.child(
+                Checkbox::new("gaming-menu")
+                    .label(crate::i18n::t("DISABLE_MENU_KEY"))
+                    .checked(keyboard.gaming)
+                    .disabled(true),
+            )
+        })
+        .when(has_copilot, |panel| {
+            panel.child(
+                Checkbox::new("gaming-copilot")
+                    .label(crate::i18n::t("DISABLE_COPILOT_KEY"))
+                    .checked(keyboard.gaming)
+                    .disabled(true),
+            )
+        })
+        .child(
+            Checkbox::new("gaming-alt-tab")
+                .label(crate::i18n::t("DISABLE_ALT_TAB"))
+                .checked(keyboard.disable_alt_tab)
+                .disabled(!keyboard.gaming)
+                .on_change(cx.listener(|this, value, window, cx| {
+                    this.edit(window, cx, |settings| {
+                        settings.keyboard.set_disable_alt_tab(*value)
+                    })
+                })),
+        )
+        .child(
+            Checkbox::new("gaming-alt-f4")
+                .label(crate::i18n::t("DISABLE_ALT_F4"))
+                .checked(keyboard.disable_alt_f4)
+                .disabled(!keyboard.gaming)
+                .on_change(cx.listener(|this, value, window, cx| {
+                    this.edit(window, cx, |settings| {
+                        settings.keyboard.disable_alt_f4 = *value
+                    })
+                })),
+        )
+        .into_any_element()
     }
 }

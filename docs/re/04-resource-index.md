@@ -2,7 +2,7 @@
 
 ## Rust 已打包资源（重构后补充）
 
-2026-10-01 复核：当前 [manifest.json](../../assets/synapse/manifest.json) 包含 **185 条源/输出记录**，其中 157 条来自 `.ref/devices`，20 条来自 `.ref/frontend`，3 条来自新取得的 `.ref/settings`，4 条字体来自 `.ref/synapse-asar/electron/assets/fonts`，另 1 条来自项目已有的 182 Dashboard 历史下载 PNG。每条记录保留源路径及源/输出 SHA-256；位图另有像素尺寸和实际色彩模式。下文原始库存表保留此前快照，新增 Settings、Gamer Room 和配对资源及当前消费者见[资源使用审计](13-resource-usage.md)。同步依据是原版代码、CSS 与资源引用，旧截图不作为依据；本轮样式使用方式见 [UI 样式复核](06-style-source-audit.md)。
+2026-10-02 复核：当前 [manifest.json](../../assets/synapse/manifest.json) 包含 **234 条源/输出记录**（94 PNG、116 SVG、4 TTF、20 JSON），其中 **191 项有当前生产代码消费者**，43 项没有当前消费者。源文件来自 `.ref` 原始包、原 JS/CSS 的静态内嵌数据，以及原代码指向的精确下载 URL。每条记录保留源路径及源/输出 SHA-256；位图另有像素尺寸和实际色彩模式。下文原始库存表保留此前快照，Settings、Gamer Room、Dashboard、配对及映射选中态的当前消费者见[资源使用审计](13-resource-usage.md)。同步依据是原版代码、CSS 与资源引用，旧截图不作为依据；本轮样式使用方式见 [UI 样式复核](06-style-source-audit.md)。
 
 [prepare-resources.py](../../tools/prepare-resources.py) 从同一份记录生成清单和 [embedded.rs](../../assets/synapse/embedded.rs)，[resources.rs](../../src/resources.rs) 的 `SynapseAssets` 直接包含该嵌入表，并保留 GPUI Kit 通用资源回退。资源已编译进程序，运行时无需读取 `.ref`；重新生成也不会覆盖原始 `.ref`。转换依赖见 [requirements-resources.txt](../../tools/requirements-resources.txt)。
 
@@ -11,13 +11,13 @@
 - 182 edition 0、128–132 的正面与底部 DPI 图，653 edition 0/128 的 layout 1–12、15–18 及 edition 129/130 的 layout 1 图，777 edition 0 产品图均已按原 Webpack 请求打包。`device_image(pid, edition_id, layout_id, part)` 优先选择精确变体；依据原 `wp/pM` 的 catch 分支，缺 edition 请求时回退到 edition 0 的相同 layout。182/777 忽略 layout。653 的原 `km.render` 调用 `MM/pM` 时明确传入 `layoutId: this.props.layoutId || 1`，因此旧配置缺字段形成的 layout 0 按默认 layout 1 处理。演示 PID 9001 映射到 653，演示设备明确声明 layout 1。
 - 对 999 等没有已知图片的非零键盘 layout，本项目额外显示 layout 1 通用预览：先取原 edition 的 layout 1，再取 edition 0/layout 1；该行为是本项目对未识别布局的补充，原 `pM` 没有这条回退。`resolve_device_image(...)` 返回实际 `asset/edition_id/layout_id` 与 `is_fallback_preview`：默认 0→1 不是未知预览，非零未知布局回退则标为预览。UI 对全部 16 种已知布局使用各自命中区域；预览图不启用按键命中或映射，也不声明设备的真实布局。
 - 原请求的 1x/3x 位图均保留并转为透明 PNG；运行时选 3x。653 腕托与 roller 白色分支只对应 edition 130；API 的 `KeyboardDial` 当前指 roller。Command Dial 自定义模式使用原 `Em` 的 `keyboard-653-digital-dial.png`；说明入口使用独立圆盘 `keyboard-653-dial.png` 与原指示灯图标。腕托/roller 的显示仍需要真实连接或输入状态，资源准备不代表页面伪造该状态。
-- 182 Dashboard 单独使用 [dashboard-182.png](../../assets/synapse/dashboard-182.png)，由已有 [历史下载文件](../../assets/mouse-182-dashboard3x.png) 原样复制，尺寸 750×420，适配原版 250×140 contain 区域。清单标为 `historical_local_download`，并记录原前端设备数据可追查的 [dashboard3x AVIF URL](https://apps.razer.com/synapse/products/182/ui/182_0/PluginImages/182_0_0_dashboard3x.avif)；原下载/转换元数据缺失，不能宣称该 PNG 来自本轮 `.ref/devices` 或已经与远程 AVIF 校验一致。653/777 的 Dashboard 图在本地缺失，不以 Customize 的 prd 图替代。
+- Dashboard 独立使用原 `PluginImages/*_dashboard3x.avif` 图片，已从精确 URL 下载 182 的 6 个 edition、653 的 34 个 edition/layout 组合及 777 标准图，共 41 个身份、19 张去重 PNG。[dashboard-image-map.json](../../assets/synapse/dashboard-image-map.json) 保留 URL、原 AVIF 与输出哈希；[dashboard-182.png](../../assets/synapse/dashboard-182.png) 也由本次原 AVIF 重新转换。[历史下载文件](../../assets/mouse-182-dashboard3x.png) 仅保留作追溯。`dashboard_image` 对键盘 layout 0 使用 1，未知明确 edition/layout 返回无图；主页面及配对页已接入，不使用 Customize 图片替代。
 - 653 Chroma 区域 SVG/配置、16 种 Customize 布局的原始字段及 1901 个精确 path/circle/rect 形状；每布局另保留 4 个无几何拨轮子输入。Command Dial mapping 和 Chroma Studio 图标保留原 SVG。Chroma 区域与 Customize 命中几何分别取自原代码，不能互换。Bezier 控制点由[几何解析器](../../tools/keyboard_geometry.py)保留，绘制和命中使用同一数据。
 - Sound/Mic EQ Reset 的 default/hover/active 三态 SVG，历史左右箭头、设置、Profile 与 Synapse 标志已同步并被界面引用；这些 SVG 直接复制原内容。
 - 帮助图标源 `icon_help.377359c3.svg` 是通过 `#default/#hover/#active` 选择视口的 sprite。生成器保留原路径，为三个输出分别设置源 `<view>` 对应的根 `viewBox` 和 26×26 尺寸，界面按悬停/按下状态切换，避免把整张精灵作为单个图标渲染。
-- 抽屉 normal/active 两态及原 `icon_closepanel` 已接入输入列表；14枚原 `icon_config_*` 分类 SVG 与原 CSS 内嵌灯光 PNG 用于映射分类。宏/跨设备/Chroma 服务尚不可用，分类资源存在不表示服务已完成。
+- 抽屉 normal/active 两态及原 `icon_closepanel` 已接入输入列表；14 枚原 `icon_config_*` 分类 SVG 与原 CSS 内嵌灯光 PNG 各自的默认/选中态用于映射分类，映射面板关闭按钮使用独立的 `mapping-close.svg`。宏/跨设备/Chroma 服务尚不可用，分类资源存在不表示服务已完成。
 - 帮助页外链图标直接同步原 SVG，更多/更少箭头从 182 main 的内联 `Ed/qR` 提取原 path，保留20×20视口及currentColor，见[帮助规格](../screens/11-help.md)。
-- 主前端 Add 默认/hover、Dashboard 拖动、通用展开箭头默认/hover 均采用原 SVG。主前端 `55` CSS 与设备目录使用同名文件，此处直接同步 `.ref/devices/182` 的文件：`.box_img_2:before` 使用 18×18 Add；Dashboard collapse 的箭头显示 10px，拖动图在 22×19 容器内旋转 90°。Select 使用同一默认展开箭头，展开时旋转 180°；默认箭头为 `#999`，hover 版为 `#fff`。
+- 主前端 Add 默认/hover、Dashboard 拖动、通用展开箭头默认/hover 均已同步原 SVG。主前端 `55` CSS 与设备目录使用同名文件，此处直接同步 `.ref/devices/182` 的文件：`.box_img_2:before` 使用 18×18 Add；Dashboard collapse 的箭头显示 10px，原版拖动图在 22×19 容器内旋转 90°。当前拖动图尚无消费者。Select 使用同一默认展开箭头，展开时旋转 180°；默认箭头为 `#999`，hover 版为 `#fff`。
 - 182 Performance 的 Windows/Windows 11 图标、Sensitivity XY 默认/active/disabled 三态及五个阶段红/绿/蓝/青/黄三角已同步。Windows 图来自 `.img-text .windows/.windows-11` 的媒体引用，原显示 44×44、右边距 20；不是 `um` 中的内嵌 SVG，`um → Nm` 实际只渲染对应 CSS 类。
 - Smart Tracking 介绍关闭图标的白/绿两态已同步；原 CSS 的关闭区域为 36×36，图标显示 20px，hover/active 共用绿色。它属于介绍提示，不表示存在表面扫描流程。
 - Lighting 的 `install_chroma.85d4bc96.avif` 转为原尺寸 520×180 的 `install-chroma.png`；同步图标、左右/顺逆时针/向内向外方向的普通及 active SVG、调色板 None SVG 共 15 项已纳入生成和嵌入表。目标名称与当前 Lighting 页面引用一致。
@@ -25,7 +25,7 @@
 
 [product-image-map.json](../../assets/synapse/product-image-map.json) 保存从原 Webpack context 字面量及媒体导出模块提取的 **98 个请求**，每个请求记录原 main/chunk 路径、模块 ID 和 SHA-256；[product-images.rs](../../assets/synapse/product-images.rs) 生成 **56 条产品/edition/layout/部件解析项**。相同源文件只转换一次；不会用相似文件名猜测不存在的变体，也不把预览回退伪装成原 Webpack 请求。当前 Customize 和声卡产品区域已通过此 resolver 选择图片；653 已知 layout 的图片、命中几何、抽屉与编辑器能力均按同一布局解析。未知 layout 只显示通用预览。
 
-重新生成资源的顺序是 `node tools/extract-keyboard.cjs`、`python tools/prepare-resources.py`；配对 SVG 的静态提取出处另存 `assets/synapse/pairing-manifest.json`，生成器核对源/输出哈希后并入总表。校验使用仅依赖 Python 标准库的 [validate-resources.py](../../tools/validate-resources.py)，检查源/输出 SHA-256、PNG 文件头与尺寸、SVG 根元素及帮助视口、嵌入表完整性、每个原请求的模块与媒体导出证据、Rust 索引一致性和键盘输入身份。本轮资源增量已通过静态提取/转换重新生成并校验：185 条资源记录、98 个原请求、56 条解析项、16 布局 / 1901 个命中形状；不执行原 JS、测试、应用或 DLL。此前 `node tools/extract-keyboard.cjs --check` 的结果仍适用于本轮未变更的原布局输入。
+重新生成资源的顺序是 `node tools/extract-keyboard.cjs`、`.work/resource-env/Scripts/python.exe tools/prepare-resources.py`；后者使用现有资源环境，离线转换已下载的源文件。配对 SVG 的静态提取出处另存 `assets/synapse/pairing-manifest.json`，生成器核对源/输出哈希后并入总表。校验使用仅依赖 Python 标准库的 [validate-resources.py](../../tools/validate-resources.py)，检查源/输出 SHA-256、PNG 文件头与尺寸、SVG 根元素及帮助视口、嵌入表完整性、每个原请求的模块与媒体导出证据、Dashboard 下载映射、Rust 索引一致性和键盘输入身份。本轮资源增量已通过静态提取/转换重新生成并校验：234 条资源记录、98 个原请求、56 条 Customize 解析项、41 个 Dashboard 身份、16 布局 / 1901 个命中形状；不执行原 JS、测试、应用或 DLL。此前 `node tools/extract-keyboard.cjs --check` 的结果仍适用于本轮未变更的原布局输入。
 
 默认布局更正后没有重新生成媒体文件；验证器额外核对原 `layoutId || 1` 字面量、四个已知 edition 的 layout 1 预览资源及原请求表没有伪造 layout 0/999，复验通过。源码可通过 `node .work/audit-query.cjs 653 pM 'km#render'` 复查：653 main 中 pM 的 UTF-16 范围为 7811915–7815102，km class 为 7867751–7874954。
 
@@ -307,7 +307,7 @@ CSS 生成的内容包括 dot-bg 点阵、控件轨道/滑块、部分三角/边
 
 ## 8. 语言资源
 
-产品翻译 context 位于各产品 `./{pid}_{edition}/translations/*.js`；组件先使用 locale key，再由 language reducer/翻译函数解析。主前端完整中文/英文包位于 `.ref/frontend/locales`；当前项目另有 assets/locale 和 locales 数据。
+产品翻译 context 位于各产品 `./{pid}_{edition}/translations/*.js`；组件先使用 locale key，再由 language reducer/翻译函数解析。主前端完整中文/英文包位于 `.ref/frontend/locales`；当前项目运行期语言数据位于 `locales/`。
 
 下面给出当前产品的 en / zh-CN / index 入口，避免只从共有词汇表推断页面：
 
@@ -336,13 +336,13 @@ CSS 生成的内容包括 dot-bg 点阵、控件轨道/滑块、部分三角/边
 
 | 本地文件 | 字节 | 当前使用 |
 |---|---|---|
-| [assets/mouse-182-dashboard3x.png](../../assets/mouse-182-dashboard3x.png) | 80271 | 已有历史下载，原样纳入生成流程为 `synapse/dashboard-182.png`；750×420，仅用于 Dashboard，不能当 Customize prd |
-| [assets/window-close.svg](../../assets/window-close.svg) | 258 | shell.rs 通过 include_bytes! 加载；需逐图比较原包状态 |
-| [assets/window-maximize.svg](../../assets/window-maximize.svg) | 465 | shell.rs 通过 include_bytes! 加载；需逐图比较原包状态 |
-| [assets/window-minimize.svg](../../assets/window-minimize.svg) | 353 | shell.rs 通过 include_bytes! 加载；需逐图比较原包状态 |
-| [assets/window-restore.svg](../../assets/window-restore.svg) | 228 | shell.rs 通过 include_bytes! 加载；需逐图比较原包状态 |
-| [assets/locale/en.json](../../assets/locale/en.json) | 371474 | 本地语言数据；不代表产品路由/功能证据 |
-| [assets/locale/zh-CN.json](../../assets/locale/zh-CN.json) | 363784 | 本地语言数据；不代表产品路由/功能证据 |
+| [assets/mouse-182-dashboard3x.png](../../assets/mouse-182-dashboard3x.png) | 80271 | 保留的历史下载；当前 Dashboard 已从可追溯 PluginImages AVIF 重新转换，见 [资源使用清单](13-resource-usage.md) |
+| [assets/window-close.svg](../../assets/window-close.svg) | 258 | 未接入；当前标题栏使用 Kit 窗口按钮 |
+| [assets/window-maximize.svg](../../assets/window-maximize.svg) | 465 | 未接入；当前标题栏使用 Kit 窗口按钮 |
+| [assets/window-minimize.svg](../../assets/window-minimize.svg) | 353 | 未接入；当前标题栏使用 Kit 窗口按钮 |
+| [assets/window-restore.svg](../../assets/window-restore.svg) | 228 | 未接入；当前标题栏使用 Kit 窗口按钮 |
+| [locales/en.json](../../locales/en.json) | 371475 | 当前运行期英文语言数据；不代表产品路由/功能证据 |
+| [locales/zh-CN.json](../../locales/zh-CN.json) | 363785 | 当前运行期中文语言数据；不代表产品路由/功能证据 |
 | [assets/synapse/stream-777.png](../../assets/synapse/stream-777.png) | 23398 | 777 Lighting 的 Stream Reactive Lighting 插图 |
 | [assets/synapse/eq-reset.svg](../../assets/synapse/eq-reset.svg) | 565 | 777 Sound/Mic Reset 的默认图标；hover/pressed 变体也已打包 |
 | [assets/synapse/keyboard-653-dial-mapping.svg](../../assets/synapse/keyboard-653-dial-mapping.svg) | 388 | 653 Customize Command Dial mapping affordance |

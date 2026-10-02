@@ -59,7 +59,21 @@ dashboard [.reflow]
 {productId}_{editionId}_{layoutId}_dashboard1x.png
 ```
 
-这是 Dashboard 图，不能用 Customize 的 prd 图名称替代。资源索引单独列出本地下载情况。教程视频 `Synapse Dashboard Tutorial.4d4e2f9c.mp4` 当前缺失；有引用不表示视频能播放。
+这是 Dashboard 图，不能用 Customize 的 prd 图名称替代。资源索引单独列出本地下载情况。教程视频 `Synapse Dashboard Tutorial.4d4e2f9c.mp4` 未嵌入本地；2026-10-02 对原 `https://apps.razer.com/synapse/dashboard/static/media/` 地址的 HEAD 返回 200、`video/mp4`、393264 bytes，现提供浏览器播放入口，未在 GPUI 中内嵌或自动播放。
+
+`[RUST 当前实现]` Dashboard 卡片和设备与模块行现在共用 `resources::dashboard_image(product_id, edition_id, layout_id)`，按产品、配色和键盘布局选择原 `PluginImages` 图。2026-10-02 原 URL 核实后覆盖 41 个映射、19 张去重图片；包括 182、653、777 的标准图及已确认的配色/键盘布局。键盘 `layoutId:0` 依原规则按布局 1 处理，未知非零布局或配色保持占位，不暗换其他配色，也不使用 Customize 的产品图。
+
+### 静态入口、折叠与单步教程（2026-10-02）
+
+[main_pages.rs](../../src/shell/main_pages.rs) 已恢复设备、模块、在线服务三个可折叠组。三个标题都由 Base Button 提供键盘激活和 `aria_expanded`，按原 `.collapse` 左对齐，避免 styled Button 内部居中的内容容器改变位置；每组 `margin:10px 0`，展开内容距标题 10，卡间距 20。折叠保留在当前 AppShell 生命周期中，尚未读取原服务的分组持久化或排序。设备名恢复 uppercase 和 10px 横向内边距；本地快照/预览标记保留，不宣称连接或安装状态。空列表采用原 `ee` 的 290×220 虚线卡，提供兼容设备列表和 Razer Store 原链接；标题保留“没有可显示的设备”，避免把未扫描的本地空列表称为硬件未发现。
+
+模块静态项的证据是 `main` 模块 **22431** 的 `AVAILABLE_MODULES`，以及 4130 的 `Li.updateGroupModuleItems`：`iotModule`、`tourModule` 不依赖 installedModules，armory 则另受能力条件过滤。Wi-Fi 卡打开通用添加设备类型选择流程；Tour 卡对应 `X.showModules` / `focusTab` 的独立应用注册项，当前保留原标志和名称、禁用并解释尚未接入，未把它改成下述 Dashboard 教程。未知安装状态的其他模块及 armory 不伪造为已安装。
+
+四个在线服务来自 `Li.updateGroupServiceItems`，按 Razer Store、Gold & Silver、社区、支持的原顺序、图片、locale 描述和 URL 呈现。`de` 与 `.box-item-full-image` 使用 290×220 整卡、140px 图片、下方 10px 空隙和 14/12px 名称/描述；图片按原 contain 比例显示，描述允许换行，整卡是可键盘访问的外部 Link。
+
+[dashboard_tutorial.rs](../../src/shell/main_pages/dashboard_tutorial.rs) 已实现 `Si` 的一个步骤。`DASHBOARD_TUTORIAL_HEADER` 原文就是 **Gamer Room Dashboard**，正文介绍在 Gamer Room 查看设备；它指向第二个主导航，而不是模块 Tour。导航带上的零尺寸 Base Popover 锚点恢复 `left = 第二导航左侧 − 92`，内容顶部按前端坐标 108（另加宿主 42px）、宽 290、padding 20、橙色 1px 边、圆角 5；36px 指示器中心为第二导航左侧 +50，前端顶部 70。标题 16px、正文 14px、关闭按钮 100×27、距正文 20，使用原 `CLOSE` key。媒体区明确提供已核查的原视频外链。关闭按钮、Escape 和点外部均完成本步骤并恢复焦点；独立 `dashboard_tutorial_seen` 参与本地串行辅助保存和设置页重置，设置页丢弃其他编辑不回滚已完成教程。
+
+以上为源码、资源和类型检查范围内的对照；未运行真实窗口测量。推荐/合作伙伴、真实设备去重/状态、安装进度、拖动排序和原服务持久化仍需真实数据链路；Base Popover 的窗口边缘修正及多语言、缩放、焦点恢复仍需窗口验收。
 
 ## 3. Gamer Room
 
@@ -74,11 +88,28 @@ dashboard [.reflow]
 
 两条原视频的 `https://apps.razer.com/synapse/dashboard/static/media/` 地址均已只读核查返回 200 和 `video/mp4`，当前提供明确的“播放原教程视频”外链，未在 GPUI 中内嵌播放器。Aether 背景、灯泡/灯带/台灯图片、添加设备和手机应用/二维码资源已从原构建路径取得；普通台灯图来自 9388 模块 71610 的内嵌 PNG。资源由统一生成器纳入嵌入表和清单。
 
-`[RUST 当前实现]` [service_pages.rs](../../src/shell/service_pages.rs) 的 `GamerRoomPage` 已实现 531px 营销背景、三处热点与四种产品详情、原产品链接、Synapse 覆盖和 Gamer Room 应用控制两个可折叠组，以及两步教程的上一步/下一步/跳过/完成；完成事件与设置页的教程重置入口分开管理。热点支持鼠标预览和键盘点击详情，普通台灯与专业版都可从详情到达。没有 IoT 数据时显示分组说明和有效的添加入口，不生成设备卡。
+`[RUST 当前实现]` [service_pages.rs](../../src/shell/service_pages.rs) 的 `GamerRoomPage` 已实现 531px 营销背景、三处热点与四种产品详情、原产品链接、Synapse 覆盖和 Gamer Room 应用控制两个可折叠组，以及两步教程的上一步/下一步/跳过/完成；完成事件与设置页的教程重置入口分开管理。2026-10-02 根据公共 CSS 修正居中的绿色 24px 标题、16px 副标题、底部外链和四段渐变遮罩；灯泡热点恢复 `left:10%;top:37%`，灯带与台灯保留原位置。热点支持鼠标预览和键盘点击详情，普通台灯与专业版都可从详情到达。没有 IoT 数据时显示分组说明和有效的添加入口，不生成设备卡。
 
-添加流程的完整来源实际在 [IotPopupRoot.290be417.chunk.js](../../.ref/frontend/static/js/IotPopupRoot.290be417.chunk.js)，模块 **28256**。`gt` 按 query 的 `iotPopupType` 选择类型；Gamer Room 的 `ze.handleOpenAddModel` 传 `GAMER_ROOM_DEVICE`，因此进入 `dt → lt/ct`，不是通用类型选择或 Key Light 分支。当前已接入准备说明 → 手机应用/原二维码 → 返回，以及准备说明 → 设备搜索页面 → 返回/关闭；原兼容列表和帮助链接可访问，切步重置到保留的焦点容器。
+教程使用受控 GPUI Base `Popover` 保存两步状态，Escape 和点外部关闭由组件处理并恢复此前焦点；跳过、完成及关闭均只标记教程已读，不改变设备设置。教程保留原橙色强调，通过产品主题 token 取色。视频仍为外链；媒体区域明确显示浏览器播放入口，没有假装在 GPUI 内播放。原热点 SVG 依赖 SMIL 椭圆半径动画，嵌入资源使用原动画采样后的静态帧，避免 GPUI 无动画支持时圆环完全不可见；没有加入持续重绘计时器。两个空设备组也按 `.gr-add-device` 恢复为 186×176 虚线说明卡，只有 Synapse 组显示 `ADD_NEW_DEVICE` 并允许添加；56px 添加图标属于准备弹窗，不再放入空组卡。
+
+添加流程的完整来源实际在 [IotPopupRoot.290be417.chunk.js](../../.ref/frontend/static/js/IotPopupRoot.290be417.chunk.js)，模块 **28256**。`gt` 按 query 的 `iotPopupType` 选择类型；Gamer Room 的 `ze.handleOpenAddModel` 传 `GAMER_ROOM_DEVICE`，因此进入 `dt → lt/ct`，不是通用类型选择或 Key Light 分支。当前已接入准备说明 → 手机应用/原二维码 → 返回，以及准备说明 → 设备搜索页面 → 返回/关闭；原兼容列表和帮助链接可访问，切步重置到保留的焦点容器。准备说明使用原 520px 内容宽度，二维码使用 600px 内容宽度和 `B` 的 `LIGHTING_DEVICE_MOBILE_QR_DOWNLOAD_APP` 文案。服务不可用页另外提供手机应用设置入口，返回保留搜索页来源，而不是一律退到准备页。
 
 原 `dt` 的发现列表由 `ze/He` 调用 IoTNative 扫描与事件，选择已有网络设备后才进入 `at` 并写 `iot_devices`。本地未接通该 transport，搜索页面明确显示“设备搜索服务未连接”，不启动假计时器、不把未查询结果称为“没有设备”，也不启用识别/添加成功。`CHOOSE_NETWORK`、Wi-Fi 密码、短时切换网络等属于 `rt` 的 Key Light 流程，不能加到 Gamer Room 直接入口。设备卡内 `S/Q` 的电源、覆盖设置与原设备页入口同样需要真实 IoT 身份和状态。
+
+### 弹出层样式核对（2026-10-02）
+
+外层入口证据还包括 [App 的 `z` 组件](../../.ref/frontend/static/js/App.eb32d7cd.chunk.js)：它以 `iot-device-popup iot-device-popup__mt` 包裹 IotPopup iframe，不能只看 iframe 内的通用 Modal。下表列出源码几何和当前实现；这是静态核对，未运行窗口进行像素测量。
+
+| 表面 | 原 JS/CSS 细节 | 当前 Rust |
+|---|---|---|
+| 添加设备外壳 | 顶部 106；`max-width:850`，`min-device-width:1331` 时 1280；底部贴窗口；`#222`、无边框、圆角 5、wrapper padding 0；全窗黑色 70% backdrop | `AddGamerRoom` 自有 retained entity + Base Dialog，按显示器宽度选断点，显式绘制尺寸和遮罩；不继承 Kit Dialog 的 1/10 顶偏、16px 边距或阴影 |
+| 添加标题与关闭 | 标题栏高 36、居中、下边框 `#5d5d5d`；右上关闭区 36×36，白色图标 20×20 | 单独标题栏和原 `icon_close_white`；移除额外底部关闭按钮。原 backdrop 无关闭回调，因此点外不关闭；X/Escape 关闭并恢复打开前焦点 |
+| 准备页 | 内容宽 520；图标距顶 30、56×56；说明距图 24；帮助链接上 6/下 22；手机操作条 420×60、40px 图/24px 箭头；第二说明距上 60；搜索按钮距上 27、居中 | 按各区域单独设置间距；恢复下划线外链和原箭头，避免统一 gap 或 outline 外链改变布局 |
+| 二维码页 | 内容宽 600；应用图 32、顶部 10；二维码 110×110，下 20；返回居中、距上 30 | 保留真实二维码与下载 URL，扫码说明使用 `B` 的原 key；搜索页进入此处时返回原搜索页 |
+| 两步教程 | `#111`、橙色 1px、圆角 5、总宽 290、padding `40px 20px 20px`；两步原锚点 `(220,22)` / `(213,-25)`；36px 指示图；按钮 100×27、间距 10 | Base Popover 锚定第一组，不再放在右侧教程按钮下；根据组的 30px margin 换算锚点。去除 Kit 默认面板阴影/内边距；步骤、跳过和页数位于原位置 |
+| 商品营销卡 | `.gr-display` 黑色 50%、圆角 5、min-height 312、min-width 400、padding `36px 24px`；台灯双卡间隔 36；`translateX(-23.5%/-86.5%)`、垂直居中 | Hover Base Popup 与键盘点击 Base Popover 共用同一营销内容和锚点；整张商品卡是外部链接，不再另开带重复标题/关闭 footer 的 Kit Dialog |
+
+原营销卡的 `backdrop-filter:blur(30px)` 没有在当前 GPUI 层实现；静态热点没有 SMIL 动画；教程没有内嵌视频播放能力。Base Popup 会保护窗口边缘可达性，窗口缩小、缩放和焦点回归仍需真实窗口验收。宽屏 Gamer Room 在标准化视口宽度达到 2560 时恢复 2500×930 横幅，壳层相应解除 1260 内容上限。
 
 ## 4. Devices & Modules
 
@@ -114,7 +145,9 @@ dashboard [.reflow]
 
 `[RUST 当前实现]` 设备行保留从当前工作区打开设备的操作，并提供设备快照详情：产品、序列号、当前设备/接收器固件和本地 Profile 数量。更新固件和移除操作因缺少真实安装/连接/目标版本状态保持禁用。
 
-`ModuleCatalog` 按本 chunk 的 `ne/te` 建立宏、Alexa、已关联的游戏、反馈、工坊目录，使用实际模块图标；宏/Alexa 的原说明图、中文描述和 Alexa 链接已接入。每行可展开/收起详情并保留状态。目录不是安装结果：安装状态、包大小、版本和可用更新均明确尚未读取，安装按钮禁用，不虚构已安装/可更新/卸载中分组。原 `O` 的卸载确认与清除设置勾选、`L` 的固件 release notes 和 `w` 的进度/重试依赖真实服务项目，尚未获得这些数据。
+`ModuleCatalog` 按本 chunk 的 `ne/te` 建立 Alexa、宏、已关联的游戏、反馈、工坊目录，使用实际模块图标；宏/Alexa 的原说明图、中文描述和 Alexa 链接已接入。仅原 `ne` 中带 `detail` 的 Alexa/宏显示展开入口并保留状态，其他模块不伪造说明面板。说明图恢复 `.item-description-image` 的 288×162，说明列为 592px，项目名保持 500px 列宽。目录不是安装结果：安装状态、包大小、版本和可用更新均明确尚未读取，安装按钮禁用，不虚构已安装/可更新/卸载中分组；尤其不把静态目录的 `size:0` 格式化为真实安装包 `< 1 MB`。原 `O` 的卸载确认与清除设置勾选、`L` 的固件 release notes 和 `w` 的进度/重试依赖真实服务项目，尚未获得这些数据。设备行同时区分本地快照和预览数据。
+
+模块说明是行内 `.item-moreInfo`，不是弹窗：背景 `#2d2d2d`、padding 20、最小高 202、图片右侧间隔 20，外链恢复为下划线文字。本项目另有设备快照详情，原 6505 没有可对应的同类信息 Dialog；它只沿用通用 `.modal-content` 的 `#111`、绿色 1px 边框、5px 圆角、400px 宽、`20px 30px` 内边距和居中按钮，数据行属于本地补充界面。该弹窗改为 `ModuleCatalog` 持有的 Base Dialog entity，并保留关闭/焦点恢复；不把它称为原固件或卸载流程。
 
 ## 5. Global Shortcuts
 
@@ -136,11 +169,9 @@ dashboard [.reflow]
 
 已证实的宿主 ABI 尚不能读取现有 `synapseGlobalShortcuts`/引擎配置，而原写入是替换整份配置。运行时“提交快捷键”入口因此保持禁用，不以本地列表覆盖未知原配置。编码完成不代表快捷键已注册；后台连接及服务边界见[运行时接入](../re/10-runtime-integration.md)。
 
-## 6. Settings 证据边界
+## 6. Settings 独立设置
 
-宿主 constants / app 路由证明设置应用存在；公共 CSS 中也有 .main-setting、.side-navigation、.setting-content。此前“完全不存在这些样式”的说法不准确。
-
-但本地未取得独立 `/synapse/settings/` 的完整渲染代码，因此 CSS 只能作为样式线索，不能证明账户、启动、通知、迁移等全部选项的顺序/处理。当前 [shell.rs](../../src/shell.rs) 中的设置内容属于本项目实现，不能反过来当原版证据；旧 `setting.rs` 不在当前编译入口中。
+已取得 `/synapse/settings/` 的完整 render 证据，详见[独立设置规格](12-settings.md)。720 chunk 的 `ho/uo` 分别渲染 Synapse 与 General；当前已接入通知、推荐、教程、语言、关于区域及本地偏好保存。启动、迁移及灯光控制权需要原服务，界面明确其未读取或未连接状态。旧 `setting.rs` 不在当前编译入口内，不作为界面覆盖依据。
 
 [runtime_page.rs](../../src/shell/runtime_page.rs) 已挂载“服务连接”面板：初始状态不启动服务，点击“连接并读取”后才由后台线程持有独立 worker，依次请求 HID 接口、服务版本和音频设备。每项结果与错误独立显示，支持刷新、展开读取详情和断开；断开/窗口退出的原生关闭和子进程等待留在后台，最近结果继续显示。HID 内容按接口呈现，包含 USB 标识、产品及序列号等元数据，同一物理设备可有多项；不把它们直接添加为 Dashboard 卡或设备工作区。版本与音频查询目前展示服务信息，未据此修改 Help 或产品 EQ。全部路径只做静态检查，本轮没有运行连接、DLL 或 HID API。
 
@@ -152,7 +183,7 @@ manifest 的 background_color=#ffffff 是 PWA 元信息，不代表应用内白�
 
 | 页面 | 当前已落实的代码 | 尚未接入 |
 |---|---|---|
-| Dashboard | 290px 整卡打开设备、250×140 图区、20px 间距、设备分组折叠；区分本地快照/预览 | 服务分组、拖动排序、教程、真实接口合并与设备状态；设置中的 HID 元数据查询不生成设备卡；专用 Dashboard 图不完整时保留占位 |
+| Dashboard | 290px 整卡打开设备、250×140 图区、20px 间距；设备/模块/在线服务折叠；空列表原双链接；Wi-Fi 与独立 Tour 边界、四个在线服务原卡；单步教程与独立本地已读状态；区分快照/预览 | 拖动排序、推荐/合作伙伴、安装服务分组、真实接口合并与设备状态、原分组持久化；Tour 独立应用；设置中的 HID 元数据查询不生成设备卡；未覆盖的专用 Dashboard 图保留占位 |
 | Devices & Modules | 80px 设备行、40px 图区、打开和快照详情；原五模块目录、图标、说明图、详情展开/收起与相关链接 | 真实安装/版本/更新清单、固件检查/升级、卸载/清除设置确认、进度和失败恢复 |
 | Gamer Room | 原营销背景/热点、四产品详情、两个折叠组；添加准备/二维码/搜索页面的返回与关闭；两步教程和原视频外链 | IoT 网络发现、识别/添加、真实设备卡及电源/覆盖设置；内嵌教程播放器 |
 | Global Shortcuts | 600px 内容区、顶部添加与 70px 添加卡；捕获/验证、编辑/复制/删除确认、292px 映射面板、保存/丢弃/继续、本地持久化；原引擎映射与 hash 编码 | 原快捷键读取协议未证实，整表替换提交禁用；宏/Chroma、原生 Turbo 事件及注册回执仍未接入 |

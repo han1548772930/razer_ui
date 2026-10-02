@@ -3,7 +3,10 @@
 #[path = "pairing_state.rs"]
 mod state;
 
-use crate::{i18n, resources, ui::surface};
+use crate::{
+    i18n, resources,
+    ui::{surface, theme::PairingColors},
+};
 use gpui_kit::base::FocusTrapElement as _;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -61,10 +64,11 @@ pub(super) struct PairingPage {
     transport: Option<Arc<dyn PairingTransport>>,
     request_task: Option<Task<()>>,
     watchdog: Option<Task<()>>,
-    recovery: Option<Task<()>>,
+    recovery: [Option<Task<()>>; 2],
     external_fallback: Option<Task<()>>,
     confirmation: Option<Confirmation>,
     confirm_focus: FocusHandle,
+    continuation_focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     hovered_badge: Option<String>,
 }
@@ -77,10 +81,11 @@ impl PairingPage {
             transport: None,
             request_task: None,
             watchdog: None,
-            recovery: None,
+            recovery: [None, None],
             external_fallback: None,
             confirmation: None,
             confirm_focus: cx.focus_handle(),
+            continuation_focus: cx.focus_handle(),
             return_focus: None,
             hovered_badge: None,
         }
@@ -88,39 +93,87 @@ impl PairingPage {
 
     /// Only feed actual service metadata. Preview devices and local snapshots
     /// must not be presented as detected pairing candidates.
+    #[allow(dead_code)] // Reserved for real DUALLINK metadata; HID enumeration cannot supply it.
     pub(super) fn replace_masters(
         &mut self,
         masters: Value,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<(), String> {
         let previous = self.state.generation();
+        let cancellation = self
+            .state
+            .busy()
+            .then(|| self.state.cancellation_context())
+            .flatten();
         self.state.replace_masters(masters)?;
         if self.state.generation() != previous {
+            if let Some((master, external)) = cancellation {
+                self.cancel_context(master, external, cx);
+            }
             self.clear_tasks();
-            self.confirmation = None;
+            self.close_confirmation(window, cx);
+            self.hovered_badge = None;
         }
         cx.notify();
         Ok(())
     }
 
+    #[allow(dead_code)] // Reserved for service-owned allMasters/duallink records.
     pub(super) fn set_external_devices(
         &mut self,
         devices: Value,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<(), String> {
+        let previous = self.state.generation();
+        let cancellation = self
+            .state
+            .busy()
+            .then(|| self.state.cancellation_context())
+            .flatten();
         self.state.set_external(devices)?;
+        if self.state.generation() != previous {
+            if let Some((master, external)) = cancellation {
+                self.cancel_context(master, external, cx);
+            }
+            self.clear_tasks();
+        }
+        if self.confirmation.as_ref().is_some_and(|confirmation| {
+            !self
+                .state
+                .cards()
+                .iter()
+                .any(|card| card.device() == confirmation.device())
+        }) {
+            self.close_confirmation(window, cx);
+        }
         cx.notify();
         Ok(())
     }
 
+    #[allow(dead_code)] // No verified DUALLINK service adapter exists in this application yet.
     pub(super) fn set_transport(
         &mut self,
         transport: Option<Arc<dyn PairingTransport>>,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.close_confirmation(window, cx);
         self.deactivate(cx);
         self.transport = transport;
         cx.notify();
+    }
+
+    pub(super) fn activate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.state.master().is_some() && self.transport.is_some() {
+            if self.state.busy() {
+                self.cancel_transport(cx);
+            }
+            self.state.invalidate();
+            self.clear_tasks();
+            self.execute(PairingRequest::ReadBindings, window, cx);
+        }
     }
 
     /// Invalidate all request IDs before releasing tasks. A response from an old
@@ -138,16 +191,26 @@ impl PairingPage {
     }
 
     fn clear_tasks(&mut self) {
+        self.clear_request_tasks();
+        for task in &mut self.recovery {
+            task.take();
+        }
+    }
+
+    fn clear_request_tasks(&mut self) {
         self.request_task.take();
         self.watchdog.take();
-        self.recovery.take();
         self.external_fallback.take();
     }
 
     fn cancel_transport(&self, cx: &Context<Self>) {
-        if let (Some(transport), Some((master, external))) =
-            (self.transport.clone(), self.state.cancellation_context())
-        {
+        if let Some((master, external)) = self.state.cancellation_context() {
+            self.cancel_context(master, external, cx);
+        }
+    }
+
+    fn cancel_context(&self, master: Value, external: bool, cx: &Context<Self>) {
+        if let Some(transport) = self.transport.clone() {
             cx.background_executor()
                 .spawn(async move {
                     let _ = transport
@@ -164,10 +227,9 @@ impl PairingPage {
                 PairingRequest::Scan(_) => "无法扫描设备：无线配对服务尚未接通。",
                 PairingRequest::ReadBindings => "无法读取已配对设备：无线配对服务尚未接通。",
                 PairingRequest::Bind(_) => "无法配对设备：无线配对服务尚未接通。",
-                PairingRequest::Unbind { .. } | PairingRequest::UnbindProduct(_) => {
-                    "无法解除配对：无线配对服务尚未接通。"
-                }
-                PairingRequest::Cancel => "无法确认取消结果：无线配对服务尚未接通。",
+                PairingRequest::Unbind { .. }
+                | PairingRequest::UnbindProduct(_)
+                | PairingRequest::ReclaimExternal(_) => "无法解除配对：无线配对服务尚未接通。",
             });
             cx.notify();
             return;
@@ -224,7 +286,8 @@ impl PairingPage {
                 return;
             }
         };
-        self.clear_tasks();
+        self.clear_request_tasks();
+        self.recovery[ticket.lane().index()].take();
         let operation = ticket.request().operation();
         let payload = ticket.request().payload(self.state.dual());
         let external = ticket.request().external();
@@ -242,7 +305,9 @@ impl PairingPage {
                 page.receive(&response_ticket, response, window, cx)
             });
         }));
-        if ticket.request().fallback().is_some() {
+        if ticket.request().fallback().is_some()
+            || matches!(ticket.request(), PairingRequest::ReclaimExternal(_))
+        {
             let fallback_ticket = ticket.clone();
             self.external_fallback = Some(cx.spawn_in(window, async move |page, cx| {
                 cx.background_executor().timer(Duration::from_secs(2)).await;
@@ -293,7 +358,7 @@ impl PairingPage {
             PairingStatus::BindError | PairingStatus::UnbindError
         ) {
             let generation = self.state.generation();
-            self.recovery = Some(cx.spawn_in(window, async move |page, cx| {
+            self.recovery[lane.index()] = Some(cx.spawn_in(window, async move |page, cx| {
                 cx.background_executor().timer(Duration::from_secs(4)).await;
                 let _ = page.update_in(cx, |page, _, cx| {
                     page.state.recover(generation, lane, status);
@@ -308,11 +373,13 @@ impl PairingPage {
     }
 
     fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // 4130 sends CANCEL once and immediately refreshes BIND_INFO. CANCEL
+        // has no response handler, so waiting for an acknowledgement strands it.
         self.cancel_transport(cx);
         self.state.invalidate();
         self.clear_tasks();
-        self.confirmation = None;
-        self.execute(PairingRequest::Cancel, window, cx);
+        self.close_confirmation(window, cx);
+        self.execute(PairingRequest::ReadBindings, window, cx);
     }
 
     fn show_confirmation(
@@ -321,8 +388,19 @@ impl PairingPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.state.busy()
+            || !self
+                .state
+                .cards()
+                .iter()
+                .any(|card| card.device() == confirmation.device() && card.actionable())
+        {
+            self.state
+                .set_error("所选设备已不可操作，请等待当前操作完成或重新扫描。");
+            cx.notify();
+            return;
+        }
         self.return_focus = window.focused(cx);
-        self.state.select(confirmation.device().key());
         self.confirmation = Some(confirmation);
         window.focus(&self.confirm_focus, cx);
         cx.notify();
@@ -341,10 +419,27 @@ impl PairingPage {
             return;
         };
         self.close_confirmation(window, cx);
+        if self.state.busy()
+            || !self
+                .state
+                .cards()
+                .iter()
+                .any(|card| card.device() == confirmation.device() && card.actionable())
+        {
+            self.state
+                .set_error("设备信息已变化，请重新选择并确认配对操作。");
+            cx.notify();
+            return;
+        }
         match confirmation {
             Confirmation::Pair { device, external } => {
-                let request = self.state.pair_request(device, external);
-                self.execute(request, window, cx);
+                match self.state.pair_request(device, external) {
+                    Ok(request) => self.execute(request, window, cx),
+                    Err(error) => {
+                        self.state.set_error(error);
+                        cx.notify();
+                    }
+                }
             }
             Confirmation::Unpair { device, external } => {
                 self.execute(PairingRequest::Unbind { device, external }, window, cx)
@@ -443,7 +538,11 @@ impl PairingPage {
     fn device_card(&self, card: DeviceCard, cx: &mut Context<Self>) -> AnyElement {
         let device = card.device().clone();
         let key = device.key().to_string();
-        let paired = card.paired();
+        let paired = card.paired()
+            || (card.status() == PairingStatus::UnbindError
+                && !card.external()
+                && !device.disconnected());
+        let actionable = card.actionable();
         let external = card.external();
         let status = card.status();
         let busy = matches!(
@@ -456,7 +555,6 @@ impl PairingPage {
         let hovered = self.hovered_badge.as_deref() == Some(key.as_str());
         let action_device = device.clone();
         let hover_key = key.clone();
-        let selected = self.state.selected() == Some(key.as_str());
         let mut content = v_flex()
             .id(SharedString::from(format!("pairing-card-{key}")))
             .test_support()
@@ -465,22 +563,8 @@ impl PairingPage {
             .min_h(surface::css(220.))
             .p(surface::css(10.))
             .rounded(surface::css(5.))
-            .border_1()
-            .border_color(if selected {
-                cx.theme().primary
-            } else {
-                cx.theme().transparent
-            })
             .bg(cx.theme().button_primary_foreground.opacity(0.3));
-        if busy {
-            content = content.child(
-                h_flex()
-                    .h(surface::css(20.))
-                    .gap(surface::css(6.))
-                    .child(spinner::Spinner::new().small())
-                    .child(i18n::t(status.key())),
-            );
-        } else {
+        if !busy && actionable {
             let foreground = if paired {
                 if hovered {
                     cx.theme().warning
@@ -492,10 +576,22 @@ impl PairingPage {
             };
             content = content.child(
                 Button::new(SharedString::from(format!("pairing-action-{key}")))
+                    .xsmall()
+                    .absolute()
+                    .left(surface::css(10.))
+                    .top(surface::css(10.))
                     .h(surface::css(20.))
-                    .px(surface::css(5.))
+                    .py(surface::css(2.))
+                    .px(surface::css(8.))
+                    .when(paired, |button| {
+                        button
+                            .min_w(surface::css(66.))
+                            .pl(surface::css(2.))
+                            .pr(surface::css(5.))
+                    })
                     .rounded_full()
                     .text_size(surface::css(12.))
+                    .font_semibold()
                     .border_1()
                     .border_color(foreground)
                     .custom(
@@ -504,27 +600,32 @@ impl PairingPage {
                             .foreground(foreground)
                             .hover(cx.theme().muted.opacity(0.1)),
                     )
-                    .disabled(self.state.busy() || self.confirmation.is_some())
+                    .disabled(!actionable || self.state.busy() || self.confirmation.is_some())
                     .accessibility_label(i18n::t(if paired { "UNPAIR" } else { "PAIR" }))
-                    .when(paired, |button| {
-                        button.child(
-                            img(if hovered {
-                                "synapse/pairing-unpair.svg"
-                            } else {
-                                "synapse/pairing-paired.svg"
+                    .child(
+                        h_flex()
+                            .gap(surface::css(4.))
+                            .text_size(surface::css(12.))
+                            .when(paired, |row| {
+                                row.child(
+                                    img(if hovered {
+                                        "synapse/pairing-unpair.svg"
+                                    } else {
+                                        "synapse/pairing-paired.svg"
+                                    })
+                                    .size(surface::css(16.)),
+                                )
                             })
-                            .size(surface::css(16.)),
-                        )
-                    })
-                    .child(i18n::t(if paired && !hovered {
-                        "PAIRED"
-                    } else if paired {
-                        "UNPAIR"
-                    } else {
-                        "PAIR"
-                    }))
+                            .child(i18n::t(if paired && !hovered {
+                                "PAIRED"
+                            } else if paired {
+                                "UNPAIR"
+                            } else {
+                                "PAIR"
+                            })),
+                    )
                     .on_hover(cx.listener(move |page, hovered: &bool, _, cx| {
-                        page.hovered_badge = hovered.then(|| hover_key.clone());
+                        page.hovered_badge = (actionable && *hovered).then(|| hover_key.clone());
                         cx.notify();
                     }))
                     .on_click(cx.listener(move |page, _, window, cx| {
@@ -549,13 +650,44 @@ impl PairingPage {
         content = content
             .child(
                 div()
+                    .relative()
                     .h(surface::css(140.))
+                    .min_h(surface::css(140.))
                     .w_full()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .when(device.disconnected(), |element| element.opacity(0.45))
-                    .child(product_image(&device, cx)),
+                    .when(device.dimmed(), |element| element.opacity(0.45))
+                    .child(product_image(&device, cx))
+                    .when(busy, |image| {
+                        let unbinding = matches!(
+                            status,
+                            PairingStatus::CardUnbinding | PairingStatus::Unbinding
+                        );
+                        let color = if unbinding {
+                            cx.theme().warning
+                        } else {
+                            cx.theme().primary
+                        };
+                        image.child(
+                            h_flex()
+                                .absolute()
+                                .top_0()
+                                .left_0()
+                                .h(surface::css(20.))
+                                .p(surface::css(2.))
+                                .min_w(surface::css(if unbinding { 92. } else { 76. }))
+                                .border_1()
+                                .border_color(color)
+                                .rounded_full()
+                                .gap(surface::css(6.))
+                                .text_size(surface::css(12.))
+                                .font_semibold()
+                                .text_color(color)
+                                .child(spinner::Spinner::new().small().color(color))
+                                .child(i18n::t(if unbinding { "UNPAIRING" } else { "PAIRING" })),
+                        )
+                    }),
             )
             .child(
                 div()
@@ -564,30 +696,15 @@ impl PairingPage {
                     .text_center()
                     .text_size(surface::css(14.))
                     .line_height(surface::css(19.6))
+                    .text_color(PairingColors.device_name())
                     .whitespace_normal()
-                    .child(device.name(&i18n::locale())),
-            )
-            .when(external, |element| {
-                element.child(surface::note("此设备来自其他接收器的已配对记录", cx))
-            })
-            .when(
-                matches!(
-                    status,
-                    PairingStatus::BindError | PairingStatus::UnbindError
-                ),
-                |element| {
-                    element.child(
-                        div()
-                            .text_color(cx.theme().warning)
-                            .child(status_text(status)),
-                    )
-                },
+                    .when(device.dimmed(), |element| element.opacity(0.45))
+                    .child(device.name(&i18n::locale()).to_uppercase()),
             );
-        if self
-            .confirmation
-            .as_ref()
-            .is_some_and(|confirmation| confirmation.device().key() == key)
-        {
+        if self.confirmation.as_ref().is_some_and(|confirmation| {
+            !matches!(confirmation, Confirmation::Continue713 { .. })
+                && confirmation.device().key() == key
+        }) {
             content = content.child(self.confirmation_view(cx));
         }
         content.into_any_element()
@@ -599,7 +716,6 @@ impl PairingPage {
             .as_ref()
             .expect("confirmation only renders while open");
         let unpair = matches!(confirmation, Confirmation::Unpair { .. });
-        let continuation = matches!(confirmation, Confirmation::Continue713 { .. });
         let title = if unpair {
             "PAIRING_UNPAIR_DEVICE_TITLE"
         } else {
@@ -618,6 +734,7 @@ impl PairingPage {
             .test_support()
             .absolute()
             .inset_0()
+            .occlude()
             .rounded(surface::css(5.))
             .bg(cx.theme().popover)
             .flex()
@@ -630,22 +747,29 @@ impl PairingPage {
             .child(
                 v_flex()
                     .id("pairing-confirm-dialog")
+                    .test_support()
                     .role(Role::Dialog)
                     .track_focus(&self.confirm_focus)
                     .w(surface::css(230.))
                     .p(surface::css(20.))
-                    .min_h(surface::css(220.))
                     .border_1()
                     .border_color(cx.theme().warning)
                     .rounded(surface::css(5.))
-                    .bg(cx.theme().background)
+                    .bg(PairingColors.dialog_surface())
+                    .justify_between()
                     .text_center()
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_mouse_down_out(cx.listener(|page, _, window, cx| {
+                        page.close_confirmation(window, cx);
+                    }))
                     .on_key_down(cx.listener(|page, event: &KeyDownEvent, window, cx| {
                         if event.keystroke.key == "escape" {
                             page.close_confirmation(window, cx);
                             cx.stop_propagation();
-                        } else if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        } else if page.confirm_focus.is_focused(window)
+                            && !event.keystroke.modifiers.modified()
+                            && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                        {
                             page.confirm(window, cx);
                             cx.stop_propagation();
                         }
@@ -653,46 +777,163 @@ impl PairingPage {
                     .child(
                         div()
                             .text_size(surface::css(12.))
+                            .text_color(cx.theme().foreground)
                             .mb(surface::css(10.))
-                            .child(i18n::t(title)),
+                            .child(i18n::t(title).to_uppercase()),
                     )
-                    .children(warnings.into_iter().map(|key| {
-                        div()
-                            .text_size(surface::css(12.))
-                            .line_height(surface::css(14.4))
-                            .whitespace_normal()
-                            .mb(surface::css(10.))
-                            .child(i18n::t(key))
-                    }))
-                    .when(continuation, |element| {
-                        element.child(
-                            div()
-                                .text_size(surface::css(12.))
-                                .whitespace_normal()
-                                .child(i18n::t("CONTINUE_PAIRING")),
-                        )
-                    })
                     .child(
-                        Button::new("pairing-confirm-continue")
-                            .label(i18n::t("BUTTON_TEXT_CONTINUE"))
-                            .h(surface::css(27.))
-                            .w(surface::css(90.))
-                            .mt(surface::css(10.))
-                            .custom(
-                                ButtonCustomVariant::new(cx)
-                                    .color(cx.theme().warning)
-                                    .foreground(cx.theme().button_primary_foreground),
-                            )
-                            .on_click(cx.listener(|page, _, window, cx| page.confirm(window, cx))),
+                        v_flex()
+                            .flex_1()
+                            .gap(surface::css(10.))
+                            .text_size(surface::css(12.))
+                            .text_color(cx.theme().muted_foreground)
+                            .line_height(surface::css(14.4))
+                            .children(
+                                warnings
+                                    .into_iter()
+                                    .map(|key| div().whitespace_normal().child(i18n::t(key))),
+                            ),
+                    )
+                    .child(
+                        h_flex().justify_center().child(
+                            Button::new("pairing-confirm-continue")
+                                .xsmall()
+                                .label(i18n::t("BUTTON_TEXT_CONTINUE").to_uppercase())
+                                .h(surface::css(27.))
+                                .w(surface::css(90.))
+                                .p_0()
+                                .rounded(cx.theme().font_size * (3. / 16.))
+                                .mt(surface::css(10.))
+                                .custom(
+                                    ButtonCustomVariant::new(cx)
+                                        .color(cx.theme().warning)
+                                        .foreground(cx.theme().background)
+                                        .hover(PairingColors.button_hover()),
+                                )
+                                .on_click(
+                                    cx.listener(|page, _, window, cx| page.confirm(window, cx)),
+                                ),
+                        ),
                     )
                     .focus_trap("pairing-confirm-trap", &self.confirm_focus),
+            )
+            .into_any_element()
+    }
+
+    /// 182 BL/DualLinkWarning is a window modal, separate from 4130's inline
+    /// card confirmation. Base owns the overlay layer and keyboard focus trap;
+    /// its centered popup slot preserves the original content-driven height.
+    fn continuation_view(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        gpui_kit::base::Dialog::new(cx)
+            .focus_handle(self.continuation_focus.clone())
+            .close_on_escape(false)
+            .close_on_backdrop_press(false)
+            .backdrop(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .top(relative(0.035))
+                    .bg(cx.theme().popover.opacity(0.7)),
+            )
+            .popup(
+                v_flex()
+                    .id("pairing-713-warning")
+                    .test_support()
+                    .track_focus(&self.confirm_focus)
+                    .w(surface::css(400.))
+                    .p(surface::css(20.))
+                    .gap(surface::css(10.))
+                    .border_1()
+                    .border_color(cx.theme().warning)
+                    .rounded(surface::css(3.))
+                    .bg(cx.theme().popover)
+                    .shadow(vec![BoxShadow {
+                        inset: false,
+                        color: cx.theme().title_bar.opacity(0.2),
+                        offset: point(px(0.), window.rem_size() * (6. / 16.)),
+                        blur_radius: window.rem_size() * (10. / 16.),
+                        spread_radius: px(0.),
+                    }])
+                    .text_size(surface::css(14.))
+                    .text_color(cx.theme().foreground)
+                    .text_center()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_key_down(cx.listener(|page, event: &KeyDownEvent, window, cx| {
+                        if event.keystroke.key == "escape" {
+                            page.cancel(window, cx);
+                            cx.stop_propagation();
+                        } else if page.confirm_focus.is_focused(window)
+                            && !event.keystroke.modifiers.modified()
+                            && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                        {
+                            page.confirm(window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
+                    .child(
+                        div()
+                            .text_color(cx.theme().warning)
+                            .whitespace_normal()
+                            .child(i18n::t("DUAL_LINK_WARNING_HEADER").to_uppercase()),
+                    )
+                    .child(
+                        v_flex()
+                            .gap(surface::css(14.))
+                            .mb(surface::css(5.))
+                            .children(
+                                [
+                                    "DUAL_LINK_WARNING_DESCRIPTION_1",
+                                    "DUAL_LINK_WARNING_DESCRIPTION_2",
+                                    "DUAL_LINK_WARNING_CONFIRM",
+                                ]
+                                .map(|key| div().whitespace_normal().child(i18n::t(key))),
+                            ),
+                    )
+                    .child(
+                        h_flex()
+                            .justify_center()
+                            .items_end()
+                            .gap(surface::css(10.))
+                            .mt(surface::css(10.))
+                            .child(
+                                Button::new("pairing-713-continue")
+                                    .xsmall()
+                                    .label(i18n::t("CONTINUE_PAIRING"))
+                                    .h_auto()
+                                    .max_w(surface::css(190.))
+                                    .py(surface::css(7.))
+                                    .px(surface::css(16.))
+                                    .rounded(cx.theme().font_size * (3. / 16.))
+                                    .on_click(
+                                        cx.listener(|page, _, window, cx| page.confirm(window, cx)),
+                                    ),
+                            )
+                            .child(
+                                Button::new("pairing-713-keyboard-dongle")
+                                    .xsmall()
+                                    .label(i18n::t("USE_KEYBOARD_DONGLE"))
+                                    .h_auto()
+                                    .max_w(surface::css(190.))
+                                    .py(surface::css(7.))
+                                    .px(surface::css(16.))
+                                    .rounded(cx.theme().font_size * (3. / 16.))
+                                    .custom(
+                                        ButtonCustomVariant::new(cx)
+                                            .color(cx.theme().primary)
+                                            .foreground(cx.theme().background),
+                                    )
+                                    .on_click(
+                                        cx.listener(|page, _, window, cx| page.cancel(window, cx)),
+                                    ),
+                            ),
+                    ),
             )
             .into_any_element()
     }
 }
 
 impl Render for PairingPage {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let cards = self.state.cards();
         let empty = cards.is_empty();
         let busy = self.state.busy();
@@ -716,7 +957,8 @@ impl Render for PairingPage {
                         Button::new("pairing-back")
                             .ghost()
                             .label("返回")
-                            .on_click(cx.listener(|page, _, _, cx| {
+                            .on_click(cx.listener(|page, _, window, cx| {
+                                page.close_confirmation(window, cx);
                                 page.deactivate(cx);
                                 cx.emit(PairingPageEvent::Back);
                             })),
@@ -724,7 +966,7 @@ impl Render for PairingPage {
                     .child(
                         Button::new("pairing-refresh")
                             .label("读取已配对设备")
-                            .disabled(busy)
+                            .disabled(busy || self.confirmation.is_some())
                             .on_click(cx.listener(|page, _, window, cx| {
                                 page.execute(PairingRequest::ReadBindings, window, cx)
                             })),
@@ -772,7 +1014,7 @@ impl Render for PairingPage {
                             let key = device.key().to_string();
                             Button::new(SharedString::from(format!("pairing-master-{key}")))
                                 .label(device.name(&i18n::locale()))
-                                .disabled(busy)
+                                .disabled(busy || self.confirmation.is_some())
                                 .selected(
                                     self.state
                                         .master()
@@ -844,6 +1086,10 @@ impl Render for PairingPage {
                         }),
                 )
             })
+            .when(
+                matches!(self.confirmation, Some(Confirmation::Continue713 { .. })),
+                |element| element.child(self.continuation_view(window, cx)),
+            )
     }
 }
 
@@ -852,11 +1098,14 @@ fn status_text(status: PairingStatus) -> String {
 }
 
 fn product_image(device: &PairingDevice, cx: &App) -> AnyElement {
-    if let Some(asset) = resources::device_image(
+    if let Some(asset) = resources::dashboard_image(
         device.product_id(),
         device.edition_id(),
-        1,
-        resources::DeviceImage::Product,
+        if device.category() == "KEYBOARD" {
+            1
+        } else {
+            0
+        },
     ) {
         return img(asset)
             .max_w_full()
@@ -890,34 +1139,50 @@ fn empty_card(busy: bool, cx: &App) -> AnyElement {
             .test_support()
             .w(surface::css(290.))
             .h(surface::css(220.))
-            .p(surface::css(20.))
+            .p(surface::css(10.))
             .rounded(surface::css(5.))
-            .gap(surface::css(10.))
+            .items_center()
             .bg(cx.theme().button_primary_foreground.opacity(0.3))
             .child(
-                div()
-                    .w(surface::css(76.))
-                    .h(surface::css(20.))
-                    .rounded_full()
-                    .bg(cx.theme().muted)
-                    .text_size(surface::css(12.))
-                    .text_center()
-                    .child(i18n::t("LOADING")),
+                div().w_full().mb(surface::css(16.)).child(
+                    div()
+                        .w(surface::css(76.))
+                        .h(surface::css(20.))
+                        .rounded_full()
+                        .border_1()
+                        .border_color(cx.theme().muted_foreground)
+                        .text_color(cx.theme().muted_foreground)
+                        .py(surface::css(2.))
+                        .px(surface::css(8.))
+                        .text_size(surface::css(12.))
+                        .font_semibold()
+                        .line_height(surface::css(14.))
+                        .child(i18n::t("LOADING")),
+                ),
             )
             .child(
                 skeleton::Skeleton::new()
                     .w(surface::css(248.))
-                    .h(surface::css(99.)),
+                    .h(surface::css(99.))
+                    .rounded(surface::css(3.))
+                    .bg(cx.theme().button_foreground.opacity(0.03))
+                    .mb(surface::css(16.)),
             )
             .child(
                 skeleton::Skeleton::new()
                     .w(surface::css(248.))
-                    .h(surface::css(16.)),
+                    .h(surface::css(16.))
+                    .rounded(surface::css(3.))
+                    .bg(cx.theme().button_foreground.opacity(0.03))
+                    .mb(surface::css(8.)),
             )
             .child(
                 skeleton::Skeleton::new()
                     .w(surface::css(248.))
-                    .h(surface::css(16.)),
+                    .h(surface::css(16.))
+                    .rounded(surface::css(3.))
+                    .bg(cx.theme().button_foreground.opacity(0.03))
+                    .mb(surface::css(8.)),
             )
             .into_any_element();
     }
@@ -930,7 +1195,7 @@ fn empty_card(busy: bool, cx: &App) -> AnyElement {
         .rounded(surface::css(5.))
         .border_2()
         .border_dashed()
-        .border_color(cx.theme().muted_foreground.opacity(0.65))
+        .border_color(PairingColors.empty_border())
         .justify_center()
         .items_center()
         .gap(surface::css(16.))

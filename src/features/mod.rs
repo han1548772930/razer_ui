@@ -8,6 +8,7 @@ mod customize_page;
 mod device_pages;
 mod help_page;
 mod keyboard_controls;
+mod lighting_color;
 mod lighting_input;
 mod sensitivity;
 pub mod settings;

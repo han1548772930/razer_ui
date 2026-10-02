@@ -399,7 +399,7 @@ impl ImportDialog {
             return;
         }
         profile.name = name;
-        window.close_dialog(cx);
+        dismiss_profile_dialog(&self.target.workspace, window, cx);
         workspace.update(cx, |workspace, cx| {
             workspace.continue_with(Continue::ImportProfile(profile), window, cx)
         });
@@ -407,23 +407,30 @@ impl ImportDialog {
 }
 impl Render for ImportDialog {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .id("profile-import-dialog")
-            .test_support()
-            .gap_3()
+        let content = v_flex()
+            .id("profile-import-content")
+            .w_full()
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .p(surface::css(20.))
+            .gap(surface::css(10.))
             .child(surface::note(
                 "仅支持本项目导出的 .razer-ui-profile.json。导入会新增本地配置，不覆盖已有配置。",
                 cx,
             ))
             .child(
-                Button::new("profile-import-browse")
-                    .label(if self.busy {
+                profile_dialog_button(
+                    "profile-import-browse",
+                    if self.busy {
                         "正在读取…"
                     } else {
                         "选择文件…"
-                    })
-                    .disabled(self.busy)
-                    .on_click(cx.listener(|this, _, window, cx| this.browse(window, cx))),
+                    },
+                    cx,
+                )
+                .disabled(self.busy)
+                .on_click(cx.listener(|this, _, window, cx| this.browse(window, cx))),
             )
             .when_some(self.file.clone(), |body, file| {
                 body.child(div().text_xs().child(file))
@@ -433,7 +440,8 @@ impl Render for ImportDialog {
                     .child(
                         Input::new(&self.name)
                             .id("profile-import-name")
-                            .aria_label("新配置名称"),
+                            .aria_label("新配置名称")
+                            .h(surface::css(27.)),
                     )
                     .child(surface::note(
                         "同名配置已自动添加编号；导入后仍需保存设备配置。",
@@ -448,19 +456,24 @@ impl Render for ImportDialog {
                         .text_color(cx.theme().danger)
                         .child(error),
                 )
-            })
+            });
+        v_flex()
+            .id("profile-import-dialog")
+            .test_support()
+            .size_full()
+            .min_h_0()
+            .child(content)
             .child(
-                h_flex()
-                    .justify_end()
-                    .gap_3()
+                profile_dialog_footer(cx)
                     .child(
-                        Button::new("profile-import-cancel")
-                            .label("取消")
-                            .on_click(|_, window, cx| window.close_dialog(cx)),
+                        profile_dialog_button("profile-import-cancel", "取消", cx).on_click(
+                            cx.listener(|this, _, window, cx| {
+                                dismiss_profile_dialog(&this.target.workspace, window, cx)
+                            }),
+                        ),
                     )
                     .child(
-                        Button::new("profile-import-confirm")
-                            .label("导入到本地草稿")
+                        profile_dialog_button("profile-import-confirm", "导入到本地草稿", cx)
                             .primary()
                             .disabled(self.loaded.is_none() || self.busy)
                             .on_click(cx.listener(|this, _, window, cx| this.import(window, cx))),
@@ -521,7 +534,9 @@ impl ExportDialog {
 }
 impl Render for ExportDialog {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut body = v_flex().id("profile-export-dialog").test_support().gap_3()
+        let mut body = v_flex()
+            .id("profile-export-content").w_full().flex_1().min_h_0().overflow_y_scroll()
+            .p(surface::css(20.)).gap(surface::css(10.))
             .child(surface::note("导出当前本地配置快照，包含按键映射和关联程序路径。此 JSON 供本项目导入，不是 Synapse 配置包。", cx));
         if let Some(result) = &self.result {
             body = body.child(
@@ -539,27 +554,36 @@ impl Render for ExportDialog {
                     }),
             );
         }
-        body.child(
-            h_flex()
-                .justify_end()
-                .gap_3()
-                .child(
-                    Button::new("profile-export-close")
-                        .label("关闭")
-                        .on_click(|_, window, cx| window.close_dialog(cx)),
-                )
-                .child(
-                    Button::new("profile-export-save")
-                        .label(if self.busy {
-                            "正在导出…"
-                        } else {
-                            "选择导出位置…"
-                        })
+        v_flex()
+            .id("profile-export-dialog")
+            .test_support()
+            .size_full()
+            .min_h_0()
+            .child(body)
+            .child(
+                profile_dialog_footer(cx)
+                    .child(
+                        profile_dialog_button("profile-export-close", "关闭", cx).on_click(
+                            cx.listener(|this, _, window, cx| {
+                                dismiss_profile_dialog(&this.target.workspace, window, cx)
+                            }),
+                        ),
+                    )
+                    .child(
+                        profile_dialog_button(
+                            "profile-export-save",
+                            if self.busy {
+                                "正在导出…"
+                            } else {
+                                "选择导出位置…"
+                            },
+                            cx,
+                        )
                         .primary()
                         .disabled(self.busy)
                         .on_click(cx.listener(|this, _, window, cx| this.export(window, cx))),
-                ),
-        )
+                    ),
+            )
     }
 }
 
@@ -578,13 +602,7 @@ impl DeviceWorkspace {
             error: None,
             busy: false,
         });
-        window.open_dialog(cx, move |dialog, window, _| {
-            dialog
-                .title("导入本地配置")
-                .w((window.rem_size() * (540. / 16.))
-                    .min((window.viewport_size().width - px(40.)).max(px(240.))))
-                .child(view.clone())
-        });
+        self.show_profile_dialog("导入本地配置".to_string(), view.into(), window, cx);
     }
     pub(in crate::features::workspace) fn import_local_profile(
         &mut self,
@@ -623,13 +641,7 @@ impl DeviceWorkspace {
             busy: false,
             result: None,
         });
-        window.open_dialog(cx, move |dialog, window, _| {
-            dialog
-                .title(format!("导出本地配置 — {name}"))
-                .w((window.rem_size() * (540. / 16.))
-                    .min((window.viewport_size().width - px(40.)).max(px(240.))))
-                .child(view.clone())
-        });
+        self.show_profile_dialog(format!("导出本地配置 — {name}"), view.into(), window, cx);
     }
 }
 

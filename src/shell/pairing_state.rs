@@ -79,7 +79,9 @@ impl PairingDevice {
         }
         let identity = ["serialNumber", "deviceContainerId", "dongleId"]
             .into_iter()
-            .find_map(|field| string(raw.get(field)).filter(|value| !value.is_empty()))
+            .find_map(|field| {
+                string(raw.get(field)).filter(|value| !value.is_empty() && value != "0")
+            })
             .unwrap_or_default();
         Ok(Self {
             key: format!("{product_id}:{identity}"),
@@ -106,10 +108,18 @@ impl PairingDevice {
         match self.raw.get("productName") {
             Some(Value::String(name)) => name.clone(),
             Some(Value::Object(names)) => names
-                .get(language)
-                .or_else(|| names.get("en"))
-                .or_else(|| names.values().find(|value| value.is_string()))
-                .and_then(Value::as_str)
+                .iter()
+                .filter(|(_, value)| value.as_str().is_some_and(|name| !name.trim().is_empty()))
+                .min_by_key(|(key, _)| {
+                    if key.eq_ignore_ascii_case(language) {
+                        0
+                    } else if key.eq_ignore_ascii_case("en") {
+                        1
+                    } else {
+                        2
+                    }
+                })
+                .and_then(|(_, value)| value.as_str())
                 .unwrap_or_default()
                 .to_string(),
             _ => String::new(),
@@ -119,17 +129,47 @@ impl PairingDevice {
         self.raw
             .get("serialNumber")
             .and_then(Value::as_str)
+            .map(str::trim)
             .filter(|value| !value.trim().is_empty())
     }
     pub(super) fn connected(&self) -> bool {
-        matches!(number(self.raw.get("connected")), Some(1 | 2))
-            && !["off", "standby", "sleep"].contains(
-                &self
-                    .raw
-                    .get("devicePowerState")
-                    .and_then(Value::as_str)
-                    .unwrap_or(""),
-            )
+        self.connection() == Some(true) && !self.sleeping()
+    }
+    /// Runtime power data affects presentation; it does not erase a binding.
+    pub(super) fn dimmed(&self) -> bool {
+        self.sleeping() || self.connection() == Some(false)
+    }
+    fn sleeping(&self) -> bool {
+        let power = self
+            .raw
+            .get("devicePowerState")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let charging = self
+            .raw
+            .get("powerStatus")
+            .and_then(|power| power.get("chargingStatus"))
+            .or_else(|| self.raw.get("chargingStatus"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        ["off", "standby", "sleep"]
+            .iter()
+            .any(|state| power.eq_ignore_ascii_case(state))
+            || charging.eq_ignore_ascii_case("off")
+    }
+    fn connection(&self) -> Option<bool> {
+        if let Some(value) = self.raw.get("connected").filter(|value| !value.is_null()) {
+            return value
+                .as_bool()
+                .or_else(|| number(Some(value)).map(|value| matches!(value, 1 | 2)));
+        }
+        self.raw.get("status").and_then(|value| {
+            number(Some(value)).map(|value| value == 1).or_else(|| {
+                value
+                    .as_str()
+                    .map(|value| value.eq_ignore_ascii_case("connected"))
+            })
+        })
     }
     pub(super) fn disconnected(&self) -> bool {
         number(self.raw.get("connected")) == Some(0)
@@ -172,6 +212,11 @@ impl PairingDevice {
     }
     fn set_disconnected(&mut self) {
         self.raw["connected"] = json!(0);
+    }
+    fn same_unit(&self, target: &Self) -> bool {
+        self.product_id() == target.product_id()
+            && self.category() == target.category()
+            && self.matches_identity(target)
     }
     fn owner(&self) -> Result<Value, String> {
         let mut owner = self
@@ -235,7 +280,8 @@ pub(super) enum PairingRequest {
     },
     /// The second external-owner request uses the product ID after the dongle ID.
     UnbindProduct(PairingDevice),
-    Cancel,
+    /// Reclaim sends one unbind, then scans after its acknowledgement or 2 s.
+    ReclaimExternal(PairingDevice),
 }
 impl PairingRequest {
     pub(super) fn operation(&self) -> &'static str {
@@ -243,16 +289,17 @@ impl PairingRequest {
             Self::ReadBindings => "DUALLINK_BIND_INFO",
             Self::Scan(_) => "DUALLINK_SCAN_DEVICE",
             Self::Bind(_) => "DUALLINK_BIND_DEVICE",
-            Self::Unbind { .. } | Self::UnbindProduct(_) => "DUALLINK_UNBIND_DEVICE",
-            Self::Cancel => "DUALLINK_CANCEL",
+            Self::Unbind { .. } | Self::UnbindProduct(_) | Self::ReclaimExternal(_) => {
+                "DUALLINK_UNBIND_DEVICE"
+            }
         }
     }
     pub(super) fn payload(&self, dual: bool) -> Value {
         match self {
-            Self::ReadBindings | Self::Cancel => json!({}),
+            Self::ReadBindings => json!({}),
             Self::Scan(lane) => json!({"status": 1, "category": dual.then(|| lane.category())}),
             Self::Bind(device) => json!({"mode": 1, "device": device.raw}),
-            Self::Unbind { device, .. } => json!({
+            Self::Unbind { device, .. } | Self::ReclaimExternal(device) => json!({
                 "productId": device.unpair_id(),
                 "category": dual.then(|| device.category()),
             }),
@@ -265,7 +312,7 @@ impl PairingRequest {
     pub(super) fn external(&self) -> bool {
         matches!(
             self,
-            Self::Unbind { external: true, .. } | Self::UnbindProduct(_)
+            Self::Unbind { external: true, .. } | Self::UnbindProduct(_) | Self::ReclaimExternal(_)
         )
     }
     pub(super) fn routing_context(&self, master: Value) -> Result<Value, String> {
@@ -274,7 +321,8 @@ impl PairingRequest {
                 device,
                 external: true,
             }
-            | Self::UnbindProduct(device) => device.owner(),
+            | Self::UnbindProduct(device)
+            | Self::ReclaimExternal(device) => device.owner(),
             _ => Ok(master),
         }
     }
@@ -329,6 +377,10 @@ impl DeviceCard {
             PairingStatus::Bound | PairingStatus::BindConfirmed
         )
     }
+    pub(super) fn actionable(&self) -> bool {
+        // An external record that is no longer connected is not a scan result.
+        !self.external || self.device.connected()
+    }
 }
 
 pub(super) struct PairingState {
@@ -339,7 +391,7 @@ pub(super) struct PairingState {
     bound: Vec<PairingDevice>,
     scanned: Vec<PairingDevice>,
     external: Vec<PairingDevice>,
-    selected: Option<String>,
+    active_devices: [Option<String>; 2],
     replacement: Option<PairingDevice>,
     pending: Option<Ticket>,
     generation: u64,
@@ -357,7 +409,7 @@ impl Default for PairingState {
             bound: Vec::new(),
             scanned: Vec::new(),
             external: Vec::new(),
-            selected: None,
+            active_devices: [None, None],
             replacement: None,
             pending: None,
             generation: 0,
@@ -383,9 +435,6 @@ impl PairingState {
     pub(super) fn error(&self) -> Option<&str> {
         self.error.as_deref()
     }
-    pub(super) fn selected(&self) -> Option<&str> {
-        self.selected.as_deref()
-    }
     pub(super) fn masters(&self) -> &[PairingDevice] {
         &self.masters
     }
@@ -397,6 +446,7 @@ impl PairingState {
     pub(super) fn set_error(&mut self, error: impl Into<String>) {
         self.error = Some(error.into());
     }
+    #[allow(dead_code)] // Used by the service metadata seam once a DUALLINK adapter is connected.
     pub(super) fn replace_masters(&mut self, value: Value) -> Result<(), String> {
         let masters = devices(value)?;
         if masters.iter().any(|device| device.serial().is_none()) {
@@ -451,8 +501,26 @@ impl PairingState {
         self.error = None;
         Ok(())
     }
+    #[allow(dead_code)] // Service-owned allMasters/duallink records; never filled from previews.
     pub(super) fn set_external(&mut self, value: Value) -> Result<(), String> {
-        self.external = devices(value)?;
+        let external = devices(value)?;
+        let invalidated = self.pending.as_ref().is_some_and(|ticket| {
+            let device = match &ticket.request {
+                PairingRequest::Unbind {
+                    device,
+                    external: true,
+                }
+                | PairingRequest::UnbindProduct(device)
+                | PairingRequest::ReclaimExternal(device) => device,
+                _ => return false,
+            };
+            !external.contains(device)
+        });
+        self.external = external;
+        if invalidated {
+            self.invalidate();
+            self.error = Some("外部设备的配对记录已变化，请重新扫描后重试。".into());
+        }
         Ok(())
     }
     pub(super) fn context(&self) -> Option<Value> {
@@ -496,23 +564,27 @@ impl PairingState {
                 continue;
             }
             let state = self.status(self.lane_for(device));
-            let status = if self.selected() == Some(device.key()) && state == PairingStatus::Binding
-            {
-                PairingStatus::Binding
-            } else if matches!(
-                state,
-                PairingStatus::Unbinding | PairingStatus::CardUnbinding
-            ) {
-                PairingStatus::CardUnbinding
-            } else if state == PairingStatus::UnbindError {
-                PairingStatus::UnbindError
-            } else if device.disconnected() || state == PairingStatus::Unbound {
-                PairingStatus::Unbound
-            } else if state == PairingStatus::BindConfirmed {
-                PairingStatus::BindConfirmed
-            } else {
-                PairingStatus::Bound
-            };
+            let active =
+                self.active_devices[self.lane_for(device).index()].as_deref() == Some(device.key());
+            let status =
+                if active && matches!(state, PairingStatus::Binding | PairingStatus::BindError) {
+                    state
+                } else if active
+                    && matches!(
+                        state,
+                        PairingStatus::Unbinding | PairingStatus::CardUnbinding
+                    )
+                {
+                    PairingStatus::CardUnbinding
+                } else if active && state == PairingStatus::UnbindError {
+                    PairingStatus::UnbindError
+                } else if device.disconnected() {
+                    PairingStatus::Unbound
+                } else if state == PairingStatus::BindConfirmed {
+                    PairingStatus::BindConfirmed
+                } else {
+                    PairingStatus::Bound
+                };
             cards.push(DeviceCard {
                 device: device.clone(),
                 status,
@@ -528,7 +600,11 @@ impl PairingState {
                 {
                     continue;
                 }
-                let status = if self.selected() == Some(device.key()) {
+                let status = if self.status(self.lane_for(device)) == PairingStatus::Scanning {
+                    PairingStatus::Scanning
+                } else if self.active_devices[self.lane_for(device).index()].as_deref()
+                    == Some(device.key())
+                {
                     match self.status(self.lane_for(device)) {
                         PairingStatus::Unbinding => PairingStatus::CardUnbinding,
                         value @ (PairingStatus::Binding
@@ -549,20 +625,29 @@ impl PairingState {
         }
         cards
     }
-    pub(super) fn select(&mut self, key: &str) {
-        if self.cards().iter().any(|card| card.device.key() == key) {
-            self.selected = Some(key.into());
+    pub(super) fn pair_request(
+        &mut self,
+        device: PairingDevice,
+        external: bool,
+    ) -> Result<PairingRequest, String> {
+        if self.busy() {
+            return Err("请等待当前配对操作完成或取消操作".into());
         }
-    }
-    pub(super) fn pair_request(&mut self, device: PairingDevice, external: bool) -> PairingRequest {
+        if !self.cards().iter().any(|card| {
+            card.device.key() == device.key() && card.external == external && card.actionable()
+        }) {
+            return Err("所选设备已不可用于配对，请重新扫描后重试".into());
+        }
+        if device.identity().is_none() {
+            return Err("扫描设备缺少可验证的设备标识，请重新扫描后重试".into());
+        }
+        if external {
+            device.owner()?;
+        }
         let lane = self.lane_for(&device);
-        self.selected = Some(device.key().into());
         if external && device.connected() {
             self.replacement = Some(device.clone());
-            PairingRequest::Unbind {
-                device,
-                external: true,
-            }
+            Ok(PairingRequest::ReclaimExternal(device))
         } else if let Some(previous) = self
             .bound
             .iter()
@@ -574,12 +659,13 @@ impl PairingState {
             .cloned()
         {
             self.replacement = Some(device);
-            PairingRequest::Unbind {
+            Ok(PairingRequest::Unbind {
                 device: previous,
                 external: false,
-            }
+            })
         } else {
-            PairingRequest::Bind(device)
+            self.replacement = None;
+            Ok(PairingRequest::Bind(device))
         }
     }
     pub(super) fn begin(&mut self, request: PairingRequest) -> Result<Ticket, String> {
@@ -593,7 +679,8 @@ impl PairingState {
             PairingRequest::Scan(lane) => *lane,
             PairingRequest::Bind(device)
             | PairingRequest::Unbind { device, .. }
-            | PairingRequest::UnbindProduct(device) => self.lane_for(device),
+            | PairingRequest::UnbindProduct(device)
+            | PairingRequest::ReclaimExternal(device) => self.lane_for(device),
             _ => Lane::Primary,
         };
         if lane == Lane::Secondary && !self.dual {
@@ -606,16 +693,18 @@ impl PairingState {
         }
         if let PairingRequest::Bind(device)
         | PairingRequest::Unbind { device, .. }
-        | PairingRequest::UnbindProduct(device) = &request
+        | PairingRequest::UnbindProduct(device)
+        | PairingRequest::ReclaimExternal(device) = &request
         {
-            if !self
-                .cards()
-                .iter()
-                .any(|card| card.device.key() == device.key())
-            {
+            if !self.cards().iter().any(|card| card.device == *device) {
                 return Err("所选设备已不在有效配对列表中".into());
             }
-            self.selected = Some(device.key().into());
+            self.active_devices[lane.index()] = Some(device.key().into());
+        }
+        if matches!(request, PairingRequest::Scan(_)) {
+            self.active_devices[lane.index()] = None;
+        } else if matches!(request, PairingRequest::ReadBindings) {
+            self.active_devices = [None, None];
         }
         if matches!(request, PairingRequest::ReadBindings) && self.dual {
             self.statuses[Lane::Secondary.index()] = PairingStatus::Initializing;
@@ -624,10 +713,9 @@ impl PairingState {
             PairingRequest::ReadBindings => PairingStatus::Initializing,
             PairingRequest::Scan(_) => PairingStatus::Scanning,
             PairingRequest::Bind(_) => PairingStatus::Binding,
-            PairingRequest::Unbind { .. } | PairingRequest::UnbindProduct(_) => {
-                PairingStatus::Unbinding
-            }
-            PairingRequest::Cancel => PairingStatus::Ready,
+            PairingRequest::Unbind { .. }
+            | PairingRequest::UnbindProduct(_)
+            | PairingRequest::ReclaimExternal(_) => PairingStatus::Unbinding,
         };
         self.next_request = self.next_request.wrapping_add(1);
         let ticket = Ticket {
@@ -677,13 +765,20 @@ impl PairingState {
                         PairingStatus::ScanResults
                     }
                     PairingRequest::Bind(_) => PairingStatus::BindError,
-                    PairingRequest::Unbind { .. } | PairingRequest::UnbindProduct(_) => {
-                        PairingStatus::UnbindError
-                    }
-                    PairingRequest::Cancel => PairingStatus::Ready,
+                    PairingRequest::Unbind { .. }
+                    | PairingRequest::UnbindProduct(_)
+                    | PairingRequest::ReclaimExternal(_) => PairingStatus::UnbindError,
                 };
                 self.replacement = None;
-                None
+                // 4130 pi() still visits the mouse lane after a keyboard scan
+                // or bind error. Failure in one category must not strand the other.
+                (self.dual
+                    && ticket.lane == Lane::Primary
+                    && matches!(
+                        ticket.request,
+                        PairingRequest::Scan(_) | PairingRequest::Bind(_)
+                    ))
+                .then_some(PairingRequest::Scan(Lane::Secondary))
             }
         }
     }
@@ -717,13 +812,15 @@ impl PairingState {
                     if let Some(device) = self
                         .scanned
                         .iter()
-                        .find(|device| device.product_id() == target.product_id())
+                        .find(|device| device.same_unit(&target))
                         .cloned()
                     {
-                        return Ok(Some(self.pair_request(device, false)));
+                        return self.pair_request(device, false).map(Some);
                     }
                     self.error =
                         Some("解除原配对后尚未扫描到目标设备，请保持设备唤醒并重试。".into());
+                    // Never auto-pair a different unit after reclaiming a named device.
+                    return Ok(None);
                 }
                 let lane_has_binding = self
                     .bound
@@ -736,8 +833,9 @@ impl PairingState {
                         .find(|device| self.lane_for(device) == *lane && self.eligible(device))
                         .cloned()
                     {
+                        let request = self.pair_request(device, false)?;
                         self.auto_paired[lane.index()] = true;
-                        return Ok(Some(self.pair_request(device, false)));
+                        return Ok(Some(request));
                     }
                 }
                 if self.dual && *lane == Lane::Primary {
@@ -759,18 +857,28 @@ impl PairingState {
                     .retain(|previous| previous.category() != device.category());
                 self.bound.push(device);
                 self.statuses[ticket.lane.index()] = PairingStatus::BindConfirmed;
-                self.selected = None;
+                self.active_devices[ticket.lane.index()] = None;
                 if self.dual && ticket.lane == Lane::Primary {
                     Ok(Some(PairingRequest::Scan(Lane::Secondary)))
                 } else {
                     Ok(None)
                 }
             }
-            PairingRequest::Unbind { device, .. } | PairingRequest::UnbindProduct(device) => {
+            PairingRequest::Unbind { device, .. }
+            | PairingRequest::UnbindProduct(device)
+            | PairingRequest::ReclaimExternal(device) => {
                 let id = value.get("productId").ok_or("解除配对响应缺少产品编号")?;
                 let expected = ticket.request.payload(self.dual)["productId"].clone();
                 if number(Some(id)) != number(Some(&expected)) {
                     return Err("解除配对响应与所选设备不一致".into());
+                }
+                if self.dual
+                    && value
+                        .get("category")
+                        .and_then(Value::as_str)
+                        .is_some_and(|category| category != device.category())
+                {
+                    return Err("解除配对响应与所选设备通道不一致".into());
                 }
                 if let Some(next) = ticket.request.fallback() {
                     return Ok(Some(next));
@@ -790,60 +898,84 @@ impl PairingState {
                     if external {
                         Ok(Some(PairingRequest::Scan(ticket.lane)))
                     } else {
-                        Ok(self.replacement.take().map(PairingRequest::Bind))
+                        let target = self.replacement.take().expect("replacement checked above");
+                        self.pair_request(target, false).map(Some)
                     }
                 } else {
                     Ok(None)
                 }
             }
-            PairingRequest::Cancel => Ok(Some(PairingRequest::ReadBindings)),
         }
     }
     pub(super) fn recover(&mut self, generation: u64, lane: Lane, status: PairingStatus) {
-        if self.generation != generation || self.busy() || self.status(lane) != status {
+        if self.generation != generation
+            || self
+                .pending
+                .as_ref()
+                .is_some_and(|ticket| ticket.lane == lane)
+            || self.status(lane) != status
+        {
             return;
         }
         match status {
             PairingStatus::BindError => {
-                self.statuses = [PairingStatus::Ready; 2];
-                self.bound.clear();
-                self.scanned.clear();
+                self.statuses[lane.index()] = PairingStatus::Ready;
+                if self.dual {
+                    self.bound
+                        .retain(|device| device.category() != lane.category());
+                    self.scanned
+                        .retain(|device| device.category() != lane.category());
+                } else {
+                    self.bound.clear();
+                    self.scanned.clear();
+                }
             }
             PairingStatus::UnbindError => {
-                self.restore_statuses();
+                self.statuses[lane.index()] = self.restored_status(lane);
             }
             _ => return,
         }
-        self.selected = None;
-        self.error = None;
+        if self.pending.is_none() {
+            self.error = None;
+        }
+        self.active_devices[lane.index()] = None;
     }
     /// A timed fallback starts another real request; it never marks an unpair as successful.
     pub(super) fn external_fallback(&mut self, ticket: &Ticket) -> Option<PairingRequest> {
         if !self.current(ticket) {
             return None;
         }
-        let next = ticket.request.fallback()?;
+        let next = if matches!(ticket.request, PairingRequest::ReclaimExternal(_)) {
+            // Source Y() resumes scanning after 2 s even without an ack. This
+            // starts discovery only: the external binding remains unconfirmed.
+            PairingRequest::Scan(ticket.lane)
+        } else {
+            ticket.request.fallback()?
+        };
         self.pending = None;
         Some(next)
     }
+    fn restored_status(&self, lane: Lane) -> PairingStatus {
+        if self
+            .bound
+            .iter()
+            .any(|device| self.lane_for(device) == lane && !device.disconnected())
+        {
+            PairingStatus::Bound
+        } else {
+            PairingStatus::Ready
+        }
+    }
     fn restore_statuses(&mut self) {
         for lane in [Lane::Primary, Lane::Secondary] {
-            self.statuses[lane.index()] = if self
-                .bound
-                .iter()
-                .any(|device| self.lane_for(device) == lane && !device.disconnected())
-            {
-                PairingStatus::Bound
-            } else {
-                PairingStatus::Ready
-            };
+            self.statuses[lane.index()] = self.restored_status(lane);
         }
     }
     pub(super) fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.pending = None;
         self.replacement = None;
-        self.selected = None;
+        self.active_devices = [None, None];
         self.restore_statuses();
     }
 }

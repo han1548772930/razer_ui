@@ -1,5 +1,5 @@
 use super::{Shortcut, ShortcutOutput, Shortcuts, validate_shortcuts};
-use gpui_kit::component::Root;
+use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
@@ -241,6 +241,7 @@ fn late_program_picker_cannot_change_a_reopened_draft_with_the_same_id(cx: &mut 
 #[gpui_kit::test]
 fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppContext) {
     cx.update(gpui_kit::init);
+    cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
     let mut shortcuts = None;
     let handle = cx.open_window(size(px(700.), px(600.)), |w, cx| {
         let view = cx.new(|cx| Shortcuts::new(vec![shortcut("existing")], w, cx));
@@ -251,8 +252,16 @@ fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppConte
     cx.update_window(handle.into(), |_, w, cx| {
         w.render_frame(cx);
         w.click("shortcut-delete-existing", cx);
-        w.click("shortcut-delete-cancel", cx);
+        let row = w.find("shortcut-row-existing").bounds();
+        let popup = w.find("shortcut-delete-confirmation").bounds();
+        assert_eq!(popup.left() - row.left(), px(274.));
+        assert_eq!(popup.top() - row.top(), px(53.));
+        assert_eq!(popup.size.width, px(300.));
+        assert!(w.try_find("shortcut-delete-cancel").is_none());
+        w.press("escape", cx);
+        assert!(w.try_find("shortcut-delete-confirmation").is_none());
         assert!(w.try_find("shortcut-row-existing").is_some());
+        assert!(!view.read(cx).dirty());
         w.click("shortcut-delete-existing", cx);
         w.click("shortcut-delete-confirm", cx);
         assert!(w.try_find("shortcut-row-existing").is_none());

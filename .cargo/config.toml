@@ -2,3 +2,6 @@
 # 来源：gpui-kit 官方仓库 .cargo/config.toml
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=/STACK:8000000"]
+
+[build]
+jobs = 8

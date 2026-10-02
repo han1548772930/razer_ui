@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <clipPath id="clip-path">
+      <rect width="32" height="32" fill="none"/>
+    </clipPath>
+  </defs>
+  <g id="Profile_Guest" data-name="Profile Guest" clip-path="url(#clip-path)">
+    <rect id="Rectangle_2572" data-name="Rectangle 2572" width="32" height="32" fill="#ccc"/>
+    <path id="Path_29598" data-name="Path 29598" d="M28.28,29H0a16.011,16.011,0,0,1,28.28,0M5.14,9a9,9,0,1,0,9-9,9,9,0,0,0-9,9" transform="translate(1.859 3.004)" fill="#383838"/>
+    <path id="Path_3688" data-name="Path 3688" d="M13.662,5a5.333,5.333,0,0,0-4.8,2.625.5.5,0,0,0,.112.67L10.4,9.378a.494.494,0,0,0,.686-.087c.736-.933,1.24-1.474,2.36-1.474.841,0,1.882.542,1.882,1.358,0,.617-.509.933-1.34,1.4-.968.543-2.25,1.218-2.25,2.909v.165a.5.5,0,0,0,.495.495H14.54a.5.5,0,0,0,.495-.495v-.055c0-1.172,3.425-1.22,3.425-4.392C18.46,6.812,15.983,5,13.662,5Zm-.274,10.212a1.894,1.894,0,1,0,1.894,1.894A1.9,1.9,0,0,0,13.388,15.212Z" transform="translate(2.52)" fill="#ccc"/>
+  </g>
+</svg>

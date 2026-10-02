@@ -8,7 +8,6 @@ use gpui_kit::component::{
     input::{Input, Textarea},
     radio::Radio,
 };
-use gpui_kit::prelude::FluentBuilder as _;
 use serde::{Deserialize, Serialize};
 
 const PREFIX: &str = "local-mapping:v1:";
@@ -1959,6 +1958,13 @@ impl DeviceWorkspace {
                     Button::new("mapping-cancel")
                         .label("取消")
                         .w(surface::css(100.))
+                        .h(surface::css(27.))
+                        .text_size(surface::css(12.))
+                        .line_height(surface::css(14.))
+                        .rounded(cx.theme().font_size * (3. / 16.))
+                        .border_1()
+                        .border_color(cx.theme().title_bar)
+                        .py_0()
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.continue_with(Continue::CloseMapping, window, cx)
                         })),
@@ -1968,6 +1974,13 @@ impl DeviceWorkspace {
                         .label("保存")
                         .primary()
                         .w(surface::css(100.))
+                        .h(surface::css(27.))
+                        .text_size(surface::css(12.))
+                        .line_height(surface::css(14.))
+                        .rounded(cx.theme().font_size * (3. / 16.))
+                        .border_1()
+                        .border_color(cx.theme().title_bar)
+                        .py_0()
                         .disabled(self.mapping_error().is_some())
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.finish_mapping(window, cx);
@@ -2016,8 +2029,9 @@ impl DeviceWorkspace {
                 }))
                 .child(
                     img(SharedString::from(format!(
-                        "synapse/mapping-{}.{}",
+                        "synapse/mapping-{}{}.{}",
                         category.id(),
+                        if active { "-active" } else { "" },
                         if category == Category::Lighting {
                             "png"
                         } else {
@@ -2048,27 +2062,49 @@ impl DeviceWorkspace {
             .border_1()
             .border_color(cx.theme().sidebar_border)
             .rounded(surface::css(5.))
-            .shadow(cx.theme().shadow_tokens().lg)
+            // Original .key-config.open: 0 0 20px #000000b3.
+            .shadow(vec![BoxShadow {
+                color: cx.theme().title_bar.opacity(0.7),
+                offset: point(Pixels::ZERO, Pixels::ZERO),
+                blur_radius: cx.theme().font_size * (20. / 16.),
+                spread_radius: Pixels::ZERO,
+                inset: false,
+            }])
             .child(
                 h_flex()
+                    .relative()
                     .h(surface::css(36.))
                     .flex_shrink_0()
                     .bg(cx.theme().sidebar)
-                    .justify_between()
-                    .pl(surface::css(12.))
+                    .rounded_t(surface::css(4.))
+                    .border_b_1()
+                    .border_color(cx.theme().border)
+                    .justify_center()
                     .child(
                         div()
+                            .max_w(surface::css(200.))
                             .truncate()
                             .text_size(surface::css(14.))
+                            .line_height(surface::css(17.))
+                            .text_color(cx.theme().muted_foreground)
                             .child(input_label),
                     )
                     .child(
-                        Button::new("mapping-close")
-                            .label("×")
+                        BaseButton::new("mapping-close")
                             .accessibility_label("关闭按键映射")
-                            .ghost()
+                            .absolute()
+                            .right_0()
+                            .top_0()
                             .w(surface::css(36.))
                             .h(surface::css(36.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .hover(|button| {
+                                button.bg(crate::ui::theme::DropdownColors::new().hover())
+                            })
+                            .active(|button| button.bg(cx.theme().title_bar.opacity(0.1)))
+                            .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.continue_with(Continue::CloseMapping, window, cx)
                             })),

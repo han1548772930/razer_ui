@@ -4,6 +4,7 @@ use super::{controls::*, settings::*};
 use crate::{
     model::{Device, Profile},
     nav::Tab,
+    ui::source_alert::{AlertAction, AlertPlacement, SourceAlert},
     ui::surface,
 };
 use gpui_kit::component::{
@@ -15,7 +16,7 @@ use gpui_kit::component::{
     slider::{Slider, SliderEvent, SliderState},
     *,
 };
-use gpui_kit::*;
+use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::collections::BTreeMap;
 
 pub enum WorkspaceEvent {
@@ -79,6 +80,8 @@ pub struct DeviceWorkspace {
     profile_menu: Entity<gpui_kit::component::list::ListState<profile::ProfileCommands>>,
     profile_confirmation: Option<profile::ProfileConfirmation>,
     profile_confirm_focus: FocusHandle,
+    source_alert: Option<Entity<SourceAlert>>,
+    profile_dialog: Option<Entity<profile::ProfileDialog>>,
     pub(super) help: super::help_page::HelpState,
 }
 impl EventEmitter<WorkspaceEvent> for DeviceWorkspace {}
@@ -250,6 +253,8 @@ impl DeviceWorkspace {
             profile_menu,
             profile_confirmation: None,
             profile_confirm_focus: cx.focus_handle().tab_stop(true),
+            source_alert: None,
+            profile_dialog: None,
             help: super::help_page::HelpState::default(),
         };
         this.install_profile_controls(window, cx);
@@ -716,57 +721,48 @@ impl DeviceWorkspace {
         }
         self.finish_profile_rename(window, cx);
         if self.mapping_dirty() {
-            let entity = cx.entity();
-            let discard = entity.clone();
+            let save = cx.entity().downgrade();
+            let discard = save.clone();
             let save_next = next.clone();
             let discard_next = next.clone();
-            let invalid = !self.mapping_valid();
-            window.open_dialog(cx, move |dialog, _, _| {
-                let entity = entity.clone();
-                let discard = discard.clone();
-                let save_next = save_next.clone();
-                let discard_next = discard_next.clone();
-                dialog
-                    .title("尚未保存的按键映射")
-                    .child("保存此映射后继续，或丢弃本次映射编辑。")
-                    .footer(h_flex().gap_3().justify_end().children(vec![
-                            Button::new("mapping-keep-editing")
-                                .label("继续编辑")
-                                .on_click(|_, w, cx| w.close_dialog(cx))
-                                .into_any_element(),
-                            Button::new("mapping-discard")
-                                .label("丢弃并继续")
-                                .on_click({
-                                    let entity = discard.clone();
-                                    let next = discard_next.clone();
-                                    move |_, w, cx| {
-                                        w.close_dialog(cx);
-                                        entity.update(cx, |this, cx| {
-                                            this.mapping = None;
-                                            this.apply_continue(next.clone(), w, cx);
-                                        });
-                                    }
-                                })
-                                .into_any_element(),
-                            Button::new("mapping-save")
-                                .label("保存映射并继续")
-                                .primary()
-                                .disabled(invalid)
-                                .on_click({
-                                    let entity = entity.clone();
-                                    let next = save_next.clone();
-                                    move |_, w, cx| {
-                                        w.close_dialog(cx);
-                                        entity.update(cx, |this, cx| {
-                                            if this.commit_mapping(cx) {
-                                                this.apply_continue(next.clone(), w, cx);
-                                            }
-                                        });
-                                    }
-                                })
-                                .into_any_element(),
-                        ]))
-            });
+            self.source_alert = Some(SourceAlert::open(
+                crate::i18n::t("SAVE_REMAPPED_BUTTON_HEADER"),
+                format!(
+                    "{}\n\n{}",
+                    crate::i18n::t("SAVE_REMAPPED_BUTTON_MSG1"),
+                    crate::i18n::t("SAVE_REMAPPED_BUTTON_MSG2")
+                ),
+                "mapping-keep-editing",
+                vec![
+                    AlertAction::new(
+                        "mapping-discard",
+                        crate::i18n::t("DONT_SAVE"),
+                        move |window, cx| {
+                            let _ = discard.update(cx, |this, cx| {
+                                this.mapping = None;
+                                this.apply_continue(discard_next.clone(), window, cx);
+                            });
+                        },
+                    ),
+                    AlertAction::new("mapping-save", crate::i18n::t("SAVE"), move |window, cx| {
+                        let _ = save.update(cx, |this, cx| {
+                            if this.commit_mapping(cx) {
+                                this.apply_continue(save_next.clone(), window, cx);
+                            }
+                        });
+                    })
+                    .primary()
+                    .disabled(!self.mapping_valid()),
+                ],
+                if self.pid() == 653 {
+                    AlertPlacement::UpperCenter
+                } else {
+                    AlertPlacement::AboveCenter
+                },
+                window,
+                cx,
+            ));
+            cx.notify();
             // Restore trigger while the continuation is awaiting a decision.
             self.controls.profile.update(cx, |s, cx| {
                 s.set_selected_value(&self.device.active_profile, window, cx)
@@ -985,6 +981,10 @@ impl Render for DeviceWorkspace {
             .tab_group()
             .child(self.toolbar(cx))
             .child(body)
+            .when_some(self.source_alert.clone(), |view, dialog| view.child(dialog))
+            .when_some(self.profile_dialog.clone(), |view, dialog| {
+                view.child(dialog)
+            })
             .children(self.dirty().then(|| {
                 h_flex()
                     .px_5()

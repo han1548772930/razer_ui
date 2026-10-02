@@ -2,6 +2,8 @@
 
 页面是否存在，以产品根 `navs` 和实际组件树为准。以下链接包含交互、资源和当前实现差异。
 
+索引覆盖当前已取得源码；原版并非只有三个产品模块，完整范围说明见[产品模块清单](../re/15-product-module-inventory.md)。
+
 | 文档 | 适用范围 |
 |---|---|
 | [00 应用壳层](00-app-shell.md) | Electron 标签栏、前端工具栏、导航、profile、内容布局 |
@@ -15,6 +17,10 @@
 | [09 麦克风](09-mic.md) | 777 micEq、原包频率数据矛盾；当前入口只有 EQ |
 | [10 主前端页面](10-main-frontend-pages.md) | Dashboard、Gamer Room、Devices & Modules、Global Shortcuts、Settings 边界 |
 | [11 设备帮助](11-help.md) | 182 / 653 / 777 帮助路由、产品支持、序列号、版本和注册；恢复出厂服务边界 |
+| [12 设置](12-settings.md) | 独立 Settings 的 Synapse / General 页面、偏好保存及服务连接扩展 |
+| [13 配置迁移](13-profile-migration.md) | Settings打开的独立迁移应用、分组卡片、选择与状态弹层；真实扫描/转换边界 |
+| [14 Wi-Fi 添加](14-iot-add.md) | Key Light／Gamer Room 分支、网络与设备列表、返回与密码清理、显式状态预览 |
+| [15 账户菜单](15-account-menu.md) | 访客菜单的原版外观、焦点、退出保护及账户服务边界 |
 
 产品导航顺序：
 

@@ -62,6 +62,17 @@ fn command_modes_preserve_identity_cycle_forward_and_keep_one_preset() {
             .unwrap()
             .enabled
     );
+    // Em reuses its last-default restriction for enabled custom switches too.
+    assert!(!keyboard.dial_enabled_change_allowed(&custom, false));
+    keyboard.enable_dial(&custom, false);
+    assert!(
+        keyboard
+            .dial_modes
+            .iter()
+            .find(|mode| mode.uid == custom)
+            .unwrap()
+            .enabled
+    );
     keyboard.select_dial(&custom);
     keyboard.move_dial(&custom, 1);
     assert_eq!(keyboard.dial_active, custom);
@@ -112,7 +123,7 @@ fn alt_tab_restriction_preserves_the_current_dial_identity_without_reenabling_it
             .enabled
     );
     assert!(
-        keyboard
+        !keyboard
             .dial_modes
             .iter()
             .find(|mode| mode.uid == custom)
@@ -214,7 +225,9 @@ fn gaming_alt_tab_checkbox_disables_the_source_preset_without_selecting_another(
     let view = workspace.unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
+        assert_eq!(window.find("gaming-windows").checked(), Some(false));
         window.click("gaming-enabled", cx);
+        assert_eq!(window.find("gaming-windows").checked(), Some(true));
         window.click("gaming-alt-tab", cx);
         assert_eq!(
             window.find("dial-selected-SWITCH_APPLICATIONS").disabled(),
@@ -342,10 +355,12 @@ fn dial_highlight_and_mapping_edits_do_not_replace_the_current_mode(cx: &mut Tes
         state.dial_highlight.clone().unwrap()
     });
     cx.update_window(handle.into(), |_, window, cx| {
+        window.click(SharedString::from(format!("dial-mode-{uid}")), cx);
         window.click("dial-name", cx);
         window.press("ctrl-a", cx);
         window.input("Editing", cx);
         window.press("enter", cx);
+        window.click(SharedString::from(format!("dial-expand-{uid}")), cx);
         window.click(
             SharedString::from(format!("dial-mapping-{uid}-ScrollRight")),
             cx,
@@ -500,4 +515,84 @@ fn snap_layout_picker_distinguishes_numpad_enter_and_filters_used_keys(cx: &mut 
             ["KEY_NUMPAD_ENTER", "KEY_ENTER"]
         );
     });
+}
+
+#[gpui_kit::test]
+fn dial_confirmations_follow_their_icons_and_escape_preserves_modes(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16.)));
+    let mut workspace = None;
+    let handle = cx.open_window(size(px(1300.), px(2000.)), |window, cx| {
+        let view =
+            cx.new(|cx| DeviceWorkspace::new(crate::demo::demo_keyboard(), true, window, cx));
+        workspace = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let view = workspace.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("dial-add", cx);
+    })
+    .unwrap();
+    let uid = cx.update(|cx| view.read(cx).dial_highlight.clone().unwrap());
+    cx.update_window(handle.into(), |_, window, cx| {
+        let trigger = SharedString::from(format!("dial-delete-{uid}"));
+        window.click(trigger.clone(), cx);
+        let icon = window.find(trigger).bounds();
+        let popup = window.find("dial-delete-confirmation").bounds();
+        assert_eq!(popup.size.width, px(300.));
+        assert_eq!(popup.top() - icon.top(), px(26.));
+        assert_eq!(icon.right() - popup.right(), px(11.));
+        assert_eq!(
+            window.find("dial-delete-confirm").bounds().size,
+            size(px(90.), px(27.))
+        );
+        assert!(window.try_find("dial-delete-cancel").is_none());
+        assert!(
+            view.read(cx)
+                .keyboard_controls
+                .dial_confirmation_focus
+                .is_focused(window)
+        );
+        window.press("escape", cx);
+        assert!(window.try_find("dial-delete-confirmation").is_none());
+
+        window.click("dial-reset", cx);
+        let icon = window.find("dial-reset").bounds();
+        let popup = window.find("dial-reset-confirmation").bounds();
+        assert_eq!(popup.size.width, px(300.));
+        assert_eq!(popup.top() - icon.top(), px(42.));
+        assert_eq!(popup.right(), icon.right());
+        assert!(window.try_find("dial-reset-cancel").is_none());
+        window.press("escape", cx);
+        assert!(window.try_find("dial-reset-confirmation").is_none());
+    })
+    .unwrap();
+    cx.update(|cx| {
+        let workspace = view.read(cx);
+        assert!(workspace.keyboard_controls.dial_confirmation.is_none());
+        assert!(
+            workspace
+                .settings()
+                .keyboard
+                .dial_modes
+                .iter()
+                .any(|mode| mode.uid == uid)
+        );
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.click("dial-reset", cx);
+        let old_target = view
+            .read(cx)
+            .keyboard_controls
+            .dial_confirmation
+            .clone()
+            .unwrap();
+        view.update(cx, |workspace, cx| workspace.add_profile(window, cx));
+        window.render_frame(cx);
+        assert!(!old_target.current(view.read(cx)));
+        assert!(view.read(cx).keyboard_controls.dial_confirmation.is_none());
+        assert!(window.try_find("dial-reset-confirmation").is_none());
+    })
+    .unwrap();
 }

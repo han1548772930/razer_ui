@@ -1,6 +1,6 @@
 # Rust 重构状态与剩余差异
 
-更新日期：2026-10-01。用户确认按文档重构后，应用已切换到新的 GPUI Kit 设备工作区。以下描述实际编译入口；原版行为仍以逐页 JS / CONFIG / CSS 及实际资源为准。本轮尺寸、层次、控件样式和资源同步的详细证据见[UI 样式源码复核](06-style-source-audit.md)，旧截图不作为依据。
+更新日期：2026-10-02。用户确认按文档重构后，应用已切换到新的 GPUI Kit 设备工作区。以下描述实际编译入口；原版行为仍以逐页 JS / CONFIG / CSS 及实际资源为准。本轮尺寸、层次、控件样式和资源同步的详细证据见[UI 样式源码复核](06-style-source-audit.md)及[弹层复核](14-overlay-source-audit.md)，旧截图不作为依据。
 
 ## 1. 已接入的结构
 
@@ -30,13 +30,13 @@
 | 777 Mic | 仅独立 mic EQ；五预设、300px 纵向滑条、78px 频段间距、940/473 基线、右侧刻度、Reset 和随动数值气泡；编辑与 Reset 保留 Custom 语义 | 真实设备频率与本包预设采用音频频率这一矛盾仍需硬件验证；保留每段 frequency，未静默改成另一套 |
 | 653/777 Lighting | 产品自己的列表与数字 effect ID；profile 亮度；653 闲置/屏幕关闭条件；777 Streamer 插图和外链；按效果编辑颜色、随机、持续时间、方向、屏幕区域、Audio Meter 色彩增强 | 运行时 WDL、应用接管、adjustment mode、硬件效果条件与 special edition；Chroma 安装/激活；设备灯效输出 |
 | 777 Power | enabled + 5–60 分钟 step 1；禁用时滑条不可编辑 | 初始设备读取与提交确认 |
-| Pairing | 独立 display mode 的不可用状态，明确不能扫描/绑定；不生成虚构配对设备 | DUALLINK 请求、0–11 状态机、取消、超时和生命周期均待真实 transport |
+| Pairing | 独立 display mode；DUALLINK 0–11 状态机、扫描与绑定视图、取消/超时/重试、713 警告及解绑确认；未连接时明确不可用 | 真实 DUALLINK transport 尚未接入；不生成虚构设备或配对成功 |
 | 三产品 Help | 设备内路由、原左右区块、产品支持/指南、序列号复制及2秒状态、固件版本、注册；Profile隐藏；1279px换列 | 恢复出厂和序列号重试服务；设置已有独立版本查询，但 Help 的产品 UI/MW/Synapse 字段尚未绑定服务响应；见[帮助页](../screens/11-help.md) |
-| 主应用 | Dashboard 原卡片布局及折叠；Devices & Modules 独立80px行；Gamer Room 添加卡和不可用状态；Global Shortcuts 捕获、增改复制、删除确认、292px 编辑器、草稿继续和本地保存；已实现原引擎映射/hash 编码；本地快照、设置内产品预览 | Gamer Room、模块安装未接入；已证实 ABI 无法读取原快捷键配置，原生替换提交入口保持禁用；部分输出仍需原生 Turbo 事件服务，见[快捷键编码](12-global-shortcut-encoding.md)和[运行时边界](10-runtime-integration.md) |
+| 主应用 | Dashboard 原卡片布局、原产品图及折叠；Devices & Modules 独立80px行与模块详情；Gamer Room 横幅、热点、教程、添加流程及独立弹层；Global Shortcuts 捕获、增改复制、删除确认、292px 编辑器、草稿继续和本地保存；已实现原引擎映射/hash 编码；本地快照、设置内产品预览 | Gamer Room IoT服务和模块安装未接入；已证实 ABI 无法读取原快捷键配置，原生替换提交入口保持禁用；部分输出仍需原生 Turbo 事件服务，见[快捷键编码](12-global-shortcut-encoding.md)和[运行时边界](10-runtime-integration.md) |
 
 ## 3. 保存与兼容边界
 
-[store.rs](../../src/store.rs) 使用 version=2 的对象，包含 devices、tracking_intro_seen 与默认兼容的 shortcuts。读取旧的顶层 Vec<Device>（含 UTF-8 BOM）；旧 DeviceFeatures、设备字段和 profile DPI 仍保留。每个 profile 新增可选 settings；缺少时按已确认字段迁移，旧的设备级音频/轮询/电源/灯光只归属当时的 active profile，不能复制到每个 profile。
+[store.rs](../../src/store.rs) 使用 version=2 的对象，包含 devices、tracking_intro_seen 与默认兼容的 shortcuts、preferences。读取旧的顶层 Vec<Device>（含 UTF-8 BOM）；旧 DeviceFeatures、设备字段和 profile DPI 仍保留。每个 profile 新增可选 settings；缺少时按已确认字段迁移，旧的设备级音频/轮询/电源/灯光只归属当时的 active profile，不能复制到每个 profile。
 
 旧灯效中 Ambient/Fire/Tidal/Wheel 曾被合并为其它枚举，已经丢失的身份无法自动恢复；不会反向猜测用户原本选的效果。旧校准扫描状态也不转为 Smart Tracking 成功。
 
@@ -77,3 +77,23 @@ RE 默认参数与 SP/VP/zP/EU/SU/DU/GU/yU 渲染进一步核对：Reactive/Star
 样式依据来自原版 JS、CSS 和资源文件。已有及新增的 headless 测试源码用于验证生产视图布局，本轮未执行；编译检查也不能代替运行结果。真实硬件写入、驱动回读及不同系统 DPI 下的完整窗口表现仍需各自验证；测试中的 125% 字号比例不等于操作系统 DPI 验证。
 
 预览设备明确标为预览；Dashboard/设备工作区仍来自旧快照或本地配置。设置中的 HID 查询独立显示真实接口元数据和失败项，尚未把接口合并为具备完整 DeviceInfo 的设备工作区，也不修改本地 Profile。连接面板只在点击“连接并读取”后启动服务；本轮没有点击或执行该路径。未连接的服务入口保持可解释的不可用状态。
+
+## 6. 2026-10-02 补齐与复核
+
+独立 Settings 已按原版组件树恢复 Synapse / General 分页、通知、推荐、教程、语言和关于区域。设置保存只提交设置快照；即时教程标记使用已保存的其它偏好，避免提交设备、快捷键或设置草稿。推荐重置清除已忽略及已拥有产品，保留类别过滤。详见 [Settings](../screens/12-settings.md)。
+
+Gamer Room 添加流程、教程及配对弹层按实际 JS 挂载与 CSS 最终覆盖重新核对。保存确认改用 Base Dialog 提供原版外观，保留 182/frontend 与 653 各自的纵向位置、400px 面板和黑色 50% 遮罩；配置导入导出、卡内确认、713 警告使用各自样式。详见[弹层审计](14-overlay-source-audit.md)。
+
+主应用 Dashboard 按原 PluginImages 的产品、配色和布局解析资源，不再借用 Customize 图片。资源的实际消费者、条件变体与剩余缺口见[资源使用审计](13-resource-usage.md)。
+
+
+## 7. 本轮新增界面与剩余边界
+
+- 颜色组件补齐40个预设、16个自定义槽及二级拾色器，支持编辑、删除和保存/取消。自定义颜色单独持久化，不连带提交设备或Settings草稿；系统吸管尚未接通。
+- 653 Command Dial补齐行内操作、独立颜色、帮助提示和原始锁定条件；Gaming Mode按布局处理Windows/Menu/Copilot。`Em`中自定义模式及`Switch Applications`的特殊限制按源码保留。
+- 板载配置补齐270px面板、槽位、宏内存、同步/错误和独立冲突确认。常规设备等待真实回读；显式示例只在预览设备可用，不修改工作区配置。
+- 模块目录增加17类原状态的显式预览，包括下载、安装、取消、错误、移除和固件说明；常规目录仍需真实服务数据。
+- Settings补齐语言选项、布局、内嵌社交图标的常态/悬停，以及Windows动态灯光界面。迁移与发布说明取得独立原版源码并接入界面；Synapse 3扫描、转换、导入及真实发布说明读取尚未接通。
+- 777删除框按实际挂载修正为top52，并恢复不同的标题、边框、按钮颜色及白色按钮文字；导入/导出不再点击遮罩关闭。
+
+原版不止三个产品模块。本地完整取得的产品前端为182、653、777，历史探测另有200个产品ID；详见[产品模块清单](15-product-module-inventory.md)。上述界面补齐不等于所有产品或真实宿主服务已完成。

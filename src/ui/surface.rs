@@ -36,6 +36,7 @@ pub(crate) fn navigation_button(
     cx: &App,
 ) -> Button {
     Button::new(id)
+        .xsmall()
         .label(label)
         .selected(selected)
         .custom(

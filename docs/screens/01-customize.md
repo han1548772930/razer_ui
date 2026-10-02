@@ -158,3 +158,5 @@ GPUI 在 Windows 下的普通按键事件不能保留所有左右修饰键和主
 重构前 182 的 mouse_visual 使用圆角容器、通用 Mouse 图标和文字；connection_canvas 是几条固定直线，当时尚未使用原版产品图和逐键连线。`assets/mouse-182-dashboard3x.png` 当时未被 src 引用；它与 Customize 的 prd 图用途不同。该段仅保留重构前差异，当前产品图、输入抽屉和分类编辑器状态以上文及[重构状态](../re/03-implementation-gap.md)为准。
 
 当前设备图/命中几何与设备工作区的映射草稿分开，编辑和退出使用 GPUI Kit 输入、选择器、弹层和焦点机制。[键盘控件回归源码](../../src/features/keyboard_controls_tests.rs) 覆盖键对迁移、四组限制、禁键/去重、录制取消与布局选择、拨轮稳定身份/双方向保存隔离等路径。本轮只做 `cargo check`，不执行测试、应用或 DLL。后续实际验收仍包括逐键命中/hover、底部 DPI、普通/Hypershift 与自定义模式隔离、三种退出路径、Profile 切换、不同布局、Snap Tap 录制、Command Dial 管理及后端失败。
+
+`Em` 的原始条件也予以保留：当只剩一个启用的默认模式时，已启用的自定义模式开关同样锁定；自定义模式若精确命名为 `Switch Applications`，也受 Alt+Tab 限制。这些行为依据实际条件表达式，不能只看组件 props 推断。

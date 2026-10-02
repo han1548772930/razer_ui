@@ -130,16 +130,20 @@ impl LinkedGamesDialog {
         workspace.update(cx, |workspace, cx| {
             workspace.edit(window, cx, |settings| settings.linked_games = games);
         });
-        window.close_dialog(cx);
+        dismiss_profile_dialog(&self.target.workspace, window, cx);
     }
 }
 
 impl Render for LinkedGamesDialog {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut body = v_flex()
-            .id("linked-games-dialog")
-            .test_support()
-            .gap_3()
+            .id("linked-games-content")
+            .w_full()
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .p(surface::css(20.))
+            .gap(surface::css(10.))
             .child(surface::note(
                 "在本地配置中记录关联程序。保存后不会自动启动游戏或切换配置文件。",
                 cx,
@@ -191,38 +195,43 @@ impl Render for LinkedGamesDialog {
                         })),
                 );
         }
-        body.child(
-            Button::new("linked-games-add")
-                .label("添加程序…")
-                .disabled(self.busy)
-                .on_click(cx.listener(|this, _, window, cx| this.add(window, cx))),
-        )
-        .when_some(self.error.clone(), |body, error| {
-            body.child(
-                div()
-                    .id("linked-games-error")
-                    .test_support()
-                    .text_color(cx.theme().danger)
-                    .child(error),
+        let body = body
+            .child(
+                profile_dialog_button("linked-games-add", "添加程序…", cx)
+                    .disabled(self.busy)
+                    .on_click(cx.listener(|this, _, window, cx| this.add(window, cx))),
             )
-        })
-        .child(
-            h_flex()
-                .justify_end()
-                .gap_3()
-                .child(
-                    Button::new("linked-games-cancel")
-                        .label("取消")
-                        .on_click(|_, window, cx| window.close_dialog(cx)),
+            .when_some(self.error.clone(), |body, error| {
+                body.child(
+                    div()
+                        .id("linked-games-error")
+                        .test_support()
+                        .text_color(cx.theme().danger)
+                        .child(error),
                 )
-                .child(
-                    Button::new("linked-games-save")
-                        .label("保存到本地草稿")
-                        .primary()
-                        .disabled(self.busy)
-                        .on_click(cx.listener(|this, _, window, cx| this.save(window, cx))),
-                ),
-        )
+            });
+        v_flex()
+            .id("linked-games-dialog")
+            .test_support()
+            .size_full()
+            .min_h_0()
+            .child(body)
+            .child(
+                profile_dialog_footer(cx)
+                    .child(
+                        profile_dialog_button("linked-games-cancel", "取消", cx).on_click(
+                            cx.listener(|this, _, window, cx| {
+                                dismiss_profile_dialog(&this.target.workspace, window, cx)
+                            }),
+                        ),
+                    )
+                    .child(
+                        profile_dialog_button("linked-games-save", "保存到本地草稿", cx)
+                            .primary()
+                            .disabled(self.busy)
+                            .on_click(cx.listener(|this, _, window, cx| this.save(window, cx))),
+                    ),
+            )
     }
 }
 
@@ -241,13 +250,7 @@ impl DeviceWorkspace {
             busy: false,
             error: None,
         });
-        window.open_dialog(cx, move |dialog, window, _| {
-            dialog
-                .title(format!("关联游戏 — {name}"))
-                .w((window.rem_size() * (540. / 16.))
-                    .min((window.viewport_size().width - px(40.)).max(px(240.))))
-                .child(view.clone())
-        });
+        self.show_profile_dialog(format!("关联游戏 — {name}"), view.into(), window, cx);
     }
 }
 

@@ -1,5 +1,7 @@
 //! In-memory state and native event tests. No DLL, worker or hardware transport.
-use super::{Lane, PairingDevice, PairingPage, PairingRequest, PairingState, PairingStatus};
+use super::{
+    Confirmation, Lane, PairingDevice, PairingPage, PairingRequest, PairingState, PairingStatus,
+};
 use gpui_kit::component::Root;
 use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, Entity, TestAppContext, WindowHandle, px, size};
@@ -152,7 +154,6 @@ fn card_projection_deduplicates_products_and_only_offers_complementary_devices()
     assert_eq!(cards.len(), 2);
     assert_eq!(cards[0].device().product_id(), 2000);
     assert_eq!(cards[1].device().product_id(), 2100);
-    state.select(cards[1].device().key());
     assert!(!state.cards()[1].paired());
 }
 
@@ -194,7 +195,7 @@ fn replacing_a_binding_unpairs_first_and_only_binds_after_acknowledgement() {
         json!([device(2100, "KEYBOARD", 1)]),
     );
     let target = state.cards()[1].device().clone();
-    let request = state.pair_request(target.clone(), false);
+    let request = state.pair_request(target.clone(), false).unwrap();
     assert_eq!(
         request.payload(false),
         json!({"productId":2000,"category":null})
@@ -240,7 +241,10 @@ fn external_unpair_routes_to_recorded_owner_and_fallback_never_fakes_success() {
     target["deviceContainerId"] = json!("owner-container");
     state.set_external(json!([target])).unwrap();
     let target = state.cards()[0].device().clone();
-    let request = state.pair_request(target.clone(), true);
+    let request = PairingRequest::Unbind {
+        device: target.clone(),
+        external: true,
+    };
     assert_eq!(
         request.routing_context(state.context().unwrap()).unwrap(),
         json!({"productId":9000,"deviceContainerId":"owner-container"})
@@ -257,11 +261,31 @@ fn external_unpair_routes_to_recorded_owner_and_fallback_never_fakes_success() {
     let second = state.begin(next).unwrap();
     state.receive(&first, Ok(json!({"productId":700})));
     assert!(state.current(&second));
+    assert!(
+        state
+            .receive(&second, Ok(json!({"productId":2000})))
+            .is_none()
+    );
+    assert!(state.cards()[0].device().disconnected());
+    assert!(!state.cards()[0].actionable());
+}
+
+#[test]
+fn external_reclaim_scans_on_timeout_without_claiming_unbind_success() {
+    let mut state = state(false);
+    let mut target = device(2000, "KEYBOARD", 2);
+    target["dongleId"] = json!(700);
+    target["master"] = json!({"productId":9000});
+    state.set_external(json!([target])).unwrap();
+    let target = state.cards()[0].device().clone();
+    let request = state.pair_request(target, true).unwrap();
+    assert!(matches!(request, PairingRequest::ReclaimExternal(_)));
+    let reclaim = state.begin(request).unwrap();
     assert!(matches!(
-        state.receive(&second, Ok(json!({"productId":2000}))),
+        state.external_fallback(&reclaim),
         Some(PairingRequest::Scan(Lane::Primary))
     ));
-    assert!(state.cards()[0].device().disconnected());
+    assert!(!state.cards()[0].device().disconnected());
     let next = scan(
         &mut state,
         Lane::Primary,
@@ -269,6 +293,92 @@ fn external_unpair_routes_to_recorded_owner_and_fallback_never_fakes_success() {
     )
     .unwrap();
     assert!(matches!(next, PairingRequest::Bind(_)));
+}
+
+#[test]
+fn reclaim_does_not_bind_a_different_unit_with_the_same_product_id() {
+    let mut state = state(false);
+    let mut target = device(2000, "KEYBOARD", 2);
+    target["master"] = json!({"productId":9000});
+    state.set_external(json!([target])).unwrap();
+    let request = state
+        .pair_request(state.cards()[0].device().clone(), true)
+        .unwrap();
+    let ticket = state.begin(request).unwrap();
+    state.receive(&ticket, Ok(json!({"productId":2000})));
+    let mut other = device(2000, "KEYBOARD", 1);
+    other["serialNumber"] = json!("another-unit");
+    assert!(scan(&mut state, Lane::Primary, json!([other])).is_none());
+    assert!(state.error().unwrap().contains("尚未扫描到目标设备"));
+    assert!(state.cards().iter().all(|card| !card.paired()));
+}
+
+#[test]
+fn failed_keyboard_scan_continues_mouse_scan_and_recovery_preserves_other_lane() {
+    let mut state = state(true);
+    let ticket = state.begin(PairingRequest::Scan(Lane::Primary)).unwrap();
+    assert!(matches!(
+        state.receive(&ticket, Err("scan failed".into())),
+        Some(PairingRequest::Scan(Lane::Secondary))
+    ));
+    let keyboard = device(2000, "KEYBOARD", 1);
+    let next = scan(&mut state, Lane::Primary, json!([keyboard])).unwrap();
+    let ticket = state.begin(next).unwrap();
+    let next = state.receive(&ticket, Err("bind failed".into())).unwrap();
+    assert!(matches!(next, PairingRequest::Scan(Lane::Secondary)));
+    let mouse = device(3000, "MOUSE", 1);
+    let ticket = state.begin(next).unwrap();
+    let next = state.receive(&ticket, Ok(json!([mouse.clone()]))).unwrap();
+    let ticket = state.begin(next).unwrap();
+    state.recover(state.generation(), Lane::Primary, PairingStatus::BindError);
+    assert_eq!(state.status(Lane::Primary), PairingStatus::Ready);
+    assert!(state.current(&ticket));
+    state.receive(&ticket, Ok(json!({"device": mouse})));
+    assert!(state.cards()[0].paired());
+    assert_eq!(state.cards()[0].device().product_id(), 3000);
+}
+
+#[test]
+fn external_record_changes_invalidate_requests_but_preserve_local_bindings() {
+    let mut state = state(false);
+    read(&mut state, json!([device(2100, "KEYBOARD", 1)]));
+    let mut target = device(2000, "KEYBOARD", 2);
+    target["master"] = json!({"productId":9000});
+    state.set_external(json!([target])).unwrap();
+    let target = state.cards()[1].device().clone();
+    let request = state.pair_request(target, true).unwrap();
+    let ticket = state.begin(request).unwrap();
+    state.set_external(json!([])).unwrap();
+    assert!(!state.current(&ticket));
+    assert!(!state.busy());
+    assert!(state.cards()[0].paired());
+    assert!(
+        state
+            .receive(&ticket, Ok(json!({"productId":2000})))
+            .is_none()
+    );
+}
+
+#[test]
+fn runtime_sleep_metadata_dims_a_binding_without_unpairing_it() {
+    for runtime in [
+        json!({"devicePowerState":"Sleep"}),
+        json!({"powerStatus":{"chargingStatus":"OFF"}}),
+        json!({"chargingStatus":"off"}),
+    ] {
+        let mut target = device(2000, "KEYBOARD", 2);
+        target
+            .as_object_mut()
+            .unwrap()
+            .extend(runtime.as_object().unwrap().clone());
+        let target = PairingDevice::parse(target).unwrap();
+        assert!(target.dimmed());
+        assert!(!target.connected());
+        assert!(!target.disconnected());
+    }
+    let mut target = device(2000, "KEYBOARD", 2);
+    target["productName"] = json!({"zh-cn":"键盘", "en":"Keyboard"});
+    assert_eq!(PairingDevice::parse(target).unwrap().name("zh-CN"), "键盘");
 }
 
 #[test]
@@ -359,4 +469,84 @@ fn confirmation_escape_restores_focus_and_enter_cannot_fake_a_binding(cx: &mut T
         assert!(page.state.cards().iter().all(|card| !card.paired()));
         assert!(page.state.error().is_some());
     });
+}
+
+#[gpui_kit::test]
+fn inline_confirmation_uses_content_height_and_a_centered_compact_button(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let mut fixture = state(false);
+    scan(
+        &mut fixture,
+        Lane::Primary,
+        json!([device(2000, "KEYBOARD", 1)]),
+    );
+    let (handle, _) = open_page(cx, Some(fixture));
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("pairing-action-2000:fixture-2000", cx);
+        let backdrop = window.find("pairing-confirmation").bounds();
+        let dialog = window.find("pairing-confirm-dialog").bounds();
+        let button = window.find("pairing-confirm-continue").bounds();
+        let scale = window.rem_size() / 16.;
+        assert_eq!(backdrop.size.width, scale * 290.);
+        assert_eq!(dialog.size.width, scale * 230.);
+        assert!(dialog.size.height < scale * 220.);
+        assert_eq!(dialog.origin.y, backdrop.origin.y);
+        assert_eq!(button.size.width, scale * 90.);
+        assert_eq!(button.size.height, scale * 27.);
+        assert!(
+            (f32::from(button.origin.x + button.size.width / 2.)
+                - f32::from(dialog.origin.x + dialog.size.width / 2.))
+            .abs()
+                <= 1.
+        );
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn receiver_713_uses_a_window_warning_with_two_ordered_actions(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let mut fixture = state(false);
+    let mut target = device(2000, "KEYBOARD", 1);
+    target["dongleId"] = json!(713);
+    scan(&mut fixture, Lane::Primary, json!([target]));
+    let target = fixture.cards()[0].device().clone();
+    let (handle, page) = open_page(cx, Some(fixture));
+    cx.update_window(handle.into(), |_, window, cx| {
+        page.update(cx, |page, cx| {
+            page.show_confirmation(Confirmation::Continue713 { device: target }, window, cx)
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("pairing-confirmation").is_none());
+        let popup = window.find("pairing-713-warning").bounds();
+        assert_eq!(popup.size.width, window.rem_size() * (400. / 16.));
+        assert!(
+            (f32::from(popup.origin.x + popup.size.width / 2.)
+                - f32::from(window.viewport_size().width / 2.))
+            .abs()
+                <= 1.
+        );
+        assert!(
+            (f32::from(popup.origin.y + popup.size.height / 2.)
+                - f32::from(window.viewport_size().height / 2.))
+            .abs()
+                <= 1.
+        );
+        assert!(
+            window.find("pairing-713-continue").bounds().origin.x
+                < window.find("pairing-713-keyboard-dongle").bounds().origin.x
+        );
+        window.click("pairing-713-keyboard-dongle", cx);
+        assert!(window.try_find("pairing-713-warning").is_none());
+        assert!(!page.read(cx).state.busy());
+        assert!(
+            page.read(cx)
+                .state
+                .cards()
+                .iter()
+                .all(|card| !card.paired())
+        );
+    })
+    .unwrap();
 }

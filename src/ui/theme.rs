@@ -1,6 +1,52 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Main frontend's photographic banner, module details, and tutorial emphasis.
+pub(crate) struct MainPageColors;
+impl MainPageColors {
+    pub(crate) fn card_caption(&self) -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn detail_surface(&self) -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+    pub(crate) fn tutorial_accent(&self) -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn banner_shade(&self) -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn banner_heading(&self) -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn empty_group_text(&self) -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn mobile_action(&self) -> Hsla {
+        rgb(0x2b2b2b).into()
+    }
+    pub(crate) fn tutorial_hover(&self) -> Hsla {
+        rgb(0xfda044).into()
+    }
+}
+
+/// Independent pairing workflow's original modal palette.
+pub(crate) struct PairingColors;
+impl PairingColors {
+    pub(crate) fn dialog_surface(&self) -> Hsla {
+        rgb(0x1a1a1a).into()
+    }
+    pub(crate) fn button_hover(&self) -> Hsla {
+        rgb(0xff9530).into()
+    }
+    pub(crate) fn device_name(&self) -> Hsla {
+        rgb(0xe3e3e3).into()
+    }
+    pub(crate) fn empty_border(&self) -> Hsla {
+        rgb(0x666666).into()
+    }
+}
+
 /// Source numeric stepper outline; separate from the ordinary dropdown border.
 pub(crate) fn stepper_border() -> Hsla {
     rgb(0x5d5d5d).into()
@@ -51,6 +97,129 @@ impl ProfileAlertColors {
 
     pub(crate) fn danger(&self) -> Hsla {
         self.danger
+    }
+    /// 777 overrides the confirmation border/button, while retaining the red title.
+    pub(crate) fn headphone_danger(&self) -> Hsla {
+        rgb(0xc8323c).into()
+    }
+}
+
+/// Final `.color-options` / `.picker-container` colors in the product stylesheets.
+#[derive(Clone, Copy)]
+pub(crate) struct PaletteColors;
+impl PaletteColors {
+    pub(crate) fn surface(&self) -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn border(&self) -> Hsla {
+        rgb(0x515151).into()
+    }
+    pub(crate) fn picker_border(&self) -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn swatch_border(&self) -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn white(&self) -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn selected_dot(&self) -> Hsla {
+        rgba(0x000000b3).into()
+    }
+    pub(crate) fn secondary(&self) -> Hsla {
+        rgb(0x707070).into()
+    }
+}
+
+/// 653 Kt.slotColors: the hardware slot identifiers are 2 through 5.
+pub(crate) struct OnboardMemoryColors;
+impl OnboardMemoryColors {
+    pub(crate) fn trigger_slot(slot_id: u8) -> Hsla {
+        if slot_id == 3 {
+            rgb(0x008000).into()
+        } else {
+            Self::slot(slot_id)
+        }
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn white() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn slot(slot_id: u8) -> Hsla {
+        rgb(match slot_id {
+            2 => 0xff0000,
+            3 => 0x00ff00,
+            4 => 0x0000ff,
+            5 => 0x00ffff,
+            _ => 0x999999,
+        })
+        .into()
+    }
+}
+
+pub(crate) struct CommandDialColors;
+impl CommandDialColors {
+    pub(crate) fn hover_border(&self) -> Hsla {
+        rgb(0x1b5811).into()
+    }
+    pub(crate) fn detail_border(&self) -> Hsla {
+        rgb(0x3a3a3a).into()
+    }
+}
+
+pub(crate) struct IotColors;
+impl IotColors {
+    pub(crate) fn help_link() -> Hsla {
+        rgb(0x30d5ff).into()
+    }
+}
+
+pub(crate) struct HeaderStatusColors;
+impl HeaderStatusColors {
+    pub(crate) fn status_surface() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub(crate) fn offline_hover() -> Hsla {
+        rgb(0x3cbf27).into()
+    }
+    pub(crate) fn update_tooltip_border() -> Hsla {
+        rgb(0x383838).into()
+    }
+}
+
+/// rz-user-profile-menu's .dropdown-razer and the host avatar trigger.
+pub(crate) struct AccountMenuColors;
+impl AccountMenuColors {
+    pub(crate) fn surface() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn hover() -> Hsla {
+        rgb(0x1f1f1f).into()
+    }
+    pub(crate) fn trigger_active() -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+}
+
+pub(crate) struct MigrationColors;
+impl MigrationColors {
+    pub(crate) fn checkbox_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+}
+
+pub(crate) struct SettingsColors;
+impl SettingsColors {
+    pub(crate) fn tree_note() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn tooltip_surface() -> Hsla {
+        rgb(0x000000).into()
     }
 }
 

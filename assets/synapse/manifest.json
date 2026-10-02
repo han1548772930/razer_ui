@@ -258,6 +258,172 @@
       "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_mobile_download.858c66c9.svg"
     },
     {
+      "source": ".ref/frontend/static/media/indicator.b7ce7af4.svg",
+      "output": "assets/synapse/gr-tutorial-indicator.svg",
+      "source_sha256": "9751f4948dc36f31ae82dbf617cf804437d3c87cc2c19f4672160f71cb4169c0",
+      "sha256": "9751f4948dc36f31ae82dbf617cf804437d3c87cc2c19f4672160f71cb4169c0",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/indicator.b7ce7af4.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_add_key_light_outline.2bc5f2e7.svg",
+      "output": "assets/synapse/iot-key-light.svg",
+      "source_sha256": "c0e241210921f92cecb601a46962692305685f29b65ea2e7a263e2e917523f0f",
+      "sha256": "c0e241210921f92cecb601a46962692305685f29b65ea2e7a263e2e917523f0f",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_add_key_light_outline.2bc5f2e7.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/app-streaming-icon.6be479a2.svg",
+      "output": "assets/synapse/iot-streaming-app.svg",
+      "source_sha256": "c5c9c217233c2aa792faf79c1a304a00c1282663632f5b774e1ee4ce5324217c",
+      "sha256": "c5c9c217233c2aa792faf79c1a304a00c1282663632f5b774e1ee4ce5324217c",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/app-streaming-icon.6be479a2.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/qr-code-key-light.f91e9fbe.svg",
+      "output": "assets/synapse/iot-key-light-qr.svg",
+      "source_sha256": "031a532907001eb88b652e733c6153accd1a61e5316f9e992b48d46bfc20d9b4",
+      "sha256": "031a532907001eb88b652e733c6153accd1a61e5316f9e992b48d46bfc20d9b4",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/qr-code-key-light.f91e9fbe.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_refresh-2.de191fed.svg",
+      "output": "assets/synapse/iot-refresh.svg",
+      "source_sha256": "8261141208ddb3ab2255b94fb2e45a0318cabd5dc57996626a72ee9ed10a4197",
+      "sha256": "8261141208ddb3ab2255b94fb2e45a0318cabd5dc57996626a72ee9ed10a4197",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_refresh-2.de191fed.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_refresh_3.4e3a6824.svg",
+      "output": "assets/synapse/iot-refresh-green.svg",
+      "source_sha256": "3bd8cccc5bb2e9cb858116b0061ff96b31ca10fd0fd334081ef895175cd32573",
+      "sha256": "3bd8cccc5bb2e9cb858116b0061ff96b31ca10fd0fd334081ef895175cd32573",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_refresh_3.4e3a6824.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_new_iot_device_tooltip.990363a0.svg",
+      "output": "assets/synapse/iot-new-help.svg",
+      "source_sha256": "1e9f30e5cb6fd4ee4100ffd417b5b29b524844d8bc53e7bcd6d41169e6f66046",
+      "sha256": "1e9f30e5cb6fd4ee4100ffd417b5b29b524844d8bc53e7bcd6d41169e6f66046",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_new_iot_device_tooltip.990363a0.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/see_password.123e5e09.svg",
+      "output": "assets/synapse/iot-see-password.svg",
+      "source_sha256": "dad0df91ae9cf89d22acbf6fa32b54105b7a679f814fce7201db073eb4ebcfe6",
+      "sha256": "dad0df91ae9cf89d22acbf6fa32b54105b7a679f814fce7201db073eb4ebcfe6",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/see_password.123e5e09.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_not_found.98525e61.svg",
+      "output": "assets/synapse/iot-not-found.svg",
+      "source_sha256": "f1ec96168333d2adf1c4a8ccb371502153e063f75bcfb3df000daafd1f64f5b0",
+      "sha256": "f1ec96168333d2adf1c4a8ccb371502153e063f75bcfb3df000daafd1f64f5b0",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_not_found.98525e61.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_wifi_error.a355ac62.svg",
+      "output": "assets/synapse/iot-wifi-error.svg",
+      "source_sha256": "6b3aa1fafcb0fb5234a4800235ac010bb5d4fefb8ce4ae9c7caa84f883ed4c6d",
+      "sha256": "6b3aa1fafcb0fb5234a4800235ac010bb5d4fefb8ce4ae9c7caa84f883ed4c6d",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_wifi_error.a355ac62.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_success_gray.14655ce6.svg",
+      "output": "assets/synapse/iot-success.svg",
+      "source_sha256": "20b3e56c5ba3399e360f282a22793e8110ffe0bc42ae19d258cd400e69b305e4",
+      "sha256": "20b3e56c5ba3399e360f282a22793e8110ffe0bc42ae19d258cd400e69b305e4",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_success_gray.14655ce6.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_identify_devices.0e6bf7b8.svg",
+      "output": "assets/synapse/iot-identify.svg",
+      "source_sha256": "900acfdb56fec1a6559de61774234ef4e8a03539f3cccdccea3eca6381a59d44",
+      "sha256": "900acfdb56fec1a6559de61774234ef4e8a03539f3cccdccea3eca6381a59d44",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_identify_devices.0e6bf7b8.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_wifi_device.19a8e226.svg",
+      "output": "assets/synapse/iot-wifi-device.svg",
+      "source_sha256": "77bf907403d9579a99371dabd19598c784e066582f03e613b72898dd06a8b9a0",
+      "sha256": "77bf907403d9579a99371dabd19598c784e066582f03e613b72898dd06a8b9a0",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_wifi_device.19a8e226.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/icon_wifi_add.5fd71806.svg",
+      "output": "assets/synapse/iot-wifi-add.svg",
+      "source_sha256": "e0b836a1d8bee4dabe9f8a78e4c6ecc3c5aec4657ce02acbfe6d25d2039c9e6e",
+      "sha256": "e0b836a1d8bee4dabe9f8a78e4c6ecc3c5aec4657ce02acbfe6d25d2039c9e6e",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_wifi_add.5fd71806.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/services_store_placeholder.9f5d3c9a.avif",
+      "output": "assets/synapse/dashboard-store.png",
+      "source_sha256": "4382c7ac5887de425f914cbd291dca63f295d68c2829172b2c2d885ee543b0c0",
+      "sha256": "1ed7e5a6d6cfd40efa3f2b0b50b7927f7a2df182a6454510f0125b9e712714b4",
+      "width": 290,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/services_store_placeholder.9f5d3c9a.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/services_support_placeholder.62c592fb.avif",
+      "output": "assets/synapse/dashboard-support.png",
+      "source_sha256": "48ff935df09baae6ea4e8463fad4408f6df9352a35b78b33719f6963a3e1ff72",
+      "sha256": "e405da836d3a2741ca7fba5a77085927de3545c2198d440e530f1da69dfb954c",
+      "width": 290,
+      "height": 145,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/services_support_placeholder.62c592fb.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/services_community_placeholder.50541baa.avif",
+      "output": "assets/synapse/dashboard-community.png",
+      "source_sha256": "9b1474c0cfc037fb55c1a6284addbd31d876ca368d20abdfc31f47f65302158d",
+      "sha256": "bf5156dc63245b5b42587938625dc89854fdb141ce9e2d48cf966093cd6e04ef",
+      "width": 290,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/services_community_placeholder.50541baa.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/service_gold_and_silver.12f2d9c9.avif",
+      "output": "assets/synapse/dashboard-gold.png",
+      "source_sha256": "69c1bb2b550296bb4f38d5cc9ef2874de34eeb66a2dadcef08a6da8b72a0d42a",
+      "sha256": "5064d6cf6bb3da8783eb4c60297dec260916d1ecf4bb3ef88c804a6373b98084",
+      "width": 580,
+      "height": 280,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/service_gold_and_silver.12f2d9c9.avif"
+    },
+    {
+      "source": ".ref/frontend/static/media/add_wifi_device.60d9fd5b.svg",
+      "output": "assets/synapse/dashboard-iot.svg",
+      "source_sha256": "746892adaaf7c01db1cb400acc5416d5dbf04ff36a01b09514a18946be3d9856",
+      "sha256": "746892adaaf7c01db1cb400acc5416d5dbf04ff36a01b09514a18946be3d9856",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/add_wifi_device.60d9fd5b.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/logo_tour.c14123f7.svg",
+      "output": "assets/synapse/dashboard-tour.svg",
+      "source_sha256": "be20781a335ba2e3a2f15023e7094be4ab3ecff278a4a987a0e359b618445d91",
+      "sha256": "be20781a335ba2e3a2f15023e7094be4ab3ecff278a4a987a0e359b618445d91",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/logo_tour.c14123f7.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/guest.00470cfc.svg",
+      "output": "assets/synapse/account-guest.svg",
+      "source_sha256": "5ca59ec86019074f86aebc1619b9677f8430319a478078e055ba6bc0415000cc",
+      "sha256": "5ca59ec86019074f86aebc1619b9677f8430319a478078e055ba6bc0415000cc",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/guest.00470cfc.svg"
+    },
+    {
+      "source": ".ref/frontend/static/media/spinner.ef2d0235.svg",
+      "output": "assets/synapse/gr-device-spinner.svg",
+      "source_sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+      "sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/spinner.ef2d0235.svg"
+    },
+    {
       "source": ".ref/frontend/static/media/logo_macro.9a6b554a.svg",
       "output": "assets/synapse/module-macro.svg",
       "source_sha256": "6e78e4b830dd65110071ec967fa859e74478fa2a1c5eaa1693f72b57e5c80b4e",
@@ -313,6 +479,197 @@
       "source_url": "https://apps.razer.com/synapse/dashboard/static/media/alexa.110b43c3.avif"
     },
     {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-synapse.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "893f79958d45401aa3ccc06d7b70636b77493dcb1a13d0d4ed6dda42cb08adf5",
+      "module": 19388,
+      "component": "A/B",
+      "source_offset": 5667,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-app.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "93578f3ff25793e04dbb6327781cac0a83f9a2517449711916fe4b6183f916ec",
+      "module": 19388,
+      "component": "E/I",
+      "source_offset": 316434,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-popup-bottom.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "30b3fe49b4558bbcfa6993d3451267c97292403f4f7a2beed68a12201c968419",
+      "module": 19388,
+      "component": "U",
+      "source_offset": 318286,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation",
+      "position": "bottom",
+      "note": "The original references an undefined clip path; omitting that inert reference preserves the paths"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-popup-top.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "48f05f384949f396bf96f7b8cb36f86fd0521420f74b293548975b04a85af4bd",
+      "module": 19388,
+      "component": "U",
+      "source_offset": 318286,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation",
+      "position": "top",
+      "note": "The original references an undefined clip path; omitting that inert reference preserves the paths"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-power.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "8ccc1fe445458dec66c8bed8fc7873caf89d44a52db97ec581866965461d59a3",
+      "module": 19388,
+      "component": "ee",
+      "source_offset": 322239,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation",
+      "active": false
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-power-active.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "5350c3764b2487f86bbc3294116e1674b71df79587a58c94dc6a9164e587ba73",
+      "module": 19388,
+      "component": "ee",
+      "source_offset": 322239,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation",
+      "active": true
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-offline.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "72bf98a4d34ec5ed6b2980105c48df39d266f53cda38b6e526f775f784d34370",
+      "module": 19388,
+      "component": "te",
+      "source_offset": 324232,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
+    },
+    {
+      "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
+      "output": "assets/synapse/gr-device-offline-description.svg",
+      "source_sha256": "86b8513fbf2e354636a37be38a83e92b9930b5a6dfa1a9b5eae0a1b03c4583ee",
+      "sha256": "9db07362e591d9c307ef9f5f6087fc930b354a4829315887eebbf62782b134c1",
+      "module": 19388,
+      "component": "S.renderDescription",
+      "source_offset": 319598,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
+    },
+    {
+      "source": ".ref/frontend/shared-favicon/IOT_KEY_LIGHT.svg",
+      "output": "assets/synapse/iot-category-key-light.svg",
+      "source_sha256": "8d990cac4849532dd081f9161e371714805495403e43867bd0f5a6fafe65f8b9",
+      "sha256": "8d990cac4849532dd081f9161e371714805495403e43867bd0f5a6fafe65f8b9",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_KEY_LIGHT.svg"
+    },
+    {
+      "source": ".ref/frontend/shared-favicon/IOT_BULB.svg",
+      "output": "assets/synapse/iot-category-bulb.svg",
+      "source_sha256": "2761ba0b1c30d94974c06be5bbca1ffc6e1a399f5aed77e83c9d69108a088652",
+      "sha256": "2761ba0b1c30d94974c06be5bbca1ffc6e1a399f5aed77e83c9d69108a088652",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_BULB.svg"
+    },
+    {
+      "source": ".ref/frontend/shared-favicon/IOT_LAMP.svg",
+      "output": "assets/synapse/iot-category-lamp.svg",
+      "source_sha256": "73246b762e36d592a6e3e7c09e811e910299322d21115df6fda8b33be05308aa",
+      "sha256": "73246b762e36d592a6e3e7c09e811e910299322d21115df6fda8b33be05308aa",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_LAMP.svg"
+    },
+    {
+      "source": ".ref/frontend/shared-favicon/IOT_STRIP.svg",
+      "output": "assets/synapse/iot-category-strip.svg",
+      "source_sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42",
+      "sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_STRIP.svg"
+    },
+    {
+      "source": "assets/synapse/iot-key-light-product-source.avif",
+      "output": "assets/synapse/iot-key-light-product.png",
+      "source_sha256": "e9048dc9e10defa907dc7a197f0273ea5fef593d8f04496a36b205a5d22ffa66",
+      "sha256": "03ac8839f30a8f6bb39e69ff7ad1a92200a87b3321131cebd56a01fd31fe3900",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/780/ui/780_0/PluginImages/780_0_0_dashboard1x.avif"
+    },
+    {
+      "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
+      "output": "assets/synapse/header-compatibility-warning.svg",
+      "source_sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384",
+      "sha256": "125095bad55c3fd5fd6aecea910624d7e2e9987c7beaddb37bbc8f7d6177381b",
+      "module": 27875,
+      "viewBox": [
+        0,
+        0,
+        20,
+        20
+      ],
+      "purpose": "Compatibility mode warning"
+    },
+    {
+      "source": ".ref/frontend/static/js/IotPopupRoot.290be417.chunk.js",
+      "output": "assets/synapse/iot-new-device-mac.png",
+      "source_sha256": "86a5fe5a6e1b1af185d76ba3f1b0d58f7b7ff64c90bf362d71787003a7e0446a",
+      "sha256": "2df388fd9dd6dd317fc1f9b2748089951a65a9efa491ab331019c71b83ddb0ef",
+      "width": 285,
+      "height": 145,
+      "mode": "RGBA",
+      "source_offset": 47641,
+      "purpose": "New-device MAC-address help"
+    },
+    {
+      "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
+      "output": "assets/synapse/category-keyboard.svg",
+      "source_sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384",
+      "sha256": "11b0550daa3a3c8c002b5afb2f4bef444d1d0617ac9da61440a5a8012f502af8",
+      "module": 96689,
+      "source_offset": 94020,
+      "category": "KEYBOARD",
+      "transform": "translate(-2 -2)",
+      "viewBox": [
+        0,
+        0,
+        20,
+        20
+      ],
+      "purpose": "Original 40px device category icon from renderer c and final transform map i"
+    },
+    {
+      "source": ".ref/frontend/static/js/App.eb32d7cd.chunk.js",
+      "output": "assets/synapse/category-mouse.svg",
+      "source_sha256": "fe9e473c2ea53edc9f2a60f2ef5ccbe4b96700b360e20fc15ba8b2440b66d384",
+      "sha256": "331e6ed14c780627a6ca8f0f3f298c78bafa85545d5fb55b1ee6f17ea12a6f7d",
+      "module": 96689,
+      "source_offset": 94400,
+      "category": "MOUSE",
+      "transform": "translate(0 0)",
+      "viewBox": [
+        0,
+        0,
+        20,
+        20
+      ],
+      "purpose": "Original 40px device category icon from renderer c and final transform map i"
+    },
+    {
       "source": ".ref/settings/static/media/razer_synapse_4-1.56e5c81a.svg",
       "output": "assets/synapse/settings-synapse-logo.svg",
       "source_sha256": "527a642631c2dc0911f59c013c39263363c3003331a00dc9de1ad5478f9431cf",
@@ -332,6 +689,236 @@
       "source_sha256": "f3af4d60b069e0481be0c038e34760bd2e0ef2b8b41c3a34434e4d7abca25997",
       "sha256": "f3af4d60b069e0481be0c038e34760bd2e0ef2b8b41c3a34434e4d7abca25997",
       "source_url": "https://apps.razer.com/synapse/settings/static/media/exclamation_icon.53d6d40b.svg"
+    },
+    {
+      "source": ".ref/settings/static/media/cloud-yellow.3957bb55.svg",
+      "output": "assets/synapse/header-offline.svg",
+      "source_sha256": "a790edf299366e3e460fe9d264ee09c25557bfdb93d494646ac5dd250840c4ab",
+      "sha256": "a790edf299366e3e460fe9d264ee09c25557bfdb93d494646ac5dd250840c4ab",
+      "source_url": "https://apps.razer.com/synapse/settings/static/media/cloud-yellow.3957bb55.svg"
+    },
+    {
+      "source": ".ref/settings/static/media/icon_download.1e6d735a.svg",
+      "output": "assets/synapse/header-update.svg",
+      "source_sha256": "2f9ea56768e57f27ba0782e727b057111ffc5bfef6be6fa26bc6162768a3845e",
+      "sha256": "2f9ea56768e57f27ba0782e727b057111ffc5bfef6be6fa26bc6162768a3845e",
+      "source_url": "https://apps.razer.com/synapse/settings/static/media/icon_download.1e6d735a.svg"
+    },
+    {
+      "source": ".ref/release-patch-note/static/media/open_in_new_icon.c029c0d0.svg",
+      "output": "assets/synapse/release-notes-external.svg",
+      "source_sha256": "b1e1494661576222c27f570af5de94be84d556fa5b25090d8770c6aae6287134",
+      "sha256": "b1e1494661576222c27f570af5de94be84d556fa5b25090d8770c6aae6287134",
+      "source_url": "https://apps.razer.com/release-patch-note/static/media/open_in_new_icon.c029c0d0.svg"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-facebook.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "627eb08c95057cb788e5d6f56e07b597f058c0796562208e09dc3b00ec1bb6db",
+      "source_offset": 55418,
+      "inline_component": "facebook",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-facebook-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "bc24f2acdbe8e122b26c1a2fd5f4df8089e89711c15c06214bf1d05b9824325c",
+      "source_offset": 55418,
+      "inline_component": "facebook",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-instagram.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "37d8554a4ae6751ad709730f66e76cf6c42eda43942a3db1ac681a5b19867833",
+      "source_offset": 57269,
+      "inline_component": "instagram",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-instagram-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "45c273e33aa4a1b12c944a94828afe96841417839e8e888ec162788d55fdfd5d",
+      "source_offset": 57269,
+      "inline_component": "instagram",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-twitter.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "290de2a59c7d8c4f5c819ad2e61e01aff6015e271384c5d7edb4e82ccbbf15b5",
+      "source_offset": 62369,
+      "inline_component": "twitter",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-twitter-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "09774778ea8c7fcc63244f77eb5a14c55f4246f2a59d06bb0c88a9adce57225f",
+      "source_offset": 62369,
+      "inline_component": "twitter",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-youtube.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "e92a47edce88e651c04f56a1c07eecdcb7bfb4aba274890e6c91f03610ec524c",
+      "source_offset": 63798,
+      "inline_component": "youtube",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-youtube-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "b543873b8f32de4c2b987127d132fadda3cedc20450157e75fdc50488a1e30dc",
+      "source_offset": 63798,
+      "inline_component": "youtube",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-tiktok.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "c7dd83f5a755577a94567f9b2d72f7feb870f52733ef852616dd16e9eb65360a",
+      "source_offset": 59106,
+      "inline_component": "tiktok",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-tiktok-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "4397695464c47e7ebc7e546b7086eddc5fe85796f3f53030f7b9e74f5b320704",
+      "source_offset": 59106,
+      "inline_component": "tiktok",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-twitch.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "431f339177d96a8165fd3c0391bfd8e8f6e34ac88ce3129dce734a06193a1264",
+      "source_offset": 61001,
+      "inline_component": "twitch",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-twitch-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "7f0feda58c18247db2b593894eb49e88e8dd85eb050da34e15c67315e4a56338",
+      "source_offset": 61001,
+      "inline_component": "twitch",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-discord.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "10a40f1eea1ec3e79b69f14b27f5c307190f5eaa0ad371094d77778a3ce78221",
+      "source_offset": 53562,
+      "inline_component": "discord",
+      "width": 28,
+      "height": 28,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-discord-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "de846c679e086dbfc5233e4c4793ef58fd017b67489621b0459173c01b04dfd1",
+      "source_offset": 53562,
+      "inline_component": "discord",
+      "width": 28,
+      "height": 28,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-insider.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "7298a1ce359128685db04fd5e63dd4ab33a526114eec4de4218aeb641fa81a18",
+      "source_offset": 65476,
+      "inline_component": "insider",
+      "width": 270,
+      "height": 50,
+      "state": "normal",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
+      "output": "assets/synapse/settings-social-insider-hover.svg",
+      "source_sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "sha256": "f3efc0b33a85331b3252a0ceaf835ae23f88c6a44a7beabd910278d566e13c42",
+      "source_offset": 65476,
+      "inline_component": "insider",
+      "width": 270,
+      "height": 50,
+      "state": "hover",
+      "transform": "Extract inline SVG literal shapes; resolve Fs shared Facebook/YouTube CSS or Insider CSS to static attributes; omit transitions"
+    },
+    {
+      "source": "assets/synapse/gr-action-arrow-source.svg",
+      "output": "assets/synapse/gr-action-arrow.svg",
+      "source_sha256": "bf6979e6f5138a4bac9cf95895a8b0b6866396c78f58ea6eedfe5ff9018eb1c8",
+      "sha256": "bf6979e6f5138a4bac9cf95895a8b0b6866396c78f58ea6eedfe5ff9018eb1c8",
+      "source_kind": "downloaded_static_asset",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_arrow_short_right.5a823bac.svg"
+    },
+    {
+      "source": "assets/synapse/gr-hotspot-source.svg",
+      "output": "assets/synapse/gr-hotspot.svg",
+      "source_sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
+      "sha256": "407b7c26ece65f824d453e1b6806840b69e72e765c6daadbf4d1a5712b82363d",
+      "source_url": "https://apps.razer.com/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
+      "source_kind": "downloaded_static_asset",
+      "transform": "freeze original SMIL at keyTime 0.25 (1/3 second); omit animation nodes"
     },
     {
       "source": ".ref/frontend/static/js/9388.2bec5db3.chunk.js",
@@ -1651,17 +2238,515 @@
       ]
     },
     {
-      "source": "assets/mouse-182-dashboard3x.png",
+      "source": "assets/synapse/dashboard-182-0-0-source.avif",
       "output": "assets/synapse/dashboard-182.png",
-      "source_sha256": "395cdf6db529cd0e5ff0ce1b299e806b9231724c9204cd050f88f7c59e385949",
-      "sha256": "395cdf6db529cd0e5ff0ce1b299e806b9231724c9204cd050f88f7c59e385949",
+      "source_sha256": "b77e8669dd15dbd5de6776e22b5025c3655da91ad9c308e3e766c0591eed42ac",
+      "sha256": "16af18043a2e27cd07d48c6e65d76944939aa1b58443a23cdf48e03156a38f12",
       "width": 750,
       "height": 420,
       "mode": "RGBA",
-      "purpose": "Dashboard card; not Customize prd",
-      "source_kind": "historical_local_download",
-      "reference_url": "https://apps.razer.com/synapse/products/182/ui/182_0/PluginImages/182_0_0_dashboard3x.avif",
-      "reference_note": "URL recorded by the original frontend; original download/conversion metadata is unavailable"
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_0/PluginImages/182_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-182-128-0-source.avif",
+      "output": "assets/synapse/dashboard-182-128-0.png",
+      "source_sha256": "c79d55ce8c7b5e18c77252bade3adb036c4cfb075fde06bff392152f50a4fffa",
+      "sha256": "4925a3a9e152364b08eaee500ffd4f10c2962082d849f63d678db82da950ecf2",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_128/PluginImages/182_128_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-182-129-0-source.avif",
+      "output": "assets/synapse/dashboard-182-129-0.png",
+      "source_sha256": "42efb1f2c9b39aed67c133168f8e5aa7c63e9fb1d8e668e1e640847bd351c76c",
+      "sha256": "800e1ee7b0cf8b1c7308fba9f6877e5492395ed45916c4329c35da9bf6742885",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_129/PluginImages/182_129_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-182-130-0-source.avif",
+      "output": "assets/synapse/dashboard-182-130-0.png",
+      "source_sha256": "4a34a6f46ac0bae8b36a2228e99c40d3e826e9eedb6972dfc2150273216b88fd",
+      "sha256": "801f9bfb82730b151f84d5fa1090da3ffd9bcb43dfa29510f3e113a9aae7789e",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_130/PluginImages/182_130_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-182-131-0-source.avif",
+      "output": "assets/synapse/dashboard-182-131-0.png",
+      "source_sha256": "82d67000559e7495259d8067a905a159aa4fef351d103ba19156018112edb385",
+      "sha256": "4bfc970e8d2c45c1859b7e54e1fa42b38abc41e857e0a117a6de576d0e37b510",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_131/PluginImages/182_131_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-182-132-0-source.avif",
+      "output": "assets/synapse/dashboard-182-132-0.png",
+      "source_sha256": "5f871e6f69cd3319ca86a403c1e1959f46d7fb764dc8e13d4c76457755cbc687",
+      "sha256": "52e7db44d980777115f229dd28803d6f91bfd727607a880d40dafd85871bc796",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/182/ui/182_132/PluginImages/182_132_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-1-source.avif",
+      "output": "assets/synapse/dashboard-653-0-1.png",
+      "source_sha256": "14f8ee9f1269545e21da53a5a4597c5d16ce81dc66ac13dae77f32c8e33632a2",
+      "sha256": "cb02433da08d72165d343f1c8494927e8d9f94a5b97b7c65808420dbca052b6a",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_1_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-3-source.avif",
+      "output": "assets/synapse/dashboard-653-0-3.png",
+      "source_sha256": "a2b42d750897d91d31c3a4990c819f99ddeef03b08d547a34894af12b9f792a4",
+      "sha256": "9a4b34eb8525d39399188dfdded8ac47947edf0bffcff6e89fbcccf707d90b8e",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_3_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-4-source.avif",
+      "output": "assets/synapse/dashboard-653-0-4.png",
+      "source_sha256": "e33e6cd186ab84197202fbc0981792f353f63a37402cc76082c8713a170b6a58",
+      "sha256": "fb1942bd8efb030fd99ef1f659348d4a87607bc7a58f2ea8027361925f6ef328",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_4_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-6-source.avif",
+      "output": "assets/synapse/dashboard-653-0-6.png",
+      "source_sha256": "9be9694946797faddd71c0ebc709e307bccce6af34259fb2c6f8484251590a2c",
+      "sha256": "899e545cfd7d44a4d92a62c02db456c53cbb380cf8d1f7bb206f0fdc43820f46",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_6_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-7-source.avif",
+      "output": "assets/synapse/dashboard-653-0-7.png",
+      "source_sha256": "280d390599b29e201fc3e7af85681190297293f793f7469316c6a0cb9d072b8f",
+      "sha256": "2f3f742761dc48e4df669d258af188af14445d4acc23890da67b4218b71e2be9",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_7_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-10-source.avif",
+      "output": "assets/synapse/dashboard-653-0-10.png",
+      "source_sha256": "bf05bfdedcb9105352e52cb781dc14bb28ba2f09e746f5869f368c10f6a108ca",
+      "sha256": "5c7f37660491363e967e07a8bb21120e277e53be7f70ba420c313eb86020df13",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_10_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-12-source.avif",
+      "output": "assets/synapse/dashboard-653-0-12.png",
+      "source_sha256": "69bc320e9d29e44bb489c107b343bfaa1d722edea23e8c6ce02d1ef830d493b6",
+      "sha256": "faf883e5dbdf3ade14511352fef64615c0b03e1b1ec9e5519bad90f4650cc764",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_12_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-15-source.avif",
+      "output": "assets/synapse/dashboard-653-0-15.png",
+      "source_sha256": "b41d823e9de906c2095ee2af7701869490c27cc0cc5b2e41ce3757bbde16a40b",
+      "sha256": "ca033c6afd45dc32c9da7e5b5bb10fa3a0534f8b4c9aca4f9d81248f054f8aae",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_15_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-16-source.avif",
+      "output": "assets/synapse/dashboard-653-0-16.png",
+      "source_sha256": "a85ad9ab3edc7748e81f1757c7500509d2e4a1382b00d681dfdd266fa719ad42",
+      "sha256": "177b70b05637d639a0e7780771dbc1b469a60aad0075c73db19d624df7d36465",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_16_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-17-source.avif",
+      "output": "assets/synapse/dashboard-653-0-17.png",
+      "source_sha256": "47331d6be2e09a59a0d706460cabb213d196070960ae5bf38c8d4d7274ad5602",
+      "sha256": "b140163ab875681b8777e6d6cae5982f0d9338c329bf78c960f590b3f7da14a5",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_17_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-0-18-source.avif",
+      "output": "assets/synapse/dashboard-653-0-18.png",
+      "source_sha256": "0fbef4ad1db1dcea8b7de7ec343b62f301983355f16b276b61d62fb8664ea6d6",
+      "sha256": "d770a997be0091ed5e6160297c094de97fcc2c985b906c8242f09621117e5416",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_0/PluginImages/653_0_18_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-653-130-1-source.avif",
+      "output": "assets/synapse/dashboard-653-130-1.png",
+      "source_sha256": "000a32ecb09484abf04f19f9dfd9186151860401892bb39eb05fe0cd51507d57",
+      "sha256": "7828f3d7c1851f749c48d0b56be83956fa3410e0f767fbba97251e79a5136387",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/653/ui/653_130/PluginImages/653_130_1_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-777-0-0-source.avif",
+      "output": "assets/synapse/dashboard-777-0-0.png",
+      "source_sha256": "f0861d4f4c4e9d1e84643f6c5e32947bcb3947363a4c6b171799f37641c47b3a",
+      "sha256": "aaaafadc173fc7c07f143ba166b9fde5f356e3f41fc79c4bbb1583cc214276c1",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/777/ui/777_0/PluginImages/777_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/common-date.8cb15e00.svg",
+      "output": "assets/synapse/migration-date.svg",
+      "source_sha256": "dc4e6fa354f11b0495c0d4917014c982e51e94cd34fb0bf6660873a4facc70c3",
+      "sha256": "dc4e6fa354f11b0495c0d4917014c982e51e94cd34fb0bf6660873a4facc70c3"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/warning.2c334b3a.svg",
+      "output": "assets/synapse/migration-file-warning.svg",
+      "source_sha256": "a381655bbcc628e69857159f10605c4bbe87a0ed13f16914152e253609a9bfc7",
+      "sha256": "a381655bbcc628e69857159f10605c4bbe87a0ed13f16914152e253609a9bfc7"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/linkedGameWarning.e79a4da8.svg",
+      "output": "assets/synapse/migration-game-warning.svg",
+      "source_sha256": "f34333f79b3897028ee8eecf3ed65161811e1d0d6c76bd17a214f4241fc4e448",
+      "sha256": "f34333f79b3897028ee8eecf3ed65161811e1d0d6c76bd17a214f4241fc4e448"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/macro-icon.03bcda37.svg",
+      "output": "assets/synapse/migration-macro-icon.svg",
+      "source_sha256": "bee1d803239feccf792ed7094e6f5c004f846240bcc6b4d646e15895ab7dcb91",
+      "sha256": "bee1d803239feccf792ed7094e6f5c004f846240bcc6b4d646e15895ab7dcb91"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/synapse_no_macro.0349793c.svg",
+      "output": "assets/synapse/migration-macro-warning.svg",
+      "source_sha256": "4a394fc4684d6752c30bf32b35219ff0707ffb947f01de8e77af2fb8229eef4c",
+      "sha256": "4a394fc4684d6752c30bf32b35219ff0707ffb947f01de8e77af2fb8229eef4c"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/tick-solid.c2eb725a.svg",
+      "output": "assets/synapse/migration-tick.svg",
+      "source_sha256": "d54ad4e7dd655e93542a5257c3099f3aa76616a28aa341d831d06eed74d796ff",
+      "sha256": "d54ad4e7dd655e93542a5257c3099f3aa76616a28aa341d831d06eed74d796ff"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/disable.4679810a.svg",
+      "output": "assets/synapse/migration-unused.svg",
+      "source_sha256": "5ececb629bd001bf1ac8e4b6bd1e0e18e9e068235c7766c1fa1a8f8e44394230",
+      "sha256": "5ececb629bd001bf1ac8e4b6bd1e0e18e9e068235c7766c1fa1a8f8e44394230"
+    },
+    {
+      "source": ".ref/profile-migration/static/media/macro-module.7be6db02.avif",
+      "output": "assets/synapse/migration-macro.png",
+      "source_sha256": "8b2c909dfd051f8c247e6ece06b1f81aba177fd6faa76c0f3c426086723d4a7d",
+      "sha256": "1962db19be6e939cf3ff5b9553409477b95e2f5c4d9c2aa6febee49c9461d240",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/profile-migration/static/js/main.512f18b6.js",
+      "output": "assets/synapse/migration-chroma.png",
+      "source_sha256": "185bf4c0b073a121fa26d96037a9a65050f5156057a0d78081c4b02aac3065c8",
+      "sha256": "80be31392ae7e72d564e36bdbba064ecaf4e098d4c402cad6460d630da25021d",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "transform": "decode original Dg chroma-app PNG data URL"
+    },
+    {
+      "source": ".ref/devices/653/static/media/info_outline.b491abc9.svg",
+      "output": "assets/synapse/onboard-info.svg",
+      "source_sha256": "2f299e00304c91978d2557bb976000aed38629862943feb79028a73d8b367f3d",
+      "sha256": "2f299e00304c91978d2557bb976000aed38629862943feb79028a73d8b367f3d"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_warning.6c0cd78b.svg",
+      "output": "assets/synapse/onboard-transfer-warning.svg",
+      "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_obm_overlay_error.36277c8e.svg",
+      "output": "assets/synapse/onboard-overlay-error.svg",
+      "source_sha256": "d9d685d4a96327b528f419fa336e30e684ef344175d35e9ed65ca23863db99eb",
+      "sha256": "d9d685d4a96327b528f419fa336e30e684ef344175d35e9ed65ca23863db99eb"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_obm_overlay_sync.6c1ca10a.svg",
+      "output": "assets/synapse/onboard-overlay-sync.svg",
+      "source_sha256": "f7489d82ffa0a90f0756f8c0fb5253b14f63738caa3baa4e3b3f6d04a8feb8aa",
+      "sha256": "f7489d82ffa0a90f0756f8c0fb5253b14f63738caa3baa4e3b3f6d04a8feb8aa"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_add_default.9e9b3892.svg",
+      "output": "assets/synapse/dial-add.svg",
+      "source_sha256": "c9a056ea60effcd8689bb9119228975f9c156d9c9234a62375ea9667baf08626",
+      "sha256": "c9a056ea60effcd8689bb9119228975f9c156d9c9234a62375ea9667baf08626"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_add_hover.9c2128db.svg",
+      "output": "assets/synapse/dial-add-hover.svg",
+      "source_sha256": "5da5d0bbf7bbf527ddbb05be40275b08b340764bd963b49784f50bef9677706d",
+      "sha256": "5da5d0bbf7bbf527ddbb05be40275b08b340764bd963b49784f50bef9677706d"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_addnotgrey.f73db7b6.svg",
+      "output": "assets/synapse/dial-add-disabled.svg",
+      "source_sha256": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71",
+      "sha256": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_more.fb688d78.svg",
+      "output": "assets/synapse/dial-more.svg",
+      "source_sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c",
+      "sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_more_hover.deac19e5.svg",
+      "output": "assets/synapse/dial-more-hover.svg",
+      "source_sha256": "bbf9047987f027a86ffb4c2f934603624db43d1afe55e28501ffbbc9c3bce9bf",
+      "sha256": "bbf9047987f027a86ffb4c2f934603624db43d1afe55e28501ffbbc9c3bce9bf"
+    },
+    {
+      "source": ".ref/devices/653/static/media/plus.a386742c.svg",
+      "output": "assets/synapse/plus.svg",
+      "source_sha256": "a5c6a08522178153f00ff7f96789624447e447b5125a714e396b50b8461e774b",
+      "sha256": "a5c6a08522178153f00ff7f96789624447e447b5125a714e396b50b8461e774b"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_lock.8f4a479b.svg",
+      "output": "assets/synapse/onboard-lock.svg",
+      "source_sha256": "a3af075afca495bfc10fc70b2c44514307f6f1501a63e33e4adab9a12481e89a",
+      "sha256": "a3af075afca495bfc10fc70b2c44514307f6f1501a63e33e4adab9a12481e89a"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_obm_error.7fee0731.svg",
+      "output": "assets/synapse/onboard-error.svg",
+      "source_sha256": "d2fdc512c25ea1ac059c00ecbe39bc1c214a48595688d8b36db50988e79feb73",
+      "sha256": "d2fdc512c25ea1ac059c00ecbe39bc1c214a48595688d8b36db50988e79feb73"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_macro.1d733729.svg",
+      "output": "assets/synapse/onboard-macro.svg",
+      "source_sha256": "b67995b28cb237eed48ee88939f3faa23f6676498bfd3b509f6ee635a10f63eb",
+      "sha256": "b67995b28cb237eed48ee88939f3faa23f6676498bfd3b509f6ee635a10f63eb"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_obm_na.5e6daed8.svg",
+      "output": "assets/synapse/onboard-no-space.svg",
+      "source_sha256": "66d4b0410b25e2e583a510c83e45905dcbf6082d90db8be2216f21ee17ba90f7",
+      "sha256": "66d4b0410b25e2e583a510c83e45905dcbf6082d90db8be2216f21ee17ba90f7"
+    },
+    {
+      "source": ".ref/devices/653/static/media/tooltip_questionmark.96138d2f.svg",
+      "output": "assets/synapse/onboard-help.svg",
+      "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+    },
+    {
+      "source": ".ref/devices/653/static/media/warning.ad3f47f8.svg",
+      "output": "assets/synapse/onboard-warning.svg",
+      "source_sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+      "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f"
+    },
+    {
+      "source": ".ref/devices/653/static/media/color_picker.b2c4481d.svg",
+      "output": "assets/synapse/color-picker.svg",
+      "source_sha256": "0496994a542f813789ab0a5e81dfcb9823129137a775201d974c935db3351e8c",
+      "sha256": "0496994a542f813789ab0a5e81dfcb9823129137a775201d974c935db3351e8c"
+    },
+    {
+      "source": ".ref/devices/653/static/media/color_picker_hover.c1c1c043.svg",
+      "output": "assets/synapse/color-picker-hover.svg",
+      "source_sha256": "454c02f3280523860bad7930083fbc3019cf4c40f5af5682c83ec0ebffba60e8",
+      "sha256": "454c02f3280523860bad7930083fbc3019cf4c40f5af5682c83ec0ebffba60e8"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_delete.de9b7746.svg",
+      "output": "assets/synapse/dial-delete.svg",
+      "source_sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43",
+      "sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_delete_hover.1245ec4b.svg",
+      "output": "assets/synapse/dial-delete-hover.svg",
+      "source_sha256": "abec57cb56d07d7de4893a5b2adf89cb84d14e8b8604a9ad17c57a9c68be763b",
+      "sha256": "abec57cb56d07d7de4893a5b2adf89cb84d14e8b8604a9ad17c57a9c68be763b"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_refresh_default.93489aa0.svg",
+      "output": "assets/synapse/dial-reset.svg",
+      "source_sha256": "87c085ba342418e37db73421b0af98bb4a715544097ae06915307045aa74068b",
+      "sha256": "87c085ba342418e37db73421b0af98bb4a715544097ae06915307045aa74068b"
+    },
+    {
+      "source": ".ref/devices/653/static/media/icon_refresh_hover.18c8e3a0.svg",
+      "output": "assets/synapse/dial-reset-hover.svg",
+      "source_sha256": "ac57c791aded8d7a25421308f09b219a568c05a0dafe15582f5b5fa397532f25",
+      "sha256": "ac57c791aded8d7a25421308f09b219a568c05a0dafe15582f5b5fa397532f25"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/mapping-close.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_brightness_a.570b75be.svg",
+      "output": "assets/synapse/mapping-brightness-active.svg",
+      "source_sha256": "e0597108b28847e40964133a6a10ddbb76fcf17c5d026f0c986ae0a33a43a4c0",
+      "sha256": "e0597108b28847e40964133a6a10ddbb76fcf17c5d026f0c986ae0a33a43a4c0"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_default_a.0946ac79.svg",
+      "output": "assets/synapse/mapping-default-active.svg",
+      "source_sha256": "ef286aec9ce3f7f80c731d06121d946c0c1fc6da12e1da136d8514628e25fe9b",
+      "sha256": "ef286aec9ce3f7f80c731d06121d946c0c1fc6da12e1da136d8514628e25fe9b"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_keyboard_a.7051c99b.svg",
+      "output": "assets/synapse/mapping-keyboard-active.svg",
+      "source_sha256": "76caf7c16ab72f4c0b32472bface5da779a7c517ecb03eaa6c2aacd26f7b0cb9",
+      "sha256": "76caf7c16ab72f4c0b32472bface5da779a7c517ecb03eaa6c2aacd26f7b0cb9"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_mouse_a.e80d52da.svg",
+      "output": "assets/synapse/mapping-mouse-active.svg",
+      "source_sha256": "c84b3fd5faeb724a82b4073a031858784be07ac952e8e8bcb8521c678c56f4d0",
+      "sha256": "c84b3fd5faeb724a82b4073a031858784be07ac952e8e8bcb8521c678c56f4d0"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_mouse_sensitivity_a.7f79e597.svg",
+      "output": "assets/synapse/mapping-sensitivity-active.svg",
+      "source_sha256": "c8ba174aff0c11ca80107f60c541083432a24b5358c193d086dfcaee9035823c",
+      "sha256": "c8ba174aff0c11ca80107f60c541083432a24b5358c193d086dfcaee9035823c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_macro_a.27e913c3.svg",
+      "output": "assets/synapse/mapping-macro-active.svg",
+      "source_sha256": "950e8878f4bdebb5889c4e95e0cedd8ee174ff1138023cf202d6da2768d99c89",
+      "sha256": "950e8878f4bdebb5889c4e95e0cedd8ee174ff1138023cf202d6da2768d99c89"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_interdevice_a.87c34f05.svg",
+      "output": "assets/synapse/mapping-interdevice-active.svg",
+      "source_sha256": "4cb039e68e0ecb0661be58cc7b44e95b3b1992cbb669751fc11f2b85adb144cf",
+      "sha256": "4cb039e68e0ecb0661be58cc7b44e95b3b1992cbb669751fc11f2b85adb144cf"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_switch_device_profile_a.942d360a.svg",
+      "output": "assets/synapse/mapping-profile-active.svg",
+      "source_sha256": "740e3eb0df5b77b4662a6f096c1b373188246fa74d08cb5b73572a88f33bc60c",
+      "sha256": "740e3eb0df5b77b4662a6f096c1b373188246fa74d08cb5b73572a88f33bc60c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_hypershift_a.33a591f6.svg",
+      "output": "assets/synapse/mapping-hypershift-active.svg",
+      "source_sha256": "587fe737d2f897cb9c117db61cf79dc63aec2cfe57aacd69fc2fea3acbba54f5",
+      "sha256": "587fe737d2f897cb9c117db61cf79dc63aec2cfe57aacd69fc2fea3acbba54f5"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_launch_a.52c03b9d.svg",
+      "output": "assets/synapse/mapping-launch-active.svg",
+      "source_sha256": "119338fe9851b5e1c787547c5f6968500f026d1351242611c8edc846a79e263a",
+      "sha256": "119338fe9851b5e1c787547c5f6968500f026d1351242611c8edc846a79e263a"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_multimedia_a.b2da1c02.svg",
+      "output": "assets/synapse/mapping-multimedia-active.svg",
+      "source_sha256": "01b245595631702e0b6f0cd889b7492b74b2bd09fc95c46fa8906d1842834861",
+      "sha256": "01b245595631702e0b6f0cd889b7492b74b2bd09fc95c46fa8906d1842834861"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_windows_shortcut_a.3751588d.svg",
+      "output": "assets/synapse/mapping-windows-active.svg",
+      "source_sha256": "0b9f24c71d935c25bbb4337a96f4b73731025e51b2eb9ee0014b49e3b747c381",
+      "sha256": "0b9f24c71d935c25bbb4337a96f4b73731025e51b2eb9ee0014b49e3b747c381"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_text_a.a7d11e49.svg",
+      "output": "assets/synapse/mapping-text-active.svg",
+      "source_sha256": "3262b8a7a3f988cee8c70fdcb2db8212067456233e4b75b82a9ea1743bc70782",
+      "sha256": "3262b8a7a3f988cee8c70fdcb2db8212067456233e4b75b82a9ea1743bc70782"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_config_disable_a.6b71a2b4.svg",
+      "output": "assets/synapse/mapping-disable-active.svg",
+      "source_sha256": "4d608bb04988715b46b321388a2532c316dc5c7637570081669c8042519494a0",
+      "sha256": "4d608bb04988715b46b321388a2532c316dc5c7637570081669c8042519494a0"
     },
     {
       "source": ".ref/devices/182/static/media/icon_config_brightness.7a95c958.svg",
@@ -2055,7 +3140,19 @@
       "width": 60,
       "height": 60,
       "mode": "RGBA",
-      "purpose": "SWITCH_LIGHTING category icon from CSS data URL"
+      "purpose": "SWITCH_LIGHTING category icon from CSS data URL",
+      "selector": ".action-wrapper.SWITCH_LIGHTING .head:before"
+    },
+    {
+      "source": ".ref/devices/182/static/css/main.48c20423.css",
+      "output": "assets/synapse/mapping-lighting-active.png",
+      "source_sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e",
+      "sha256": "c9a19789485a969ffc0fb8ffba6c524377a1d9ec277ee2104157f2a42f980e72",
+      "width": 60,
+      "height": 60,
+      "mode": "RGBA",
+      "purpose": "SWITCH_LIGHTING category icon from CSS data URL",
+      "selector": ".action-wrapper.SWITCH_LIGHTING.open .head:before"
     },
     {
       "source": ".ref/devices/182/static/js/main.db20a7c4.js",

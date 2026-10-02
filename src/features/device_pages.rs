@@ -1,5 +1,6 @@
 use super::{
     controls::Control,
+    lighting_color::LightingColorPicker,
     settings::Effect,
     workspace::{DeviceWorkspace, WorkspaceEvent},
 };
@@ -7,9 +8,7 @@ use crate::ui::surface::{self, SynapseSwitch as Switch};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     checkbox::Checkbox,
-    color_picker::{ColorPickerEvent, ColorPickerState},
-    input::Input,
-    popover::Popover,
+    color_picker::ColorPickerState,
     slider::Slider,
     *,
 };
@@ -245,7 +244,9 @@ impl DeviceWorkspace {
                                 .text_color(cx.theme().primary)
                                 .text_center()
                                 .mb(surface::css(10.))
-                                .child(crate::i18n::t("MOUSE_MAT_CALIBRATION_HEADER")),
+                                .child(
+                                    crate::i18n::t("MOUSE_MAT_CALIBRATION_HEADER").to_uppercase(),
+                                ),
                         )
                         .child(
                             div()
@@ -809,188 +810,11 @@ impl DeviceWorkspace {
             .gap(surface::css(5.))
             .text_size(surface::css(14.))
             .child(label)
-            .child(LightingColorPicker {
-                state: state.clone(),
-                label,
-                disabled,
-                allow_none,
-            })
-            .into_any_element()
-    }
-}
-
-#[derive(IntoElement)]
-struct LightingColorPicker {
-    state: Entity<ColorPickerState>,
-    label: &'static str,
-    disabled: bool,
-    allow_none: bool,
-}
-struct LightingColorView {
-    props: LightingColorPicker,
-    _observer: Subscription,
-}
-impl RenderOnce for LightingColorPicker {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state = self.state.clone();
-        let view = window.use_keyed_state(("lighting-color", state.entity_id()), cx, |_, cx| {
-            LightingColorView {
-                props: LightingColorPicker {
-                    state: state.clone(),
-                    label: self.label,
-                    disabled: self.disabled,
-                    allow_none: self.allow_none,
-                },
-                _observer: cx.observe(&state, |_, _, cx| cx.notify()),
-            }
-        });
-        view.update(cx, |view, _| view.props = self);
-        view
-    }
-}
-impl Render for LightingColorView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Original 653 mM palette. These RGB values are editable product data.
-        const PALETTE: [u32; 40] = [
-            0xffffff, 0xffc0c0, 0xffe0c0, 0xffffc0, 0xc0ffc0, 0xc0ffff, 0xc0c0ff, 0xffc0ff,
-            0xe0e0e0, 0xff8080, 0xffc182, 0xffff80, 0x80ff80, 0x80ffff, 0x8080ff, 0xff80ff,
-            0xc0c0c0, 0xff0000, 0xff8000, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0xff00ff,
-            0x808080, 0xc00000, 0xc06000, 0xc0c000, 0x00c000, 0x00c0c0, 0x0000c0, 0xc000c0,
-            0x404040, 0x800000, 0x804000, 0x808000, 0x008000, 0x008080, 0x000080, 0x800080,
-        ];
-        let state = self.props.state.clone();
-        let current = state.read(cx).value();
-        let open = state.read(cx).is_open() && !self.props.disabled;
-        let focus = state.read(cx).focus_handle(cx);
-        let hex_input = state.read(cx).hex_input().clone();
-        let root_state = state.clone();
-        let popup_state = state.clone();
-        let none_state = state.clone();
-        gpui_kit::base::ColorPicker::new("lighting-color-root")
-            .track_focus(&focus)
-            .accessibility_label(self.props.label)
-            .disabled(self.props.disabled)
-            .open(open)
-            .on_open_change(move |open, _, cx| {
-                root_state.update(cx, |state, cx| state.set_open(open, cx));
-            })
             .child(
-                Popover::new("palette")
-                    .open(open)
-                    .appearance(false)
-                    .on_open_change(move |open, _, cx| {
-                        popup_state.update(cx, |state, cx| state.set_open(*open, cx));
-                    })
-                    .trigger(
-                        Button::new("color-trigger")
-                            .tab_stop(false)
-                            .accessibility_label(self.props.label)
-                            .disabled(self.props.disabled)
-                            .w(surface::css(53.))
-                            .h(surface::css(27.))
-                            .px(surface::css(5.))
-                            .py_0()
-                            .rounded(px(0.))
-                            .border_1()
-                            .border_color(if open {
-                                cx.theme().primary
-                            } else {
-                                cx.theme().input
-                            })
-                            .custom(ButtonCustomVariant::new(cx).color(cx.theme().group_box))
-                            .child(
-                                div()
-                                    .size(surface::css(18.))
-                                    .rounded(surface::css(3.))
-                                    .bg(current.unwrap_or(cx.theme().foreground))
-                                    .when(current.is_none(), |s| {
-                                        s.child(img("synapse/palette-none.svg").size_full())
-                                    }),
-                            )
-                            .child(
-                                img("synapse/expand.svg")
-                                    .w(surface::css(10.))
-                                    .h(surface::css(5.)),
-                            ),
-                    )
-                    .when(open, |popup| {
-                        popup.child(
-                            v_flex()
-                                .w(surface::css(250.))
-                                .py(surface::css(5.))
-                                .border_1()
-                                .border_color(cx.theme().input)
-                                .bg(cx.theme().group_box)
-                                .child(h_flex().flex_wrap().justify_center().children(
-                                    PALETTE.into_iter().map(|value| {
-                                        let picker = state.clone();
-                                        let color: Hsla = rgb(value).into();
-                                        gpui_kit::base::ColorSwatch::new(
-                                            SharedString::from(format!("palette-{value:06x}")),
-                                            color,
-                                        )
-                                        .size(surface::css(20.))
-                                        .m(surface::css(5.))
-                                        .rounded(surface::css(3.))
-                                        .bg(color)
-                                        .border_1()
-                                        .border_color(if current == Some(color) {
-                                            cx.theme().primary
-                                        } else {
-                                            cx.theme().border
-                                        })
-                                        .selected(current == Some(color))
-                                        .hover(|s| s.border_color(cx.theme().primary))
-                                        .on_click(
-                                            move |color, _, window, cx| {
-                                                picker.update(cx, |state, cx| {
-                                                    state.select_color(color, window, cx)
-                                                });
-                                            },
-                                        )
-                                    }),
-                                ))
-                                .child(
-                                    h_flex()
-                                        .mt(surface::css(5.))
-                                        .justify_between()
-                                        .child("自定义颜色")
-                                        .when(self.props.allow_none, |s| {
-                                            s.child(
-                                                Button::new("palette-no-color")
-                                                    .accessibility_label("无颜色")
-                                                    .tooltip("无颜色")
-                                                    .ghost()
-                                                    .p_0()
-                                                    .size(surface::css(20.))
-                                                    .child(
-                                                        img("synapse/palette-none.svg").size_full(),
-                                                    )
-                                                    .on_click(move |_, window, cx| {
-                                                        none_state.update(cx, |state, cx| {
-                                                            state.clear_value(window, cx);
-                                                            state.set_open(false, cx);
-                                                            cx.emit(ColorPickerEvent::Change(None));
-                                                        });
-                                                    }),
-                                            )
-                                        }),
-                                )
-                                .child(
-                                    Input::new(&hex_input)
-                                        .small()
-                                        .h(surface::css(27.))
-                                        .mt(surface::css(5.)),
-                                )
-                                .child(
-                                    div()
-                                        .text_size(surface::css(12.))
-                                        .text_color(cx.theme().muted_foreground)
-                                        .mt(surface::css(5.))
-                                        .child("输入 HEX 颜色后按 Enter"),
-                                ),
-                        )
-                    }),
+                LightingColorPicker::new(state, label)
+                    .disabled(disabled)
+                    .allow_none(allow_none),
             )
+            .into_any_element()
     }
 }

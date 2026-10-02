@@ -41,6 +41,24 @@ pub(crate) enum DeviceImage {
 type ProductAsset = (u32, u32, u32, DeviceImage, &'static str);
 const PRODUCT_IMAGES: &[ProductAsset] = include!("../assets/synapse/product-images.rs");
 
+/// Dashboard and pairing cards use the original PluginImages artwork. An
+/// unavailable edition/layout stays unavailable instead of changing its color
+/// or substituting Customize artwork. Old keyboard data defaults to layout one.
+pub(crate) fn dashboard_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
+    const IMAGES: &[(u32, u32, u32, &str)] = include!("../assets/synapse/dashboard-images.rs");
+    let pid = if pid == crate::demo::DEMO_PRODUCT_ID {
+        653
+    } else {
+        pid
+    };
+    let layout_id = if pid == 653 { layout_id.max(1) } else { 0 };
+    IMAGES
+        .iter()
+        .find_map(|&(product, edition, layout, asset)| {
+            (product == pid && edition == edition_id && layout == layout_id).then_some(asset)
+        })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedDeviceImage {
     pub(crate) asset: &'static str,

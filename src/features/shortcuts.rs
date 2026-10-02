@@ -4,6 +4,7 @@ use super::{
     controls::Choice,
     workspace::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website},
 };
+use crate::ui::source_alert::{AlertAction, AlertPlacement, SourceAlert};
 use crate::{i18n, ui::surface};
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
@@ -263,6 +264,11 @@ pub(crate) struct Shortcuts {
     target: Entity<InputState>,
     paragraph: Entity<TextareaState>,
     subscriptions: Vec<Subscription>,
+    source_alert: Option<Entity<SourceAlert>>,
+    delete_confirmation: Option<String>,
+    delete_focus: FocusHandle,
+    list_focus: FocusHandle,
+    delete_return_focus: Option<FocusHandle>,
     draft_generation: u64,
     encoding_status: Option<Result<usize, String>>,
 }
@@ -299,6 +305,11 @@ impl Shortcuts {
             target,
             paragraph,
             subscriptions: vec![],
+            source_alert: None,
+            delete_confirmation: None,
+            delete_focus: cx.focus_handle(),
+            list_focus: cx.focus_handle(),
+            delete_return_focus: None,
             draft_generation: 0,
             encoding_status: None,
         };
@@ -448,6 +459,9 @@ impl Shortcuts {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // A new editor cannot share its save confirmation with a stale row popup.
+        self.delete_confirmation = None;
+        self.delete_return_focus = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let original = source.and_then(|id| self.items.iter().find(|item| item.id == id).cloned());
         let mut value = original.clone().unwrap_or_else(|| Shortcut {
@@ -489,6 +503,8 @@ impl Shortcuts {
         self.changed(cx);
     }
     pub(crate) fn dismiss_for_navigation(&mut self, cx: &mut Context<Self>) {
+        self.delete_confirmation = None;
+        self.delete_return_focus = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = None;
         self.recording = false;
@@ -522,79 +538,152 @@ impl Shortcuts {
             self.discard_editor(window, cx);
             return;
         }
-        let entity = cx.entity();
-        let invalid = !self.valid();
-        window.open_dialog(cx, move |dialog, _, _| {
-            let save = entity.clone();
-            let discard = entity.clone();
-            dialog
-                .title("保存全局快捷键更改？")
-                .child("保存此快捷键，或丢弃本次编辑。")
-                .footer(
-                    h_flex()
-                        .gap_3()
-                        .justify_end()
-                        .child(
-                            Button::new("shortcut-keep-editing")
-                                .label("继续编辑")
-                                .on_click(|_, w, cx| w.close_dialog(cx)),
-                        )
-                        .child(Button::new("shortcut-discard").label("丢弃").on_click(
-                            move |_, w, cx| {
-                                w.close_dialog(cx);
-                                discard.update(cx, |s, cx| s.discard_editor(w, cx));
-                            },
-                        ))
-                        .child(
-                            Button::new("shortcut-save-and-close")
-                                .label("保存快捷键")
-                                .primary()
-                                .disabled(invalid)
-                                .on_click(move |_, w, cx| {
-                                    w.close_dialog(cx);
-                                    save.update(cx, |s, cx| {
-                                        s.prepare_save(w, cx);
-                                    });
-                                }),
-                        ),
+        let save = cx.entity().downgrade();
+        let discard = save.clone();
+        self.source_alert = Some(SourceAlert::open(
+            i18n::t("SAVE_REMAPPED_BUTTON_HEADER"),
+            format!(
+                "{}\n\n{}",
+                i18n::t("SAVE_REMAPPED_BUTTON_MSG1"),
+                i18n::t("SAVE_REMAPPED_BUTTON_MSG2")
+            ),
+            "shortcut-keep-editing",
+            vec![
+                AlertAction::new(
+                    "shortcut-discard",
+                    i18n::t("DONT_SAVE"),
+                    move |window, cx| {
+                        let _ = discard.update(cx, |this, cx| this.discard_editor(window, cx));
+                    },
+                ),
+                AlertAction::new(
+                    "shortcut-save-and-close",
+                    i18n::t("SAVE"),
+                    move |window, cx| {
+                        let _ = save.update(cx, |this, cx| {
+                            this.prepare_save(window, cx);
+                        });
+                    },
                 )
-        });
+                .primary()
+                .disabled(!self.valid()),
+            ],
+            AlertPlacement::AboveCenter,
+            window,
+            cx,
+        ));
+        cx.notify();
     }
     fn delete(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(item) = self.items.iter().find(|item| item.id == id) else {
+        if self.draft.is_some() || !self.items.iter().any(|item| item.id == id) {
             return;
-        };
-        let label = item.chord();
-        let entity = cx.entity();
-        window.open_dialog(cx, move |dialog, _, _| {
-            let entity = entity.clone();
-            let id = id.clone();
-            dialog
-                .title(format!("删除快捷键“{label}”？"))
-                .child("删除后可在保存到本机前丢弃更改来恢复。")
-                .footer(
-                    h_flex()
-                        .gap_3()
-                        .justify_end()
-                        .child(
-                            Button::new("shortcut-delete-cancel")
-                                .label("取消")
-                                .on_click(|_, w, cx| w.close_dialog(cx)),
-                        )
-                        .child(
-                            Button::new("shortcut-delete-confirm")
-                                .label("删除")
-                                .danger()
-                                .on_click(move |_, w, cx| {
-                                    w.close_dialog(cx);
-                                    entity.update(cx, |s, cx| {
-                                        s.items.retain(|item| item.id != id);
-                                        s.changed(cx);
-                                    });
-                                }),
-                        ),
-                )
-        });
+        }
+        self.delete_confirmation = Some(id);
+        self.delete_return_focus = window.focused(cx);
+        window.focus(&self.delete_focus, cx);
+        cx.notify();
+    }
+    fn dismiss_delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.delete_confirmation = None;
+        if let Some(focus) = self.delete_return_focus.take() {
+            window.focus(&focus, cx);
+        }
+        cx.notify();
+    }
+    fn delete_popover(&self, item: &Shortcut, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.entity().downgrade();
+        let confirm_owner = owner.clone();
+        let id = item.id.clone();
+        let chord = item.chord();
+        // 7282 .shortcut_item .profile-del is anchored to the row, not the
+        // window. A zero-size trigger supplies its original left274/top53 point.
+        gpui_kit::base::Popover::new(SharedString::from(format!("shortcut-delete-popup-{id}")))
+            .absolute()
+            .left(surface::css(274.))
+            .top(surface::css(53.))
+            .size_0()
+            .open(true)
+            .track_focus(&self.delete_focus)
+            .trigger_with(|_, _, _| div().size_0().into_any_element())
+            .on_open_change(move |open, window, cx| {
+                if !open {
+                    let _ = owner.update(cx, |page, cx| page.dismiss_delete(window, cx));
+                }
+            })
+            .content(move |_, _, cx| {
+                let popup = cx.entity().downgrade();
+                let owner = confirm_owner.clone();
+                let id = id.clone();
+                let danger = crate::ui::theme::ProfileAlertColors::new().danger();
+                v_flex()
+                    .id("shortcut-delete-confirmation")
+                    .test_support()
+                    .role(Role::Dialog)
+                    .aria_label(format!("{}：{chord}", i18n::t("DELETE_SHORTCUT")))
+                    .w(surface::css(300.))
+                    .p(surface::css(20.))
+                    .items_center()
+                    .rounded(surface::css(3.))
+                    .border_1()
+                    .border_color(danger)
+                    .bg(cx.theme().group_box)
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .shadow(vec![BoxShadow {
+                        color: cx.theme().title_bar.opacity(0.2),
+                        offset: point(Pixels::ZERO, cx.theme().font_size * (6. / 16.)),
+                        blur_radius: cx.theme().font_size * (10. / 16.),
+                        spread_radius: Pixels::ZERO,
+                        inset: false,
+                    }])
+                    .child(
+                        div()
+                            .text_center()
+                            .text_color(danger)
+                            .mb(surface::css(10.))
+                            .child(i18n::t("DELETE_SHORTCUT")),
+                    )
+                    .child(
+                        div()
+                            .w_full()
+                            .text_center()
+                            .whitespace_normal()
+                            .mb(surface::css(10.))
+                            .child(i18n::t("DELETE_SHORTCUT_MESSAGE")),
+                    )
+                    .child(
+                        Button::new("shortcut-delete-confirm")
+                            .label(i18n::t("REMOVE"))
+                            .h(surface::css(27.))
+                            .min_w(surface::css(90.))
+                            .px(surface::css(5.))
+                            .py_0()
+                            .text_size(surface::css(12.))
+                            .line_height(surface::css(14.))
+                            .rounded(cx.theme().font_size * (3. / 16.))
+                            .border_1()
+                            .border_color(cx.theme().title_bar.opacity(0.3))
+                            .custom(
+                                button::ButtonCustomVariant::new(cx)
+                                    .color(danger)
+                                    .foreground(cx.theme().primary_foreground)
+                                    .hover(danger.opacity(0.8))
+                                    .active(danger.opacity(0.6)),
+                            )
+                            .on_click(move |_, window, cx| {
+                                let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
+                                let _ = owner.update(cx, |page, cx| {
+                                    page.delete_confirmation = None;
+                                    page.delete_return_focus = None;
+                                    page.items.retain(|item| item.id != id);
+                                    window.focus(&page.list_focus, cx);
+                                    page.changed(cx);
+                                });
+                            }),
+                    )
+                    .into_any_element()
+            })
+            .into_any_element()
     }
     fn capture(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         if !self.recording {
@@ -842,6 +931,7 @@ impl Render for Shortcuts {
         h_flex()
             .id("global-shortcuts-workspace")
             .test_support()
+            .track_focus(&self.list_focus)
             .items_start()
             .gap(surface::css(20.))
             .flex_wrap()
@@ -883,6 +973,7 @@ impl Render for Shortcuts {
                         h_flex()
                             .id(SharedString::from(format!("shortcut-row-{}", item.id)))
                             .test_support()
+                            .relative()
                             .min_h(surface::css(70.))
                             .px(surface::css(20.))
                             .py(surface::css(8.))
@@ -928,6 +1019,10 @@ impl Render for Shortcuts {
                                 .on_click(
                                     cx.listener(move |s, _, w, cx| s.delete(delete.clone(), w, cx)),
                                 ),
+                            )
+                            .when(
+                                self.delete_confirmation.as_deref() == Some(item.id.as_str()),
+                                |row| row.child(self.delete_popover(item, cx)),
                             )
                     }))
                     .child(
@@ -998,6 +1093,7 @@ impl Render for Shortcuts {
                     }),
             )
             .when(editing, |s| s.child(self.editor(cx)))
+            .when_some(self.source_alert.clone(), |s, alert| s.child(alert))
     }
 }
 

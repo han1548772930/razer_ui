@@ -14,6 +14,8 @@ pub struct WorkspaceFile {
     pub(crate) shortcuts: Vec<crate::features::shortcuts::Shortcut>,
     #[serde(default)]
     pub(crate) preferences: crate::preferences::AppPreferences,
+    #[serde(default)]
+    pub(crate) custom_colors: crate::preferences::CustomColorSlots,
 }
 impl WorkspaceFile {
     pub(crate) fn new(devices: Vec<Device>, tracking_intro_seen: bool) -> Self {
@@ -23,6 +25,7 @@ impl WorkspaceFile {
             tracking_intro_seen,
             shortcuts: vec![],
             preferences: crate::preferences::AppPreferences::default(),
+            custom_colors: [None; 16],
         }
     }
     pub(crate) fn with_shortcuts(
@@ -37,6 +40,13 @@ impl WorkspaceFile {
         preferences: crate::preferences::AppPreferences,
     ) -> Self {
         self.preferences = preferences;
+        self
+    }
+    pub(crate) fn with_custom_colors(
+        mut self,
+        colors: crate::preferences::CustomColorSlots,
+    ) -> Self {
+        self.custom_colors = colors;
         self
     }
 }
@@ -150,11 +160,15 @@ mod tests {
         )
         .unwrap();
         let mut file = read_workspace(&path).unwrap().unwrap();
+        assert_eq!(file.custom_colors, [None; 16]);
+        file.custom_colors[0] = Some([68, 214, 44]);
+        file.custom_colors[15] = Some([17, 17, 17]);
         file.tracking_intro_seen = true;
         assert_eq!(file.devices[0].serial_number, devices[0].serial_number);
         write_workspace(&path, &file).unwrap();
         let saved = read_workspace(&path).unwrap().unwrap();
         assert!(saved.tracking_intro_seen);
+        assert_eq!(saved.custom_colors, file.custom_colors);
         assert_eq!(
             serde_json::to_value(&saved.devices).unwrap(),
             serde_json::to_value(&devices).unwrap()
