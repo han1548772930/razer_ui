@@ -1,5 +1,5 @@
 //! Adapter from local workspace snapshots to the independent app picker.
-use super::{AppShell, Location, Tab, app_picker::*, iot_popup, profile_migration};
+use super::{AppShell, Location, Tab, app_picker::*, iot_popup};
 use crate::{model::SetupStatus, resources};
 use gpui_kit::*;
 
@@ -13,14 +13,14 @@ impl AppShell {
             .enumerate()
             .map(|(index, workspace)| {
                 let workspace = workspace.read(cx);
-                let device = workspace.device();
+                let device = workspace.device(cx);
                 let icon = resources::dashboard_image(
                     device.product_id,
                     device.edition_id,
                     device.layout_id,
                 )
                 .unwrap_or("");
-                let card_id = format!("open-{}", workspace.identity());
+                let card_id = format!("open-{}", workspace.identity(cx));
                 let position = order
                     .and_then(|order| order.iter().position(|id| *id == card_id))
                     .unwrap_or_else(|| order.map_or(0, Vec::len) + index);
@@ -38,7 +38,7 @@ impl AppShell {
                         .is_some_and(|power| power.charging_status == "off"),
                 )
                 .section_position(position)
-                .launchable(!Tab::for_product(device.product_id).is_empty());
+                .launchable(crate::features::has_product_workspace(device.product_id));
                 for (locale, name) in &device.name.values {
                     item = item.localized_name(locale.clone(), name.clone());
                 }
@@ -72,11 +72,11 @@ impl AppShell {
             }) => {
                 let key = self.devices.iter().find_map(|workspace| {
                     let workspace = workspace.read(cx);
-                    let device = workspace.device();
+                    let device = workspace.device(cx);
                     (device.product_id == *product_id
                         && device.device_container_id == *container_id
-                        && !Tab::for_product(device.product_id).is_empty())
-                    .then(|| workspace.identity())
+                        && crate::features::has_product_workspace(device.product_id))
+                    .then(|| workspace.identity(cx))
                 });
                 if let Some(key) = key {
                     self.navigate(Location::Device(key), window, cx);
@@ -86,7 +86,7 @@ impl AppShell {
                 self.navigate(Location::Alexa, window, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::ProfileMigration)) => {
-                profile_migration::open(window, cx);
+                self.navigate(Location::ProfileMigration, window, cx);
             }
             AppPickerEvent::AddWifiDevice
             | AppPickerEvent::Open(PickerTarget::Module(PickerModule::AddWifi)) => {

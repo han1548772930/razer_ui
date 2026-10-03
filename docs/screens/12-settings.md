@@ -1,31 +1,26 @@
 # Settings：独立设置应用
 
-更新日期：2026-10-02。原版来源为静态取得的 [720 chunk](../../.ref/settings/static/js/720.1e5d1c8f.chunk.js)、[对应 CSS](../../.ref/settings/static/css/720.dbc9cca5.chunk.css) 与 [下载记录](../../.ref/settings/source.json)，未执行原版脚本。之前“缺少独立 Settings render”的结论已过时。
+更新日期：2026-10-03。当前来源为 [.ref/applications/synapse/settings](../../.ref/applications/synapse/settings/)。本轮重新读取当前 `720` JS/CSS；入口、清单、main、720 JS/CSS 共六份文件经独立 HTTPS GET 与本地逐字节一致，见 [下载核对记录](../re/settings-current-source-check.json) 和 [本轮源码审计](../re/settings-current-audit.md)。没有执行原版脚本。
 
-`ho` 渲染 Synapse：左列 `Ks` 自动启动、`bn` 通知、`Ia` 推荐；右列 `Un` 教程重置、`Ta` 配置迁移、`ia` 设备灯光。`uo` 渲染 General：左列 `Te` 语言与发行说明，右列 `Fs` 关于。导航只含 SYNAPSE/GENERAL；本项目另设“服务连接”，集中放置本地预览及连接工具。
+`ho` 渲染 Synapse：左列自动启动、通知、推荐；右列教程重置、配置迁移、设备灯光。`uo` 渲染 General：左列语言与发行说明，右列关于。原导航只有 SYNAPSE/GENERAL；“服务连接”是用户保留的本地连接及预览入口。
 
-| 原版细节 | 当前实现 |
+| 本轮核实的原版细节 | 当前实现 |
 | --- | --- |
-| 设置标题覆盖共享样式为18px；语言下拉188px | [settings_page.rs](../../src/shell/settings_page.rs) 使用对应尺寸，导航与保存栏固定，正文独立滚动 |
-| `Ie` 的10种语言 | SelectState 和下拉渲染传入同一组选项，修复空列表入口；同步全局locale及设备内保留的选项，丢弃恢复已保存语言，命令行覆盖不会被误标为已落盘 |
-| `Ks` 的最小化选项依赖自动启动 | 恢复30px缩进、37px竖线、13px横线及10px说明间距；原生启动偏好未读取时禁用控件，不把源码默认勾选当作系统状态 |
-| 关闭推荐总开关不清除各分类及发布/优惠选择 | 保留原值、禁用子控件 |
-| `Ia` 重置清空 `ignoredPid` 和 `ownedPid`，不清空 `ignoredList` | 分别保存忽略产品、已拥有产品、忽略分类；重置只清前两者 |
-| `Un` 在查看教程后重新允许重置 | 本地追踪介绍及Gamer Room教程联动；自动保存仅写教程标记，不提交其他设置或设备草稿 |
-| 教程重置与迁移使用 `.setting-block .thx-btn.test` | [settings_button.rs](../../src/shell/settings_button.rs) 保留 100px 最小宽、27px 高、两侧10px内边距、12px大写文字及 `#707070` 背景；hover/按下改变整个按钮的透明度为0.8/0.6，禁用为0.3，过渡为300ms CSS ease，禁用时不响应激活 |
-| `Fs` 的标志、版权、政策链接及社交行 | Synapse标志按原SVG自然尺寸294.366×70显示，120px是上限；Insider为270×50字标，另7个图标各28×28、间距24px。政策链接使用行内分隔符，Privacy另起一行，恢复20/30/10px段间距 |
-| `Fs` 真正渲染inline SVG，并共享Facebook/YouTube样式 | 从720内联形状和实际CSS级联生成8组常态/hover；7个圆图标常态为灰色，hover为绿色1.5px描边；Insider只增加原绿色边框。独立media文件中不同的绿色样式不作为最终呈现依据 |
-| `Te` 的发行说明入口嵌在 `RELEASE_PATCH_NOTE_WHATS_NEW` 原文中 | 保留可点击的Release Notes片段及前后译文，向Shell发出 `ReleaseNotes` 事件 |
-| `ia` 的WDL与OS版本/切换状态有关 | [settings_lighting.rs](../../src/shell/settings_lighting.rs) 区分未知、Chroma、WDL及切换中；Windows 11 build至少22631，或22621且revision至少2506时显示入口。未知控制权时禁用切换；本地工作区另提供明确标注的状态预览 |
+| `bn`/`Ia`/`Te` 在控件变化时直接更新存储 | [settings_page.rs](../../src/shell/settings_page.rs) 发出 `Changed`，Shell 串行自动保存本地偏好；移除无源码依据的底部保存/丢弃栏。较早的保存完成不清除较新的修改；设备草稿不随设置提交 |
+| `Ks` 的最小化选项依赖自动启动 | 保留30px缩进、37px竖线、13px横线。启动偏好尚未读取时禁用，不把源码初始化值当作真实系统状态；说明集中在服务连接页 |
+| `Ia` 的设备分类是单列，`gap:10px` | 修正原先误做的两列布局；分组标题大写，恢复5/6/10/20px段落间距；重置按钮恢复灰底、27px高及27px水平内边距 |
+| 关闭推荐总开关保留子项；RESET 只清 `ignoredPid`/`ownedPid` | 本地偏好保留忽略分类；关闭总开关时禁用子项；重置不改变分类选择 |
+| `Un` 重置后只改变按钮禁用状态 | 移除额外“下次进入…显示本地教程”的自写说明。当前联动已实现的设备介绍、Dashboard 与 Gamer Room 教程；完整原版教程集合仍未全部接入 |
+| `Ta` 激活或打开 `syn3-profile-migration` 页签 | 正式入口发出 `ProfileMigration` 事件交给 Shell；状态预览按钮只放在服务连接页 |
+| `Te` 的语言宽188px，发行说明链接在原句中 | 保持十种语言、原译文与可点击的 Release Notes 片段；删除无源码依据的额外支持链接 |
+| `Fs` 显示 Dashboard 前端清单版本 | 关于恢复 `VERSION` 原译文；按当前清单及原公式显示 `4.0.86.2609221012`。这是目标前端版本，不是本项目或已安装宿主版本 |
+| `Fs` 使用 `new Date().getFullYear()` | [system.rs](../../src/backend/system.rs) 在 Windows 用只读 `GetLocalTime` 得到当地年份，保留原版权与商标译文；非 Windows 无本地年月实现时留空，不冒充 UTC 年份 |
+| `ia` 仅在指定 Windows build/revision 上出现，`tips` 是右上角帮助提示 | 保留系统门槛、切换中禁用和 Chroma/WDL 内容分支；恢复14px帮助图标、距卡片右/上10px及原提示文案。正式页面不再把帮助文案和自写服务说明插在内容区 |
 
-“保存设置到本机”只写设置和已保存的设备/快捷键快照。窗口顶部“保存”仍保存整个工作区。保存中禁止重复提交和丢弃；较早的完成事件不清除较新的修改。教程关闭/重置自动保存其标记，连续操作会在当前写入完成后补写最新标记。
+关于区保留原政策URL、Synapse标志、Insider字标与七个社交入口。社交资源仍由已有静态提取结果提供；本轮核对了 `Fs` 实际引用、链接与相关布局规则，没有以素材目录中另一个SVG替换其内联渲染形状。
 
-迁移按钮在原版打开 `/profile-migration/` 的独立应用，当前已接到 [profile_migration.rs](../../src/shell/profile_migration.rs) 的迁移视图。初始状态为“扫描状态未读取”；明确标注的11种预览覆盖配置记录、空备份、扫描、准备/执行迁移、成功及游戏/宏警告、部分失败列表。分组选择使用GUID和账号/游客身份，准备阶段允许取消，执行阶段禁用取消。原生扫描与导入队列仍未接入，预览数据不写入设备、配置文件或本地存储。
+本地工作区保留设备、模块、应用选择器、Alexa、教程、顶部状态、灯光及迁移状态预览。样例不表示原生接口已工作，也不写入真实设备。
 
-原版发行说明要求引擎至少4.0.633，经宿主广播打开并接收内容。当前Settings事件已由Shell挂载 [release_notes.rs](../../src/shell/release_notes.rs)，布局依据独立 [release-patch-note应用](../../.ref/release-patch-note/static/js/main.b0db08bb.js) 及 [CSS](../../.ref/release-patch-note/static/css/main.008991af.css)：36px标题栏、47px底栏、最大850px宽及按hr/h2分节的正文。默认显示“发布说明尚未读取”，提供原规则生成的官方发布记录链接和明确标注的章节预览；预览只用于查看列表、长文本与滚动，不表示已获取真实发行记录。Escape和关闭按钮返回打开前的焦点。
+尚未完成的设置服务行为有明确源码边界：自动启动读写、桌面通知写入宿主、推荐存储跨原版窗口同步、完整教程重置集合、WDL控制权读写/切换广播、发行说明的引擎版本门槛及加载回执、迁移原生扫描导入。详见审计文档中的逐项调用依据。本轮不把本地偏好保存或预览页面算作这些服务已接通。
 
-关于区显示本项目版本，原版权年份标注为2026年源码快照；服务连接的版本查询不冒充原版前端版本。推荐数据源、开机启动、原版桌面通知、灯光控制权切换及迁移均不能据本地偏好宣称已应用。
-
-“服务连接”的本地工作区还提供 [模块状态预览](../../src/shell/module_preview.rs)，包含下载、保存、安装、移除及固件连接限制等17种样例。样例按钮只改变预览状态；实际模块目录仍显示安装状态未读取，安装按钮禁用。
-
-回归源码见 [settings_tests.rs](../../src/shell/settings_tests.rs)，覆盖产品重置范围、教程与草稿隔离、延迟保存及禁用状态。本轮仅编译检查，不运行测试、应用或服务。
+验证限于格式化、静态源码/资源核对与统一的 `cargo check --locked --all-targets`；不运行测试、应用、安装器、下载脚本或 DLL。已有 [settings_tests.rs](../../src/shell/settings_tests.rs) 随编译检查，运行结果不作本轮证据。

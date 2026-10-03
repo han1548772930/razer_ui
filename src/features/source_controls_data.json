@@ -1,0 +1,3506 @@
+[
+  {
+    "product_id": 3587,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "cameraMode": "auto",
+        "cameraValue": 128,
+        "cameraEnabled": false
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            }
+          }
+        }
+      ],
+      "imageMode": 0,
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3587:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraMode",
+                "options": [
+                  {
+                    "label": "MANUAL",
+                    "value": "manual"
+                  },
+                  {
+                    "label": "AUTO",
+                    "value": "auto"
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3587:focus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraValue",
+                "min": 0,
+                "max": 255,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/cameraMode",
+                  "value": "manual"
+                }
+              }
+            ]
+          },
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3587:image-preset",
+                "label": "IMAGE",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3587:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3587:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3587:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3587:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3587:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2000,
+                "max": 7500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3558"
+  },
+  {
+    "product_id": 3589,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "cameraMode": "auto",
+        "cameraValue": 128,
+        "cameraEnabled": false,
+        "hdrActive": true,
+        "fieldOfViewActive": 0
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            }
+          }
+        }
+      ],
+      "imageSettingMode": 0
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3589:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraMode",
+                "options": [
+                  {
+                    "label": "MANUAL",
+                    "value": "manual"
+                  },
+                  {
+                    "label": "AUTO",
+                    "value": "auto"
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3589:focus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraValue",
+                "min": 0,
+                "max": 600,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/cameraMode",
+                  "value": "manual"
+                }
+              }
+            ]
+          },
+          {
+            "title": "HDR",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3589:hdr",
+                "label": "HDR",
+                "path": "/camera/hdrActive"
+              },
+              {
+                "kind": "options",
+                "key": "3589:fov",
+                "label": "FIELD_OF_VIEW",
+                "path": "/camera/fieldOfViewActive",
+                "options": [
+                  {
+                    "label": "NARROW",
+                    "value": 2
+                  },
+                  {
+                    "label": "CAMERA_MEDIUM",
+                    "value": 1
+                  },
+                  {
+                    "label": "WIDE",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3589:image-preset",
+                "label": "IMAGE",
+                "path": "/imageSettingMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3589:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3589:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3589:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3589:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3589:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2000,
+                "max": 7500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4104"
+  },
+  {
+    "product_id": 3590,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "cameraMode": "auto",
+        "cameraValue": 128,
+        "cameraEnabled": false
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 85,
+            "contrast": 120,
+            "saturation": 180,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 2800
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 90,
+            "contrast": 170,
+            "saturation": 170,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 110,
+            "contrast": 128,
+            "saturation": 140,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5700
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            }
+          }
+        }
+      ],
+      "imageMode": 0,
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3590:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraMode",
+                "options": [
+                  {
+                    "label": "MANUAL",
+                    "value": "manual"
+                  },
+                  {
+                    "label": "AUTO",
+                    "value": "auto"
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3590:focus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/cameraValue",
+                "min": 0,
+                "max": 255,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/cameraMode",
+                  "value": "manual"
+                }
+              }
+            ]
+          },
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3590:image-preset",
+                "label": "IMAGE",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3590:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3590:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3590:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3590:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3590:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2800,
+                "max": 6500,
+                "step": 1,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3558"
+  },
+  {
+    "product_id": 3592,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "autoFocus": {
+          "isEnabled": true,
+          "manualFocus": 100,
+          "mode": 1,
+          "tracking": 0,
+          "lightingType": 0
+        },
+        "cameraMode": "auto",
+        "cameraValue": 100,
+        "autoExposure": {
+          "isEnabled": true,
+          "metering": 0,
+          "compensation": 0,
+          "isoSensitivity": 4,
+          "shutterSpeed": 16666,
+          "exposureValue": -2
+        },
+        "viewPresets": {
+          "viewMode": 1,
+          "data": [
+            {
+              "mode": 1,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 2,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 3,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 4,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 5,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            }
+          ]
+        },
+        "resolution": {
+          "width": 3840,
+          "height": 2160,
+          "fps": 30
+        },
+        "mjpegQuality": {
+          "autoQuality": true,
+          "manualQuality": 80,
+          "mode": 5
+        },
+        "ldc": true,
+        "lowLightCompensation": false,
+        "hdr": {
+          "isEnabled": false,
+          "mode": 0
+        },
+        "dynamicNoiseReduction": {
+          "state2D": true,
+          "state3D": true
+        },
+        "antiFlicker": 1,
+        "watermark": {
+          "isEnabled": false,
+          "position": "right-bottom"
+        },
+        "mirrorVideo": false
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 4000
+              }
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 121,
+              "contrast": 146,
+              "saturation": 136,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 5000
+              }
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 5000
+              }
+            }
+          }
+        }
+      ],
+      "imageMode": 0
+    },
+    "pages": [
+      {
+        "key": "IMAGE",
+        "sections": [
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3592:image-preset",
+                "label": "IMAGE_PRESETS",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3592:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3592:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3592:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3592:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3592:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2800,
+                "max": 7500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          },
+          {
+            "title": "WATERMARK",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:watermark",
+                "label": "WATERMARK",
+                "path": "/camera/watermark/isEnabled"
+              }
+            ]
+          },
+          {
+            "title": "ANTI_FLICKER",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3592:anti-flicker",
+                "label": "ANTI_FLICKER",
+                "path": "/camera/antiFlicker",
+                "options": [
+                  {
+                    "label": "50 hz",
+                    "value": 1
+                  },
+                  {
+                    "label": "60 hz",
+                    "value": 2
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4562420,
+                  "end": 4566369
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "CAMERA",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/autoFocus/isEnabled"
+              },
+              {
+                "kind": "slider",
+                "key": "3592:focus",
+                "label": "MANUAL_FOCUS",
+                "path": "/camera/autoFocus/manualFocus",
+                "min": 1,
+                "max": 450,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4449627,
+                  "end": 4451570
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:focus-mode",
+                "label": "MODE",
+                "path": "/camera/autoFocus/mode",
+                "options": [
+                  {
+                    "label": "STANDARD",
+                    "value": 0
+                  },
+                  {
+                    "label": "FACE",
+                    "value": 1
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4449627,
+                  "end": 4451570
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:focus-tracking",
+                "label": "TRACKING",
+                "path": "/camera/autoFocus/tracking",
+                "options": [
+                  {
+                    "label": "PASSIVE",
+                    "value": 1
+                  },
+                  {
+                    "label": "RESPONSIVE",
+                    "value": 0
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4449627,
+                  "end": 4451570
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:focus-lighting",
+                "label": "LIGHTING",
+                "path": "/camera/autoFocus/lightingType",
+                "options": [
+                  {
+                    "label": "STANDARD",
+                    "value": 0
+                  },
+                  {
+                    "label": "STYLIZED",
+                    "value": 1
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4449627,
+                  "end": 4451570
+                }
+              }
+            ]
+          },
+          {
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:auto-exposure",
+                "label": "AUTO_EXPOSURE",
+                "path": "/camera/autoExposure/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:iso",
+                "label": "ISO",
+                "path": "/camera/autoExposure/isoSensitivity",
+                "options": [
+                  {
+                    "label": "100",
+                    "value": 1
+                  },
+                  {
+                    "label": "200",
+                    "value": 2
+                  },
+                  {
+                    "label": "400",
+                    "value": 3
+                  },
+                  {
+                    "label": "800",
+                    "value": 4
+                  },
+                  {
+                    "label": "1600",
+                    "value": 5
+                  },
+                  {
+                    "label": "3200",
+                    "value": 6
+                  },
+                  {
+                    "label": "6400",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              },
+              {
+                "kind": "select",
+                "key": "3592:shutter",
+                "label": "SHUTTER_SPEED",
+                "path": "/camera/autoExposure/shutterSpeed",
+                "options": [
+                  {
+                    "label": "1/2000",
+                    "value": 500
+                  },
+                  {
+                    "label": "1/1600",
+                    "value": 625
+                  },
+                  {
+                    "label": "1/1280",
+                    "value": 781
+                  },
+                  {
+                    "label": "1/1000",
+                    "value": 1000
+                  },
+                  {
+                    "label": "1/800",
+                    "value": 1250
+                  },
+                  {
+                    "label": "1/640",
+                    "value": 1563
+                  },
+                  {
+                    "label": "1/500",
+                    "value": 2000
+                  },
+                  {
+                    "label": "1/400",
+                    "value": 2500
+                  },
+                  {
+                    "label": "1/320",
+                    "value": 3125
+                  },
+                  {
+                    "label": "1/250",
+                    "value": 4000
+                  },
+                  {
+                    "label": "1/200",
+                    "value": 5000
+                  },
+                  {
+                    "label": "1/160",
+                    "value": 6250
+                  },
+                  {
+                    "label": "1/120",
+                    "value": 8333
+                  },
+                  {
+                    "label": "1/100",
+                    "value": 10000
+                  },
+                  {
+                    "label": "1/90",
+                    "value": 11111
+                  },
+                  {
+                    "label": "1/75",
+                    "value": 13333
+                  },
+                  {
+                    "label": "1/60",
+                    "value": 16666
+                  },
+                  {
+                    "label": "1/50",
+                    "value": 20000
+                  },
+                  {
+                    "label": "1/40",
+                    "value": 25000
+                  },
+                  {
+                    "label": "1/33",
+                    "value": 30303
+                  },
+                  {
+                    "label": "1/30",
+                    "value": 33333
+                  },
+                  {
+                    "label": "1/25",
+                    "value": 40000
+                  },
+                  {
+                    "label": "1/24",
+                    "value": 41666
+                  },
+                  {
+                    "label": "1/20",
+                    "value": 50000
+                  },
+                  {
+                    "label": "1/17",
+                    "value": 58823
+                  },
+                  {
+                    "label": "1/16",
+                    "value": 62500
+                  },
+                  {
+                    "label": "1/15",
+                    "value": 66666
+                  },
+                  {
+                    "label": "1/13",
+                    "value": 76923
+                  },
+                  {
+                    "label": "1/12",
+                    "value": 83333
+                  },
+                  {
+                    "label": "1/11",
+                    "value": 90909
+                  },
+                  {
+                    "label": "1/10",
+                    "value": 100000
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:metering",
+                "label": "METERING",
+                "path": "/camera/autoExposure/metering",
+                "options": [
+                  {
+                    "label": "AVERAGE",
+                    "value": 0
+                  },
+                  {
+                    "label": "CENTER",
+                    "value": 1
+                  },
+                  {
+                    "label": "FACE",
+                    "value": 5
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3592:compensation",
+                "label": "COMPENSATION",
+                "path": "/camera/autoExposure/compensation",
+                "min": -3,
+                "max": 3,
+                "step": 0.1,
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "minimum_when": {
+                  "path": "/camera/autoExposure/metering",
+                  "value": 5,
+                  "min": -1
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              },
+              {
+                "kind": "reset",
+                "key": "3592:reset-exposure",
+                "label": "RESET",
+                "path": "/camera/autoExposure",
+                "reset_value": {
+                  "isEnabled": true,
+                  "metering": 0,
+                  "compensation": 0,
+                  "isoSensitivity": 4,
+                  "shutterSpeed": 16666,
+                  "exposureValue": -2
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4446135,
+                  "end": 4449605
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "PROCESSING",
+        "sections": [
+          {
+            "title": "LENS_DISTORTION_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:ldc",
+                "label": "LENS_DISTORTION_COMPENSATION",
+                "path": "/camera/ldc"
+              }
+            ]
+          },
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:state2D",
+                "label": "TWO_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state2D"
+              },
+              {
+                "kind": "switch",
+                "key": "3592:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          },
+          {
+            "title": "RESOLUTION_AND_MJPEG_QUALITY",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:auto-quality",
+                "label": "AUTO_MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/autoQuality",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:quality-mode",
+                "label": "RESOLUTION_AND_MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/mode",
+                "options": [
+                  {
+                    "label": "PERFORMANCE_MAXIMUM_POWER",
+                    "value": 5
+                  },
+                  {
+                    "label": "QUALITY",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3592:manual-quality",
+                "label": "RESOLUTION_AND_MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/manualQuality",
+                "min": 10,
+                "max": 90,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              }
+            ]
+          },
+          {
+            "title": "HDR",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:hdr",
+                "label": "HDR",
+                "path": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3592:hdr-mode",
+                "label": "HDR",
+                "path": "/camera/hdr/mode",
+                "options": [
+                  {
+                    "label": "DARK_ROOM",
+                    "value": 0
+                  },
+                  {
+                    "label": "BRIGHT_ROOM",
+                    "value": 1
+                  }
+                ],
+                "disabled_unless": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6430/~/razer-kiyo-pro-ultra-%7C-rz19-04420-support-%26-faqs"
+  },
+  {
+    "product_id": 3594,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "autoFocus": {
+          "isEnabled": true,
+          "manualFocus": 100,
+          "mode": 1,
+          "tracking": 1,
+          "lightingType": 0
+        },
+        "cameraMode": "auto",
+        "cameraValue": 100,
+        "autoExposure": {
+          "isEnabled": true,
+          "metering": 5,
+          "compensation": 0,
+          "isoSensitivity": 4,
+          "shutterSpeed": 16666,
+          "shutterLimitControl": "normal"
+        },
+        "autoFraming": {
+          "isEnabled": false,
+          "view": "Balanced",
+          "trackingSpeed": "Balanced",
+          "trackingSubject": "FirstPerson"
+        },
+        "viewPresets": {
+          "viewMode": 1,
+          "data": [
+            {
+              "mode": 1,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 2,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 3,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 4,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 5,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            }
+          ]
+        },
+        "resolution": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 60
+        },
+        "mjpegQuality": {
+          "autoQuality": true,
+          "manualQuality": 80,
+          "mode": 5
+        },
+        "lowLightCompensation": false,
+        "hdr": {
+          "isEnabled": false,
+          "mode": 0
+        },
+        "dynamicNoiseReduction": {
+          "state2D": true,
+          "state3D": true
+        },
+        "antiFlicker": 1,
+        "watermark": {
+          "isEnabled": false,
+          "position": "right-bottom"
+        },
+        "mirrorVideo": false,
+        "shutterLimitControl": "normal"
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 4000
+              }
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 121,
+              "contrast": 146,
+              "saturation": 136,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 5000
+              }
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 5000
+              }
+            }
+          }
+        }
+      ],
+      "imageMode": 0
+    },
+    "pages": [
+      {
+        "key": "IMAGE",
+        "sections": [
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3594:image-preset",
+                "label": "IMAGE_PRESETS",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3594:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3594:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3594:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3594:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3594:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2800,
+                "max": 7500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          },
+          {
+            "title": "ANTI_FLICKER",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3594:anti-flicker",
+                "label": "ANTI_FLICKER",
+                "path": "/camera/antiFlicker",
+                "options": [
+                  {
+                    "label": "50 hz",
+                    "value": 1
+                  },
+                  {
+                    "label": "60 hz",
+                    "value": 2
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 7007363,
+                  "end": 7011221
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "CAMERA",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/autoFocus/isEnabled"
+              },
+              {
+                "kind": "slider",
+                "key": "3594:focus",
+                "label": "MANUAL_FOCUS",
+                "path": "/camera/autoFocus/manualFocus",
+                "min": 1,
+                "max": 450,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6884510,
+                  "end": 6886899
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3594:focus-tracking",
+                "label": "TRACKING",
+                "path": "/camera/autoFocus/tracking",
+                "options": [
+                  {
+                    "label": "PASSIVE",
+                    "value": 1
+                  },
+                  {
+                    "label": "RESPONSIVE",
+                    "value": 0
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6884510,
+                  "end": 6886899
+                }
+              }
+            ]
+          },
+          {
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:auto-exposure",
+                "label": "AUTO_EXPOSURE",
+                "path": "/camera/autoExposure/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3594:iso",
+                "label": "ISO",
+                "path": "/camera/autoExposure/isoSensitivity",
+                "options": [
+                  {
+                    "label": "100",
+                    "value": 1
+                  },
+                  {
+                    "label": "200",
+                    "value": 2
+                  },
+                  {
+                    "label": "400",
+                    "value": 3
+                  },
+                  {
+                    "label": "800",
+                    "value": 4
+                  },
+                  {
+                    "label": "1600",
+                    "value": 5
+                  },
+                  {
+                    "label": "3200",
+                    "value": 6
+                  },
+                  {
+                    "label": "6400",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              },
+              {
+                "kind": "select",
+                "key": "3594:shutter",
+                "label": "SHUTTER_SPEED",
+                "path": "/camera/autoExposure/shutterSpeed",
+                "options": [
+                  {
+                    "label": "1/2000",
+                    "value": 500
+                  },
+                  {
+                    "label": "1/1600",
+                    "value": 625
+                  },
+                  {
+                    "label": "1/1280",
+                    "value": 781
+                  },
+                  {
+                    "label": "1/1000",
+                    "value": 1000
+                  },
+                  {
+                    "label": "1/800",
+                    "value": 1250
+                  },
+                  {
+                    "label": "1/640",
+                    "value": 1563
+                  },
+                  {
+                    "label": "1/500",
+                    "value": 2000
+                  },
+                  {
+                    "label": "1/400",
+                    "value": 2500
+                  },
+                  {
+                    "label": "1/320",
+                    "value": 3125
+                  },
+                  {
+                    "label": "1/250",
+                    "value": 4000
+                  },
+                  {
+                    "label": "1/200",
+                    "value": 5000
+                  },
+                  {
+                    "label": "1/160",
+                    "value": 6250
+                  },
+                  {
+                    "label": "1/120",
+                    "value": 8333
+                  },
+                  {
+                    "label": "1/100",
+                    "value": 10000
+                  },
+                  {
+                    "label": "1/90",
+                    "value": 11111
+                  },
+                  {
+                    "label": "1/75",
+                    "value": 13333
+                  },
+                  {
+                    "label": "1/60",
+                    "value": 16666
+                  },
+                  {
+                    "label": "1/50",
+                    "value": 20000
+                  },
+                  {
+                    "label": "1/40",
+                    "value": 25000
+                  },
+                  {
+                    "label": "1/33",
+                    "value": 30303
+                  },
+                  {
+                    "label": "1/30",
+                    "value": 33333
+                  },
+                  {
+                    "label": "1/25",
+                    "value": 40000
+                  },
+                  {
+                    "label": "1/24",
+                    "value": 41666
+                  },
+                  {
+                    "label": "1/20",
+                    "value": 50000
+                  },
+                  {
+                    "label": "1/17",
+                    "value": 58823
+                  },
+                  {
+                    "label": "1/16",
+                    "value": 62500
+                  },
+                  {
+                    "label": "1/15",
+                    "value": 66666
+                  },
+                  {
+                    "label": "1/13",
+                    "value": 76923
+                  },
+                  {
+                    "label": "1/12",
+                    "value": 83333
+                  },
+                  {
+                    "label": "1/11",
+                    "value": 90909
+                  },
+                  {
+                    "label": "1/10",
+                    "value": 100000
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3594:metering",
+                "label": "METERING",
+                "path": "/camera/autoExposure/metering",
+                "options": [
+                  {
+                    "label": "AVERAGE",
+                    "value": 0
+                  },
+                  {
+                    "label": "CENTER",
+                    "value": 1
+                  },
+                  {
+                    "label": "FACE",
+                    "value": 5
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3594:compensation",
+                "label": "COMPENSATION",
+                "path": "/camera/autoExposure/compensation",
+                "min": -3,
+                "max": 3,
+                "step": 0.1,
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "minimum_when": {
+                  "path": "/camera/autoExposure/metering",
+                  "value": 5,
+                  "min": -1
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              },
+              {
+                "kind": "reset",
+                "key": "3594:reset-exposure",
+                "label": "RESET",
+                "path": "/camera/autoExposure",
+                "reset_value": {
+                  "isEnabled": true,
+                  "metering": 5,
+                  "compensation": 0,
+                  "isoSensitivity": 4,
+                  "shutterSpeed": 16666,
+                  "shutterLimitControl": "normal"
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6880440,
+                  "end": 6884383
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "PROCESSING",
+        "sections": [
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          },
+          {
+            "title": "MJPEG_QUALITY",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:auto-quality",
+                "label": "AUTO_MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/autoQuality",
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6998745,
+                  "end": 7001356
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3594:quality-mode",
+                "label": "MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/mode",
+                "options": [
+                  {
+                    "label": "PERFORMANCE_MAXIMUM_POWER",
+                    "value": 5
+                  },
+                  {
+                    "label": "QUALITY",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6998745,
+                  "end": 7001356
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3594:manual-quality",
+                "label": "MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/manualQuality",
+                "min": 10,
+                "max": 90,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6998745,
+                  "end": 7001356
+                }
+              }
+            ]
+          },
+          {
+            "title": "HDR",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:hdr",
+                "label": "HDR",
+                "path": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6998745,
+                  "end": 7001356
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3594:hdr-mode",
+                "label": "HDR",
+                "path": "/camera/hdr/mode",
+                "options": [
+                  {
+                    "label": "DARK_ROOM",
+                    "value": 0
+                  },
+                  {
+                    "label": "BRIGHT_ROOM",
+                    "value": 1
+                  }
+                ],
+                "disabled_unless": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6998745,
+                  "end": 7001356
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19779"
+  },
+  {
+    "product_id": 3595,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "autoFocus": {
+          "isEnabled": true,
+          "manualFocus": 100,
+          "mode": 1,
+          "tracking": 1,
+          "lightingType": 0
+        },
+        "cameraMode": "auto",
+        "cameraValue": 100,
+        "autoExposure": {
+          "isEnabled": true,
+          "metering": 5,
+          "compensation": 0,
+          "isoSensitivity": 4,
+          "shutterSpeed": 16666
+        },
+        "autoFraming": {
+          "isEnabled": false,
+          "view": "Balanced",
+          "trackingSpeed": "Balanced",
+          "trackingSubject": "FirstPerson"
+        },
+        "viewPresets": {
+          "viewMode": 1,
+          "data": [
+            {
+              "mode": 1,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 2,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 3,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 4,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 5,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            }
+          ]
+        },
+        "resolution": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 60
+        },
+        "mjpegQuality": {
+          "autoQuality": true,
+          "manualQuality": 80,
+          "mode": 5
+        },
+        "lowLightCompensation": false,
+        "hdr": {
+          "isEnabled": true,
+          "mode": 0
+        },
+        "dynamicNoiseReduction": {
+          "state2D": true,
+          "state3D": true
+        },
+        "antiFlicker": 1,
+        "watermark": {
+          "isEnabled": false,
+          "position": "right-bottom"
+        },
+        "mirrorVideo": false
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 4000
+              }
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 121,
+              "contrast": 146,
+              "saturation": 136,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 5000
+              }
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 5000
+              }
+            }
+          }
+        }
+      ],
+      "imageMode": 0,
+      "deviceMic": {
+        "adaptiveNoiseReduction": false,
+        "crystalClearVoice": false
+      }
+    },
+    "pages": [
+      {
+        "key": "IMAGE",
+        "sections": [
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3595:image-preset",
+                "label": "IMAGE_PRESETS",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3595:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3595:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3595:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3595:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3595:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2800,
+                "max": 7500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          },
+          {
+            "title": "ANTI_FLICKER",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3595:anti-flicker",
+                "label": "ANTI_FLICKER",
+                "path": "/camera/antiFlicker",
+                "options": [
+                  {
+                    "label": "50 hz",
+                    "value": 1
+                  },
+                  {
+                    "label": "60 hz",
+                    "value": 2
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4585076,
+                  "end": 4588934
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "CAMERA",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/autoFocus/isEnabled"
+              },
+              {
+                "kind": "slider",
+                "key": "3595:focus",
+                "label": "MANUAL_FOCUS",
+                "path": "/camera/autoFocus/manualFocus",
+                "min": 1,
+                "max": 450,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4462460,
+                  "end": 4464849
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3595:focus-tracking",
+                "label": "TRACKING",
+                "path": "/camera/autoFocus/tracking",
+                "options": [
+                  {
+                    "label": "PASSIVE",
+                    "value": 1
+                  },
+                  {
+                    "label": "RESPONSIVE",
+                    "value": 0
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4462460,
+                  "end": 4464849
+                }
+              }
+            ]
+          },
+          {
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:auto-exposure",
+                "label": "AUTO_EXPOSURE",
+                "path": "/camera/autoExposure/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3595:iso",
+                "label": "ISO",
+                "path": "/camera/autoExposure/isoSensitivity",
+                "options": [
+                  {
+                    "label": "100",
+                    "value": 1
+                  },
+                  {
+                    "label": "200",
+                    "value": 2
+                  },
+                  {
+                    "label": "400",
+                    "value": 3
+                  },
+                  {
+                    "label": "800",
+                    "value": 4
+                  },
+                  {
+                    "label": "1600",
+                    "value": 5
+                  },
+                  {
+                    "label": "3200",
+                    "value": 6
+                  },
+                  {
+                    "label": "6400",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              },
+              {
+                "kind": "select",
+                "key": "3595:shutter",
+                "label": "SHUTTER_SPEED",
+                "path": "/camera/autoExposure/shutterSpeed",
+                "options": [
+                  {
+                    "label": "1/2000",
+                    "value": 500
+                  },
+                  {
+                    "label": "1/1600",
+                    "value": 625
+                  },
+                  {
+                    "label": "1/1280",
+                    "value": 781
+                  },
+                  {
+                    "label": "1/1000",
+                    "value": 1000
+                  },
+                  {
+                    "label": "1/800",
+                    "value": 1250
+                  },
+                  {
+                    "label": "1/640",
+                    "value": 1563
+                  },
+                  {
+                    "label": "1/500",
+                    "value": 2000
+                  },
+                  {
+                    "label": "1/400",
+                    "value": 2500
+                  },
+                  {
+                    "label": "1/320",
+                    "value": 3125
+                  },
+                  {
+                    "label": "1/250",
+                    "value": 4000
+                  },
+                  {
+                    "label": "1/200",
+                    "value": 5000
+                  },
+                  {
+                    "label": "1/160",
+                    "value": 6250
+                  },
+                  {
+                    "label": "1/120",
+                    "value": 8333
+                  },
+                  {
+                    "label": "1/100",
+                    "value": 10000
+                  },
+                  {
+                    "label": "1/90",
+                    "value": 11111
+                  },
+                  {
+                    "label": "1/75",
+                    "value": 13333
+                  },
+                  {
+                    "label": "1/60",
+                    "value": 16666
+                  },
+                  {
+                    "label": "1/50",
+                    "value": 20000
+                  },
+                  {
+                    "label": "1/40",
+                    "value": 25000
+                  },
+                  {
+                    "label": "1/33",
+                    "value": 30303
+                  },
+                  {
+                    "label": "1/30",
+                    "value": 33333
+                  },
+                  {
+                    "label": "1/25",
+                    "value": 40000
+                  },
+                  {
+                    "label": "1/24",
+                    "value": 41666
+                  },
+                  {
+                    "label": "1/20",
+                    "value": 50000
+                  },
+                  {
+                    "label": "1/17",
+                    "value": 58823
+                  },
+                  {
+                    "label": "1/16",
+                    "value": 62500
+                  },
+                  {
+                    "label": "1/15",
+                    "value": 66666
+                  },
+                  {
+                    "label": "1/13",
+                    "value": 76923
+                  },
+                  {
+                    "label": "1/12",
+                    "value": 83333
+                  },
+                  {
+                    "label": "1/11",
+                    "value": 90909
+                  },
+                  {
+                    "label": "1/10",
+                    "value": 100000
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3595:metering",
+                "label": "METERING",
+                "path": "/camera/autoExposure/metering",
+                "options": [
+                  {
+                    "label": "AVERAGE",
+                    "value": 0
+                  },
+                  {
+                    "label": "CENTER",
+                    "value": 1
+                  },
+                  {
+                    "label": "FACE",
+                    "value": 5
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3595:compensation",
+                "label": "COMPENSATION",
+                "path": "/camera/autoExposure/compensation",
+                "min": -3,
+                "max": 3,
+                "step": 0.1,
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": true
+                },
+                "minimum_when": {
+                  "path": "/camera/autoExposure/metering",
+                  "value": 5,
+                  "min": -1
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              },
+              {
+                "kind": "reset",
+                "key": "3595:reset-exposure",
+                "label": "RESET",
+                "path": "/camera/autoExposure",
+                "reset_value": {
+                  "isEnabled": true,
+                  "metering": 5,
+                  "compensation": 0,
+                  "isoSensitivity": 4,
+                  "shutterSpeed": 16666
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4458813,
+                  "end": 4462333
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "PROCESSING",
+        "sections": [
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:state2D",
+                "label": "TWO_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state2D"
+              },
+              {
+                "kind": "switch",
+                "key": "3595:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          },
+          {
+            "title": "MJPEG_QUALITY",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:auto-quality",
+                "label": "AUTO_MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/autoQuality",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4576194,
+                  "end": 4578731
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3595:quality-mode",
+                "label": "MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/mode",
+                "options": [
+                  {
+                    "label": "PERFORMANCE_MAXIMUM_POWER",
+                    "value": 5
+                  },
+                  {
+                    "label": "QUALITY",
+                    "value": 7
+                  }
+                ],
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4576194,
+                  "end": 4578731
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3595:manual-quality",
+                "label": "MJPEG_QUALITY",
+                "path": "/camera/mjpegQuality/manualQuality",
+                "min": 10,
+                "max": 90,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/mjpegQuality/autoQuality",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4576194,
+                  "end": 4578731
+                }
+              }
+            ]
+          },
+          {
+            "title": "HDR",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:hdr",
+                "label": "HDR",
+                "path": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4576194,
+                  "end": 4578731
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3595:hdr-mode",
+                "label": "HDR",
+                "path": "/camera/hdr/mode",
+                "options": [
+                  {
+                    "label": "DARK_ROOM",
+                    "value": 0
+                  },
+                  {
+                    "label": "BRIGHT_ROOM",
+                    "value": 1
+                  }
+                ],
+                "disabled_unless": "/camera/hdr/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4576194,
+                  "end": 4578731
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "MIC",
+        "sections": [
+          {
+            "title": "ADAPTIVE_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:adaptiveNoiseReduction",
+                "label": "ADAPTIVE_NOISE_REDUCTION",
+                "path": "/deviceMic/adaptiveNoiseReduction",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4588992,
+                  "end": 4592370
+                }
+              }
+            ],
+            "description": "ADAPTIVE_NOISE_REDUCTION_TOOLTIP"
+          },
+          {
+            "title": "CRYSTAL_CLEAR_VOICE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:crystalClearVoice",
+                "label": "CRYSTAL_CLEAR_VOICE",
+                "path": "/deviceMic/crystalClearVoice",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4588992,
+                  "end": 4592370
+                }
+              }
+            ],
+            "description": "CRYSTAL_CLEAR_VOICE_TOOLTIP"
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19780"
+  },
+  {
+    "product_id": 3596,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "camera": {
+        "autoFocus": {
+          "isEnabled": true,
+          "manualFocus": 100,
+          "mode": 1,
+          "tracking": 1,
+          "lightingType": 0
+        },
+        "cameraMode": "auto",
+        "cameraValue": 100,
+        "autoExposure": {
+          "isEnabled": true,
+          "metering": 5,
+          "compensation": 0,
+          "isoSensitivity": 4,
+          "shutterSpeed": 16666,
+          "exposureValue": -2
+        },
+        "viewPresets": {
+          "viewMode": 1,
+          "data": [
+            {
+              "mode": 1,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 2,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 3,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 4,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            },
+            {
+              "mode": 5,
+              "zoom": 1,
+              "pan": 0,
+              "tilt": 0,
+              "shortcutKey": []
+            }
+          ]
+        },
+        "resolution": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30
+        },
+        "mjpegQuality": {
+          "autoQuality": true,
+          "manualQuality": 80,
+          "mode": 3
+        },
+        "ldc": false,
+        "lowLightCompensation": false,
+        "hdr": {
+          "isEnabled": false,
+          "mode": 0
+        },
+        "dynamicNoiseReduction": {
+          "state2D": true,
+          "state3D": true
+        },
+        "antiFlicker": 1,
+        "watermark": {
+          "isEnabled": false,
+          "position": "right-bottom"
+        },
+        "mirrorVideo": false
+      },
+      "image": [
+        {
+          "name": "default",
+          "dataSet": {
+            "name": "default",
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 4000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 4000
+              }
+            }
+          }
+        },
+        {
+          "name": "cool",
+          "dataSet": {
+            "name": "cool",
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "vibrant",
+          "dataSet": {
+            "name": "vibrant",
+            "brightness": 121,
+            "contrast": 146,
+            "saturation": 136,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 3950
+            },
+            "userSettings": {
+              "brightness": 121,
+              "contrast": 146,
+              "saturation": 136,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 3950
+              }
+            }
+          }
+        },
+        {
+          "name": "warm",
+          "dataSet": {
+            "name": "warm",
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": false,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": false,
+                "value": 5000
+              }
+            }
+          }
+        },
+        {
+          "name": "custom",
+          "dataSet": {
+            "name": "custom",
+            "brightness": 128,
+            "contrast": 128,
+            "saturation": 128,
+            "whiteBalance": {
+              "isAuto": true,
+              "value": 5000
+            },
+            "userSettings": {
+              "brightness": 128,
+              "contrast": 128,
+              "saturation": 128,
+              "whiteBalance": {
+                "isAuto": true,
+                "value": 5000
+              }
+            }
+          }
+        }
+      ],
+      "imageMode": 0
+    },
+    "pages": [
+      {
+        "key": "IMAGE",
+        "sections": [
+          {
+            "title": "IMAGE",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3596:image-preset",
+                "label": "IMAGE_PRESETS",
+                "path": "/imageMode",
+                "options": [
+                  {
+                    "label": "DEFAULT",
+                    "value": 0
+                  },
+                  {
+                    "label": "COOL",
+                    "value": 1
+                  },
+                  {
+                    "label": "VIBRANT",
+                    "value": 2
+                  },
+                  {
+                    "label": "WARM",
+                    "value": 3
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "kind": "slider",
+                "key": "3596:brightness",
+                "label": "BRIGHTNESS",
+                "path": "@image/brightness",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3596:contrast",
+                "label": "CONTRAST",
+                "path": "@image/contrast",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "slider",
+                "key": "3596:saturation",
+                "label": "SATURATION",
+                "path": "@image/saturation",
+                "min": 0,
+                "max": 255,
+                "step": 1
+              },
+              {
+                "kind": "toggle",
+                "key": "3596:auto-white-balance",
+                "label": "AUTO",
+                "path": "@image/whiteBalance/isAuto"
+              },
+              {
+                "kind": "slider",
+                "key": "3596:white-balance",
+                "label": "WHITE_BALANCE",
+                "path": "@image/whiteBalance/value",
+                "min": 2800,
+                "max": 6500,
+                "step": 10,
+                "disabled_when": "@image/whiteBalance/isAuto"
+              }
+            ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          },
+          {
+            "title": "ANTI_FLICKER",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "3596:anti-flicker",
+                "label": "ANTI_FLICKER",
+                "path": "/camera/antiFlicker",
+                "options": [
+                  {
+                    "label": "50 hz",
+                    "value": 1
+                  },
+                  {
+                    "label": "60 hz",
+                    "value": 2
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4571048,
+                  "end": 4574906
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "CAMERA",
+        "sections": [
+          {
+            "title": "AUTO_FOCUS",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:autofocus",
+                "label": "AUTO_FOCUS",
+                "path": "/camera/autoFocus/isEnabled"
+              },
+              {
+                "kind": "slider",
+                "key": "3596:focus",
+                "label": "MANUAL_FOCUS",
+                "path": "/camera/autoFocus/manualFocus",
+                "min": 0,
+                "max": 440,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/autoFocus/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4452554,
+                  "end": 4454955
+                }
+              }
+            ]
+          },
+          {
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:auto-exposure",
+                "label": "AUTO_EXPOSURE",
+                "path": "/camera/autoExposure/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4451275,
+                  "end": 4452427
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3596:manual-exposure",
+                "label": "AUTO_EXPOSURE",
+                "path": "/camera/autoExposure/exposureValue",
+                "min": -10,
+                "max": -2,
+                "step": 1,
+                "visible_when": {
+                  "path": "/camera/autoExposure/isEnabled",
+                  "value": false
+                },
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4451275,
+                  "end": 4452427
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "PROCESSING",
+        "sections": [
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:state2D",
+                "label": "TWO_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state2D"
+              },
+              {
+                "kind": "switch",
+                "key": "3596:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19781"
+  }
+]

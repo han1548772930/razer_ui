@@ -412,3 +412,29 @@ fn dpi_reorder_and_resizing_preserve_selection_and_profile_values(cx: &mut TestA
         });
     }
 }
+
+#[gpui_kit::test]
+fn polling_buttons_render_and_change_selection_without_duplicate_hover_styles(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let (handle, workspace) = open_mouse(cx, 1.);
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        for (rate, id) in [
+            (500, "polling-500"),
+            (1000, "polling-1000"),
+            (125, "polling-125"),
+        ] {
+            window.hover(id, cx);
+            window.click(id, cx);
+            assert_eq!(workspace.read(cx).settings().polling, rate);
+            window.render_frame(cx);
+        }
+        window.hover("mouse-properties", cx);
+    })
+    .unwrap();
+}

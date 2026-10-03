@@ -37,6 +37,7 @@ pub(super) enum HostTab {
     Tour(super::TourKind),
     Alexa,
     FirmwareUpdate,
+    ProfileMigration,
 }
 impl HostTab {
     fn location(&self) -> Location {
@@ -45,6 +46,7 @@ impl HostTab {
             Self::Tour(kind) => Location::Tour(*kind),
             Self::Alexa => Location::Alexa,
             Self::FirmwareUpdate => Location::FirmwareUpdate,
+            Self::ProfileMigration => Location::ProfileMigration,
         }
     }
     fn id(&self) -> SharedString {
@@ -53,6 +55,7 @@ impl HostTab {
             Self::Tour(kind) => kind.id().into(),
             Self::Alexa => "host-alexa".into(),
             Self::FirmwareUpdate => "host-firmware-update".into(),
+            Self::ProfileMigration => "syn3-profile-migration".into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
@@ -61,6 +64,7 @@ impl HostTab {
             Location::Tour(kind) => Some(Self::Tour(*kind)),
             Location::Alexa => Some(Self::Alexa),
             Location::FirmwareUpdate => Some(Self::FirmwareUpdate),
+            Location::ProfileMigration => Some(Self::ProfileMigration),
             _ => None,
         }
     }
@@ -218,7 +222,7 @@ impl AppShell {
             if let Some(device) = self
                 .devices
                 .iter()
-                .find(|device| device.read(cx).identity() == *key)
+                .find(|device| device.read(cx).identity(cx) == *key)
             {
                 device.update(cx, |device, cx| device.dismiss_profile_dialog(window, cx));
             }
@@ -249,6 +253,13 @@ impl AppShell {
         }
         if tab == HostTab::FirmwareUpdate {
             self.firmware_update = None;
+        }
+        if tab == HostTab::ProfileMigration {
+            self.profile_migration = None;
+            // Dashboard je listens for tabClosed, then persists PkL=false.
+            self.settings.update(cx, |settings, cx| {
+                settings.profile_migration_icon_visible(false, cx);
+            });
         }
         cx.notify();
     }
@@ -354,12 +365,13 @@ impl AppShell {
                     HostTab::Device(key) => self
                         .devices
                         .iter()
-                        .find(|device| device.read(cx).identity() == *key)
-                        .map(|device| device.read(cx).device().display_name())
+                        .find(|device| device.read(cx).identity(cx) == *key)
+                        .map(|device| device.read(cx).device(cx).display_name())
                         .unwrap_or_default(),
                     HostTab::Tour(kind) => kind.title(),
                     HostTab::Alexa => "Alexa".into(),
                     HostTab::FirmwareUpdate => "固件更新".into(),
+                    HostTab::ProfileMigration => "PROFILE MIGRATION".into(),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -494,11 +506,12 @@ impl AppShell {
             Some(HostTab::Tour(_)) => "synapse/tour-app-icon.svg",
             Some(HostTab::Alexa) => "synapse/module-alexa.svg",
             Some(HostTab::FirmwareUpdate) => "synapse/synapse.svg",
+            Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()
-                .find(|device| device.read(cx).identity() == *key)
-                .map(|device| device.read(cx).device().product_id)
+                .find(|device| device.read(cx).identity(cx) == *key)
+                .map(|device| device.read(cx).device(cx).product_id)
             {
                 Some(653) => "synapse/host-category-keyboard.svg",
                 Some(777) => "synapse/host-category-audio.svg",

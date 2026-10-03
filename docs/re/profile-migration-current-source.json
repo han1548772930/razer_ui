@@ -1,0 +1,42 @@
+{
+  "verified": "2026-10-03",
+  "method": "static HTTPS download and byte comparison; no JavaScript executed",
+  "files": [
+    {
+      "source": ".ref/profile-migration/index.html",
+      "url": "https://apps.razer.com/profile-migration/index.html",
+      "sha256": "4940a3970501942bde26889edb0e9070137a2321a03dacd7adc47f719ea25e9e",
+      "matches_local": true
+    },
+    {
+      "source": ".ref/profile-migration/asset-manifest.json",
+      "url": "https://apps.razer.com/profile-migration/asset-manifest.json",
+      "sha256": "a2c59640da40755536dc3ca147939ffe28a842ea81dbabb3869255df77e450de",
+      "matches_local": true
+    },
+    {
+      "source": ".ref/profile-migration/static/js/main.512f18b6.js",
+      "url": "https://apps.razer.com/profile-migration/static/js/main.512f18b6.js",
+      "sha256": "185bf4c0b073a121fa26d96037a9a65050f5156057a0d78081c4b02aac3065c8",
+      "matches_local": true
+    },
+    {
+      "source": ".ref/profile-migration/static/css/main.e18d10bc.css",
+      "url": "https://apps.razer.com/profile-migration/static/css/main.e18d10bc.css",
+      "sha256": "fa744cea5061d614f3fbae26988c94a2006b52194ecab966f9c80c458d901261",
+      "matches_local": true
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/synapse_profile_migration.c3622288.svg",
+      "url": "https://apps.razer.com/synapse/dashboard/static/media/synapse_profile_migration.c3622288.svg",
+      "sha256": "c7a6f4680c4dc4ac24a61bd5e86d7f89694fb912da26b11fba79b42b2bc3374b",
+      "downloaded_missing_asset": true
+    },
+    {
+      "source": ".ref/profile-migration/favicon.svg",
+      "url": "https://apps.razer.com/profile-migration/favicon.svg",
+      "sha256": "8ebfd6b7e920a4cbdb7a04ab54b757ab01424e9993450ac385a896317acb21ed",
+      "downloaded_missing_asset": true
+    }
+  ]
+}

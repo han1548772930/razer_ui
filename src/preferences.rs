@@ -87,6 +87,8 @@ pub(crate) struct AppPreferences {
     pub(crate) partner_deals: bool,
     pub(crate) gamer_room_tutorial_seen: bool,
     pub(crate) dashboard_tutorial_seen: bool,
+    /// Dashboard localStorage `showProfileMigrationIcon`; closing its host tab hides it.
+    pub(crate) profile_migration_icon_visible: bool,
 }
 impl Default for AppPreferences {
     fn default() -> Self {
@@ -101,6 +103,7 @@ impl Default for AppPreferences {
             partner_deals: true,
             gamer_room_tutorial_seen: false,
             dashboard_tutorial_seen: false,
+            profile_migration_icon_visible: true,
         }
     }
 }
@@ -122,6 +125,20 @@ impl AppPreferences {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn migration_icon_defaults_visible_and_preserves_dismissal_across_reload() {
+        // Existing workspaces predate the Dashboard showProfileMigrationIcon key.
+        let original: AppPreferences = serde_json::from_str("{}").unwrap();
+        assert!(original.profile_migration_icon_visible);
+        let closed = AppPreferences {
+            profile_migration_icon_visible: false,
+            ..original
+        };
+        let reloaded: AppPreferences =
+            serde_json::from_str(&serde_json::to_string(&closed).unwrap()).unwrap();
+        assert!(!reloaded.profile_migration_icon_visible);
+    }
 
     #[gpui_kit::test]
     fn palette_save_completion_keeps_later_edits_pending(cx: &mut gpui_kit::TestAppContext) {

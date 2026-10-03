@@ -3,7 +3,6 @@
 use super::{AppShell, Location};
 use crate::{
     i18n,
-    nav::Tab,
     ui::{surface, theme::MainPageColors},
 };
 use gpui_kit::component::*;
@@ -173,9 +172,9 @@ impl AppShell {
             )
             .children(self.devices.iter().map(|entity| {
                 let workspace = entity.read(cx);
-                let device = workspace.device();
-                let key = workspace.identity();
-                let supported = !Tab::for_product(device.product_id).is_empty();
+                let device = workspace.device(cx);
+                let key = workspace.identity(cx);
+                let supported = crate::features::has_product_workspace(device.product_id);
                 let detail_device = device.clone();
                 let catalog = self.module_catalog.clone();
                 h_flex()

@@ -39,7 +39,7 @@ const SCENES: &[(&str, &str)] = &[
     ("ready", "本地预览：等待开始更新"),
     ("upgrade", "本地预览：正在更新"),
     ("partial", "本地预览：第一部分已完成"),
-    ("latest", "本地预览：第一部分已是最新"),
+    ("latest", "本地预览：原界面“无需更新”分支"),
     ("switch", "本地预览：切换设备连接"),
     ("multiple", "本地预览：检测到多个匹配设备"),
     ("success", "本地预览：全部完成"),
@@ -54,6 +54,7 @@ const PRESETS: &[(&str, &str)] = &[
     ("keyboard-usb", "键盘：USB → 接收器"),
     ("keyboard-dongle", "键盘：接收器 → USB"),
     ("mouse-usb", "鼠标：USB → 小接收器"),
+    ("mouse-usb-large", "鼠标：USB → 大接收器"),
     ("mouse-dongle", "鼠标：大接收器 → USB"),
     ("keyboard-single", "键盘：仅 USB"),
 ];
@@ -224,6 +225,9 @@ impl FirmwareUpdate {
     fn fail(&mut self, warning: Warning, window: &mut Window, cx: &mut Context<Self>) {
         self.progress_task = None;
         self.flow.fail(warning);
+        // The preview failure button leaves the tree with its progress stage.
+        // Restore to the stable page instead of retaining that removed trigger.
+        self.return_focus = Some(self.focus.clone());
         self.focus_warning(window, cx);
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -280,7 +284,7 @@ impl FirmwareUpdate {
             )
             .into_any_element()
     }
-    fn heading(&self, key: &str) -> AnyElement {
+    fn heading(&self, key: &str, details: &[&str]) -> AnyElement {
         v_flex()
             .w_full()
             .pb(css(20.))
@@ -295,6 +299,19 @@ impl FirmwareUpdate {
                     .text_color(Colors::highlight())
                     .child(text(key)),
             )
+            .when(!details.is_empty(), |view| {
+                view.child(
+                    v_flex()
+                        .mt(css(10.))
+                        .pb(css(116.))
+                        .text_size(css(14.))
+                        .children(details.iter().map(|key| {
+                            div()
+                                .mb(css(12.))
+                                .child(text(key).replace("{{productName}}", &self.name()))
+                        })),
+                )
+            })
             .into_any_element()
     }
     fn versions(&self) -> AnyElement {
@@ -420,11 +437,14 @@ impl FirmwareUpdate {
         );
         v_flex()
             .w_full()
-            .child(self.heading(if stage == Stage::Upgrade {
-                "UPDATING_NOTE"
-            } else {
-                "UPDATE_REQUIRED"
-            }))
+            .child(self.heading(
+                if stage == Stage::Upgrade {
+                    "UPDATING_NOTE"
+                } else {
+                    "UPDATE_REQUIRED"
+                },
+                &[],
+            ))
             .child(
                 v_flex()
                     .mt(css(20.))
@@ -462,9 +482,10 @@ impl FirmwareUpdate {
     fn partial(&self, cx: &mut Context<Self>) -> AnyElement {
         let mut details = vec![];
         if self.flow.already_current {
-            details.push(if self.flow.current == Component::Dongle {
-                "DONGLE_IS_LATEST"
-            } else if self.flow.preset.keyboard {
+            // Uo compares connectType.toLocaleUpperCase() to lowercase
+            // bn.DONGLE ("dongle"). Both supported preview modes take this
+            // device-category branch; don't silently repair the source here.
+            details.push(if self.flow.preset.keyboard {
                 "KEYBOARD_LATEST"
             } else {
                 "MOUSE_LATEST"
@@ -479,18 +500,14 @@ impl FirmwareUpdate {
         });
         v_flex()
             .w_full()
-            .child(self.heading(if self.flow.already_current {
-                "NO_UPDATE_REQUIRED"
-            } else {
-                "UPDATE_SUCCESSFUL"
-            }))
-            .child(
-                v_flex().mt(css(10.)).pb(css(116.)).gap(css(12.)).children(
-                    details
-                        .into_iter()
-                        .map(|key| div().child(text(key).replace("{{productName}}", &self.name()))),
-                ),
-            )
+            .child(self.heading(
+                if self.flow.already_current {
+                    "NO_UPDATE_REQUIRED"
+                } else {
+                    "UPDATE_SUCCESSFUL"
+                },
+                &details,
+            ))
             .child(self.footer(true, Some(("SKIP", true)), ("NEXT", true), cx))
             .into_any_element()
     }
@@ -610,6 +627,7 @@ impl FirmwareUpdate {
     }
     fn result(&self, cx: &mut Context<Self>) -> AnyElement {
         let done = self.flow.stage == Stage::CompleteDone;
+        let completed = self.flow.result_components();
         let remaining = self.flow.remaining();
         v_flex()
             .w_full()
@@ -626,12 +644,12 @@ impl FirmwareUpdate {
                             .mb(css(20.))
                             .child(text("UPDATE_FINISHED")),
                     )
-                    .when(!self.flow.completed.is_empty(), |view| {
+                    .when(!completed.is_empty(), |view| {
                         view.child(
                             v_flex()
                                 .mb(css(20.))
                                 .child(text("UPDATE_SUCCESSFUL_HEADER"))
-                                .children(self.flow.completed.iter().map(|part| {
+                                .children(completed.iter().map(|part| {
                                     div()
                                         .pl(css(18.))
                                         .child(format!("• {}", self.component_name(*part)))
@@ -649,7 +667,7 @@ impl FirmwareUpdate {
                         ))
                     })
                     .when(
-                        self.flow.preset.initial == Component::Device && self.flow.preset.dual,
+                        self.flow.current == Component::Device && self.flow.preset.dual,
                         |view| {
                             view.child(div().mt(css(22.)).child(text(
                                 if self.flow.preset.keyboard {
@@ -814,8 +832,9 @@ impl FirmwareUpdate {
             .occlude()
             .w(css(width))
             .min_h(css(if waiting { 74. } else { 162. }))
-            .px(css(if waiting { 20. } else { 34. }))
-            .py(css(22.))
+            .when(waiting, |view| view.h(css(74.)))
+            .px(css(if waiting { 0. } else { 34. }))
+            .py(css(if waiting { 0. } else { 22. }))
             .items_center()
             .justify_center()
             .rounded(css(3.))
@@ -832,14 +851,11 @@ impl FirmwareUpdate {
                         .justify_center()
                         .mb(css(20.))
                         .gap(css(10.))
-                        .child(
-                            Icon::new(IconName::TriangleAlert)
-                                .size(css(20.))
-                                .text_color(Colors::warning()),
-                        )
+                        .child(img("synapse/firmware-warning.svg").size(css(20.)))
                         .child(
                             div()
                                 .font_weight(FontWeight::BOLD)
+                                .line_height(css(20.))
                                 .text_color(Colors::warning())
                                 .child(text(key)),
                         ),
@@ -854,16 +870,12 @@ impl FirmwareUpdate {
                         .mt(css(24.))
                         .when(warning.cancellable(), |view| {
                             view.child(
-                                source_button(
+                                warning_button(
                                     "firmware-warning-cancel",
                                     text("CANCEL_UPDATE"),
                                     false,
-                                    false,
                                     cx,
                                 )
-                                .w(css(130.))
-                                .h(css(28.))
-                                .rounded(css(4.))
                                 .on_click(cx.listener(
                                     |this, _, window, cx| {
                                         this.dismiss_warning(window, cx);
@@ -873,7 +885,7 @@ impl FirmwareUpdate {
                             )
                         })
                         .child(
-                            source_button(
+                            warning_button(
                                 "firmware-warning-continue",
                                 text(if warning == Warning::DeviceIsUpgrading {
                                     "CONTINUE_WITH_UPDATE"
@@ -881,12 +893,8 @@ impl FirmwareUpdate {
                                     "RETRY"
                                 }),
                                 true,
-                                false,
                                 cx,
                             )
-                            .w(css(172.))
-                            .h(css(28.))
-                            .rounded(css(4.))
                             .on_click(cx.listener(
                                 |this, _, window, cx| {
                                     // ri.ignoreError hides the blocking warning; Start Over owns retry.
@@ -899,6 +907,8 @@ impl FirmwareUpdate {
         Dialog::new(cx)
             .focus_handle(self.warning_focus.clone())
             .close_on_backdrop_press(false)
+            // zo/Zo expose only their explicit buttons; Escape has no source handler.
+            .on_cancel(|_, _, _| false)
             .on_ok(|_, _, _| false)
             .on_close(|_, _, _| {})
             .backdrop(div().absolute().inset_0().bg(Colors::border().opacity(0.6)))
@@ -916,6 +926,42 @@ impl FirmwareUpdate {
             )
             .into_any_element()
     }
+}
+
+fn warning_button(id: &'static str, label: String, primary: bool, cx: &App) -> Button {
+    // .cancel-btn alone has text-transform:uppercase; .continue-btn preserves copy.
+    let label = if primary { label } else { label.to_uppercase() };
+    Button::new(id)
+        .accessibility_label(label.clone())
+        .w(css(if primary { 172. } else { 130. }))
+        .h(css(28.))
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .p_0()
+        .rounded(css(4.))
+        .text_size(css(12.))
+        .line_height(css(28.))
+        .bg(if primary {
+            Colors::highlight()
+        } else {
+            Colors::button_gray()
+        })
+        .text_color(if primary {
+            Colors::border()
+        } else {
+            PaletteColors.white()
+        })
+        .hover(move |style| {
+            style.bg(if primary {
+                Colors::warning_continue_hover()
+            } else {
+                Colors::warning_cancel_hover()
+            })
+        })
+        .focus_visible(|style| style.border_1().border_color(cx.theme().ring))
+        .child(label)
 }
 
 fn source_button(
@@ -974,7 +1020,9 @@ impl Render for FirmwareUpdate {
             .text_color(Colors::foreground())
             .text_size(css(14.))
             .line_height(css(20.))
-            .when(self.preview_enabled, |view| view.child(self.preview_controls(cx)))
+            .when(self.preview_enabled, |view| {
+                view.child(self.preview_controls(cx))
+            })
             .child(
                 div()
                     .id("firmware-update-scroll")

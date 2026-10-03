@@ -150,6 +150,9 @@ impl DpiStages {
 /// 一个配置文件。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
+    /// Per-product source profile, independent from the original ten adapters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_settings: Option<serde_json::Value>,
     /// Audited local settings; absent in the legacy Vec<Device> store.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<crate::features::settings::ProfileSettings>,
@@ -439,6 +442,7 @@ pub fn measured_devices() -> Vec<Device> {
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
+                                source_settings: None,
                 settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),
@@ -505,6 +509,7 @@ pub fn measured_devices() -> Vec<Device> {
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
+                                source_settings: None,
                 settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),

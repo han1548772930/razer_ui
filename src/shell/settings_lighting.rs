@@ -97,14 +97,6 @@ pub(super) fn content(
                                 }))),
                         )
                 })
-                .when(dynamic.is_none(), |panel| {
-                    panel
-                        .child(i18n::t("DEVICE_LIGHTING_TIPS"))
-                        .child(surface::note(
-                            "尚未读取灯光控制权，连接服务后才能切换。",
-                            cx,
-                        ))
-                })
                 .child(
                     h_flex()
                         .mt(surface::css(20.))

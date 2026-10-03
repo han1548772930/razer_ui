@@ -221,11 +221,11 @@ fn main() {
 
             // 该设备类别应显示的标签页（实测自设备模块的常量块），
             // 以及对应功能块是否就位——这两者必须一致。
-            let tabs = nav::Tab::for_product(device.product_id);
-            let names: Vec<String> = tabs
-                .iter()
-                .map(|tab| format!("{}({})", tab.label(), tab.id()))
-                .collect();
+            let names: Vec<String> = if let Some(navigation) = product::registered(device.product_id).and_then(|p| p.primary_navigation()) {
+                navigation.pages().iter().map(|page| format!("{}({})", page.label(), page.kind().key())).collect()
+            } else {
+                nav::Tab::for_product(device.product_id).iter().map(|tab| format!("{}({})", tab.label(), tab.id())).collect()
+            };
             println!(
                 "    标签页 {} 个：{}",
                 names.len(),

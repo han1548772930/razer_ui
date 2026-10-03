@@ -1,6 +1,12 @@
 //! Product differences verified against each cached Synapse module 8193.
 //! These entries describe the UI contract, not detected hardware capabilities.
 
+mod registry;
+pub(crate) use registry::{
+    AdapterStatus, ProductNavigation, ProductPage, ProductPageId, ProductPageKind, ProductPageRole,
+    RegisteredProduct, registered, registry,
+};
+
 pub(crate) const AUDITED_MOUSE_MAT_IDS: [u32; 7] = [3072, 3073, 3074, 3076, 3077, 3078, 3080];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

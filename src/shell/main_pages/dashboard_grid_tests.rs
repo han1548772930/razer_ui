@@ -396,7 +396,12 @@ fn viewport_scrollbar_receives_clicks_over_clipped_dashboard_cards(cx: &mut Test
         );
         let viewport = window.find("dashboard-scroll").bounds();
         let offset = point(viewport.size.width - px(3.), viewport.size.height * 0.8);
-        assert!(window.find("b").bounds().contains(&(viewport.origin + offset)));
+        assert!(
+            window
+                .find("b")
+                .bounds()
+                .contains(&(viewport.origin + offset))
+        );
         let before = view.read(cx).scroll.offset();
         assert!(before.y < px(0.));
         window.click_at("dashboard-scroll", offset, cx);

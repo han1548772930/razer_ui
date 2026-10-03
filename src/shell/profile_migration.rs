@@ -16,7 +16,7 @@ use gpui_kit::base::{
     ProgressTrack,
 };
 use gpui_kit::component::{
-    button::{Button, ButtonCustomVariant, ButtonVariants},
+    button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
     select::{SelectEvent, SelectState},
     spinner::Spinner,
     tooltip::Tooltip,
@@ -47,8 +47,8 @@ fn choices() -> Vec<Choice> {
         .collect()
 }
 
-pub(super) fn open(window: &mut Window, cx: &mut App) {
-    let page = cx.new(|cx| MigrationPage::new(window, cx));
+pub(super) fn open_preview(window: &mut Window, cx: &mut App) {
+    let page = cx.new(|cx| MigrationPage::new_preview(window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
             .title(i18n::t("PROFILE_MIGRATION"))
@@ -58,6 +58,34 @@ pub(super) fn open(window: &mut Window, cx: &mut App) {
             )
             .child(page.clone())
     });
+}
+
+/// Current Dashboard module 96776: 46x38 toolbar slot, 40x40 icon container,
+/// and an unscaled 24x24 SVG background. It is not the app picker's logo.
+pub(super) fn header_button(cx: &App) -> Button {
+    Button::new("header-profile-migration")
+        .ghost()
+        .p_0()
+        .border_0()
+        .rounded(ButtonRounded::None)
+        .w(surface::css(46.))
+        .h(surface::css(38.))
+        .flex_shrink_0()
+        .accessibility_label(i18n::t("PROFILE_MIGRATION"))
+        .tooltip(i18n::t("PROFILE_MIGRATION"))
+        .custom(
+            ButtonCustomVariant::new(cx)
+                .color(cx.theme().transparent)
+                .hover(cx.theme().secondary_hover)
+                .active(cx.theme().secondary_hover),
+        )
+        .child(
+            h_flex()
+                .size(surface::css(40.))
+                .flex_shrink_0()
+                .justify_center()
+                .child(img("synapse/header-profile-migration.svg").size(surface::css(24.))),
+        )
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -222,8 +250,8 @@ impl MigrationSelection {
     }
 }
 
-struct MigrationPage {
-    scenarios: Entity<SelectState<Vec<Choice>>>,
+pub(super) struct MigrationPage {
+    scenarios: Option<Entity<SelectState<Vec<Choice>>>>,
     scenario: String,
     groups: Vec<MigrationGroup>,
     selected: MigrationSelection,
@@ -236,7 +264,24 @@ struct MigrationPage {
     _subscriptions: Vec<Subscription>,
 }
 impl MigrationPage {
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(super) fn new(cx: &mut Context<Self>) -> Self {
+        // An unread scanner result is not the source's confirmed empty result.
+        // The standalone page exposes no test controls or fabricated records.
+        Self {
+            scenarios: None,
+            scenario: "unknown".into(),
+            groups: vec![],
+            selected: MigrationSelection::default(),
+            expanded: BTreeSet::new(),
+            collapsed_sections: BTreeSet::new(),
+            overlay: None,
+            overlay_focus: cx.focus_handle(),
+            return_focus: None,
+            notice: String::new(),
+            _subscriptions: vec![],
+        }
+    }
+    fn new_preview(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let scenarios =
             cx.new(|cx| SelectState::new(choices(), Some(IndexPath::new(0)), window, cx));
         let subscription = cx.subscribe_in(
@@ -248,19 +293,10 @@ impl MigrationPage {
                 }
             },
         );
-        Self {
-            scenarios,
-            scenario: "unknown".into(),
-            groups: vec![],
-            selected: MigrationSelection::default(),
-            expanded: BTreeSet::new(),
-            collapsed_sections: BTreeSet::new(),
-            overlay: None,
-            overlay_focus: cx.focus_handle(),
-            return_focus: None,
-            notice: String::new(),
-            _subscriptions: vec![subscription],
-        }
+        let mut page = Self::new(cx);
+        page.scenarios = Some(scenarios);
+        page._subscriptions.push(subscription);
+        page
     }
     fn choose(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.close_overlay(window, cx);
@@ -1038,44 +1074,55 @@ fn source_tooltip(
 
 impl Render for MigrationPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let preview = self.scenario != "unknown";
+        let preview = self.scenarios.is_some();
         v_flex()
-            .gap(surface::css(12.))
+            .when(!preview, |view| view.size_full())
+            .when(preview, |view| view.gap(surface::css(12.)))
             .text_size(surface::css(14.))
             .line_height(surface::css(20.))
-            .child(
-                h_flex()
-                    .gap(surface::css(12.))
-                    .flex_wrap()
-                    .child(
-                        div()
-                            .text_color(if preview {
-                                cx.theme().primary
-                            } else {
-                                cx.theme().muted_foreground
-                            })
-                            .child(if preview {
-                                "界面预览 · 示例数据"
-                            } else {
-                                "迁移服务尚未接入，扫描状态未读取"
-                            }),
-                    )
-                    .child(
-                        surface::select(&self.scenarios)
-                            .items(choices())
-                            .w(surface::css(300.))
-                            .accessibility_label("配置迁移界面预览状态"),
-                    ),
-            )
+            .when_some(self.scenarios.as_ref(), |view, scenarios| {
+                view.child(
+                    h_flex()
+                        .gap(surface::css(12.))
+                        .flex_wrap()
+                        .child(
+                            div()
+                                .text_color(if self.scenario != "unknown" {
+                                    cx.theme().primary
+                                } else {
+                                    cx.theme().muted_foreground
+                                })
+                                .child(if self.scenario != "unknown" {
+                                    "界面预览 · 示例数据"
+                                } else {
+                                    "迁移服务尚未接入，扫描状态未读取"
+                                }),
+                        )
+                        .child(
+                            surface::select(scenarios)
+                                .items(choices())
+                                .w(surface::css(300.))
+                                .accessibility_label("配置迁移界面预览状态"),
+                        ),
+                )
+            })
             .child(
                 v_flex()
                     .id("migration-page-scroll")
                     .scrollable_y()
-                    .max_h(
-                        (window.viewport_size().height - window.rem_size() * 13.)
-                            .max(window.rem_size() * 12.),
-                    )
-                    .pt(surface::css(10.))
+                    .when(preview, |view| {
+                        view.max_h(
+                            (window.viewport_size().height - window.rem_size() * 13.)
+                                .max(window.rem_size() * 12.),
+                        )
+                    })
+                    .when(!preview, |view| {
+                        view.flex_1()
+                            .min_h_0()
+                            .px(surface::css(20.))
+                            .pb(surface::css(20.))
+                    })
+                    .pt(surface::css(if preview { 10. } else { 20. }))
                     .bg(cx.theme().background)
                     .child(self.banner(cx))
                     .when(!self.groups.is_empty(), |column| {
@@ -1086,7 +1133,7 @@ impl Render for MigrationPage {
                     .when(self.scenario == "empty", |column| {
                         column.child(h_flex().justify_center().child(self.empty(cx)))
                     })
-                    .when(self.scenario == "unknown", |column| {
+                    .when(preview && self.scenario == "unknown", |column| {
                         column.child(
                             div()
                                 .p(surface::css(30.))

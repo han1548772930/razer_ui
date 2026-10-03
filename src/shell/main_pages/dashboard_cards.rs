@@ -54,9 +54,9 @@ impl AppShell {
             .iter()
             .map(|entity| {
                 let workspace = entity.read(cx);
-                let device = workspace.device();
-                let key = workspace.identity();
-                let supported = !Tab::for_product(device.product_id).is_empty();
+                let device = workspace.device(cx);
+                let key = workspace.identity(cx);
+                let supported = crate::features::has_product_workspace(device.product_id);
                 let owner = cx.entity().downgrade();
                 let content = v_flex()
                     .size_full()

@@ -16,3 +16,23 @@ pub(crate) mod shortcut_engine;
 pub(crate) mod shortcuts;
 mod workspace;
 pub use workspace::{DeviceWorkspace, WorkspaceEvent};
+
+mod product_workspace;
+mod source_workspace;
+mod source_controls;
+mod source_help;
+pub(crate) use product_workspace::ProductWorkspace;
+pub(crate) mod mouse_products;
+pub(crate) mod keyboard_products;
+pub(crate) mod gamepad_products;
+
+/// Entry availability only; adapter completeness is audited separately.
+pub(crate) fn has_product_workspace(pid: u32) -> bool {
+    !crate::nav::Tab::for_product(pid).is_empty() || crate::product::registered(pid).is_some()
+}
+
+mod audio_products;
+
+mod system_products;
+
+mod accessory_system_products;

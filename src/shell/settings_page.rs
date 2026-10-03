@@ -1,4 +1,4 @@
-//! Separate Settings app 720/ho/uo, static snapshot retrieved 2026-10-01.
+//! Current Settings app 720/ho/uo, independently verified on 2026-10-03.
 use crate::ui::scroll::SourceScrollable as _;
 #[path = "settings_lighting.rs"]
 mod lighting;
@@ -15,7 +15,7 @@ use crate::{
     ui::{surface, theme},
 };
 use gpui_kit::component::{
-    button::{Button, ButtonVariants},
+    button::Button,
     checkbox::Checkbox,
     select::{SelectEvent, SelectState},
     tooltip::Tooltip,
@@ -33,13 +33,13 @@ pub(super) enum SettingsEvent {
     Changed,
     Language,
     ResetTutorials,
-    Save,
     Preview(u32),
     PreviewChromaTour,
     PreviewAlexa,
     PreviewAppPicker,
     PreviewModules,
     PreviewHeader,
+    ProfileMigration,
     ReleaseNotes,
     Pairing,
 }
@@ -48,8 +48,8 @@ pub(super) struct SettingsPage {
     saved: AppPreferences,
     page: Page,
     language: Entity<SelectState<Vec<Choice>>>,
+    preview_product: Entity<SelectState<Vec<Choice>>>,
     tutorial_reset: bool,
-    saving: bool,
     storage_error: Option<String>,
     dynamic_lighting_supported: bool,
     runtime: Entity<super::runtime_page::RuntimePanel>,
@@ -85,13 +85,20 @@ impl SettingsPage {
         language.update(cx, |state, cx| {
             state.set_selected_value(&values.language, window, cx)
         });
+        let preview_product = cx.new(|cx| {
+            SelectState::new(
+                crate::product::registry().iter().map(|product| {
+                    Choice::new(product.id().to_string(), format!("{} · {}", product.id(), product.name()))
+                }).collect::<Vec<_>>(), None, window, cx,
+            ).searchable(true)
+        });
         let mut this = Self {
             saved,
             values,
             page: Page::Synapse,
             language,
+            preview_product,
             tutorial_reset: false,
-            saving: false,
             storage_error: None,
             dynamic_lighting_supported: crate::backend::system::supports_dynamic_lighting(),
             runtime,
@@ -106,6 +113,7 @@ impl SettingsPage {
                     this.changed(cx);
                 }
             }));
+        this.subscriptions.push(cx.subscribe(&this.preview_product, |_, _, _: &SelectEvent<Vec<Choice>>, cx| cx.notify()));
         this
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
@@ -133,6 +141,10 @@ impl SettingsPage {
         self.tutorial_reset = false;
         cx.notify();
     }
+    pub(super) fn profile_migration_icon_visible(&mut self, visible: bool, cx: &mut Context<Self>) {
+        self.values.profile_migration_icon_visible = visible;
+        self.changed(cx);
+    }
     pub(super) fn dashboard_tutorial_seen(&mut self, seen: bool, cx: &mut Context<Self>) {
         self.values.dashboard_tutorial_seen = seen;
         if seen {
@@ -140,49 +152,9 @@ impl SettingsPage {
         }
         self.changed(cx);
     }
-    // Tutorial dismissal is immediate, independent of the editable preferences.
-    pub(super) fn tutorial_snapshot(&self) -> AppPreferences {
-        let mut saved = self.saved.clone();
-        saved.gamer_room_tutorial_seen = self.values.gamer_room_tutorial_seen;
-        saved.dashboard_tutorial_seen = self.values.dashboard_tutorial_seen;
-        saved
-    }
-    pub(super) fn tutorial_pending(&self) -> bool {
-        self.values.gamer_room_tutorial_seen != self.saved.gamer_room_tutorial_seen
-            || self.values.dashboard_tutorial_seen != self.saved.dashboard_tutorial_seen
-    }
-    pub(super) fn mark_tutorial_saved(
-        &mut self,
-        gamer_room_seen: bool,
-        dashboard_seen: bool,
-        cx: &mut Context<Self>,
-    ) {
-        self.saved.gamer_room_tutorial_seen = gamer_room_seen;
-        self.saved.dashboard_tutorial_seen = dashboard_seen;
-        cx.notify();
-    }
-    pub(super) fn set_persistence_state(
-        &mut self,
-        saving: bool,
-        error: Option<String>,
-        cx: &mut Context<Self>,
-    ) {
-        self.saving = saving;
+    pub(super) fn set_persistence_state(&mut self, error: Option<String>, cx: &mut Context<Self>) {
         self.storage_error = error;
         cx.notify();
-    }
-    fn discard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let seen = self.values.gamer_room_tutorial_seen;
-        let dashboard_seen = self.values.dashboard_tutorial_seen;
-        self.values = self.saved.clone();
-        self.values.gamer_room_tutorial_seen = seen;
-        self.values.dashboard_tutorial_seen = dashboard_seen;
-        self.language.update(cx, |state, cx| {
-            state.set_selected_value(&self.values.language, window, cx)
-        });
-        i18n::set_locale(&self.values.language);
-        cx.emit(SettingsEvent::Language);
-        self.changed(cx);
     }
     fn panel(&self, title: &str, cx: &App) -> Div {
         self.panel_with_control(title, div(), cx)
@@ -222,56 +194,51 @@ impl SettingsPage {
                     .w(surface::css(600.))
                     .gap(surface::css(20.))
                     .child(
-                        self.panel("AUTO_LAUNCH", cx)
-                            .child(
-                                v_flex()
-                                    .child(
-                                        Checkbox::new("settings-auto-start")
-                                            .label(i18n::t("START_SYNAPSE"))
-                                            .checked(false)
-                                            .disabled(true),
-                                    )
-                                    .child(
-                                        v_flex()
-                                            .relative()
-                                            .pl(surface::css(30.))
-                                            .child(
-                                                div()
-                                                    .absolute()
-                                                    .left(surface::css(9.))
-                                                    .top_0()
-                                                    .w(surface::css(1.))
-                                                    .h(surface::css(37.))
-                                                    .bg(theme::SettingsColors::tree_note()),
-                                            )
-                                            .child(
-                                                div()
-                                                    .absolute()
-                                                    .left(surface::css(10.))
-                                                    .top(surface::css(36.))
-                                                    .w(surface::css(13.))
-                                                    .h(surface::css(1.))
-                                                    .bg(theme::SettingsColors::tree_note()),
-                                            )
-                                            .child(
-                                                div()
-                                                    .mb(surface::css(10.))
-                                                    .text_color(theme::SettingsColors::tree_note())
-                                                    .line_height(surface::css(17.))
-                                                    .child(i18n::t("NOTE_DISABLE_SYNAPSE")),
-                                            )
-                                            .child(
-                                                Checkbox::new("settings-start-minimized")
-                                                    .label(i18n::t("MINIMIZE_SYSTRAY"))
-                                                    .checked(false)
-                                                    .disabled(true),
-                                            ),
-                                    ),
-                            )
-                            .child(surface::note(
-                                "尚未连接 Synapse 启动服务，当前启动偏好未读取。",
-                                cx,
-                            )),
+                        self.panel("AUTO_LAUNCH", cx).child(
+                            v_flex()
+                                .child(
+                                    Checkbox::new("settings-auto-start")
+                                        .label(i18n::t("START_SYNAPSE"))
+                                        .checked(false)
+                                        .disabled(true),
+                                )
+                                .child(
+                                    v_flex()
+                                        .relative()
+                                        .pl(surface::css(30.))
+                                        .child(
+                                            div()
+                                                .absolute()
+                                                .left(surface::css(9.))
+                                                .top_0()
+                                                .w(surface::css(1.))
+                                                .h(surface::css(37.))
+                                                .bg(theme::SettingsColors::tree_note()),
+                                        )
+                                        .child(
+                                            div()
+                                                .absolute()
+                                                .left(surface::css(10.))
+                                                .top(surface::css(36.))
+                                                .w(surface::css(13.))
+                                                .h(surface::css(1.))
+                                                .bg(theme::SettingsColors::tree_note()),
+                                        )
+                                        .child(
+                                            div()
+                                                .mb(surface::css(10.))
+                                                .text_color(theme::SettingsColors::tree_note())
+                                                .line_height(surface::css(17.))
+                                                .child(i18n::t("NOTE_DISABLE_SYNAPSE")),
+                                        )
+                                        .child(
+                                            Checkbox::new("settings-start-minimized")
+                                                .label(i18n::t("MINIMIZE_SYSTRAY"))
+                                                .checked(false)
+                                                .disabled(true),
+                                        ),
+                                ),
+                        ),
                     )
                     .child(
                         self.panel("NOTIFICATIONS", cx).child(
@@ -287,61 +254,52 @@ impl SettingsPage {
                                         })),
                                 )
                                 .child(
-                                    Button::new("settings-notifications-help")
-                                        .ghost()
-                                        .p_0()
-                                        .size(surface::css(14.))
-                                        .absolute()
-                                        .left(surface::css(226.))
-                                        .top(surface::css(4.))
-                                        .accessibility_label(i18n::t("NOTIFICATIONS"))
-                                        .child(img("synapse/onboard-help.svg").size_full())
-                                        .tooltip_placement(Placement::Right)
-                                        .tooltip(format!(
+                                    settings_help(
+                                        "settings-notifications-help",
+                                        i18n::t("NOTIFICATIONS"),
+                                        format!(
                                             "{}\n• {}\n• {}\n• {}",
                                             i18n::t("NOTIFICATIONS_TOOLTIP"),
                                             i18n::t("NOTIFICATIONS_TOOLTIP_DESC1"),
                                             i18n::t("NOTIFICATIONS_TOOLTIP_DESC2"),
                                             i18n::t("NOTIFICATIONS_TOOLTIP_DESC3")
-                                        )),
+                                        ),
+                                    )
+                                    .absolute()
+                                    .left(surface::css(226.))
+                                    .top(surface::css(4.)),
                                 ),
                         ),
                     )
-                    .child(self.recommendations(cx)),
+                    .child(self.recommendations(window, cx)),
             )
             .child(
                 v_flex()
                     .w(surface::css(600.))
                     .gap(surface::css(20.))
                     .child(
-                        self.panel("TUTORIAL_RESET", cx)
-                            .child(
-                                h_flex()
-                                    .gap(surface::css(20.))
-                                    .items_center()
-                                    .child(
-                                        settings_button(
-                                            "settings-reset-tutorials",
-                                            i18n::t("RESET"),
-                                            self.tutorial_reset,
-                                            window,
-                                            cx,
-                                        )
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| {
-                                                this.tutorial_reset = true;
-                                                cx.emit(SettingsEvent::ResetTutorials);
-                                                cx.notify();
-                                            }),
-                                        ),
+                        self.panel("TUTORIAL_RESET", cx).child(
+                            h_flex()
+                                .gap(surface::css(20.))
+                                .items_center()
+                                .child(
+                                    settings_button(
+                                        "settings-reset-tutorials",
+                                        i18n::t("RESET"),
+                                        self.tutorial_reset,
+                                        window,
+                                        cx,
                                     )
-                                    .child(
-                                        div().flex_1().child(i18n::t("SYNAPSE_TUTORIAL_RESET_MSG")),
-                                    ),
-                            )
-                            .when(self.tutorial_reset, |this| {
-                                this.child(surface::note("下次进入相应页面时显示本地教程。", cx))
-                            }),
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
+                                            this.tutorial_reset = true;
+                                            cx.emit(SettingsEvent::ResetTutorials);
+                                            cx.notify();
+                                        },
+                                    )),
+                                )
+                                .child(div().flex_1().child(i18n::t("SYNAPSE_TUTORIAL_RESET_MSG"))),
+                        ),
                     )
                     .child(
                         self.panel("PROFILE_MIGRATION", cx).child(
@@ -356,27 +314,36 @@ impl SettingsPage {
                                         window,
                                         cx,
                                     )
-                                    .on_click(
-                                        |_, window, cx| {
-                                            super::profile_migration::open(window, cx);
+                                    .on_click(cx.listener(
+                                        |_, _, _, cx| {
+                                            cx.emit(SettingsEvent::ProfileMigration);
                                         },
-                                    ),
+                                    )),
                                 )
                                 .child(div().flex_1().child(i18n::t("PROFILE_MIGRATION_DESC"))),
                         ),
                     )
                     .when(self.dynamic_lighting_supported, |column| {
-                        column.child(self.panel("DEVICE_LIGHTING", cx).child(lighting::content(
-                            None,
-                            false,
-                            |_, _, _| {},
-                            cx,
-                        )))
+                        column.child(
+                            self.panel("DEVICE_LIGHTING", cx)
+                                .relative()
+                                .child(
+                                    settings_help(
+                                        "settings-lighting-help",
+                                        i18n::t("DEVICE_LIGHTING"),
+                                        i18n::t("DEVICE_LIGHTING_TIPS"),
+                                    )
+                                    .absolute()
+                                    .top(surface::css(10.))
+                                    .right(surface::css(10.)),
+                                )
+                                .child(lighting::content(None, false, |_, _, _| {}, cx)),
+                        )
                     }),
             )
             .into_any_element()
     }
-    fn recommendations(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn recommendations(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.panel_with_control(
             "RECOMMENDATION_HEADER",
             surface::SynapseSwitch::new("settings-recommendations")
@@ -388,17 +355,28 @@ impl SettingsPage {
                 })),
             cx,
         )
-        .child(surface::note(i18n::t("RECOMMENDATION_DESC"), cx))
-        .child(div().child(i18n::t("DEVICES_HEADER")))
-        .child(surface::note(i18n::t("RECOMMENDATION_DEVICES_DESC"), cx))
+        .gap_0()
         .child(
-            h_flex()
-                .flex_wrap()
-                .gap_y_3()
+            div()
+                .mt(surface::css(20.))
+                .mb(surface::css(20.))
+                .child(i18n::t("RECOMMENDATION_DESC")),
+        )
+        .child(div().child(i18n::t("DEVICES_HEADER").to_uppercase()))
+        .child(
+            div()
+                .mt(surface::css(5.))
+                .mb(surface::css(10.))
+                .child(i18n::t("RECOMMENDATION_DEVICES_DESC")),
+        )
+        .child(
+            // Ia's style_checkGroup is a single vertical column, gap: 10px.
+            v_flex()
+                .gap(surface::css(10.))
+                .mb(surface::css(20.))
                 .children(RECOMMENDATION_CATEGORIES.iter().map(|(id, label)| {
                     let id = *id;
                     Checkbox::new(SharedString::from(format!("settings-category-{id}")))
-                        .w_1_2()
                         .label(i18n::t(label))
                         .checked(
                             !self
@@ -420,10 +398,15 @@ impl SettingsPage {
                         }))
                 })),
         )
-        .child(div().mt_3().child(i18n::t("NEW_RELEASE_AND_DEALS")))
+        .child(
+            div()
+                .mb(surface::css(10.))
+                .child(i18n::t("NEW_RELEASE_AND_DEALS").to_uppercase()),
+        )
         .child(
             Checkbox::new("settings-new-products")
                 .label(i18n::t("NEW_RELEASE_DESC"))
+                .mb(surface::css(6.))
                 .checked(self.values.new_products)
                 .disabled(!self.values.recommendations)
                 .on_click(cx.listener(|this, checked, _, cx| {
@@ -434,6 +417,7 @@ impl SettingsPage {
         .child(
             Checkbox::new("settings-partner-deals")
                 .label(i18n::t("NEW_RELEASE_DESC_2"))
+                .mb(surface::css(20.))
                 .checked(self.values.partner_deals)
                 .disabled(!self.values.recommendations)
                 .on_click(cx.listener(|this, checked, _, cx| {
@@ -441,22 +425,34 @@ impl SettingsPage {
                     this.changed(cx);
                 })),
         )
-        .child(div().mt_3().child(i18n::t("IGNORE_CATEGORIES_HEADER")))
-        .child(surface::note(i18n::t("IGNORE_CATEGORIES_DESC"), cx))
+        .child(div().child(i18n::t("IGNORE_CATEGORIES_HEADER").to_uppercase()))
         .child(
-            Button::new("settings-reset-categories")
-                .label(i18n::t("RESET"))
-                .outline()
-                .disabled(
-                    !self.values.recommendations
-                        || (self.values.ignored_products.is_empty()
-                            && self.values.owned_products.is_empty()),
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.values.ignored_products.clear();
-                    this.values.owned_products.clear();
-                    this.changed(cx);
-                })),
+            div()
+                // Source block siblings collapse the title's 10px bottom margin
+                // with this description's 5px top margin to a single 10px gap.
+                .mt(surface::css(10.))
+                .mb(surface::css(10.))
+                .child(i18n::t("IGNORE_CATEGORIES_DESC")),
+        )
+        .child(
+            settings_button(
+                "settings-reset-categories",
+                i18n::t("RESET"),
+                !self.values.recommendations
+                    || (self.values.ignored_products.is_empty()
+                        && self.values.owned_products.is_empty()),
+                window,
+                cx,
+            )
+            // Ia's reset uses fit-content with 27px horizontal padding.
+            .min_w_0()
+            .self_start()
+            .px(surface::css(27.))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.values.ignored_products.clear();
+                this.values.owned_products.clear();
+                this.changed(cx);
+            })),
         )
         .into_any_element()
     }
@@ -488,31 +484,25 @@ impl SettingsPage {
                         ),
                     )
                     .child(
-                        self.panel("THX_WHAT_NEWS", cx)
-                            .child(
-                                h_flex()
-                                    .flex_wrap()
-                                    .line_height(surface::css(17.))
-                                    .child(before.to_owned())
-                                    .child(
-                                        gpui_kit::base::Button::new("settings-release-notes")
-                                            .child("Release Notes")
-                                            .text_decoration_1()
-                                            .hover(|button| button.text_color(cx.theme().primary))
-                                            .focus_visible(|button| {
-                                                button.text_color(cx.theme().primary)
-                                            })
-                                            .on_click(cx.listener(|_, _, _, cx| {
-                                                cx.emit(SettingsEvent::ReleaseNotes)
-                                            })),
-                                    )
-                                    .child(after.to_owned()),
-                            )
-                            .child(surface::external(
-                                "settings-release-support",
-                                "Razer Synapse 支持",
-                                "https://mysupport.razer.com/app/answers/detail/a_id/14644",
-                            )),
+                        self.panel("THX_WHAT_NEWS", cx).child(
+                            h_flex()
+                                .flex_wrap()
+                                .line_height(surface::css(17.))
+                                .child(before.to_owned())
+                                .child(
+                                    gpui_kit::base::Button::new("settings-release-notes")
+                                        .child("Release Notes")
+                                        .text_decoration_1()
+                                        .hover(|button| button.text_color(cx.theme().primary))
+                                        .focus_visible(|button| {
+                                            button.text_color(cx.theme().primary)
+                                        })
+                                        .on_click(cx.listener(|_, _, _, cx| {
+                                            cx.emit(SettingsEvent::ReleaseNotes)
+                                        })),
+                                )
+                                .child(after.to_owned()),
+                        ),
                     ),
             )
             .child(self.about(cx))
@@ -530,12 +520,12 @@ impl SettingsPage {
                         img("synapse/settings-synapse-logo.svg")
                             .w(surface::css(294.366)).h(surface::css(70.))
                             .object_fit(ObjectFit::Contain)))
+                    .child(div().text_center().mb(surface::css(20.))
+                        // Fs uses the Dashboard manifest, not the host or this crate's version.
+                        // ["4", ..."0.0.86".split(".").slice(1), 2609221012].join(".")
+                        .child(i18n::t("VERSION").replace("{{number}}", "4.0.86.2609221012")))
                     .child(v_flex().text_center().mb(surface::css(20.))
-                        .child(format!("razer_ui {} · 本地重构界面", env!("CARGO_PKG_VERSION")))
-                        .child("Synapse 服务版本可在“服务连接”中读取。"))
-                    .child(v_flex().text_center().mb(surface::css(20.))
-                        // Attribution year of the audited Settings source snapshot (2026-10-01).
-                        .child(i18n::t("COPYRIGHT").replace("{{year}}", "2026"))
+                        .child(i18n::t("COPYRIGHT").replace("{{year}}", &crate::backend::system::copyright_year()))
                         .child(i18n::t("TRADEMARK")))
                     .child(v_flex().mb(surface::css(30.))
                         .child(h_flex().justify_center().flex_wrap().children([
@@ -573,6 +563,27 @@ impl SettingsPage {
             .child(self.runtime.clone())
             .child(
                 surface::panel("本地工作区", cx)
+                    .child(h_flex().gap_3().child(
+                        select::Select::new(&self.preview_product).placeholder("搜索产品名称或 ID").w(surface::css(400.))
+                    ).child(Button::new("preview-registered-product").label("打开产品预览").outline()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if let Some(pid) = this.preview_product.read(cx).selected_value().and_then(|v| v.parse::<u32>().ok()) {
+                                cx.emit(SettingsEvent::Preview(pid));
+                            }
+                        }))))
+                    .children(self.preview_product.read(cx).selected_value().and_then(|v| v.parse::<u32>().ok()).and_then(crate::product::registered).map(|product| {
+                        v_flex().gap_2().child(surface::note(format!("产品 ID {} · 分类 {} · editions {:?}", product.id(), product.categories().join(", "), product.edition_ids()), cx))
+                            .children(product.navigations().iter().map(|navigation| {
+                                v_flex().gap_1().child(surface::note(format!("{} · {} · {}{}", navigation.key(), navigation.owner(), navigation.display_mode(), if navigation.is_primary() { " · 默认入口" } else { "" }), cx))
+                                    .child(surface::note(format!("{} @ {}\nSHA-256 {}", navigation.source(), navigation.offset(), navigation.source_sha256()), cx))
+                                    .children(navigation.pages().iter().map(|page| surface::note(format!("{} · {} · ID {:?} · {} @ {} · {:?}\n{}{}", page.id().product_id(), page.kind().key(), page.source_id(), page.component_kind(), page.offset(), page.adapter_status(), page.component_expression().unwrap_or(""), page.extra_class().map(|c| format!(" · class {c}")).unwrap_or_default()), cx)))
+                                    .child(Button::new(SharedString::from(format!("copy-source-navigation-{}",navigation.key()))).label("复制根组件依据").outline().on_click(move |_,_,cx| cx.write_to_clipboard(ClipboardItem::new_string(navigation.reachability().to_string()))))
+                            }))
+                    }))
+                    .child(surface::note(
+                        format!("razer_ui {} · 本地重构界面。自动启动偏好和灯光控制权尚未读取；上方正式设置中的相关控件因此禁用。", env!("CARGO_PKG_VERSION")),
+                        cx,
+                    ))
                     .child(surface::note(
                         format!("本地配置位置：{}", crate::store::store_path().display()),
                         cx,
@@ -591,6 +602,14 @@ impl SettingsPage {
                                         move |_, _, _, cx| cx.emit(SettingsEvent::Preview(pid)),
                                     ))
                                 }),
+                            )
+                            .child(
+                                Button::new("preview-profile-migration")
+                                    .label("预览配置迁移状态…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        super::profile_migration::open_preview(window, cx);
+                                    }),
                             )
                             .child(
                                 Button::new("preview-module-pages")
@@ -665,6 +684,29 @@ impl SettingsPage {
             .into_any_element()
     }
 }
+fn settings_help(id: &'static str, label: String, text: String) -> gpui_kit::base::Button {
+    gpui_kit::base::Button::new(id)
+        .accessibility_label(label)
+        .size(surface::css(14.))
+        .p_0()
+        .rounded(surface::css(7.))
+        .bg(theme::TooltipColors::help_background())
+        .hover(|button| button.bg(theme::SettingsColors::help_hover()))
+        .child(img("synapse/onboard-help.svg").size_full())
+        .tooltip(move |window, cx| {
+            Tooltip::new(text.clone())
+                .max_w(surface::css(300.))
+                .text_size(surface::css(14.))
+                .line_height(surface::css(18.))
+                .bg(theme::TooltipColors::background())
+                .border_color(theme::TooltipColors::border())
+                .rounded_none()
+                .shadow_none()
+                .px(surface::css(10.))
+                .py(surface::css(8.))
+                .build(window, cx)
+        })
+}
 fn social_link(
     id: &'static str,
     label: SharedString,
@@ -728,9 +770,12 @@ impl Render for SettingsPage {
             .min_h_0()
             .child(
                 gpui_kit::base::Tabs::new("settings-navigation")
-                    .flex().items_center()
-                    .h(surface::css(48.)).flex_shrink_0()
-                    .border_b_2().border_color(cx.theme().title_bar)
+                    .flex()
+                    .items_center()
+                    .h(surface::css(48.))
+                    .flex_shrink_0()
+                    .border_b_2()
+                    .border_color(cx.theme().title_bar)
                     .tab_group()
                     .justify_center()
                     .gap(surface::css(20.))
@@ -750,40 +795,36 @@ impl Render for SettingsPage {
                         }),
                     ),
             )
-            .child(div().id("settings-scroll").flex_1().min_h_0().scrollable_both()
-                .child(v_flex().w_full().min_w(surface::css(660.)).max_w(surface::css(1280.))
-                    .mx_auto().px(surface::css(30.)).py(surface::css(20.)).gap(surface::css(20.))
-            .child(surface::note(
-                "通知和推荐偏好保存在本机；Synapse 启动、灯光控制权及迁移需要相应服务。",
-                cx,
-            ))
-            .child(match self.page {
-                Page::Synapse => self.synapse(window, cx),
-                Page::General => self.general(cx),
-                Page::Connection => self.connection(cx),
-            })))
-            .when_some(self.storage_error.clone(), |this, error| this.child(
-                div().px_4().py_2().text_color(cx.theme().danger)
-                    .child(format!("未能保存设置：{error}"))))
             .child(
-                h_flex()
-                    .flex_shrink_0().px_4().py_3().border_t_1().border_color(cx.theme().border)
-                    .gap_3()
-                    .justify_end()
+                div()
+                    .id("settings-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .scrollable_both()
                     .child(
-                        Button::new("settings-discard")
-                            .label("丢弃设置更改")
-                            .outline()
-                            .disabled(!self.dirty() || self.saving)
-                            .on_click(cx.listener(|this, _, window, cx| this.discard(window, cx))),
-                    )
-                    .child(
-                        Button::new("settings-save")
-                            .label(if self.saving { "正在保存…" } else { "保存设置到本机" })
-                            .primary()
-                            .disabled(!self.dirty() || self.saving || self.storage_error.is_some())
-                            .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Save))),
+                        v_flex()
+                            .w_full()
+                            .min_w(surface::css(660.))
+                            .max_w(surface::css(1280.))
+                            .mx_auto()
+                            .px(surface::css(30.))
+                            .py(surface::css(20.))
+                            .gap(surface::css(20.))
+                            .child(match self.page {
+                                Page::Synapse => self.synapse(window, cx),
+                                Page::General => self.general(cx),
+                                Page::Connection => self.connection(cx),
+                            }),
                     ),
             )
+            .when_some(self.storage_error.clone(), |this, error| {
+                this.child(
+                    div()
+                        .px_4()
+                        .py_2()
+                        .text_color(cx.theme().danger)
+                        .child(format!("未能保存设置：{error}")),
+                )
+            })
     }
 }

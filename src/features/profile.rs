@@ -102,6 +102,7 @@ pub(super) fn create_local_profile(device: &mut Device, saved: &Device, duplicat
     } else {
         let settings = ProfileSettings::for_product(device.product_id);
         Profile {
+                        source_settings: None,
             id: String::new(),
             guid: String::new(),
             name: default_profile_name(

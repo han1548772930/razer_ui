@@ -1,4 +1,22 @@
-//! Explicit user-triggered Windows property dialogs; no device-write simulation.
+//! Read-only Windows properties and explicit user-triggered property dialogs.
+
+/// Settings `Fs` uses `new Date().getFullYear()`, i.e. the local calendar year.
+pub(crate) fn copyright_year() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::{Foundation::SYSTEMTIME, System::SystemInformation::GetLocalTime};
+        let mut local_time = SYSTEMTIME::default();
+        // GetLocalTime initializes this writable SYSTEMTIME; no service is opened.
+        unsafe { GetLocalTime(&mut local_time) };
+        local_time.wYear.to_string()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // The reconstruction targets Windows. Omit an unavailable local year
+        // instead of treating a UTC date or a frozen audit year as local time.
+        String::new()
+    }
+}
 /// Settings `ia` uses build 22631+, or 22621 with update revision 2506+.
 /// Reading the OS version does not initialize a Razer service or change WDL.
 pub(crate) fn supports_dynamic_lighting() -> bool {

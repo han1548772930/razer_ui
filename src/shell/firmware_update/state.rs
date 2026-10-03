@@ -1,4 +1,4 @@
-//! Native state names and transitions from update-fw main.69cc5fbd.js / ao.
+//! Source stages from update-fw main.69cc5fbd.js / ao, plus local Unknown.
 //! This model contains local preview data only. No field is a hardware result.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Stage {
@@ -87,7 +87,7 @@ impl Preset {
                 Component::Device
             },
             dual: key != "keyboard-single",
-            large_dongle: key == "mouse-dongle",
+            large_dongle: matches!(key, "mouse-dongle" | "mouse-usb-large"),
         }
     }
 }
@@ -162,6 +162,7 @@ impl Flow {
         }
         if key == "success" && self.preset.dual {
             self.completed.push(self.current.other());
+            self.current = self.current.other();
         }
         if !self.preset.dual && matches!(key, "partial" | "latest" | "switch" | "multiple") {
             self.stage = Stage::CompleteDone;
@@ -215,7 +216,8 @@ impl Flow {
         if self.progress == 100 {
             if self.stage == Stage::Prepare {
                 if self.completed.contains(&self.current) {
-                    self.already_current = true;
+                    // ao records skipUpgrade as SUCCEED. Uo therefore uses
+                    // UPDATE_SUCCESSFUL here, even when no second write occurs.
                     self.mark_complete();
                 } else {
                     self.stage = Stage::ReadyToUpgrade;
@@ -261,7 +263,8 @@ impl Flow {
         }
     }
     pub(super) fn restart(&mut self) {
-        // ao.resetIndex retains previousUpgradeRes; successful components are skipped.
+        // ao uses no.resetIndex; it retains previousUpgradeRes. The preview also
+        // retains its successful components so a retry cannot invent lost results.
         if self.stage != Stage::CompleteSkipOrFail || self.warning.is_some() {
             return;
         }
@@ -277,6 +280,19 @@ impl Flow {
             .filter(|part| {
                 (self.preset.dual || *part == self.preset.initial) && !self.completed.contains(part)
             })
+            .collect()
+    }
+    pub(super) fn result_components(&self) -> Vec<Component> {
+        // Fo orders success items by the current connection. Vo orders a
+        // partial/failed result by device, then dongle, regardless of start mode.
+        let order = if self.stage == Stage::CompleteDone {
+            [self.current, self.current.other()]
+        } else {
+            [Component::Device, Component::Dongle]
+        };
+        order
+            .into_iter()
+            .filter(|part| self.completed.contains(part))
             .collect()
     }
 }
@@ -328,6 +344,24 @@ mod tests {
             flow.tick(ticket);
         }
         assert_eq!(flow.stage, Stage::PartialCompleteUpgrade);
-        assert!(flow.already_current);
+        assert!(!flow.already_current);
+    }
+    #[test]
+    fn success_uses_final_connection_for_component_order() {
+        let mut flow = Flow::default();
+        flow.load("success");
+        assert_eq!(flow.current, Component::Dongle);
+        assert_eq!(
+            flow.result_components(),
+            vec![Component::Dongle, Component::Device]
+        );
+
+        flow.preset = Preset::from_key("keyboard-dongle");
+        flow.load("success");
+        assert_eq!(flow.current, Component::Device);
+        assert_eq!(
+            flow.result_components(),
+            vec![Component::Device, Component::Dongle]
+        );
     }
 }

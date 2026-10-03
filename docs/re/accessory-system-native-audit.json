@@ -1,0 +1,570 @@
+{
+  "schema_version": 1,
+  "source_evidence_sha256": "7c9f91a705c8c034cf644dd569ba82a9fa3ab82090158c8e9faed4f58c10253c",
+  "products": [
+    {
+      "product_id": 3858,
+      "pages": [
+        "TAB_GAMING",
+        "TAB_COLOR",
+        "TAB_DISPLAY"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3858/static/js/main.608e1599.js",
+          "sha256": "68e3d86fe0798574914af256df203c7eca30ef5b4f3b2950c364c42cb9d2c02e"
+        },
+        {
+          "path": ".ref/devices/3858/static/js/858.96665b95.chunk.js",
+          "sha256": "445ad29ff6656435a83e76e8b0b4b92803d4881699a41cc1567965b927bab66a"
+        },
+        {
+          "path": ".ref/devices/3858/static/js/AppFolderInstallationChecker.6e64b30b.chunk.js",
+          "sha256": "592f28be12b0c9063da588d21f90f49f198c47721e91f9b85d75dabbc1467b3d"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
+    },
+    {
+      "product_id": 3880,
+      "pages": [
+        "TAB_GAMING",
+        "TAB_COLOR",
+        "TAB_DISPLAY"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+          "sha256": "a48a719444799d247bf66845fbb4ecd6304bfc60f7504b12614bebc7d4906154"
+        },
+        {
+          "path": ".ref/devices/3880/static/js/508.f53af500.chunk.js",
+          "sha256": "26eb98c8ec95e890cf5d8db494dd45092128d178a859ff8ae8f65b3c5262edb1"
+        },
+        {
+          "path": ".ref/devices/3880/static/js/515.8245b4de.chunk.js",
+          "sha256": "e3d3e7964aaba947b6e1e40617295d95163b70a9687dddf7c2337389888c5cbb"
+        },
+        {
+          "path": ".ref/devices/3880/static/js/AppFolderInstallationChecker.032f2097.chunk.js",
+          "sha256": "afe78c47e5b2eb20d2d275df82db94d1c0ce7619534ee374632e96071981a763"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
+    },
+    {
+      "product_id": 3893,
+      "pages": [
+        "TAB_PERFORMANCE"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3893/static/js/main.a7630c14.js",
+          "sha256": "a6a12c73980d1524815dcde362c1c7d00e36c35708b0c41902ddd5e48497849e"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/149.90bec016.chunk.js",
+          "sha256": "8acbda9965cf34e16a042830886a0ccf33398209a7d77118fb5ebf11894e3856"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/162.e329b529.chunk.js",
+          "sha256": "0991bdba6a13c1ace70328c4198aaf3178cac6dc4e92f4a97da8353d177f7a18"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/164.a39a094e.chunk.js",
+          "sha256": "e3121b8e83d16526513e5e907de4f9160db9bfc4da1941223b4be3db0fd42eaf"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/241.b8e44756.chunk.js",
+          "sha256": "7af75aceb7e864a4dd665c5a2569e10b178c1c72f870195c94a7aa9fa152532f"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/301.3edea421.chunk.js",
+          "sha256": "43e03b97568bd45a23c10fcc4695d83cc74fdbf883ef042bdadddf348bfec7ea"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/373.c3751876.chunk.js",
+          "sha256": "6112213d5917a9e01207b72d4268dbe6f48eed6aeef98ceb8980cf88f069fadc"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/388.9cbc8778.chunk.js",
+          "sha256": "2e6758fddcb64046dcce3e6d73af4acd6803faac3adcf0bc31444a01d274da8c"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/41.f8b90789.chunk.js",
+          "sha256": "99c0a238d123c8c6336ee15ef3f790cb1cb194a7d4b22d4aba0c6bd53d312a36"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/423.e7b5f656.chunk.js",
+          "sha256": "c9caa6dc4b76efabc256d53423a601787b3fc465521cca74d54dd647764b81c0"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/424.9431917b.chunk.js",
+          "sha256": "6847ed3a86228d5735d9918611ca780323dcdfccf4b7aaab35d0152cabfb7571"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/433.4084aed8.chunk.js",
+          "sha256": "ccde4d3d30778017c8c55a92db26358aed382dbfa3503267ade27631af348127"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/5.18bdb54b.chunk.js",
+          "sha256": "b60f35d58207101dbbde956c58164b206e419f10ad5e900333bb31dd852daa22"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/526.f508ad60.chunk.js",
+          "sha256": "65e224bf55c6635f1651a375fc0a7c418e904ddce542e9fed12034a80a04c4d2"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/572.416f2b7e.chunk.js",
+          "sha256": "56705e394e5592846addb1e7caa3e178b800a990c9440fe98fd6b2ebc327f381"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/605.426d64b3.chunk.js",
+          "sha256": "4109cd707183176a798d17f2e386b020a841bf7641f70fb595e1fbf0f6e467da"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/620.abeee7df.chunk.js",
+          "sha256": "c08d46e5275ecd104b308f923bb8126dc005c09f7856f7b27bc4af8d0909cd62"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/626.d8ba8dba.chunk.js",
+          "sha256": "d3492ee0189cf1d68d0c6f67ca24231e38dd3fda4c56a1a29bc531ed8f391dbb"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/679.e205f82e.chunk.js",
+          "sha256": "870768eedea2e98e26ba09c644ded11debbb4ff2e86cc709e99d58468ea6ca6a"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/687.c8c88399.chunk.js",
+          "sha256": "5a30cc36a3aa6d54026c87a5d5cbcc7111bad170bb35be2897dabb7d9e1492b7"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/691.0080f956.chunk.js",
+          "sha256": "628e97ba3340291df13eeea7487452a9763c6f861a5b2f0683455ddb3fc90f83"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/694.8d68c367.chunk.js",
+          "sha256": "37d0dfcb26d61a8e992e6abe003ab936474be6429f3bae2ec88b4264617d4e89"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/697.11cddbe2.chunk.js",
+          "sha256": "ebb33c8d7006270df787582f0a2776b7607bbe7e70ba1302b59f9292d2721671"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/746.36765bc7.chunk.js",
+          "sha256": "85c26d30861eef93c7ae4c57d5b49523ea1437cab1d327c66d2aab3c1efc75f9"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/765.464f779d.chunk.js",
+          "sha256": "7a2b766e0dcb0ea56ee95a10e0793bad8a4ba9087cf11e82e114a6049b662805"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/782.ad4ba43c.chunk.js",
+          "sha256": "39fcf26da5c3cba86f0547db60ff28227a378dd6575ce0a5bfd70be0641a7155"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/783.42b006c6.chunk.js",
+          "sha256": "dd8d574fe7eda1124de92b26a99c2cf9a609d15271c7d595754767ad8a23c299"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/824.574e0682.chunk.js",
+          "sha256": "cac67770af636945de335a9053462ae6ebcf95be43fcedef8d1badb70fe7cd42"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/856.c941d07a.chunk.js",
+          "sha256": "25dc828a0ddd4db2754c7161051e4b4d29c79769b93cb15c2aaa59424dc77a2e"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/877.26bbcb66.chunk.js",
+          "sha256": "02c35180e09c8ba3222985e4ba68cf8faf57813c8e170eccc5c381db26a21d9b"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/890.f0b15e97.chunk.js",
+          "sha256": "63e4d91c925adeaf2d30b28a9677a5b83b60fc262a76ab4edeb2710c4d7b5745"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/90.7dc28fe1.chunk.js",
+          "sha256": "41dfb381db3e19cc2c756f0903c33f699d132adb0cc1f652ea1e165a1db99f47"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/914.6a879ddc.chunk.js",
+          "sha256": "a854b1e4cb3554f633917902171917fe5e5ee50e074cb2238beff31a01a53684"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/921.a83a2d31.chunk.js",
+          "sha256": "cd4f9479e3662731585afa7afb30fe9740d7f00ea28653bd79a31f4adfe4c8e5"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/930.e768ad32.chunk.js",
+          "sha256": "f70bdc182d1382e2ffc5cfdb5cf201b18eff3deffdbe78739ad96db04abb15dc"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/931.6bbd589f.chunk.js",
+          "sha256": "1b5d32f9ff2984c1172de2446f7cfa8e2365b2a94c20f3feefe4a9b3ea61dff1"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/944.b6ccb48a.chunk.js",
+          "sha256": "5b4f192836cbf0b25b1bc13bf89395f9f75b76e62a0e11c6814da5f32f5b484c"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/988.088117d9.chunk.js",
+          "sha256": "2f0b1d0bac5e53f4ec6fbd4670298ee7bd88dae95a1fae9d6a889d3a2d22c016"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/993.77df09fa.chunk.js",
+          "sha256": "975cc177be05f490fc82900df90f05be97f5f215c8e0447a31e500dd92201ef2"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/AppFolderInstallationChecker.8ca7e1b0.chunk.js",
+          "sha256": "4f5eaa1d2413916b3073dc79b01118f2d017420bec5a10de9d97739a007fd1e9"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/DynamicSensitivityTutorialIcon.aef8a43d.chunk.js",
+          "sha256": "574c49376a190885d374bf77a89712c3ed6fc3a3617c14ac395667e13d3b1c3f"
+        },
+        {
+          "path": ".ref/devices/3893/static/js/DynamicSensitivityTutorialPopup.99c478d7.chunk.js",
+          "sha256": "069fdeedb705d4f7b80ece2bacf32f7a13aad1df7c4e72e3434e2d29434dc1af"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
+    },
+    {
+      "product_id": 3900,
+      "pages": [
+        "TAB_PERFORMANCE"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3900/static/js/main.1f8b3065.js",
+          "sha256": "b1cdf1d02289ce7056681ab4bfe5658449e62af3b6b115b207eb73cae75ed7cb"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/143.d43a2825.chunk.js",
+          "sha256": "83bf3b228b34018cf42defb42625d50201ad17c40a49e30440a8aecc78ee27df"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/182.c9fd2aea.chunk.js",
+          "sha256": "a7e2eca2eab9feebcc89d2865e296a70b230880cf50f6eb52cc84d0114435c1b"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/185.436616ff.chunk.js",
+          "sha256": "84ac1dc976f5bb79c0e380e9df10c56a7bbfa013bd683886423fd2066a573e01"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/273.ebbcd9a3.chunk.js",
+          "sha256": "d4eafc6068e8a4b067f613328690f68fc7903046ab385d075d783d372fe542ea"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/379.868e4640.chunk.js",
+          "sha256": "cdec84e06f292f6fe189eb812cd1718e24b4ad4fa33f5b27cac3174a29dddbad"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/412.601bb391.chunk.js",
+          "sha256": "d83ce071a9fdbd76cce869212490fbae1d15b81ef5cb5d04a43ce5dcaaade3cb"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/467.c51d369f.chunk.js",
+          "sha256": "ede22d0543ee66c96078d3de9af03381faf67310fc2dbaa70728d328f2070dd7"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/475.af764f88.chunk.js",
+          "sha256": "7fb65503fef34f9f68bb3db0e9c71dced7c30b639960d41806a3cde337132c12"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/623.21947243.chunk.js",
+          "sha256": "b6617aa212661a57e87ee25bae95344cf845935b439726f2b760279b56d01785"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/676.b4b13139.chunk.js",
+          "sha256": "bb1c6b380668d61b88ede3e18ea59920722d80de7b863a0a3a749a968bb5a745"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/707.61574d1a.chunk.js",
+          "sha256": "91249d1c97c39739bcd3e76c3eec1cb7e46c34af3d20c5ed50d05b6c3fd5afcf"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/780.769a8811.chunk.js",
+          "sha256": "e136310f758354f47609f2c620683b1ebed4bf542532b82483eaf2989afb2df2"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/841.8d5d8c25.chunk.js",
+          "sha256": "16f4bf132cc8cfa74d866eab3547fde14504873638336ce7f08a656c6a7b504a"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/862.395d8e22.chunk.js",
+          "sha256": "842232aeb40a1939ab01fe611d67cfdd1bfc73fa522b3323ab077d2a068da1ac"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/866.dd12ae05.chunk.js",
+          "sha256": "cd9644f9ce9253d16df4d7f9491a471dad7c2211dca850ee0d84ec738d151da1"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/997.45aea8d1.chunk.js",
+          "sha256": "5e67f866f2c40fb63a0befe2baeeba592ea1318fa4ae5fa1220f8bbfb360fae3"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/AppFolderInstallationChecker.62c3b7d2.chunk.js",
+          "sha256": "81ead54ebd601d6702384351baaef2382d2ec8371ded795ed193b3b576a68525"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/DynamicSensitivityTutorialIcon.57943397.chunk.js",
+          "sha256": "3d2f7e714097ad8ec9f0a979e05e2f07b8bacdbc4e30d753c39bcdccc4c14a5b"
+        },
+        {
+          "path": ".ref/devices/3900/static/js/DynamicSensitivityTutorialPopup.cec5c617.chunk.js",
+          "sha256": "a7dda8c6bf0954d9857d6a30f35407977534dd2293ad286ea57ec001619b57d7"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
+    },
+    {
+      "product_id": 3907,
+      "pages": [
+        "TAB_PERFORMANCE"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+          "sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/1151.6ff1b08d.chunk.js",
+          "sha256": "883690d2dd07ec5ec7d6b1a80cc8002ad0897d0c5e9143369634d164985e37aa"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/1977.af0d6aac.chunk.js",
+          "sha256": "b11f42f287b4e248352be83c7ff85488530a4eec1b4655f3787e3188f08ddfd1"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/2048.9f196fff.chunk.js",
+          "sha256": "68d136c03322d489b382d45dfa0faeec5d16c1a5f789b96da4af4d7e7b4b0e1b"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/210.184dc622.chunk.js",
+          "sha256": "2af3291aa4cd0ad9b1ce6c0f42ad951ec6b05866b59b91b60e922a4d1238b02d"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/2321.98654cdf.chunk.js",
+          "sha256": "8045c79199c57ed12674aef908e9243ffce3c07f7a35aaf155c1cbb68c160c5c"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/2531.ad6a05d7.chunk.js",
+          "sha256": "c02c701686aa033019855e711a24c28b51acadb0d6c7c3cb5a949058eef948bf"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/284.9cdd4678.chunk.js",
+          "sha256": "9172d6df72e0279b353d403361978f7569c79ff64ad5988231ce4d4c5c279ab3"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/3347.8a801701.chunk.js",
+          "sha256": "83769e203ef179479b87956de5d6d49770c81dd9dddd0967b41a1ac1a9cbaa5b"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/4117.62957f6b.chunk.js",
+          "sha256": "abbfb12a1ab2e68e583056301e254b596fd8f9d70264c97ebd0a92b9daaf1c54"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/5446.da9e031c.chunk.js",
+          "sha256": "3645a77f027aff6921bb8a729f58e1c4db5644c0cd7893b246400523a2af2583"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/5644.1728c60c.chunk.js",
+          "sha256": "f4b43f53f3221e39b7b3347aa6f420c2a29dd0ececb5010a8c819ad220c17a1f"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/568.1aedad39.chunk.js",
+          "sha256": "14e55809381b8a7030fa84f1c1c70ba967f3ec60770d5c83c3b7165cfd13c7c6"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/6185.5f4d8e65.chunk.js",
+          "sha256": "031d3c6d49a5d7ac68f5a36e8305337ec764e2cf3aecfc1d0c806a8273e541c0"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/6262.7f90eef4.chunk.js",
+          "sha256": "f3de2f243196d8b929b0195ab202c0060228218f91103d118288c46188fa1a03"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/6711.a2a644c2.chunk.js",
+          "sha256": "7d1baadaaf09aa387761dd8f30da61192b8cadf708419a909b41d75a70a64bd5"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/7567.8fb0421e.chunk.js",
+          "sha256": "627ce3bd50b746ba321711f2264812fba606fa88ac501f8200e2f499cd1289d9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/802.fd9bb1e7.chunk.js",
+          "sha256": "6158acd8ebaa48ef904b0b248a4d80c1aac363bf81510a40802a34f617750e45"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/804.c7473c0e.chunk.js",
+          "sha256": "609a1da10ac66afabd4595bbce8e9b34f7a0d81794beaa1f344339c5a8032ec9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/8439.db9472c2.chunk.js",
+          "sha256": "792cb357b06a3247b71d6bec70571f0495d46c27dc8e0a5de3a12ee98b4e8ec8"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/AppFolderInstallationChecker.9540fd48.chunk.js",
+          "sha256": "2f3aed174d2b7163b9ee9f12069288b8401091b5dea9a4da3e1ebc89387210b4"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/ButtonPanelComponent.3168595a.chunk.js",
+          "sha256": "8a4a8a72517d9250ceb63d575abc222e3e68968c54447f1c3aae398b3329a837"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/DynamicSensitivityTutorialIcon.1167e4e6.chunk.js",
+          "sha256": "101150e67c647a7e44799d14421a8833496f1a5568a8c14de57889d790d264af"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/DynamicSensitivityTutorialPopup.b10d74f7.chunk.js",
+          "sha256": "1f0017e53a179c89ff37ef9eebb38fb98868ad08e686e0f21fbe85f8ed0da0a7"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/KeypadButtonPanel.5086897c.chunk.js",
+          "sha256": "fd5de76604ab748aaa9671063a8d23d4d7631159da0cb3b7d95302a13d74de1f"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapAILauncher.59089757.chunk.js",
+          "sha256": "7e605699cc7d21b8cb893085b81392f7c4d21aa3f26e96216d31bba256348a9d"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapAppSpecific.c4f37243.chunk.js",
+          "sha256": "0b5bcd6c018d403f92c9fc6ebef1facdf2078e84460b1e3210f46b34d8653467"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapAudio.2ff858cb.chunk.js",
+          "sha256": "8d6654f7c1e5d8232f87e603976465dd7aefb53226dfc618235a76d5f5cff9bf"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapBrightness.5095df7d.chunk.js",
+          "sha256": "c5b40e335cf31de5f66be6851df04bd2ab1e6ab1bfc2828d56f794a1cf9a5ab5"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapBrightnessGlobal.0149aa46.chunk.js",
+          "sha256": "1d5e89e9618a89366d870862e2b8de9ca51415507c99b4ad1107145fbe2d69b2"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapControlKnobFunction.51999198.chunk.js",
+          "sha256": "405abb051c98a6f3a2816ef1d55c36111de921a83ead9d3a295ad518c1df3db9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapControllerPlaystation.a68984e0.chunk.js",
+          "sha256": "ab6d69f6186919f53166ae397fa9882a5e8002b77321a6df9444425eb58bfccb"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapControllerV2.7e03203a.chunk.js",
+          "sha256": "95629c349339fc62ed7ab4f1789b711625a7702bb4e315e033d145be912c4277"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapDefault.6179009b.chunk.js",
+          "sha256": "ee888699dadb6830d6f0d007640fc215bcaf58a726a268cdec8ca68d566cd59b"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapDialFunction.03df723f.chunk.js",
+          "sha256": "6196b392bceaff4794b3107fc46210c6fc81b4c45966fd94373c73935539cb83"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapDisable.bb79c166.chunk.js",
+          "sha256": "d27abbcb28223f3409850d45790a5cf846a008b4171b00d004b0603035decfb7"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapDynamicKeyStroke.01a6a69a.chunk.js",
+          "sha256": "3958fa94f3ebe7a606016c964d7d02d70d4986450e21695d522b63f387ad8ddc"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapGlobalSensitivity.6ed7ccdb.chunk.js",
+          "sha256": "82da843f17e729f74f774ecf26238b451d1a47bdcc0a12f3b051bb17adabd741"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapGlobalSwitchProfile.69130862.chunk.js",
+          "sha256": "abbfa4e43d5f43968eeaad0fed2a5019dabe532114de1c9139ae23807e519d41"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapHyper.0344715a.chunk.js",
+          "sha256": "529d6be5508e5a673ff31c78bfadf002295574bafd8a553041a61fc957b942f3"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapInterDevice.859cced6.chunk.js",
+          "sha256": "1a18f88ae228f0cc05f6a174d74e5bc44fd2dc30aba6ce1173105db6a20f1ff9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapJoyStick.c424edac.chunk.js",
+          "sha256": "88419010e7b5cd9ad90f14e6134a8f316abb46f6c040dedda9af24b99164cf31"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapKeyboard.155c5aa1.chunk.js",
+          "sha256": "af6a87b541444b411e27b391786ee398254f70001011d65af63a4f82bf7645ab"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapKeyboardCombineMouse.23ca50b5.chunk.js",
+          "sha256": "7189c1706db2874f95f121cd2797a0defa47fbcb7a09fe1bfacf929bf17034d9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapLaunch.3e6b12c5.chunk.js",
+          "sha256": "ef9c558bac5ea6910edb8e9187c1fb4e48cc9eee2723e99e74017f6bdc752bac"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapLighting.50ab02ab.chunk.js",
+          "sha256": "a22afb3c9d249d1e9659019cc6b57c1f56fda6d019e9beb563e3dce798701056"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapMacro.ff090faf.chunk.js",
+          "sha256": "02cee1e910f03a3d22e9353351eb6a044bbc755895a727085184aa1ca2019a75"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapMacroKey.a1b3a391.chunk.js",
+          "sha256": "d04ca10553440cd05f96a565736426cccf47bd67455417395255df5c112a4606"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapMedia.057b2588.chunk.js",
+          "sha256": "8ac2d88f6f68cbe45bb75231f4f5c01958754f1c29f5b76050656d65f2c929a9"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapMouse.c683bc83.chunk.js",
+          "sha256": "93b5c7b2f486d61a1c4852ccee55e24644dc3667250e4497d555c64df39322f4"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapRoller.caf252b0.chunk.js",
+          "sha256": "9b7f84aafb7055b1e0b9e4bc8de85e8aecdc2e9e4e6b17d9be93abe964ed68ae"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapScrolling.e109a90e.chunk.js",
+          "sha256": "d82017869b63f0653a5b7e4b809a5efa37f7cc28208ed90b0a91a6dbed77881d"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapSensitivity.d463c23e.chunk.js",
+          "sha256": "0556ada18d43a1a2ac3a3fd1d37ccd8f4211b0c4660ad9e0befda7f02dc1e233"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapSwitchKeymap.75a891f2.chunk.js",
+          "sha256": "3bcb1967c8688e6139717e291cf660423d369f6e12bab0e9ebcd00ccaf89da50"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapSwitchProfile.d4a06e93.chunk.js",
+          "sha256": "1b1110c48ef9da725e93cf9c66e66a9c93eea9ce696f233e73b40c4e40237bc6"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapText.415ce601.chunk.js",
+          "sha256": "6cc1f980a563337fcfecaec87d11f578df30ef0c78483d6f8db32d39f194dbb1"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/MapWindows.f74afb72.chunk.js",
+          "sha256": "afbd4da92454cd3a8d7a7104387e623713364f746358a822187ef3c3ea5af589"
+        },
+        {
+          "path": ".ref/devices/3907/static/js/TwoTapKeyMapping.e5129127.chunk.js",
+          "sha256": "7b2f5e3511096fc52dd42650ffd02181a14c9b80765e4c24e03f9716ce504fd8"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
+    }
+  ],
+  "nonlighting_pages": 9,
+  "verification": "source hashes and static assertions; no app, build, or test execution"
+}

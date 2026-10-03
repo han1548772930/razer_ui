@@ -16,6 +16,33 @@ use crate::model::{
 /// 合成键盘的 productId（避开雷蛇真实编号区间）。
 pub const DEMO_PRODUCT_ID: u32 = 9001;
 
+/// Explicit preview identity for a source-registered product. Device service
+/// capabilities, firmware, battery and keyboard geometry are not synthesized.
+pub(crate) fn registered_preview(pid: u32) -> Option<Device> {
+    let product = crate::product::registered(pid)?;
+    let category = if product.categories().iter().any(|c| matches!(*c, "MOUSE" | "MOUSEPLUSMAT")) {
+        DeviceCategory::Mouse
+    } else if product.categories().contains(&"SYSTEM") { DeviceCategory::Other
+    } else if product.categories().contains(&"KEYBOARD") { DeviceCategory::Keyboard
+    } else if product.categories().contains(&"KEYPAD") { DeviceCategory::Keypad
+    } else if product.categories().iter().any(|c| c.starts_with("AUDIO")) { DeviceCategory::Audio
+    } else if product.categories().iter().any(|c| c.starts_with("GAMEPAD")) { DeviceCategory::Controller
+    } else { DeviceCategory::Other };
+    let name = localized(&[("en", &format!("{} (preview)", product.name())), ("zh-cn", &format!("{} · 预览", product.name()))]);
+    let profile_id = format!("preview-profile-{pid}");
+    Some(Device {
+        serial_number: format!("PREVIEW-{pid}"), product_id: pid, real_product_id: pid,
+        edition_id: 0, layout_id: 0, device_container_id: format!("preview-{pid}"),
+        category, setup_status: SetupStatus::Ready, active_profile: profile_id.clone(),
+        profiles: vec![Profile { id: profile_id.clone(), guid: profile_id, name: "Default".into(), settings: None, source_settings: None, dpi_stages: None }],
+        is_single_profile: false, is_chroma_device: false, has_battery: false, use_ble: false,
+        name: name.clone(), product_name: name, ui_window_name: String::new(), mw_window_name: String::new(),
+        min_dpi: None, max_dpi: None, dpi_step: None, support_xy_dpi: false,
+        power_status: None, dkm_keys: vec![], firmware_info: FirmwareInfo::default(),
+        features: DeviceFeatures::default(), features_initialized: false,
+    })
+}
+
 /// Explicit local preview; no service identity, firmware or connected inputs.
 pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
     let product = crate::product::audited_mouse_mat(pid)?;
@@ -35,6 +62,7 @@ pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
         setup_status: SetupStatus::Ready,
         active_profile: profile_id.clone(),
         profiles: vec![Profile {
+                        source_settings: None,
             settings: Some(crate::features::settings::ProfileSettings::for_product(pid)),
             name: "Default".into(),
             guid: profile_id.clone(),
@@ -97,6 +125,7 @@ pub fn demo_keyboard() -> Device {
         setup_status: SetupStatus::Ready,
         active_profile: "demo-profile-kb".to_string(),
         profiles: vec![Profile {
+                        source_settings: None,
             settings: None,
             name: "HL-Default".to_string(),
             guid: "demo-profile-kb".to_string(),

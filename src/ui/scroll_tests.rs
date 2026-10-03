@@ -1,7 +1,7 @@
 use super::SourceScrollable as _;
 use gpui_kit::component::{Root, Theme, scroll::ScrollbarMode, v_flex};
-use gpui_kit::test::{TestSupportExt as _, TestWindowExt as _};
 use gpui_kit::prelude::FluentBuilder as _;
+use gpui_kit::test::{TestSupportExt as _, TestWindowExt as _};
 use gpui_kit::{
     AppContext, Context, InteractiveElement, IntoElement, ParentElement, Render, ScrollDelta,
     ScrollHandle, Styled, TestAppContext, Window, div, point, px, size,
@@ -27,7 +27,9 @@ impl Render for HeightLimitedPanel {
                     .test_support()
                     .max_h(px(180.))
                     .scrollable_both()
-                    .when_some(self.scroll.as_ref(), |area, scroll| area.track_scroll(scroll))
+                    .when_some(self.scroll.as_ref(), |area, scroll| {
+                        area.track_scroll(scroll)
+                    })
                     .child(
                         v_flex()
                             .w(px(800.))
@@ -140,8 +142,16 @@ fn scrollbar_tracks_stay_at_the_viewport_edges_after_scrolling(cx: &mut TestAppC
         assert_eq!(scroll.offset().y, before.y);
 
         let before = scroll.offset();
-        window.click_at("fixed-header", point(header.size.width - px(3.), px(20.)), cx);
-        window.click_at("fixed-footer", point(footer.size.width - px(3.), px(20.)), cx);
+        window.click_at(
+            "fixed-header",
+            point(header.size.width - px(3.), px(20.)),
+            cx,
+        );
+        window.click_at(
+            "fixed-footer",
+            point(footer.size.width - px(3.), px(20.)),
+            cx,
+        );
         assert_eq!(scroll.offset(), before);
         assert_eq!(window.find("limited-scroll").bounds(), viewport);
         assert_eq!(window.find("fixed-header").bounds(), header);

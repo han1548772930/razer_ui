@@ -1,0 +1,2854 @@
+{
+  "schema_version": 1,
+  "generator_sha256": "ea214f6bee085968cf29f959b843415d31ff3d90873c59f342375a2b6bbe5f14",
+  "products": [
+    {
+      "product_id": 1303,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 5,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1304,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 4,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 5,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1306,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 8,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1308,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1310,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1312,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 6,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1313,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 6,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1318,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 2,
+          "controls": 5,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1319,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1320,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1321,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1325,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_ENHANCEMENT",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1328,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 2,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 0,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1330,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_SOUND",
+          "field": "voiceClarity",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_EQ",
+          "field": "audioEqualizer",
+          "reason": "Current EQ axis range requires further source resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1331,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 2,
+          "controls": 5,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_ENHANCEMENT",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1332,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 2,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 0,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1335,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1337,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 4,
+          "controls": 5,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1339,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 4,
+          "controls": 5,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1342,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_CUSTOMIZE",
+          "sections": 5,
+          "controls": 9,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIXER",
+          "sections": 5,
+          "controls": 80,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 3,
+          "controls": 14,
+          "equalizers": 1
+        },
+        {
+          "key": "EFFECTS",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 10,
+          "controls": 20,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1346,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "MIC",
+          "sections": 6,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 5,
+          "controls": 16,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micVolume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micSideTone",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1347,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "MIC",
+          "sections": 6,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micVolume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micSideTone",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1352,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 2,
+          "controls": 2,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_POWER",
+          "field": "powerSaving",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1353,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 2,
+          "controls": 5,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1354,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 2,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1364,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1365,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_SOUND",
+          "field": "audioEqualizer",
+          "reason": "Current EQ axis range requires further source resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1370,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_EQ",
+          "field": "audioEqualizer",
+          "reason": "Current EQ axis range requires further source resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1372,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1374,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_EQ",
+          "field": "audioEqualizer",
+          "reason": "Current EQ axis range requires further source resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1376,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 2,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1378,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1383,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_HAPTICS",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_OLED",
+          "sections": 4,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 2,
+          "controls": 5,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_HAPTICS",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        "OLED home-screen artwork/editors, screensaver previews and device update flow remain incomplete"
+      ]
+    },
+    {
+      "product_id": 1386,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "MIC",
+          "sections": 6,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micVolume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micSideTone",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1387,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1389,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 2,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1390,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1391,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "MIC",
+          "sections": 7,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 5,
+          "controls": 16,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micVolume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "MIC",
+          "field": "micSideTone",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1392,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "SURROUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 0,
+          "controls": 0,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1396,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 2,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1398,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1401,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1404,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 4,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1406,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1407,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1411,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 4,
+          "controls": 5,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1412,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 4,
+          "controls": 5,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1415,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1420,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1422,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_EQ",
+          "sections": 42,
+          "controls": 118,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EFFECTS",
+          "sections": 5,
+          "controls": 17,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 5,
+          "controls": 16,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1427,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 9,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "micVolumeNormalization",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_MIC",
+          "field": "micVoiceClarity",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1439,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 2,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_HAPTICS",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_HAPTICS",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1442,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "SURROUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 0,
+          "controls": 0,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/powerSaving/value",
+          "source_default": 15,
+          "initial_draft": 20,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1443,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 4,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_SOUND",
+          "field": "voiceClarity",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_EQ",
+          "field": "audioEqualizer",
+          "reason": "Current EQ axis range requires further source resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1446,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "MIC",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 42,
+          "controls": 118,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EFFECTS",
+          "sections": 5,
+          "controls": 17,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 5,
+          "controls": 16,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 5,
+          "controls": 8,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1453,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 1,
+          "controls": 0,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/switchOffLighting/idleMinutes",
+          "source_default": 0,
+          "initial_draft": 1,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 1462,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 3,
+          "controls": 5,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 4,
+          "controls": 7,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1465,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 2,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_EQ",
+          "sections": 2,
+          "controls": 1,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2638,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2641,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2644,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 5,
+          "controls": 8,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 2657,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2660,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2664,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2668,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 2689,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 3867,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 4124,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 4126,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_CALIBRATION",
+          "sections": 12,
+          "controls": 12,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_ENHANCEMENT",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 7,
+          "controls": 12,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 4130,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "TAB_MIC",
+          "sections": 5,
+          "controls": 8,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_MIC",
+          "field": "volume",
+          "reason": "Mounted control range requires further binding resolution"
+        },
+        {
+          "page": "TAB_MIC",
+          "field": "ambientNoiseReduction",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 1382,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_CUSTOMIZE",
+          "sections": 17,
+          "controls": 26,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [
+        {
+          "path": ".ref/devices/1382/static/js/main.275d3b94.js",
+          "offset": 126742,
+          "end": 131058,
+          "source": "[{buttonKey:\"DIAL_RIGHT_ROTATION\",defaultValue:\"VOLUME_UP\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodClockwise\",counter:\"VOLUME_UP\",localizedName:!0,display:\"volume up\",assignment:\"MULTIMEDIA\",assignmentValue:\"VOLUME_UP\",buttonPos:\"right\",icon:n,functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"DIAL_MULTI_FUNCTION\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"MULTIMEDIA\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"WINDOWS_SHORTCUT\",\"DISABLE\"]},{buttonKey:\"DIAL_LEFT_ROTATION\",defaultValue:\"VOLUME_DOWN\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodAnticlockwise\",counter:\"VOLUME_DOWN\",localizedName:!0,display:\"volume down\",assignment:\"MULTIMEDIA\",assignmentValue:\"VOLUME_DOWN\",buttonPos:\"right\",icon:o,functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"DIAL_MULTI_FUNCTION\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"MULTIMEDIA\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"WINDOWS_SHORTCUT\",\"DISABLE\"]},{buttonKey:\"DIAL_CLICK\",defaultValue:\"MUTE_VOLUME\",isFocused:!1,isMapped:!1,isEnabled:!1,inputType:\"ControlPodInput\",inputID:\"ControlPodClick\",counter:\"MUTE_VOLUME\",localizedName:!0,display:\"mute volume\",icon:_,assignment:\"MULTIMEDIA\",assignmentValue:\"MUTE_VOLUME\",buttonPos:\"left\",functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"]},{buttonKey:\"MEDIA_PAUSE_PLAY\",defaultValue:\"PLAY_PAUSE\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodDoubleClick\",counter:\"PLAY_PAUSE\",localizedName:!0,display:\"play/pause\",assignment:\"MULTIMEDIA\",assignmentValue:\"PLAY_PAUSE\",buttonPos:\"left\",icon:t,functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"]},{buttonKey:\"MEDIA_NEXT\",defaultValue:\"NEXT_TRACK\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodTripleClick\",counter:\"NEXT_TRACK\",localizedName:!0,display:\"next track\",assignment:\"MULTIMEDIA\",assignmentValue:\"NEXT_TRACK\",buttonPos:\"left\",icon:i,functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"]},{buttonKey:\"NOT_ASSIGNED\",defaultValue:\"NOT_ASSIGNED\",isFocused:!1,isMapped:!1,isEnabled:!1,inputType:\"ControlPodInput\",inputID:\"ControlPodPressHold\",counter:\"NOT_ASSIGNED\",localizedName:!0,display:\"not assigned\",assignment:\"KEYBOARD\",assignmentValue:\"NOT_ASSIGNED\",buttonPos:\"left\",icon:a.p+\"static/media/press-hold.05978018.svg\",functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"]},{buttonKey:\"SWITCH_PLAYBACK_DEVICE\",defaultValue:\"SWITCH_PLAYBACK_DEVICE\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodSourceClick\",counter:\"SWITCH_PLAYBACK_DEVICE\",localizedName:!0,display:\"switch playback device\",assignment:\"AUDIO_FUNCTION\",assignmentValue:\"SWITCH_PLAYBACK_DEVICE\",buttonPos:\"bottom\",functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"],icon:_},{buttonKey:\"SOURCE_DOUBLE_CLICK\",defaultValue:\"NOT_ASSIGNED\",isFocused:!1,isMapped:!1,isEnabled:!0,inputType:\"ControlPodInput\",inputID:\"ControlPodSourceDoubleClick\",counter:\"NOT_ASSIGNED\",localizedName:!0,display:\"not assigned\",assignment:\"KEYBOARD\",assignmentValue:\"NOT_ASSIGNED\",buttonPos:\"bottom\",icon:t,functionList:[\"DEFAULT\",\"AI_LAUNCHER\",\"AUDIO_FUNCTION\",\"KEYBOARD_FUNCTION\",\"MOUSE_FUNCTION\",\"MACRO\",\"INTERDEVICE\",\"SWITCH_PROFILE\",\"SWITCH_LIGHTING\",\"GLOBAL_BRIGHTNESS\",\"LAUNCH_PROGRAM\",\"MULTIMEDIA\",\"WINDOWS_SHORTCUT\",\"TEXT_FUNCTION\",\"DISABLE\"]}]"
+        },
+        {
+          "path": ".ref/devices/1382/static/js/main.275d3b94.js",
+          "offset": 4058306,
+          "end": 4058694,
+          "source": "[{id:\"VolumeDown\",content:\"VOLUME_DOWN\"},{id:\"VolumeUp\",content:\"VOLUME_UP\"},{id:\"MuteVolume\",content:\"MUTE_VOLUME\"},{id:\"MicVolumeUp\",content:\"MIC_VOLUME_UP\"},{id:\"MicVolumeDown\",content:\"MIC_VOLUME_DOWN\"},{id:\"MuteMic\",content:\"MUTE_MIC\"},{id:\"MuteAll\",content:\"MUTE_ALL\"},{id:\"Play\",content:\"PLAY_PAUSE\"},{id:\"PrevTrack\",content:\"PREVIOUS_TRACK\"},{id:\"NextTrack\",content:\"NEXT_TRACK\"}]"
+        }
+      ],
+      "gaps": [
+        "Control Pod currently supports source multimedia, default playback cycling and disable drafts only; keyboard, mouse, macro, profile, lighting, launch, text and dial assignment editors, product artwork, tutorials and pairing remain incomplete"
+      ]
+    },
+    {
+      "product_id": 3334,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_HOME",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 3337,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_HOME",
+          "sections": 1,
+          "controls": 1,
+          "equalizers": 0
+        },
+        {
+          "key": "STREAM_MIXER_HEADER",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 3909,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_CUSTOMIZE",
+          "sections": 6,
+          "controls": 13,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [],
+      "supplementary_source": [],
+      "gaps": []
+    },
+    {
+      "product_id": 3942,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_SOUND",
+          "sections": 3,
+          "controls": 3,
+          "equalizers": 1
+        },
+        {
+          "key": "SURROUND",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_HAPTICS",
+          "sections": 7,
+          "controls": 14,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_LIGHTING",
+          "sections": 3,
+          "controls": 6,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_DEMO",
+          "sections": 0,
+          "controls": 0,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/sensa/hapticIntensity/value",
+          "source_default": 4,
+          "initial_draft": 3,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        },
+        {
+          "path": "/device/powerSaving/value",
+          "source_default": 15,
+          "initial_draft": 20,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_HAPTICS",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    },
+    {
+      "product_id": 3949,
+      "status": "partial_native",
+      "pages": [
+        {
+          "key": "TAB_HAPTICS",
+          "sections": 7,
+          "controls": 13,
+          "equalizers": 0
+        },
+        {
+          "key": "TAB_POWER",
+          "sections": 1,
+          "controls": 2,
+          "equalizers": 0
+        }
+      ],
+      "default_normalizations": [
+        {
+          "path": "/device/powerSaving/value",
+          "source_default": 15,
+          "initial_draft": 20,
+          "reason": "Source reducer sentinel lies outside its mounted control range/options; no device response is available"
+        }
+      ],
+      "supplementary_source": [],
+      "gaps": [
+        {
+          "page": "TAB_HAPTICS",
+          "field": "hapticIntensity",
+          "reason": "Mounted control range requires further binding resolution"
+        }
+      ]
+    }
+  ]
+}

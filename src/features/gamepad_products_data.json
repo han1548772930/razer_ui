@@ -1,0 +1,4146 @@
+[
+  {
+    "product_id": 2629,
+    "name": "Razer Wolverine V3 Tournament Edition",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2629,
+      "vendorId": 5426,
+      "deviceName": "Razer Wolverine V3 Tournament Edition",
+      "backlightStep": 5,
+      "masterGuideURL": "https://dl.razerzone.com/master-guides/RazerControllerSetupForXbox/WolverineV3/WolverineV3-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/14591",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true,
+          "profileNavigationGroup": [
+            "PreviousProfile",
+            "NextProfile",
+            "CycleUp",
+            "CycleDown"
+          ]
+        },
+        "slotColors": {
+          "1": "lightgreen",
+          "2": "red",
+          "3": "yellow",
+          "4": "blue"
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 1,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      1000
+    ],
+    "wireless_rates": [],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 2636,
+    "name": "Razer Wolverine V3 Pro",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_LIGHTING",
+      "TAB_POWER",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2636,
+      "dongleId": 2636,
+      "vendorId": 5426,
+      "deviceName": "Razer Wolverine V3 Pro",
+      "backlightStep": 5,
+      "masterGuideURL": "https://dl.razerzone.com/master-guides/RazerControllerSetupForXbox/WolverineV3Pro/WolverineV3Pro-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/14587",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true,
+          "profileNavigationGroup": [
+            "PreviousProfile",
+            "NextProfile",
+            "CycleUp",
+            "CycleDown"
+          ]
+        },
+        "slotColors": {
+          "1": "lightgreen",
+          "2": "red",
+          "3": "yellow",
+          "4": "blue"
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": 25,
+    "controller_lighting": true,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      1000
+    ],
+    "wireless_rates": [
+      250
+    ],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 2647,
+    "name": "Razer Wolverine V3 Pro PC",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_POWER",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      },
+      {
+        "inputID": "SHARE_BUTTON",
+        "inputType": "ControllerInput",
+        "controllerInput": "SHARE_BUTTON",
+        "isHyperShift": false,
+        "outputType": "keyboardGroup",
+        "keyboardGroup": {
+          "key": "KEY_PRINT_SCREEN",
+          "modifiers": [
+            "Left_Alt",
+            "Left_GUI"
+          ]
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "ShareButton",
+        "defaultValue": "SHARE_BUTTON",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "SHARE_BUTTON",
+        "counter": "Share Button",
+        "display": "Share Button",
+        "assignment": "DEFAULT",
+        "assignmentValue": "Share Button",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "alwaysOnTop",
+        "lineStyle": "longer"
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2647,
+      "dongleId": 2649,
+      "vendorId": 5426,
+      "deviceName": "RAZER WOLVERINE V3 PRO 8K PC",
+      "backlightStep": 5,
+      "masterGuideURL": "http://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV3PRO8KPC-00002647-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/15026",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "minFWSupportTriggers": "1.4.0.0",
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true,
+          "profileNavigationGroup": [
+            "PreviousProfile",
+            "NextProfile",
+            "CycleUp",
+            "CycleDown"
+          ]
+        },
+        "slotColors": {
+          "1": "lightgreen",
+          "2": "red",
+          "3": "yellow",
+          "4": "blue"
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      1000,
+      2000,
+      4000,
+      8000
+    ],
+    "wireless_rates": [
+      250,
+      1000,
+      2000,
+      4000,
+      8000
+    ],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 2650,
+    "name": "Razer Wolverine V3 TE PC",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 8000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "THUMBSTICKS",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "hoverOnly",
+        "lineStyle": "normal"
+      },
+      {
+        "buttonKey": "SHARE_BUTTON",
+        "defaultValue": "Share Button",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "SHARE_BUTTON",
+        "counter": "Share Button",
+        "display": "Share Button",
+        "assignment": "DEFAULT",
+        "assignmentValue": "Share Button",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_V2",
+          "MULTIMEDIA",
+          "DISABLE"
+        ],
+        "lineBehavior": "alwaysOnTop",
+        "lineStyle": "longer"
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2650,
+      "vendorId": 5426,
+      "deviceName": "Razer Wolverine V3 Tournament Edition 8K PC",
+      "backlightStep": 5,
+      "masterGuideURL": "http://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV3TOURNAMENTEDITION8KPC-00002650-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/15027",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true
+        },
+        "slotColors": {
+          "1": "",
+          "2": "",
+          "3": "",
+          "4": ""
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      1000,
+      2000,
+      4000,
+      8000
+    ],
+    "wireless_rates": [
+      250
+    ],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 2676,
+    "name": "Razer Wolverine V4 Pro",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_POWER",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      },
+      {
+        "inputID": "SHARE_BUTTON",
+        "inputType": "ControllerInput",
+        "controllerInput": "SHARE_BUTTON",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "SHARE_BUTTON"
+        }
+      }
+    ],
+    "button_controls": [],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2676,
+      "vendorId": 5426,
+      "deviceName": "Razer Wolverine V4 Pro",
+      "backlightStep": 5,
+      "masterGuideURL": "https://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV4PRO-00002676-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/21268",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true,
+          "profileNavigationGroup": [
+            "PreviousProfile",
+            "NextProfile",
+            "CycleUp",
+            "CycleDown"
+          ]
+        },
+        "slotColors": {
+          "1": "lightgreen",
+          "2": "red",
+          "3": "yellow",
+          "4": "blue"
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000
+    ],
+    "wireless_rates": [],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 2684,
+    "name": "Razer Silver T2 X",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 2
+      },
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": []
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      },
+      {
+        "inputID": "SHARE_BUTTON",
+        "inputType": "ControllerInput",
+        "controllerInput": "SHARE_BUTTON",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "SHARE_BUTTON"
+        }
+      }
+    ],
+    "button_controls": [],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 2684,
+      "vendorId": 5426,
+      "deviceName": "Razer Silver T2 X",
+      "backlightStep": 5,
+      "masterGuideURL": "https://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV4TOURNAMENTEDITION-00002684-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/21269",
+      "category": "GAMEPAD",
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1,
+            "slotColor": "lightgreen"
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2,
+            "slotColor": "red"
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3,
+            "slotColor": "yellow"
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4,
+            "slotColor": "blue"
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true,
+          "profileNavigationGroup": [
+            "PreviousProfile",
+            "NextProfile",
+            "CycleUp",
+            "CycleDown"
+          ]
+        },
+        "slotColors": {
+          "1": "lightgreen",
+          "2": "red",
+          "3": "yellow",
+          "4": "blue"
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 5
+      }
+    },
+    "assignments": [
+      "A_BUTTON",
+      "B_BUTTON",
+      "X_BUTTON",
+      "Y_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "LEFT_TRIGGER",
+      "RIGHT_TRIGGER",
+      "LEFT_BUMPER",
+      "RIGHT_BUMPER",
+      "LEFT_JS_BUTTON",
+      "RIGHT_JS_BUTTON",
+      "VIEW_BUTTON",
+      "MENU_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": false,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      }
+    ],
+    "polling_rates": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000
+    ],
+    "wireless_rates": [],
+    "static_colors": [
+      {
+        "index": 0,
+        "name": "GREEN",
+        "value": "#00FF00"
+      },
+      {
+        "index": 1,
+        "name": "LIGHTBLUE",
+        "value": "#44D7B6"
+      },
+      {
+        "index": 2,
+        "name": "BLUE",
+        "value": "#0019FF"
+      },
+      {
+        "index": 3,
+        "name": "PURPLE",
+        "value": "#7F00FF"
+      },
+      {
+        "index": 4,
+        "name": "RED",
+        "value": "#FF0000"
+      },
+      {
+        "index": 5,
+        "name": "ORANGE",
+        "value": "#FA6400"
+      },
+      {
+        "index": 6,
+        "name": "YELLOW",
+        "value": "#F7B500"
+      },
+      {
+        "index": 7,
+        "name": "WHITE",
+        "value": "#FFFFFF"
+      }
+    ]
+  },
+  {
+    "product_id": 4115,
+    "name": "Razer Kitsune",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "mappings": [],
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 33
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "modeSwitcher": {
+        "mode": "safe",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TAB_LIGHTING"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "DISABLE"
+        ]
+      }
+    ],
+    "arcade": true,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 4115,
+      "vendorId": 5426,
+      "deviceName": "Razer Kitsune",
+      "backlightStep": 5,
+      "masterGuideURL": "http://dl.razer.com/master-guides/RazerSynapse4/KITSUNEARCADECONTROLLER-00004133-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/13253",
+      "category": "GAMEPAD",
+      "showNormalProfileMenu": true,
+      "isPlaystationController": true,
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "isWaveWithSpeed": true,
+      "useOptionButtonGroup": true,
+      "WAVE_DIRECTION": "LeftRight",
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true
+        },
+        "slotColors": {
+          "1": "",
+          "2": "",
+          "3": "",
+          "4": ""
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      }
+    },
+    "assignments": [
+      "SQUARE_BUTTON",
+      "TRIANGLE_BUTTON",
+      "CIRCLE_BUTTON",
+      "CROSS_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "L1_TRIGGER",
+      "R1_TRIGGER",
+      "L2_TRIGGER",
+      "R2_TRIGGER",
+      "LEFT_THUMBSTICK",
+      "RIGHT_THUMBSTICK",
+      "OPTIONS_BUTTON",
+      "CREATE_BUTTON",
+      "TOUCHPAD_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": true,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 0,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [],
+    "sensitivity_steps": [],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": 25,
+    "controller_lighting": false,
+    "effects": [
+      {
+        "name": "BREATHING",
+        "id": 2
+      },
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      },
+      {
+        "name": "REACTIVE",
+        "id": 5
+      },
+      {
+        "name": "WAVE",
+        "id": 4
+      }
+    ],
+    "polling_rates": [
+      250,
+      1000
+    ],
+    "wireless_rates": [
+      250,
+      500
+    ],
+    "static_colors": []
+  },
+  {
+    "product_id": 4133,
+    "name": "Razer Raiju V3 Pro",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "pollingRateWireless": 500,
+      "mappings": [],
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      }
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "mode": {
+        "mode": "PC",
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_POWER",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 4133,
+      "dongleId": 4135,
+      "bleId": 4136,
+      "vendorId": 5426,
+      "deviceName": "Razer Raiju V3 Pro",
+      "backlightStep": 5,
+      "masterGuideURL": "http://dl.razer.com/master-guides/RazerSynapse4/RAIJUV3PROPLAYSTATION-00004133-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/20453",
+      "category": "GAMEPAD",
+      "isPlaystationController": true,
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true
+        },
+        "slotColors": {
+          "1": "",
+          "2": "",
+          "3": "",
+          "4": ""
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      }
+    },
+    "assignments": [
+      "SQUARE_BUTTON",
+      "TRIANGLE_BUTTON",
+      "CIRCLE_BUTTON",
+      "CROSS_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "L1_TRIGGER",
+      "R1_TRIGGER",
+      "L2_TRIGGER",
+      "R2_TRIGGER",
+      "LEFT_THUMBSTICK",
+      "RIGHT_THUMBSTICK",
+      "OPTIONS_BUTTON",
+      "CREATE_BUTTON",
+      "TOUCHPAD_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": true,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [],
+    "polling_rates": [
+      250,
+      500,
+      1000,
+      2000
+    ],
+    "wireless_rates": [
+      250,
+      500
+    ],
+    "static_colors": []
+  },
+  {
+    "product_id": 4144,
+    "name": "Razer Raiju V3 Pro Signature Edition",
+    "profile": {
+      "guid": "",
+      "name": "",
+      "gamingMode": {
+        "state": 0,
+        "isWindowsKeyEnabled": false,
+        "isAltTabEnabled": false,
+        "isAltF4Enabled": false
+      },
+      "pollingRate": 1000,
+      "pollingRateWireless": 500,
+      "mappings": [],
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      }
+    },
+    "controller": {
+      "circularity": {
+        "mode": 0,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "dpad": {
+        "enabled": false,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": [],
+        "socdSettings": {
+          "value": "neutral"
+        }
+      },
+      "lighting": {
+        "effectId": 1,
+        "mode": "preset",
+        "index": 0,
+        "colorList": [],
+        "rate": 1,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftTrigger": {
+        "profileId": 1,
+        "controllerId": 1,
+        "mode": 1,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightTrigger": {
+        "profileId": 1,
+        "controllerId": 2,
+        "mode": 0,
+        "isRapidTrigger": false,
+        "startRange": 50,
+        "endRange": 100,
+        "actuationPoint": 10,
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "leftStick": {
+        "controllerId": 1,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "rightStick": {
+        "controllerId": 2,
+        "preventDoubleDeadzone": true,
+        "deadzoneValue": 7,
+        "sensitivityValue": 10,
+        "sensitivityClutchButtons": [],
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      },
+      "power": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        },
+        "actionsFromUI": [],
+        "actionsFromLocalStorage": [],
+        "errorActions": []
+      }
+    },
+    "pages": [
+      "TAB_CUSTOMIZE",
+      "TRIGGERS",
+      "THUMBSTICKS",
+      "TAB_POWER",
+      "TAB_CALIBRATION"
+    ],
+    "buttons": [
+      {
+        "inputID": "BUTTON_M1",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M1",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M1"
+        }
+      },
+      {
+        "inputID": "BUTTON_M2",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M2",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M2"
+        }
+      },
+      {
+        "inputID": "BUTTON_M3",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M3",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M3"
+        }
+      },
+      {
+        "inputID": "BUTTON_M4",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M4",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M4"
+        }
+      },
+      {
+        "inputID": "BUTTON_M5",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M5",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M5"
+        }
+      },
+      {
+        "inputID": "BUTTON_M6",
+        "inputType": "ControllerInput",
+        "controllerInput": "BUTTON_M6",
+        "outputType": "controllerGroup",
+        "controllerGroup": {
+          "controllerAssignment": "BUTTON_M6"
+        }
+      }
+    ],
+    "button_controls": [
+      {
+        "buttonKey": "M1",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M1",
+        "counter": "M1",
+        "display": "M1",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M2",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M2",
+        "counter": "M2",
+        "display": "M2",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M3",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M3",
+        "counter": "M3",
+        "display": "M3",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M4",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M4",
+        "counter": "M4",
+        "display": "M4",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M5",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M5",
+        "counter": "M5",
+        "display": "M5",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "left",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      },
+      {
+        "buttonKey": "M6",
+        "defaultValue": "DISABLE",
+        "isFocused": false,
+        "isMapped": false,
+        "isEnabled": true,
+        "inputType": "ControllerInput",
+        "inputID": "BUTTON_M6",
+        "counter": "M6",
+        "display": "M6",
+        "assignment": "DEFAULT",
+        "assignmentValue": "DISABLED",
+        "buttonPos": "right",
+        "functionList": [
+          "DEFAULT",
+          "KEYBOARD_FUNCTION",
+          "CONTROLLER_PLAYSTATION",
+          "MULTIMEDIA",
+          "DISABLE"
+        ]
+      }
+    ],
+    "arcade": false,
+    "socd_modes": {
+      "NEUTRAL": "neutral",
+      "FIRST": "first",
+      "LAST": "last",
+      "ABSOLUTE_UP": "absoluteUp",
+      "NONE": "none"
+    },
+    "info": {
+      "productId": 4144,
+      "dongleId": 4146,
+      "bleId": 4147,
+      "vendorId": 5426,
+      "deviceName": "Razer Raiju V3 Pro Signature Edition",
+      "backlightStep": 5,
+      "masterGuideURL": "http://dl.razer.com/master-guides/RazerSynapse4/RaijuV3ProSignatureEdition-00004144-",
+      "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/20453",
+      "category": "GAMEPAD",
+      "isPlaystationController": true,
+      "isOBMDevice": true,
+      "supportResetProfile": true,
+      "OBMSlots": 4,
+      "OBMSpecs": {
+        "presetProfiles": [
+          {
+            "name": "Profile 1",
+            "guid": "d6a81549-0ae7-49bf-874d-ccbdfd91a46f",
+            "obmSlot": 1
+          },
+          {
+            "name": "Profile 2",
+            "guid": "6a64f4c6-e28b-4e35-9aa0-8a7336e3838a",
+            "obmSlot": 2
+          },
+          {
+            "name": "Profile 3",
+            "guid": "49a49343-a390-44a7-950a-4917da9ad329",
+            "obmSlot": 3
+          },
+          {
+            "name": "Profile 4",
+            "guid": "0e343c08-630f-4ccb-98ab-48243d4d1b76",
+            "obmSlot": 4
+          }
+        ],
+        "profileSwap": true,
+        "hasHardwareProfileSwitch": true,
+        "noFirmwareInputId": [],
+        "supportedMappings": {
+          "disableGroup": true,
+          "keyboardGroup": true,
+          "controllerGroup": true
+        },
+        "slotColors": {
+          "1": "",
+          "2": "",
+          "3": "",
+          "4": ""
+        }
+      },
+      "powerSaving": {
+        "isEnabled": true,
+        "value": 15
+      }
+    },
+    "assignments": [
+      "SQUARE_BUTTON",
+      "TRIANGLE_BUTTON",
+      "CIRCLE_BUTTON",
+      "CROSS_BUTTON",
+      "DPAD_UP",
+      "DPAD_DOWN",
+      "DPAD_LEFT",
+      "DPAD_RIGHT",
+      "L1_TRIGGER",
+      "R1_TRIGGER",
+      "L2_TRIGGER",
+      "R2_TRIGGER",
+      "LEFT_THUMBSTICK",
+      "RIGHT_THUMBSTICK",
+      "OPTIONS_BUTTON",
+      "CREATE_BUTTON",
+      "TOUCHPAD_BUTTON",
+      "LEFT_SENSITIVITY_CLUTCH",
+      "RIGHT_SENSITIVITY_CLUTCH",
+      "GLOBAL_SENSITIVITY_CLUTCH"
+    ],
+    "playstation": true,
+    "trigger_reset": {
+      "isRapidTrigger": false,
+      "actuationPoint": 10,
+      "startRange": 0,
+      "endRange": 100
+    },
+    "analog_mode": 0,
+    "digital_mode": 1,
+    "standard_mode": 0,
+    "circular_mode": 1,
+    "deadzone_steps": [
+      0,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15
+    ],
+    "sensitivity_steps": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100
+    ],
+    "power_minutes": [
+      5,
+      15,
+      30,
+      45,
+      60
+    ],
+    "brightness_step": null,
+    "controller_lighting": false,
+    "effects": [],
+    "polling_rates": [
+      250,
+      500,
+      1000,
+      2000
+    ],
+    "wireless_rates": [
+      250,
+      500
+    ],
+    "static_colors": []
+  }
+]

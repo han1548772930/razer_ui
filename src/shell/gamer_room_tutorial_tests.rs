@@ -4,6 +4,55 @@ use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
 #[gpui_kit::test]
+fn marketing_panel_stays_open_over_hotspot_and_closes_after_leaving(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+    });
+    let mut page = None;
+    let handle = cx.open_window(size(px(1280.), px(1200.)), |window, cx| {
+        let view = cx.new(|_| GamerRoomPage::new());
+        view.update(cx, |page, cx| page.set_tutorial_seen(true, cx));
+        page = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let page = page.unwrap();
+    for (index, id) in [
+        "gr-hotspot-AETHER_LIGHT_BULBS",
+        "gr-hotspot-AETHER_LIGHT_STRIP",
+        "gr-hotspot-AETHER_LAMP_PRO",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.hover(id, cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            // Re-hit-test the same pointer while the popup now occludes its
+            // hotspot. Previously the banner's leave handler dismissed it.
+            for _ in 0..4 {
+                window.hover(id, cx);
+                window.render_frame(cx);
+                assert_eq!(page.read(cx).hovered_product, Some(index));
+                assert!(window.try_find("gr-marketing-panel").is_some());
+            }
+            window.hover("gr-marketing-panel", cx);
+            assert_eq!(page.read(cx).hovered_product, Some(index));
+            window.hover("gamer-room-add", cx);
+            window.render_frame(cx);
+            assert_eq!(page.read(cx).hovered_product, None);
+            assert!(window.try_find("gr-marketing-panel").is_none());
+        })
+        .unwrap();
+    }
+}
+
+#[gpui_kit::test]
 fn adding_a_device_suspends_the_tutorial_and_restores_its_step(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);

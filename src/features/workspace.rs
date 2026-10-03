@@ -111,6 +111,7 @@ impl DeviceWorkspace {
     ) -> Self {
         if device.profiles.is_empty() {
             device.profiles.push(Profile {
+                                source_settings: None,
                 id: "local-default".into(),
                 guid: "local-default".into(),
                 name: "Default".into(),

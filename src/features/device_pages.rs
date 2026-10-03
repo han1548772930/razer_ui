@@ -5,6 +5,7 @@ use super::{
     workspace::{DeviceWorkspace, WorkspaceEvent},
 };
 use crate::ui::surface::{self, SynapseSwitch as Switch};
+use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     checkbox::Checkbox,
@@ -50,17 +51,27 @@ impl DeviceWorkspace {
                                         .object_fit(ObjectFit::Contain),
                                 )
                                 .child(
-                                    system_button(
-                                        "mouse-properties",
-                                        "打开 Windows 鼠标属性",
-                                        crate::backend::system::Properties::Mouse,
-                                    )
-                                    .custom(ButtonCustomVariant::new(cx))
-                                    .border_0()
-                                    .px_0()
-                                    .h(surface::css(44.))
-                                    .underline()
-                                    .hover(|s| s.text_color(cx.theme().primary)),
+                                    BaseButton::new("mouse-properties")
+                                        .accessibility_label("打开 Windows 鼠标属性")
+                                        .gap(surface::css(4.))
+                                        .child(Icon::new(gpui_kit::assets::IconName::ExternalLink).size(surface::css(16.)))
+                                        .child("打开 Windows 鼠标属性")
+                                        .border_0()
+                                        .px_0()
+                                        .h(surface::css(44.))
+                                        .underline()
+                                        .hover(|s| s.text_color(cx.theme().primary))
+                                        .focus_visible(|s| s.text_color(cx.theme().primary))
+                                        .on_click(|_, window, cx| {
+                                            if let Err(error) = crate::backend::system::open(
+                                                crate::backend::system::Properties::Mouse,
+                                            ) {
+                                                window.push_notification(
+                                                    format!("无法打开系统属性：{error}"),
+                                                    cx,
+                                                );
+                                            }
+                                        }),
                                 ),
                         ),
                     ),
@@ -79,20 +90,20 @@ impl DeviceWorkspace {
             .child(h_flex().gap(surface::css(10.)).flex_wrap().children(
                 self.poll_rates().iter().map(|rate| {
                     let rate = *rate;
-                    Button::new(SharedString::from(format!("polling-{rate}")))
-                        .label(rate.to_string())
+                    BaseButton::new(SharedString::from(format!("polling-{rate}")))
+                        .accessibility_label(rate.to_string())
+                        .child(rate.to_string())
                         .selected(self.settings().polling == rate)
+                        .flex()
+                        .items_center()
+                        .justify_center()
                         .w(surface::css(72.))
                         .h(surface::css(27.))
                         .p_0()
                         .text_size(surface::css(14.))
                         .rounded(cx.theme().font_size * (3. / 16.))
-                        .custom(
-                            ButtonCustomVariant::new(cx)
-                                .color(cx.theme().background)
-                                .hover(cx.theme().background)
-                                .active(cx.theme().background),
-                        )
+                        .bg(cx.theme().background)
+                        .text_color(cx.theme().foreground)
                         .border_1()
                         .border_color(if self.settings().polling == rate {
                             cx.theme().primary
@@ -100,6 +111,7 @@ impl DeviceWorkspace {
                             cx.theme().border
                         })
                         .hover(|s| s.border_color(cx.theme().primary))
+                        .focus_visible(|s| s.border_color(cx.theme().primary))
                         .on_click(
                             cx.listener(move |this, _, w, cx| {
                                 this.edit(w, cx, |s| s.polling = rate)

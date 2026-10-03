@@ -1,0 +1,2235 @@
+[
+  {
+    "product_id": 70,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3741/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/MambaTournamentEdition-00000070-",
+    "source": ".ref/devices/70/static/js/main.8f24b6a1.js",
+    "evidence": "be0816be63fe674ea9fc106cbd55f5aabd509e1ff36aaf66e6c002d9ecd1f4b5"
+  },
+  {
+    "product_id": 80,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3752",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NagaHexV2-00000080-",
+    "source": ".ref/devices/80/static/js/main.16a5772c.js",
+    "evidence": "915094b4a697e64277b92e34b37a37d2e8329c5be178cbc7b51f61fca389a29e"
+  },
+  {
+    "product_id": 83,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3743/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/NagaChroma-0000083-",
+    "source": ".ref/devices/83/static/js/main.e187f033.js",
+    "evidence": "085933bf8d5ff2c3eef15e2341832f2e6001bcee1523fe063f3300d8d06a1d64"
+  },
+  {
+    "product_id": 89,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3784",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Lancehead-00000089-",
+    "source": ".ref/devices/89/static/js/main.714ba9f0.js",
+    "evidence": "702edf6ee99bbb60945e0ccb2a3a706ec8c72c3baf501218f110f208d369c750"
+  },
+  {
+    "product_id": 92,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3692/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DeathAdderElite-00000092-",
+    "source": ".ref/devices/92/static/js/main.ca936871.js",
+    "evidence": "77261e574636cc9ca13db973b531bc9b88cb345ce7965af4d95c684d61e3d09a"
+  },
+  {
+    "product_id": 96,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3734/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/LanceheadTournamentEdition-00000096-",
+    "source": ".ref/devices/96/static/js/main.532590c5.js",
+    "evidence": "fc89e197cfa506e0a81d9a0bc3c3aa36fabf27dd5a1a0424355c310ea44b151f"
+  },
+  {
+    "product_id": 98,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3711",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Atheris-00000098-",
+    "source": ".ref/devices/98/static/js/main.91167ba0.js",
+    "evidence": "721b0e130c5dc9d89172de13eb5cde2312f2c968cc74969819be30d83035f09b"
+  },
+  {
+    "product_id": 99,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4007/~/razer-viper-8khz-%7C-rz01-03580-support",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Jugan-00000099-",
+    "source": ".ref/devices/99/static/js/main.0f9c94fa.js",
+    "evidence": "7a71a164390988017bf120c446acbc7a8a004da873581dc0886d99512f5b49b0"
+  },
+  {
+    "product_id": 100,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3720",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Basilisk-00000100-",
+    "source": ".ref/devices/100/static/js/main.1734869e.js",
+    "evidence": "92bc26dc64a05a59a72745044020a31e772d0ffd43bbe03926b3c60fb598a809"
+  },
+  {
+    "product_id": 101,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3705/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASILISKESSENTIAL-00000101-",
+    "source": ".ref/devices/101/static/js/main.f1e7055d.js",
+    "evidence": "974250cda528186c6febf2bc34986039460125031ace5dc7fb85de04cc3f48cc"
+  },
+  {
+    "product_id": 103,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3751/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/NagaTrinity-00000103-",
+    "source": ".ref/devices/103/static/js/main.b753ffe5.js",
+    "evidence": "4e72017496e8d2982834d1605b0f96fd9fdc2ba6989ec0d040ad97a108f0354d"
+  },
+  {
+    "product_id": 104,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3733",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/MambaFireflyHyperflux-00000104-",
+    "source": ".ref/devices/104/static/js/main.9b94769e.js",
+    "evidence": "5235266920c3639c93c2ff94e0ec278b562ed3de0b4c710592c172be703e87e0"
+  },
+  {
+    "product_id": 105,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3733",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/MambaFireflyHyperflux-00000104-",
+    "source": ".ref/devices/105/static/js/main.ef834389.js",
+    "evidence": "f7d6767265cfd1ffb26aa4dfe3cbd1c6499d39c4886d19a866acd724f1907954"
+  },
+  {
+    "product_id": 106,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3719/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DVaRazerAbyssusElite-00000106-",
+    "source": ".ref/devices/106/static/js/main.4d2daa0b.js",
+    "evidence": "2860161403bc1b952b046ecadeb47eb56b0f992d1d7826c51dec063391179aff"
+  },
+  {
+    "product_id": 107,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4751/kw/Abyssus%20Essential",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/AbyssusEssential-00000107-",
+    "source": ".ref/devices/107/static/js/main.eca0fb8e.js",
+    "evidence": "78a6eaa27fdd2dbc6d2391e5d2ffc656bd685cc7f12e2aff419969ac146d26a7"
+  },
+  {
+    "product_id": 108,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3738/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/MambaElite-00000108-",
+    "source": ".ref/devices/108/static/js/main.e453e8a5.js",
+    "evidence": "4bc9544410ccb49725ac78448f3df5395e05298f1e54b65a5c588d17106637d5"
+  },
+  {
+    "product_id": 110,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3718/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DeathAdderEssential-00000110-",
+    "source": ".ref/devices/110/static/js/main.6e992750.js",
+    "evidence": "cc6e0f3dfa4297b4af94dbf29b96d0ac7f9b4b0d7b1edc0daa95410bbf410e65"
+  },
+  {
+    "product_id": 112,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3784",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Lancehead-00000089-",
+    "source": ".ref/devices/112/static/js/main.47216244.js",
+    "evidence": "51cad1bcb99106f970a8796ea64d3933ef7818095d6fd2df74c48de4c0b8cff0"
+  },
+  {
+    "product_id": 113,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3718/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERESSENTIALWHITE-00000113-",
+    "source": ".ref/devices/113/static/js/main.c8b01b6c.js",
+    "evidence": "704b2266d82bc0ba7d9ba710c8fcbea4b3a72fa51606b062478d536bcf060a57"
+  },
+  {
+    "product_id": 115,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3708/~/razer-mamba-wireless-%7C-rz01-02710-support",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/MAMBAWIRELESS-00000115-",
+    "source": ".ref/devices/115/static/js/main.414c4a81.js",
+    "evidence": "a5c78b8ec03dbe2f9e070c1ebc9af71ef826b3ea6d99996105d067e7328a4de7"
+  },
+  {
+    "product_id": 116,
+    "support": null,
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/ABYSSUSLITE-00000116-",
+    "source": ".ref/devices/116/static/js/main.2e83bad2.js",
+    "evidence": "52a3a8ebe2441ca7a017591bdf6b1f8e822d22fcddcfa27b6cc48394d5eec6aa"
+  },
+  {
+    "product_id": 117,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3613",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/Razer Turret for Xbox One - OMG (ENG).pdf",
+    "source": ".ref/devices/117/static/js/main.479a8db6.js",
+    "evidence": "db26b5530148e16f4b83b861c6c6832c9812c3e11a582fea49c2c940bc35c980"
+  },
+  {
+    "product_id": 120,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3669/",
+    "guide": "https://dl.razerzone.com/master-guides/Viper/Viper-",
+    "source": ".ref/devices/120/static/js/main.026ff14a.js",
+    "evidence": "528cdaaf6de6de7edb65bd3d94714e249fdff2a5c35b09a8412295e5ee408aa2"
+  },
+  {
+    "product_id": 122,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3750/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/VIPERULTIMATE-00000122-",
+    "source": ".ref/devices/122/static/js/main.4197e469.js",
+    "evidence": "7ef159294cf983b05f7d9b0881cc78ce1da2c02ab95083951901c6451b48822b"
+  },
+  {
+    "product_id": 124,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4723/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERV2PRO-00000124-",
+    "source": ".ref/devices/124/static/js/main.564e2add.js",
+    "evidence": "d6936e6b494d04158823ab6fa3f3c535e5f3e8638e719ac5f400c551ea050d5e"
+  },
+  {
+    "product_id": 126,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3520/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/MOUSEDOCKCHROMA-00000126-",
+    "source": ".ref/devices/126/static/js/main.766604be.js",
+    "evidence": "c9043f49ba6f2dc94f46e6839e19c7246112e6177e8d3493ee6fd4904bb0a135"
+  },
+  {
+    "product_id": 128,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3802",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/PROCLICK-00000128-",
+    "source": ".ref/devices/128/static/js/main.1c01e761.js",
+    "evidence": "570c9c02bbe3341f96fb774c57b6a62ddbf387eca7ce79caacd43045ef3cf0d3"
+  },
+  {
+    "product_id": 131,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3716/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BASILISKXHYPERSPEED-00000131-",
+    "source": ".ref/devices/131/static/js/main.b7514675.js",
+    "evidence": "0a822da43d5e7667add4a49e13041995dd792ba98c3499d36b470d182525a774"
+  },
+  {
+    "product_id": 132,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3717/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERV2-00000132-",
+    "source": ".ref/devices/132/static/js/main.6b45cd12.js",
+    "evidence": "979612b7247a67db361a801b74aa7da20f311c5e0d33b35d025bf85e57f538a7"
+  },
+  {
+    "product_id": 133,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3715/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BASILISKV2-00000133-",
+    "source": ".ref/devices/133/static/js/main.84fbd82a.js",
+    "evidence": "d07d22641f848d62d0e3204733291dba0d8acaebb5d4597c7c9abda37acc4a30"
+  },
+  {
+    "product_id": 134,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3721/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BASILISKULTIMATE-00000134-",
+    "source": ".ref/devices/134/static/js/main.88c1e1a3.js",
+    "evidence": "734ad214becb634e361eaff48963f47b33ee8501f4c2bb8c58c8ad612cc403df"
+  },
+  {
+    "product_id": 138,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3749/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/VIPERMINI-000000138-",
+    "source": ".ref/devices/138/static/js/main.358f6b29.js",
+    "evidence": "52d0629e47dda07df3b1a3cb22cc44876c9f75ff394d9a38a62de06dcc2820bf"
+  },
+  {
+    "product_id": 140,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3714/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERV2MINI-000000140-",
+    "source": ".ref/devices/140/static/js/main.db53a005.js",
+    "evidence": "ed9a8d236ae87c9a784a9154d9f3cf7d64ba3b2a7a328ee11725cd15fd58e1d4"
+  },
+  {
+    "product_id": 141,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3673",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/NAGALEFT-HANDEDEDITION-00000141-",
+    "source": ".ref/devices/141/static/js/main.aa4788cc.js",
+    "evidence": "b1e474a6f75c7abf56ea7c4278554ad7d34ced8049ee348a3f4ea440e875a5d5"
+  },
+  {
+    "product_id": 143,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3260/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/NAGAPRO-00000143-",
+    "source": ".ref/devices/143/static/js/main.3eb704f1.js",
+    "evidence": "a6acf206888bfa666d71716b7d6ee7b88bdc3ce3ec3fb4a9fdeb3e4b9fff4eb5"
+  },
+  {
+    "product_id": 145,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4007/~/razer-viper-8khz-%7C-rz01-03580-support",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/VIPER8KHZ-00000145-",
+    "source": ".ref/devices/145/static/js/main.24a35fa5.js",
+    "evidence": "5e0926709d60565a0d15ed94319665ba5f44da631ca000f828a7e4915dfb1025"
+  },
+  {
+    "product_id": 147,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3748/kw/naga%20classic",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/NagaTrinity-00000103-",
+    "source": ".ref/devices/147/static/js/main.885c5195.js",
+    "evidence": "8dd1e3117dbd23ce6ff24539d7856f1d2f735136efc6d6303336f95802172418"
+  },
+  {
+    "product_id": 148,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4708",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/OROCHIV2-00000148-",
+    "source": ".ref/devices/148/static/js/main.7e209fb0.js",
+    "evidence": "686f336659d3e19d3d18f1d01e54e97de68db09cd4187112e32a4dd0d76e078a"
+  },
+  {
+    "product_id": 150,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3994",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NAGAX-00000150-",
+    "source": ".ref/devices/150/static/js/main.54e6989b.js",
+    "evidence": "97fd8ad00c2500251a1b7d9c4016e004453a247cbbf19ffecae68d45fe55791e"
+  },
+  {
+    "product_id": 152,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3718/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/DeathAdderEssential-00000152-",
+    "source": ".ref/devices/152/static/js/main.265c9698.js",
+    "evidence": "373bf546311f4872091b8fc72b4b5f4c5446f357649b8eff2531d703bf8b61f2"
+  },
+  {
+    "product_id": 153,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5620",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BASILISKV3-00000153-",
+    "source": ".ref/devices/153/static/js/main.9095b82c.js",
+    "evidence": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2"
+  },
+  {
+    "product_id": 154,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5763",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/PROCLICKMOBILE-00000154-",
+    "source": ".ref/devices/154/static/js/main.35e3c57f.js",
+    "evidence": "86ecc8cae4e19f2961d8260f1dce2fe2b9bc33b18b4f54cc827a828ea024f4e6"
+  },
+  {
+    "product_id": 156,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5754",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/DEATHADDERV2XHYPERSPEED-00000156-",
+    "source": ".ref/devices/156/static/js/main.9543954c.js",
+    "evidence": "b4812cc4e443299c8ec1a2c0e016db174cc5d2e81137478c8d312fcc5f133f61"
+  },
+  {
+    "product_id": 158,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9682",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/VIPERMINISIGNATUREEDITION-000000158-",
+    "source": ".ref/devices/158/static/js/main.dc9fe529.js",
+    "evidence": "0be82afe745004516e4f987ceb0b6514d9c99fc5966ff6d90a514411bfb92695"
+  },
+  {
+    "product_id": 161,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3714/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/DEATHADDERV2LITE-000000161-",
+    "source": ".ref/devices/161/static/js/main.ba9a72b0.js",
+    "evidence": "350d101bf08f1fa383360ef8e5a38be575e37dde51f201d1d7586ec08c9317f2"
+  },
+  {
+    "product_id": 163,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13184/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/COBRA-000000163-",
+    "source": ".ref/devices/163/static/js/main.efd0b513.js",
+    "evidence": "74c2debf248fb2a9ca349e7f8b6ccfa2cbfbcf06479499b8f754d33b9b074d97"
+  },
+  {
+    "product_id": 164,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6228/kw/mouse%20dock",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/MOUSEDOCKPRO-0000164-",
+    "source": ".ref/devices/164/static/js/main.458d4103.js",
+    "evidence": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40"
+  },
+  {
+    "product_id": 165,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6048/kw/viper%20v2%20pro",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/VIPERV2PRO-000000165-",
+    "source": ".ref/devices/165/static/js/main.571c242f.js",
+    "evidence": "47b9b506368c1fda26536065085a8f3f5ca622ccd3aac23031b145522878f7a1"
+  },
+  {
+    "product_id": 167,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6292/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NAGAV2PRO-00000167-",
+    "source": ".ref/devices/167/static/js/main.508445ac.js",
+    "evidence": "9ac580ac967a454f7e87b03c97ca0175d112100e3939489db1c0416e621e27f7"
+  },
+  {
+    "product_id": 170,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6219",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASILISKV3PRO-00000170-",
+    "source": ".ref/devices/170/static/js/main.7a4583ef.js",
+    "evidence": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925"
+  },
+  {
+    "product_id": 175,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13182/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/COBRAPRO-00000175-",
+    "source": ".ref/devices/175/static/js/main.f6dfd3ef.js",
+    "evidence": "72edc3ed90a4501123d2ea354c08726685e11fd5d620bfeb1535f8fc0440c5a2"
+  },
+  {
+    "product_id": 178,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6124/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERV3-00000178-",
+    "source": ".ref/devices/178/static/js/main.963979c0.js",
+    "evidence": "f36a5b1c37939b13a8ddeb4552d5803e4c74b80d1f97b1e7e4c9fb2b2f93a4ce"
+  },
+  {
+    "product_id": 179,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6140",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HYPERPOLLINGWIRELESSDONGLE-0000179-",
+    "source": ".ref/devices/179/static/js/main.4849f7ca.js",
+    "evidence": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874"
+  },
+  {
+    "product_id": 180,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6392/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NAGAV2HYPERSPEED-00000180-",
+    "source": ".ref/devices/180/static/js/main.ca4353ee.js",
+    "evidence": "47351314e8697bb960e15d9ebde85eba560c16124f9425230ba6cfd76984ee9f"
+  },
+  {
+    "product_id": 184,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13432",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/VIPERV3HYPERSPEED-00000184-",
+    "source": ".ref/devices/184/static/js/main.8f62d76a.js",
+    "evidence": "069a91851fd05722e07e7a264017cf980c4f501c942c3a402633dca0995fa074"
+  },
+  {
+    "product_id": 185,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9766",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASILISKV3XHYPERSPEED-00000185-",
+    "source": ".ref/devices/185/static/js/main.31b0a4d2.js",
+    "evidence": "452d22c9ff851b85752e11704d2fa3d76f270c9180643d4aee82db6da60cbb73"
+  },
+  {
+    "product_id": 190,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14916 ",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/DEATHADDERV4PRO-00000190-",
+    "source": ".ref/devices/190/static/js/main.81b09779.js",
+    "evidence": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f"
+  },
+  {
+    "product_id": 192,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14044",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/VIPERV3PRO-00000192-",
+    "source": ".ref/devices/192/static/js/main.a839b83d.js",
+    "evidence": "90ea3798dbf0726ebb4d97590299db76cc390468ee6315de252e52bfffeb28ca"
+  },
+  {
+    "product_id": 194,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20273/~/razer-deathadder-v3-pro",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/DEATHADDERV3PRO-00000194-",
+    "source": ".ref/devices/194/static/js/main.6e5e136c.js",
+    "evidence": "8c21199bc92c997ebe5878389cbfa28eec3b1292c1dabad6d2376359254ab911"
+  },
+  {
+    "product_id": 196,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14235",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/DEATHADDERV3HYPERSPEED-00000196-",
+    "source": ".ref/devices/196/static/js/main.bbc961f9.js",
+    "evidence": "f99b1f88ca9496a77cab258d05814a312b876873cb5c586841c28a732db78c42"
+  },
+  {
+    "product_id": 199,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14835",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/PROCLICKV2VERTICALEDITION-00000199-",
+    "source": ".ref/devices/199/static/js/main.0b830f5b.js",
+    "evidence": "06df02b51d4f7b89522ca0f1de44fed06f8ee4f223d2006c66e4ee6826185bea"
+  },
+  {
+    "product_id": 203,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14598",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BASILISKV3-00000203-",
+    "source": ".ref/devices/203/static/js/main.fe8e2b48.js",
+    "evidence": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903"
+  },
+  {
+    "product_id": 204,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14676",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BASILISKV3PRO35K-00000204-",
+    "source": ".ref/devices/204/static/js/main.97f302da.js",
+    "evidence": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880"
+  },
+  {
+    "product_id": 207,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14802",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/HYPERFLUXV2WIRELESSCHARGINGSYSTEM-00000207-",
+    "source": ".ref/devices/207/static/js/main.9b300921.js",
+    "evidence": "55ab6e0f9ca41988bee9050c16bb51cf75638dccad27743ac7668a436701629b"
+  },
+  {
+    "product_id": 208,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14970",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/PROCLICKV2-00000208-",
+    "source": ".ref/devices/208/static/js/main.1754b8f8.js",
+    "evidence": "45a4c6b5e9688450ac83f51da82b2c12b7951fd9c2eec4aaaae602bce863f95d"
+  },
+  {
+    "product_id": 211,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14969",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BASILISKMOBILE-00000211-",
+    "source": ".ref/devices/211/static/js/main.8895a352.js",
+    "evidence": "c735edcd9b1876aff146828f7d9c04a7172c6dd2d29426310b80baecde84e026"
+  },
+  {
+    "product_id": 214,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14676",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BASILISKV3PRO35K-00000214-",
+    "source": ".ref/devices/214/static/js/main.9287a47f.js",
+    "evidence": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183"
+  },
+  {
+    "product_id": 218,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15141",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/COBRAHYPERSPEED-00000218-",
+    "source": ".ref/devices/218/static/js/main.f14e7b89.js",
+    "evidence": "d8541fb2fffdd6172a7b31242d62cbd3014b83a330610c8b1a36f447cdcb1a83"
+  },
+  {
+    "product_id": 221,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20363",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/KRAKOFF-00000221-",
+    "source": ".ref/devices/221/static/js/main.011606d5.js",
+    "evidence": "40c3b49f8c5a4073cf465162745e1172e04a3497433fa61586ee744cb807f0c3"
+  },
+  {
+    "product_id": 222,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20389",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/VIPERV3PROSE-00000222-",
+    "source": ".ref/devices/222/static/js/main.b8c354ff.js",
+    "evidence": "7a970f8b31369a0b38975239cec14264324436092fae6503165ec07737b0a7c7"
+  },
+  {
+    "product_id": 224,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20550",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/OROCHIV2-00000224-",
+    "source": ".ref/devices/224/static/js/main.06abb0ec.js",
+    "evidence": "d5c8f8ea76d4423c3219640918cb4b5b42afe5ede9a0a5a1a3fba72e66b5f7f2"
+  },
+  {
+    "product_id": 226,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21064",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BASILISKV4PRO-00000226-",
+    "source": ".ref/devices/226/static/js/main.08f95762.js",
+    "evidence": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e"
+  },
+  {
+    "product_id": 229,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20517",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/VIPERV4PRO-00000229-",
+    "source": ".ref/devices/229/static/js/main.3e19820b.js",
+    "evidence": "983d89099ea6b7c89ea6b49201625723458d81f6425dd67b1cfdb57e9b4a9f91"
+  },
+  {
+    "product_id": 231,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21025",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/NAGAV3PRO-00000231-",
+    "source": ".ref/devices/231/static/js/main.741f0de8.js",
+    "evidence": "d14ad36d6636a8e85cda4088dc4936688e65a28aa5b44b139e2847cea3f20355"
+  },
+  {
+    "product_id": 235,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21065",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BASILISKV4HYPERSPEED-00000235-",
+    "source": ".ref/devices/235/static/js/main.a001b230.js",
+    "evidence": "8f920aeb1c16f018cf86ee1a6abce6c14efa86d60de48e06a6a9a629ddff00f7"
+  },
+  {
+    "product_id": 239,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14916",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/DEATHADDERV4PRO-00000239-",
+    "source": ".ref/devices/239/static/js/main.6bc74a2d.js",
+    "evidence": "44eecf4fa0e37be779640e7186f7c30a6b12c922a55b5a553b0dd4557bd99159"
+  },
+  {
+    "product_id": 241,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21069",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/MOUSEDOCKV2PRO-00000241-",
+    "source": ".ref/devices/241/static/js/main.899712fe.js",
+    "evidence": "65fe2c4069ece8270903895ce32c6c610d5eb8fec94bd944f5791c2376509a02"
+  },
+  {
+    "product_id": 515,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3651/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackwidowChroma-00000515-",
+    "source": ".ref/devices/515/static/js/main.f60ca5aa.js",
+    "evidence": "4a9db2072b3d64035e36d468fcc006b1930ebbf8c0bc620e4869a2e970c432e8"
+  },
+  {
+    "product_id": 521,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3650/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackWidowChromaTE-00000521-",
+    "source": ".ref/devices/521/static/js/main.bbf02831.js",
+    "evidence": "47661189de4f42754c0e78c37c2fb55c1ff8cb133629e3f90129042443bc8057"
+  },
+  {
+    "product_id": 529,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3651/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackWidowChromaOverWatch-00000529-",
+    "source": ".ref/devices/529/static/js/main.c4a3f376.js",
+    "evidence": "c571f7c16424069aa8f06ac51a0e06bf0ce0fa22db2c22963324906f47c30d09"
+  },
+  {
+    "product_id": 534,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3656/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BlackwidowXChroma-00000534-",
+    "source": ".ref/devices/534/static/js/main.0cc999dc.js",
+    "evidence": "620a0279e6acddb6d63b0b88d10601e754a7ca009f2c1e401bb237597892157c"
+  },
+  {
+    "product_id": 542,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3626",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/OrnataChroma-00000542-",
+    "source": ".ref/devices/542/static/js/main.1e52c858.js",
+    "evidence": "574ff3a933c6d9eb6049bf0e35a1863516ea724e975c0f82fd7528b60fead583"
+  },
+  {
+    "product_id": 545,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3660",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackWidowChromaV2-00000545-",
+    "source": ".ref/devices/545/static/js/main.c8080dd3.js",
+    "evidence": "550d7a32da55526995d0f155750a2face3fe8210afac27820be2cd0fdaada79f"
+  },
+  {
+    "product_id": 550,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3610",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HuntsmanElite-00000550-",
+    "source": ".ref/devices/550/static/js/main.a487b4eb.js",
+    "evidence": "a688ac23cff8d3d419f0a4659980000a2076c51409c77adc07997ac2fcc4010c"
+  },
+  {
+    "product_id": 551,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3595/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/Huntsman-00000551-",
+    "source": ".ref/devices/551/static/js/main.5f9f6113.js",
+    "evidence": "657421b24601e652dbaaea5a43ff081318857a6c23b93500a244d74499ade87f"
+  },
+  {
+    "product_id": 552,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3646/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackWidowElite-00000552-",
+    "source": ".ref/devices/552/static/js/main.bdf1be1e.js",
+    "evidence": "f75db54781879f8e507f2a862bcb77e4ce0fb30a64e2cd1d772efa5d732579a4"
+  },
+  {
+    "product_id": 554,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3606/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/CynosaChroma-00000554-",
+    "source": ".ref/devices/554/static/js/main.faed76d3.js",
+    "evidence": "f396ad97c8c303e9f3c947c95dd09e6cb754ad3fa48d5ddb1356b1565ef89eac"
+  },
+  {
+    "product_id": 555,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3628/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/TartarusV2-00000555-",
+    "source": ".ref/devices/555/static/js/main.110aac54.js",
+    "evidence": "c92ffbce91f24d8cc93fb61de959a6b9a033eaa67fa0baceb841650074067611"
+  },
+  {
+    "product_id": 556,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3605/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/CynosaChromaPro-00000556-",
+    "source": ".ref/devices/556/static/js/main.3c239c1f.js",
+    "evidence": "b29dc471b134da9e1f865d6721ffef8d33744360ada23767813676b1f9580c60"
+  },
+  {
+    "product_id": 563,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3639/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000563-",
+    "source": ".ref/devices/563/static/js/main.7084ce8a.js",
+    "evidence": "d6ca5c93659c622ce452fc12595fb6313553578c13e2810cfbe9959ab7552f47"
+  },
+  {
+    "product_id": 564,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3688/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BladePro17-00000564-",
+    "source": ".ref/devices/564/static/js/main.1f11c347.js",
+    "evidence": "f26816903e22ec996c1ab8a8576db0b92d3bb16b155cde01e6c33ea8f7dc3e70"
+  },
+  {
+    "product_id": 565,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/1002/kw/blackwidow%20lite",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BlackWidowLite-00000565-",
+    "source": ".ref/devices/565/static/js/main.3280575a.js",
+    "evidence": "02384c503b5b673215daf6434c0d6bcd2392f8bd38d7ebc84c0250ec99786391"
+  },
+  {
+    "product_id": 567,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3644",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BlackWidowEssential-00000567-",
+    "source": ".ref/devices/567/static/js/main.33124f31.js",
+    "evidence": "8bfe6cc4ee10ce0b01c86063a46bfa25710664fcab22eabdc405396890b39b3a"
+  },
+  {
+    "product_id": 569,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3701/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000569-",
+    "source": ".ref/devices/569/static/js/main.11459c95.js",
+    "evidence": "0a3b2f42a3470a65486f1f0a052693fb5ed899b4a64f5b9260ee84d4e934503f"
+  },
+  {
+    "product_id": 570,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3642/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000570-",
+    "source": ".ref/devices/570/static/js/main.ec14218a.js",
+    "evidence": "11854f25e86d7eea218e12622b8c0879db5cd7ae2cb08bb204e1540f28fddd11"
+  },
+  {
+    "product_id": 571,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3640/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000571-",
+    "source": ".ref/devices/571/static/js/main.cf9862f1.js",
+    "evidence": "3f1ff61d3760e2f54f41c4130ee75a759d75cfea4e7d473b5f5c4689e90aa6fd"
+  },
+  {
+    "product_id": 574,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3613",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/TurretKeyboardXboxOneEdition-00000574-",
+    "source": ".ref/devices/574/static/js/main.4e1cb347.js",
+    "evidence": "a9b14ed0e9253d0dbce7189144db145eea1d68140872a0acbc8a1c3bd11d4d11"
+  },
+  {
+    "product_id": 575,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5822/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/CYNOSALITE-00000575-",
+    "source": ".ref/devices/575/static/js/main.e6809e11.js",
+    "evidence": "3426e8fc3dba68241305a8973d8a3b5806b6f819766fa47d28ab8da3231fdc6e"
+  },
+  {
+    "product_id": 576,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3639/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000576-",
+    "source": ".ref/devices/576/static/js/main.0fe2c485.js",
+    "evidence": "f657ba07c3815493ac6d79a8464baf6007e6910e50fffcd1948df522a1fa97d2"
+  },
+  {
+    "product_id": 577,
+    "support": "https://support.razer.com/gaming-keyboards/razer-blackwidow/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKWIDOW-00000577-",
+    "source": ".ref/devices/577/static/js/main.7053d506.js",
+    "evidence": "0c59b3c036c55c3fa153b4e78d9cd7b1310e90edf42984b346344a5334ac35fd"
+  },
+  {
+    "product_id": 579,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3608/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/HUNTSMANTE-00000579-",
+    "source": ".ref/devices/579/static/js/main.3355e99f.js",
+    "evidence": "8856a23f61053e2721929901e31caf218b8a17c1adc24fab2a5749f5dc17cfd0"
+  },
+  {
+    "product_id": 580,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3622/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/TARTARUSPRO-00000580-",
+    "source": ".ref/devices/580/static/js/main.1648cf28.js",
+    "evidence": "7e5ecfb9bab8bea451aa3eceb94c55b29a68328080482cfdde67c9f9916636cb"
+  },
+  {
+    "product_id": 581,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3683/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000581-",
+    "source": ".ref/devices/581/static/js/main.1347344b.js",
+    "evidence": "9658ef98d52c5afc246149adc8469d06aa6b24299483e8adf023da1a4659c777"
+  },
+  {
+    "product_id": 582,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3643/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000582-",
+    "source": ".ref/devices/582/static/js/main.746928a2.js",
+    "evidence": "a3a671bc69c102a92391803be447bcfa9dd627f0ecc4c01304e73b26ebc4c377"
+  },
+  {
+    "product_id": 585,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3799/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/PROTYPE-00000585-",
+    "source": ".ref/devices/585/static/js/main.04a0e3c0.js",
+    "evidence": "1f3366afcee6de7d59812a3ec1ea5e1060bc5b27c402fda694ee6ab6659d0bb3"
+  },
+  {
+    "product_id": 586,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3703/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/Blade-00000586-",
+    "source": ".ref/devices/586/static/js/main.c88d4a36.js",
+    "evidence": "273097bfcb38befc6bf796f7ea25479d01859563e4bd52a579145c20b7c2c000"
+  },
+  {
+    "product_id": 587,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3659/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLADE15ADVANCED-00000587-",
+    "source": ".ref/devices/587/static/js/main.4b36ee81.js",
+    "evidence": "31d0393f530b9eab466a5079213cc2877653412b23696ef3ef95c560cd34411a"
+  },
+  {
+    "product_id": 588,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3690/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BladePro17-00000588-",
+    "source": ".ref/devices/588/static/js/main.6ce2be5d.js",
+    "evidence": "4dd3835e5079bdf6fb173566a8a30f25ba9610af7a90def0c32d126e5c56f1de"
+  },
+  {
+    "product_id": 589,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3627/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BLADE15STUDIO-00000589-",
+    "source": ".ref/devices/589/static/js/main.782d646c.js",
+    "evidence": "3ab8a52f6d820ba4d9b80f56563d449d198b77ba68e86024324d0330cc77bebb"
+  },
+  {
+    "product_id": 590,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3827",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKWIDOWV3-00000590-",
+    "source": ".ref/devices/590/static/js/main.5c506335.js",
+    "evidence": "f31b865f40c73eeca253dd23d63fb0b212131ac36ab68b380f27899ebf202c0f"
+  },
+  {
+    "product_id": 591,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3661/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLACKWIDOWX-TENKEYLESS-00000591-",
+    "source": ".ref/devices/591/static/js/main.60b1f83e.js",
+    "evidence": "d4ba833954d8fc113ad6724520ec910d301a30469aa4c912a62ab062bbe42db0"
+  },
+  {
+    "product_id": 592,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3595/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/Huntsman-00000551-",
+    "source": ".ref/devices/592/static/js/main.319b06ba.js",
+    "evidence": "4f006da3c62a1b7eb4a63c8849484218abc3e14ff449d6d356ff0f8312192463"
+  },
+  {
+    "product_id": 593,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3620",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse/Ornata-00000543-",
+    "source": ".ref/devices/593/static/js/main.5ba3a935.js",
+    "evidence": "3a6ef092fa9e73956c76ddfa8ca356c4e249023489897c7d3d9fc6df821638ac"
+  },
+  {
+    "product_id": 594,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3702/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000594-",
+    "source": ".ref/devices/594/static/js/main.b17f7701.js",
+    "evidence": "bf1d7f5746a434c5a1e28b8889ad581e5b97912903a0718fa673c3dc3ba9d6e9"
+  },
+  {
+    "product_id": 595,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3618/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/BLADE15ADVANCED-00000595-",
+    "source": ".ref/devices/595/static/js/main.e6e68be9.js",
+    "evidence": "123012a072942a7cda56f984a1bdd00014fa36b360591b0d036a1ad74baba082"
+  },
+  {
+    "product_id": 597,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3641/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000597-",
+    "source": ".ref/devices/597/static/js/main.ef1c3cde.js",
+    "evidence": "abd9582bda3c1635e02b5b784dff6de1a51ae520ac22ecf97809250e8d886bef"
+  },
+  {
+    "product_id": 598,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3686/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BladePro17-00000598-",
+    "source": ".ref/devices/598/static/js/main.375cd241.js",
+    "evidence": "fb4c038d44fcad946251fb67938384a010eb1d223cdfb1d863b8234829fca1d6"
+  },
+  {
+    "product_id": 599,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3609/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANMINI-00000599-",
+    "source": ".ref/devices/599/static/js/main.7e39cfe6.js",
+    "evidence": "78fcee257ee6fc275b0d899c123a72746c1652d7262d27d7b856ba1ca8f00b64"
+  },
+  {
+    "product_id": 600,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5307/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKWIDOWV3MINIHYPERSPEED-00000600-",
+    "source": ".ref/devices/600/static/js/main.d94b34ab.js",
+    "evidence": "60fb5b159802507559d74a22c62675ce09be2bdac14dbc81fa7e50a71365f674"
+  },
+  {
+    "product_id": 601,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3831/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000601-",
+    "source": ".ref/devices/601/static/js/main.4aefdaa9.js",
+    "evidence": "6802dc881fa13cc7b5188e40feac2b50eec8ea2b8d94a51a34a17a7091ef142c"
+  },
+  {
+    "product_id": 602,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3808/kw/blackwidow%20v3%20pro",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLACKWIDOWV3PRO-00000602-",
+    "source": ".ref/devices/602/static/js/main.79e7fc3d.js",
+    "evidence": "9287537e3781602612f596054ae1e9b3e65af62ce8d6a4838950c20718133213"
+  },
+  {
+    "product_id": 605,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3621/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/ORNATAV2-00000605-",
+    "source": ".ref/devices/605/static/js/main.fcf07de2.js",
+    "evidence": "307e2b199037ed53a8fde90d76fc67a9a3766a9361fb152e7820d8bf05f19c65"
+  },
+  {
+    "product_id": 606,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3604/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/CYNOSAV2-00000606-",
+    "source": ".ref/devices/606/static/js/main.08f3ff4a.js",
+    "evidence": "682c63cbb46ec427922aee93d181025430eea1e4ddb86a43ef419561d7fda4ab"
+  },
+  {
+    "product_id": 614,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4023",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV2ANALOG-00000614-",
+    "source": ".ref/devices/614/static/js/main.73d0babc.js",
+    "evidence": "7f1d1fa7dcacc88b2feb987b58cfcafcab43d545fe6fd8f7bd071a09b99c27d0"
+  },
+  {
+    "product_id": 616,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3919/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000616-",
+    "source": ".ref/devices/616/static/js/main.17a0cc39.js",
+    "evidence": "c103704451e6a784666ec8af4b9ac4a487b067f09f9620972e74d74b2595fed1"
+  },
+  {
+    "product_id": 617,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3609",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANMINI-00000599-",
+    "source": ".ref/devices/617/static/js/main.bcdaed34.js",
+    "evidence": "7210f9879cf44fcb00fcd052b834dbca6a6c357f247811e6f4909da859432de0"
+  },
+  {
+    "product_id": 618,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3920",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000618-",
+    "source": ".ref/devices/618/static/js/main.67e42cfd.js",
+    "evidence": "b1f9fa6c97697928955857de1d74cee930bd13b9448f51c5e6dac3aac010885e"
+  },
+  {
+    "product_id": 619,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5642",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/HUNTSMANTEV2-00000619-",
+    "source": ".ref/devices/619/static/js/main.f420bb87.js",
+    "evidence": "80d032fe2308a6ed6479cb91254f72e35a2c08e682e92036fbb6bcb5fa7242c3"
+  },
+  {
+    "product_id": 620,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5642",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV2-00000620-",
+    "source": ".ref/devices/620/static/js/main.05ff3291.js",
+    "evidence": "cf915530c7cc522d18e564ad0b39ebbd09bdc780b01fdbbb01c5be3912965f7e"
+  },
+  {
+    "product_id": 621,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4088/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000621-",
+    "source": ".ref/devices/621/static/js/main.3dde7861.js",
+    "evidence": "930e24ef9f51489b7a3e53c92a6e83d1e8c626d8b7440d96d96ef4536fc9718f"
+  },
+  {
+    "product_id": 622,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4017",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BladePro17-00000651-",
+    "source": ".ref/devices/622/static/js/main.eb3237df.js",
+    "evidence": "cbeee9b7998af896227001a5c21f3277f2664aaa21e62b7478c628e1e7708e87"
+  },
+  {
+    "product_id": 623,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4015/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000623-",
+    "source": ".ref/devices/623/static/js/main.548e4fea.js",
+    "evidence": "0f167a7890be7555698479107919c7178aefd8dd9a26395ab29d36d7026a931b"
+  },
+  {
+    "product_id": 624,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5381/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade14-00000624-",
+    "source": ".ref/devices/624/static/js/main.08d9f86c.js",
+    "evidence": "ab7bea77ce8866bfdb99978566f276076debd7b90d78eadf24d31c6ce76a4487"
+  },
+  {
+    "product_id": 630,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5395/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000630-",
+    "source": ".ref/devices/630/static/js/main.5be75a67.js",
+    "evidence": "f61b31cb5f4646f390fe98a5d14dc03560c248faef05e70cc39cc257cd5936fa"
+  },
+  {
+    "product_id": 631,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5765/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/PROTYPEULTRA-00000631-",
+    "source": ".ref/devices/631/static/js/main.9463ff90.js",
+    "evidence": "816c853bc52d826288c3938507a7a74b833f62295ac2d4d5663ee5ea489785e1"
+  },
+  {
+    "product_id": 633,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5524",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BladePro17-00000633-",
+    "source": ".ref/devices/633/static/js/main.a7b90165.js",
+    "evidence": "29541d38054781beb0a11d9f2cd410463d008143d704a06ce8bf339777816289"
+  },
+  {
+    "product_id": 634,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5529",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000634-",
+    "source": ".ref/devices/634/static/js/main.f755b164.js",
+    "evidence": "582e82ddf8d6e1fefc049792d443c73e15d9cb3beefe39ebadadd31e674e7758"
+  },
+  {
+    "product_id": 642,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5966/kw/huntsman%20mini%20analog",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANMINIANALOG-00000642-",
+    "source": ".ref/devices/642/static/js/main.c81e7939.js",
+    "evidence": "ab41c1cd82ccc8350500d48216a214f689bee9836cfa5b2db6a34aeb898889ae"
+  },
+  {
+    "product_id": 647,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13219/kw/blackwidow%20v4",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLACKWIDOWV4-00000647-",
+    "source": ".ref/devices/647/static/js/main.b14e4864.js",
+    "evidence": "eb33cc70689435a4be775d5891b0079c1099bfebde3021ff0f8e2ccc88c5a9e9"
+  },
+  {
+    "product_id": 650,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5900",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/Blade-00000650-",
+    "source": ".ref/devices/650/static/js/main.a44b3201.js",
+    "evidence": "d3faa3a67db9d085f1d18fb72bec9b9429ef305e6486c346fc36b1cb9e8b204b"
+  },
+  {
+    "product_id": 651,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5896/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BladePro17-00000651-",
+    "source": ".ref/devices/651/static/js/main.14910255.js",
+    "evidence": "18bc00a6e17b1008ae1de304f57cd7e8f268a2ba194c932aa2636f3a21eb0e8c"
+  },
+  {
+    "product_id": 652,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5915/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade14-00000652-",
+    "source": ".ref/devices/652/static/js/main.aacbcd3d.js",
+    "evidence": "098f497e2fed96e8fdcc8e88076f59030ddce3775b43baae1771caafe1e0ffd8"
+  },
+  {
+    "product_id": 654,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/2033/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/CynosaChroma-00000654-",
+    "source": ".ref/devices/654/static/js/main.e100f1a2.js",
+    "evidence": "39c64eb240d68a73773952bfa58712a72d2dfdd9159c16964dfe322bf3f00c01"
+  },
+  {
+    "product_id": 655,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6075",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/ORNATAV3-00000655-",
+    "source": ".ref/devices/655/static/js/main.f6ad51bc.js",
+    "evidence": "6c8f5b3ad74b9793bb2fa83d4d82b0b108767b80bec41bd176f8455251e9f734"
+  },
+  {
+    "product_id": 658,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6114",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/DEATHSTALKERV2PRO-00000658-",
+    "source": ".ref/devices/658/static/js/main.62faa864.js",
+    "evidence": "e1864fc45ad57b626882fd3862e1ed16b41a69632685d957b5e6561134d7ae70"
+  },
+  {
+    "product_id": 659,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13223/kw/blackwidow%20v4",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLACKWIDOWV4X-00000659-",
+    "source": ".ref/devices/659/static/js/main.82fcdd62.js",
+    "evidence": "f71ec3026586ab2968bd719dcca140db55edb86a82c9adc0f1a00a6495e1ae8c"
+  },
+  {
+    "product_id": 660,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6071/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/ORNATAV3X-00000660-",
+    "source": ".ref/devices/660/static/js/main.85645113.js",
+    "evidence": "0ea92ddb4a3c0935afc3de0e95f67a44b38b900b2e69685eb649ad1f598e7acd"
+  },
+  {
+    "product_id": 661,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6119",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/DEATHSTALKERV2-00000661-",
+    "source": ".ref/devices/661/static/js/main.db42d2c2.js",
+    "evidence": "4a398c01f1f2279f2307382f24e9c566b32c233e85d64ad8f907d5cc842ece6c"
+  },
+  {
+    "product_id": 664,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6117/kw/DeathStalker%20V2%20Pro",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/DEATHSTALKERV2PROTKL-00000662-",
+    "source": ".ref/devices/664/static/js/main.33d8ba2a.js",
+    "evidence": "3397f2e4e8ac4d959c21e6f7bf573b11fadbb45e052bb66ee0a182d58eaee5ab"
+  },
+  {
+    "product_id": 669,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13030/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/Blade14-00000669-",
+    "source": ".ref/devices/669/static/js/main.b7566b48.js",
+    "evidence": "a2b5496830ee4589c71cf7a9b77de1b1e8aee443ebcec468a86c9fa40d35e222"
+  },
+  {
+    "product_id": 670,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9696",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade-00000670-",
+    "source": ".ref/devices/670/static/js/main.edf99560.js",
+    "evidence": "5e8140c89e8faa6f26bbc06e6ddd72c30c1e015dc21320ecee9c176032dd7cee"
+  },
+  {
+    "product_id": 671,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9668/kw/blade%2016",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/Blade16-00000671-",
+    "source": ".ref/devices/671/static/js/main.a4a1b2d9.js",
+    "evidence": "87b30bcea60b852748f47b111ffa3d2ef9a8417e0826552caaf4f2f0170da7d3"
+  },
+  {
+    "product_id": 672,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9676",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade18-00000672-",
+    "source": ".ref/devices/672/static/js/main.2283fcdf.js",
+    "evidence": "892460a9dcd915ec8577a01286f4c21db81fdf24efe935a45d527569751b0b59"
+  },
+  {
+    "product_id": 673,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6075",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/ORNATAV3-00000655-",
+    "source": ".ref/devices/673/static/js/main.7c592b5e.js",
+    "evidence": "bbdaf4b8d128322b6f82c7de8c36d137c7dff5b2f51560b283666ecc073c87fb"
+  },
+  {
+    "product_id": 674,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6071/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/ORNATAV3X-00000660-",
+    "source": ".ref/devices/674/static/js/main.b8c0b92d.js",
+    "evidence": "34257871b658776df847e7e3a7d275452dc9c572cdffbc820480c21b6546aadd"
+  },
+  {
+    "product_id": 675,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13038",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/ORNATAV3-00000675-",
+    "source": ".ref/devices/675/static/js/main.b4dbb43b.js",
+    "evidence": "62fa9afec69486f5a1fb043f37a7f71bd1695577b0f41b4c9cd21411e8fed845"
+  },
+  {
+    "product_id": 677,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13256",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKWIDOWV475-00000677-",
+    "source": ".ref/devices/677/static/js/main.b1c9555f.js",
+    "evidence": "1be1d1322afcdcc8f5f8ec7835af6fa80476c98d081a833c885953044e1f050e"
+  },
+  {
+    "product_id": 678,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13671",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PRO-00000678-",
+    "source": ".ref/devices/678/static/js/main.f78f0dcf.js",
+    "evidence": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180"
+  },
+  {
+    "product_id": 679,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13672",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PROTENKEYLESS-00000679-",
+    "source": ".ref/devices/679/static/js/main.194d8a7b.js",
+    "evidence": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20"
+  },
+  {
+    "product_id": 688,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13592/kw/huntsman%20v3",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PROMINI-00000688-",
+    "source": ".ref/devices/688/static/js/main.e09fd702.js",
+    "evidence": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929"
+  },
+  {
+    "product_id": 689,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14206",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3XTENKEYLESS-00000689-",
+    "source": ".ref/devices/689/static/js/main.9d55a71f.js",
+    "evidence": "525e6cf579c988539c496cef57583659f4cd47f77d8fcd71113c3cd59b598f56"
+  },
+  {
+    "product_id": 691,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14267",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/BLACKWIDOWV4PRO75-00000691-",
+    "source": ".ref/devices/691/static/js/main.e51ce83a.js",
+    "evidence": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078"
+  },
+  {
+    "product_id": 694,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13852/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/Blade14-00000694-",
+    "source": ".ref/devices/694/static/js/main.79278d0f.js",
+    "evidence": "3a613152c295576ffee7536aefa1181e06fb98cc738e39d5e39350f2e4f61c4b"
+  },
+  {
+    "product_id": 695,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13849",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/Blade16-00000695-",
+    "source": ".ref/devices/695/static/js/main.de25a2a9.js",
+    "evidence": "dbef9942e3f690826fad00c0feddd3a4a8a93df8cc0d045f3f76493586287e3d"
+  },
+  {
+    "product_id": 696,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14072",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/Blade18-00000696-",
+    "source": ".ref/devices/696/static/js/main.e247cb61.js",
+    "evidence": "a3df6cd8ea8fce9edcc6a0c70659151542a2d22fece7bf8e6ccce9ad82657dda"
+  },
+  {
+    "product_id": 697,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14149",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKWIDOWV4MINIHYPERSPEED-00000697-",
+    "source": ".ref/devices/697/static/js/main.9db50ae0.js",
+    "evidence": "575eefa164cb9555083e91a29ccdfa588cc55f2c275ebfa1651591fb8e56d502"
+  },
+  {
+    "product_id": 708,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15066",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/PROTYPEERGO-00000708-",
+    "source": ".ref/devices/708/static/js/main.bb6f013a.js",
+    "evidence": "910654257315b3ae516df42a1c3ee3cdb4e139082227cc4d252c2ffbfc250955"
+  },
+  {
+    "product_id": 709,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15088",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/Blade14-00000709-",
+    "source": ".ref/devices/709/static/js/main.f07ec2e5.js",
+    "evidence": "db9a6793e336987ee80774df02415a59789e4bbbd40c5f63b9cfbc2ebade80d8"
+  },
+  {
+    "product_id": 710,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14806",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/Blade16-00000710-",
+    "source": ".ref/devices/710/static/js/main.a90c72eb.js",
+    "evidence": "6ce8f593453ab0639f71ac616ebe85bc4936a64623d17ad37a7821b44279979c"
+  },
+  {
+    "product_id": 711,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14968",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/Blade18-00000711-",
+    "source": ".ref/devices/711/static/js/main.2785ce6e.js",
+    "evidence": "7ead53bf2ea292fa8716b0a17d39ba042a25d7da9c35cb9a2bd9aec39689979f"
+  },
+  {
+    "product_id": 716,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15489/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKWIDOWV4LOWPROFILEHYPERSPEED-00000716-",
+    "source": ".ref/devices/716/static/js/main.a149c89a.js",
+    "evidence": "c4d563c8ed9d05de9268905fad8e600a7bd8710c3340fe774d78f980fc7d3de7"
+  },
+  {
+    "product_id": 717,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14978",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/JORO-00000717-",
+    "source": ".ref/devices/717/static/js/main.9af2005e.js",
+    "evidence": "4222c13514e4d7c295e18057a5100b188f036b8825e10cb7442174cf2c359a5b"
+  },
+  {
+    "product_id": 719,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19796",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3PRO8KHZ-00000719-",
+    "source": ".ref/devices/719/static/js/main.b3b06763.js",
+    "evidence": "21704ca3b05d7c4293d664cb43cdc15ce769f805b95e0ace37429eb422997645"
+  },
+  {
+    "product_id": 720,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19797",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3PROTENKEYLESS8KHZ-00000720-",
+    "source": ".ref/devices/720/static/js/main.2b3c6f06.js",
+    "evidence": "6aeb371a37af9ec411ff7eba6a59a3fcd5cb8001926b1cec24523871a5b001de"
+  },
+  {
+    "product_id": 721,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21223",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3PROMINI8HKZ-00000721-",
+    "source": ".ref/devices/721/static/js/main.67ffbbf2.js",
+    "evidence": "dfafc296f6f5c4f7d38c4b03367b0160132fdcaa2058cdee9d1bed20b52b6192"
+  },
+  {
+    "product_id": 724,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15492/",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKWIDOWV4LOWPROFILETENKEYLESSHYPERSPEED-00000724-",
+    "source": ".ref/devices/724/static/js/main.4b1b7b70.js",
+    "evidence": "b36e0ccc6ddfc312beac25b124fc5ed9037f3fb29e838b4830c13a5f58b57d01"
+  },
+  {
+    "product_id": 727,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15142",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/BLACKWIDOWV4TENKEYLESSHYPERSPEED-00000727-",
+    "source": ".ref/devices/727/static/js/main.07c5d653.js",
+    "evidence": "ef8c412b51386d4f70e5485365120111c30ab0ce147756dc64ffade1c74fef71"
+  },
+  {
+    "product_id": 728,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20362",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/HUNTSMANSIGNATURE-00000728-",
+    "source": ".ref/devices/728/static/js/main.69c38496.js",
+    "evidence": "1c7b13b7400b4c7c7172461bde30025ee8976cedd972caac4147413e8984ae24"
+  },
+  {
+    "product_id": 736,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20585",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/Blade16-00000736-",
+    "source": ".ref/devices/736/static/js/main.18e9f128.js",
+    "evidence": "011c89bf4ccc34ee9d65be4d47b87b3748999b1f4a377c014047fa84123d1d7a"
+  },
+  {
+    "product_id": 737,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20586",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/Blade18-00000737-",
+    "source": ".ref/devices/737/static/js/main.fd12304a.js",
+    "evidence": "522398982928dc9de48b0dd4df82c8edbe0e550c15269f8be68cd3cafac0a3bf"
+  },
+  {
+    "product_id": 739,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20883",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/RECLUSAXMINI65-00000739-",
+    "source": ".ref/devices/739/static/js/main.bf6d41f3.js",
+    "evidence": "0bf70fbaa3f3d2fd338f6ea01cf86369bf9117ad9f071e1f22dcead52b8ff5b7"
+  },
+  {
+    "product_id": 740,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20607",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3HEMAGNETICMINI658KHZ-00000740-",
+    "source": ".ref/devices/740/static/js/main.e1791e16.js",
+    "evidence": "22424f5f208c5a77a0e54ca1287ee1ccb4816af3420ba82fc95e452ef72a7452"
+  },
+  {
+    "product_id": 741,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20537",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3TENKEYLESS8KHZ-00000741-",
+    "source": ".ref/devices/741/static/js/main.47f4e650.js",
+    "evidence": "6308ca65cfadf9af21a7940cf1da7b8b652d3f85ca2c8ca1b0f9d7ed49f2cab8"
+  },
+  {
+    "product_id": 742,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20539 ",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3PROLOW-PROFILETENKEYLESS8KHZ-00000742-",
+    "source": ".ref/devices/742/static/js/main.8d6fde51.js",
+    "evidence": "549a7b0a4656ae9869b8af834f555bacb552362e179d583a63279c4f40e05f51"
+  },
+  {
+    "product_id": 746,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20609",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3HEMAGNETICTENKEYLESS8KHZ-00000746-",
+    "source": ".ref/devices/746/static/js/main.dded1bab.js",
+    "evidence": "437631aa42f64d5c9e90044fb8544252393a92ac32e7f023e82d2a164eed2397"
+  },
+  {
+    "product_id": 747,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20626",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/TARTARUSV2PRO-00000747-",
+    "source": ".ref/devices/747/static/js/main.f948f1bc.js",
+    "evidence": "9d1b228c405931b82ed87b58883557957aed7254a26ab560dcf7bcbbb4966bbf"
+  },
+  {
+    "product_id": 752,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21101",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/BLACKWIDOWV475XBOX25ANNIVERSARYEDITION-00000752-",
+    "source": ".ref/devices/752/static/js/main.2461df71.js",
+    "evidence": "26fcedf9b8ed2608c85d72e6b47955cdd67b867e0a514b1c3b1a79d1ccd98aa7"
+  },
+  {
+    "product_id": 769,
+    "support": null,
+    "guide": null,
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "evidence": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d"
+  },
+  {
+    "product_id": 778,
+    "support": "https://rzr.to/b550-taichi-razer-edition-manual",
+    "guide": "https://download.asrock.com/Manual/B550 Taichi Razer Edition",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "evidence": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2"
+  },
+  {
+    "product_id": 780,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5907",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KEYLIGHTCHROMA-00000780-",
+    "source": ".ref/devices/780/static/js/main.157991a2.js",
+    "evidence": "0d2f4db7be3beb69c2df84ae344d6d82a11c1dc920a3b6065f43370b4c526254"
+  },
+  {
+    "product_id": 781,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5893",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/AETHERSMARTLAMPPRO-00000781-",
+    "source": ".ref/devices/781/static/js/main.8720d82b.js",
+    "evidence": "004be5e290a63ccec4b2b39311261aeaab83643b9281a49f4b8c46cb12fd59e9"
+  },
+  {
+    "product_id": 782,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5892",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/AETHERLAMP-00000782-",
+    "source": ".ref/devices/782/static/js/main.32e42b80.js",
+    "evidence": "7fd6044562ee2e347542c9dcd347fbd4ad4891928b409c62c4db31f174eab204"
+  },
+  {
+    "product_id": 783,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5890",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/AETHERSMARTLIGHTBULB-00000783-",
+    "source": ".ref/devices/783/static/js/main.5b59b09c.js",
+    "evidence": "35393e73e548079c8da648220fb50890112dcbbce9b7212ef4954ba57c9dde33"
+  },
+  {
+    "product_id": 784,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5891",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/AETHERLIGHTSTRIP-00000784-",
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "evidence": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2"
+  },
+  {
+    "product_id": 790,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13998",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/AETHERMONITORLIGHTBAR-00000790-",
+    "source": ".ref/devices/790/static/js/main.768d7d9e.js",
+    "evidence": "bf98865962cedc5270a42375433b985a26b68c4dd24cf58b0056742d436f6f4f"
+  },
+  {
+    "product_id": 791,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14804",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/AETHERSTANDINGLIGHTBARS-00000791-",
+    "source": ".ref/devices/791/static/js/main.973498e0.js",
+    "evidence": "494578c0dec03d79bd30b10682bdedc615492782aa55cbaa8090136330b3b8cb"
+  },
+  {
+    "product_id": 1303,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3596/~/razer-nommo-chroma-%7C-rz05-02460-support",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NommoChroma-00001303-",
+    "source": ".ref/devices/1303/static/js/main.4de5d448.js",
+    "evidence": "3cf034a1aee237de6460712389992df6169b1b9322117e5900a6dfe66645eff5"
+  },
+  {
+    "product_id": 1304,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3638",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NommoPro-00001304-",
+    "source": ".ref/devices/1304/static/js/main.3b6d76c2.js",
+    "evidence": "628994402b609ecdb144fab3cb196e133e20a5af1b8a8d1ec27aa0c97850a19f"
+  },
+  {
+    "product_id": 1306,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3636/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NARIULTIMATE-00001306-",
+    "source": ".ref/devices/1306/static/js/main.76178428.js",
+    "evidence": "0516591df071877c17697b878d14729f259e961d104d94cd1bb25330373a8d60"
+  },
+  {
+    "product_id": 1308,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3594/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NARI-00001308-",
+    "source": ".ref/devices/1308/static/js/main.82fa5e39.js",
+    "evidence": "81d85ebb2c77e6dd81cdc644cc9db5134b4ec73175167d15098af523931773ed"
+  },
+  {
+    "product_id": 1310,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3632/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NARIESSENTIAL-00001310-",
+    "source": ".ref/devices/1310/static/js/main.b8876f9f.js",
+    "evidence": "5d582e55571d6338bea4c71077622fa65c1a600e6f19f9552201f82873e8a2b1"
+  },
+  {
+    "product_id": 1312,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3555/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KRAKENTOURNAMENTEDITION-00001312-",
+    "source": ".ref/devices/1312/static/js/main.a0d767c7.js",
+    "evidence": "e3d9b90dfa20a18e70ea088d3dd35b84701f45fdc8ba8679a8fda8c8f0c3bcd6"
+  },
+  {
+    "product_id": 1313,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3542",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KRAKENKITTYEDITION-00001313-",
+    "source": ".ref/devices/1313/static/js/main.c9234892.js",
+    "evidence": "4360b6c0c6ee3819685ca8877b3ec23cecb0ab92597550f804f9ae709882ecea"
+  },
+  {
+    "product_id": 1318,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3553/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/RAZERKRAKENXUSB-00001318-",
+    "source": ".ref/devices/1318/static/js/main.db06a21e.js",
+    "evidence": "61ae5059bcc7b9ffa2397623b45c7b7649137b88bf47c2190ea063d577cbed0b"
+  },
+  {
+    "product_id": 1319,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3552/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENULTIMATE-",
+    "source": ".ref/devices/1319/static/js/main.18b7442e.js",
+    "evidence": "8b0e82d7a047c5881f9426d91803f3fd7076673880d62daa05d8102cca566df3"
+  },
+  {
+    "product_id": 1320,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3811/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKSHARKV2PRO-00001320-",
+    "source": ".ref/devices/1320/static/js/main.ac594f45.js",
+    "evidence": "5ea4d7d286821cd000f1c8d9813f1c929ff13ccd0431af44159b29e632947b05"
+  },
+  {
+    "product_id": 1321,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3531",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/USBSOUNDCARD-00001321-",
+    "source": ".ref/devices/1321/static/js/main.7ed29db3.js",
+    "evidence": "d2583a63b8f9fc192343abb4cdd9481d147309679c439e00c048eaf0f9ac0af6"
+  },
+  {
+    "product_id": 1325,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5704",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENV3PRO-00001324-",
+    "source": ".ref/devices/1325/static/js/main.6d8e67f5.js",
+    "evidence": "c46f7e3e72605f603e568a90a59d5c9adde9b24376e5cc134a03f921d2dbc546"
+  },
+  {
+    "product_id": 1328,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3851",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/KRAKENBTKITTYEDITION-00001328-",
+    "source": ".ref/devices/1328/static/js/main.8a79cd9c.js",
+    "evidence": "9ef989508210c3de55e7db9c9f0baab67869fb069791983d17c4ec2b69048d04"
+  },
+  {
+    "product_id": 1330,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5999",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/LEVIATHANV2-00001330-",
+    "source": ".ref/devices/1330/static/js/main.f0797abf.js",
+    "evidence": "3df27de0303e0450bc800ce7229445a0db78876c3c67bbad559dd9a041e0a985"
+  },
+  {
+    "product_id": 1331,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5701",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENV3HYPERSENSE-00001331-",
+    "source": ".ref/devices/1331/static/js/main.cdddaa98.js",
+    "evidence": "b0cbc0e0ee275784a54c707aa28e26afed28f7d991ec64f1a442f7f08efd433e"
+  },
+  {
+    "product_id": 1332,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3851",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENBTHELLOKITTYANDFRIENDSEDITION-00001332-",
+    "source": ".ref/devices/1332/static/js/main.18a00d58.js",
+    "evidence": "c83f198095e8e3574545b8a4cef721b76c79b276cd4a809eed4701a800c61648"
+  },
+  {
+    "product_id": 1335,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4257/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KRAKENV3X-00001335-",
+    "source": ".ref/devices/1335/static/js/main.8345750d.js",
+    "evidence": "7d1645b5df75d3759326d0d1e822f9f5eaee7fc18bb8f1e31264a2029c091eb7"
+  },
+  {
+    "product_id": 1337,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6039",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BARRACUDAPRO-00001338-",
+    "source": ".ref/devices/1337/static/js/main.df767002.js",
+    "evidence": "cbc745fd9b16c5e7c7a2565cc3e951221cea0e3174af7912701e5adb47b73e3c"
+  },
+  {
+    "product_id": 1339,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6034",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BARRACUDA-00001340-",
+    "source": ".ref/devices/1339/static/js/main.8817fdae.js",
+    "evidence": "d7d5dffedb4810b4fd6e1e3941c2c3a219e33bc235cbe61909a04d2c456df60d"
+  },
+  {
+    "product_id": 1342,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5927",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/RAZERMIXERT2-00001318-",
+    "source": ".ref/devices/1342/static/js/main.2623357c.js",
+    "evidence": "7135bf1ec237047bc3c0ca25710aa39b02c6fa9516b7aa1425f743e0c57010e9"
+  },
+  {
+    "product_id": 1346,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5728/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/SEIRENV2PRO-00001346-",
+    "source": ".ref/devices/1346/static/js/main.4d98fb93.js",
+    "evidence": "40d1f7e534192ecec6a7e1190b7bf16e87f2cc80a8bb16a8732845b3c6c8dc1f"
+  },
+  {
+    "product_id": 1347,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5726/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/SEIRENV2X-00001347-",
+    "source": ".ref/devices/1347/static/js/main.be19f1cb.js",
+    "evidence": "c725eee59af622e1a8738a99e12ffab0e3819ddb394b38a3fd92ebe212ea6a6a"
+  },
+  {
+    "product_id": 1352,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6461",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/LEVIATHANV2PRO-00001352-",
+    "source": ".ref/devices/1352/static/js/main.95a4f703.js",
+    "evidence": "8dee0170de93fd9900024510e8c6edd315c30010d759ca12609ad6d2c8c73c80"
+  },
+  {
+    "product_id": 1353,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5698",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KRAKENV3-00001353-",
+    "source": ".ref/devices/1353/static/js/main.dfef4e81.js",
+    "evidence": "3c365cc8b454d563f27d5235749d290a9bb38fbafc671529e7e07ecbd75df199"
+  },
+  {
+    "product_id": 1354,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6232",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/LEVIATHANV2X-00001354-",
+    "source": ".ref/devices/1354/static/js/main.e16a6fa2.js",
+    "evidence": "5c03e31d51018a266b49381fe5f3dd1c99d83a4ee7ae07a89427a1702665a355"
+  },
+  {
+    "product_id": 1364,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6313",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENKITTYEDITIONV2PRO-00001364-",
+    "source": ".ref/devices/1364/static/js/main.6cf04746.js",
+    "evidence": "40d6959e7e95463b33c7545969317e14f7ddd83d37555c946e1abc465e092f85"
+  },
+  {
+    "product_id": 1365,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13060",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKSHARKV2PRO-00001365-",
+    "source": ".ref/devices/1365/static/js/main.4949c2ce.js",
+    "evidence": "8da707ebe45208c693c81c40b3d244d8d52ea439f33aaacc79e706fcc21066d7"
+  },
+  {
+    "product_id": 1370,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13036",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NOMMOV2PRO-00001370-",
+    "source": ".ref/devices/1370/static/js/main.55a82042.js",
+    "evidence": "39c29ad16ab6ab034f533c30efd80ebd2c863e925cfaa826a95ef91015e29f7c"
+  },
+  {
+    "product_id": 1372,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13035/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NOMMOV2-00001372-",
+    "source": ".ref/devices/1372/static/js/main.0948803f.js",
+    "evidence": "b331f92022b9e2a4514b3367a2d2cb051d8d031163e444221ef5f08b812971d6"
+  },
+  {
+    "product_id": 1374,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13037",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/NOMMOV2X-00001374-",
+    "source": ".ref/devices/1374/static/js/main.e6cd4110.js",
+    "evidence": "cece0b81d4eb99e20f838862df924770a9d69e2d460b1acdf2664e647683cc24"
+  },
+  {
+    "product_id": 1376,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13240",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/KRAKENKITTYV2-00001376-",
+    "source": ".ref/devices/1376/static/js/main.03a3e8b2.js",
+    "evidence": "b8139a672d0166a6336f7400ff59cf459df6828097ac22d2b26b0aa8669cec87"
+  },
+  {
+    "product_id": 1378,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13242",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/KRAKENKITTYBTV2-00001378-",
+    "source": ".ref/devices/1378/static/js/main.2397f4bd.js",
+    "evidence": "5133602433fb5ca28647b3991da519b70704d6adeff76be5d92c29aab6b011fc"
+  },
+  {
+    "product_id": 1382,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13578",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/WIRELESSCONTROLPOD-000001382-",
+    "source": ".ref/devices/1382/static/js/main.275d3b94.js",
+    "evidence": "75b22375449ce8e6706b85587273b9ad4663851f7c6da4a33a9decdd2f26732b"
+  },
+  {
+    "product_id": 1383,
+    "support": null,
+    "guide": null,
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "evidence": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd"
+  },
+  {
+    "product_id": 1386,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3867/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/SEIRENV3MINI-00001386-",
+    "source": ".ref/devices/1386/static/js/main.cb847624.js",
+    "evidence": "e8f1454cd8d870c578112f90fc76b444f9615cb660bc4cd11f91b69e43c2cb0b"
+  },
+  {
+    "product_id": 1387,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14265",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENV4-00001387-",
+    "source": ".ref/devices/1387/static/js/main.c3a5df87.js",
+    "evidence": "47024107759780f74a76ab93541799dcf8fe65aeb271de203735cd808ebe7c85"
+  },
+  {
+    "product_id": 1389,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14266",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENV4X-00001389-",
+    "source": ".ref/devices/1389/static/js/main.7ceeec13.js",
+    "evidence": "fc68b7d1f9026b2115f0eeb2c10781f63ed51dc8c1b68864fa37864f9858fb3d"
+  },
+  {
+    "product_id": 1390,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13436/kw/blackshark%20v2%20wireless",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BLACKSHARKV2HYPERSPEED-00001390-",
+    "source": ".ref/devices/1390/static/js/main.dace2c06.js",
+    "evidence": "696b0ef41a39c61423bc49bda7390e25cb4c7ccf2682e25fc21746b5ea0a5b4a"
+  },
+  {
+    "product_id": 1391,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13988/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/SEIRENV3CHROMA-00001391-",
+    "source": ".ref/devices/1391/static/js/main.088e0726.js",
+    "evidence": "1cabbd0aeeabeeb71e1adcf1d18309a8fcb1def6272c3097ef215b3ff275f192"
+  },
+  {
+    "product_id": 1392,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19768/kw/clio",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/CLIO-00001392-",
+    "source": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+    "evidence": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489"
+  },
+  {
+    "product_id": 1396,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4257/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/BARRACUDAXCHROMA-00001396-",
+    "source": ".ref/devices/1396/static/js/main.807d655b.js",
+    "evidence": "b357fea1c3cc0829136dfb36d818d1f62a0e6d83f0fb4c79618a6c7de4cdc6e4"
+  },
+  {
+    "product_id": 1398,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15470",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3PRO-00001398-",
+    "source": ".ref/devices/1398/static/js/main.cab68a9a.js",
+    "evidence": "9b9bc7d458d7b6c881e6795b6dc9ddd79c12903a005ae5529d72ef34a55028fe"
+  },
+  {
+    "product_id": 1401,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15471",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3-00001401-",
+    "source": ".ref/devices/1401/static/js/main.f418a62d.js",
+    "evidence": "190d44e9b10cfe93ad350d1cee390f4f04301711e32bb23247a1cba6e6f57c6a"
+  },
+  {
+    "product_id": 1404,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15472",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3XHYPERSPEED-00001404-",
+    "source": ".ref/devices/1404/static/js/main.d350fd68.js",
+    "evidence": "6bf8f1c221e8bb08e687ae5b1017b53cbaceb3beb1640f50211227e8c1b5cbe0"
+  },
+  {
+    "product_id": 1406,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3851",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENBTKITTYEDITION-00001328-",
+    "source": ".ref/devices/1406/static/js/main.f2aa3af5.js",
+    "evidence": "84c967ede8c278bf7a1c6f9fa87b5bb353c9ebd5cfe1ae47699c8c5dd9723525"
+  },
+  {
+    "product_id": 1407,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3851",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENBTKITTYEDITION-00001328-",
+    "source": ".ref/devices/1407/static/js/main.cbabe455.js",
+    "evidence": "3e2b0d2ca9b3e94e9633b7327c601e213d330c5b106bb08c24f62c2bc4026c28"
+  },
+  {
+    "product_id": 1411,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6039",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BARRACUDAPRO-00001338-",
+    "source": ".ref/devices/1411/static/js/main.e89c311e.js",
+    "evidence": "ffe446f446919e4b77724b3cf94dd97d69573a145d0643700c9af534e0c09927"
+  },
+  {
+    "product_id": 1412,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6034",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BARRACUDA-00001340-",
+    "source": ".ref/devices/1412/static/js/main.be1cc22d.js",
+    "evidence": "8ff6ed31fb27574bb6a138621e2d9c3442fd2c3757454ec45d49e96591aca4b1"
+  },
+  {
+    "product_id": 1415,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19819",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/KRAKENKITTYV3PRO-00001415-",
+    "source": ".ref/devices/1415/static/js/main.300a4579.js",
+    "evidence": "9d816327a4a8a45937cf92251870da3aa2de00c62b090ff0a7bf598d928c11b3"
+  },
+  {
+    "product_id": 1420,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15497",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/HAMMERHEADV3WIREDEARBUDS-00001420-",
+    "source": ".ref/devices/1420/static/js/main.4f81d888.js",
+    "evidence": "bb0fe0770fed8711b464912774cb577d332f8a8fd635d1dd867dca15a2808b0c"
+  },
+  {
+    "product_id": 1422,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20630",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/SEIRENV3PRO-00001422-",
+    "source": ".ref/devices/1422/static/js/main.61ab07b9.js",
+    "evidence": "d26e218c747c014f874df5fe942ed31d4c1073b4c098377f1e77caa418c74700"
+  },
+  {
+    "product_id": 1427,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15470",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BARRACUDAV2PRO-00001427-",
+    "source": ".ref/devices/1427/static/js/main.7ab11cd4.js",
+    "evidence": "1e20d7f44eee182e943c6b6f1ce9f3dbd755c43fbaf0e383f4f4eb2af266a11e"
+  },
+  {
+    "product_id": 1439,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21084",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KRAKENV4X-00001439-",
+    "source": ".ref/devices/1439/static/js/main.8adbaf05.js",
+    "evidence": "97273dc1f3dfec4e9f1ab85b95e49adf884cc10e7c9c29aacb90a599626ba8eb"
+  },
+  {
+    "product_id": 1442,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21068",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/CLIOX-00001442-",
+    "source": ".ref/devices/1442/static/js/main.f0649cc4.js",
+    "evidence": "8013923f0ad95a198d2791875c18543eacd709e56dc8cc0c6506be2fb68b760d"
+  },
+  {
+    "product_id": 1443,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5999",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/LEVIATHANV2-00001330-",
+    "source": ".ref/devices/1443/static/js/main.a3f7f9d1.js",
+    "evidence": "785c0239ec582a38e0bfbed1e00c98efe04b0f3d961cf3c1b8325bc0d38b6aa9"
+  },
+  {
+    "product_id": 1446,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20777",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/SEIRENV3CHROMA32BITDSP-00001446-",
+    "source": ".ref/devices/1446/static/js/main.9f98c3ff.js",
+    "evidence": "2846ce27a9e3eda492dcf8259cb4d79a426eaffcec285b18cfb166d6d3320965"
+  },
+  {
+    "product_id": 1453,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21067",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/MAKOX-00001453-",
+    "source": ".ref/devices/1453/static/js/main.ef61f0ba.js",
+    "evidence": "cd983bfee3e018e3592a2f1e351d4cb5663d0fcac725fb32e19953e425e224af"
+  },
+  {
+    "product_id": 1462,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4257/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/KRAKENKITTYV3-00001462-",
+    "source": ".ref/devices/1462/static/js/main.77653bee.js",
+    "evidence": "8acf689338a3fcdad7f21995a9b99096fcf8098f57f223e5155087e2f79aa009"
+  },
+  {
+    "product_id": 1465,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21322",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/HAMMERHEADV3CHROMA-00001465-",
+    "source": ".ref/devices/1465/static/js/main.73ac4806.js",
+    "evidence": "e17025a3a22469baf1af4fbc44364836cfdc84c5bc90bb2b51276d82b8bdd0e3"
+  },
+  {
+    "product_id": 2594,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3613",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/TURRETMOUSEXBOXONEEDITION-00000117-en.pdf",
+    "source": ".ref/devices/2594/static/js/main.877e745a.js",
+    "evidence": "696e07ba681b62f21377f6d8a2c1d33c08267ebb5ccf3bad1ead739cd224b349"
+  },
+  {
+    "product_id": 2595,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3613",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/TurretKeyboardXboxOneEdition-00000574-",
+    "source": ".ref/devices/2595/static/js/main.01d8ae5b.js",
+    "evidence": "8194032e6c8c7cae8d1ed09cc110491f44cc67a841dc0a5a1a7140e10586ea1b"
+  },
+  {
+    "product_id": 2596,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3516/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BLACKWIDOWV3TENKEYLESS-000002596-",
+    "source": ".ref/devices/2596/static/js/main.eff25ed8.js",
+    "evidence": "16e7b6c5859c316c8212cccf484dcb1c0699bab162d9bc23cbf583ca74a5f41e"
+  },
+  {
+    "product_id": 2629,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14591",
+    "guide": "https://dl.razerzone.com/master-guides/RazerControllerSetupForXbox/WolverineV3/WolverineV3-",
+    "source": ".ref/devices/2629/static/js/main.000315e2.js",
+    "evidence": "6b03a0d0dc454d0d7f51d4e530d1a952a6485cecf2e34f1308c7128e102ac1be"
+  },
+  {
+    "product_id": 2636,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14587",
+    "guide": "https://dl.razerzone.com/master-guides/RazerControllerSetupForXbox/WolverineV3Pro/WolverineV3Pro-",
+    "source": ".ref/devices/2636/static/js/main.82d8a835.js",
+    "evidence": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a"
+  },
+  {
+    "product_id": 2638,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15476",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3PROFORXBOX-00002638-",
+    "source": ".ref/devices/2638/static/js/main.43474509.js",
+    "evidence": "c7aa48f51cb3a542aeab9426ed331db39b201ff1ea81010573937a6f790d58bb"
+  },
+  {
+    "product_id": 2641,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15477",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3FORXBOX-00002641-",
+    "source": ".ref/devices/2641/static/js/main.b410e3b4.js",
+    "evidence": "302c6b2147e53a424d3a7b27967e4f8c9aeafbfcc4faa487d99f38cb70504278"
+  },
+  {
+    "product_id": 2644,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15476",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3XHYPERSPEEDFORXBOX-00002644-",
+    "source": ".ref/devices/2644/static/js/main.74ecb9b2.js",
+    "evidence": "2f61d7f7b892a0dd85fcf9160a1785e151e45559dc260ea211c8fad9a0f14a6a"
+  },
+  {
+    "product_id": 2647,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15026",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV3PRO8KPC-00002647-",
+    "source": ".ref/devices/2647/static/js/main.7aa41341.js",
+    "evidence": "c6a96c2488aabe9329188438d10cd6ad8d9ac97cb0aff2a2cd2a7b95af6d811a"
+  },
+  {
+    "product_id": 2650,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15027",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV3TOURNAMENTEDITION8KPC-00002650-",
+    "source": ".ref/devices/2650/static/js/main.257d35dd.js",
+    "evidence": "7be8aa515467356e63174c041bc01f6d9350bf378632e5fd81a10af35b3d8202"
+  },
+  {
+    "product_id": 2657,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20497 ",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/HAMMERHEADV3HYPERSPEED-00002657-",
+    "source": ".ref/devices/2657/static/js/main.3bb092b2.js",
+    "evidence": "1bc143422818ba015edd348a7acd7cebcc73ff9dcca1f7737510ef4a155ffd2d"
+  },
+  {
+    "product_id": 2660,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20506",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/HAMMERHEADV3XHYPERSPEED-00002660-",
+    "source": ".ref/devices/2660/static/js/main.a8cab937.js",
+    "evidence": "9ca428ef446934a5a4bcbcb91e24b255318b67d9eb0502b7c702ac59311aa028"
+  },
+  {
+    "product_id": 2664,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20507",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/HAMMERHEADV3XHYPERSPEEDFORXBOX-0002664-",
+    "source": ".ref/devices/2664/static/js/main.ecec90b9.js",
+    "evidence": "fac0b60d7b984e2c098ae6f3c01fa1e4bd32aa7ba60fee442ba944e3684f6058"
+  },
+  {
+    "product_id": 2668,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20508",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/HAMMERHEADV3XHYPERSPEEDFORPLAYSTATION-00002668-",
+    "source": ".ref/devices/2668/static/js/main.168ac802.js",
+    "evidence": "e7d9a3eb71572cb45022e4e42e53780e3cd1052411ed538c0402466e93595de9"
+  },
+  {
+    "product_id": 2676,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21268",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV4PRO-00002676-",
+    "source": ".ref/devices/2676/static/js/main.5ee115d4.js",
+    "evidence": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377"
+  },
+  {
+    "product_id": 2684,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21269",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/WOLVERINEV4TOURNAMENTEDITION-00002684-",
+    "source": ".ref/devices/2684/static/js/main.fbe5395b.js",
+    "evidence": "bc17900d890e62523c9e8be04871df0455c9709d78b2d189d9c86f0248b11442"
+  },
+  {
+    "product_id": 2689,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21361",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/HAMMERHEADV3XHYPERSPEED-00002660-",
+    "source": ".ref/devices/2689/static/js/main.251b13c9.js",
+    "evidence": "089db7231b036b2d50a121cde03df2050679020a5c801f5a9b122a0b9582046f"
+  },
+  {
+    "product_id": 3331,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3600",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/RIPSAWHDGAMECAPTURECARD-00003331-",
+    "source": ".ref/devices/3331/static/js/main.37e94222.js",
+    "evidence": "902e6adff1d6419b188390748086a9bbc3a30d82ffc6ad70f96bab3678ba56ec"
+  },
+  {
+    "product_id": 3334,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6148/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/STREAMCONTROLLER-00003334-",
+    "source": ".ref/devices/3334/static/js/main.496bb585.js",
+    "evidence": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca"
+  },
+  {
+    "product_id": 3337,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/9634/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/STREAMCONTROLLERX-00003337-",
+    "source": ".ref/devices/3337/static/js/main.a048e901.js",
+    "evidence": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3"
+  },
+  {
+    "product_id": 3587,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3558",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KIYO-00003587-",
+    "source": ".ref/devices/3587/static/js/main.459c3161.js",
+    "evidence": "7ab8838be739051b525cb0d9601d84c7ff1567b23fdf8644f190ad05a338488b"
+  },
+  {
+    "product_id": 3589,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4104",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KIYOPRO-00003589-",
+    "source": ".ref/devices/3589/static/js/main.b9251f30.js",
+    "evidence": "b06358e5b2ea82fc75f26c0f4abe326245a0a9e27a0c21b9f7815d7f3ab73d5e"
+  },
+  {
+    "product_id": 3590,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3558",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KIYO-00003587-",
+    "source": ".ref/devices/3590/static/js/main.28ecadf2.js",
+    "evidence": "86d91a14941217438753bfca29ec180f63813a2621dd4c428effca091a07e92e"
+  },
+  {
+    "product_id": 3592,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6430/~/razer-kiyo-pro-ultra-%7C-rz19-04420-support-%26-faqs",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/KIYOPROULTRA-00003592-",
+    "source": ".ref/devices/3592/static/js/main.323f0a8a.js",
+    "evidence": "e2752209d1aa227aca1dbaee32f7ef1ef261ac9b8ccb906636976174dc4e464b"
+  },
+  {
+    "product_id": 3594,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19779",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/KIYOV2PRO-00003594-",
+    "source": ".ref/devices/3594/static/js/main.bb246bb0.js",
+    "evidence": "3ac856b9d24a80432ee50a8d785a1fc230568b9231ce760c95e059e110415170"
+  },
+  {
+    "product_id": 3595,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19780",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/KIYOV2-00003595-",
+    "source": ".ref/devices/3595/static/js/main.19c1ceba.js",
+    "evidence": "a6dcff393dd84d2b8cfeae2a31c5a457201609f6f3ddef68877c87ef85414377"
+  },
+  {
+    "product_id": 3596,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19781",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/KIYOV2X-00003596-",
+    "source": ".ref/devices/3596/static/js/main.0e57873f.js",
+    "evidence": "d5c7ad36f9f5b145578d8849b5132535617f36d2fc740a246b643663fc370f2e"
+  },
+  {
+    "product_id": 3848,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASESTATIONV2CHROMA-00003872-",
+    "source": ".ref/devices/3848/static/js/main.a5ed8890.js",
+    "evidence": "5ccefc0ed2b71c992a5dfc9be8e4368ceb29c13ce1633b1262b7ee1ebca3bda1"
+  },
+  {
+    "product_id": 3849,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3849",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/ChromaHardwareDevelopmentKit-00003849-",
+    "source": ".ref/devices/3849/static/js/main.bb884c00.js",
+    "evidence": "ff1361e034b276ea2e31be9e26fd9981e1fad1433eb353f8cea355a98d9dbb3d"
+  },
+  {
+    "product_id": 3853,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4066",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/LaptopStandChroma-00003853-",
+    "source": ".ref/devices/3853/static/js/main.8f044274.js",
+    "evidence": "a53d67ad1e95e35f3178d97b388cd25871f24a29e69095a46208983f612bdddc"
+  },
+  {
+    "product_id": 3858,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3680/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/RAPTOR27-00003858-",
+    "source": ".ref/devices/3858/static/js/main.608e1599.js",
+    "evidence": "68e3d86fe0798574914af256df203c7eca30ef5b4f3b2950c364c42cb9d2c02e"
+  },
+  {
+    "product_id": 3859,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3859",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/LIANLIO11DYNAMICDESIGNEDBYRAZER-00003859-",
+    "source": ".ref/devices/3859/static/js/main.ffac912b.js",
+    "evidence": "7ac3d82789e761a79edaeeeb20a0c96a9cc0c8c93884c6b9d9eafcfb692bbc54"
+  },
+  {
+    "product_id": 3863,
+    "support": null,
+    "guide": null,
+    "source": ".ref/devices/3863/static/js/main.0ae565e3.js",
+    "evidence": "9b985d483368bcca01af812b43bbd22cb1c99c3d94c1d176d5e0139219f68ba2"
+  },
+  {
+    "product_id": 3866,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse3/CoreXChroma-000003866-",
+    "source": ".ref/devices/3866/static/js/main.28d3f4af.js",
+    "evidence": "bdd3ed242beeded951ba5b38602f5fa52039b611f863b1519050ac40e8db5db3"
+  },
+  {
+    "product_id": 3867,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3598/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/SEIRENEMOTE-00003867-",
+    "source": ".ref/devices/3867/static/js/main.7afd910b.js",
+    "evidence": "ba9f51601f9fcb22b7b4465b4d2c1f59bced7e39b9e9bf26d60530618d1f7ed4"
+  },
+  {
+    "product_id": 3869,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3849",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/MouseBungeeV3Chroma-00003869-",
+    "source": ".ref/devices/3869/static/js/main.82c8869b.js",
+    "evidence": "29ad190a6df3ff9c0ab2465659065e9356ef222a6d6e6b0365b7eb897e5d7060"
+  },
+  {
+    "product_id": 3871,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3898",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/CHROMAARGBCONTROLLER-00003871-",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "evidence": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f"
+  },
+  {
+    "product_id": 3872,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASESTATIONV2CHROMA-00003872-",
+    "source": ".ref/devices/3872/static/js/main.e84a97bd.js",
+    "evidence": "c596331ca17870956d6ff2cb6b612c9d632442fd599370da21935c7b6cde7523"
+  },
+  {
+    "product_id": 3873,
+    "support": "https://rzr.to/2fgbzq",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/THUNDERBOLT4DOCKCHROMA-00003873-",
+    "source": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+    "evidence": "d7826b6c00cf303a9ad33436d6141115eb63b5067dfa17d2aed5cef9d677576e"
+  },
+  {
+    "product_id": 3878,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3902",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/ChargingPadChroma-00003878-",
+    "source": ".ref/devices/3878/static/js/main.1c5334c6.js",
+    "evidence": "9489bfe054a5f3536c44f11f7a8267ed49943104af0abb6a70892185043aec3d"
+  },
+  {
+    "product_id": 3879,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3959",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/TomahawkGamingDesktop-00003879-",
+    "source": ".ref/devices/3879/static/js/main.2f2244ff.js",
+    "evidence": "a99f216dd78c535993a04c3281013407af34e417214360aaa63f1866017f3e55"
+  },
+  {
+    "product_id": 3880,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5390/",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/RAPTOR27(165Hz)-00003880-",
+    "source": ".ref/devices/3880/static/js/main.0ff487d9.js",
+    "evidence": "a48a719444799d247bf66845fbb4ecd6304bfc60f7504b12614bebc7d4906154"
+  },
+  {
+    "product_id": 3883,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4066",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/LaptopStandChromaV2-00003883-",
+    "source": ".ref/devices/3883/static/js/main.85b90298.js",
+    "evidence": "e71c7c76dbdbc212b3e8de63bee8f6333e8b1c03e8ffd11ba4183e262fcf8cb3"
+  },
+  {
+    "product_id": 3884,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5674/",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/CHROMAADDRESSABLERGBCONTROLLER-00003884-",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "evidence": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e"
+  },
+  {
+    "product_id": 3893,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5779",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HANBO-00003893-",
+    "source": ".ref/devices/3893/static/js/main.a7630c14.js",
+    "evidence": "a6a12c73980d1524815dcde362c1c7d00e36c35708b0c41902ddd5e48497849e"
+  },
+  {
+    "product_id": 3894,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5875",
+    "guide": "https://dl.razerzone.com/master-guides/HeadCushionChroma/RazerHeadCushionChroma-",
+    "source": ".ref/devices/3894/static/js/main.be5b5e43.js",
+    "evidence": "6f81f740ee009e53b728c513f51e77bc593b414111fdec79256406109702de4f"
+  },
+  {
+    "product_id": 3900,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5736",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/PWMPCFANCONTROLLER-00003900-",
+    "source": ".ref/devices/3900/static/js/main.1f8b3065.js",
+    "evidence": "b1cdf1d02289ce7056681ab4bfe5658449e62af3b6b115b207eb73cae75ed7cb"
+  },
+  {
+    "product_id": 3907,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14672/",
+    "guide": "http://dl.razerzone.com/master-guides/RazerSynapse4/LaptopCoolingPad-00003907-",
+    "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+    "evidence": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7"
+  },
+  {
+    "product_id": 3909,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14268",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse3/FREYJA-00003909-",
+    "source": ".ref/devices/3909/static/js/main.5ea04b2c.js",
+    "evidence": "079a7e4f34ce3ca366ca5c36466d85c1d7d292a3d2bc6ab8cd998c82f69bfd08"
+  },
+  {
+    "product_id": 3921,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14797",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/COREXV2-00003921-",
+    "source": ".ref/devices/3921/static/js/main.77ab7933.js",
+    "evidence": "f6e8bc151c8e31bd40b3ecca41bba75cc78d7b79f05a970cf416cc5ef955beaa"
+  },
+  {
+    "product_id": 3922,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14796",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/THUNDERBOLT5DOCKCHROMA-00003922-",
+    "source": ".ref/devices/3922/static/js/main.8e6d5457.js",
+    "evidence": "28b8fbafa6941b616ed43a552d25c21630463edcfe200c23ce26eaebd3a879df"
+  },
+  {
+    "product_id": 3929,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14803",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/MONITORSTANDCHROMA-00003929-",
+    "source": ".ref/devices/3929/static/js/main.2aea7d59.js",
+    "evidence": "96ba937b1680f184e8ef83dbfc10d99494acb01576c53a878b59db67ff9bed52"
+  },
+  {
+    "product_id": 3932,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14798",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HANDHELDDOCKCHROMA-00003932-",
+    "source": ".ref/devices/3932/static/js/main.a61a864b.js",
+    "evidence": "8ffc768cb566a93cbad3e23b88b451541e604ad45fff85d313e3cd03ca31d28f"
+  },
+  {
+    "product_id": 3940,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20596",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/SOMACHROMA-00003940-",
+    "source": ".ref/devices/3940/static/js/main.0d3c913d.js",
+    "evidence": "479ca85de85cfb56cdcb8b83e93cdf5e2477c28c8deba959f2db8334a7478c32"
+  },
+  {
+    "product_id": 3942,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21051",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/SOMAPRO-00003942-",
+    "source": ".ref/devices/3942/static/js/main.07f59396.js",
+    "evidence": "84a7a45e640d45b5ccad85736c188a16e331437a67504e1df92d54da6e1be77d"
+  },
+  {
+    "product_id": 3946,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20632",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/BASESTATIONV3CHROMA-00003946-",
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "evidence": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b"
+  },
+  {
+    "product_id": 3949,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20597",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/SOMASENSAHDHAPTICS-00003949-",
+    "source": ".ref/devices/3949/static/js/main.5f0af02d.js",
+    "evidence": "4db66787eb4e0b5091267af7ca5b7fa35c103e70e205b0b91640955e4da0fa16"
+  },
+  {
+    "product_id": 4115,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13253",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/KITSUNEARCADECONTROLLER-00004133-",
+    "source": ".ref/devices/4115/static/js/main.1a52fc92.js",
+    "evidence": "03ad7f2d6eafc52a1766a7b850c0d03912344a5bfcd00695b62c5baff76254aa"
+  },
+  {
+    "product_id": 4124,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15473",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3PROFORPLAYSTATION-00004124-",
+    "source": ".ref/devices/4124/static/js/main.7ea8f906.js",
+    "evidence": "234facdff27e0df4905389d9fd096be4d49fcd8ab2b43d8de7d31daa42e81fa5"
+  },
+  {
+    "product_id": 4126,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15474",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3FORPLAYSTATION-00004127-",
+    "source": ".ref/devices/4126/static/js/main.61243a04.js",
+    "evidence": "da680f3f1656f6f16057a193e7d45fbea61041ca5ed504f498c71b84d8bca41d"
+  },
+  {
+    "product_id": 4130,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/15475",
+    "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BLACKSHARKV3XHYPERSPEEDFORPLAYSTATION-00004130-",
+    "source": ".ref/devices/4130/static/js/main.6a9cd75a.js",
+    "evidence": "7e8cf653a634fe7756d32e190b9d1b8b791436c082d189ef4279435b2096cb4a"
+  },
+  {
+    "product_id": 4133,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20453",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/RAIJUV3PROPLAYSTATION-00004133-",
+    "source": ".ref/devices/4133/static/js/main.d34fa647.js",
+    "evidence": "223ff814f762c5dd0e62c117b57d2c3e72b303f3e27804c35ab0bc570ce20159"
+  },
+  {
+    "product_id": 4144,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20453",
+    "guide": "http://dl.razer.com/master-guides/RazerSynapse4/RaijuV3ProSignatureEdition-00004144-",
+    "source": ".ref/devices/4144/static/js/main.a5c50629.js",
+    "evidence": "9a6cae35074ee895b48e3a4c96f9f833ebf51f59896126f934a3183e5cee83e6"
+  },
+  {
+    "product_id": 45066,
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21281",
+    "guide": "https://dl.razerzone.com/master-guides/RazerSynapse4/BASILISKV3PRO35KXBOX25ANNIVERSARYEDITION-00045066-",
+    "source": ".ref/devices/45066/static/js/main.bc41890a.js",
+    "evidence": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71"
+  }
+]

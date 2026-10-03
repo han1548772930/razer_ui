@@ -1,7 +1,7 @@
 //! App navigation and persistence. Device feature state lives in DeviceWorkspace.
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
-    features::{DeviceWorkspace, WorkspaceEvent},
+    features::{ProductWorkspace, WorkspaceEvent},
     model::Device,
     nav::Tab,
     preferences::CustomColors,
@@ -46,12 +46,12 @@ enum Location {
     Tour(TourKind),
     Alexa,
     FirmwareUpdate,
+    ProfileMigration,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SaveScope {
     Workspace,
     Profiles,
-    Settings,
 }
 struct PreparedSave {
     scope: SaveScope,
@@ -95,7 +95,7 @@ fn save_continuation(
     }
 }
 pub struct AppShell {
-    devices: Vec<Entity<DeviceWorkspace>>,
+    devices: Vec<Entity<ProductWorkspace>>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
     history: Vec<Location>,
@@ -115,6 +115,7 @@ pub struct AppShell {
     alexa: Option<Entity<alexa_page::AlexaPage>>,
     alexa_subscription: Option<Subscription>,
     firmware_update: Option<(Entity<firmware_update::FirmwareUpdate>, Subscription)>,
+    profile_migration: Option<Entity<profile_migration::MigrationPage>>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -190,6 +191,7 @@ impl AppShell {
             alexa: None,
             alexa_subscription: None,
             firmware_update: None,
+            profile_migration: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -244,6 +246,7 @@ impl AppShell {
                     this.dashboard_tutorial.update(cx, |tutorial, cx| {
                         tutorial.set_seen(preferences.dashboard_tutorial_seen, cx)
                     });
+                    this.save_auxiliary_preferences(cx);
                     cx.notify();
                 }
                 settings_page::SettingsEvent::Language => {
@@ -251,9 +254,6 @@ impl AppShell {
                         device.update(cx, |device, cx| device.refresh_locale(window, cx));
                     }
                     cx.refresh_windows();
-                }
-                settings_page::SettingsEvent::Save => {
-                    this.save_with_scope(SaveScope::Settings, false, window, cx)
                 }
                 settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
                 settings_page::SettingsEvent::PreviewChromaTour => {
@@ -264,6 +264,9 @@ impl AppShell {
                 }
                 settings_page::SettingsEvent::PreviewAppPicker => {
                     app_picker::open_preview(window, cx);
+                }
+                settings_page::SettingsEvent::ProfileMigration => {
+                    this.navigate(Location::ProfileMigration, window, cx);
                 }
                 settings_page::SettingsEvent::PreviewModules => {
                     this.module_catalog
@@ -353,34 +356,32 @@ impl AppShell {
             .and_then(|p| args.get(p + 1))
             .and_then(|v| v.parse::<u32>().ok())
         {
-            if [653, 777].contains(&pid) || crate::product::audited_mouse_mat(pid).is_some() {
+            if crate::features::has_product_workspace(pid) {
                 this.add_preview(pid, window, cx);
             }
         }
-        if let Some(tab) = args
-            .iter()
-            .position(|a| a == "--tab")
-            .and_then(|p| args.get(p + 1))
-            .and_then(|v| Tab::from_arg(v))
-        {
-            if tab.is_main() {
-                this.location = Location::Main(tab);
-            } else if tab == Tab::Pairing {
+        if let Some(key) = args.iter().position(|a| a == "--tab").and_then(|p| args.get(p + 1)) {
+            let tab = Tab::from_arg(key);
+            if tab.is_some_and(Tab::is_main) {
+                this.location = Location::Main(tab.unwrap());
+            } else if tab == Some(Tab::Pairing) {
                 this.location = Location::Pairing;
-            } else if let Some(device) = this
-                .devices
-                .iter()
-                .find(|d| {
-                    let pages = Tab::for_product(d.read(cx).device().product_id);
-                    pages.contains(&tab) || (tab == Tab::Help && !pages.is_empty())
-                })
-                .cloned()
-            {
-                let key = device.read(cx).identity();
-                device.update(cx, |d, cx| d.set_page(tab, window, cx));
-                this.location = Location::Device(key);
             } else {
-                this.status = "所选页面不适用于当前设备。".into();
+                let normalized = key.to_ascii_uppercase();
+                let device = this.devices.iter().rev().find(|d| {
+                    let pid = d.read(cx).device(cx).product_id;
+                    let original = Tab::for_product(pid);
+                    tab.is_some_and(|t| original.contains(&t) || (t == Tab::Help && !original.is_empty()))
+                        || crate::product::registered(pid).and_then(|p| p.primary_navigation()).is_some_and(|n| n.pages().iter().any(|p| p.id().key() == key || p.kind().key() == normalized || p.kind().key().strip_prefix("TAB_") == Some(normalized.as_str())))
+                }).cloned();
+                if let Some(device) = device {
+                    let identity = device.read(cx).identity(cx);
+                    device.update(cx, |d,cx| {
+                        if let Some(tab) = tab { d.set_page(tab, window, cx); }
+                        d.set_source_page(key, window, cx);
+                    });
+                    this.location = Location::Device(identity);
+                } else { this.status = "?????????????".into(); }
             }
         }
         this.host_tabs.visit(&this.location, cx);
@@ -417,7 +418,7 @@ impl AppShell {
             device.layout_id = 1;
         }
         let entity =
-            cx.new(|cx| DeviceWorkspace::new(device, self.tracking_intro_seen, window, cx));
+            cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
         self.subscriptions.push(
             cx.subscribe_in(&entity, window, |this, _, event, window, cx| match event {
                 WorkspaceEvent::Changed => cx.notify(),
@@ -433,9 +434,9 @@ impl AppShell {
                 }
             }),
         );
-        if !Tab::for_product(entity.read(cx).device().product_id).is_empty() {
+        if crate::features::has_product_workspace(entity.read(cx).device(cx).product_id) {
             self.host_tabs
-                .open(host_tabs::HostTab::Device(entity.read(cx).identity()), cx);
+                .open(host_tabs::HostTab::Device(entity.read(cx).identity(cx)), cx);
         }
         self.devices.push(entity);
         self.sync_app_picker(window, cx);
@@ -447,7 +448,7 @@ impl AppShell {
             || cx.global::<CustomColors>().dirty()
             || self.settings.read(cx).dirty()
             || self.shortcuts.read(cx).dirty()
-            || self.devices.iter().any(|d| d.read(cx).dirty())
+            || self.devices.iter().any(|d| d.read(cx).dirty(cx))
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
@@ -546,7 +547,7 @@ impl AppShell {
                 if let Some(device) = self
                     .devices
                     .iter()
-                    .find(|device| device.read(cx).identity() == *key)
+                    .find(|device| device.read(cx).identity(cx) == *key)
                 {
                     device.update(cx, |device, cx| device.dismiss_profile_dialog(window, cx));
                 }
@@ -594,6 +595,9 @@ impl AppShell {
                 if let Some((page, _)) = &self.firmware_update {
                     page.update(cx, |page, cx| page.focus(window, cx));
                 }
+            }
+            if next == Location::ProfileMigration && self.profile_migration.is_none() {
+                self.profile_migration = Some(cx.new(profile_migration::MigrationPage::new));
             }
             if let Some(index) = history_index {
                 self.history_index = index;
@@ -643,12 +647,12 @@ impl AppShell {
         let mut blocked = Vec::new();
         for device in &self.devices {
             let device = device.read(cx);
-            if !device.committed_pending() {
+            if !device.committed_pending(cx) {
                 continue;
             }
-            identities.push(device.identity());
-            if device.discard_would_remove_mapping() {
-                blocked.push(device.device().display_name());
+            identities.push(device.identity(cx));
+            if device.discard_would_remove_mapping(cx) {
+                blocked.push(device.device(cx).display_name());
             }
         }
         if blocked.is_empty() {
@@ -694,7 +698,7 @@ impl AppShell {
             return;
         }
         for device in &self.devices {
-            if identities.contains(&device.read(cx).identity()) {
+            if identities.contains(&device.read(cx).identity(cx)) {
                 device.update(cx, |device, cx| {
                     if !device.discard_committed(window, cx) && allow_mapping_discard {
                         device.discard(window, cx);
@@ -705,17 +709,15 @@ impl AppShell {
         cx.notify();
     }
     fn sync_persistence_state(&self, cx: &mut Context<Self>) {
-        let saving = self.save_task.is_some();
         let error = self.storage_error.clone();
-        self.settings.update(cx, |settings, cx| {
-            settings.set_persistence_state(saving, error, cx)
-        });
+        self.settings
+            .update(cx, |settings, cx| settings.set_persistence_state(error, cx));
     }
     fn auxiliary_preferences_pending(&self, cx: &App) -> bool {
         self.tracking_intro_seen != self.saved_intro_seen
             || self.dashboard_state.read(cx).pending()
             || self.host_tabs.order_pending()
-            || self.settings.read(cx).tutorial_pending()
+            || self.settings.read(cx).dirty()
             || cx.global::<CustomColors>().dirty()
             || self.shortcuts.read(cx).committed_pending()
     }
@@ -748,27 +750,13 @@ impl AppShell {
                 return;
             }
         }
-        let devices: Vec<Device> = self
-            .devices
-            .iter()
-            .map(|d| {
-                if scope != SaveScope::Settings {
-                    d.read(cx).snapshot()
-                } else {
-                    d.read(cx).saved_snapshot()
-                }
-            })
-            .collect();
+        let devices: Vec<Device> = self.devices.iter().map(|d| d.read(cx).snapshot(cx)).collect();
         let shortcuts = if scope == SaveScope::Workspace {
             self.shortcuts.read(cx).snapshot()
         } else {
             self.shortcuts.read(cx).saved_snapshot()
         };
-        let preferences = if scope == SaveScope::Profiles {
-            self.settings.read(cx).tutorial_snapshot()
-        } else {
-            self.settings.read(cx).snapshot()
-        };
+        let preferences = self.settings.read(cx).snapshot();
         let custom_colors = cx.global::<CustomColors>().colors();
         let intro = self.tracking_intro_seen;
         let host_order = self.host_tabs.order();
@@ -794,19 +782,11 @@ impl AppShell {
         let Some(mut request) = self.pending_saves.pop_front() else {
             return false;
         };
-        // Capture and validate editable drafts at the original click. A queued
-        // Settings save then uses the latest persisted device/shortcut baseline
-        // so it cannot overwrite a preceding write or commit unrelated drafts.
-        if request.scope == SaveScope::Settings {
-            request.file.devices = self
-                .devices
-                .iter()
-                .map(|device| device.read(cx).saved_snapshot())
-                .collect();
+        // Keep validated device drafts captured at the click. Preferences have
+        // immediate semantics, so a queued save always takes their latest value.
+        request.file.preferences = self.settings.read(cx).snapshot();
+        if request.scope == SaveScope::Profiles {
             request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
-        } else if request.scope == SaveScope::Profiles {
-            request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
-            request.file.preferences = self.settings.read(cx).tutorial_snapshot();
         }
         let PreparedSave {
             scope,
@@ -837,10 +817,8 @@ impl AppShell {
                             ..
                         } = snapshot;
                         // Commit exactly the captured revision. New edits during I/O stay dirty.
-                        if scope != SaveScope::Settings {
-                            for (entity, snapshot) in this.devices.iter().zip(devices) {
-                                entity.update(cx, |d, cx| d.mark_saved(snapshot, cx));
-                            }
+                        for (entity, snapshot) in this.devices.iter().zip(devices) {
+                            entity.update(cx, |d, cx| d.mark_saved(snapshot, cx));
                         }
                         if scope == SaveScope::Workspace {
                             this.shortcuts
@@ -853,12 +831,7 @@ impl AppShell {
                         CustomColors::mark_saved(custom_colors, cx);
                         this.settings
                             .update(cx, |settings, cx| settings.mark_saved(preferences, cx));
-                        this.status = if scope == SaveScope::Settings {
-                            "设置已保存到本机"
-                        } else {
-                            "已保存到本机 · 尚未发送到设备"
-                        }
-                        .into();
+                        this.status = "已保存到本机 · 尚未发送到设备".into();
                         if this.settings.read(cx).snapshot().notifications && !this.close_requested
                         {
                             // Persistence completes without needing the original
@@ -902,16 +875,14 @@ impl AppShell {
         }
     }
     fn save_auxiliary_preferences(&mut self, cx: &mut Context<Self>) {
-        // Tutorial flags, palette edits and committed shortcuts share the
-        // serialized writer. Editor, device and Settings drafts stay out.
+        // Settings, tutorial flags, palette edits and committed shortcuts share
+        // the serialized writer. Uncommitted device/editor drafts stay out.
         if self.save_task.is_some() || self.storage_error.is_some() {
             cx.notify();
             return;
         }
         let intro = self.tracking_intro_seen;
-        let preferences = self.settings.read(cx).tutorial_snapshot();
-        let gamer_room_seen = preferences.gamer_room_tutorial_seen;
-        let dashboard_seen = preferences.dashboard_tutorial_seen;
+        let preferences = self.settings.read(cx).snapshot();
         let custom_colors = cx.global::<CustomColors>().colors();
         let shortcuts = self.shortcuts.read(cx).snapshot();
         let shortcuts_pending = self.shortcuts.read(cx).committed_pending();
@@ -920,12 +891,12 @@ impl AppShell {
         let file = store::WorkspaceFile::new(
             self.devices
                 .iter()
-                .map(|d| d.read(cx).saved_snapshot())
+                .map(|d| d.read(cx).saved_snapshot(cx))
                 .collect(),
             intro,
         )
         .with_shortcuts(shortcuts.clone())
-        .with_preferences(preferences)
+        .with_preferences(preferences.clone())
         .with_custom_colors(custom_colors)
         .with_host_tab_order(host_order.clone())
         .with_dashboard(dashboard.clone());
@@ -947,9 +918,8 @@ impl AppShell {
                         this.shortcuts.update(cx, |shortcuts_state, cx| {
                             shortcuts_state.mark_saved(shortcuts, cx)
                         });
-                        this.settings.update(cx, |settings, cx| {
-                            settings.mark_tutorial_saved(gamer_room_seen, dashboard_seen, cx)
-                        });
+                        this.settings
+                            .update(cx, |settings, cx| settings.mark_saved(preferences, cx));
                         if shortcuts_pending {
                             this.status = "快捷键已保存到本机 · 尚未应用到引擎".into();
                         }
@@ -957,6 +927,9 @@ impl AppShell {
                     }
                     Err(error) => {
                         this.status = format!("本地偏好保存失败：{error}");
+                        this.settings.update(cx, |settings, cx| {
+                            settings.set_persistence_state(Some(error.to_string()), cx)
+                        });
                         this.continue_save_queue(false, cx);
                     }
                 }
@@ -1016,47 +989,28 @@ impl AppShell {
         });
     }
     fn add_preview(&mut self, pid: u32, window: &mut Window, cx: &mut Context<Self>) {
-        if ![653, 777].contains(&pid) && crate::product::audited_mouse_mat(pid).is_none() {
+        if crate::product::registered(pid).is_none() {
             return;
         }
         let serial = format!("PREVIEW-{pid}");
         if !self
             .devices
             .iter()
-            .any(|d| d.read(cx).device().serial_number == serial)
+            .any(|d| d.read(cx).device(cx).serial_number == serial)
         {
-            let mut device =
-                crate::demo::mouse_mat_preview(pid).unwrap_or_else(crate::demo::demo_keyboard);
-            device.product_id = pid;
-            device.real_product_id = pid;
-            device.serial_number = serial;
-            device.device_container_id = format!("preview-{pid}");
-            if pid == 777 {
-                device.category = crate::model::DeviceCategory::Headset;
-                device.has_battery = true;
-                device.features =
-                    crate::domain::DeviceFeatures::for_category(device.category, true, true);
-            }
-            let name = if let Some(product) = crate::product::audited_mouse_mat(pid) {
-                format!("{} · 预览", product.name())
-            } else if pid == 653 {
-                "Razer BlackWidow V4 Pro · 预览".into()
-            } else {
-                "Razer Kraken BT · 预览".into()
-            };
-            for value in device.name.values.values_mut() {
-                *value = name.clone();
-            }
-            device.product_name = device.name.clone();
+            let mut device = crate::demo::mouse_mat_preview(pid)
+                .or_else(|| crate::demo::registered_preview(pid)).expect("registered preview");
+            // 653's own root selects layoutId || 1 for its default preview.
+            if pid == 653 { device.layout_id = 1; }
             self.add_device(device, window, cx);
         }
         let key = self
             .devices
             .iter()
-            .find(|d| d.read(cx).device().serial_number == format!("PREVIEW-{pid}"))
+            .find(|d| d.read(cx).device(cx).serial_number == format!("PREVIEW-{pid}"))
             .unwrap()
             .read(cx)
-            .identity();
+            .identity(cx);
         self.navigate(Location::Device(key), window, cx);
     }
     fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -1066,8 +1020,8 @@ impl AppShell {
             Location::Device(key) => self
                 .devices
                 .iter()
-                .find(|d| d.read(cx).identity() == *key)
-                .map(|d| d.read(cx).device().display_name())
+                .find(|d| d.read(cx).identity(cx) == *key)
+                .map(|d| d.read(cx).device(cx).display_name())
                 .unwrap_or_default(),
             Location::Main(Tab::Setting) => "设置".into(),
             Location::Main(_) => "RAZER SYNAPSE".into(),
@@ -1075,12 +1029,16 @@ impl AppShell {
             Location::Tour(kind) => kind.title().into(),
             Location::Alexa => "Alexa".into(),
             Location::FirmwareUpdate => "固件更新".into(),
+            Location::ProfileMigration => crate::i18n::t("PROFILE_MIGRATION").into(),
         };
         let (has_previous, has_next) = if self.location == Location::Alexa {
             self.alexa.as_ref().map_or((false, false), |page| {
                 let page = page.read(cx);
                 (page.has_previous_page(), page.has_next_page())
             })
+        } else if self.location == Location::ProfileMigration {
+            // Migration OD passes an empty tabNavigations list to its toolbar.
+            (false, false)
         } else {
             (
                 self.history_index > 0,
@@ -1139,32 +1097,47 @@ impl AppShell {
                             cx.listener(|this, _, window, cx| this.move_history(1, window, cx)),
                         ),
                     )
-                    .when(self.location == Location::Alexa, |navigation| {
-                        navigation.child(
-                            surface::asset_button(
-                                "alexa-refresh",
-                                "synapse/alexa-refresh.svg",
-                                crate::i18n::t("REFRESH"),
-                                cx,
+                    .when(
+                        matches!(self.location, Location::Alexa | Location::ProfileMigration),
+                        |navigation| {
+                            navigation.child(
+                                surface::asset_button(
+                                    if self.location == Location::Alexa {
+                                        "alexa-refresh"
+                                    } else {
+                                        "migration-refresh"
+                                    },
+                                    "synapse/alexa-refresh.svg",
+                                    crate::i18n::t("REFRESH"),
+                                    cx,
+                                )
+                                .w(surface::css(40.))
+                                .h_full()
+                                .rounded(ButtonRounded::None)
+                                .custom(
+                                    ButtonCustomVariant::new(cx)
+                                        .color(cx.theme().transparent)
+                                        .hover(cx.theme().secondary_hover)
+                                        .active(cx.theme().secondary_hover),
+                                )
+                                .on_click(cx.listener(
+                                    |this, _, window, cx| {
+                                        if this.location == Location::Alexa {
+                                            if let Some(page) = &this.alexa {
+                                                page.update(cx, |page, cx| {
+                                                    page.refresh(window, cx)
+                                                });
+                                            }
+                                        } else if this.location == Location::ProfileMigration {
+                                            this.profile_migration =
+                                                Some(cx.new(profile_migration::MigrationPage::new));
+                                            cx.notify();
+                                        }
+                                    },
+                                )),
                             )
-                            .w(surface::css(40.))
-                            .h_full()
-                            .rounded(ButtonRounded::None)
-                            .custom(
-                                ButtonCustomVariant::new(cx)
-                                    .color(cx.theme().transparent)
-                                    .hover(cx.theme().secondary_hover)
-                                    .active(cx.theme().secondary_hover),
-                            )
-                            .on_click(cx.listener(
-                                |this, _, window, cx| {
-                                    if let Some(page) = &this.alexa {
-                                        page.update(cx, |page, cx| page.refresh(window, cx));
-                                    }
-                                },
-                            )),
-                        )
-                    }),
+                        },
+                    ),
             )
             .child(
                 div()
@@ -1198,8 +1171,8 @@ impl AppShell {
                             .filter_map(|device| {
                                 let device = device.read(cx);
                                 device
-                                    .committed_pending()
-                                    .then(|| (device.identity(), device.device().display_name()))
+                                    .committed_pending(cx)
+                                    .then(|| (device.identity(cx), device.device(cx).display_name()))
                             })
                             .collect(),
                         self.save_task.is_some(),
@@ -1213,6 +1186,19 @@ impl AppShell {
                         },
                         cx,
                     ))
+                    .when(
+                        self.settings
+                            .read(cx)
+                            .snapshot()
+                            .profile_migration_icon_visible,
+                        |view| {
+                            view.child(profile_migration::header_button(cx).on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    this.navigate(Location::ProfileMigration, window, cx);
+                                },
+                            )))
+                        },
+                    )
                     .child(self.app_picker.clone())
                     .child(
                         surface::asset_button("app-settings", "synapse/settings.svg", "设置", cx)
@@ -1331,7 +1317,7 @@ impl Render for AppShell {
             Location::Device(key) => self
                 .devices
                 .iter()
-                .find(|d| d.read(cx).identity() == *key)
+                .find(|d| d.read(cx).identity(cx) == *key)
                 .map(|d| d.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Main(page) => self.main_page(*page, window, cx),
@@ -1349,6 +1335,11 @@ impl Render for AppShell {
                 .firmware_update
                 .as_ref()
                 .map(|(page, _)| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::ProfileMigration => self
+                .profile_migration
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Pairing => div()
                 .id("pairing-page-scroll")

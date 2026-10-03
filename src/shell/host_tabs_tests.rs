@@ -274,6 +274,25 @@ fn host_controls_keep_intrinsic_svg_sizes_and_full_close_hit_target(cx: &mut Tes
 }
 
 #[gpui_kit::test]
+fn migration_entry_reuses_its_tab_and_can_reopen_after_close(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        let mut tabs = HostTabs::new(cx);
+        tabs.visit(&Location::Main(Tab::Setting), cx);
+        tabs.visit(&Location::ProfileMigration, cx);
+        tabs.visit(&Location::ProfileMigration, cx);
+        assert_eq!(tabs.order(), ["syn3-profile-migration"]);
+        assert!(
+            tabs.remove(&HostTab::ProfileMigration, &Location::ProfileMigration)
+                == Some(Location::Main(Tab::Setting))
+        );
+        assert_eq!(tabs.closed, [HostTab::ProfileMigration]);
+        tabs.visit(&Location::ProfileMigration, cx);
+        assert_eq!(tabs.order(), ["syn3-profile-migration"]);
+        assert!(tabs.closed.is_empty());
+    });
+}
+
+#[gpui_kit::test]
 fn closing_tabs_selects_neighbors_and_reopening_preserves_order(cx: &mut TestAppContext) {
     cx.update(|cx| {
         let mut tabs = HostTabs::new(cx);

@@ -29,7 +29,16 @@ fn open(
 
 #[gpui_kit::test]
 fn source_settings_commands_keep_minimum_width_and_height_after_reset(cx: &mut TestAppContext) {
-    let (_, handle) = open(cx, AppPreferences::default());
+    let (page, handle) = open(cx, AppPreferences::default());
+    let reset_count = std::rc::Rc::new(std::cell::Cell::new(0));
+    let count = reset_count.clone();
+    let subscription = page.update(cx, |_, cx| {
+        cx.subscribe(&page, move |_, _, event, _| {
+            if matches!(event, super::SettingsEvent::ResetTutorials) {
+                count.set(count.get() + 1);
+            }
+        })
+    });
     for width in [1500., 1080.] {
         cx.simulate_window_resize(handle.into(), size(px(width), px(1600.)));
         cx.update_window(handle.into(), |_, window, cx| {
@@ -46,16 +55,17 @@ fn source_settings_commands_keep_minimum_width_and_height_after_reset(cx: &mut T
     cx.update_window(handle.into(), |_, window, cx| {
         let before = window.find("settings-reset-tutorials").bounds().size;
         window.click("settings-reset-tutorials", cx);
-        assert_eq!(
-            window.find("settings-reset-tutorials").disabled(),
-            Some(true)
-        );
+        window.render_frame(cx);
+        window.click("settings-reset-tutorials", cx);
         assert_eq!(
             window.find("settings-reset-tutorials").bounds().size,
             before
         );
     })
     .unwrap();
+    cx.run_until_parked();
+    assert_eq!(reset_count.get(), 1, "disabled reset must not emit again");
+    drop(subscription);
 }
 
 struct SourceButtonFixture {
@@ -224,76 +234,64 @@ fn recommendation_reset_clears_products_and_ownership_but_preserves_categories(
         assert!(values.owned_products.is_empty());
         assert_eq!(values.ignored_categories, ["mouse"]);
         window.click("settings-recommendations", cx);
-        assert_eq!(
-            window.find("settings-category-mouse").disabled(),
-            Some(true)
-        );
+        let disabled_values = page.read(cx).snapshot();
+        window.click("settings-category-mouse", cx);
+        window.click("settings-reset-categories", cx);
+        assert_eq!(page.read(cx).snapshot(), disabled_values);
         window.click("settings-recommendations", cx);
         assert_eq!(page.read(cx).snapshot().ignored_categories, ["mouse"]);
-        window.click("settings-discard", cx);
-        assert_eq!(page.read(cx).snapshot().owned_products, ["653"]);
-        assert_eq!(page.read(cx).snapshot().ignored_products, ["182"]);
+        assert!(window.try_find("settings-discard").is_none());
+        assert!(window.try_find("settings-save").is_none());
     })
     .unwrap();
 }
 
 #[gpui_kit::test]
-fn tutorial_persistence_and_discard_leave_unrelated_drafts_independent(cx: &mut TestAppContext) {
+fn settings_changes_emit_immediately_and_preserve_edits_during_persistence(
+    cx: &mut TestAppContext,
+) {
+    use super::SettingsEvent;
+    use gpui_kit::Context;
+    use std::{cell::Cell, rc::Rc};
     let (page, handle) = open(cx, AppPreferences::default());
+    let changes = Rc::new(Cell::new(0));
+    let count = changes.clone();
+    let subscription = page.update(cx, |_, cx: &mut Context<SettingsPage>| {
+        cx.subscribe(&page, move |_, _, event, _| {
+            if matches!(event, SettingsEvent::Changed) {
+                count.set(count.get() + 1);
+            }
+        })
+    });
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
+        assert!(window.try_find("settings-save").is_none());
+        assert!(window.try_find("settings-discard").is_none());
+        window.click("settings-notifications", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    assert_eq!(changes.get(), 1);
+    let captured = cx.update(|cx| page.read(cx).snapshot());
+    assert!(!captured.notifications);
+    cx.update_window(handle.into(), |_, window, cx| {
         window.click("settings-notifications", cx);
         page.update(cx, |page, cx| page.tutorial_seen(true, cx));
         page.update(cx, |page, cx| page.dashboard_tutorial_seen(true, cx));
-        let tutorial = page.read(cx).tutorial_snapshot();
+        page.update(cx, |page, cx| page.mark_saved(captured, cx));
+        let latest = page.read(cx).snapshot();
+        assert!(latest.notifications);
+        assert!(latest.gamer_room_tutorial_seen);
+        assert!(latest.dashboard_tutorial_seen);
         assert!(
-            tutorial.notifications,
-            "tutorial writes use saved preferences"
+            page.read(cx).dirty(),
+            "older completion must leave newer preferences pending"
         );
-        assert!(tutorial.gamer_room_tutorial_seen);
-        assert!(tutorial.dashboard_tutorial_seen);
-        page.update(cx, |page, cx| page.mark_tutorial_saved(false, false, cx));
-        assert!(
-            page.read(cx).tutorial_pending(),
-            "an older completion must not erase a newer dismissal"
-        );
-        window.click("settings-discard", cx);
-        assert!(page.read(cx).snapshot().notifications);
-        assert!(page.read(cx).snapshot().gamer_room_tutorial_seen);
-        assert!(page.read(cx).snapshot().dashboard_tutorial_seen);
-        page.update(cx, |page, cx| page.mark_tutorial_saved(true, false, cx));
-        assert!(
-            page.read(cx).tutorial_pending(),
-            "the Dashboard flag has its own captured revision"
-        );
-        page.update(cx, |page, cx| page.mark_tutorial_saved(true, true, cx));
+        page.update(cx, |page, cx| page.mark_saved(latest, cx));
         assert!(!page.read(cx).dirty());
+        window.click("settings-tab-connection", cx);
+        assert!(window.try_find("settings-save").is_none());
     })
     .unwrap();
-}
-
-#[gpui_kit::test]
-fn delayed_save_preserves_newer_edits_and_busy_buttons_reject_repeat_submission(
-    cx: &mut TestAppContext,
-) {
-    let (page, handle) = open(cx, AppPreferences::default());
-    cx.update_window(handle.into(), |_, window, cx| {
-        window.render_frame(cx);
-        window.click("settings-notifications", cx);
-        let captured = page.read(cx).snapshot();
-        page.update(cx, |page, cx| page.set_persistence_state(true, None, cx));
-        window.render_frame(cx);
-        assert_eq!(window.find("settings-save").disabled(), Some(true));
-        assert_eq!(window.find("settings-discard").disabled(), Some(true));
-        window.click("settings-notifications", cx);
-        page.update(cx, |page, cx| {
-            page.mark_saved(captured, cx);
-            page.set_persistence_state(false, None, cx);
-        });
-        assert!(page.read(cx).dirty());
-        window.click("settings-discard", cx);
-        assert!(!page.read(cx).snapshot().notifications);
-        assert!(!page.read(cx).dirty());
-    })
-    .unwrap();
+    drop(subscription);
 }

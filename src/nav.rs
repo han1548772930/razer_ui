@@ -21,6 +21,9 @@ pub enum Tab {
 
 impl Tab {
     pub const MAIN: [Self; 4] = [Self::Home, Self::GamerRoom, Self::Modules, Self::Shortcuts];
+    /// Tabs handled by the original native adapters. The full source registry
+    /// uses product::RegisteredProduct and ProductPageId; a source name never
+    /// routes an unaudited product through one of these existing renderers.
     pub fn for_product(pid: u32) -> &'static [Self] {
         match pid {
             182 => &[

@@ -776,22 +776,31 @@ impl DeviceWorkspace {
                     })),
                 )
                 .child(
-                    Button::new("snap-add-pair")
-                        .outline()
-                        .label("+")
+                    BaseButton::new("snap-add-pair")
+                        .child("+")
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .text_color(cx.theme().foreground)
                         .accessibility_label(i18n::t("SNAP_TAP_ADD_BUTTON_TOOLTIP"))
-                        .tooltip(i18n::t("SNAP_TAP_ADD_BUTTON_TOOLTIP"))
+                        .tooltip(|window, cx| {
+                            Tooltip::new(i18n::t("SNAP_TAP_ADD_BUTTON_TOOLTIP")).build(window, cx)
+                        })
+                        .styles(|s| s.disabled(|s| s.opacity(0.3)))
                         .w(surface::css(64.))
                         .h(surface::css(44.))
                         .p_0()
                         .border(surface::css(2.))
                         .border_color(cx.theme().foreground)
-                        .hover(|style| {
-                            style
-                                .border_color(cx.theme().primary)
-                                .text_color(cx.theme().primary)
+                        .when(enabled && pairs.len() < 4 && capture.is_none(), |button| {
+                            button.hover(|style| {
+                                style
+                                    .border_color(cx.theme().primary)
+                                    .text_color(cx.theme().primary)
+                            })
                         })
                         .rounded(cx.theme().font_size * (5. / 16.))
+                        .focus_visible(|s| s.border_color(cx.theme().primary))
                         .text_size(surface::css(20.))
                         .disabled(!enabled || pairs.len() >= 4 || capture.is_some())
                         .on_click(cx.listener(|this, _, window, cx| {

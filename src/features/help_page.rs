@@ -2,10 +2,7 @@
 use super::workspace::DeviceWorkspace;
 use crate::{i18n, ui::surface};
 use gpui_kit::base::{Button as BaseButton, Link};
-use gpui_kit::component::{
-    button::{Button, ButtonCustomVariant, ButtonVariants},
-    *,
-};
+use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
@@ -69,16 +66,17 @@ fn help_link(id: &'static str, label: String, url: impl Into<SharedString>, cx: 
         )
 }
 
-fn help_button(id: &'static str, label: String, cx: &App) -> Button {
-    Button::new(id)
-        .label(label)
-        .custom(
-            ButtonCustomVariant::new(cx)
-                .color(cx.theme().button)
-                .foreground(cx.theme().button_foreground)
-                .hover(cx.theme().button)
-                .active(cx.theme().button),
-        )
+fn help_button(id: &'static str, label: String, disabled: bool, cx: &App) -> BaseButton {
+    BaseButton::new(id)
+        .accessibility_label(label.clone())
+        .child(label)
+        .disabled(disabled)
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(cx.theme().button)
+        .text_color(cx.theme().button_foreground)
+        .styles(|s| s.disabled(|s| s.opacity(0.3)))
         .h(surface::css(27.))
         .min_w(surface::css(100.))
         .border_1()
@@ -87,7 +85,8 @@ fn help_button(id: &'static str, label: String, cx: &App) -> Button {
         .px(surface::css(12.))
         .py_0()
         .text_size(surface::css(12.))
-        .hover(|s| s.opacity(0.8))
+        .when(!disabled, |s| s.hover(|s| s.opacity(0.8)))
+        .focus_visible(|s| s.border_color(cx.theme().primary))
 }
 
 impl DeviceWorkspace {
@@ -143,10 +142,12 @@ impl DeviceWorkspace {
                 .items_start()
                 .child(i18n::t("FACTORY_RESET_PROFILES"))
                 .child(
-                    help_button("help-factory-reset", i18n::t("RESET"), cx)
+                    help_button("help-factory-reset", i18n::t("RESET"), true, cx)
                         .mt(surface::css(20.))
-                        .disabled(true)
-                        .tooltip("设备服务未连接，无法恢复设备出厂设置"),
+                        .tooltip(|window, cx| {
+                            tooltip::Tooltip::new("设备服务未连接，无法恢复设备出厂设置")
+                                .build(window, cx)
+                        }),
                 ),
         );
         let serial_panel = surface::panel(i18n::t("SERIAL_NUM"), cx).gap_0().child(
@@ -168,10 +169,10 @@ impl DeviceWorkspace {
                         } else {
                             "COPY_SERIAL"
                         }),
+                        serial.is_empty() || self.help.copied_serial,
                         cx,
                     )
                     .mt(surface::css(20.))
-                    .disabled(serial.is_empty() || self.help.copied_serial)
                     .on_click(cx.listener(|this, _, window, cx| this.copy_help_serial(window, cx))),
                 ),
         );

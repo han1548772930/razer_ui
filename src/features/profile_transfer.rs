@@ -237,6 +237,7 @@ fn decode_profile(bytes: &[u8], pid: u32, layout: u32) -> Result<Profile, String
     }
     validate_settings(&settings, pid)?;
     Ok(Profile {
+                source_settings: None,
         id: String::new(),
         guid: String::new(),
         name: document.profile.name,

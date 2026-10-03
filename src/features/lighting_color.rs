@@ -5,8 +5,8 @@ use crate::{
     ui::{surface, theme::PaletteColors},
 };
 use gpui_kit::base::{
-    ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider, SliderIndicator, SliderThumb,
-    SliderTrack,
+    Button as BaseButton, ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider,
+    SliderIndicator, SliderThumb, SliderTrack,
 };
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -411,15 +411,18 @@ impl LightingColorView {
         selected: bool,
         empty: bool,
         cx: &App,
-    ) -> Button {
+    ) -> BaseButton {
         let palette = PaletteColors;
-        Button::new(id)
+        BaseButton::new(id)
             .accessibility_label(if empty {
                 "添加自定义颜色".into()
             } else {
                 format!("#{}", hex_value(color_bytes(color)))
             })
             .w(surface::css(20.))
+            .flex()
+            .items_center()
+            .justify_center()
             .h(surface::css(20.))
             .p_0()
             .rounded(cx.theme().font_size * (3. / 16.))
@@ -429,12 +432,9 @@ impl LightingColorView {
             } else {
                 palette.swatch_border()
             })
-            .custom(
-                ButtonCustomVariant::new(cx)
-                    .color(color)
-                    .hover(color)
-                    .active(color.opacity(0.7)),
-            )
+            .bg(color)
+            .active(|s| s.bg(color.opacity(0.7)))
+            .focus_visible(|s| s.border_color(cx.theme().primary))
             .when(!empty, |button| {
                 button.hover(|style| {
                     style
@@ -979,7 +979,11 @@ impl Render for LightingColorView {
                         cx.listener(|this, open, window, cx| this.set_open(*open, window, cx)),
                     )
                     .trigger(
-                        Button::new("color-trigger")
+                        BaseButton::new("color-trigger")
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .styles(|s| s.disabled(|s| s.opacity(0.3)))
                             .tab_stop(false)
                             .accessibility_label(self.props.label.clone())
                             .disabled(self.props.disabled)
@@ -997,15 +1001,16 @@ impl Render for LightingColorView {
                             } else {
                                 cx.theme().input
                             })
-                            .custom(ButtonCustomVariant::new(cx).color(
-                                if self.props.dial_trigger {
-                                    palette.surface().opacity(0.)
-                                } else {
-                                    palette.surface()
-                                },
-                            ))
-                            .hover(|style| style.border_color(cx.theme().primary))
-                            .when(self.props.dial_trigger, |button| {
+                            .bg(if self.props.dial_trigger {
+                                palette.surface().opacity(0.)
+                            } else {
+                                palette.surface()
+                            })
+                            .when(!self.props.disabled, |button| {
+                                button.hover(|style| style.border_color(cx.theme().primary))
+                            })
+                            .focus_visible(|style| style.border_color(cx.theme().primary))
+                            .when(self.props.dial_trigger && !self.props.disabled, |button| {
                                 button.group_hover("dial-row", |style| {
                                     style.bg(hsv_color(0., 0., 0.))
                                 })

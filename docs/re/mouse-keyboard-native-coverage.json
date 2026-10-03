@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "verification": "Static JSON/source hash/resource validation; no application or tests executed.",
+  "mouse": {
+    "specifications": 75,
+    "source_workspace_products": 74,
+    "source_inputs": 854,
+    "prepared_default_illustrations": 75,
+    "asymmetric_three_preset_products": [
+      122,
+      132,
+      133,
+      134,
+      141,
+      145,
+      153,
+      185
+    ]
+  },
+  "keyboard": {
+    "source_workspace_products": 71,
+    "default_layout_shapes": 6494,
+    "prepared_default_illustrations": 71,
+    "gaming_mode_products": [
+      515,
+      521,
+      529,
+      534,
+      542,
+      545,
+      551,
+      552,
+      554,
+      556,
+      567,
+      574,
+      575,
+      577,
+      579,
+      590,
+      591,
+      592,
+      593,
+      599,
+      600,
+      602,
+      605,
+      606,
+      614,
+      617,
+      619,
+      620,
+      642,
+      647,
+      654,
+      655,
+      658,
+      659,
+      660,
+      661,
+      664,
+      673,
+      674,
+      675,
+      677,
+      678,
+      679,
+      688,
+      689,
+      697,
+      716,
+      717,
+      724,
+      727,
+      2595,
+      2596
+    ],
+    "power_products": [
+      574,
+      585,
+      600,
+      602,
+      631,
+      658,
+      664,
+      691,
+      697,
+      708,
+      716,
+      717,
+      724,
+      727,
+      2595
+    ]
+  },
+  "remaining_ui_work": {
+    "mouse": [
+      "Full mapping categories and source drawer layout",
+      "Nondefault editions, side-panel illustrations and firmware/connection branches",
+      "Calibration mat management and hardware calibration",
+      "Dynamic sensitivity graph editor",
+      "Pairing flow"
+    ],
+    "keyboard": [
+      "Nondefault keyboard layouts and editions",
+      "Full mapping categories and source drawer layout",
+      "Remaining Customize controls, including polling, Snap Tap and command dial",
+      "Actuation, calibration, OLED editors and pairing",
+      "Lighting effect parameters and advanced Chroma controls"
+    ]
+  },
+  "runtime_not_verified": [
+    "Rendered pixels, font fallback, scrolling and focus",
+    "Hardware writes and readback",
+    "Chroma service integration"
+  ],
+  "artifacts": {
+    "src/features/mouse_products.rs": "61e0c045767d213a8940848df7130f807226386c109c31f85209d89a67c42067",
+    "src/features/mouse_products_data.json": "d05941c470eb3c1f5b9dbe47338e3cab4924fa9c437058108ed3f5bf1e6af762",
+    "src/features/keyboard_products.rs": "f56a768cb95eb2c4d0b7afda5f6107a96d766175e98292ccd200623b326ef026",
+    "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d"
+  }
+}

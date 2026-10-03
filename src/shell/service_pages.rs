@@ -396,12 +396,6 @@ impl GamerRoomPage {
             .when(wide, |view| view.w(surface::css(2500.)))
             .rounded(cx.theme().font_size * (5. / 16.))
             .overflow_hidden()
-            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                if !*hovered {
-                    this.hovered_product = None;
-                    cx.notify();
-                }
-            }))
             .child(
                 img("synapse/gr-background.png")
                     .absolute()
@@ -522,7 +516,7 @@ impl GamerRoomPage {
                                 .focus_visible(|style| style.bg(colors.banner_shade().opacity(0.7)))
                                 .child(i18n::t(PRODUCTS[index].name))
                                 .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
-                                    if *hovered {
+                                    if *hovered && this.hovered_product != Some(index) {
                                         this.hovered_product = Some(index);
                                         cx.notify();
                                     }
@@ -592,6 +586,7 @@ impl GamerRoomPage {
     fn product_panel(&self, index: usize, cx: &mut Context<Self>) -> AnyElement {
         h_flex()
             .id("gr-marketing-panel")
+            .test_support()
             .min_h(surface::css(312.))
             .w(surface::css(if index == 2 { 652. } else { 400. }))
             .py(surface::css(36.))
@@ -602,8 +597,10 @@ impl GamerRoomPage {
             .rounded(cx.theme().font_size * (5. / 16.))
             .child(product_info(index, cx))
             .when(index == 2, |view| view.child(product_info(3, cx)))
-            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                if !*hovered {
+            // The deferred Popup occludes the banner and its hotspot. The
+            // source closes on leaving this panel, not on leaving the banner.
+            .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                if !*hovered && this.hovered_product == Some(index) {
                     this.hovered_product = None;
                     cx.notify();
                 }

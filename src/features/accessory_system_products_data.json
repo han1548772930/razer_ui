@@ -1,0 +1,866 @@
+[
+  {
+    "product_id": 3858,
+    "pages": [
+      "TAB_GAMING",
+      "TAB_COLOR",
+      "TAB_DISPLAY"
+    ],
+    "initial": {
+      "gaming": {
+        "customData": {
+          "brightness": 80,
+          "contrast": 50,
+          "overdrive": 1,
+          "gamma": 2,
+          "gamut": null
+        },
+        "selectedPreset": 2
+      },
+      "color": {
+        "customData": {
+          "red": 0,
+          "green": 0,
+          "blue": 0
+        },
+        "selectedPreset": 12
+      },
+      "inputSource": 0,
+      "hdr": {
+        "isEnabled": false
+      },
+      "adaptiveSync": {
+        "isEnabled": false
+      },
+      "refeshRateCounter": {
+        "isEnabled": false,
+        "position": 1
+      },
+      "secondDisplay": {
+        "isEnabled": false,
+        "mode": 1,
+        "source": 15,
+        "pipSetting": {
+          "position": 3,
+          "size": 1
+        }
+      }
+    },
+    "presets": {
+      "0": {
+        "brightness": 70,
+        "contrast": 50,
+        "overdrive": 1,
+        "gamma": 2
+      },
+      "1": {
+        "brightness": 50,
+        "contrast": 50,
+        "overdrive": 2,
+        "gamma": 2
+      },
+      "2": {
+        "brightness": 60,
+        "contrast": 50,
+        "overdrive": 2,
+        "gamma": 2
+      },
+      "3": {
+        "brightness": 70,
+        "contrast": 50,
+        "overdrive": 1,
+        "gamma": 2
+      },
+      "4": {
+        "brightness": 80,
+        "contrast": 60,
+        "overdrive": 1,
+        "gamma": 2
+      }
+    },
+    "enums": {
+      "Bi": {
+        "AUTO": 0,
+        "DP_1": 15,
+        "HDMI_1": 17,
+        "USB_C": 19
+      },
+      "GM": {
+        "NORMAL": 5,
+        "LOWBLUELIGHT": 12,
+        "WARM": 4,
+        "COOL": 8,
+        "SRGB": 1,
+        "CUSTOM": 11
+      },
+      "QB": {
+        "OFF": 0,
+        "PIP": 1,
+        "PBP": 2
+      },
+      "Ss": {
+        "TOPLEFT": 0,
+        "TOPRIGHT": 1,
+        "BOTTOMLEFT": 2,
+        "BOTTOMRIGHT": 3
+      },
+      "e3": {
+        "OFF": 0,
+        "TOPLEFT": 1,
+        "TOPRIGHT": 2,
+        "BOTTOMLEFT": 3,
+        "BOTTOMRIGHT": 4
+      },
+      "zH": {
+        "DEFAULT": 0,
+        "FPS": 1,
+        "MMO": 3,
+        "RACING": 2,
+        "STREAMING": 4,
+        "CUSTOM": 5
+      }
+    }
+  },
+  {
+    "product_id": 3880,
+    "pages": [
+      "TAB_GAMING",
+      "TAB_COLOR",
+      "TAB_DISPLAY"
+    ],
+    "initial": {
+      "gaming": {
+        "customData": {
+          "brightness": 80,
+          "contrast": 50,
+          "overdrive": 1,
+          "gamma": 2,
+          "gamut": null
+        },
+        "selectedPreset": 2
+      },
+      "color": {
+        "customData": {
+          "red": 0,
+          "green": 0,
+          "blue": 0
+        },
+        "selectedPreset": 12
+      },
+      "inputSource": 0,
+      "hdr": {
+        "isEnabled": false
+      },
+      "adaptiveSync": {
+        "isEnabled": false
+      },
+      "refeshRateCounter": {
+        "isEnabled": false,
+        "position": 1
+      },
+      "secondDisplay": {
+        "isEnabled": false,
+        "mode": 1,
+        "source": 15,
+        "pipSetting": {
+          "position": 3,
+          "size": 1
+        }
+      },
+      "thxCinema": {
+        "isEnabled": false
+      }
+    },
+    "presets": {
+      "0": {
+        "brightness": 50,
+        "contrast": 50,
+        "overdrive": 1,
+        "gamma": 2,
+        "gamut": 0
+      },
+      "1": {
+        "brightness": 50,
+        "contrast": 50,
+        "overdrive": 2,
+        "gamma": 2,
+        "gamut": 0
+      },
+      "2": {
+        "brightness": 60,
+        "contrast": 50,
+        "overdrive": 2,
+        "gamma": 2,
+        "gamut": 0
+      },
+      "3": {
+        "brightness": 70,
+        "contrast": 50,
+        "overdrive": 1,
+        "gamma": 2,
+        "gamut": 0
+      },
+      "4": {
+        "brightness": 80,
+        "contrast": 60,
+        "overdrive": 1,
+        "gamma": 2,
+        "gamut": 0
+      }
+    },
+    "enums": {
+      "Bi": {
+        "AUTO": 0,
+        "DP_1": 15,
+        "HDMI_1": 17,
+        "USB_C": 19
+      },
+      "GM": {
+        "NORMAL": 5,
+        "LOWBLUELIGHT": 12,
+        "WARM": 4,
+        "COOL": 8,
+        "SRGB": 1,
+        "CUSTOM": 11
+      },
+      "QB": {
+        "OFF": 0,
+        "PIP": 1,
+        "PBP": 2
+      },
+      "Ss": {
+        "TOPLEFT": 0,
+        "TOPRIGHT": 1,
+        "BOTTOMLEFT": 2,
+        "BOTTOMRIGHT": 3
+      },
+      "e3": {
+        "OFF": 0,
+        "TOPLEFT": 1,
+        "TOPRIGHT": 2,
+        "BOTTOMLEFT": 3,
+        "BOTTOMRIGHT": 4
+      },
+      "zH": {
+        "DEFAULT": 0,
+        "FPS": 1,
+        "MMO": 3,
+        "RACING": 2,
+        "STREAMING": 4,
+        "CUSTOM": 5
+      }
+    }
+  },
+  {
+    "product_id": 3893,
+    "pages": [
+      "TAB_PERFORMANCE"
+    ],
+    "initial": {
+      "requestedFanMode": null,
+      "requestedPumpMode": null
+    },
+    "presets": {},
+    "enums": {}
+  },
+  {
+    "product_id": 3900,
+    "pages": [
+      "TAB_PERFORMANCE"
+    ],
+    "initial": {
+      "ports": [
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 26,
+          "name": "Fan 1"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 27,
+          "name": "Fan 2"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 28,
+          "name": "Fan 3"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 29,
+          "name": "Fan 4"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 30,
+          "name": "Fan 5"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 31,
+          "name": "Fan 6"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 32,
+          "name": "Fan 7"
+        },
+        {
+          "thermal": {
+            "fanSpeedValue": 66,
+            "activeThermalIndicator": {
+              "isEnabled": true,
+              "modeSelected": "NORMAL"
+            },
+            "advancedSetting": [
+              {
+                "fanSpeedValue": 33,
+                "temperature": 20
+              },
+              {
+                "fanSpeedValue": 33,
+                "temperature": 30
+              },
+              {
+                "fanSpeedValue": 50,
+                "temperature": 40
+              },
+              {
+                "fanSpeedValue": 66,
+                "temperature": 50
+              },
+              {
+                "fanSpeedValue": 75,
+                "temperature": 60
+              },
+              {
+                "fanSpeedValue": 85,
+                "temperature": 70
+              },
+              {
+                "fanSpeedValue": 95,
+                "temperature": 80
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 90
+              },
+              {
+                "fanSpeedValue": 100,
+                "temperature": 100
+              }
+            ]
+          },
+          "id": 33,
+          "name": "Fan 8"
+        }
+      ],
+      "portsConfig": {
+        "isPortLinked": false,
+        "currentActivePort": 26
+      }
+    },
+    "presets": {},
+    "enums": {}
+  },
+  {
+    "product_id": 3907,
+    "pages": [
+      "TAB_PERFORMANCE"
+    ],
+    "initial": {
+      "fanControllerSetting": {
+        "activeMode": 2,
+        "isEnabled": true,
+        "fixed": {
+          "active": 1,
+          "low": 1600,
+          "mid": 2200,
+          "high": 2700
+        },
+        "smart": {
+          "activeObject": "cpu",
+          "active": 4,
+          "cpu": {
+            "quiet": [
+              {
+                "temperature": 40,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 50,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 85,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 1600
+              },
+              {
+                "temperature": 100,
+                "fanSpeedValue": 1600
+              }
+            ],
+            "balanced": [
+              {
+                "temperature": 40,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 2200
+              },
+              {
+                "temperature": 100,
+                "fanSpeedValue": 2200
+              }
+            ],
+            "performance": [
+              {
+                "temperature": 40,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 55,
+                "fanSpeedValue": 2000
+              },
+              {
+                "temperature": 80,
+                "fanSpeedValue": 2700
+              },
+              {
+                "temperature": 100,
+                "fanSpeedValue": 2700
+              }
+            ]
+          },
+          "gpu": {
+            "quiet": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 40,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 75,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 80,
+                "fanSpeedValue": 1600
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 1600
+              }
+            ],
+            "balanced": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 80,
+                "fanSpeedValue": 2200
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 2200
+              }
+            ],
+            "performance": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 45,
+                "fanSpeedValue": 2000
+              },
+              {
+                "temperature": 70,
+                "fanSpeedValue": 2700
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 2700
+              }
+            ]
+          },
+          "cpu_gpu": {
+            "quiet": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 40,
+                "fanSpeedValue": 500
+              },
+              {
+                "temperature": 75,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 80,
+                "fanSpeedValue": 1600
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 1600
+              }
+            ],
+            "balanced": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 80,
+                "fanSpeedValue": 2200
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 2200
+              }
+            ],
+            "performance": [
+              {
+                "temperature": 30,
+                "fanSpeedValue": 1000
+              },
+              {
+                "temperature": 45,
+                "fanSpeedValue": 2000
+              },
+              {
+                "temperature": 70,
+                "fanSpeedValue": 2700
+              },
+              {
+                "temperature": 90,
+                "fanSpeedValue": 2700
+              }
+            ]
+          }
+        }
+      }
+    },
+    "presets": {},
+    "enums": {}
+  }
+]

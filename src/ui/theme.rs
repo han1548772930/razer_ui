@@ -374,14 +374,36 @@ impl HeaderStatusColors {
 /// The independent firmware updater's current main.3e3077d6.css palette.
 pub(crate) struct FirmwareColors;
 impl FirmwareColors {
-    pub(crate) fn background() -> Hsla { rgb(0x222222).into() }
-    pub(crate) fn foreground() -> Hsla { rgb(0xcccccc).into() }
-    pub(crate) fn highlight() -> Hsla { rgb(0x44d62c).into() }
-    pub(crate) fn track() -> Hsla { rgb(0x2c5824).into() }
-    pub(crate) fn tile() -> Hsla { rgb(0x111111).into() }
-    pub(crate) fn warning() -> Hsla { rgb(0xfd8611).into() }
-    pub(crate) fn border() -> Hsla { rgb(0x000000).into() }
-    pub(crate) fn button_gray() -> Hsla { rgb(0x707070).into() }
+    pub(crate) fn warning_cancel_hover() -> Hsla {
+        rgb(0x555555).into()
+    }
+    pub(crate) fn warning_continue_hover() -> Hsla {
+        rgb(0x00e600).into()
+    }
+    pub(crate) fn background() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn foreground() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn highlight() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn track() -> Hsla {
+        rgb(0x2c5824).into()
+    }
+    pub(crate) fn tile() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn button_gray() -> Hsla {
+        rgb(0x707070).into()
+    }
 }
 
 /// rz-user-profile-menu's .dropdown-razer and the host avatar trigger.
@@ -410,6 +432,10 @@ impl MigrationColors {
 
 pub(crate) struct SettingsColors;
 impl SettingsColors {
+    /// Current Settings 720: `.widget .help:hover`.
+    pub(crate) fn help_hover() -> Hsla {
+        rgba(0xffffff4d).into()
+    }
     pub(crate) fn tree_note() -> Hsla {
         rgb(0x707070).into()
     }
@@ -443,4 +469,13 @@ impl DrawerColors {
     pub(crate) fn disabled_mapping(&self) -> Hsla {
         rgba(0xc8323c80).into()
     }
+}
+/// Current camera CSS `.advanced-camera-container .default-button`.
+pub(crate) struct CameraProductColors;
+impl CameraProductColors {
+    pub(crate) fn border() -> gpui_kit::Hsla { gpui_kit::rgb(0x5d5d5d).into() }
+    pub(crate) fn text() -> gpui_kit::Hsla { gpui_kit::rgb(0xcccccc).into() }
+    pub(crate) fn selected() -> gpui_kit::Hsla { gpui_kit::rgb(0x292929).into() }
+    pub(crate) fn hover() -> gpui_kit::Hsla { gpui_kit::rgb(0x111111).into() }
+    pub(crate) fn pressed() -> gpui_kit::Hsla { gpui_kit::rgb(0xffffff).into() }
 }

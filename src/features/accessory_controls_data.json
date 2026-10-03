@@ -1,0 +1,5430 @@
+[
+  {
+    "product_id": 126,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "126:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/126/static/js/main.766604be.js",
+                  "offset": 3811505,
+                  "end": 3813909
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "126:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/126/static/js/main.766604be.js",
+                  "offset": 3811505,
+                  "end": 3813909
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "126:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/126/static/js/main.766604be.js",
+                  "offset": 3908215,
+                  "end": 3908912
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "126:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BATTERY_LEVEL",
+                    "value": 14
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "REACTIVE",
+                    "value": 5
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/126/static/js/main.766604be.js",
+                  "offset": 3890392,
+                  "end": 3895322
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3520/"
+  },
+  {
+    "product_id": 162,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "dpi": {
+        "x": 1800,
+        "y": 1800
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "LedPowerSettings": {
+        "IdleState": 1,
+        "IdleStateValue": 60
+      },
+      "powerSavingValue": 7,
+      "lowBatteryEffects": 5,
+      "mappings": [],
+      "dpiStages": {
+        "stages": [
+          {
+            "x": 400,
+            "y": 400,
+            "independent": false,
+            "visible": true
+          },
+          {
+            "x": 800,
+            "y": 800,
+            "independent": false,
+            "visible": true
+          },
+          {
+            "x": 1600,
+            "y": 1600,
+            "independent": false,
+            "visible": true
+          },
+          {
+            "x": 3200,
+            "y": 3200,
+            "independent": false,
+            "visible": true
+          },
+          {
+            "x": 6400,
+            "y": 6400,
+            "independent": false,
+            "visible": true
+          }
+        ],
+        "active": 3,
+        "enable": true,
+        "count": 5
+      },
+      "ledBrightness": {
+        "State": 1,
+        "Brightness": 100
+      },
+      "pollingRate": 1000
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "162:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/162/static/js/main.4dce6fd2.js",
+                  "offset": 2252425,
+                  "end": 2254139
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "162:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/162/static/js/main.4dce6fd2.js",
+                  "offset": 2252425,
+                  "end": 2254139
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "162:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "REACTIVE",
+                    "value": 5
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/162/static/js/main.4dce6fd2.js",
+                  "offset": 3677768,
+                  "end": 3681359
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3749/"
+  },
+  {
+    "product_id": 164,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "164:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4322730,
+                  "end": 4325065
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "164:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4322730,
+                  "end": 4325065
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "164:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4418558,
+                  "end": 4421055
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "164:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4418558,
+                  "end": 4421055
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "164:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4418558,
+                  "end": 4421055
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "164:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BATTERY_LEVEL",
+                    "value": 14
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "REACTIVE",
+                    "value": 5
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/164/static/js/main.458d4103.js",
+                  "offset": 4401008,
+                  "end": 4405977
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6228/kw/mouse%20dock"
+  },
+  {
+    "product_id": 179,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "runtime": {
+        "indicatorLedStatus": 1
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "INDICATOR_LED",
+            "controls": [
+              {
+                "kind": "options",
+                "key": "179:indicator-mode",
+                "label": "INDICATOR_LED",
+                "path": "/runtime/indicatorLedStatus",
+                "options": [
+                  {
+                    "label": "CONNECTION_STATUS",
+                    "value": 1
+                  },
+                  {
+                    "label": "BATTERY_STATUS",
+                    "value": 2
+                  },
+                  {
+                    "label": "BATTERY_WARNING_ONLY",
+                    "value": 3
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+                  "offset": 4238117,
+                  "end": 4240854
+                }
+              }
+            ],
+            "description": "INDICATOR_LED_DESC"
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6140"
+  },
+  {
+    "product_id": 207,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "runtime": {
+        "autoPairing": {
+          "isEnabled": false,
+          "value": 0
+        },
+        "batteryOptimizer": {
+          "isEnabled": true,
+          "value": 50,
+          "batteryChargingOverrideEnabled": false
+        }
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "SEAMLESS_AUTO_PAIRING",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "207:auto-pairing",
+                "label": "SEAMLESS_AUTO_PAIRING",
+                "path": "/runtime/autoPairing/isEnabled",
+                "source": {
+                  "path": ".ref/devices/207/static/js/main.9b300921.js",
+                  "offset": 4444566,
+                  "end": 4450518
+                }
+              }
+            ],
+            "description": "SEAMLESS_AUTO_PAIRING_DESCRIPTION"
+          },
+          {
+            "title": "BATTERY_HEALTH_OPTIMIZER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "207:battery-optimizer",
+                "label": "BATTERY_HEALTH_OPTIMIZER",
+                "path": "/runtime/batteryOptimizer/isEnabled",
+                "disabled_unless": "/hardware/pairedMousePowered",
+                "source": {
+                  "path": ".ref/devices/207/static/js/main.9b300921.js",
+                  "offset": 4441973,
+                  "end": 4444403
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "207:battery-limit",
+                "label": "BATTERY_HEALTH_OPTIMIZER",
+                "path": "/runtime/batteryOptimizer/value",
+                "min": 50,
+                "max": 80,
+                "step": 5,
+                "disabled_unless_all": [
+                  "/hardware/pairedMousePowered",
+                  "/runtime/batteryOptimizer/isEnabled"
+                ],
+                "disabled_when": "/runtime/batteryOptimizer/batteryChargingOverrideEnabled",
+                "source": {
+                  "path": ".ref/devices/207/static/js/main.9b300921.js",
+                  "offset": 4441973,
+                  "end": 4444403
+                }
+              }
+            ],
+            "description": "等待已配对且开启的鼠标。"
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14802"
+  },
+  {
+    "product_id": 241,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "241:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 398471,
+                  "end": 400801
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "241:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 398471,
+                  "end": 400801
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "241:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 493583,
+                  "end": 496080
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "241:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 493583,
+                  "end": 496080
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "241:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 493583,
+                  "end": 496080
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "241:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BATTERY_LEVEL",
+                    "value": 14
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/241/static/js/main.899712fe.js",
+                  "offset": 475924,
+                  "end": 480879
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21069"
+  },
+  {
+    "product_id": 778,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100,
+        "isGlobalBrightness": true
+      },
+      "quickEffects": {
+        "selectedEffectId": 3,
+        "isGlobalQuickEffect": true
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "778:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/778/static/js/main.032287fa.js",
+                  "offset": 4130192,
+                  "end": 4130891
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "778:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/778/static/js/main.032287fa.js",
+                  "offset": 4203459,
+                  "end": 4208431
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://rzr.to/b550-taichi-razer-edition-manual"
+  },
+  {
+    "product_id": 780,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventPanelLighting": false,
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "780:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/780/static/js/main.157991a2.js",
+                  "offset": 4396597,
+                  "end": 4398265
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "780:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/780/static/js/main.157991a2.js",
+                  "offset": 4396597,
+                  "end": 4398265
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "780:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  },
+                  {
+                    "label": "WHEEL",
+                    "value": 13
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/780/static/js/main.157991a2.js",
+                  "offset": 4368472,
+                  "end": 4377104
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5907"
+  },
+  {
+    "product_id": 781,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "781:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/781/static/js/main.8720d82b.js",
+                  "offset": 4379310,
+                  "end": 4380978
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "781:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/781/static/js/main.8720d82b.js",
+                  "offset": 4379310,
+                  "end": 4380978
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "781:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/781/static/js/main.8720d82b.js",
+                  "offset": 4351139,
+                  "end": 4359771
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5893"
+  },
+  {
+    "product_id": 782,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "782:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/782/static/js/main.32e42b80.js",
+                  "offset": 4387914,
+                  "end": 4389582
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "782:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/782/static/js/main.32e42b80.js",
+                  "offset": 4387914,
+                  "end": 4389582
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "782:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/782/static/js/main.32e42b80.js",
+                  "offset": 4359741,
+                  "end": 4368373
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5892"
+  },
+  {
+    "product_id": 783,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "783:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/783/static/js/main.5b59b09c.js",
+                  "offset": 4387157,
+                  "end": 4388825
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "783:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/783/static/js/main.5b59b09c.js",
+                  "offset": 4387157,
+                  "end": 4388825
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "783:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/783/static/js/main.5b59b09c.js",
+                  "offset": 4358984,
+                  "end": 4367616
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5890"
+  },
+  {
+    "product_id": 784,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "784:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/784/static/js/main.3094caa4.js",
+                  "offset": 4392187,
+                  "end": 4393855
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "784:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/784/static/js/main.3094caa4.js",
+                  "offset": 4392187,
+                  "end": 4393855
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "784:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/784/static/js/main.3094caa4.js",
+                  "offset": 4364020,
+                  "end": 4372652
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5891"
+  },
+  {
+    "product_id": 790,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 5
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "790:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/790/static/js/main.768d7d9e.js",
+                  "offset": 4389386,
+                  "end": 4391216
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "790:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/790/static/js/main.768d7d9e.js",
+                  "offset": 4389386,
+                  "end": 4391216
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "790:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/790/static/js/main.768d7d9e.js",
+                  "offset": 4389386,
+                  "end": 4391216
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "790:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/790/static/js/main.768d7d9e.js",
+                  "offset": 4335281,
+                  "end": 4343913
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/13998"
+  },
+  {
+    "product_id": 791,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "preventChromaConnectLighting": false,
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "791:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/791/static/js/main.973498e0.js",
+                  "offset": 4379347,
+                  "end": 4381015
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "791:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/791/static/js/main.973498e0.js",
+                  "offset": 4379347,
+                  "end": 4381015
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "791:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/791/static/js/main.973498e0.js",
+                  "offset": 4351201,
+                  "end": 4359833
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14804"
+  },
+  {
+    "product_id": 3331,
+    "profile": {
+      "runtime": {
+        "masterVolume": {
+          "isEnabled": true,
+          "value": 80
+        },
+        "pcVolume": {
+          "isEnabled": true,
+          "value": 80
+        },
+        "hdmiVolume": {
+          "isEnabled": true,
+          "value": 80
+        },
+        "micVolume": {
+          "isEnabled": true,
+          "value": 80
+        }
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_SETTING",
+        "sections": [
+          {
+            "title": "MASTER_VOLUME",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3331:masterVolume-on",
+                "label": "MASTER_VOLUME",
+                "path": "/runtime/masterVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3331:masterVolume",
+                "label": "MASTER_VOLUME",
+                "path": "/runtime/masterVolume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/runtime/masterVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              }
+            ]
+          },
+          {
+            "title": "PC",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3331:pcVolume-on",
+                "label": "PC",
+                "path": "/runtime/pcVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3331:pcVolume",
+                "label": "PC",
+                "path": "/runtime/pcVolume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/runtime/pcVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              }
+            ]
+          },
+          {
+            "title": "HDMI",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3331:hdmiVolume-on",
+                "label": "HDMI",
+                "path": "/runtime/hdmiVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3331:hdmiVolume",
+                "label": "HDMI",
+                "path": "/runtime/hdmiVolume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/runtime/hdmiVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              }
+            ]
+          },
+          {
+            "title": "MICROPHONE",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3331:micVolume-on",
+                "label": "MICROPHONE",
+                "path": "/runtime/micVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3331:micVolume",
+                "label": "MICROPHONE",
+                "path": "/runtime/micVolume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/runtime/micVolume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3331/static/js/main.37e94222.js",
+                  "offset": 3730092,
+                  "end": 3733802
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3600"
+  },
+  {
+    "product_id": 3848,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3848:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3848/static/js/main.a5ed8890.js",
+                  "offset": 3815544,
+                  "end": 3817948
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3848:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3848/static/js/main.a5ed8890.js",
+                  "offset": 3815544,
+                  "end": 3817948
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3848:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3848/static/js/main.a5ed8890.js",
+                  "offset": 3912246,
+                  "end": 3912943
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3848:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3848/static/js/main.a5ed8890.js",
+                  "offset": 3894423,
+                  "end": 3899353
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899"
+  },
+  {
+    "product_id": 3849,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": [],
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3849:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3849/static/js/main.bb884c00.js",
+                  "offset": 80582,
+                  "end": 82986
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3849:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3849/static/js/main.bb884c00.js",
+                  "offset": 80582,
+                  "end": 82986
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3849:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3849/static/js/main.bb884c00.js",
+                  "offset": 177241,
+                  "end": 177938
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3849:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3849/static/js/main.bb884c00.js",
+                  "offset": 159420,
+                  "end": 164350
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3849"
+  },
+  {
+    "product_id": 3853,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3853:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3853/static/js/main.8f044274.js",
+                  "offset": 78368,
+                  "end": 80772
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3853:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3853/static/js/main.8f044274.js",
+                  "offset": 78368,
+                  "end": 80772
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3853:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3853/static/js/main.8f044274.js",
+                  "offset": 175078,
+                  "end": 175775
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3853:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3853/static/js/main.8f044274.js",
+                  "offset": 157255,
+                  "end": 162185
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4066"
+  },
+  {
+    "product_id": 3858,
+    "profile": {
+      "guid": "",
+      "name": "Default",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "gaming": {
+        "customData": {
+          "brightness": 0,
+          "contrast": 0,
+          "overdrive": 2,
+          "gamma": 0
+        },
+        "selectedPreset": 2
+      },
+      "color": {
+        "customData": {
+          "red": 0,
+          "green": 0,
+          "blue": 0
+        },
+        "selectedPreset": 12
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3858:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4286190,
+                  "end": 4288616
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3858:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4286190,
+                  "end": 4288616
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3858:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4289010,
+                  "end": 4291460
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3858:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4289010,
+                  "end": 4291460
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3858:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4289010,
+                  "end": 4291460
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3858:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3858/static/js/main.608e1599.js",
+                  "offset": 4369826,
+                  "end": 4374844
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3680/"
+  },
+  {
+    "product_id": 3859,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "appEngine": {
+        "mappings": []
+      },
+      "mappings": [],
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3859:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3859/static/js/main.ffac912b.js",
+                  "offset": 3827956,
+                  "end": 3830360
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3859:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3859/static/js/main.ffac912b.js",
+                  "offset": 3827956,
+                  "end": 3830360
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3859:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3859/static/js/main.ffac912b.js",
+                  "offset": 3924658,
+                  "end": 3925355
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3859:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3859/static/js/main.ffac912b.js",
+                  "offset": 3906835,
+                  "end": 3911765
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3859"
+  },
+  {
+    "product_id": 3863,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3863:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3863/static/js/main.0ae565e3.js",
+                  "offset": 83256,
+                  "end": 85660
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3863:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3863/static/js/main.0ae565e3.js",
+                  "offset": 83256,
+                  "end": 85660
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3863:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3863/static/js/main.0ae565e3.js",
+                  "offset": 179966,
+                  "end": 180663
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3863:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3863/static/js/main.0ae565e3.js",
+                  "offset": 162143,
+                  "end": 167073
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "product_id": 3866,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3866:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4278110,
+                  "end": 4280524
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3866:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4278110,
+                  "end": 4280524
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3866:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4387790,
+                  "end": 4390218
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3866:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4387790,
+                  "end": 4390218
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3866:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4387790,
+                  "end": 4390218
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3866:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3866/static/js/main.28d3f4af.js",
+                  "offset": 4358263,
+                  "end": 4363235
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899"
+  },
+  {
+    "product_id": 3869,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": [],
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3869:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3869/static/js/main.82c8869b.js",
+                  "offset": 4287407,
+                  "end": 4289821
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3869:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3869/static/js/main.82c8869b.js",
+                  "offset": 4287407,
+                  "end": 4289821
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3869:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3869/static/js/main.82c8869b.js",
+                  "offset": 4387735,
+                  "end": 4388434
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3869:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3869/static/js/main.82c8869b.js",
+                  "offset": 4367612,
+                  "end": 4372584
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3849"
+  },
+  {
+    "product_id": 3871,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100,
+        "isGlobalBrightness": true
+      },
+      "quickEffects": {
+        "selectedEffectId": 3,
+        "isGlobalQuickEffect": true
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3871:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+                  "offset": 4112476,
+                  "end": 4113175
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3871:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+                  "offset": 4185743,
+                  "end": 4190715
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3898"
+  },
+  {
+    "product_id": 3872,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_AUDIO",
+        "sections": [
+          {
+            "title": "VOLUME_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3872:volume-on",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 4435353,
+                  "end": 4436951
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3872:volume",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/volume/isEnabled",
+                "enabled_from_value": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 4435353,
+                  "end": 4436951
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3872:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 3881425,
+                  "end": 3883831
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3872:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 3881425,
+                  "end": 3883831
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3872:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 3978140,
+                  "end": 3978836
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3872:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3872/static/js/main.e84a97bd.js",
+                  "offset": 3960318,
+                  "end": 3965247
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3899"
+  },
+  {
+    "product_id": 3873,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_AUDIO",
+        "sections": [
+          {
+            "title": "VOLUME_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3873:volume-on",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+                  "offset": 4411000,
+                  "end": 4412598
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3873:volume",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/volume/isEnabled",
+                "enabled_from_value": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+                  "offset": 4411000,
+                  "end": 4412598
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3873:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+                  "offset": 3857583,
+                  "end": 3859989
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3873:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+                  "offset": 3857583,
+                  "end": 3859989
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3873:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3873/static/js/main.08e5eb5a.js",
+                  "offset": 3936476,
+                  "end": 3941405
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://rzr.to/2fgbzq"
+  },
+  {
+    "product_id": 3878,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": false,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "chargingBrightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "hardwareEffects": [
+        {
+          "selectedEffectId": 3
+        },
+        {
+          "regionId": 32,
+          "selectedEffectId": 4,
+          "selectedEffectSetting": {
+            "direction": 2
+          }
+        },
+        {
+          "regionId": 33,
+          "selectedEffectId": 4,
+          "selectedEffectSetting": {
+            "direction": 2
+          }
+        },
+        {
+          "regionId": 34,
+          "selectedEffectId": 4,
+          "selectedEffectSetting": {
+            "direction": 2
+          }
+        }
+      ],
+      "forceChromaCtrl": false,
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3878:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3878/static/js/main.1c5334c6.js",
+                  "offset": 130330,
+                  "end": 132828
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3878:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "BATTERY_LEVEL",
+                    "value": 14
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3878/static/js/main.1c5334c6.js",
+                  "offset": 108047,
+                  "end": 114664
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3902"
+  },
+  {
+    "product_id": 3879,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "appEngine": {
+        "mappings": []
+      },
+      "mappings": [],
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3879:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3879/static/js/main.2f2244ff.js",
+                  "offset": 4311210,
+                  "end": 4313624
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3879:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3879/static/js/main.2f2244ff.js",
+                  "offset": 4311210,
+                  "end": 4313624
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3879:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3879/static/js/main.2f2244ff.js",
+                  "offset": 4411538,
+                  "end": 4412237
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3879:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3879/static/js/main.2f2244ff.js",
+                  "offset": 4391415,
+                  "end": 4396387
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3959"
+  },
+  {
+    "product_id": 3880,
+    "profile": {
+      "guid": "",
+      "name": "Default",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "gaming": {
+        "customData": {
+          "brightness": 0,
+          "contrast": 0,
+          "overdrive": 2,
+          "gamma": 0
+        },
+        "selectedPreset": 2
+      },
+      "color": {
+        "customData": {
+          "red": 0,
+          "green": 0,
+          "blue": 0
+        },
+        "selectedPreset": 12
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3880:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4275302,
+                  "end": 4277728
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3880:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4275302,
+                  "end": 4277728
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3880:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4278123,
+                  "end": 4280573
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3880:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4278123,
+                  "end": 4280573
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3880:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4278123,
+                  "end": 4280573
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3880:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3880/static/js/main.0ff487d9.js",
+                  "offset": 4358935,
+                  "end": 4363953
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5390/"
+  },
+  {
+    "product_id": 3883,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3883:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3883/static/js/main.85b90298.js",
+                  "offset": 78368,
+                  "end": 80772
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3883:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3883/static/js/main.85b90298.js",
+                  "offset": 78368,
+                  "end": 80772
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3883:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3883/static/js/main.85b90298.js",
+                  "offset": 175078,
+                  "end": 175775
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3883:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3883/static/js/main.85b90298.js",
+                  "offset": 157255,
+                  "end": 162185
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/4066"
+  },
+  {
+    "product_id": 3884,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 50,
+        "isGlobalBrightness": false
+      },
+      "quickEffects": {
+        "selectedEffectId": 3,
+        "isGlobalQuickEffect": true
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3884:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+                  "offset": 3974339,
+                  "end": 3975038
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3884:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+                  "offset": 4067010,
+                  "end": 4071982
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5674/"
+  },
+  {
+    "product_id": 3886,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100,
+        "isGlobalBrightness": true
+      },
+      "quickEffects": {
+        "selectedEffectId": 3,
+        "isGlobalQuickEffect": true
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3886:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+                  "offset": 2240564,
+                  "end": 2243013
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3886:global-brightness",
+                "label": "GLOBAL_BRIGHTNESS",
+                "path": "/brightness/isGlobalBrightness",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+                  "offset": 2240564,
+                  "end": 2243013
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3886:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "visible_when": {
+                  "path": "/brightness/isGlobalBrightness",
+                  "value": true
+                },
+                "source": {
+                  "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+                  "offset": 2240564,
+                  "end": 2243013
+                }
+              }
+            ],
+            "description": "GLOBAL_BRIGHTNESS"
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3886:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+                  "offset": 2244996,
+                  "end": 2245814
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3886:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+                  "offset": 3956806,
+                  "end": 3961696
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/3898"
+  },
+  {
+    "product_id": 3893,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": false,
+        "value": 0
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 0
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3893:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3893/static/js/main.a7630c14.js",
+                  "offset": 3845699,
+                  "end": 3848387
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3893:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3893/static/js/main.a7630c14.js",
+                  "offset": 3845699,
+                  "end": 3848387
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3893:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3893/static/js/main.a7630c14.js",
+                  "offset": 4040368,
+                  "end": 4042789
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3893:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3893/static/js/main.a7630c14.js",
+                  "offset": 3996277,
+                  "end": 4001212
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5779"
+  },
+  {
+    "product_id": 3894,
+    "profile": {
+      "guid": "",
+      "name": " ",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3894:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3894/static/js/main.be5b5e43.js",
+                  "offset": 78323,
+                  "end": 80727
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3894:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3894/static/js/main.be5b5e43.js",
+                  "offset": 78323,
+                  "end": 80727
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3894:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3894/static/js/main.be5b5e43.js",
+                  "offset": 175033,
+                  "end": 175730
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3894:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  },
+                  {
+                    "label": "WHEEL",
+                    "value": 13
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3894/static/js/main.be5b5e43.js",
+                  "offset": 157210,
+                  "end": 162140
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/5875"
+  },
+  {
+    "product_id": 3907,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": false,
+        "value": 0
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 0
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3907:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4195321,
+                  "end": 4197726
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3907:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4195321,
+                  "end": 4197726
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3907:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4198159,
+                  "end": 4200473
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3907:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4198159,
+                  "end": 4200473
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3907:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4198159,
+                  "end": 4200473
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3907:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  },
+                  {
+                    "label": "WHEEL",
+                    "value": 13
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3907/static/js/main.49bf0db6.js",
+                  "offset": 4272897,
+                  "end": 4277839
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "product_id": 3921,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3921:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3921/static/js/536.00db8486.chunk.js",
+                  "offset": 8597,
+                  "end": 11001
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3921:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3921/static/js/536.00db8486.chunk.js",
+                  "offset": 8597,
+                  "end": 11001
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3921:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3921/static/js/536.00db8486.chunk.js",
+                  "offset": 12568,
+                  "end": 15057
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14797"
+  },
+  {
+    "product_id": 3922,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_SOUND",
+        "sections": [
+          {
+            "title": "VOLUME_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3922:volume-on",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3922/static/js/2608.894c2893.chunk.js",
+                  "offset": 222385,
+                  "end": 223971
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3922:volume",
+                "label": "VOLUME_HEADER",
+                "path": "/volume/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/volume/isEnabled",
+                "enabled_from_value": "/volume/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3922/static/js/2608.894c2893.chunk.js",
+                  "offset": 222385,
+                  "end": 223971
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3922:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3922/static/js/1024.2a226eac.chunk.js",
+                  "offset": 14325,
+                  "end": 16731
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3922:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3922/static/js/1024.2a226eac.chunk.js",
+                  "offset": 14325,
+                  "end": 16731
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3922:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3922/static/js/1024.2a226eac.chunk.js",
+                  "offset": 109398,
+                  "end": 110094
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3922:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3922/static/js/1024.2a226eac.chunk.js",
+                  "offset": 91688,
+                  "end": 96617
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14796"
+  },
+  {
+    "product_id": 3929,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_CUSTOMIZE",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3929:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3929/static/js/main.2aea7d59.js",
+                  "offset": 4430366,
+                  "end": 4432784
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3929:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3929/static/js/main.2aea7d59.js",
+                  "offset": 4430366,
+                  "end": 4432784
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3929:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3929/static/js/main.2aea7d59.js",
+                  "offset": 4525793,
+                  "end": 4526494
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3929:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3929/static/js/main.2aea7d59.js",
+                  "offset": 4505707,
+                  "end": 4510693
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14803"
+  },
+  {
+    "product_id": 3932,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 3
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3932:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3932/static/js/main.a61a864b.js",
+                  "offset": 4439940,
+                  "end": 4442358
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3932:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3932/static/js/main.a61a864b.js",
+                  "offset": 4439940,
+                  "end": 4442358
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3932:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3932/static/js/main.a61a864b.js",
+                  "offset": 4533830,
+                  "end": 4536159
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3932:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3932/static/js/main.a61a864b.js",
+                  "offset": 4513729,
+                  "end": 4518715
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/14798"
+  },
+  {
+    "product_id": 3940,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "selectedEffectId": 4
+      },
+      "mappings": [],
+      "runtime": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        }
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3940:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3940/static/js/8218.839cb2e9.chunk.js",
+                  "offset": 19766,
+                  "end": 22170
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3940:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3940/static/js/8218.839cb2e9.chunk.js",
+                  "offset": 19766,
+                  "end": 22170
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3940:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  },
+                  {
+                    "label": "WHEEL",
+                    "value": 13
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3940/static/js/8218.839cb2e9.chunk.js",
+                  "offset": 98653,
+                  "end": 103589
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "TAB_POWER",
+        "sections": [
+          {
+            "title": "POWER_SAVING",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3940:power-on",
+                "label": "POWER_SAVING",
+                "path": "/runtime/powerSaving/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3940/static/js/9775.989c29ca.chunk.js",
+                  "offset": 334494,
+                  "end": 335684
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3940:power-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/runtime/powerSaving/value",
+                "disabled_unless": "/runtime/powerSaving/isEnabled",
+                "options": [
+                  {
+                    "label": "20",
+                    "value": 20
+                  },
+                  {
+                    "label": "30",
+                    "value": 30
+                  },
+                  {
+                    "label": "40",
+                    "value": 40
+                  },
+                  {
+                    "label": "50",
+                    "value": 50
+                  },
+                  {
+                    "label": "60",
+                    "value": 60
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3940/static/js/9775.989c29ca.chunk.js",
+                  "offset": 334494,
+                  "end": 335684
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20596"
+  },
+  {
+    "product_id": 3942,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "thxSpatialAudio": {
+        "isEnabled": false,
+        "mode": "auto"
+      },
+      "applications": {
+        "generalInputSetting": [
+          {
+            "appType": "Music",
+            "output": {
+              "type": "preset",
+              "guid": "Music"
+            }
+          },
+          {
+            "appType": "Video",
+            "output": {
+              "type": "preset",
+              "guid": "Movie"
+            }
+          },
+          {
+            "appType": "Other",
+            "output": {
+              "type": "preset",
+              "guid": "Game"
+            }
+          }
+        ],
+        "specificInputSetting": []
+      },
+      "audioEqualizer": {
+        "mode": "standard",
+        "modeStandard": "game",
+        "modeEsports": "apexLegends",
+        "standardPreset": [],
+        "esportPreset": []
+      },
+      "brightness": {
+        "isEnabled": true,
+        "value": 60
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "quickEffects": {
+        "selectedEffectId": 4
+      },
+      "runtime": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        }
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3942:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 90511,
+                  "end": 92843
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3942:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 90511,
+                  "end": 92843
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3942:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 94074,
+                  "end": 96564
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3942:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 94074,
+                  "end": 96564
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3942:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 94074,
+                  "end": 96564
+                }
+              }
+            ]
+          },
+          {
+            "title": "QUICK_EFFECTS",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3942:quick-effect",
+                "label": "QUICK_EFFECTS",
+                "path": "/quickEffects/selectedEffectId",
+                "options": [
+                  {
+                    "label": "AMBIENT",
+                    "value": 11
+                  },
+                  {
+                    "label": "AUDIO_METER",
+                    "value": 12
+                  },
+                  {
+                    "label": "BREATHING",
+                    "value": 2
+                  },
+                  {
+                    "label": "FIRE",
+                    "value": 8
+                  },
+                  {
+                    "label": "SPECTRUM_CYCLING",
+                    "value": 3
+                  },
+                  {
+                    "label": "STARLIGHT",
+                    "value": 7
+                  },
+                  {
+                    "label": "STATIC",
+                    "value": 1
+                  },
+                  {
+                    "label": "TIDAL",
+                    "value": 19
+                  },
+                  {
+                    "label": "WAVE",
+                    "value": 4
+                  },
+                  {
+                    "label": "WHEEL",
+                    "value": 13
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3942/static/js/481.5bd26fe8.chunk.js",
+                  "offset": 72659,
+                  "end": 77614
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "TAB_POWER",
+        "sections": [
+          {
+            "title": "POWER_SAVING",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3942:power-on",
+                "label": "POWER_SAVING",
+                "path": "/runtime/powerSaving/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+                  "offset": 527045,
+                  "end": 528597
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3942:power-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/runtime/powerSaving/value",
+                "disabled_unless": "/runtime/powerSaving/isEnabled",
+                "options": [
+                  {
+                    "label": "20",
+                    "value": 20
+                  },
+                  {
+                    "label": "30",
+                    "value": 30
+                  },
+                  {
+                    "label": "40",
+                    "value": 40
+                  },
+                  {
+                    "label": "50",
+                    "value": 50
+                  },
+                  {
+                    "label": "60",
+                    "value": 60
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+                  "offset": 527045,
+                  "end": 528597
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/21051"
+  },
+  {
+    "product_id": 3946,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "brightness": {
+        "isEnabled": true,
+        "value": 100
+      },
+      "switchOffLighting": {
+        "isDisplayOn": false,
+        "isIdleEnabled": false,
+        "idleMinutes": 1
+      },
+      "volume": {
+        "isEnabled": true,
+        "value": 50
+      },
+      "quickEffects": {
+        "regionId": 0,
+        "selectedEffectId": 4,
+        "selectedEffectSetting": {
+          "effectId": 4,
+          "direction": 3
+        }
+      },
+      "mappings": []
+    },
+    "pages": [
+      {
+        "key": "TAB_LIGHTING",
+        "sections": [
+ 
