@@ -87,10 +87,20 @@ impl SettingsPage {
         });
         let preview_product = cx.new(|cx| {
             SelectState::new(
-                crate::product::registry().iter().map(|product| {
-                    Choice::new(product.id().to_string(), format!("{} · {}", product.id(), product.name()))
-                }).collect::<Vec<_>>(), None, window, cx,
-            ).searchable(true)
+                crate::product::registry()
+                    .iter()
+                    .map(|product| {
+                        Choice::new(
+                            product.id().to_string(),
+                            format!("{} · {}", product.id(), product.name()),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+                None,
+                window,
+                cx,
+            )
+            .searchable(true)
         });
         let mut this = Self {
             saved,
@@ -113,7 +123,10 @@ impl SettingsPage {
                     this.changed(cx);
                 }
             }));
-        this.subscriptions.push(cx.subscribe(&this.preview_product, |_, _, _: &SelectEvent<Vec<Choice>>, cx| cx.notify()));
+        this.subscriptions.push(cx.subscribe(
+            &this.preview_product,
+            |_, _, _: &SelectEvent<Vec<Choice>>, cx| cx.notify(),
+        ));
         this
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
@@ -672,7 +685,31 @@ impl SettingsPage {
                                     .on_click(|_, window, cx| lighting::open_preview(window, cx)),
                             )
                             .child(
+                                Button::new("preview-keyboard-calibration")
+                                    .label("预览磁轴键盘校准…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::keyboard_products::open_calibration_preview(window, cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("preview-hue")
+                                    .label("预览 Philips Hue…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::hue::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
                                 Button::new("open-pairing-page")
+                                    .label("预览鼠标底座配对…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::dock_pairing::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("open-multi-pairing-page")
                                     .label("多设备配对")
                                     .outline()
                                     .on_click(

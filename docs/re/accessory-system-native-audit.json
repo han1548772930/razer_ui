@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_evidence_sha256": "7c9f91a705c8c034cf644dd569ba82a9fa3ab82090158c8e9faed4f58c10253c",
+  "source_evidence_sha256": "22f6c462f1518d52665beee33c77c09a2b944679bc233741dab3e497d96f57e2",
   "products": [
     {
       "product_id": 3858,
@@ -563,8 +563,82 @@
       ],
       "hardware_values_fabricated": false,
       "coverage": "native local controls; hardware integration and visual parity incomplete"
+    },
+    {
+      "product_id": 3921,
+      "pages": [
+        "TAB_CUSTOMIZE"
+      ],
+      "source_files": [
+        {
+          "path": ".ref/devices/3921/static/js/main.77ab7933.js",
+          "sha256": "f6e8bc151c8e31bd40b3ecca41bba75cc78d7b79f05a970cf416cc5ef955beaa"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/430.ffb57133.chunk.js",
+          "sha256": "ac9b40982c40149a09070c8acea94ef90ee273c24f926a7c85023ac4309c1533"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/143.3aa83737.chunk.js",
+          "sha256": "d36fd164ede0df78d5e2db6c6c6323b0acde1322066da6383755f3f3cda7528c"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/168.72d39397.chunk.js",
+          "sha256": "37ae58edae398c0358bd4511d1e5eb28a0619df53f4d9ad2dd566a466246d578"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/236.c9ae136d.chunk.js",
+          "sha256": "73545dca29c34fe74644fff3f128293a50915b122ed5a9aab509cc8fbe83b239"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/248.a22e66bb.chunk.js",
+          "sha256": "7f8790c349a69105ceff3f0f894c427f11065c1d2e67eae4de2f879a61c16192"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/374.4a1ba77a.chunk.js",
+          "sha256": "e6058366b291a8cc70f482a5d79fbc62ad87c8fe45a1574c8a43125a0a1c49dd"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/536.00db8486.chunk.js",
+          "sha256": "cdec057e090ee0562ef03c42bb9145b64a79efff136a9cf1eebe0df5a7721263"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/543.38f5f974.chunk.js",
+          "sha256": "08db2256385441d571aad593a36720a0f745e5e921c746e734d85ae52d74a7fe"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/613.7c3259c3.chunk.js",
+          "sha256": "887ffb8b97fd7d0978445f1ae7dd064571f5074defd7416844c0dd1255c63d49"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/64.b1407ff0.chunk.js",
+          "sha256": "1bd9601e01932f2668069795cd35ff2ec2cbeec962bd15b3095ea10f8007943a"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/684.ebbca785.chunk.js",
+          "sha256": "24e71557871714ac3792efd1380446913031bbf13428ba376863f3122fca6e0b"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/854.c558526e.chunk.js",
+          "sha256": "302f54c3e0eb9715a9b40e3d902a903a185e0809db9f3acca214c0acdaed45ca"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/AppFolderInstallationChecker.41891ac2.chunk.js",
+          "sha256": "d40de7d2497dd10dcce7b1f43df4df50f721f799746dece0fbfc6fc02e7a5bc8"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/DynamicSensitivityTutorialIcon.cb8c62cd.chunk.js",
+          "sha256": "46f73239fb368ff455ea7a633c89658db48e15b42ae7a23470d53833c1bebdc4"
+        },
+        {
+          "path": ".ref/devices/3921/static/js/DynamicSensitivityTutorialPopup.1f07953c.chunk.js",
+          "sha256": "665756b8ff888eed2b69ce1d8f1ef9d28d82fa6e7cbeaeb03d24a9afe6f60132"
+        }
+      ],
+      "hardware_values_fabricated": false,
+      "coverage": "native local controls; hardware integration and visual parity incomplete"
     }
   ],
-  "nonlighting_pages": 9,
+  "nonlighting_pages": 10,
   "verification": "source hashes and static assertions; no app, build, or test execution"
 }

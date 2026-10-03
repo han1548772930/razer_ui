@@ -16,6 +16,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+#[path = "audio_demo.rs"]
+mod demo;
+
 #[derive(Deserialize)]
 struct AudioOption {
     label: String,
@@ -108,8 +111,14 @@ pub(crate) fn source_product(pid: u32) -> Option<&'static AudioProductSpec> {
         .find(|p| p.product_id == pid)
 }
 pub(crate) fn supports_page(pid: u32, key: &str) -> bool {
-    source_product(pid)
-        .is_some_and(|p| p.pages.iter().any(|p| p.key == key && !p.sections.is_empty()))
+    if key == "TAB_DEMO" && demo::supports(pid) {
+        return true;
+    }
+    source_product(pid).is_some_and(|p| {
+        p.pages
+            .iter()
+            .any(|p| p.key == key && !p.sections.is_empty())
+    })
 }
 pub(crate) struct AudioProductChanged;
 pub(crate) struct AudioProductWorkspace {
@@ -121,6 +130,7 @@ pub(crate) struct AudioProductWorkspace {
     subscriptions: Vec<Subscription>,
     syncing: bool,
     selected_region: usize,
+    demo: Option<Entity<demo::AudioDemo>>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
 
@@ -136,6 +146,7 @@ impl AudioProductWorkspace {
             subscriptions: Vec::new(),
             syncing: false,
             selected_region: 0,
+            demo: demo::AudioDemo::for_product(pid, cx),
         };
         this.initialize_equalizers();
         for control in spec
@@ -688,6 +699,11 @@ impl AudioProductWorkspace {
 }
 impl Render for AudioProductWorkspace {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.page == "TAB_DEMO" {
+            if let Some(demo) = &self.demo {
+                return demo.clone().into_any_element();
+            }
+        }
         let page = self.spec.pages.iter().find(|p| p.key == self.page);
         let mut sections = Vec::new();
         if let Some(page) = page {
@@ -731,6 +747,7 @@ impl Render for AudioProductWorkspace {
                     .child(self.spec.name.clone()),
             )
             .child(surface::page_columns().children(sections))
+            .into_any_element()
     }
 }
 fn normalized(value: f32, min: f32, max: f32, step: f32) -> Value {

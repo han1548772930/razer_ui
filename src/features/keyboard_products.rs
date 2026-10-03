@@ -14,6 +14,12 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+#[path = "keyboard_actuation.rs"]
+mod actuation;
+#[path = "keyboard_calibration.rs"]
+mod calibration;
+pub(crate) use calibration::open_preview as open_calibration_preview;
+
 #[derive(Deserialize)]
 pub(crate) struct KeyboardProductSpec {
     product_id: u32,
@@ -63,6 +69,9 @@ pub(crate) struct KeyboardProductWorkspace {
     subscriptions: Vec<Subscription>,
     syncing: bool,
     scroll: ScrollHandle,
+    actuation: Option<actuation::State>,
+    calibration_intro_visible: bool,
+    calibration_modal: Option<Entity<calibration::CalibrationModal>>,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -79,6 +88,9 @@ impl KeyboardProductWorkspace {
             subscriptions: vec![],
             syncing: false,
             scroll: ScrollHandle::new(),
+            actuation: None,
+            calibration_intro_visible: true,
+            calibration_modal: None,
         };
         if this.draft.pointer("/brightness/value").is_some() {
             this.add_slider("/brightness/value", 0., 100., 1., window, cx);
@@ -108,10 +120,15 @@ impl KeyboardProductWorkspace {
                 cx,
             );
         }
+        this.init_actuation(window, cx);
         this
     }
-    pub(crate) fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
-        if self.spec.pages.iter().any(|p| p == key) && self.page != key {
+    pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if self.page != key {
+            self.dismiss_calibration(window, cx);
+            if let Some(state) = &mut self.actuation {
+                state.selected.clear();
+            }
             self.page = key.into();
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
@@ -126,6 +143,7 @@ impl KeyboardProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.dismiss_calibration(window, cx);
         self.draft = self.spec.default_profile();
         if let (Some(target), Some(saved)) =
             (self.draft.as_object_mut(), value.and_then(Value::as_object))
@@ -138,6 +156,9 @@ impl KeyboardProductWorkspace {
         }
         self.selected_key = None;
         self.hovered_key = None;
+        if let Some(state) = &mut self.actuation {
+            state.selected.clear();
+        }
         self.syncing = true;
         for (path, slider) in &self.sliders {
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
@@ -317,6 +338,10 @@ impl KeyboardProductWorkspace {
             return;
         };
         if !key["isEnabled"].as_bool().unwrap_or(true) {
+            return;
+        }
+        if key["inputType"] == "AnalogInput" && self.actuation.is_some() {
+            self.assign_analog_key(input, assignment, cx);
             return;
         }
         assignment["inputID"] = json!(input);
@@ -540,7 +565,13 @@ impl KeyboardProductWorkspace {
             keyboard = keyboard.children(self.spec.shapes.iter().map(|key| {
                 let id = key.id.clone();
                 let hover_id = id.clone();
-                let selected = self.selected_key.as_ref() == Some(&id);
+                let selected = if self.page == "ACTUATION" {
+                    self.actuation
+                        .as_ref()
+                        .is_some_and(|state| state.selected.contains(&id))
+                } else {
+                    self.selected_key.as_ref() == Some(&id)
+                };
                 let hovered = self.hovered_key.as_ref() == Some(&id);
                 let [x, y, w, h] = key.bounds;
                 let mapped = self
@@ -573,8 +604,12 @@ impl KeyboardProductWorkspace {
                             cx.theme().primary,
                             selected,
                             hovered,
-                            cx.listener(move |this, _, _, cx| {
-                                this.selected_key = Some(id.clone());
+                            cx.listener(move |this, _, window, cx| {
+                                if this.page == "ACTUATION" {
+                                    this.select_actuation_key(&id, window, cx);
+                                } else {
+                                    this.selected_key = Some(id.clone());
+                                }
                                 cx.notify();
                             }),
                             cx.listener(move |this, hover, _, cx| {
@@ -586,7 +621,11 @@ impl KeyboardProductWorkspace {
                                 cx.notify();
                             }),
                         )
-                        .disabled(!key.enabled),
+                        .disabled(
+                            !key.enabled
+                                || (self.page == "ACTUATION"
+                                    && !self.actuation_key_enabled(&key.id)),
+                        ),
                     )
             }));
         }
@@ -682,6 +721,10 @@ impl KeyboardProductWorkspace {
                             .label(t("DEFAULT"))
                             .outline()
                             .on_click(cx.listener(move |this, _, _, cx| {
+                                if this.actuation.is_some() {
+                                    this.reset_analog_assignment(&input, cx);
+                                    return;
+                                }
                                 let path = this.mapping_path();
                                 let shift = this.hypershift;
                                 if let Some(mappings) =
@@ -726,6 +769,8 @@ impl Render for KeyboardProductWorkspace {
                 .child(self.lighting(cx))
                 .into_any_element(),
             "TAB_CUSTOMIZE" => self.customize(cx),
+            "ACTUATION" => self.actuation_page(cx),
+            "TAB_CALIBRATION" => self.calibration_page(cx),
             "TAB_POWER" => self.power(cx),
             _ => surface::panel(t(&self.page), cx)
                 .child(self.spec.name.clone())
@@ -739,5 +784,6 @@ impl Render for KeyboardProductWorkspace {
             .track_scroll(&self.scroll)
             .text_color(cx.theme().foreground)
             .child(div().p_5().child(content))
+            .children(self.calibration_modal.clone())
     }
 }

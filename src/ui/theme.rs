@@ -1,6 +1,119 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Current Dock Pro HyperPolling and Dock V2 Pro Duallink CSS modules.
+pub(crate) struct DockPairingColors;
+impl DockPairingColors {
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn card() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn category() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn primary_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub(crate) fn secondary_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x000000b3).into()
+    }
+}
+
+/// Current product 769's Home, Bridge and Brightness CSS modules.
+pub(crate) struct HueColors;
+impl HueColors {
+    pub(crate) fn error() -> Hsla {
+        rgb(0xc8323c).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn secondary_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn primary_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub(crate) fn button_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn ip_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn icon_border() -> Hsla {
+        rgba(0xffffff80).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn remove() -> Hsla {
+        rgb(0xfd4949).into()
+    }
+    pub(crate) fn light_hover() -> Hsla {
+        rgb(0x222222).into()
+    }
+}
+
+/// Current audio demo .demo-preview > .box > .icon, shared by 1392/1442/3942.
+pub(crate) struct AudioDemoColors;
+impl AudioDemoColors {
+    pub(crate) fn play_foreground() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn play_background() -> Hsla {
+        rgba(0x000000cc).into()
+    }
+}
+
+/// Current 740/746 KeyboardSwitchCalibrationModal and introduction source CSS.
+pub(crate) struct KeyboardCalibrationColors;
+impl KeyboardCalibrationColors {
+    pub(crate) fn introduction() -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x2b2b2b).into()
+    }
+    pub(crate) fn key() -> Hsla {
+        rgb(0x444444).into()
+    }
+    pub(crate) fn step() -> Hsla {
+        rgba(0xffffff40).into()
+    }
+    pub(crate) fn step_text() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn instruction() -> Hsla {
+        rgba(0xffffffbf).into()
+    }
+    pub(crate) fn button() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn button_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn button_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn button_hover() -> Hsla {
+        rgb(0x6ade57).into()
+    }
+}
+
 /// Alexa's account button and sample response bubbles, from main.bbca16c4.css.
 pub(crate) struct AlexaColors;
 impl AlexaColors {
@@ -470,12 +583,63 @@ impl DrawerColors {
         rgba(0xc8323c80).into()
     }
 }
+/// Current product 691 OLED screensaver CSS, independent of app theme.
+pub(crate) struct OledColors;
+impl OledColors {
+    pub(crate) fn screen() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn muted() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn hover_border() -> Hsla {
+        rgb(0x166809).into()
+    }
+}
+
 /// Current camera CSS `.advanced-camera-container .default-button`.
 pub(crate) struct CameraProductColors;
 impl CameraProductColors {
-    pub(crate) fn border() -> gpui_kit::Hsla { gpui_kit::rgb(0x5d5d5d).into() }
-    pub(crate) fn text() -> gpui_kit::Hsla { gpui_kit::rgb(0xcccccc).into() }
-    pub(crate) fn selected() -> gpui_kit::Hsla { gpui_kit::rgb(0x292929).into() }
-    pub(crate) fn hover() -> gpui_kit::Hsla { gpui_kit::rgb(0x111111).into() }
-    pub(crate) fn pressed() -> gpui_kit::Hsla { gpui_kit::rgb(0xffffff).into() }
+    pub(crate) fn border() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn text() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0xcccccc).into()
+    }
+    pub(crate) fn selected() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x292929).into()
+    }
+    pub(crate) fn hover() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x111111).into()
+    }
+    pub(crate) fn pressed() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0xffffff).into()
+    }
+}
+
+/// systrayv2 554.7cdbd936: its popup uses a fixed dark palette independently
+/// of the Windows-native right-click menu's system appearance.
+pub(crate) struct TrayColors;
+impl TrayColors {
+    pub(crate) fn surface() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn launcher() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn muted() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn hover_text() -> Hsla {
+        rgb(0xeeeeee).into()
+    }
 }

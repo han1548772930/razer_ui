@@ -1,42 +1,56 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "summary": {
     "registered_product_ids": 331,
-    "products_with_partial_main_content": 328,
-    "products_without_main_content": [
-      179,
-      207,
-      769
-    ],
+    "products_with_partial_main_content": 331,
+    "products_without_main_content": [],
     "primary_pages": 1419,
     "page_status_counts": {
-      "pending": 432,
-      "partial_native": 960,
+      "partial_native": 1384,
+      "pending": 8,
       "existing_partial_not_reaudited_here": 27
     },
     "fully_reproduced_products_claimed": 0
   },
   "inputs_sha256": {
+    "tools/audit-native-product-coverage.py": "86a0186b7fec739e14ad19a1a58830663a6494bf877061b9a7aab689d3b38f7b",
     "docs/re/product-registration-audit.json": "8f9975d00624bdd0f09e6f9e02299fc78baf7081cc086c0f9df06f8c62a77bec",
-    "src/features/mouse_products_data.json": "d05941c470eb3c1f5b9dbe47338e3cab4924fa9c437058108ed3f5bf1e6af762",
+    "src/features/mouse_products_data.json": "72748f38436c0e6ae8526a0350a942ceed3250e91966fdc769755b4a00fbe78a",
     "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d",
     "src/features/gamepad_products_data.json": "8cc9702f01226649afbbd2ff57b290fc86eff2e33090dc0c4b5014688515c60a",
     "src/features/audio_products_data.json": "71bf9a07b912501fd012aa31f9e355687c4466013194baf551b0e95faf7e52ed",
     "src/features/system_products_data.json": "9cf4f4c0ee5571679abbfae250441623ab354c2a9d0d5252643ac1f62762b6c2",
-    "src/features/accessory_system_products_data.json": "971492f7b9e22eac1a50b707d1c630952b2ec07f6552b53716092ce4d1aa7695",
-    "src/features/source_controls_data.json": "99016caed810a80bc8ec697f8d09fcdbc7c530a8b7ae64954d5c766ce7dd7d2c",
-    "src/features/accessory_controls_data.json": "64ec483e95b85c609f2416283d413609847d325dd54a761e8b13d9e59da9c6ba",
-    "src/features/source_help_data.json": "09ab8c05fd55b206476b35cf65187546aa442a648108473cb94f641bb627e366",
-    "src/features/mouse_products.rs": "61e0c045767d213a8940848df7130f807226386c109c31f85209d89a67c42067",
-    "src/features/keyboard_products.rs": "f56a768cb95eb2c4d0b7afda5f6107a96d766175e98292ccd200623b326ef026",
+    "src/features/accessory_system_products_data.json": "be795550239ba518007eb0251e4217678d1d2ffbb3292f8ad34a37abcdad02b9",
+    "src/features/source_controls_data.json": "ae03616e8a37556c17c6e448b7790333fe0f14e7e30bb8d81d1e336e413c0ebe",
+    "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
+    "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
+    "src/features/source_help_data.json": "d6cd92a5b11b01b8161d6195aeeee4d1ea505c872ad94baf18f550ed6a6b3cff",
+    "src/features/mouse_products.rs": "2a915a1e7d9f0527c0fd4b9e5a6354763b6d44a0415d21baab18b993e04f6266",
+    "src/features/keyboard_products.rs": "7fd24b4c832bdb1d62ff1f0ef7152dad4410bcdfe6ece6d53ab928da9c393491",
     "src/features/gamepad_products.rs": "95b56e105dff21c5db29715cbfe9223923e52f6062b5bcef5e84891ec1bc6678",
-    "src/features/audio_products.rs": "790e4a309946310b0da647404928a73c0a7f853f200614a653eabfc97972662d",
+    "src/features/audio_products.rs": "f9b3a6d8529f32fd9ff2bda346aaf05be81c957c0cc9e1c83a5f558158d6d645",
     "src/features/system_products.rs": "33c9b17cff559cc96eb8207e860d074782f4a83e2512fbf0b63805bfc63ce07d",
-    "src/features/accessory_system_products.rs": "0aac3b4fa38e9ff86fa6aee94a40c6f6a9454de00b400d875cc78e0c10c2f262",
-    "src/features/source_workspace.rs": "850ed498e0754bc9702d071b07751585a73bdc11513852d89507dd3ed396a312",
-    "src/features/product_workspace.rs": "8d402b4b8b904103381418bb8bc795ce93b1116a4215209ed01821983e9b3a82",
-    "src/features/source_help.rs": "d98c786c848f4fe5ace47c4976639c37931adccf668598af7744d5804d8c90a6",
-    "src/features/source_controls.rs": "d18d93e43231e38718854c866fd923f8cedb217822b3b90658b9e642b035ffdc"
+    "src/features/accessory_system_products.rs": "10561d064137abf322ce50c68d42a5c1af85463454db79d24fe3181cc31bd5f2",
+    "src/features/source_workspace.rs": "e40605969f7aa94293950e54f89e5eca59306c6546e2d04b9f2dd33346c6f158",
+    "src/features/product_workspace.rs": "5cdce87f498af331c4b7c92f82e4ebe1091a6b90c34eb0738b1417e1dd0d73fc",
+    "src/features/source_help.rs": "2f03ab34c6d8a7711f7e99afde15513a8c14072021eb7c5478f775fcb64a5a54",
+    "src/features/source_controls.rs": "fdfd82b7822df54dc4c29c9b2f6600e62e6d5a8fb2cdfe4f1628612211d05c98",
+    "src/features/source_controls/oled_presets.rs": "305bc3f521ca689d647f28dfddcdf4ac7efb1a85b09c07cc3de2a2c29d717c90",
+    "src/features/accessory_system_products/corex_fan.rs": "86f1876e21aad7b0731f184d444db563389080aba8e6d0379d7b4984329c9897",
+    "src/features/corex_fan_data.json": "96a7ce3c23776b78b728a3a17220ec4d43dc526a61fd5199d0da29a7416e3766",
+    "src/features/keyboard_actuation.rs": "6dfa155644e7e6c5a6d0b7d111c3790dc12d80bffe3fb68c6b6238d72cc9cd17",
+    "src/features/keyboard_calibration.rs": "dd1069f60246974cdcbc1b57e398e937350aed46dc8d333363501b7cfe15c1b3",
+    "src/features/keyboard_calibration_data.json": "e2dd9f9118ce66218eda19fc9681d5d09eda673de3d359b198b1b9d351c9832b",
+    "src/features/audio_demo.rs": "fffea3817f4c9089a5d9522180962c1d60303ca0d621992d36f5e320f92a06f4",
+    "src/features/audio_demo_data.json": "9b0916959a321e6d63920a47c0767e821f09712e8862e899decfc2e5c6e7d249",
+    "src/features/hue_data.json": "07a5e5d69dafefaebeef7e7c92898b418a8fbbfa7f14387eb4eff6364ff4ae26",
+    "src/features/hue.rs": "79e79bdef039f7f69c02f90d63f75d7881a9f27667da501a5f54cde15f00aa1b",
+    "src/features/hue/onboarding.rs": "668d5f058582a05a3969aa98088a87e7be448ac047bf408bf8eef82fedb8c515",
+    "src/features/hue/bridge.rs": "d9cd4d5d7e32d3da99db9325ba8793b054fbddfc9e4c4691239b8766ce04e3d8",
+    "src/features/hue/brightness.rs": "a6c4ae3480fd23ee0584f7f49a2f74eaf1a599e1b58ec5e46a67e8ddfba53536",
+    "src/features/hue/effects.rs": "0a72788ef2293c41142e5258f9f21fbf6168b8e15f23d4cd5bb135b7b580fb95",
+    "src/features/hue/preview.rs": "8890dd9063e95546808e60c0360c9e720de18216f74b659aa756d05baeb09960",
+    "src/features/keyboard_actuation_data.json": "21d4c7192023d5fca40de3314d25b4ba5a876bb059b426135d050a899f6eec23"
   },
   "limitations": [
     "Renderer/descriptor presence is not visual equivalence, complete behavior, or hardware support.",
@@ -60,8 +74,8 @@
           "page_id": "product-70-main.8f24b6a1-4931938",
           "key": "TAB_CUSTOMIZE",
           "offset": 4931938,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-70-main.8f24b6a1-4932035",
@@ -88,8 +102,8 @@
           "page_id": "product-70-main.8f24b6a1-4932176",
           "key": "HELP",
           "offset": 4932176,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -104,8 +118,8 @@
           "page_id": "product-80-main.16a5772c-4970230",
           "key": "TAB_CUSTOMIZE",
           "offset": 4970230,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-80-main.16a5772c-4970327",
@@ -132,8 +146,8 @@
           "page_id": "product-80-main.16a5772c-4970468",
           "key": "HELP",
           "offset": 4970468,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -148,8 +162,8 @@
           "page_id": "product-83-main.e187f033-4984903",
           "key": "TAB_CUSTOMIZE",
           "offset": 4984903,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-83-main.e187f033-4985000",
@@ -176,8 +190,8 @@
           "page_id": "product-83-main.e187f033-4985141",
           "key": "HELP",
           "offset": 4985141,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -192,8 +206,8 @@
           "page_id": "product-89-main.714ba9f0-4969964",
           "key": "TAB_CUSTOMIZE",
           "offset": 4969964,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-89-main.714ba9f0-4970061",
@@ -227,8 +241,8 @@
           "page_id": "product-89-main.714ba9f0-4970249",
           "key": "HELP",
           "offset": 4970249,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -243,8 +257,8 @@
           "page_id": "product-92-main.ca936871-4923655",
           "key": "TAB_CUSTOMIZE",
           "offset": 4923655,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-92-main.ca936871-4923752",
@@ -271,8 +285,8 @@
           "page_id": "product-92-main.ca936871-4923893",
           "key": "HELP",
           "offset": 4923893,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -287,8 +301,8 @@
           "page_id": "product-96-main.532590c5-4963953",
           "key": "TAB_CUSTOMIZE",
           "offset": 4963953,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-96-main.532590c5-4964050",
@@ -315,8 +329,8 @@
           "page_id": "product-96-main.532590c5-4964191",
           "key": "HELP",
           "offset": 4964191,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -331,8 +345,8 @@
           "page_id": "product-98-main.91167ba0-4881945",
           "key": "TAB_CUSTOMIZE",
           "offset": 4881945,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-98-main.91167ba0-4882042",
@@ -359,8 +373,8 @@
           "page_id": "product-98-main.91167ba0-4882183",
           "key": "HELP",
           "offset": 4882183,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -375,8 +389,8 @@
           "page_id": "product-99-main.0f9c94fa-4912090",
           "key": "TAB_CUSTOMIZE",
           "offset": 4912090,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-99-main.0f9c94fa-4912187",
@@ -403,8 +417,8 @@
           "page_id": "product-99-main.0f9c94fa-4912328",
           "key": "HELP",
           "offset": 4912328,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -419,8 +433,8 @@
           "page_id": "product-100-main.1734869e-4985787",
           "key": "TAB_CUSTOMIZE",
           "offset": 4985787,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-100-main.1734869e-4985884",
@@ -447,8 +461,8 @@
           "page_id": "product-100-main.1734869e-4986025",
           "key": "HELP",
           "offset": 4986025,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -463,8 +477,8 @@
           "page_id": "product-101-main.f1e7055d-4985004",
           "key": "TAB_CUSTOMIZE",
           "offset": 4985004,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-101-main.f1e7055d-4985101",
@@ -491,8 +505,8 @@
           "page_id": "product-101-main.f1e7055d-4985242",
           "key": "HELP",
           "offset": 4985242,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -507,8 +521,8 @@
           "page_id": "product-103-main.b753ffe5-5047345",
           "key": "TAB_CUSTOMIZE",
           "offset": 5047345,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-103-main.b753ffe5-5047442",
@@ -535,8 +549,8 @@
           "page_id": "product-103-main.b753ffe5-5047583",
           "key": "HELP",
           "offset": 5047583,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -551,8 +565,8 @@
           "page_id": "product-104-main.9b94769e-5015635",
           "key": "TAB_CUSTOMIZE",
           "offset": 5015635,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-104-main.9b94769e-5015776",
@@ -579,8 +593,8 @@
           "page_id": "product-104-main.9b94769e-5016023",
           "key": "HELP",
           "offset": 5016023,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -595,8 +609,8 @@
           "page_id": "product-105-main.ef834389-5015635",
           "key": "TAB_CUSTOMIZE",
           "offset": 5015635,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-105-main.ef834389-5015776",
@@ -623,8 +637,8 @@
           "page_id": "product-105-main.ef834389-5016023",
           "key": "HELP",
           "offset": 5016023,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -639,8 +653,8 @@
           "page_id": "product-106-main.4d2daa0b-4964090",
           "key": "TAB_CUSTOMIZE",
           "offset": 4964090,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-106-main.4d2daa0b-4964187",
@@ -667,8 +681,8 @@
           "page_id": "product-106-main.4d2daa0b-4964328",
           "key": "HELP",
           "offset": 4964328,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -683,8 +697,8 @@
           "page_id": "product-107-main.eca0fb8e-4914941",
           "key": "TAB_CUSTOMIZE",
           "offset": 4914941,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-107-main.eca0fb8e-4915038",
@@ -711,8 +725,8 @@
           "page_id": "product-107-main.eca0fb8e-4915179",
           "key": "HELP",
           "offset": 4915179,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -727,8 +741,8 @@
           "page_id": "product-108-main.e453e8a5-4948901",
           "key": "TAB_CUSTOMIZE",
           "offset": 4948901,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-108-main.e453e8a5-4948998",
@@ -755,8 +769,8 @@
           "page_id": "product-108-main.e453e8a5-4949139",
           "key": "HELP",
           "offset": 4949139,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -771,8 +785,8 @@
           "page_id": "product-110-main.6e992750-4715839",
           "key": "TAB_CUSTOMIZE",
           "offset": 4715839,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-110-main.6e992750-4715936",
@@ -792,8 +806,8 @@
           "page_id": "product-110-main.6e992750-4716030",
           "key": "HELP",
           "offset": 4716030,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -808,8 +822,8 @@
           "page_id": "product-112-main.47216244-4992606",
           "key": "TAB_CUSTOMIZE",
           "offset": 4992606,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-112-main.47216244-4992703",
@@ -843,8 +857,8 @@
           "page_id": "product-112-main.47216244-4992891",
           "key": "HELP",
           "offset": 4992891,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -859,8 +873,8 @@
           "page_id": "product-113-main.c8b01b6c-4720370",
           "key": "TAB_CUSTOMIZE",
           "offset": 4720370,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-113-main.c8b01b6c-4720467",
@@ -880,8 +894,8 @@
           "page_id": "product-113-main.c8b01b6c-4720561",
           "key": "HELP",
           "offset": 4720561,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -896,8 +910,8 @@
           "page_id": "product-115-main.414c4a81-4980277",
           "key": "TAB_CUSTOMIZE",
           "offset": 4980277,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-115-main.414c4a81-4980374",
@@ -931,8 +945,8 @@
           "page_id": "product-115-main.414c4a81-4980562",
           "key": "HELP",
           "offset": 4980562,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -947,8 +961,8 @@
           "page_id": "product-116-main.2e83bad2-4938552",
           "key": "TAB_CUSTOMIZE",
           "offset": 4938552,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-116-main.2e83bad2-4938649",
@@ -975,8 +989,8 @@
           "page_id": "product-116-main.2e83bad2-4938790",
           "key": "HELP",
           "offset": 4938790,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -991,8 +1005,8 @@
           "page_id": "product-117-main.479a8db6-4956032",
           "key": "TAB_CUSTOMIZE",
           "offset": 4956032,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-117-main.479a8db6-4956129",
@@ -1026,8 +1040,8 @@
           "page_id": "product-117-main.479a8db6-4956317",
           "key": "HELP",
           "offset": 4956317,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1042,8 +1056,8 @@
           "page_id": "product-120-main.026ff14a-4980156",
           "key": "TAB_CUSTOMIZE",
           "offset": 4980156,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-120-main.026ff14a-4980253",
@@ -1070,15 +1084,15 @@
           "page_id": "product-120-main.026ff14a-4980394",
           "key": "HELP",
           "offset": 4980394,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         },
         {
           "page_id": "product-120-main.026ff14a-4980441",
           "key": "HELP",
           "offset": 4980441,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1093,8 +1107,8 @@
           "page_id": "product-122-main.4197e469-4982878",
           "key": "TAB_CUSTOMIZE",
           "offset": 4982878,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-122-main.4197e469-4982975",
@@ -1128,8 +1142,8 @@
           "page_id": "product-122-main.4197e469-4983163",
           "key": "HELP",
           "offset": 4983163,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1144,8 +1158,8 @@
           "page_id": "product-124-main.564e2add-5022368",
           "key": "TAB_CUSTOMIZE",
           "offset": 5022368,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-124-main.564e2add-5022465",
@@ -1172,8 +1186,8 @@
           "page_id": "product-124-main.564e2add-5022606",
           "key": "HELP",
           "offset": 5022606,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1197,8 +1211,8 @@
           "page_id": "product-126-main.766604be-4559808",
           "key": "HELP",
           "offset": 4559808,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1213,8 +1227,8 @@
           "page_id": "product-128-main.1c01e761-4714626",
           "key": "TAB_CUSTOMIZE",
           "offset": 4714626,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-128-main.1c01e761-4714722",
@@ -1234,8 +1248,8 @@
           "page_id": "product-128-main.1c01e761-4714814",
           "key": "HELP",
           "offset": 4714814,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1250,8 +1264,8 @@
           "page_id": "product-131-main.b7514675-4891099",
           "key": "TAB_CUSTOMIZE",
           "offset": 4891099,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-131-main.b7514675-4891196",
@@ -1271,8 +1285,8 @@
           "page_id": "product-131-main.b7514675-4891290",
           "key": "HELP",
           "offset": 4891290,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -1296,8 +1310,8 @@
           "page_id": "product-132-main.6b45cd12-4956167",
           "key": "TAB_CUSTOMIZE",
           "offset": 4956167,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-132-main.6b45cd12-4956264",
@@ -1324,8 +1338,8 @@
           "page_id": "product-132-main.6b45cd12-4956405",
           "key": "HELP",
           "offset": 4956405,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1340,8 +1354,8 @@
           "page_id": "product-133-main.84fbd82a-4946000",
           "key": "TAB_CUSTOMIZE",
           "offset": 4946000,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-133-main.84fbd82a-4946097",
@@ -1368,8 +1382,8 @@
           "page_id": "product-133-main.84fbd82a-4946238",
           "key": "HELP",
           "offset": 4946238,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1384,8 +1398,8 @@
           "page_id": "product-134-main.88c1e1a3-4950876",
           "key": "TAB_CUSTOMIZE",
           "offset": 4950876,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-134-main.88c1e1a3-4950973",
@@ -1419,8 +1433,8 @@
           "page_id": "product-134-main.88c1e1a3-4951161",
           "key": "HELP",
           "offset": 4951161,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1435,8 +1449,8 @@
           "page_id": "product-138-main.358f6b29-4947122",
           "key": "TAB_CUSTOMIZE",
           "offset": 4947122,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-138-main.358f6b29-4947219",
@@ -1463,8 +1477,8 @@
           "page_id": "product-138-main.358f6b29-4947360",
           "key": "HELP",
           "offset": 4947360,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1479,8 +1493,8 @@
           "page_id": "product-140-main.db53a005-4937720",
           "key": "TAB_CUSTOMIZE",
           "offset": 4937720,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-140-main.db53a005-4937817",
@@ -1507,8 +1521,8 @@
           "page_id": "product-140-main.db53a005-4937958",
           "key": "HELP",
           "offset": 4937958,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1523,8 +1537,8 @@
           "page_id": "product-141-main.aa4788cc-4997750",
           "key": "TAB_CUSTOMIZE",
           "offset": 4997750,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-141-main.aa4788cc-4997847",
@@ -1551,8 +1565,8 @@
           "page_id": "product-141-main.aa4788cc-4997988",
           "key": "HELP",
           "offset": 4997988,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1567,8 +1581,8 @@
           "page_id": "product-143-main.3eb704f1-5112712",
           "key": "TAB_CUSTOMIZE",
           "offset": 5112712,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-143-main.3eb704f1-5112809",
@@ -1595,8 +1609,8 @@
           "page_id": "product-143-main.3eb704f1-5112950",
           "key": "HELP",
           "offset": 5112950,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1611,8 +1625,8 @@
           "page_id": "product-145-main.24a35fa5-4968171",
           "key": "TAB_CUSTOMIZE",
           "offset": 4968171,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-145-main.24a35fa5-4968268",
@@ -1639,8 +1653,8 @@
           "page_id": "product-145-main.24a35fa5-4968409",
           "key": "HELP",
           "offset": 4968409,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1655,8 +1669,8 @@
           "page_id": "product-147-main.885c5195-5027753",
           "key": "TAB_CUSTOMIZE",
           "offset": 5027753,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-147-main.885c5195-5027850",
@@ -1683,8 +1697,8 @@
           "page_id": "product-147-main.885c5195-5027991",
           "key": "HELP",
           "offset": 5027991,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1699,8 +1713,8 @@
           "page_id": "product-148-main.7e209fb0-4942391",
           "key": "TAB_CUSTOMIZE",
           "offset": 4942391,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-148-main.7e209fb0-4942488",
@@ -1720,8 +1734,8 @@
           "page_id": "product-148-main.7e209fb0-4942582",
           "key": "HELP",
           "offset": 4942582,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -1745,8 +1759,8 @@
           "page_id": "product-150-main.54e6989b-4989246",
           "key": "TAB_CUSTOMIZE",
           "offset": 4989246,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-150-main.54e6989b-4989343",
@@ -1773,8 +1787,8 @@
           "page_id": "product-150-main.54e6989b-4989484",
           "key": "HELP",
           "offset": 4989484,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1789,8 +1803,8 @@
           "page_id": "product-152-main.265c9698-4726955",
           "key": "TAB_CUSTOMIZE",
           "offset": 4726955,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-152-main.265c9698-4727052",
@@ -1810,8 +1824,8 @@
           "page_id": "product-152-main.265c9698-4727146",
           "key": "HELP",
           "offset": 4727146,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1826,8 +1840,8 @@
           "page_id": "product-153-main.9095b82c-4954844",
           "key": "TAB_CUSTOMIZE",
           "offset": 4954844,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-153-main.9095b82c-4954941",
@@ -1854,8 +1868,8 @@
           "page_id": "product-153-main.9095b82c-4955082",
           "key": "HELP",
           "offset": 4955082,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1870,8 +1884,8 @@
           "page_id": "product-154-main.35e3c57f-4783977",
           "key": "TAB_CUSTOMIZE",
           "offset": 4783977,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-154-main.35e3c57f-4784073",
@@ -1891,8 +1905,8 @@
           "page_id": "product-154-main.35e3c57f-4784165",
           "key": "HELP",
           "offset": 4784165,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -1907,8 +1921,8 @@
           "page_id": "product-156-main.9543954c-4918623",
           "key": "TAB_CUSTOMIZE",
           "offset": 4918623,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-156-main.9543954c-4918720",
@@ -1928,8 +1942,8 @@
           "page_id": "product-156-main.9543954c-4918814",
           "key": "HELP",
           "offset": 4918814,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -1953,8 +1967,8 @@
           "page_id": "product-158-main.dc9fe529-4930562",
           "key": "TAB_CUSTOMIZE",
           "offset": 4930562,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-158-main.dc9fe529-4930659",
@@ -1981,8 +1995,8 @@
           "page_id": "product-158-main.dc9fe529-4930800",
           "key": "HELP",
           "offset": 4930800,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2006,8 +2020,8 @@
           "page_id": "product-161-main.ba9a72b0-4937626",
           "key": "TAB_CUSTOMIZE",
           "offset": 4937626,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-161-main.ba9a72b0-4937723",
@@ -2034,8 +2048,8 @@
           "page_id": "product-161-main.ba9a72b0-4937864",
           "key": "HELP",
           "offset": 4937864,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2043,45 +2057,43 @@
     {
       "product_id": 162,
       "name": "cobra",
-      "family": "source_controls",
+      "family": "mouse",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-162-main.4dce6fd2-3718980",
           "key": "TAB_CUSTOMIZE",
           "offset": 3718980,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-162-main.4dce6fd2-3719084",
           "key": "TAB_PERFORMANCE",
           "offset": 3719084,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-162-main.4dce6fd2-3719143",
           "key": "TAB_LIGHTING",
           "offset": 3719143,
-          "route": "source_controls",
-          "status": "partial_native",
-          "controls": 3,
-          "equalizers": 0
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-162-main.4dce6fd2-3719199",
           "key": "TAB_CALIBRATION",
           "offset": 3719199,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-162-main.4dce6fd2-3719258",
           "key": "HELP",
           "offset": 3719258,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2096,8 +2108,8 @@
           "page_id": "product-163-main.efd0b513-4968295",
           "key": "TAB_CUSTOMIZE",
           "offset": 4968295,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-163-main.efd0b513-4968392",
@@ -2124,8 +2136,8 @@
           "page_id": "product-163-main.efd0b513-4968533",
           "key": "HELP",
           "offset": 4968533,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2156,8 +2168,8 @@
           "page_id": "product-164-main.458d4103-4575301",
           "key": "HELP",
           "offset": 4575301,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2181,8 +2193,8 @@
           "page_id": "product-165-main.571c242f-4771940",
           "key": "TAB_CUSTOMIZE",
           "offset": 4771940,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-165-main.571c242f-4772037",
@@ -2209,8 +2221,8 @@
           "page_id": "product-165-main.571c242f-4772178",
           "key": "HELP",
           "offset": 4772178,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2225,8 +2237,8 @@
           "page_id": "product-167-main.508445ac-5064497",
           "key": "TAB_CUSTOMIZE",
           "offset": 5064497,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-167-main.508445ac-5064594",
@@ -2260,8 +2272,8 @@
           "page_id": "product-167-main.508445ac-5064782",
           "key": "HELP",
           "offset": 5064782,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2285,8 +2297,8 @@
           "page_id": "product-170-main.7a4583ef-4917850",
           "key": "TAB_CUSTOMIZE",
           "offset": 4917850,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-170-main.7a4583ef-4917947",
@@ -2320,8 +2332,8 @@
           "page_id": "product-170-main.7a4583ef-4918135",
           "key": "HELP",
           "offset": 4918135,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2345,8 +2357,8 @@
           "page_id": "product-175-main.f6dfd3ef-4931209",
           "key": "TAB_CUSTOMIZE",
           "offset": 4931209,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-175-main.f6dfd3ef-4931306",
@@ -2373,8 +2385,8 @@
           "page_id": "product-175-main.f6dfd3ef-4931447",
           "key": "HELP",
           "offset": 4931447,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2398,8 +2410,8 @@
           "page_id": "product-178-main.963979c0-4788531",
           "key": "TAB_CUSTOMIZE",
           "offset": 4788531,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-178-main.963979c0-4788628",
@@ -2419,8 +2431,8 @@
           "page_id": "product-178-main.963979c0-4788722",
           "key": "HELP",
           "offset": 4788722,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2428,22 +2440,24 @@
     {
       "product_id": 179,
       "name": "HyperPolling Wireless Dongle",
-      "family": null,
-      "status": "pending_main_pages",
+      "family": "source_controls",
+      "status": "partial_native",
       "pages": [
         {
           "page_id": "product-179-main.4849f7ca-4570389",
           "key": "TAB_CUSTOMIZE",
           "offset": 4570389,
-          "route": null,
-          "status": "pending"
+          "route": "source_controls",
+          "status": "partial_native",
+          "controls": 1,
+          "equalizers": 0
         },
         {
           "page_id": "product-179-main.4849f7ca-4570442",
           "key": "HELP",
           "offset": 4570442,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2458,8 +2472,8 @@
           "page_id": "product-180-main.ca4353ee-4868793",
           "key": "TAB_CUSTOMIZE",
           "offset": 4868793,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-180-main.ca4353ee-4868890",
@@ -2479,8 +2493,8 @@
           "page_id": "product-180-main.ca4353ee-4868984",
           "key": "HELP",
           "offset": 4868984,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2557,8 +2571,8 @@
           "page_id": "product-184-main.8f62d76a-4752156",
           "key": "TAB_CUSTOMIZE",
           "offset": 4752156,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-184-main.8f62d76a-4752253",
@@ -2585,8 +2599,8 @@
           "page_id": "product-184-main.8f62d76a-4752394",
           "key": "HELP",
           "offset": 4752394,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2610,8 +2624,8 @@
           "page_id": "product-185-main.31b0a4d2-5049030",
           "key": "TAB_CUSTOMIZE",
           "offset": 5049030,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-185-main.31b0a4d2-5049127",
@@ -2645,8 +2659,8 @@
           "page_id": "product-185-main.31b0a4d2-5049315",
           "key": "HELP",
           "offset": 5049315,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2670,8 +2684,8 @@
           "page_id": "product-190-main.81b09779-4794403",
           "key": "TAB_CUSTOMIZE",
           "offset": 4794403,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-190-main.81b09779-4794500",
@@ -2705,8 +2719,8 @@
           "page_id": "product-190-main.81b09779-4794688",
           "key": "HELP",
           "offset": 4794688,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2730,8 +2744,8 @@
           "page_id": "product-192-main.a839b83d-4998719",
           "key": "TAB_CUSTOMIZE",
           "offset": 4998719,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-192-main.a839b83d-4998816",
@@ -2765,8 +2779,8 @@
           "page_id": "product-192-main.a839b83d-4999004",
           "key": "HELP",
           "offset": 4999004,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2790,8 +2804,8 @@
           "page_id": "product-194-main.6e5e136c-4908628",
           "key": "TAB_CUSTOMIZE",
           "offset": 4908628,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-194-main.6e5e136c-4908725",
@@ -2818,8 +2832,8 @@
           "page_id": "product-194-main.6e5e136c-4908866",
           "key": "HELP",
           "offset": 4908866,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2834,8 +2848,8 @@
           "page_id": "product-196-main.bbc961f9-4797555",
           "key": "TAB_CUSTOMIZE",
           "offset": 4797555,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-196-main.bbc961f9-4797652",
@@ -2869,8 +2883,8 @@
           "page_id": "product-196-main.bbc961f9-4797840",
           "key": "HELP",
           "offset": 4797840,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -2894,8 +2908,8 @@
           "page_id": "product-199-683.8755a8fc.chunk-228196",
           "key": "TAB_CUSTOMIZE",
           "offset": 228196,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-199-683.8755a8fc.chunk-228291",
@@ -2915,8 +2929,8 @@
           "page_id": "product-199-683.8755a8fc.chunk-228383",
           "key": "HELP",
           "offset": 228383,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2931,8 +2945,8 @@
           "page_id": "product-203-main.fe8e2b48-4906404",
           "key": "TAB_CUSTOMIZE",
           "offset": 4906404,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-203-main.fe8e2b48-4906501",
@@ -2959,8 +2973,8 @@
           "page_id": "product-203-main.fe8e2b48-4906642",
           "key": "HELP",
           "offset": 4906642,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -2975,8 +2989,8 @@
           "page_id": "product-204-main.97f302da-4947894",
           "key": "TAB_CUSTOMIZE",
           "offset": 4947894,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-204-main.97f302da-4947991",
@@ -3010,8 +3024,8 @@
           "page_id": "product-204-main.97f302da-4948201",
           "key": "HELP",
           "offset": 4948201,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3028,22 +3042,24 @@
     {
       "product_id": 207,
       "name": "HyperFlux V2 Wireless Charging System",
-      "family": null,
-      "status": "pending_main_pages",
+      "family": "source_controls",
+      "status": "partial_native",
       "pages": [
         {
           "page_id": "product-207-main.9b300921-4471112",
           "key": "TAB_CUSTOMIZE",
           "offset": 4471112,
-          "route": null,
-          "status": "pending"
+          "route": "source_controls",
+          "status": "partial_native",
+          "controls": 3,
+          "equalizers": 0
         },
         {
           "page_id": "product-207-main.9b300921-4471159",
           "key": "HELP",
           "offset": 4471159,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3067,8 +3083,8 @@
           "page_id": "product-208-2833.ab2c9712.chunk-224119",
           "key": "TAB_CUSTOMIZE",
           "offset": 224119,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-208-2833.ab2c9712.chunk-224214",
@@ -3088,8 +3104,8 @@
           "page_id": "product-208-2833.ab2c9712.chunk-224306",
           "key": "HELP",
           "offset": 224306,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3104,8 +3120,8 @@
           "page_id": "product-211-main.8895a352-4872985",
           "key": "TAB_CUSTOMIZE",
           "offset": 4872985,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-211-main.8895a352-4873082",
@@ -3132,8 +3148,8 @@
           "page_id": "product-211-main.8895a352-4873223",
           "key": "HELP",
           "offset": 4873223,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3157,8 +3173,8 @@
           "page_id": "product-214-main.9287a47f-4957352",
           "key": "TAB_CUSTOMIZE",
           "offset": 4957352,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-214-main.9287a47f-4957449",
@@ -3192,8 +3208,8 @@
           "page_id": "product-214-main.9287a47f-4957659",
           "key": "HELP",
           "offset": 4957659,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3217,8 +3233,8 @@
           "page_id": "product-218-main.f14e7b89-4928938",
           "key": "TAB_CUSTOMIZE",
           "offset": 4928938,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-218-main.f14e7b89-4929035",
@@ -3245,8 +3261,8 @@
           "page_id": "product-218-main.f14e7b89-4929176",
           "key": "HELP",
           "offset": 4929176,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3270,8 +3286,8 @@
           "page_id": "product-221-7793.37ba37ac.chunk-101742",
           "key": "TAB_CUSTOMIZE",
           "offset": 101742,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-221-7793.37ba37ac.chunk-101837",
@@ -3305,8 +3321,8 @@
           "page_id": "product-221-7793.37ba37ac.chunk-102019",
           "key": "HELP",
           "offset": 102019,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3330,8 +3346,8 @@
           "page_id": "product-222-main.b8c354ff-4942360",
           "key": "TAB_CUSTOMIZE",
           "offset": 4942360,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-222-main.b8c354ff-4942457",
@@ -3365,8 +3381,8 @@
           "page_id": "product-222-main.b8c354ff-4942667",
           "key": "HELP",
           "offset": 4942667,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -3390,8 +3406,8 @@
           "page_id": "product-224-main.06abb0ec-4880589",
           "key": "TAB_CUSTOMIZE",
           "offset": 4880589,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-224-main.06abb0ec-4880686",
@@ -3411,8 +3427,8 @@
           "page_id": "product-224-main.06abb0ec-4880780",
           "key": "HELP",
           "offset": 4880780,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3427,8 +3443,8 @@
           "page_id": "product-226-8355.3d5e573e.chunk-275354",
           "key": "TAB_CUSTOMIZE",
           "offset": 275354,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-226-8355.3d5e573e.chunk-275451",
@@ -3469,8 +3485,8 @@
           "page_id": "product-226-8355.3d5e573e.chunk-275700",
           "key": "HELP",
           "offset": 275700,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3485,8 +3501,8 @@
           "page_id": "product-229-main.3e19820b-4559712",
           "key": "TAB_CUSTOMIZE",
           "offset": 4559712,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-229-main.3e19820b-4559809",
@@ -3520,8 +3536,8 @@
           "page_id": "product-229-main.3e19820b-4559997",
           "key": "HELP",
           "offset": 4559997,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3536,8 +3552,8 @@
           "page_id": "product-231-main.741f0de8-5078920",
           "key": "TAB_CUSTOMIZE",
           "offset": 5078920,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-231-main.741f0de8-5079027",
@@ -3564,8 +3580,8 @@
           "page_id": "product-231-main.741f0de8-5079195",
           "key": "HELP",
           "offset": 5079195,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3580,8 +3596,8 @@
           "page_id": "product-235-7184.4ca1d2e9.chunk-263390",
           "key": "TAB_CUSTOMIZE",
           "offset": 263390,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-235-7184.4ca1d2e9.chunk-263485",
@@ -3615,8 +3631,8 @@
           "page_id": "product-235-7184.4ca1d2e9.chunk-263689",
           "key": "HELP",
           "offset": 263689,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3631,8 +3647,8 @@
           "page_id": "product-239-main.6bc74a2d-4790634",
           "key": "TAB_CUSTOMIZE",
           "offset": 4790634,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-239-main.6bc74a2d-4790731",
@@ -3666,8 +3682,8 @@
           "page_id": "product-239-main.6bc74a2d-4790919",
           "key": "HELP",
           "offset": 4790919,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3698,8 +3714,8 @@
           "page_id": "product-241-11.219fb515.chunk-311251",
           "key": "HELP",
           "offset": 311251,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3728,8 +3744,8 @@
           "page_id": "product-515-main.f60ca5aa-7532149",
           "key": "HELP",
           "offset": 7532149,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3758,8 +3774,8 @@
           "page_id": "product-521-main.bbf02831-7178089",
           "key": "HELP",
           "offset": 7178089,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3788,8 +3804,8 @@
           "page_id": "product-529-main.c4a3f376-7064137",
           "key": "HELP",
           "offset": 7064137,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3818,8 +3834,8 @@
           "page_id": "product-534-main.0cc999dc-7261425",
           "key": "HELP",
           "offset": 7261425,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3848,8 +3864,8 @@
           "page_id": "product-542-main.1e52c858-7580220",
           "key": "HELP",
           "offset": 7580220,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3878,8 +3894,8 @@
           "page_id": "product-545-main.c8080dd3-7698029",
           "key": "HELP",
           "offset": 7698029,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3908,8 +3924,8 @@
           "page_id": "product-550-2485.d642b62c.chunk-84405",
           "key": "HELP",
           "offset": 84405,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3938,8 +3954,8 @@
           "page_id": "product-551-main.5f9f6113-7242582",
           "key": "HELP",
           "offset": 7242582,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3968,8 +3984,8 @@
           "page_id": "product-552-main.bdf1be1e-7383130",
           "key": "HELP",
           "offset": 7383130,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -3998,8 +4014,8 @@
           "page_id": "product-554-main.faed76d3-7555947",
           "key": "HELP",
           "offset": 7555947,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4028,8 +4044,8 @@
           "page_id": "product-555-main.110aac54-6702197",
           "key": "HELP",
           "offset": 6702197,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4058,8 +4074,8 @@
           "page_id": "product-556-main.3c239c1f-6760178",
           "key": "HELP",
           "offset": 6760178,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4095,8 +4111,8 @@
           "page_id": "product-563-main.7084ce8a-7020261",
           "key": "HELP",
           "offset": 7020261,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4132,8 +4148,8 @@
           "page_id": "product-564-main.1f11c347-7074593",
           "key": "HELP",
           "offset": 7074593,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4162,8 +4178,8 @@
           "page_id": "product-565-main.3280575a-6858145",
           "key": "HELP",
           "offset": 6858145,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4192,8 +4208,8 @@
           "page_id": "product-567-main.33124f31-7584230",
           "key": "HELP",
           "offset": 7584230,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4229,8 +4245,8 @@
           "page_id": "product-569-main.11459c95-7020014",
           "key": "HELP",
           "offset": 7020014,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4266,8 +4282,8 @@
           "page_id": "product-570-main.ec14218a-6969443",
           "key": "HELP",
           "offset": 6969443,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4303,8 +4319,8 @@
           "page_id": "product-571-main.cf9862f1-6952992",
           "key": "HELP",
           "offset": 6952992,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4340,8 +4356,8 @@
           "page_id": "product-574-main.4e1cb347-6806939",
           "key": "HELP",
           "offset": 6806939,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4370,8 +4386,8 @@
           "page_id": "product-575-main.e6809e11-7492204",
           "key": "HELP",
           "offset": 7492204,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4407,8 +4423,8 @@
           "page_id": "product-576-main.0fe2c485-7041904",
           "key": "HELP",
           "offset": 7041904,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4437,8 +4453,8 @@
           "page_id": "product-577-main.7053d506-7655224",
           "key": "HELP",
           "offset": 7655224,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4467,8 +4483,8 @@
           "page_id": "product-579-main.3355e99f-7153503",
           "key": "HELP",
           "offset": 7153503,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4490,8 +4506,8 @@
           "page_id": "product-580-main.1648cf28-6924915",
           "key": "ACTUATION",
           "offset": 6924915,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-580-main.1648cf28-6925069",
@@ -4504,8 +4520,8 @@
           "page_id": "product-580-main.1648cf28-6925126",
           "key": "HELP",
           "offset": 6925126,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4541,8 +4557,8 @@
           "page_id": "product-581-main.1347344b-6956854",
           "key": "HELP",
           "offset": 6956854,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4578,8 +4594,8 @@
           "page_id": "product-582-main.746928a2-6968298",
           "key": "HELP",
           "offset": 6968298,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4615,8 +4631,8 @@
           "page_id": "product-585-main.04a0e3c0-6798482",
           "key": "HELP",
           "offset": 6798482,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4652,8 +4668,8 @@
           "page_id": "product-586-main.c88d4a36-7108406",
           "key": "HELP",
           "offset": 7108406,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4689,8 +4705,8 @@
           "page_id": "product-587-main.4b36ee81-7155084",
           "key": "HELP",
           "offset": 7155084,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4726,8 +4742,8 @@
           "page_id": "product-588-main.6ce2be5d-7006206",
           "key": "HELP",
           "offset": 7006206,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4763,8 +4779,8 @@
           "page_id": "product-589-main.782d646c-6920075",
           "key": "HELP",
           "offset": 6920075,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4793,8 +4809,8 @@
           "page_id": "product-590-main.5c506335-7803745",
           "key": "HELP",
           "offset": 7803745,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4823,8 +4839,8 @@
           "page_id": "product-591-main.60b1f83e-6751766",
           "key": "HELP",
           "offset": 6751766,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4853,8 +4869,8 @@
           "page_id": "product-592-main.319b06ba-6793692",
           "key": "HELP",
           "offset": 6793692,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4883,8 +4899,8 @@
           "page_id": "product-593-main.5ba3a935-7498174",
           "key": "HELP",
           "offset": 7498174,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4920,8 +4936,8 @@
           "page_id": "product-594-main.b17f7701-7113215",
           "key": "HELP",
           "offset": 7113215,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4957,8 +4973,8 @@
           "page_id": "product-595-main.e6e68be9-7057410",
           "key": "HELP",
           "offset": 7057410,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -4994,8 +5010,8 @@
           "page_id": "product-597-main.ef1c3cde-7157200",
           "key": "HELP",
           "offset": 7157200,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5031,8 +5047,8 @@
           "page_id": "product-598-main.375cd241-7050711",
           "key": "HELP",
           "offset": 7050711,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5061,8 +5077,8 @@
           "page_id": "product-599-main.7e39cfe6-7181448",
           "key": "HELP",
           "offset": 7181448,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5098,8 +5114,8 @@
           "page_id": "product-600-main.d94b34ab-7120472",
           "key": "HELP",
           "offset": 7120472,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -5144,8 +5160,8 @@
           "page_id": "product-601-main.4aefdaa9-7076523",
           "key": "HELP",
           "offset": 7076523,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5181,8 +5197,8 @@
           "page_id": "product-602-main.79e7fc3d-7606095",
           "key": "HELP",
           "offset": 7606095,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -5220,8 +5236,8 @@
           "page_id": "product-605-main.fcf07de2-7759314",
           "key": "HELP",
           "offset": 7759314,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5250,8 +5266,8 @@
           "page_id": "product-606-main.08f3ff4a-7590253",
           "key": "HELP",
           "offset": 7590253,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5273,8 +5289,8 @@
           "page_id": "product-614-main.73d0babc-7421787",
           "key": "ACTUATION",
           "offset": 7421787,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-614-main.73d0babc-7421927",
@@ -5287,8 +5303,8 @@
           "page_id": "product-614-main.73d0babc-7421984",
           "key": "HELP",
           "offset": 7421984,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5324,8 +5340,8 @@
           "page_id": "product-616-main.17a0cc39-7104797",
           "key": "HELP",
           "offset": 7104797,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5354,8 +5370,8 @@
           "page_id": "product-617-main.bcdaed34-6844337",
           "key": "HELP",
           "offset": 6844337,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5391,8 +5407,8 @@
           "page_id": "product-618-main.67e42cfd-7122813",
           "key": "HELP",
           "offset": 7122813,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5421,8 +5437,8 @@
           "page_id": "product-619-main.f420bb87-7126397",
           "key": "HELP",
           "offset": 7126397,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5451,8 +5467,8 @@
           "page_id": "product-620-main.05ff3291-7375055",
           "key": "HELP",
           "offset": 7375055,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5488,8 +5504,8 @@
           "page_id": "product-621-main.3dde7861-7202345",
           "key": "HELP",
           "offset": 7202345,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5525,8 +5541,8 @@
           "page_id": "product-622-main.eb3237df-7020045",
           "key": "HELP",
           "offset": 7020045,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5562,8 +5578,8 @@
           "page_id": "product-623-main.548e4fea-7105096",
           "key": "HELP",
           "offset": 7105096,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5599,8 +5615,8 @@
           "page_id": "product-624-main.08d9f86c-7032459",
           "key": "HELP",
           "offset": 7032459,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5636,8 +5652,8 @@
           "page_id": "product-630-main.5be75a67-7193882",
           "key": "HELP",
           "offset": 7193882,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5673,8 +5689,8 @@
           "page_id": "product-631-main.9463ff90-7185437",
           "key": "HELP",
           "offset": 7185437,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5710,8 +5726,8 @@
           "page_id": "product-633-main.a7b90165-7053458",
           "key": "HELP",
           "offset": 7053458,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5747,8 +5763,8 @@
           "page_id": "product-634-main.f755b164-7047540",
           "key": "HELP",
           "offset": 7047540,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5770,8 +5786,8 @@
           "page_id": "product-642-main.c81e7939-7206378",
           "key": "ACTUATION",
           "offset": 7206378,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-642-main.c81e7939-7206518",
@@ -5784,8 +5800,8 @@
           "page_id": "product-642-main.c81e7939-7206575",
           "key": "HELP",
           "offset": 7206575,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5814,8 +5830,8 @@
           "page_id": "product-647-main.b14e4864-7825335",
           "key": "HELP",
           "offset": 7825335,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5858,8 +5874,8 @@
           "page_id": "product-650-main.a44b3201-7209857",
           "key": "HELP",
           "offset": 7209857,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5902,8 +5918,8 @@
           "page_id": "product-651-main.14910255-7208406",
           "key": "HELP",
           "offset": 7208406,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -5946,8 +5962,8 @@
           "page_id": "product-652-main.aacbcd3d-7138781",
           "key": "HELP",
           "offset": 7138781,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6006,8 +6022,8 @@
           "page_id": "product-654-main.e100f1a2-6662196",
           "key": "HELP",
           "offset": 6662196,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6036,8 +6052,8 @@
           "page_id": "product-655-main.f6ad51bc-7859332",
           "key": "HELP",
           "offset": 7859332,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6073,8 +6089,8 @@
           "page_id": "product-658-main.62faa864-7591484",
           "key": "HELP",
           "offset": 7591484,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -6112,8 +6128,8 @@
           "page_id": "product-659-main.82fcdd62-7833500",
           "key": "HELP",
           "offset": 7833500,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6142,8 +6158,8 @@
           "page_id": "product-660-main.85645113-7684547",
           "key": "HELP",
           "offset": 7684547,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6172,8 +6188,8 @@
           "page_id": "product-661-main.db42d2c2-7766434",
           "key": "HELP",
           "offset": 7766434,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6209,8 +6225,8 @@
           "page_id": "product-664-main.33d8ba2a-7475081",
           "key": "HELP",
           "offset": 7475081,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -6269,8 +6285,8 @@
           "page_id": "product-669-main.b7566b48-7555271",
           "key": "HELP",
           "offset": 7555271,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6320,8 +6336,8 @@
           "page_id": "product-670-main.edf99560-7212461",
           "key": "HELP",
           "offset": 7212461,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6371,8 +6387,8 @@
           "page_id": "product-671-main.a4a1b2d9-7494880",
           "key": "HELP",
           "offset": 7494880,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6422,8 +6438,8 @@
           "page_id": "product-672-main.2283fcdf-7660334",
           "key": "HELP",
           "offset": 7660334,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6452,8 +6468,8 @@
           "page_id": "product-673-main.7c592b5e-7923516",
           "key": "HELP",
           "offset": 7923516,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6482,8 +6498,8 @@
           "page_id": "product-674-main.b8c0b92d-7807522",
           "key": "HELP",
           "offset": 7807522,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6512,8 +6528,8 @@
           "page_id": "product-675-main.b4dbb43b-7577440",
           "key": "HELP",
           "offset": 7577440,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6542,8 +6558,8 @@
           "page_id": "product-677-main.b1c9555f-7000421",
           "key": "HELP",
           "offset": 7000421,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6565,8 +6581,8 @@
           "page_id": "product-678-main.f78f0dcf-7432331",
           "key": "ACTUATION",
           "offset": 7432331,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-678-main.f78f0dcf-7432471",
@@ -6579,8 +6595,8 @@
           "page_id": "product-678-main.f78f0dcf-7432528",
           "key": "HELP",
           "offset": 7432528,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6602,8 +6618,8 @@
           "page_id": "product-679-main.194d8a7b-7314445",
           "key": "ACTUATION",
           "offset": 7314445,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-679-main.194d8a7b-7314585",
@@ -6616,8 +6632,8 @@
           "page_id": "product-679-main.194d8a7b-7314642",
           "key": "HELP",
           "offset": 7314642,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6639,8 +6655,8 @@
           "page_id": "product-688-main.e09fd702-7207532",
           "key": "ACTUATION",
           "offset": 7207532,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-688-main.e09fd702-7207672",
@@ -6653,8 +6669,8 @@
           "page_id": "product-688-main.e09fd702-7207729",
           "key": "HELP",
           "offset": 7207729,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6683,8 +6699,8 @@
           "page_id": "product-689-main.9d55a71f-7208298",
           "key": "HELP",
           "offset": 7208298,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6713,8 +6729,10 @@
           "page_id": "product-691-7668.a3c13eca.chunk-159381",
           "key": "OLED",
           "offset": 159381,
-          "route": null,
-          "status": "pending"
+          "route": "supplement",
+          "status": "partial_native",
+          "controls": 8,
+          "equalizers": 0
         },
         {
           "page_id": "product-691-7668.a3c13eca.chunk-159495",
@@ -6727,8 +6745,8 @@
           "page_id": "product-691-7668.a3c13eca.chunk-159612",
           "key": "HELP",
           "offset": 159612,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6785,8 +6803,8 @@
           "page_id": "product-694-main.79278d0f-7915960",
           "key": "HELP",
           "offset": 7915960,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6843,8 +6861,8 @@
           "page_id": "product-695-main.de25a2a9-7854325",
           "key": "HELP",
           "offset": 7854325,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6901,8 +6919,8 @@
           "page_id": "product-696-main.e247cb61-8020624",
           "key": "HELP",
           "offset": 8020624,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -6938,8 +6956,8 @@
           "page_id": "product-697-main.9db50ae0-7115597",
           "key": "HELP",
           "offset": 7115597,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -6984,8 +7002,8 @@
           "page_id": "product-708-8231.8f6e8a7c.chunk-197765",
           "key": "HELP",
           "offset": 197765,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7042,8 +7060,8 @@
           "page_id": "product-709-2915.e5ea330d.chunk-414534",
           "key": "HELP",
           "offset": 414534,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7100,8 +7118,8 @@
           "page_id": "product-710-4812.d689e7ff.chunk-415748",
           "key": "HELP",
           "offset": 415748,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7158,8 +7176,8 @@
           "page_id": "product-711-4812.3dd4cf02.chunk-415575",
           "key": "HELP",
           "offset": 415575,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7195,8 +7213,8 @@
           "page_id": "product-716-main.a149c89a-7232077",
           "key": "HELP",
           "offset": 7232077,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -7241,8 +7259,8 @@
           "page_id": "product-717-main.9af2005e-6961384",
           "key": "HELP",
           "offset": 6961384,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -7273,8 +7291,8 @@
           "page_id": "product-719-7928.8ab59a50.chunk-283183",
           "key": "ACTUATION",
           "offset": 283183,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-719-7928.8ab59a50.chunk-283321",
@@ -7287,8 +7305,8 @@
           "page_id": "product-719-7928.8ab59a50.chunk-283378",
           "key": "HELP",
           "offset": 283378,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7310,8 +7328,8 @@
           "page_id": "product-720-7293.9acc3165.chunk-300579",
           "key": "ACTUATION",
           "offset": 300579,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-720-7293.9acc3165.chunk-300717",
@@ -7324,8 +7342,8 @@
           "page_id": "product-720-7293.9acc3165.chunk-300774",
           "key": "HELP",
           "offset": 300774,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7347,8 +7365,8 @@
           "page_id": "product-721-557.44f061f6.chunk-282570",
           "key": "ACTUATION",
           "offset": 282570,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-721-557.44f061f6.chunk-282708",
@@ -7361,8 +7379,8 @@
           "page_id": "product-721-557.44f061f6.chunk-282765",
           "key": "HELP",
           "offset": 282765,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7398,8 +7416,8 @@
           "page_id": "product-724-main.4b1b7b70-7357927",
           "key": "HELP",
           "offset": 7357927,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -7444,8 +7462,8 @@
           "page_id": "product-727-main.07c5d653-6984127",
           "key": "HELP",
           "offset": 6984127,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -7476,8 +7494,8 @@
           "page_id": "product-728-3470.5c149f4b.chunk-300897",
           "key": "ACTUATION",
           "offset": 300897,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-728-3470.5c149f4b.chunk-301035",
@@ -7490,8 +7508,8 @@
           "page_id": "product-728-3470.5c149f4b.chunk-301092",
           "key": "HELP",
           "offset": 301092,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7548,8 +7566,8 @@
           "page_id": "product-736-8557.8b857d45.chunk-421910",
           "key": "HELP",
           "offset": 421910,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7606,8 +7624,8 @@
           "page_id": "product-737-8923.bdb8bcb2.chunk-404684",
           "key": "HELP",
           "offset": 404684,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7636,8 +7654,8 @@
           "page_id": "product-739-2278.2e3e2ec7.chunk-198578",
           "key": "HELP",
           "offset": 198578,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7659,8 +7677,8 @@
           "page_id": "product-740-9908.1f02bab3.chunk-299840",
           "key": "ACTUATION",
           "offset": 299840,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-740-9908.1f02bab3.chunk-299978",
@@ -7673,15 +7691,15 @@
           "page_id": "product-740-9908.1f02bab3.chunk-300035",
           "key": "TAB_CALIBRATION",
           "offset": 300035,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-740-9908.1f02bab3.chunk-300122",
           "key": "HELP",
           "offset": 300122,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7703,8 +7721,8 @@
           "page_id": "product-741-8427.2d5ccb8c.chunk-279346",
           "key": "ACTUATION",
           "offset": 279346,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-741-8427.2d5ccb8c.chunk-279484",
@@ -7717,8 +7735,8 @@
           "page_id": "product-741-8427.2d5ccb8c.chunk-279541",
           "key": "HELP",
           "offset": 279541,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7740,8 +7758,8 @@
           "page_id": "product-742-3666.9e3f3856.chunk-277607",
           "key": "ACTUATION",
           "offset": 277607,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-742-3666.9e3f3856.chunk-277745",
@@ -7754,8 +7772,8 @@
           "page_id": "product-742-3666.9e3f3856.chunk-277802",
           "key": "HELP",
           "offset": 277802,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7777,8 +7795,8 @@
           "page_id": "product-746-6498.86d76d1a.chunk-308083",
           "key": "ACTUATION",
           "offset": 308083,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-746-6498.86d76d1a.chunk-308221",
@@ -7791,15 +7809,15 @@
           "page_id": "product-746-6498.86d76d1a.chunk-308278",
           "key": "TAB_CALIBRATION",
           "offset": 308278,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-746-6498.86d76d1a.chunk-308365",
           "key": "HELP",
           "offset": 308365,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7821,8 +7839,8 @@
           "page_id": "product-747-7727.590e023e.chunk-277974",
           "key": "ACTUATION",
           "offset": 277974,
-          "route": null,
-          "status": "pending"
+          "route": "keyboard",
+          "status": "partial_native"
         },
         {
           "page_id": "product-747-7727.590e023e.chunk-278132",
@@ -7835,8 +7853,8 @@
           "page_id": "product-747-7727.590e023e.chunk-278198",
           "key": "HELP",
           "offset": 278198,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7865,8 +7883,8 @@
           "page_id": "product-752-3717.9326e687.chunk-182781",
           "key": "HELP",
           "offset": 182781,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7874,22 +7892,22 @@
     {
       "product_id": 769,
       "name": "RAZER PHILIPS HUE",
-      "family": null,
-      "status": "pending_main_pages",
+      "family": "hue",
+      "status": "partial_native",
       "pages": [
         {
           "page_id": "product-769-main.ad1113f8-6693001",
           "key": "HOME",
           "offset": 6693001,
-          "route": null,
-          "status": "pending"
+          "route": "hue",
+          "status": "partial_native"
         },
         {
           "page_id": "product-769-main.ad1113f8-6693062",
           "key": "HELP",
           "offset": 6693062,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7964,8 +7982,8 @@
           "page_id": "product-778-main.032287fa-4545887",
           "key": "HELP",
           "offset": 4545887,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -7989,8 +8007,8 @@
           "page_id": "product-780-main.157991a2-4582206",
           "key": "HELP",
           "offset": 4582206,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8014,8 +8032,8 @@
           "page_id": "product-781-main.8720d82b-4568815",
           "key": "HELP",
           "offset": 4568815,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8039,8 +8057,8 @@
           "page_id": "product-782-main.32e42b80-4577419",
           "key": "HELP",
           "offset": 4577419,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8064,8 +8082,8 @@
           "page_id": "product-783-main.5b59b09c-4576648",
           "key": "HELP",
           "offset": 4576648,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8096,8 +8114,8 @@
           "page_id": "product-784-main.3094caa4-4601244",
           "key": "HELP",
           "offset": 4601244,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8121,8 +8139,8 @@
           "page_id": "product-790-main.768d7d9e-4554617",
           "key": "HELP",
           "offset": 4554617,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8146,8 +8164,8 @@
           "page_id": "product-791-main.973498e0-4569570",
           "key": "HELP",
           "offset": 4569570,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8180,8 +8198,8 @@
           "page_id": "product-1303-main.4de5d448-4557816",
           "key": "HELP",
           "offset": 4557816,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8214,8 +8232,8 @@
           "page_id": "product-1304-main.3b6d76c2-4574001",
           "key": "HELP",
           "offset": 4574001,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8284,8 +8302,8 @@
           "page_id": "product-1306-64.22d5d6dd.chunk-509797",
           "key": "HELP",
           "offset": 509797,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8354,8 +8372,8 @@
           "page_id": "product-1308-main.82fa5e39-5411396",
           "key": "HELP",
           "offset": 5411396,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8415,8 +8433,8 @@
           "page_id": "product-1310-main.b8876f9f-5348080",
           "key": "HELP",
           "offset": 5348080,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8467,8 +8485,8 @@
           "page_id": "product-1312-main.a0d767c7-5182310",
           "key": "HELP",
           "offset": 5182310,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8528,8 +8546,8 @@
           "page_id": "product-1313-main.c9234892-5441765",
           "key": "HELP",
           "offset": 5441765,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8562,8 +8580,8 @@
           "page_id": "product-1318-main.db06a21e-4541337",
           "key": "HELP",
           "offset": 4541337,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8623,8 +8641,8 @@
           "page_id": "product-1319-main.18b7442e-5454200",
           "key": "HELP",
           "offset": 5454200,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8684,8 +8702,8 @@
           "page_id": "product-1320-main.ac594f45-5204197",
           "key": "HELP",
           "offset": 5204197,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8736,8 +8754,8 @@
           "page_id": "product-1321-main.7ed29db3-5264869",
           "key": "HELP",
           "offset": 5264869,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8806,8 +8824,8 @@
           "page_id": "product-1325-main.6d8e67f5-5627515",
           "key": "HELP",
           "offset": 5627515,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8858,8 +8876,8 @@
           "page_id": "product-1328-main.8a79cd9c-4673526",
           "key": "HELP",
           "offset": 4673526,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8901,8 +8919,8 @@
           "page_id": "product-1330-main.f0797abf-5456326",
           "key": "HELP",
           "offset": 5456326,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -8962,8 +8980,8 @@
           "page_id": "product-1331-main.cdddaa98-5412270",
           "key": "HELP",
           "offset": 5412270,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9014,8 +9032,8 @@
           "page_id": "product-1332-main.18a00d58-4673582",
           "key": "HELP",
           "offset": 4673582,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9048,8 +9066,8 @@
           "page_id": "product-1335-main.8345750d-4623269",
           "key": "HELP",
           "offset": 4623269,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9109,8 +9127,8 @@
           "page_id": "product-1337-main.df767002-7023577",
           "key": "HELP",
           "offset": 7023577,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9170,8 +9188,8 @@
           "page_id": "product-1339-main.8817fdae-5237142",
           "key": "HELP",
           "offset": 5237142,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9231,8 +9249,8 @@
           "page_id": "product-1342-main.2623357c-6525613",
           "key": "HELP",
           "offset": 6525613,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9265,8 +9283,8 @@
           "page_id": "product-1346-main.4d98fb93-4508657",
           "key": "HELP",
           "offset": 4508657,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9299,8 +9317,8 @@
           "page_id": "product-1347-main.be19f1cb-4492200",
           "key": "HELP",
           "offset": 4492200,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9351,8 +9369,8 @@
           "page_id": "product-1352-main.95a4f703-4712791",
           "key": "HELP",
           "offset": 4712791,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9412,8 +9430,8 @@
           "page_id": "product-1353-main.dfef4e81-5454125",
           "key": "HELP",
           "offset": 5454125,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9455,8 +9473,8 @@
           "page_id": "product-1354-main.e16a6fa2-4600905",
           "key": "HELP",
           "offset": 4600905,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9516,8 +9534,8 @@
           "page_id": "product-1364-main.6cf04746-5449111",
           "key": "HELP",
           "offset": 5449111,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9577,8 +9595,8 @@
           "page_id": "product-1365-main.4949c2ce-5024694",
           "key": "HELP",
           "offset": 5024694,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9629,8 +9647,8 @@
           "page_id": "product-1370-main.55a82042-5238003",
           "key": "HELP",
           "offset": 5238003,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9681,8 +9699,8 @@
           "page_id": "product-1372-main.0948803f-5288317",
           "key": "HELP",
           "offset": 5288317,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9724,8 +9742,8 @@
           "page_id": "product-1374-main.e6cd4110-4881493",
           "key": "HELP",
           "offset": 4881493,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9767,8 +9785,8 @@
           "page_id": "product-1376-main.03a3e8b2-4679686",
           "key": "HELP",
           "offset": 4679686,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9810,8 +9828,8 @@
           "page_id": "product-1378-main.2397f4bd-4671911",
           "key": "HELP",
           "offset": 4671911,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9835,8 +9853,8 @@
           "page_id": "product-1382-main.275d3b94-4698911",
           "key": "HELP",
           "offset": 4698911,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9923,8 +9941,8 @@
           "page_id": "product-1383-6141.5d00192e.chunk-674663",
           "key": "HELP",
           "offset": 674663,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -9957,8 +9975,8 @@
           "page_id": "product-1386-1117.cf94275c.chunk-319216",
           "key": "HELP",
           "offset": 319216,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10027,8 +10045,8 @@
           "page_id": "product-1387-main.c3a5df87-5370267",
           "key": "HELP",
           "offset": 5370267,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10070,8 +10088,8 @@
           "page_id": "product-1389-main.7ceeec13-4661130",
           "key": "HELP",
           "offset": 4661130,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10131,8 +10149,8 @@
           "page_id": "product-1390-main.dace2c06-5443747",
           "key": "HELP",
           "offset": 5443747,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10174,8 +10192,8 @@
           "page_id": "product-1391-1915.aaeeae2a.chunk-203970",
           "key": "HELP",
           "offset": 203970,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10217,15 +10235,15 @@
           "page_id": "product-1392-main.6fccfd1e-5758101",
           "key": "TAB_DEMO",
           "offset": 5758101,
-          "route": null,
-          "status": "pending"
+          "route": "audio",
+          "status": "partial_native"
         },
         {
           "page_id": "product-1392-main.6fccfd1e-5758153",
           "key": "HELP",
           "offset": 5758153,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10285,8 +10303,8 @@
           "page_id": "product-1396-main.807d655b-4918972",
           "key": "HELP",
           "offset": 4918972,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10355,8 +10373,8 @@
           "page_id": "product-1398-main.cab68a9a-5685721",
           "key": "HELP",
           "offset": 5685721,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10425,8 +10443,8 @@
           "page_id": "product-1401-main.f418a62d-5670281",
           "key": "HELP",
           "offset": 5670281,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10468,8 +10486,8 @@
           "page_id": "product-1404-main.d350fd68-4771535",
           "key": "HELP",
           "offset": 4771535,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10511,8 +10529,8 @@
           "page_id": "product-1406-main.f2aa3af5-4705856",
           "key": "HELP",
           "offset": 4705856,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10554,8 +10572,8 @@
           "page_id": "product-1407-main.cbabe455-4705856",
           "key": "HELP",
           "offset": 4705856,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10615,8 +10633,8 @@
           "page_id": "product-1411-3816.a2c45b2e.chunk-475739",
           "key": "HELP",
           "offset": 475739,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10676,8 +10694,8 @@
           "page_id": "product-1412-697.3421df89.chunk-492085",
           "key": "HELP",
           "offset": 492085,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10746,8 +10764,8 @@
           "page_id": "product-1415-281.844e6a1f.chunk-662850",
           "key": "HELP",
           "offset": 662850,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10780,8 +10798,8 @@
           "page_id": "product-1420-main.4f81d888-4409284",
           "key": "HELP",
           "offset": 4409284,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10832,8 +10850,8 @@
           "page_id": "product-1422-684.f6b88b50.chunk-427050",
           "key": "HELP",
           "offset": 427050,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10902,8 +10920,8 @@
           "page_id": "product-1427-789.bffae9a6.chunk-752945",
           "key": "HELP",
           "offset": 752945,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10954,8 +10972,8 @@
           "page_id": "product-1439-main.8adbaf05-4804516",
           "key": "HELP",
           "offset": 4804516,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -10997,15 +11015,15 @@
           "page_id": "product-1442-3737.a871f924.chunk-559182",
           "key": "TAB_DEMO",
           "offset": 559182,
-          "route": null,
-          "status": "pending"
+          "route": "audio",
+          "status": "partial_native"
         },
         {
           "page_id": "product-1442-3737.a871f924.chunk-559232",
           "key": "HELP",
           "offset": 559232,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11047,8 +11065,8 @@
           "page_id": "product-1443-main.a3f7f9d1-5578938",
           "key": "HELP",
           "offset": 5578938,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11108,8 +11126,8 @@
           "page_id": "product-1446-684.9501aa81.chunk-439613",
           "key": "HELP",
           "offset": 439613,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11169,8 +11187,8 @@
           "page_id": "product-1453-993.82aa2be7.chunk-408343",
           "key": "HELP",
           "offset": 408343,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11221,8 +11239,8 @@
           "page_id": "product-1462-main.77653bee-4893353",
           "key": "HELP",
           "offset": 4893353,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11282,8 +11300,8 @@
           "page_id": "product-1465-main.73ac4806-5202258",
           "key": "HELP",
           "offset": 5202258,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11298,8 +11316,8 @@
           "page_id": "product-2594-main.877e745a-4954846",
           "key": "TAB_CUSTOMIZE",
           "offset": 4954846,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-2594-main.877e745a-4954942",
@@ -11333,8 +11351,8 @@
           "page_id": "product-2594-main.877e745a-4955126",
           "key": "HELP",
           "offset": 4955126,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11370,8 +11388,8 @@
           "page_id": "product-2595-main.01d8ae5b-6808008",
           "key": "HELP",
           "offset": 6808008,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11400,8 +11418,8 @@
           "page_id": "product-2596-main.eff25ed8-7428747",
           "key": "HELP",
           "offset": 7428747,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11444,8 +11462,8 @@
           "page_id": "product-2629-main.000315e2-6763562",
           "key": "HELP",
           "offset": 6763562,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11502,8 +11520,8 @@
           "page_id": "product-2636-main.82d8a835-6704564",
           "key": "HELP",
           "offset": 6704564,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11572,8 +11590,8 @@
           "page_id": "product-2638-main.43474509-5672819",
           "key": "HELP",
           "offset": 5672819,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11642,8 +11660,8 @@
           "page_id": "product-2641-main.b410e3b4-5669818",
           "key": "HELP",
           "offset": 5669818,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11685,8 +11703,8 @@
           "page_id": "product-2644-main.74ecb9b2-4779557",
           "key": "HELP",
           "offset": 4779557,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11736,8 +11754,8 @@
           "page_id": "product-2647-main.7aa41341-6672511",
           "key": "HELP",
           "offset": 6672511,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11773,8 +11791,8 @@
           "page_id": "product-2650-main.257d35dd-6627472",
           "key": "HELP",
           "offset": 6627472,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11825,8 +11843,8 @@
           "page_id": "product-2657-main.3bb092b2-4822113",
           "key": "HELP",
           "offset": 4822113,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11877,8 +11895,8 @@
           "page_id": "product-2660-288.3c430057.chunk-333265",
           "key": "HELP",
           "offset": 333265,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11929,8 +11947,8 @@
           "page_id": "product-2664-main.ecec90b9-4048380",
           "key": "HELP",
           "offset": 4048380,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -11981,8 +11999,8 @@
           "page_id": "product-2668-606.0edd3284.chunk-335494",
           "key": "HELP",
           "offset": 335494,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12032,8 +12050,8 @@
           "page_id": "product-2676-main.5ee115d4-6820198",
           "key": "HELP",
           "offset": 6820198,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12076,8 +12094,8 @@
           "page_id": "product-2684-8169.3cf63c70.chunk-547591",
           "key": "HELP",
           "offset": 547591,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12128,8 +12146,8 @@
           "page_id": "product-2689-288.05254377.chunk-333265",
           "key": "HELP",
           "offset": 333265,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12314,8 +12332,8 @@
           "page_id": "product-3331-main.37e94222-4240864",
           "key": "HELP",
           "offset": 4240864,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12348,8 +12366,8 @@
           "page_id": "product-3334-main.496bb585-4520793",
           "key": "HELP",
           "offset": 4520793,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12382,8 +12400,8 @@
           "page_id": "product-3337-main.a048e901-4520753",
           "key": "HELP",
           "offset": 4520753,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12407,8 +12425,8 @@
           "page_id": "product-3587-main.459c3161-4455661",
           "key": "HELP",
           "offset": 4455661,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12432,8 +12450,8 @@
           "page_id": "product-3589-main.b9251f30-4436992",
           "key": "HELP",
           "offset": 4436992,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12457,8 +12475,8 @@
           "page_id": "product-3590-main.28ecadf2-4439491",
           "key": "HELP",
           "offset": 4439491,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12500,8 +12518,8 @@
           "page_id": "product-3592-main.323f0a8a-4586535",
           "key": "HELP",
           "offset": 4586535,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12543,8 +12561,8 @@
           "page_id": "product-3594-main.bb246bb0-7036807",
           "key": "HELP",
           "offset": 7036807,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12595,8 +12613,8 @@
           "page_id": "product-3595-main.19c1ceba-4618252",
           "key": "HELP",
           "offset": 4618252,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12638,8 +12656,8 @@
           "page_id": "product-3596-main.0e57873f-4599596",
           "key": "HELP",
           "offset": 4599596,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12663,8 +12681,8 @@
           "page_id": "product-3848-main.a5ed8890-4557516",
           "key": "HELP",
           "offset": 4557516,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12688,8 +12706,8 @@
           "page_id": "product-3849-main.bb884c00-4560261",
           "key": "HELP",
           "offset": 4560261,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12713,8 +12731,8 @@
           "page_id": "product-3853-main.8f044274-4541428",
           "key": "HELP",
           "offset": 4541428,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12759,8 +12777,8 @@
           "page_id": "product-3858-main.608e1599-4573895",
           "key": "HELP",
           "offset": 4573895,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12784,8 +12802,8 @@
           "page_id": "product-3859-main.ffac912b-4567973",
           "key": "HELP",
           "offset": 4567973,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12809,8 +12827,8 @@
           "page_id": "product-3863-main.0ae565e3-4552758",
           "key": "HELP",
           "offset": 4552758,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12834,8 +12852,8 @@
           "page_id": "product-3866-main.28d3f4af-4551473",
           "key": "HELP",
           "offset": 4551473,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12868,8 +12886,8 @@
           "page_id": "product-3867-main.7afd910b-4430810",
           "key": "HELP",
           "offset": 4430810,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12893,8 +12911,8 @@
           "page_id": "product-3869-main.82c8869b-4552857",
           "key": "HELP",
           "offset": 4552857,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12925,8 +12943,8 @@
           "page_id": "product-3871-main.7e64d4d0-4614776",
           "key": "HELP",
           "offset": 4614776,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12959,8 +12977,8 @@
           "page_id": "product-3872-main.e84a97bd-4580519",
           "key": "HELP",
           "offset": 4580519,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -12993,8 +13011,8 @@
           "page_id": "product-3873-main.08e5eb5a-4554365",
           "key": "HELP",
           "offset": 4554365,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13018,8 +13036,8 @@
           "page_id": "product-3878-main.1c5334c6-4537312",
           "key": "HELP",
           "offset": 4537312,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13043,8 +13061,8 @@
           "page_id": "product-3879-main.2f2244ff-4572549",
           "key": "HELP",
           "offset": 4572549,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13089,8 +13107,8 @@
           "page_id": "product-3880-main.0ff487d9-4585423",
           "key": "HELP",
           "offset": 4585423,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13114,8 +13132,8 @@
           "page_id": "product-3883-main.85b90298-4541055",
           "key": "HELP",
           "offset": 4541055,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13146,8 +13164,8 @@
           "page_id": "product-3884-main.607cfa0c-4532034",
           "key": "HELP",
           "offset": 4532034,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13171,15 +13189,15 @@
           "offset": 4178547,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 2,
+          "controls": 5,
           "equalizers": 0
         },
         {
           "page_id": "product-3886-main.44393ea2-4178634",
           "key": "HELP",
           "offset": 4178634,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": [
@@ -13220,8 +13238,8 @@
           "page_id": "product-3893-main.a7630c14-4602253",
           "key": "HELP",
           "offset": 4602253,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13245,8 +13263,8 @@
           "page_id": "product-3894-main.be5b5e43-4538225",
           "key": "HELP",
           "offset": 4538225,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13268,8 +13286,8 @@
           "page_id": "product-3900-main.1f8b3065-4468506",
           "key": "HELP",
           "offset": 4468506,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13300,8 +13318,8 @@
           "page_id": "product-3907-main.49bf0db6-4853068",
           "key": "HELP",
           "offset": 4853068,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13325,8 +13343,8 @@
           "page_id": "product-3909-main.5ea04b2c-4562050",
           "key": "HELP",
           "offset": 4562050,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13334,21 +13352,21 @@
     {
       "product_id": 3921,
       "name": "Razer Core X V2",
-      "family": "source_controls",
+      "family": "accessory_system",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3921-430.ffb57133.chunk-352426",
           "key": "TAB_CUSTOMIZE",
           "offset": 352426,
-          "route": null,
-          "status": "pending"
+          "route": "accessory_system",
+          "status": "partial_native"
         },
         {
           "page_id": "product-3921-430.ffb57133.chunk-352473",
           "key": "TAB_LIGHTING",
           "offset": 352473,
-          "route": "source_controls",
+          "route": "supplement",
           "status": "partial_native",
           "controls": 3,
           "equalizers": 0
@@ -13357,8 +13375,8 @@
           "page_id": "product-3921-430.ffb57133.chunk-352520",
           "key": "HELP",
           "offset": 352520,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13391,8 +13409,8 @@
           "page_id": "product-3922-2608.894c2893.chunk-408973",
           "key": "HELP",
           "offset": 408973,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13416,8 +13434,8 @@
           "page_id": "product-3929-main.2aea7d59-4744259",
           "key": "HELP",
           "offset": 4744259,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13441,8 +13459,8 @@
           "page_id": "product-3932-main.a61a864b-4725282",
           "key": "HELP",
           "offset": 4725282,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13475,8 +13493,8 @@
           "page_id": "product-3940-9775.989c29ca.chunk-427096",
           "key": "HELP",
           "offset": 427096,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13536,15 +13554,15 @@
           "page_id": "product-3942-70.f296e7d2.chunk-537199",
           "key": "TAB_DEMO",
           "offset": 537199,
-          "route": null,
-          "status": "pending"
+          "route": "audio",
+          "status": "partial_native"
         },
         {
           "page_id": "product-3942-70.f296e7d2.chunk-537244",
           "key": "HELP",
           "offset": 537244,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13575,8 +13593,8 @@
           "page_id": "product-3946-main.46ad416c-6991018",
           "key": "HELP",
           "offset": 6991018,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13609,8 +13627,8 @@
           "page_id": "product-3949-main.5f0af02d-4718549",
           "key": "HELP",
           "offset": 4718549,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13639,8 +13657,8 @@
           "page_id": "product-4115-main.1a52fc92-6717609",
           "key": "HELP",
           "offset": 6717609,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13709,8 +13727,8 @@
           "page_id": "product-4124-main.7ea8f906-5672170",
           "key": "HELP",
           "offset": 5672170,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13779,8 +13797,8 @@
           "page_id": "product-4126-main.61243a04-5669536",
           "key": "HELP",
           "offset": 5669536,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13822,8 +13840,8 @@
           "page_id": "product-4130-main.6a9cd75a-4784335",
           "key": "HELP",
           "offset": 4784335,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13873,8 +13891,8 @@
           "page_id": "product-4133-main.d34fa647-6795131",
           "key": "HELP",
           "offset": 6795131,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13924,8 +13942,8 @@
           "page_id": "product-4144-main.a5c50629-6754473",
           "key": "HELP",
           "offset": 6754473,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []
@@ -13940,8 +13958,8 @@
           "page_id": "product-45066-286.1978470e.chunk-249605",
           "key": "TAB_CUSTOMIZE",
           "offset": 249605,
-          "route": null,
-          "status": "pending"
+          "route": "mouse",
+          "status": "partial_native"
         },
         {
           "page_id": "product-45066-286.1978470e.chunk-249700",
@@ -13975,8 +13993,8 @@
           "page_id": "product-45066-286.1978470e.chunk-249904",
           "key": "HELP",
           "offset": 249904,
-          "route": null,
-          "status": "pending"
+          "route": "source_help",
+          "status": "partial_native"
         }
       ],
       "independent_modes": []

@@ -862,5 +862,446 @@
     },
     "presets": {},
     "enums": {}
+  },
+  {
+    "product_id": 3921,
+    "pages": [
+      "TAB_CUSTOMIZE"
+    ],
+    "initial": {
+      "fanCurve": {
+        "fanMode": "Manual",
+        "activeManualPreset": "quiet",
+        "manualPresets": [
+          {
+            "mode": "quiet",
+            "smartFanCurve": {
+              "activeTemperatureMode": "gpu",
+              "gpu": [
+                {
+                  "temperature": 50,
+                  "fanSpeedValue": 1000
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 1200
+                },
+                {
+                  "temperature": 65,
+                  "fanSpeedValue": 1400
+                },
+                {
+                  "temperature": 70,
+                  "fanSpeedValue": 1650
+                },
+                {
+                  "temperature": 75,
+                  "fanSpeedValue": 1900
+                },
+                {
+                  "temperature": 80,
+                  "fanSpeedValue": 2200
+                },
+                {
+                  "temperature": 85,
+                  "fanSpeedValue": 2500
+                }
+              ],
+              "chassis": [
+                {
+                  "temperature": 30,
+                  "fanSpeedValue": 1000
+                },
+                {
+                  "temperature": 35,
+                  "fanSpeedValue": 1150
+                },
+                {
+                  "temperature": 40,
+                  "fanSpeedValue": 1300
+                },
+                {
+                  "temperature": 45,
+                  "fanSpeedValue": 1500
+                },
+                {
+                  "temperature": 50,
+                  "fanSpeedValue": 1750
+                },
+                {
+                  "temperature": 55,
+                  "fanSpeedValue": 2000
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 2250
+                }
+              ]
+            }
+          },
+          {
+            "mode": "balanced",
+            "smartFanCurve": {
+              "activeTemperatureMode": "gpu",
+              "gpu": [
+                {
+                  "temperature": 45,
+                  "fanSpeedValue": 1050
+                },
+                {
+                  "temperature": 55,
+                  "fanSpeedValue": 1300
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 1600
+                },
+                {
+                  "temperature": 65,
+                  "fanSpeedValue": 1900
+                },
+                {
+                  "temperature": 70,
+                  "fanSpeedValue": 2200
+                },
+                {
+                  "temperature": 75,
+                  "fanSpeedValue": 2450
+                },
+                {
+                  "temperature": 80,
+                  "fanSpeedValue": 2650
+                },
+                {
+                  "temperature": 85,
+                  "fanSpeedValue": 2800
+                }
+              ],
+              "chassis": [
+                {
+                  "temperature": 25,
+                  "fanSpeedValue": 1000
+                },
+                {
+                  "temperature": 30,
+                  "fanSpeedValue": 1150
+                },
+                {
+                  "temperature": 35,
+                  "fanSpeedValue": 1300
+                },
+                {
+                  "temperature": 40,
+                  "fanSpeedValue": 1550
+                },
+                {
+                  "temperature": 45,
+                  "fanSpeedValue": 1800
+                },
+                {
+                  "temperature": 50,
+                  "fanSpeedValue": 2050
+                },
+                {
+                  "temperature": 55,
+                  "fanSpeedValue": 2300
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 2550
+                }
+              ]
+            }
+          },
+          {
+            "mode": "performance",
+            "smartFanCurve": {
+              "activeTemperatureMode": "gpu",
+              "gpu": [
+                {
+                  "temperature": 40,
+                  "fanSpeedValue": 1200
+                },
+                {
+                  "temperature": 50,
+                  "fanSpeedValue": 1600
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 2000
+                },
+                {
+                  "temperature": 65,
+                  "fanSpeedValue": 2300
+                },
+                {
+                  "temperature": 70,
+                  "fanSpeedValue": 2500
+                },
+                {
+                  "temperature": 75,
+                  "fanSpeedValue": 2650
+                },
+                {
+                  "temperature": 80,
+                  "fanSpeedValue": 2750
+                },
+                {
+                  "temperature": 85,
+                  "fanSpeedValue": 2800
+                }
+              ],
+              "chassis": [
+                {
+                  "temperature": 20,
+                  "fanSpeedValue": 1000
+                },
+                {
+                  "temperature": 25,
+                  "fanSpeedValue": 1150
+                },
+                {
+                  "temperature": 30,
+                  "fanSpeedValue": 1300
+                },
+                {
+                  "temperature": 35,
+                  "fanSpeedValue": 1550
+                },
+                {
+                  "temperature": 40,
+                  "fanSpeedValue": 1800
+                },
+                {
+                  "temperature": 45,
+                  "fanSpeedValue": 2050
+                },
+                {
+                  "temperature": 50,
+                  "fanSpeedValue": 2300
+                },
+                {
+                  "temperature": 55,
+                  "fanSpeedValue": 2550
+                },
+                {
+                  "temperature": 60,
+                  "fanSpeedValue": 2800
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "presets": {
+      "quiet": {
+        "gpu": [
+          {
+            "temperature": 50,
+            "fanSpeedValue": 1000
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 1200
+          },
+          {
+            "temperature": 65,
+            "fanSpeedValue": 1400
+          },
+          {
+            "temperature": 70,
+            "fanSpeedValue": 1650
+          },
+          {
+            "temperature": 75,
+            "fanSpeedValue": 1900
+          },
+          {
+            "temperature": 80,
+            "fanSpeedValue": 2200
+          },
+          {
+            "temperature": 85,
+            "fanSpeedValue": 2500
+          }
+        ],
+        "chassis": [
+          {
+            "temperature": 30,
+            "fanSpeedValue": 1000
+          },
+          {
+            "temperature": 35,
+            "fanSpeedValue": 1150
+          },
+          {
+            "temperature": 40,
+            "fanSpeedValue": 1300
+          },
+          {
+            "temperature": 45,
+            "fanSpeedValue": 1500
+          },
+          {
+            "temperature": 50,
+            "fanSpeedValue": 1750
+          },
+          {
+            "temperature": 55,
+            "fanSpeedValue": 2000
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 2250
+          }
+        ]
+      },
+      "balanced": {
+        "gpu": [
+          {
+            "temperature": 45,
+            "fanSpeedValue": 1050
+          },
+          {
+            "temperature": 55,
+            "fanSpeedValue": 1300
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 1600
+          },
+          {
+            "temperature": 65,
+            "fanSpeedValue": 1900
+          },
+          {
+            "temperature": 70,
+            "fanSpeedValue": 2200
+          },
+          {
+            "temperature": 75,
+            "fanSpeedValue": 2450
+          },
+          {
+            "temperature": 80,
+            "fanSpeedValue": 2650
+          },
+          {
+            "temperature": 85,
+            "fanSpeedValue": 2800
+          }
+        ],
+        "chassis": [
+          {
+            "temperature": 25,
+            "fanSpeedValue": 1000
+          },
+          {
+            "temperature": 30,
+            "fanSpeedValue": 1150
+          },
+          {
+            "temperature": 35,
+            "fanSpeedValue": 1300
+          },
+          {
+            "temperature": 40,
+            "fanSpeedValue": 1550
+          },
+          {
+            "temperature": 45,
+            "fanSpeedValue": 1800
+          },
+          {
+            "temperature": 50,
+            "fanSpeedValue": 2050
+          },
+          {
+            "temperature": 55,
+            "fanSpeedValue": 2300
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 2550
+          }
+        ]
+      },
+      "performance": {
+        "gpu": [
+          {
+            "temperature": 40,
+            "fanSpeedValue": 1200
+          },
+          {
+            "temperature": 50,
+            "fanSpeedValue": 1600
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 2000
+          },
+          {
+            "temperature": 65,
+            "fanSpeedValue": 2300
+          },
+          {
+            "temperature": 70,
+            "fanSpeedValue": 2500
+          },
+          {
+            "temperature": 75,
+            "fanSpeedValue": 2650
+          },
+          {
+            "temperature": 80,
+            "fanSpeedValue": 2750
+          },
+          {
+            "temperature": 85,
+            "fanSpeedValue": 2800
+          }
+        ],
+        "chassis": [
+          {
+            "temperature": 20,
+            "fanSpeedValue": 1000
+          },
+          {
+            "temperature": 25,
+            "fanSpeedValue": 1150
+          },
+          {
+            "temperature": 30,
+            "fanSpeedValue": 1300
+          },
+          {
+            "temperature": 35,
+            "fanSpeedValue": 1550
+          },
+          {
+            "temperature": 40,
+            "fanSpeedValue": 1800
+          },
+          {
+            "temperature": 45,
+            "fanSpeedValue": 2050
+          },
+          {
+            "temperature": 50,
+            "fanSpeedValue": 2300
+          },
+          {
+            "temperature": 55,
+            "fanSpeedValue": 2550
+          },
+          {
+            "temperature": 60,
+            "fanSpeedValue": 2800
+          }
+        ]
+      }
+    },
+    "enums": {}
   }
 ]

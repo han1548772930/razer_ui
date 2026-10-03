@@ -18,13 +18,13 @@ mod workspace;
 pub use workspace::{DeviceWorkspace, WorkspaceEvent};
 
 mod product_workspace;
-mod source_workspace;
 mod source_controls;
 mod source_help;
+mod source_workspace;
 pub(crate) use product_workspace::ProductWorkspace;
-pub(crate) mod mouse_products;
-pub(crate) mod keyboard_products;
 pub(crate) mod gamepad_products;
+pub(crate) mod keyboard_products;
+pub(crate) mod mouse_products;
 
 /// Entry availability only; adapter completeness is audited separately.
 pub(crate) fn has_product_workspace(pid: u32) -> bool {
@@ -36,3 +36,5 @@ mod audio_products;
 mod system_products;
 
 mod accessory_system_products;
+pub(crate) mod dock_pairing;
+pub(crate) mod hue;

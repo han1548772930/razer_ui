@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="30" viewBox="0 0 250 30">
+  <g id="Connecting_Line" data-name="Connecting Line" transform="translate(-767 -323.5)">
+    <rect id="bg" width="250" height="30" transform="translate(767 323.5)" fill="#f0f" opacity="0"/>
+    <line id="Left_Line" data-name="Left Line" y2="30" transform="translate(892 323.5)" fill="none" stroke="#999" stroke-width="2" stroke-dasharray="2 10"/>
+  </g>
+</svg>

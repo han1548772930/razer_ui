@@ -90,6 +90,9 @@ for entry in entries:
         assert hashlib.sha256(path.read_bytes()).hexdigest() == entry[hash_key], path
     path = ROOT / entry["output"]
     expected.add(path.relative_to(directory).as_posix())
+    if path.suffix == ".rgba":
+        assert entry["format"] == "rgba8", path
+        assert len(path.read_bytes()) == entry["width"] * entry["height"] * 4, path
     if path.suffix == ".png":
         data = path.read_bytes()
         assert data[:8] == b"\x89PNG\r\n\x1a\n", path

@@ -210,8 +210,7 @@ impl ListDelegate for AccountCommands {
         }
         let popup = self.popup.clone();
         let owner = self.owner.clone();
-        // Release List's borrow and restore the toolbar focus before opening
-        // the shell's unsaved-changes dialog.
+        // Release List's borrow and dismiss the menu before requesting exit.
         window.defer(cx, move |window, cx| {
             if let Some(popup) = popup {
                 _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));

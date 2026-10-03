@@ -220,6 +220,9 @@ impl PowerStatus {
 /// 字段与雷云运行日志里的 JSON 一一对应（见模块文档）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Device {
+    /// Local mirror of source device settings, independent of profile selection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_device_settings: Option<serde_json::Value>,
     pub serial_number: String,
     /// 设备模块的 productId（USB PID 十进制）——即设备页面的 URL 段。
     pub product_id: u32,
@@ -432,6 +435,7 @@ pub fn region_label_zh(input_id: &str) -> String {
 pub fn measured_devices() -> Vec<Device> {
     vec![
         Device {
+            source_device_settings: None,
             serial_number: "PM2132H00000000".to_string(),
             product_id: 182,
             real_product_id: 182,
@@ -442,7 +446,7 @@ pub fn measured_devices() -> Vec<Device> {
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
-                                source_settings: None,
+                source_settings: None,
                 settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),
@@ -499,6 +503,7 @@ pub fn measured_devices() -> Vec<Device> {
             features_initialized: true,
         },
         Device {
+            source_device_settings: None,
             serial_number: "HP10-0000000".to_string(),
             product_id: 179,
             real_product_id: 179,
@@ -509,7 +514,7 @@ pub fn measured_devices() -> Vec<Device> {
             setup_status: SetupStatus::Ready,
             active_profile: "profile-1".to_string(),
             profiles: vec![Profile {
-                                source_settings: None,
+                source_settings: None,
                 settings: None,
                 name: "HL-Default".to_string(),
                 guid: "profile-1".to_string(),

@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const inventory = JSON.parse(read('docs/re/unimplemented-products.json'));
-const products = inventory.products.filter(p => p.family === 'mouse');
+const products = inventory.products.filter(p => p.family === 'mouse' || p.product_id === 162);
 products.push({product_id:182, name:'Razer DeathAdder V3 Pro', navigation:[]});
 products.sort((a,b) => a.product_id-b.product_id);
 const key = n => n?.name ?? n?.value;
@@ -44,6 +44,27 @@ function decode(n, bindings, source, seen = new Set()) {
 }
 const receipts=[];
 for(const product of products) {
+  // Cobra's bundle uses Babel function exports, unlike the arrow-form scanner
+  // below. Reuse the maintained general CONFIG parser's exact module receipt.
+  if(product.product_id === 162) {
+    const entry = JSON.parse(read('docs/re/source-product-configs.json')).products.find(p=>p.product_id===162);
+    const config = entry.config, source = read(config.path), info = config.exports.DeviceInfo;
+    if(!config.path.startsWith('.ref/devices/162/') || sha(source)!==config.sha256
+      || info.productId!==163 || info.category!=='MOUSE' || info.deviceName!=='Razer Cobra') throw Error('Cobra identity changed');
+    const parsed = acorn.parseExpressionAt(source, config.offset, {ecmaVersion:'latest'});
+    const module = parsed.type==='SequenceExpression'?parsed.expressions[0]:parsed;
+    if(module.end!==config.end) throw Error('Cobra CONFIG range changed');
+    const groupStart = source.indexOf('3138:function');
+    if(groupStart<0 || !source.includes('payload:s.X[e].group.buttonList')) throw Error('Cobra button group consumer changed');
+    const groupModule = acorn.parseExpressionAt(source,groupStart+'3138:'.length,{ecmaVersion:'latest'});
+    let groupNode;
+    walk(groupModule,n=>{if(n.type==='VariableDeclarator' && n.id.name==='r' && n.init?.type==='ArrayExpression') groupNode=n.init;});
+    const groups=decode(groupNode,new Map(),source);
+    if(!Array.isArray(groups) || groups.length!==1 || groups[0].group.buttonList.length!==8) throw Error('Cobra groups changed');
+    receipts.push({product_id:162,name:product.name,config,navigation:product.navigation,
+      groups:groups.map(g=>g.group),group_source:{path:config.path,offset:groupNode.start,end:groupNode.end,sha256:sha(source.slice(groupNode.start,groupNode.end))}});
+    continue;
+  }
   const dir=`.ref/devices/${product.product_id}/static/js`;
   const files=fs.readdirSync(path.join(root,dir)).filter(p=>p.endsWith('.js'));
   const candidates=[];

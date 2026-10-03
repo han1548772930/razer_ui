@@ -25,6 +25,15 @@ def main():
             if product['image']:
                 assert (ROOT / 'assets' / product['image']).is_file(), product['image']
     mouse_inputs = 0
+    cobra = next(p for p in mice if p['product_id'] == 162)
+    assert cobra['source'].startswith('.ref/devices/162/')
+    assert (cobra['info']['productId'], cobra['info']['category']) == (163, 'MOUSE')
+    assert (cobra['min_dpi'], cobra['max_dpi'], cobra['dpi_step'], cobra['support_xy']) == (200, 8500, 100, False)
+    assert cobra['rates']['POLLING_RATE'] == [125, 500, 1000]
+    assert cobra['calibration'] == 'surface' and len(cobra['mats']) == 18
+    assert [b['inputID'] for b in cobra['groups'][0]['buttonList']] == [
+        'LeftClick', 'RightClick', 'ScrollButton', 'ScrollUp', 'ScrollDown', 'Button4', 'Button5', 'DKM_SB_03']
+    assert cobra['groups'][0]['buttonList'][0]['isEnabled'] is False
     for product in mice:
         check_source(product['source'], product['source_sha256'])
         assert 0 < product['min_dpi'] <= product['max_dpi'] and product['dpi_step'] > 0

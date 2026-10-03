@@ -9,6 +9,11 @@ def load(name):
     return json.loads((ROOT / name).read_text(encoding="utf-8"))
 
 configs = load("docs/re/mouse-product-source.json")
+# Cobra must include both the CONFIG and button-group receipts from the
+# maintained extractor. Falling back to CONFIG alone loses its mapping inputs.
+cobra = next(p for p in configs['products'] if p['product_id'] == 162)
+assert cobra['groups'] and cobra['group_source']
+configs['products'].sort(key=lambda p: p['product_id'])
 pages = {p["product_id"]: p["pages"] for p in load("docs/re/mouse-page-source.json")["products"]}
 artwork = {p['product_id']: p for p in load('docs/re/mouse-product-assets.json')}
 output = []
@@ -17,8 +22,13 @@ for product in configs["products"]:
     exports = product["config"]["exports"]
     info = exports["DeviceInfo"]
     group_file = ROOT / f'assets/synapse/mouse-products/configs/{pid}.json'
-    groups = []
-    if group_file.exists():
+    groups = product.get('groups', [])
+    if groups:
+        receipt = product['group_source']
+        group_source = (ROOT / receipt['path']).read_text(encoding='utf8')
+        fragment = group_source.encode('utf-16-le')[receipt['offset'] * 2:receipt['end'] * 2].decode('utf-16-le')
+        assert hashlib.sha256(fragment.encode()).hexdigest() == receipt['sha256']
+    elif group_file.exists():
         group_receipt = json.loads(group_file.read_text(encoding='utf8'))
         for receipt in group_receipt['source_files']:
             assert hashlib.sha256((ROOT/receipt['path']).read_bytes()).hexdigest() == receipt['sha256']
@@ -52,6 +62,9 @@ for product in configs["products"]:
              if (name.startswith("POLLING_RATE") or name.startswith("HYPER_POLLING")) and isinstance(value, list)}
     effects = []
     for item in exports.get("QUICK_EFFECTS", []):
+        if isinstance(item['id'], int):
+            effects.append({'key': item['name'], 'id': item['id']})
+            continue
         enum = item["id"].get("expression", "").split(".")[-1] if isinstance(item["id"], dict) else None
         if enum:
             values = set(re.findall(r"\b" + re.escape(enum) + r":(\d+)", source))

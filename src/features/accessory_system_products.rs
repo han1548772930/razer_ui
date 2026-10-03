@@ -17,6 +17,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+mod corex_fan;
+
 #[derive(Deserialize)]
 pub(crate) struct AccessorySystemSpec {
     product_id: u32,
@@ -53,6 +55,7 @@ pub(crate) struct AccessorySystemProductWorkspace {
     syncing: bool,
     celsius: bool,
     percentage: bool,
+    corex_graph: corex_fan::GraphInteraction,
 }
 
 impl EventEmitter<AccessorySystemProductChanged> for AccessorySystemProductWorkspace {}
@@ -70,6 +73,7 @@ impl AccessorySystemProductWorkspace {
             syncing: false,
             celsius: true,
             percentage: true,
+            corex_graph: corex_fan::GraphInteraction::new(cx),
         };
         match pid {
             3858 | 3880 => {
@@ -154,12 +158,16 @@ impl AccessorySystemProductWorkspace {
             }
             _ => {}
         }
+        if pid == 3921 {
+            this.init_corex(window, cx);
+        }
         this.sync_sliders(window, cx);
         this
     }
 
     pub(crate) fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            self.corex_graph.dragging = false;
             self.page = key.into();
             cx.notify();
         }
@@ -178,6 +186,9 @@ impl AccessorySystemProductWorkspace {
         self.draft = self.spec.initial.clone();
         if let Some(saved) = saved {
             merge_known(&mut self.draft, saved);
+            if self.spec.product_id == 3921 {
+                self.restore_corex(saved);
+            }
         }
         // Profile input cannot create hardware data or alter port identity and
         // temperature coordinates. Only validated local choices are admitted.
@@ -356,6 +367,9 @@ impl AccessorySystemProductWorkspace {
 
     fn sync_sliders(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.syncing = true;
+        if self.spec.product_id == 3921 {
+            self.sync_corex(window, cx);
+        }
         for (path, slider) in &self.sliders {
             let value = if let Some(field) = path.strip_prefix("/gaming/customData/") {
                 self.gaming_value(field)
@@ -410,6 +424,9 @@ impl AccessorySystemProductWorkspace {
     ) {
         if !self.allowed(path) {
             return;
+        }
+        if self.spec.product_id == 3921 {
+            self.corex_graph.clear_selection();
         }
         if path.starts_with("/gaming/customData/") && self.draft["gaming"]["selectedPreset"] != 5 {
             let selected = self.number("/gaming/selectedPreset").to_string();
@@ -1081,6 +1098,7 @@ impl Render for AccessorySystemProductWorkspace {
             (3900, "TAB_PERFORMANCE") => self.pwm(cx),
             (3893, "TAB_PERFORMANCE") => self.hanbo(cx),
             (3907, "TAB_PERFORMANCE") => self.cooling(cx),
+            (3921, "TAB_CUSTOMIZE") => self.corex_fan(cx),
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
         };
         v_flex()

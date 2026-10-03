@@ -154,6 +154,7 @@ for(const p of configs.filter(p=>p.family==='camera')) {
    if(!source.includes('adaptiveNoiseReduction:!1,crystalClearVoice:!1'))throw Error('Missing independent Mic defaults');
    // Independent device state, outside DEFAULTPROFILE.camera, retained locally.
    result.profile.deviceMic={adaptiveNoiseReduction:false,crystalClearVoice:false};
+   result.device_fields=['deviceMic'];
    for(const [field,symbol,description] of [['adaptiveNoiseReduction','Er1','CWO'],['crystalClearVoice','kuq','an_']]) {
     const s=section('MIC',label(symbol));s.description=label(description);
     receiptControl(s,'switch',field,label(symbol),`/deviceMic/${field}`,micProof);

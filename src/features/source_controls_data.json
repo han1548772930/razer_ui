@@ -3074,7 +3074,10 @@
         ]
       }
     ],
-    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19780"
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19780",
+    "device_fields": [
+      "deviceMic"
+    ]
   },
   {
     "product_id": 3596,

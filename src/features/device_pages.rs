@@ -54,7 +54,10 @@ impl DeviceWorkspace {
                                     BaseButton::new("mouse-properties")
                                         .accessibility_label("打开 Windows 鼠标属性")
                                         .gap(surface::css(4.))
-                                        .child(Icon::new(gpui_kit::assets::IconName::ExternalLink).size(surface::css(16.)))
+                                        .child(
+                                            Icon::new(gpui_kit::assets::IconName::ExternalLink)
+                                                .size(surface::css(16.)),
+                                        )
                                         .child("打开 Windows 鼠标属性")
                                         .border_0()
                                         .px_0()

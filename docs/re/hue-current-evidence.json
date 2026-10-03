@@ -1,0 +1,2047 @@
+{
+  "method": "Acorn literals and mounted source receipts; downloaded JavaScript is never evaluated",
+  "generator_sha256": "1b1715272f0fb1bfade3154e8500895537c263066e4016b73493d47497129bc4",
+  "source": {
+    "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d"
+  },
+  "dictionaries": {
+    "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "offset": 6495018,
+    "end": 6539741,
+    "source": "_i={de:{BRIDGE:\"BRIDGE\",BRIDGE_TIP:\"W\\xe4hle einen Unterhaltungsbereich und dann, wie Razer Synapse deine Beleuchtung steuern soll.\",BRIDGE_DESC:\"Erlebe echte Immersion mit Razer Chroma und Philips Hue. Passe deine Beleuchtung mit Chroma Studio deinen individuellen W\\xfcnschen an. F\\xfchle dich bei Spielen und Apps mit Razer Chroma-Unterst\\xfctzung wie mittendrin.\",BRIDGE_NOT_CONNECTED:\"Anschalten, um Razer Synapse-Beleuchtungseffekte bei deinen Hue-Ger\\xe4ten zu aktivieren.\",STREAM_BUSY_DESC:\"Die Beleuchtung wird zurzeit von einer anderen Anwendung gesteuert.\\nWenn du jetzt die Bridge anschaltest, wird die aktuelle Anwendung angehalten und Razer Synapse kann die Steuerung \\xfcbernehmen.\",STREAM_BUSY:\"Stream ausgelastet\",DELETE_BRIDGE:\"Bridge von Razer Synapse entfernen?\",BRIDGE_CONTROL:\"BRIDGE-STEUERUNG\",BRIDGE_CONTROL_DES:\"Ist diese Option aktiviert, \\xfcbernimmt Razer Synapse die Steuerung deiner Hue-Ger\\xe4te und stoppt andere aktive Sessions in 1 oder mehreren R\\xe4umen.\",ENABLE:\"Aktivieren\",CONNECTED:\"verbunden\",CHANNELS:\"channels\",UNREACHABLE:\"nicht erreichbar\",DEVICES_TIP:\"Verbundene Ger\\xe4te des ausgew\\xe4hlten Entertainment-Bereichs anzeigen sowie die Kan\\xe4le, die mit jedem Ger\\xe4t verbunden sind.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"Start\",TEXT_HUE_CHROMA_INTEGRATION:\"HUE-CHROMA-INTEGRATION\",TEXT_INTEGRATION_CONTENT_1:\"Du bist nur noch wenige Schritte von totaler Gaming-Immersion entfernt.\",TEXT_INTEGRATION_CONTENT_2:\"Sobald ein kompatibles Hue-Ger\\xe4t verbunden und eingerichtet ist, wird es mit Razer Chroma funktionieren. Synchronisiere deine Ger\\xe4te mit Razer Chroma-Unterst\\xfctzung und f\\xfchle dich bei Spielen mit Razer Chroma-Unterst\\xfctzung wie mittendrin.\",TEXT_CASE_SCAN:\"suchen\",TEXT_CASE_SCAN_CONTENT:\"Suche nach einer neuen Hue Bridge um zu beginnen.\",TEXT_CASE_SCANNING:\"abbrechen\",TEXT_CASE_SCANNING_CONTENT:\"Suche nach Hue Bridges ...\",TEXT_CASE_SCAN_AGAIN:\"erneut suchen\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse konnte keine Hue Bridge finden.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Suche erneut nach einer Bridge oder gib manuell die IP-Adresse der Bridge oben ein.\",TEXT_CASE_SCAN_AGAIN_OR:\"oder\",TEXT_CASE_SCAN_MANUAL_IP:\"Manuelle IP\",TEXT_CASE_SCAN_SEARCH:\"suchen\",TEXT_CASE_PAIR:\" koppeln\",TEXT_CASE_PAIR_CONTENT:\"Hue Bridge in deinem Netzwerk gefunden.\",TEXT_CASE_PAIRING_CONTENT:\"Dr\\xfccke die Push-Link-Taste an der Hue Bridge, um den Verbindungsprozess abzuschlie\\xdfen.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"Die Hue Bridge kann nicht mit Razer Synapse verbunden werden.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"Die Push-Link-Taste der Hue Bridge wurde w\\xe4hrend des Verbindungsprozesses nicht gedr\\xfcckt.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"ERNEUT VERSUCHEN\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"VON VORNE ANFANGEN\",ADVANCED_EFFECT_DETAILS:\"Erweiterte Effekte werden auf mehrere Ger\\xe4te mit Razer Chroma-Unterst\\xfctzung global \\xfcbernommen und nicht im Ger\\xe4te-Profil gespeichert.\"},en:{BRIDGE:\"BRIDGE\",BRIDGE_TIP:\"Choose an Entertainment Area and select how Synapse will control your lights.\",BRIDGE_DESC:\"Experience true immersion with Razer Chroma and Philips Hue. Customize your lighting as you wish with Chroma Studio. Feel like you're in the game with Razer Chroma enabled games and apps.\",BRIDGE_NOT_CONNECTED:\"Turn on to enable Razer Synapse lighting effects on your Hue devices.\",STREAM_BUSY_DESC:\"Lights are currently being controlled by another application.\\nTurning on the bridge will stop the current application and allow Razer Synapse to take control.\",STREAM_BUSY:\"Stream busy\",DELETE_BRIDGE:\"Remove bridge from Synapse?\",BRIDGE_CONTROL:\"BRIDGE CONTROL\",BRIDGE_CONTROL_DES:\"When enabled, Razer Synapse will take control of your Hue devices and stop other active sessions in 1 or more rooms.\",ENABLE:\"Enable\",CONNECTED:\"connected\",CHANNELS:\"channels\",UNREACHABLE:\"unreachable\",DEVICES_TIP:\"Shows the selected Entertainment area's connected devices and which channel(s) are associated with each device.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"Home\",TEXT_HUE_CHROMA_INTEGRATION:\"HUE CHROMA INTEGRATION\",TEXT_INTEGRATION_CONTENT_1:\"You're a few steps away from experiencing true gaming immersion.\",TEXT_INTEGRATION_CONTENT_2:\"Once a compatible Hue device is paired and set up, it will then work  with Razer Chroma. Sync your Razer Chroma-enabled devices, and feel  like you're in the game with Razer Chroma-enabled games.\",TEXT_CASE_SCAN:\"scan\",TEXT_CASE_SCAN_CONTENT:\"Scan for a new Hue bridge to begin.\",TEXT_CASE_SCANNING:\"cancel\",TEXT_CASE_SCANNING_CONTENT:\"Scanning for Hue bridges...\",TEXT_CASE_SCAN_AGAIN:\"scan again\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse was unable to find a Hue bridge.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Scan for a bridge again, or manually enter the IP address of the bridge.\",TEXT_CASE_SCAN_AGAIN_OR:\"or\",TEXT_CASE_SCAN_MANUAL_IP:\"Manual IP\",TEXT_CASE_SCAN_SEARCH:\"search\",TEXT_CASE_PAIR:\" pair\",TEXT_CASE_PAIR_CONTENT:\"Hue bridge found in your network.\",TEXT_CASE_PAIRING_CONTENT:\"Press the Push-Link button of the Hue bridge to complete the pairing.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"Unable to pair bridge with Razer Synapse.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"The Push-Link button on the bridge was not pressed during the pairing.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"RETRY\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"START OVER\",ADVANCED_EFFECT_DETAILS:\"Advanced effects are applied across multiple Razer Chroma-enabled devices globally and are not saved to device profile.\"},es:{BRIDGE:\"BRIDGE\",BRIDGE_TIP:\"Elige un \\xe1rea de entretenimiento y selecciona el modo de control de luces de Synapse.\",BRIDGE_DESC:\"Disfruta de una verdadera experiencia de inmersi\\xf3n con Razer Chroma y Philips Hue. Personaliza tu iluminaci\\xf3n como desees con Chroma Studio. Si\\xe9ntete como si estuvieras en el juego con las aplicaciones y juegos compatibles con Razer Chroma.\",BRIDGE_NOT_CONNECTED:\"Act\\xedvalo para permitir efectos de iluminaci\\xf3n de Razer Synapse en tus dispositivos Hue.\",STREAM_BUSY_DESC:\"Las luces se est\\xe1n controlando a trav\\xe9s de otra aplicaci\\xf3n.\\nSi activas el Bridge, se detendr\\xe1 la aplicaci\\xf3n actual y permitir\\xe1 que Razer Synapse tome el control.\",STREAM_BUSY:\"Emisi\\xf3n ocupada\",DELETE_BRIDGE:\"\\xbfEliminar bridge de Synapse?\",BRIDGE_CONTROL:\"CONTROL DEL BRIDGE\",BRIDGE_CONTROL_DES:\"Cuando se activa, Razer Synapse tomar\\xe1 el control de tus dispositivos Hue y detendr\\xe1 otras sesiones activas en 1 o m\\xe1s espacios.\",ENABLE:\"Habilitar\",CONNECTED:\"conectado(s)\",CHANNELS:\"canales\",UNREACHABLE:\"inalcanzable(s)\",DEVICES_TIP:\"Muestra los dispositivos conectados del \\xc1rea de entretenimiento seleccionada y qu\\xe9 canal(es) est\\xe1(n) asociado(s) a cada dispositivo.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"Inicio\",TEXT_HUE_CHROMA_INTEGRATION:\"INTEGRACI\\xd3N DE HUE Y CHROMA\",TEXT_INTEGRATION_CONTENT_1:\"Est\\xe1s a punto de vivir una verdadera inmersi\\xf3n en el juego.\",TEXT_INTEGRATION_CONTENT_2:\"Cuando hayas sincronizado y configurado un dispositivo Hue compatible, funcionar\\xe1 con Razer Chroma. Sincroniza tus dispositivos compatibles con Razer Chroma y si\\xe9ntete como si estuvieras ah\\xed dentro con los juegos compatibles de Razer Chroma.\",TEXT_CASE_SCAN:\"buscar\",TEXT_CASE_SCAN_CONTENT:\"Busca un Hue Bridge nuevo para empezar.\",TEXT_CASE_SCANNING:\"cancelar\",TEXT_CASE_SCANNING_CONTENT:\"Buscando Hue Bridges...\",TEXT_CASE_SCAN_AGAIN:\"volver a buscar\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse no ha podido encontrar un Hue Bridge.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Vuelve a buscar un Hue Bridge o introduce manualmente la direcci\\xf3n IP del Bridge a continuaci\\xf3n.\",TEXT_CASE_SCAN_AGAIN_OR:\"o\",TEXT_CASE_SCAN_MANUAL_IP:\"IP manual\",TEXT_CASE_SCAN_SEARCH:\"buscar\",TEXT_CASE_PAIR:\" sincronizar\",TEXT_CASE_PAIR_CONTENT:\"Se ha encontrado un Hue Bridge en tu red.\",TEXT_CASE_PAIRING_CONTENT:\"Pulsa el bot\\xf3n Push-Link del Hue Bridge para completar la sincronizaci\\xf3n.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"No se ha podido sincronizar el Hue Bridge con Razer Synapse.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"No se ha pulsado el bot\\xf3n Push-Link del Hue Bridge durante la sincronizaci\\xf3n.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"REINTENTAR\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"VOLVER A EMPEZAR\",ADVANCED_EFFECT_DETAILS:\"Los efectos avanzados se aplican en varios dispositivos Razer Chroma globalmente y no se guardan en el perfil de dispositivo.\"},fr:{BRIDGE:\"PONT\",BRIDGE_TIP:\"Choisissez un espace de loisirs et s\\xe9lectionnez la fa\\xe7on dont Synapse contr\\xf4lera votre \\xe9clairage.\",BRIDGE_DESC:\"D\\xe9couvrez une v\\xe9ritable immersion avec Razer Chroma et Philips Hue. Personnalisez votre \\xe9clairage comme vous le souhaitez avec Chroma Studio. Immergez-vous dans le jeu avec les applications et les jeux compatibles avec Razer Chroma.\",BRIDGE_NOT_CONNECTED:\"Allumez le pont pour activer les effets d\\u2019\\xe9clairage Razer Synapse sur vos appareils Hue.\",STREAM_BUSY_DESC:\"L\\u2019\\xe9clairage est actuellement contr\\xf4l\\xe9 par une autre application.\\nEn allumant le pont, vous arr\\xeaterez l\\u2019application en cours d\\u2019utilisation et permettrez \\xe0 Razer Synapse de prendre le contr\\xf4le.\",STREAM_BUSY:\"Flux occup\\xe9\",DELETE_BRIDGE:\"Supprimer le pont depuis Synapse\\xa0?\",BRIDGE_CONTROL:\"CONTR\\xd4LE DU PONT\",BRIDGE_CONTROL_DES:\"Lorsqu\\u2019il est activ\\xe9, Razer Synapse prend le contr\\xf4le de vos appareils Hue et arr\\xeate les autres sessions actives dans une ou plusieurs pi\\xe8ces.\",ENABLE:\"Activer\",CONNECTED:\"connect\\xe9(s)\",CHANNELS:\"canaux\",UNREACHABLE:\"impossible(s) \\xe0 joindre\",DEVICES_TIP:\"Affiche les appareils connect\\xe9s de l'Espace de loisirs s\\xe9lectionn\\xe9 et quels canaux sont associ\\xe9s \\xe0 chaque appareil.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"Accueil\",TEXT_HUE_CHROMA_INTEGRATION:\"INT\\xc9GRATION HUE CHROMA\",TEXT_INTEGRATION_CONTENT_1:\"Vous \\xeates sur le point de d\\xe9couvrir une v\\xe9ritable immersion dans le jeu.\",TEXT_INTEGRATION_CONTENT_2:\"Une fois qu\\u2019un appareil Hue compatible est synchronis\\xe9 et param\\xe9tr\\xe9, il fonctionnera avec Razer Chroma. Synchronisez vos appareils compatibles avec Razer Chroma, et immergez-vous dans votre partie gr\\xe2ce aux jeux compatibles avec Razer Chroma.\",TEXT_CASE_SCAN:\"Analyser\",TEXT_CASE_SCAN_CONTENT:\"Chercher un nouveau pont Hue pour commencer.\",TEXT_CASE_SCANNING:\"Annuler\",TEXT_CASE_SCANNING_CONTENT:\"Analyse des ponts Hue en cours...\",TEXT_CASE_SCAN_AGAIN:\"Analyser encore\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse n\\u2019a pas trouv\\xe9 de pont Hue.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Analysez de nouveau pour trouver un pont, ou entrez manuellement l\\u2019adresse IP du pont ci-dessus.\",TEXT_CASE_SCAN_AGAIN_OR:\"ou\",TEXT_CASE_SCAN_MANUAL_IP:\"IP manuel\",TEXT_CASE_SCAN_SEARCH:\"Rechercher\",TEXT_CASE_PAIR:\" Synchroniser\",TEXT_CASE_PAIR_CONTENT:\"Pont Hue d\\xe9tect\\xe9 dans votre r\\xe9seau.\",TEXT_CASE_PAIRING_CONTENT:\"Appuyez sur le bouton Pousser-Lier du pont Hue pour terminer la synchronisation.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"Impossible de synchroniser le pont avec Razer Synapse.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"Vous n\\u2019avez pas appuy\\xe9 sur le bouton Pousser-Lier du pont pendant la synchronisation.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"R\\xc9ESSAYER\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"RECOMMENCER\",ADVANCED_EFFECT_DETAILS:\"En g\\xe9n\\xe9ral, les effets avanc\\xe9s sont appliqu\\xe9s \\xe0 plusieurs appareils compatibles avec Razer Chroma et ne sont pas enregistr\\xe9s dans le profil de l'appareil.\"},ja:{BRIDGE:\"\\u30d6\\u30ea\\u30c3\\u30b8\",BRIDGE_TIP:\"\\u30a8\\u30f3\\u30bf\\u30fc\\u30c6\\u30a4\\u30e1\\u30f3\\u30c8\\u30a8\\u30ea\\u30a2\\u3092\\u9078\\u629e\\u3057\\u3066\\u3001Synapse \\u306b\\u3088\\u308b\\u30e9\\u30a4\\u30c6\\u30a3\\u30f3\\u30b0\\u306e\\u5236\\u5fa1\\u65b9\\u6cd5\\u3092\\u9078\\u629e\\u3057\\u307e\\u3059\\u3002\",BRIDGE_DESC:\"Razer Chroma \\u3068 Philips Hue \\u3067\\u771f\\u306e\\u6ca1\\u5165\\u611f\\u3092\\u4f53\\u9a13\\u3057\\u307e\\u3057\\u3087\\u3046\\u3002Chroma Studio \\u3067\\u30e9\\u30a4\\u30c6\\u30a3\\u30f3\\u30b0\\u3092\\u81ea\\u7531\\u306b\\u30ab\\u30b9\\u30bf\\u30de\\u30a4\\u30ba\\u3067\\u304d\\u307e\\u3059\\u3002Razer Chroma \\u5bfe\\u5fdc\\u306e\\u30b2\\u30fc\\u30e0\\u3084\\u30a2\\u30d7\\u30ea\\u3067\\u30b2\\u30fc\\u30e0\\u306e\\u771f\\u3063\\u53ea\\u4e2d\\u306b\\u3044\\u308b\\u611f\\u899a\\u3092\\u5473\\u308f\\u3044\\u307e\\u3057\\u3087\\u3046\\u3002\",BRIDGE_NOT_CONNECTED:\"\\u30aa\\u30f3\\u306b\\u3057\\u3066 Hue \\u30c7\\u30d0\\u30a4\\u30b9\\u3067 Razer Synapse \\u30e9\\u30a4\\u30c6\\u30a3\\u30f3\\u30b0\\u52b9\\u679c\\u3092\\u6709\\u52b9\\u306b\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\",STREAM_BUSY_DESC:\"\\u7167\\u660e\\u306f\\u73fe\\u5728\\u3001\\u5225\\u306e\\u30a2\\u30d7\\u30ea\\u30b1\\u30fc\\u30b7\\u30e7\\u30f3\\u306b\\u3088\\u3063\\u3066\\u5236\\u5fa1\\u3055\\u308c\\u3066\\u3044\\u307e\\u3059\\u3002\\n\\u30d6\\u30ea\\u30c3\\u30b8\\u3092\\u30aa\\u30f3\\u306b\\u3059\\u308b\\u3053\\u3068\\u3067\\u73fe\\u5728\\u306e\\u30a2\\u30d7\\u30ea\\u30b1\\u30fc\\u30b7\\u30e7\\u30f3\\u304c\\u505c\\u6b62\\u3057\\u3066\\u3001Razer Synapse \\u306b\\u5236\\u5fa1\\u304c\\u79fb\\u308a\\u307e\\u3059\\u3002\",STREAM_BUSY:\"\\u30b9\\u30c8\\u30ea\\u30fc\\u30e0\\u30d3\\u30b8\\u30fc\",DELETE_BRIDGE:\"\\u30d6\\u30ea\\u30c3\\u30b8\\u3092 Synapse \\u304b\\u3089\\u524a\\u9664\\u3057\\u307e\\u3059\\u304b\\uff1f\",BRIDGE_CONTROL:\"\\u30b3\\u30f3\\u30c8\\u30ed\\u30fc\\u30eb\\u306e\\u30d6\\u30ea\\u30c3\\u30b8\",BRIDGE_CONTROL_DES:\"\\u6709\\u52b9\\u306b\\u3059\\u308b\\u3068\\u3001Razer Synapse \\u304c Hue \\u30c7\\u30d0\\u30a4\\u30b9\\u3092\\u30b3\\u30f3\\u30c8\\u30ed\\u30fc\\u30eb\\u3057\\u30011 \\u3064\\u4ee5\\u4e0a\\u306e\\u30eb\\u30fc\\u30e0\\u3067\\u306e\\u4ed6\\u306e\\u30a2\\u30af\\u30c6\\u30a3\\u30d6\\u306a\\u30bb\\u30c3\\u30b7\\u30e7\\u30f3\\u3092\\u505c\\u6b62\\u3057\\u307e\\u3059\\u3002\",ENABLE:\"\\u6709\\u52b9\\u5316\",CONNECTED:\"\\u63a5\\u7d9a\\u6e08\\u307f\",CHANNELS:\"\\u30c1\\u30e3\\u30f3\\u30cd\\u30eb\",UNREACHABLE:\"\\u63a5\\u7d9a\\u4e0d\\u53ef\",DEVICES_TIP:\"\\u9078\\u629e\\u3057\\u305f\\u30a8\\u30f3\\u30bf\\u30fc\\u30c6\\u30a4\\u30e1\\u30f3\\u30c8\\u30a8\\u30ea\\u30a2\\u306e\\u63a5\\u7d9a\\u30c7\\u30d0\\u30a4\\u30b9\\u3068\\u5404\\u30c7\\u30d0\\u30a4\\u30b9\\u306b\\u95a2\\u9023\\u4ed8\\u3051\\u3089\\u308c\\u305f\\u30c1\\u30e3\\u30f3\\u30cd\\u30eb\\u3092\\u8868\\u793a\\u3057\\u307e\\u3059\\u3002\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"\\u30db\\u30fc\\u30e0\",TEXT_HUE_CHROMA_INTEGRATION:\"Hue \\u3068 Chroma \\u306e\\u7d71\\u5408\",TEXT_INTEGRATION_CONTENT_1:\"\\u3042\\u3068\\u3082\\u3046\\u5c11\\u3057\\u3067\\u30b2\\u30fc\\u30e0\\u3078\\u306e\\u6df1\\u3044\\u6ca1\\u5165\\u611f\\u3092\\u4f53\\u9a13\\u3067\\u304d\\u307e\\u3059\\u3002\",TEXT_INTEGRATION_CONTENT_2:\"\\u5bfe\\u5fdc\\u3059\\u308b Hue \\u30c7\\u30d0\\u30a4\\u30b9\\u306e\\u30da\\u30a2\\u30ea\\u30f3\\u30b0\\u3068\\u8a2d\\u5b9a\\u304c\\u5b8c\\u4e86\\u3059\\u308b\\u3068 Razer Chroma \\u3068\\u540c\\u671f\\u3057\\u3066\\u52d5\\u4f5c\\u3057\\u307e\\u3059\\u3002\\u304a\\u4f7f\\u3044\\u306e Razer Chroma \\u5bfe\\u5fdc\\u30c7\\u30d0\\u30a4\\u30b9\\u3092\\u540c\\u671f\\u3055\\u305b\\u3066\\u3001Razer Chroma \\u5bfe\\u5fdc\\u30b2\\u30fc\\u30e0\\u306e\\u771f\\u3063\\u53ea\\u4e2d\\u306b\\u3044\\u308b\\u611f\\u899a\\u3092\\u5473\\u308f\\u3044\\u307e\\u3057\\u3087\\u3046\\u3002\",TEXT_CASE_SCAN:\"\\u30b9\\u30ad\\u30e3\\u30f3\",TEXT_CASE_SCAN_CONTENT:\"\\u59cb\\u3081\\u308b\\u306b\\u306f\\u65b0\\u3057\\u3044 Hue \\u30d6\\u30ea\\u30c3\\u30b8\\u306e\\u30b9\\u30ad\\u30e3\\u30f3\\u3092\\u884c\\u3044\\u307e\\u3059\\u3002\",TEXT_CASE_SCANNING:\"\\u30ad\\u30e3\\u30f3\\u30bb\\u30eb\",TEXT_CASE_SCANNING_CONTENT:\"Hue \\u30d6\\u30ea\\u30c3\\u30b8\\u3092\\u30b9\\u30ad\\u30e3\\u30f3\\u3057\\u3066\\u3044\\u307e\\u3059...\",TEXT_CASE_SCAN_AGAIN:\"\\u518d\\u30b9\\u30ad\\u30e3\\u30f3\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse \\u306f Hue \\u30d6\\u30ea\\u30c3\\u30b8\\u3092\\u898b\\u3064\\u3051\\u3089\\u308c\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"\\u3082\\u3046\\u4e00\\u5ea6\\u30d6\\u30ea\\u30c3\\u30b8\\u3092\\u30b9\\u30ad\\u30e3\\u30f3\\u3059\\u308b\\u304b\\u3001\\u4e0a\\u8a18\\u30d6\\u30ea\\u30c3\\u30b8\\u306e IP \\u30a2\\u30c9\\u30ec\\u30b9\\u3092\\u624b\\u52d5\\u3067\\u5165\\u529b\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\",TEXT_CASE_SCAN_AGAIN_OR:\"\\u307e\\u305f\\u306f\",TEXT_CASE_SCAN_MANUAL_IP:\"IP \\u624b\\u52d5\\u5165\\u529b\",TEXT_CASE_SCAN_SEARCH:\"\\u691c\\u7d22\",TEXT_CASE_PAIR:\" \\u30da\\u30a2\\u30ea\\u30f3\\u30b0\",TEXT_CASE_PAIR_CONTENT:\"\\u30cd\\u30c3\\u30c8\\u30ef\\u30fc\\u30af\\u4e0a\\u306b Hue \\u30d6\\u30ea\\u30c3\\u30b8\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u3057\\u305f\\u3002\",TEXT_CASE_PAIRING_CONTENT:\"Hue \\u30d6\\u30ea\\u30c3\\u30b8\\u306e\\u30d7\\u30c3\\u30b7\\u30e5\\u30ea\\u30f3\\u30af\\u30dc\\u30bf\\u30f3\\u3092\\u62bc\\u3057\\u3066\\u30da\\u30a2\\u30ea\\u30f3\\u30b0\\u3092\\u5b8c\\u4e86\\u3055\\u305b\\u307e\\u3059\\u3002\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"\\u30d6\\u30ea\\u30c3\\u30b8\\u3092 Razer Synapse \\u3068\\u30da\\u30a2\\u30ea\\u30f3\\u30b0\\u3067\\u304d\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"\\u30da\\u30a2\\u30ea\\u30f3\\u30b0\\u4e2d\\u306b\\u30d6\\u30ea\\u30c3\\u30b8\\u306e\\u30d7\\u30c3\\u30b7\\u30e5\\u30ea\\u30f3\\u30af\\u30dc\\u30bf\\u30f3\\u304c\\u62bc\\u3055\\u308c\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002\",TEXT_CASE_CONNECT_FAIL_RETRY:\"\\u518d\\u8a66\\u884c\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"\\u3084\\u308a\\u76f4\\u3059\",ADVANCED_EFFECT_DETAILS:\"\\u300c\\u9ad8\\u5ea6\\u306a\\u52b9\\u679c\\u300d\\u306f\\u3001\\u3059\\u3079\\u3066\\u306eRazer Chroma \\u5bfe\\u5fdc\\u30c7\\u30d0\\u30a4\\u30b9\\u306b\\u9069\\u7528\\u3055\\u308c\\u3001\\u30c7\\u30d0\\u30a4\\u30b9\\u30d7\\u30ed\\u30d5\\u30a1\\u30a4\\u30eb\\u306b\\u306f\\u4fdd\\u5b58\\u3055\\u308c\\u307e\\u305b\\u3093\\u3002\"},kr:{BRIDGE:\"\\ube0c\\ub9bf\\uc9c0\",BRIDGE_TIP:\"\\uc5d4\\ud130\\ud14c\\uc778\\uba3c\\ud2b8 \\uc601\\uc5ed\\uc744 \\uc120\\ud0dd\\ud55c \\ub2e4\\uc74c, Synapse\\uc758 \\uc870\\uba85 \\uc81c\\uc5b4 \\ubc29\\ubc95\\uc744 \\uc120\\ud0dd\\ud569\\ub2c8\\ub2e4.\",BRIDGE_DESC:\"Razer Chroma\\uc640 Philips Hue\\ub85c \\uc9c4\\uc815\\ud55c \\ubab0\\uc785\\uac10\\uc744 \\uccb4\\ud5d8\\ud574 \\ubcf4\\uc138\\uc694. Chroma Studio\\ub85c \\uc6d0\\ud558\\ub294 \\ub300\\ub85c \\uc870\\uba85\\uc744 \\ucee4\\uc2a4\\ud140 \\uc124\\uc815\\ud558\\uc138\\uc694. Razer Chroma \\uc9c0\\uc6d0 \\uac8c\\uc784 \\ubc0f \\uc571\\uc73c\\ub85c \\uac8c\\uc784 \\uc18d\\uc5d0 \\uc788\\ub294 \\ub4ef\\ud55c \\uae30\\ubd84\\uc744 \\ub290\\uaef4\\ubcf4\\uc138\\uc694.\",BRIDGE_NOT_CONNECTED:\"\\uc774 \\uae30\\ub2a5\\uc744 \\ucf1c\\uba74 Hue \\uae30\\uae30\\uc5d0\\uc11c Razer Synapse \\uc870\\uba85 \\ud6a8\\uacfc\\ub97c \\ud65c\\uc131\\ud654\\ud560 \\uc218 \\uc788\\uc2b5\\ub2c8\\ub2e4.\",STREAM_BUSY_DESC:\"\\ud604\\uc7ac \\ub2e4\\ub978 \\uc751\\uc6a9 \\ud504\\ub85c\\uadf8\\ub7a8\\uc5d0\\uc11c \\uc870\\uba85\\uc744 \\uc81c\\uc5b4\\ud558\\uace0 \\uc788\\uc2b5\\ub2c8\\ub2e4.\\n\\ube0c\\ub9bf\\uc9c0\\ub97c \\ucf1c\\uba74 \\ud604\\uc7ac \\uc751\\uc6a9 \\ud504\\ub85c\\uadf8\\ub7a8\\uc744 \\uc911\\uc9c0\\ud558\\uace0 Razer Synapse\\uc5d0\\uc11c \\uc81c\\uc5b4\\ud560 \\uc218 \\uc788\\uc2b5\\ub2c8\\ub2e4.\",STREAM_BUSY:\"\\uc2a4\\ud2b8\\ub9bc \\uc0ac\\uc6a9 \\uc911\",DELETE_BRIDGE:\"Synapse\\uc5d0\\uc11c \\ube0c\\ub9bf\\uc9c0\\ub97c \\uc0ad\\uc81c\\ud558\\uc2dc\\uaca0\\uc2b5\\ub2c8\\uae4c?\",BRIDGE_CONTROL:\"\\ube0c\\ub9bf\\uc9c0 \\ucee8\\ud2b8\\ub864\",BRIDGE_CONTROL_DES:\"\\ud65c\\uc131\\ud654\\ud558\\uba74 Razer Synapse\\uac00 Hue \\uae30\\uae30\\ub97c \\ucee8\\ud2b8\\ub864\\ud558\\uace0 \\ud558\\ub098 \\uc774\\uc0c1\\uc758 \\ub8f8\\uc5d0\\uc11c \\ub2e4\\ub978 \\ud65c\\uc131 \\uc138\\uc158\\uc744 \\uc911\\uc9c0\\ud569\\ub2c8\\ub2e4.\",ENABLE:\"\\ud65c\\uc131\\ud654\",CONNECTED:\"\\uac1c \\uc5f0\\uacb0\\ub428\",CHANNELS:\"\\uac1c \\ucc44\\ub110\",UNREACHABLE:\"\\uac1c \\uc5f0\\uacb0\\ud560 \\uc218 \\uc5c6\\uc74c\",DEVICES_TIP:\"\\uc120\\ud0dd\\ub41c \\uc5d4\\ud130\\ud14c\\uc778\\uba3c\\ud2b8 \\uc601\\uc5ed\\uc758 \\uc5f0\\uacb0\\ub41c \\uae30\\uae30 \\ubc0f \\uac01 \\uae30\\uae30\\uc640 \\uc5f0\\uacb0\\ub41c \\ucc44\\ub110\\uc744 \\ubcf4\\uc5ec\\uc90d\\ub2c8\\ub2e4.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"\\ud648\",TEXT_HUE_CHROMA_INTEGRATION:\"HUE \\ubc0f CHROMA \\ud1b5\\ud569\",TEXT_INTEGRATION_CONTENT_1:\"\\uba87 \\ub2e8\\uacc4\\ub9cc \\uc9c4\\ud589\\ud558\\uba74 \\uc9c4\\uc815\\ud55c \\uac8c\\uc784 \\ubab0\\uc785\\uac10\\uc744 \\uccb4\\ud5d8\\ud560 \\uc218 \\uc788\\uc2b5\\ub2c8\\ub2e4.\",TEXT_INTEGRATION_CONTENT_2:\"\\ud638\\ud658 \\uac00\\ub2a5\\ud55c Hue \\uae30\\uae30\\uac00 \\ud398\\uc5b4\\ub9c1\\ub418\\uace0 \\uc124\\uc815\\ub418\\uba74 Razer Chroma\\uc640 \\ud568\\uaed8 \\uc791\\ub3d9\\ud560 \\uc218 \\uc788\\uc2b5\\ub2c8\\ub2e4. Razer Chroma \\uc9c0\\uc6d0 \\uae30\\uae30\\ub97c \\ub3d9\\uae30\\ud654\\ud558\\uace0 Razer Chroma \\uc9c0\\uc6d0 \\uac8c\\uc784\\uc744 \\ud50c\\ub808\\uc774\\ud558\\uba70 \\uac8c\\uc784 \\uc18d\\uc5d0 \\uc788\\ub294 \\ub4ef\\uc774 \\uac8c\\uc784\\uc744 \\uc990\\uaca8\\ubcf4\\uc138\\uc694.\",TEXT_CASE_SCAN:\"\\uc2a4\\uce94\",TEXT_CASE_SCAN_CONTENT:\"\\uc2dc\\uc791\\ud558\\ub824\\uba74 \\uc0c8\\ub85c\\uc6b4 Hue \\ube0c\\ub9bf\\uc9c0\\ub97c \\uc2a4\\uce94\\ud558\\uc2ed\\uc2dc\\uc624.\",TEXT_CASE_SCANNING:\"\\ucde8\\uc18c\",TEXT_CASE_SCANNING_CONTENT:\"Hue \\ube0c\\ub9bf\\uc9c0 \\uc2a4\\uce94 \\uc911...\",TEXT_CASE_SCAN_AGAIN:\"\\ub2e4\\uc2dc \\uc2a4\\uce94\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse\\uac00 Hue \\ube0c\\ub9bf\\uc9c0\\ub97c \\ucc3e\\uc744 \\uc218 \\uc5c6\\uc5c8\\uc2b5\\ub2c8\\ub2e4.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Hue \\ube0c\\ub9bf\\uc9c0\\ub97c \\ub2e4\\uc2dc \\uc2a4\\uce94\\ud558\\uac70\\ub098 \\uc704\\uc758 \\ube0c\\ub9bf\\uc9c0 IP \\uc8fc\\uc18c\\ub97c \\uc9c1\\uc811 \\uc785\\ub825\\ud558\\uc2ed\\uc2dc\\uc624.\",TEXT_CASE_SCAN_AGAIN_OR:\"\\ub610\\ub294\",TEXT_CASE_SCAN_MANUAL_IP:\"\\uc218\\ub3d9 IP\",TEXT_CASE_SCAN_SEARCH:\"\\uac80\\uc0c9\",TEXT_CASE_PAIR:\" \\ud398\\uc5b4\\ub9c1\",TEXT_CASE_PAIR_CONTENT:\"\\ub124\\ud2b8\\uc6cc\\ud06c\\uc5d0\\uc11c Hue \\ube0c\\ub9bf\\uc9c0\\ub97c \\ubc1c\\uacac\\ud588\\uc2b5\\ub2c8\\ub2e4.\",TEXT_CASE_PAIRING_CONTENT:\"\\ud398\\uc5b4\\ub9c1\\uc744 \\uc644\\ub8cc\\ud558\\ub824\\uba74 Hue \\ube0c\\ub9bf\\uc9c0\\uc758 \\ud478\\uc2dc \\ub9c1\\ud06c \\ubc84\\ud2bc\\uc744 \\ub204\\ub974\\uc2ed\\uc2dc\\uc624.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"Hue \\ube0c\\ub9bf\\uc9c0\\uc640 Razer Synapse\\ub97c \\ud398\\uc5b4\\ub9c1\\ud560 \\uc218 \\uc5c6\\uc2b5\\ub2c8\\ub2e4.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"\\ud398\\uc5b4\\ub9c1 \\uc911\\uc5d0 Hue \\ube0c\\ub9bf\\uc9c0\\uc758 \\ud478\\uc2dc \\ub9c1\\ud06c \\ubc84\\ud2bc\\uc744 \\ub204\\ub974\\uc9c0 \\uc54a\\uc558\\uc2b5\\ub2c8\\ub2e4.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"\\uc7ac\\uc2dc\\ub3c4\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"\\ub2e4\\uc2dc \\uc2dc\\uc791\",ADVANCED_EFFECT_DETAILS:\"\\uace0\\uae09 \\ud6a8\\uacfc\\ub294 \\ub2e4\\uc911 Razer Chroma \\uc9c0\\uc6d0 \\uc7a5\\uce58\\ub97c \\ud1b5\\ud574 \\uc804 \\uc138\\uacc4\\uc801\\uc73c\\ub85c \\uc801\\uc6a9\\ub418\\uba70 \\uc7a5\\uce58 \\ud504\\ub85c\\ud30c\\uc77c\\uc5d0 \\uc800\\uc7a5\\ub418\\uc9c0 \\uc54a\\uc2b5\\ub2c8\\ub2e4.\"},[$o]:{BRIDGE:\"BRIDGE\",BRIDGE_TIP:\"Escolha uma \\xc1rea de entretenimento e selecione como o Synapse controlar\\xe1 suas luzes.\",BRIDGE_DESC:\"Viva a verdadeira imers\\xe3o com o Razer Chroma e a Philips Hue. Personalize sua ilumina\\xe7\\xe3o como desejar usando o Chroma Studio. Sinta-se dentro da a\\xe7\\xe3o com os jogos e aplicativos habilitados para o Razer Chroma.\",BRIDGE_NOT_CONNECTED:\"Ligue para ativar os efeitos de ilumina\\xe7\\xe3o do Razer Synapse nos seus dispositivos Hue.\",STREAM_BUSY_DESC:\"Neste momento, as luzes est\\xe3o sendo controladas por outro aplicativo.\\nAo ligar a bridge, voc\\xea parar\\xe1 o aplicativo atual e permitir\\xe1 que o Razer Synapse assuma o controle.\",STREAM_BUSY:\"Fluxo ocupado\",DELETE_BRIDGE:\"Remover a bridge do Synapse?\",BRIDGE_CONTROL:\"CONTROLE DE BRIDGE\",BRIDGE_CONTROL_DES:\"Quando ativado, o Razer Synapse assumir\\xe1 o controle dos seus dispositivos Hue e interromper\\xe1 outras sess\\xf5es ativas em um ou mais c\\xf4modos.\",ENABLE:\"Habilitar\",CONNECTED:\"conectado(s)\",CHANNELS:\"canal(is)\",UNREACHABLE:\"n\\xe3o alcan\\xe7\\xe1vel(is)\",DEVICES_TIP:\"Exibe os dispositivos conectados da \\xc1rea de Entretenimento selecionada e qual(is) canal(is) est\\xe1(\\xe3o) associado(s) a cada dispositivo.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"P\\xe1gina inicial\",TEXT_HUE_CHROMA_INTEGRATION:\"INTEGRA\\xc7\\xc3O HUE-CHROMA\",TEXT_INTEGRATION_CONTENT_1:\"Voc\\xea est\\xe1 a poucos passos de viver a verdadeira imers\\xe3o no jogo.\",TEXT_INTEGRATION_CONTENT_2:\"Assim que houver um dispositivo Hue compat\\xedvel emparelhado e configurado, ele funcionar\\xe1 com o Razer Chroma. Sincronize seus dispositivos habilitados para Razer Chroma e sinta-se dentro da a\\xe7\\xe3o com os jogos habilitados para Razer Chroma.\",TEXT_CASE_SCAN:\"procurar\",TEXT_CASE_SCAN_CONTENT:\"Procure uma nova Hue bridge para come\\xe7ar.\",TEXT_CASE_SCANNING:\"cancelar\",TEXT_CASE_SCANNING_CONTENT:\"Procurando Hue bridges...\",TEXT_CASE_SCAN_AGAIN:\"procurar novamente\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"O Razer Synapse n\\xe3o conseguiu encontrar uma Hue bridge.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"Procure uma bridge novamente ou digite manualmente o endere\\xe7o IP da bridge acima.\",TEXT_CASE_SCAN_AGAIN_OR:\"ou\",TEXT_CASE_SCAN_MANUAL_IP:\"IP manual\",TEXT_CASE_SCAN_SEARCH:\"procurar\",TEXT_CASE_PAIR:\"emparelhar\",TEXT_CASE_PAIR_CONTENT:\"Foi encontrada uma Hue bridge na sua rede.\",TEXT_CASE_PAIRING_CONTENT:\"Pressione o bot\\xe3o Pressionar-Vincular da Hue bridge para completar o emparelhamento.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"N\\xe3o foi poss\\xedvel emparelhar a bridge com o Razer Synapse.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"O bot\\xe3o Pressionar-Vincular da bridge n\\xe3o foi pressionado durante o emparelhamento.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"TENTAR NOVAMENTE\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"RECOME\\xc7AR\",ADVANCED_EFFECT_DETAILS:\"Os efeitos avan\\xe7ados s\\xe3o aplicados em diversos dispositivos habilitados para Razer Chroma em todo o mundo e n\\xe3o s\\xe3o salvos no perfil de um dispositivo.\"},ru:{BRIDGE:\"\\u0411\\u041b\\u041e\\u041a \\u0423\\u041f\\u0420\\u0410\\u0412\\u041b\\u0415\\u041d\\u0418\\u042f\",BRIDGE_TIP:\"\\u0412\\u044b\\u0431\\u0435\\u0440\\u0438\\u0442\\u0435 \\u0437\\u043e\\u043d\\u0443 \\u0440\\u0430\\u0437\\u0432\\u043b\\u0435\\u0447\\u0435\\u043d\\u0438\\u0439, \\u0430 \\u0437\\u0430\\u0442\\u0435\\u043c \\u0432\\u044b\\u0431\\u0435\\u0440\\u0438\\u0442\\u0435, \\u043a\\u0430\\u043a\\u0438\\u043c \\u043e\\u0431\\u0440\\u0430\\u0437\\u043e\\u043c Synapse \\u0431\\u0443\\u0434\\u0435\\u0442 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u044f\\u0442\\u044c \\u0432\\u0430\\u0448\\u0438\\u043c \\u043e\\u0441\\u0432\\u0435\\u0449\\u0435\\u043d\\u0438\\u0435\\u043c.\",BRIDGE_DESC:\"\\u0418\\u0441\\u043f\\u044b\\u0442\\u0430\\u0439\\u0442\\u0435 \\u0438\\u0441\\u0442\\u0438\\u043d\\u043d\\u043e\\u0435 \\u043f\\u043e\\u0433\\u0440\\u0443\\u0436\\u0435\\u043d\\u0438\\u0435 \\u0432\\u043c\\u0435\\u0441\\u0442\\u0435 \\u0441 Razer Chroma \\u0438 Philips Hue. \\u041d\\u0430\\u0441\\u0442\\u0440\\u043e\\u0439\\u0442\\u0435 \\u043f\\u043e\\u0434\\u0441\\u0432\\u0435\\u0442\\u043a\\u0443 \\u043d\\u0443\\u0436\\u043d\\u044b\\u043c \\u043e\\u0431\\u0440\\u0430\\u0437\\u043e\\u043c \\u0432\\u043c\\u0435\\u0441\\u0442\\u0435 \\u0441 Chroma Studio. \\u041f\\u043e\\u0447\\u0443\\u0432\\u0441\\u0442\\u0432\\u0443\\u0439\\u0442\\u0435 \\u0441\\u0435\\u0431\\u044f \\u0432 \\u0438\\u0433\\u0440\\u0435 \\u0432\\u043c\\u0435\\u0441\\u0442\\u0435 \\u0441 \\u0438\\u0433\\u0440\\u0430\\u043c\\u0438 \\u0438 \\u043f\\u0440\\u0438\\u043b\\u043e\\u0436\\u0435\\u043d\\u0438\\u044f\\u043c\\u0438 \\u0441 \\u043f\\u043e\\u0434\\u0434\\u0435\\u0440\\u0436\\u043a\\u043e\\u0439 Razer Chroma.\",BRIDGE_NOT_CONNECTED:\"\\u0412\\u043a\\u043b\\u044e\\u0447\\u0438\\u0442\\u0435, \\u0447\\u0442\\u043e\\u0431\\u044b \\u0430\\u043a\\u0442\\u0438\\u0432\\u0438\\u0440\\u043e\\u0432\\u0430\\u0442\\u044c \\u044d\\u0444\\u0444\\u0435\\u043a\\u0442\\u044b \\u043f\\u043e\\u0434\\u0441\\u0432\\u0435\\u0442\\u043a\\u0438 Razer Synapse \\u043d\\u0430 \\u0441\\u0432\\u043e\\u0438\\u0445 \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u0430\\u0445 Hue.\",STREAM_BUSY_DESC:\"\\u0412 \\u043d\\u0430\\u0441\\u0442\\u043e\\u044f\\u0449\\u0438\\u0439 \\u043c\\u043e\\u043c\\u0435\\u043d\\u0442 \\u043e\\u0441\\u0432\\u0435\\u0449\\u0435\\u043d\\u0438\\u0435 \\u043a\\u043e\\u043d\\u0442\\u0440\\u043e\\u043b\\u0438\\u0440\\u0443\\u0435\\u0442\\u0441\\u044f \\u0434\\u0440\\u0443\\u0433\\u0438\\u043c \\u043f\\u0440\\u0438\\u043b\\u043e\\u0436\\u0435\\u043d\\u0438\\u0435\\u043c.\\n\\u0412\\u043a\\u043b\\u044e\\u0447\\u0435\\u043d\\u0438\\u0435 \\u0431\\u043b\\u043e\\u043a\\u0430 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f \\u043f\\u0440\\u0438\\u0432\\u0435\\u0434\\u0435\\u0442 \\u043a \\u043e\\u0441\\u0442\\u0430\\u043d\\u043e\\u0432\\u043a\\u0435 \\u0442\\u0435\\u043a\\u0443\\u0449\\u0435\\u0433\\u043e \\u043f\\u0440\\u0438\\u043b\\u043e\\u0436\\u0435\\u043d\\u0438\\u044f \\u0438 \\u043f\\u0435\\u0440\\u0435\\u0434\\u0430\\u0447\\u0435 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Razer Synapse.\",STREAM_BUSY:\"\\u041f\\u043e\\u0442\\u043e\\u043a \\u0437\\u0430\\u043d\\u044f\\u0442\",DELETE_BRIDGE:\"\\u0423\\u0434\\u0430\\u043b\\u0438\\u0442\\u044c \\u0431\\u043b\\u043e\\u043a \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f \\u0438\\u0437 Synapse?\",BRIDGE_CONTROL:\"\\u041a\\u041e\\u041d\\u0422\\u0420\\u041e\\u041b\\u042c \\u041d\\u0410\\u0414 \\u0411\\u041b\\u041e\\u041a\\u041e\\u041c \\u0423\\u041f\\u0420\\u0410\\u0412\\u041b\\u0415\\u041d\\u0418\\u042f\",BRIDGE_CONTROL_DES:\"\\u0415\\u0441\\u043b\\u0438 \\u044d\\u0442\\u043e\\u0442 \\u043f\\u0430\\u0440\\u0430\\u043c\\u0435\\u0442\\u0440 \\u0432\\u043a\\u043b\\u044e\\u0447\\u0435\\u043d, Razer Synapse \\u043f\\u043e\\u043b\\u0443\\u0447\\u0438\\u0442 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u0435 \\u0432\\u0430\\u0448\\u0438\\u043c\\u0438 \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u0430\\u043c\\u0438 Hue \\u0438 \\u043e\\u0441\\u0442\\u0430\\u043d\\u043e\\u0432\\u0438\\u0442 \\u0434\\u0440\\u0443\\u0433\\u0438\\u0435 \\u0430\\u043a\\u0442\\u0438\\u0432\\u043d\\u044b\\u0435 \\u0441\\u0435\\u0430\\u043d\\u0441\\u044b \\u0432 \\u043e\\u0434\\u043d\\u043e\\u0439 \\u0438\\u043b\\u0438 \\u043d\\u0435\\u0441\\u043a\\u043e\\u043b\\u044c\\u043a\\u0438\\u0445 \\u043a\\u043e\\u043c\\u043d\\u0430\\u0442\\u0430\\u0445.\",ENABLE:\"\\u0412\\u043a\\u043b\\u044e\\u0447\\u0438\\u0442\\u044c\",CONNECTED:\"\\u041f\\u043e\\u0434\\u043a\\u043b\\u044e\\u0447\\u0435\\u043d\\u043e\",CHANNELS:\"\\u043a\\u0430\\u043d\\u0430\\u043b\\u043e\\u0432\",UNREACHABLE:\"\\u043d\\u0435\\u0434\\u043e\\u0441\\u0442\\u0443\\u043f\\u043d\\u043e\",DEVICES_TIP:\"\\u0417\\u0434\\u0435\\u0441\\u044c \\u043e\\u0442\\u043e\\u0431\\u0440\\u0430\\u0436\\u0430\\u044e\\u0442\\u0441\\u044f \\u043f\\u043e\\u0434\\u043a\\u043b\\u044e\\u0447\\u0435\\u043d\\u043d\\u044b\\u0435 \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u0430 \\u0432 \\u0432\\u044b\\u0431\\u0440\\u0430\\u043d\\u043d\\u043e\\u0439 \\u0437\\u043e\\u043d\\u0435 \\u0440\\u0430\\u0437\\u0432\\u043b\\u0435\\u0447\\u0435\\u043d\\u0438\\u0439, \\u0430 \\u0442\\u0430\\u043a\\u0436\\u0435 \\u043f\\u043e\\u043a\\u0430\\u0437\\u0430\\u043d\\u043e, \\u043a\\u0430\\u043a\\u0438\\u0435 \\u043a\\u0430\\u043d\\u0430\\u043b\\u044b \\u0441\\u043e\\u043f\\u043e\\u0441\\u0442\\u0430\\u0432\\u043b\\u0435\\u043d\\u044b \\u0441 \\u043a\\u0430\\u0436\\u0434\\u044b\\u043c \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u043e\\u043c.\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"\\u0413\\u043b\\u0430\\u0432\\u043d\\u0430\\u044f\",TEXT_HUE_CHROMA_INTEGRATION:\"\\u0418\\u041d\\u0422\\u0415\\u0413\\u0420\\u0410\\u0426\\u0418\\u042f \\u0421 HUE CHROMA\",TEXT_INTEGRATION_CONTENT_1:\"\\u0414\\u043e \\u043f\\u043e\\u043b\\u043d\\u043e\\u0446\\u0435\\u043d\\u043d\\u043e\\u0433\\u043e \\u043f\\u043e\\u0433\\u0440\\u0443\\u0436\\u0435\\u043d\\u0438\\u044f \\u0432 \\u0438\\u0433\\u0440\\u0443 \\u043e\\u0441\\u0442\\u0430\\u043b\\u043e\\u0441\\u044c \\u0432\\u0441\\u0435\\u0433\\u043e \\u043d\\u0435\\u0441\\u043a\\u043e\\u043b\\u044c\\u043a\\u043e \\u0448\\u0430\\u0433\\u043e\\u0432.\",TEXT_INTEGRATION_CONTENT_2:\"\\u041f\\u043e\\u0441\\u043b\\u0435 \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u044f \\u0438 \\u043d\\u0430\\u0441\\u0442\\u0440\\u043e\\u0439\\u043a\\u0438 \\u0441\\u043e\\u0432\\u043c\\u0435\\u0441\\u0442\\u0438\\u043c\\u043e\\u0433\\u043e \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u0430 Hue \\u043e\\u043d\\u043e \\u043d\\u0430\\u0447\\u043d\\u0435\\u0442 \\u0440\\u0430\\u0431\\u043e\\u0442\\u0430\\u0442\\u044c \\u0441 Razer Chroma. \\u0421\\u0438\\u043d\\u0445\\u0440\\u043e\\u043d\\u0438\\u0437\\u0438\\u0440\\u0443\\u0439\\u0442\\u0435 \\u0438\\u043c\\u0435\\u044e\\u0449\\u0438\\u0435\\u0441\\u044f \\u0443\\u0441\\u0442\\u0440\\u043e\\u0439\\u0441\\u0442\\u0432\\u0430 \\u0441 \\u043f\\u043e\\u0434\\u0434\\u0435\\u0440\\u0436\\u043a\\u043e\\u0439 Razer Chroma \\u0438 \\u043f\\u043e\\u0447\\u0443\\u0432\\u0441\\u0442\\u0432\\u0443\\u0439\\u0442\\u0435 \\u0441\\u0435\\u0431\\u044f \\u0432 \\u0438\\u0433\\u0440\\u043e\\u0432\\u043e\\u043c \\u043c\\u0438\\u0440\\u0435 \\u0432\\u043c\\u0435\\u0441\\u0442\\u0435 \\u0441 \\u0438\\u0433\\u0440\\u0430\\u043c\\u0438, \\u043f\\u043e\\u0434\\u0434\\u0435\\u0440\\u0436\\u0438\\u0432\\u0430\\u044e\\u0449\\u0438\\u043c\\u0438 Razer Chroma.\",TEXT_CASE_SCAN:\"\\u0441\\u043a\\u0430\\u043d\\u0438\\u0440\\u043e\\u0432\\u0430\\u0442\\u044c\",TEXT_CASE_SCAN_CONTENT:\"\\u0427\\u0442\\u043e\\u0431\\u044b \\u043d\\u0430\\u0447\\u0430\\u0442\\u044c, \\u043f\\u0440\\u043e\\u0441\\u043a\\u0430\\u043d\\u0438\\u0440\\u0443\\u0439\\u0442\\u0435 \\u0441\\u0435\\u0442\\u044c \\u043d\\u0430 \\u043d\\u0430\\u043b\\u0438\\u0447\\u0438\\u0435 \\u0431\\u043b\\u043e\\u043a\\u0430 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Hue.\",TEXT_CASE_SCANNING:\"\\u043e\\u0442\\u043c\\u0435\\u043d\\u0430\",TEXT_CASE_SCANNING_CONTENT:\"\\u0421\\u043a\\u0430\\u043d\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u0438\\u0435 \\u043d\\u0430 \\u043d\\u0430\\u043b\\u0438\\u0447\\u0438\\u0435 \\u0431\\u043b\\u043e\\u043a\\u043e\\u0432 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Hue...\",TEXT_CASE_SCAN_AGAIN:\"\\u0441\\u043a\\u0430\\u043d\\u0438\\u0440\\u043e\\u0432\\u0430\\u0442\\u044c \\u0441\\u043d\\u043e\\u0432\\u0430\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse \\u043d\\u0435 \\u0443\\u0434\\u0430\\u043b\\u043e\\u0441\\u044c \\u043e\\u0431\\u043d\\u0430\\u0440\\u0443\\u0436\\u0438\\u0442\\u044c \\u0431\\u043b\\u043e\\u043a \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Hue.\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"\\u0412\\u044b\\u043f\\u043e\\u043b\\u043d\\u0438\\u0442\\u0435 \\u0441\\u043a\\u0430\\u043d\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u0438\\u0435 \\u043d\\u0430 \\u043d\\u0430\\u043b\\u0438\\u0447\\u0438\\u0435 \\u0431\\u043b\\u043e\\u043a\\u0430 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f \\u0441\\u043d\\u043e\\u0432\\u0430 \\u0438\\u043b\\u0438 \\u0432\\u0432\\u0435\\u0434\\u0438\\u0442\\u0435 IP-\\u0430\\u0434\\u0440\\u0435\\u0441 \\u0431\\u043b\\u043e\\u043a\\u0430 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f \\u0432\\u0440\\u0443\\u0447\\u043d\\u0443\\u044e \\u043d\\u0438\\u0436\\u0435.\",TEXT_CASE_SCAN_AGAIN_OR:\"\\u0438\\u043b\\u0438\",TEXT_CASE_SCAN_MANUAL_IP:\"\\u0420\\u0443\\u0447\\u043d\\u043e\\u0439 IP-\\u0430\\u0434\\u0440\\u0435\\u0441\",TEXT_CASE_SCAN_SEARCH:\"\\u043f\\u043e\\u0438\\u0441\\u043a\",TEXT_CASE_PAIR:\" \\u0432\\u044b\\u043f\\u043e\\u043b\\u043d\\u0438\\u0442\\u044c \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u0435\",TEXT_CASE_PAIR_CONTENT:\"\\u0412 \\u0441\\u0435\\u0442\\u0438 \\u043d\\u0430\\u0439\\u0434\\u0435\\u043d \\u0431\\u043b\\u043e\\u043a \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Hue.\",TEXT_CASE_PAIRING_CONTENT:\"\\u041d\\u0430\\u0436\\u043c\\u0438\\u0442\\u0435 \\u043a\\u043d\\u043e\\u043f\\u043a\\u0443 \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u044f \\u043d\\u0430 \\u0431\\u043b\\u043e\\u043a\\u0435 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f Hue, \\u0447\\u0442\\u043e\\u0431\\u044b \\u0437\\u0430\\u0432\\u0435\\u0440\\u0448\\u0438\\u0442\\u044c \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u0435.\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"\\u041d\\u0435 \\u0443\\u0434\\u0430\\u043b\\u043e\\u0441\\u044c \\u0432\\u044b\\u043f\\u043e\\u043b\\u043d\\u0438\\u0442\\u044c \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u0435 \\u0431\\u043b\\u043e\\u043a\\u0430 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f \\u0441 Razer Synapse.\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"\\u0412\\u043e \\u0432\\u0440\\u0435\\u043c\\u044f \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u044f \\u043d\\u0435 \\u0431\\u044b\\u043b\\u0430 \\u043d\\u0430\\u0436\\u0430\\u0442\\u0430 \\u043a\\u043d\\u043e\\u043f\\u043a\\u0430 \\u0441\\u043e\\u043f\\u0440\\u044f\\u0436\\u0435\\u043d\\u0438\\u044f \\u043d\\u0430 \\u0431\\u043b\\u043e\\u043a\\u0435 \\u0443\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u0438\\u044f.\",TEXT_CASE_CONNECT_FAIL_RETRY:\"\\u041f\\u041e\\u0412\\u0422\\u041e\\u0420\\u0418\\u0422\\u042c\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"\\u0417\\u0410\\u041f\\u0423\\u0421\\u0422\\u0418\\u0422\\u042c \\u0421\\u041d\\u041e\\u0412\\u0410\",ADVANCED_EFFECT_DETAILS:\"Erweiterte Effekte werden auf mehrere Ger\\xe4te mit Razer Chroma-Unterst\\xfctzung global \\xfcbernommen und nicht im Ger\\xe4te-Profil gespeichert.\"},[ei]:{BRIDGE:\"\\u6865\\u63a5\\u5668\",BRIDGE_TIP:\"\\u9009\\u62e9\\u5a31\\u4e50\\u533a\\u57df\\uff0c\\u7136\\u540e\\u9009\\u62e9 Synapse \\u96f7\\u4e91\\u63a7\\u5236\\u706f\\u5149\\u7684\\u65b9\\u5f0f\\u3002\",BRIDGE_DESC:\"\\u901a\\u8fc7 Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u548c Philips Hue \\u98de\\u5229\\u6d66\\u79c0\\u4eab\\u53d7\\u771f\\u6b63\\u7684\\u6c89\\u6d78\\u5f0f\\u4f53\\u9a8c\\u3002\\u4f7f\\u7528\\u5e7b\\u5f69\\u63a7\\u5236\\u5ba4 (Chroma Studio) \\u81ea\\u7531\\u5730\\u521b\\u5efa\\u6240\\u9700\\u7684\\u706f\\u5149\\u6548\\u679c\\u3002\\u5728\\u652f\\u6301 Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u7684\\u6e38\\u620f\\u548c\\u5e94\\u7528\\u7a0b\\u5e8f\\u4e2d\\u83b7\\u5f97\\u8eab\\u4e34\\u5176\\u5883\\u7684\\u4f53\\u9a8c\\u3002\",BRIDGE_NOT_CONNECTED:\"\\u6253\\u5f00\\u4ee5\\u5728\\u79c0 (Hue) \\u8bbe\\u5907\\u4e0a\\u542f\\u7528 Razer Synapse \\u96f7\\u4e91\\u706f\\u5149\\u6548\\u679c\\u3002\",STREAM_BUSY_DESC:\"\\u706f\\u5149\\u6b63\\u5728\\u7531\\u53e6\\u4e00\\u4e2a\\u5e94\\u7528\\u7a0b\\u5e8f\\u63a7\\u5236\\u3002\\n\\u6253\\u5f00\\u6865\\u63a5\\u5668\\u5c06\\u505c\\u6b62\\u5f53\\u524d\\u7684\\u5e94\\u7528\\u7a0b\\u5e8f\\uff0c\\u5e76\\u8ba9 Razer Synapse \\u96f7\\u4e91\\u8fdb\\u884c\\u63a7\\u5236\\u3002\",STREAM_BUSY:\"\\u6b63\\u5fd9\\u4e8e\\u4f20\\u8f93\\u6570\\u636e\",DELETE_BRIDGE:\"\\u786e\\u5b9a\\u8981\\u4ece Synapse \\u96f7\\u4e91\\u4e2d\\u5220\\u9664\\u6865\\u63a5\\u5668\\u5417\\uff1f\",BRIDGE_CONTROL:\"\\u6865\\u63a5\\u5668\\u63a7\\u5236\",BRIDGE_CONTROL_DES:\"\\u542f\\u7528\\u540e\\uff0cRazer Synapse \\u96f7\\u4e91\\u5c06\\u53d6\\u5f97\\u4f60\\u7684\\u79c0 (Hue) \\u8bbe\\u5907\\u7684\\u63a7\\u5236\\u6743\\uff0c\\u5e76\\u505c\\u6b62 1 \\u4e2a\\u6216\\u591a\\u4e2a\\u623f\\u95f4\\u4e2d\\u7684\\u5176\\u4ed6\\u6d3b\\u8dc3\\u4f1a\\u8bdd\\u3002\",ENABLE:\"\\u542f\\u7528\",CONNECTED:\"\\u5df2\\u8fde\\u63a5\",CHANNELS:\"\\u4e2a\\u9891\\u9053\",UNREACHABLE:\"\\u4e0d\\u53ef\\u8fde\",DEVICES_TIP:\"\\u663e\\u793a\\u6240\\u9009\\u5a31\\u4e50\\u533a\\u57df\\u7684\\u5df2\\u8fde\\u8bbe\\u5907\\u4ee5\\u53ca\\u4e0e\\u6bcf\\u4e2a\\u8bbe\\u5907\\u5173\\u8054\\u7684\\u901a\\u9053\\u3002\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"\\u9996\\u9875\",TEXT_HUE_CHROMA_INTEGRATION:\"\\u6574\\u5408\\u79c0 (HUE) \\u4e0e CHROMA \\u5e7b\\u5f69\",TEXT_INTEGRATION_CONTENT_1:\"\\u53ea\\u9700\\u989d\\u5916\\u7684\\u51e0\\u6b65\\u64cd\\u4f5c\\u5373\\u53ef\\u4f53\\u9a8c\\u771f\\u6b63\\u7684\\u6c89\\u6d78\\u5f0f\\u6e38\\u620f\\u4f53\\u9a8c\\u3002\",TEXT_INTEGRATION_CONTENT_2:\"\\u517c\\u5bb9\\u7684\\u79c0 (Hue) \\u8bbe\\u5907\\u4e00\\u7ecf\\u914d\\u5bf9\\u548c\\u8bbe\\u7f6e\\uff0c\\u5373\\u53ef\\u4e0e Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u5171\\u540c\\u53d1\\u6325\\u4f5c\\u7528\\u3002\\u540c\\u6b65\\u6240\\u6709\\u652f\\u6301 Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u7684\\u8bbe\\u5907\\uff0c\\u5373\\u53ef\\u5728\\u652f\\u6301 Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u7684\\u6e38\\u620f\\u4e2d\\u83b7\\u5f97\\u8eab\\u4e34\\u5176\\u5883\\u7684\\u4f53\\u9a8c\\u3002\",TEXT_CASE_SCAN:\"\\u626b\\u63cf\",TEXT_CASE_SCAN_CONTENT:\"\\u626b\\u63cf\\u662f\\u5426\\u6709\\u65b0\\u7684\\u79c0 (Hue) \\u6865\\u63a5\\u5668\\u4ee5\\u5f00\\u59cb\\u3002\",TEXT_CASE_SCANNING:\"\\u53d6\\u6d88\",TEXT_CASE_SCANNING_CONTENT:\"\\u6b63\\u5728\\u626b\\u63cf\\u662f\\u5426\\u6709\\u79c0 (Hue) \\u6865\\u63a5\\u5668...\",TEXT_CASE_SCAN_AGAIN:\"\\u518d\\u6b21\\u626b\\u63cf\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse \\u96f7\\u4e91\\u65e0\\u6cd5\\u627e\\u5230\\u79c0 (Hue) \\u6865\\u63a5\\u5668\\u3002\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"\\u518d\\u6b21\\u626b\\u63cf\\u662f\\u5426\\u6709\\u6865\\u63a5\\u5668\\uff0c\\u6216\\u624b\\u52a8\\u8f93\\u5165\\u4ee5\\u4e0a\\u6865\\u63a5\\u5668\\u7684 IP \\u5730\\u5740\\u3002\",TEXT_CASE_SCAN_AGAIN_OR:\"\\u6216\",TEXT_CASE_SCAN_MANUAL_IP:\"\\u624b\\u52a8\\u5206\\u914d IP\",TEXT_CASE_SCAN_SEARCH:\"\\u641c\\u7d22\",TEXT_CASE_PAIR:\" \\u914d\\u5bf9\",TEXT_CASE_PAIR_CONTENT:\"\\u5728\\u4f60\\u7684\\u7f51\\u7edc\\u4e2d\\u627e\\u5230\\u79c0 (HUE) \\u6865\\u63a5\\u5668\\u3002\",TEXT_CASE_PAIRING_CONTENT:\"\\u8bf7\\u6309\\u79c0 (Hue) \\u6865\\u63a5\\u5668\\u4e0a\\u7684\\u201c\\u94fe\\u63a5\\u201d\\u6309\\u94ae\\u5b8c\\u6210\\u914d\\u5bf9\\u3002\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"\\u65e0\\u6cd5\\u5c06\\u6865\\u63a5\\u5668\\u4e0e Razer Synapse \\u96f7\\u4e91\\u914d\\u5bf9\\u3002\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"\\u5728\\u914d\\u5bf9\\u671f\\u95f4\\u6ca1\\u6709\\u6309\\u4e0b\\u6865\\u63a5\\u5668\\u4e0a\\u7684\\u201c\\u94fe\\u63a5\\u201d\\u6309\\u94ae\\u3002\",TEXT_CASE_CONNECT_FAIL_RETRY:\"\\u91cd\\u8bd5\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"\\u91cd\\u65b0\\u5f00\\u59cb\",ADVANCED_EFFECT_DETAILS:\"\\u9ad8\\u7ea7\\u6548\\u679c\\u53ef\\u4ee5\\u666e\\u904d\\u5e94\\u7528\\u4e8e\\u591a\\u4e2a\\u652f\\u6301 Razer Chroma \\u96f7\\u86c7\\u5e7b\\u5f69\\u529f\\u80fd\\u7684\\u8bbe\\u5907\\uff0c\\u4f46\\u4e0d\\u4f1a\\u4fdd\\u5b58\\u5230\\u8bbe\\u5907\\u914d\\u7f6e\\u6587\\u4ef6\\u3002\"},[Ei]:{BRIDGE:\"\\u6a4b\\u63a5\\u5668\",BRIDGE_TIP:\"\\u8acb\\u9078\\u64c7\\u4f11\\u9592\\u5a1b\\u6a02\\u5340\\u57df\\uff0c\\u7136\\u5f8c\\u9078\\u64c7 Synapse \\u63a7\\u5236\\u71c8\\u5149\\u7684\\u65b9\\u5f0f\\u3002\",BRIDGE_DESC:\"\\u642d\\u914d Razer Chroma \\u8207 Philips Hue\\uff0c\\u4eab\\u53d7\\u771f\\u6b63\\u8eab\\u6b77\\u5176\\u5883\\u7684\\u9ad4\\u9a57\\u3002\\u4f7f\\u7528 Chroma Studio \\u96a8\\u5fc3\\u6240\\u6b32\\u81ea\\u8a02\\u71c8\\u5149\\u6548\\u679c\\u3002\\u5728\\u652f\\u63f4 Razer Chroma \\u7684\\u904a\\u6232\\u8207\\u61c9\\u7528\\u7a0b\\u5f0f\\u4e2d\\uff0c\\u5b8c\\u5168\\u6c89\\u6d78\\u5728\\u904a\\u6232\\u6c1b\\u570d\\u4e2d\\u3002\",BRIDGE_NOT_CONNECTED:\"\\u958b\\u555f\\u5f8c\\u5373\\u53ef\\u5728\\u4f60\\u7684 Hue \\u88dd\\u7f6e\\u4e0a\\u555f\\u7528 Razer Synapse \\u71c8\\u5149\\u6548\\u679c\\u3002\",STREAM_BUSY_DESC:\"\\u71c8\\u5149\\u6548\\u679c\\u76ee\\u524d\\u6b63\\u7531\\u5176\\u4ed6\\u61c9\\u7528\\u7a0b\\u5f0f\\u6240\\u63a7\\u5236\\u3002\\n\\u958b\\u555f\\u6a4b\\u63a5\\u5668\\u5c07\\u6703\\u505c\\u6b62\\u76ee\\u524d\\u61c9\\u7528\\u7a0b\\u5f0f\\u7684\\u63a7\\u5236\\uff0c\\u4e26\\u5c07\\u63a7\\u5236\\u6b0a\\u79fb\\u8f49\\u7d66 Razer Synapse\\u3002\",STREAM_BUSY:\"\\u8cc7\\u6599\\u50b3\\u8f38\\u5fd9\\u788c\\u4e2d\",DELETE_BRIDGE:\"\\u662f\\u5426\\u8981\\u5f9e Synapse \\u79fb\\u9664\\u6a4b\\u63a5\\u5668\\uff1f\",BRIDGE_CONTROL:\"\\u6a4b\\u63a5\\u63a7\\u5236\",BRIDGE_CONTROL_DES:\"\\u555f\\u7528\\u6642\\uff0cRazer Synapse \\u5c07\\u63a5\\u624b\\u63a7\\u5236\\u4f60\\u7684 Hue \\u88dd\\u7f6e\\uff0c\\u4e26\\u505c\\u6b62\\u5176\\u4ed6\\u6b63\\u5728 1 \\u500b\\u6216\\u591a\\u500b\\u623f\\u9593\\u4e2d\\u57f7\\u884c\\u7684\\u5de5\\u4f5c\\u968e\\u6bb5\\u3002\",ENABLE:\"\\u5c01\\u9762\",CONNECTED:\"\\u500b\\u5df2\\u9023\\u63a5\",CHANNELS:\"\\u500b\\u983b\\u9053\",UNREACHABLE:\"\\u500b\\u7121\\u6cd5\\u9023\\u63a5\",DEVICES_TIP:\"\\u793a\\u6240\\u9078\\u4f11\\u9592\\u5a1b\\u6a02\\u5340\\u57df\\u7684\\u5df2\\u9023\\u7dda\\u88dd\\u7f6e\\uff0c\\u4ee5\\u53ca\\u8207\\u6bcf\\u500b\\u88dd\\u7f6e\\u76f8\\u95dc\\u7684\\u983b\\u9053\\u3002\",GLOBAL_BRIGHTNESS_TIP:\"Turn off or adjust the brightness of all connected Philips Hue devices within the selected Entertainment area.\",HOME:\"\\u9996\\u9801\",TEXT_HUE_CHROMA_INTEGRATION:\"\\u6574\\u5408 HUE \\u8207 CHROMA\",TEXT_INTEGRATION_CONTENT_1:\"\\u53ea\\u5269\\u5e7e\\u6b65\\uff0c\\u5c31\\u80fd\\u611f\\u53d7\\u771f\\u6b63\\u8eab\\u6b77\\u5176\\u5883\\u7684\\u904a\\u6232\\u6c1b\\u570d\\u3002\",TEXT_INTEGRATION_CONTENT_2:\"\\u76f8\\u5bb9\\u7684 Hue \\u88dd\\u7f6e\\u4e00\\u7d93\\u914d\\u5c0d\\u53ca\\u8a2d\\u5b9a\\uff0c\\u5373\\u80fd\\u642d\\u914d Razer Chroma \\u904b\\u4f5c\\u3002\\u8207\\u652f\\u63f4 Razer Chroma \\u7684\\u88dd\\u7f6e\\u540c\\u6b65\\uff0c\\u7136\\u5f8c\\u5c31\\u53ef\\u4ee5\\u5728\\u652f\\u63f4 Razer Chroma \\u7684\\u904a\\u6232\\u4e2d\\u5b8c\\u5168\\u6c89\\u6d78\\u5728\\u904a\\u6232\\u6c1b\\u570d\\u4e2d\\u3002\",TEXT_CASE_SCAN:\"\\u6383\\u63cf\",TEXT_CASE_SCAN_CONTENT:\"\\u6383\\u63cf\\u662f\\u5426\\u6709\\u65b0\\u7684 Hue \\u6a4b\\u63a5\\u5668\\u4ee5\\u958b\\u59cb\\u4f7f\\u7528\\u3002\",TEXT_CASE_SCANNING:\"\\u53d6\\u6d88\",TEXT_CASE_SCANNING_CONTENT:\"\\u6b63\\u5728\\u6383\\u63cf Hue \\u6a4b\\u63a5\\u5668...\",TEXT_CASE_SCAN_AGAIN:\"\\u91cd\\u65b0\\u6383\\u63cf\",TEXT_CASE_SCAN_AGAIN_CONTENT:\"Razer Synapse \\u627e\\u4e0d\\u5230 Hue \\u6a4b\\u63a5\\u5668\\u3002\",TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT:\"\\u91cd\\u65b0\\u6383\\u63cf\\u6a4b\\u63a5\\u5668\\uff0c\\u6216\\u5728\\u4e0b\\u65b9\\u624b\\u52d5\\u8f38\\u5165\\u6a4b\\u63a5\\u5668\\u7684 IP \\u4f4d\\u5740\\u3002\",TEXT_CASE_SCAN_AGAIN_OR:\"\\u6216\",TEXT_CASE_SCAN_MANUAL_IP:\"\\u624b\\u52d5\\u8f38\\u5165 IP\",TEXT_CASE_SCAN_SEARCH:\"\\u641c\\u5c0b\",TEXT_CASE_PAIR:\" \\u914d\\u5c0d\",TEXT_CASE_PAIR_CONTENT:\"\\u5728\\u4f60\\u7684\\u7db2\\u8def\\u4e2d\\u627e\\u5230 Hue \\u6a4b\\u63a5\\u5668\\u3002\",TEXT_CASE_PAIRING_CONTENT:\"\\u6309\\u4e0b Hue \\u6a4b\\u63a5\\u5668\\u7684\\u300c\\u4e00\\u6309\\u9023\\u7dda\\u300d\\u6309\\u9215\\u5373\\u53ef\\u5b8c\\u6210\\u914d\\u5c0d\\u3002\",TEXT_CASE_CONNECT_FAIL_CONTENT:\"\\u7121\\u6cd5\\u914d\\u5c0d\\u6a4b\\u63a5\\u5668\\u8207 Razer Synapse\\u3002\",TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT:\"\\u5728\\u914d\\u5c0d\\u6642\\uff0c\\u6c92\\u6709\\u6309\\u4e0b\\u6a4b\\u63a5\\u5668\\u4e0a\\u7684\\u300c\\u4e00\\u6309\\u9023\\u7dda\\u300d\\u6309\\u9215\\u3002\",TEXT_CASE_CONNECT_FAIL_RETRY:\"\\u91cd\\u8a66\",TEXT_CASE_CONNECT_FAIL_START_OVER:\"\\u5f9e\\u982d\\u958b\\u59cb\",ADVANCED_EFFECT_DETAILS:\"\\u9032\\u968e\\u6548\\u679c\\u53ef\\u5168\\u9762\\u5957\\u7528\\u5230\\u591a\\u500b\\u652f\\u63f4 Razer Chroma \\u7684\\u88dd\\u7f6e\\uff0c\\u4f46\\u7121\\u6cd5\\u5132\\u5b58\\u5230\\u88dd\\u7f6e\\u4e0a\\u7684\\u8a2d\\u5b9a\\u6a94\\u3002\"}}"
+  },
+  "archetypes": {
+    "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "offset": 6310177,
+    "end": 6343741,
+    "source": "L_=[{name:\"bollard\",d:\"M9.167,11.083c0,.692-1.867,1.25-4.167,1.25S.833,11.775.833,11.083V7.58a.249.249,0,0,1,.392-.2A7.857,7.857,0,0,0,5,8.167a7.857,7.857,0,0,0,3.775-.79.249.249,0,0,1,.392.2ZM2.785,5.065a11.607,11.607,0,0,1,4.618,0c1.264.317,1.247.844-.092,1.178a11.345,11.345,0,0,1-4.8,0C1.275,5.909,1.422,5.382,2.785,5.065ZM8.608,4.4A12.994,12.994,0,0,0,5.192,4a14.266,14.266,0,0,0-3.517.4C.574,4.692,0,5.092,0,5.492V22.625c0,.333.417.667,1.267.933A12.728,12.728,0,0,0,4.808,24a14.016,14.016,0,0,0,3.658-.442C9.492,23.267,10,22.883,10,22.508V5.375C10,5.017,9.533,4.667,8.608,4.4Z\"},{name:\"candle_bulbs\",d:\"M8.307,14.372C8.042,10.006,5.736,4,4.167,4S.291,10.006.026,14.372a15.973,15.973,0,0,0,4.141.462A15.973,15.973,0,0,0,8.307,14.372Zm.024.853a18.646,18.646,0,0,1-4.165.442A18.645,18.645,0,0,1,0,15.225c0,.018,0,.037,0,.055s0,.036,0,.054a6.032,6.032,0,0,0,1.441,4.323,19.6,19.6,0,0,0,2.726.177,19.576,19.576,0,0,0,2.725-.177,6.028,6.028,0,0,0,1.442-4.323c0-.017,0-.035,0-.054S8.332,15.243,8.332,15.225Zm-5.9,7.422-.348-2.071c.723.066,1.518.091,2.083.091s1.361-.025,2.083-.091L5.9,22.647a.608.608,0,0,1-.208.383l-.324.283c-.022.02-.043.04-.062.061l-.343.39A.725.725,0,0,1,4.421,24H3.913a.725.725,0,0,1-.545-.238l-.343-.39c-.019-.021-.04-.041-.062-.061l-.324-.283A.608.608,0,0,1,2.431,22.647Z\"},{name:\"ceiling_horizontal\",d:\"M19.924,4.822a1.251,1.251,0,0,0-1.6-.747l-17.5,6.37a1.25,1.25,0,1,0,.855,2.349l.51-.186v4.544a.938.938,0,0,0,.617.881l2.5.91a.942.942,0,0,0,.641,0L17.2,14.849a.937.937,0,0,0,.617-.881l.115-7.089,1.249-.455a1.25,1.25,0,0,0,.747-1.6ZM3.124,17.152l11.25-4.094,2.5.91L5.624,18.062l-2.5-.91Z\"},{name:\"ceiling_round2\",d:\"M15.969,18.37a28.562,28.562,0,0,1-11.932,0C.805,17.541.9,16.223,4.178,15.424a28.958,28.958,0,0,1,11.638,0C19.093,16.223,19.2,17.541,15.969,18.37ZM19.938,11.5c-.243-.625-1.237-1.225-2.956-1.7a30.843,30.843,0,0,0-13.969,0c-1.718.475-2.707,1.075-2.95,1.7A.787.787,0,0,0,0,11.814v3.542c0,.106.018,2.713.063,2.812.238.6,1.157,1.181,2.781,1.649a30.6,30.6,0,0,0,14.319,0c1.618-.468,2.538-1.049,2.775-1.649A.784.784,0,0,0,20,17.855V11.814A.8.8,0,0,0,19.938,11.5Z\"},{name:\"ceiling_square\",d:\"M16.5,16.691,10.527,18.9a1.5,1.5,0,0,1-1.053,0L3.5,16.691a.273.273,0,0,1,0-.5l6-2.1a1.5,1.5,0,0,1,1.006,0l6,2.1A.272.272,0,0,1,16.5,16.691Zm3.058-4.143L10.526,9.1a1.458,1.458,0,0,0-1.052,0L.442,12.549a.763.763,0,0,0-.442.73v3.094a.763.763,0,0,0,.442.73l9.033,3.466a1.458,1.458,0,0,0,1.052,0L19.559,17.1a.763.763,0,0,0,.441-.73V13.279A.764.764,0,0,0,19.559,12.549Z\"},{name:\"ceiling_tube\",d:\"M5.227,18.33l1.249-.468a.624.624,0,0,0,.413-.623v-.511l8.685-3.262,1.1.412a.546.546,0,0,0,.2.037.666.666,0,0,0,.188-.037l1.249-.468a.674.674,0,0,0,.413-.624V7.708a.624.624,0,0,0-.413-.624l-.388-.15,1.249-.456a1.284,1.284,0,0,0,.75-1.641,1.25,1.25,0,0,0-1.6-.767L.828,10.6a1.284,1.284,0,0,0-.749,1.641,1.25,1.25,0,0,0,1.194.867,1.251,1.251,0,0,0,.425-.044l.2-.106v3.848a.624.624,0,0,0,.413.624l2.5.936a.807.807,0,0,0,.213,0,.562.562,0,0,0,.2-.037h.005Zm.419-2.713A2.73,2.73,0,0,1,4.4,13.4a1.6,1.6,0,0,1,0-.337l9.373-3.618v2.919a.624.624,0,0,0,.413.623L6.895,15.722a1.736,1.736,0,0,1-1.249-.106Z\"},{name:\"classic_bulb\",d:\"M0,5.417A5.89,5.89,0,0,1,5.833,0a5.89,5.89,0,0,1,5.833,5.417,3.26,3.26,0,0,1-.044.472c-.009.067-.019.132-.027.2a5.733,5.733,0,0,1-.106.589A15.809,15.809,0,0,1,5.833,7.5,15.809,15.809,0,0,1,.177,6.677a5.733,5.733,0,0,1-.106-.589c-.008-.067-.017-.132-.027-.2A3.26,3.26,0,0,1,0,5.417M.477,7.673A8.829,8.829,0,0,0,1.483,9.5a5.371,5.371,0,0,1,1.008,2.169A10.128,10.128,0,0,1,2.639,14a.819.819,0,0,0,.741.879A24,24,0,0,0,5.833,15a23.984,23.984,0,0,0,2.453-.12A.82.82,0,0,0,9.028,14a10.128,10.128,0,0,1,.148-2.334A5.383,5.383,0,0,1,10.184,9.5a8.829,8.829,0,0,0,1.005-1.824,20.152,20.152,0,0,1-5.356.66,20.152,20.152,0,0,1-5.356-.66m2.856,8.045.418,2.59a.769.769,0,0,0,.25.477l.389.353a.9.9,0,0,1,.073.077l.412.486a.855.855,0,0,0,.655.3h.608a.855.855,0,0,0,.655-.3l.412-.486a.9.9,0,0,1,.072-.077l.389-.353a.769.769,0,0,0,.25-.477l.418-2.59c-.868.084-1.822.115-2.5.115s-1.632-.031-2.5-.115\"},{name:\"double_spot\",d:\"M18.623,17.468c-.449,1.244-1.372,2.06-2.059,1.823s-.882-1.438-.432-2.683,1.372-2.059,2.06-1.823S19.073,16.224,18.623,17.468ZM2.642,15.776C2.2,15.928,1.615,15.4,1.327,14.6s-.165-1.572.274-1.723,1.028.373,1.315,1.172S3.081,15.623,2.642,15.776Zm16.348-1.9L12.414,11.72V7.971a21.217,21.217,0,0,0,2.479-.383c1.339-.3,2.1-.681,2.3-1.069a.4.4,0,0,0,.052-.2v-.5a.418.418,0,0,0-.052-.2c-.2-.4-1.023-.793-2.446-1.1a32.43,32.43,0,0,0-11.561,0c-1.422.308-2.24.7-2.441,1.1a.425.425,0,0,0-.052.2v.5a.412.412,0,0,0,.052.2c.2.388.957.765,2.3,1.069a21.3,21.3,0,0,0,2.474.382v2.4l-4.759,1.6c-.773.268-.99,1.625-.486,3.03s1.541,2.328,2.314,2.06l5.189-2.39c.587-.229.669-1.389.183-2.592a3.841,3.841,0,0,0-1.062-1.5v-2.5a37.308,37.308,0,0,0,4.138,0V11.9a4.789,4.789,0,0,0-1.646,2.119c-.648,1.563-.539,3.072.244,3.37l6.919,3.107c1.031.348,2.412-.851,3.086-2.679S20.02,14.222,18.99,13.873Z\"},{name:\"edison_bulb\",d:\"M7.143,19.143l-.36,1.727a.622.622,0,0,1-.273.4l-.278.2-.319.29a1.033,1.033,0,0,1-.7.246H4.782a1.032,1.032,0,0,1-.7-.246l-.294-.269-.3-.216a.625.625,0,0,1-.275-.407l-.358-1.719.383.028c.525.039,1.182.062,1.759.062s1.235-.023,1.76-.062Zm-4.685-2.39a8.421,8.421,0,0,0,1.878.236l.433.01H5a9.9,9.9,0,0,0,2.539-.232l-.276,1.65-.556.041c-.505.038-1.145.06-1.707.06s-1.2-.023-1.706-.06l-.557-.041ZM5.891,2l.2.018.147.018.179.027.207.037.229.049.248.063a4.148,4.148,0,0,1,2.3,1.43,2.989,2.989,0,0,1,.564,2.271l-.032.168L7.714,15.929a4.677,4.677,0,0,1-2,.346v-6.06L7.143,8.786H2.857l1.429,1.429v6.056H4.247l-.322-.019-.148-.011-.271-.026-.239-.03-.108-.016-.194-.034-.086-.017-.219-.051-.115-.033-.129-.044-.114-.05-.017-.009L.066,6.082.034,5.914A3.029,3.029,0,0,1,.617,3.643,4.277,4.277,0,0,1,3.093,2.167l.229-.052.208-.04.184-.03.221-.029L4.129,2Z\"},{name:\"ellipse_bulb\",d:\"M12.5,20.667l-.42,2.015a.726.726,0,0,1-.318.465l-.324.228-.372.338a1.165,1.165,0,0,1-.677.28L10.254,24H9.746a1.2,1.2,0,0,1-.811-.287L8.591,23.4l-.354-.252a.729.729,0,0,1-.32-.475L7.5,20.667l.447.033c.612.046,1.379.073,2.052.073s1.441-.027,2.053-.073Zm.465-2.783L12.64,19.82l-.649.048c-.59.044-1.336.07-1.992.07s-1.4-.026-1.99-.07l-.651-.048-.322-1.936a15.676,15.676,0,0,0,5.928,0ZM10,4c5.548,0,10,3.022,10,6.667,0,3.46-4.013,6.359-9.166,6.644V11.917L12.5,10.25h-5l1.667,1.667V17.31C4.2,17.036.285,14.329.015,11.032L0,10.851l0-.185,0-.185C.151,6.92,4.546,4,10,4Z\"},{name:\"flexible_lamp\",d:\"M8.307,14.372C8.042,10.006,5.736,4,4.167,4S.291,10.006.026,14.372a15.973,15.973,0,0,0,4.141.462A15.973,15.973,0,0,0,8.307,14.372Zm.024.853a18.646,18.646,0,0,1-4.165.442A18.645,18.645,0,0,1,0,15.225c0,.018,0,.037,0,.055s0,.036,0,.054a6.032,6.032,0,0,0,1.441,4.323,19.6,19.6,0,0,0,2.726.177,19.576,19.576,0,0,0,2.725-.177,6.028,6.028,0,0,0,1.442-4.323c0-.017,0-.035,0-.054S8.332,15.243,8.332,15.225Zm-5.9,7.422-.348-2.071c.723.066,1.518.091,2.083.091s1.361-.025,2.083-.091L5.9,22.647a.608.608,0,0,1-.208.383l-.324.283c-.022.02-.043.04-.062.061l-.343.39A.725.725,0,0,1,4.421,24H3.913a.725.725,0,0,1-.545-.238l-.343-.39c-.019-.021-.04-.041-.062-.061l-.324-.283A.608.608,0,0,1,2.431,22.647Z\"},{name:\"flood_bulb\",d:\"M15,2.211C15,.99,11.642,0,7.5,0,3.875,0,.842.76.15,1.768A.763.763,0,0,0,0,2.211V3a2.51,2.51,0,0,0,.151.853C1.2,4.4,3.715,5,7.5,5s6.3-.6,7.349-1.143A2.487,2.487,0,0,0,15,3ZM.975,5.071,3.991,8.636a2,2,0,0,1,.472,1.226l.119,4.262a.835.835,0,0,0,.782.807c.658.044,1.369.07,2.136.07s1.478-.026,2.137-.07a.835.835,0,0,0,.782-.807l.12-4.262a1.989,1.989,0,0,1,.471-1.226l3.016-3.565A24.442,24.442,0,0,1,7.5,5.833,24.442,24.442,0,0,1,.975,5.071M5.418,18.308,5,15.718c.867.084,1.823.115,2.5.115s1.632-.031,2.5-.115l-.418,2.59a.769.769,0,0,1-.25.477l-.389.353a.9.9,0,0,0-.073.077l-.412.486A.855.855,0,0,1,7.8,20H7.2a.855.855,0,0,1-.655-.3l-.412-.486a.9.9,0,0,0-.072-.077l-.389-.353a.769.769,0,0,1-.25-.477\"},{name:\"floor_lantern\",d:\"M7.2,8.364a5.391,5.391,0,0,0-3.154,0L3.291,2.979a19.408,19.408,0,0,0,4.668,0ZM9.65.472A17.4,17.4,0,0,0,1.6.472c-2.179.621-2.109,1.61.1,2.209.093.025.2.043.3.066l.982,6.984c.074.273.486.6,1.4.774v7.712a2.039,2.039,0,0,0-1.2.469.23.23,0,0,0-.05.14V19.3c0,.388,1.119.7,2.5.7s2.5-.315,2.5-.7v-.469c0-.259-.506-.483-1.25-.606V10.507c.907-.176,1.3-.5,1.4-.774l.983-6.985c.1-.023.207-.042.3-.067C11.765,2.082,11.832,1.094,9.65.472Z\"},{name:\"floor_shade\",d:\"M2.137,1.439a13.342,13.342,0,0,1,4.474,0c1.213.248,1.175.644-.053.884a13.523,13.523,0,0,1-4.364,0C.965,2.083.926,1.687,2.137,1.439Zm5.3,6.331c.752-.211,1.183-.477,1.29-.753a.357.357,0,0,0,.028-.139V1.245a.343.343,0,0,0-.028-.138C8.619.841,8.217.583,7.506.376a13.239,13.239,0,0,0-6.265,0C.534.583.131.841.028,1.107A.343.343,0,0,0,0,1.245V6.878a.357.357,0,0,0,.028.139c.107.276.541.543,1.293.753a11.087,11.087,0,0,0,2.429.338V16.89c-1.829.071-3.3.443-3.663.923A.381.381,0,0,0,0,18.047v.781C0,19.475,1.959,20,4.375,20s4.375-.525,4.375-1.172v-.781c0-.589-1.631-1.077-3.75-1.158V8.108A11.036,11.036,0,0,0,7.433,7.77Z\"},{name:\"ground_spot\",d:\"M13.124,12.572c-.994.351-2.328-.857-2.978-2.7S9.774,6.251,10.77,5.9s2.328.857,2.978,2.7S14.119,12.22,13.124,12.572Zm2.186-4.526c-.972-2.7-2.965-4.472-4.452-3.957l-9.9,4.6C-.167,9.129-.325,11.358.61,13.668S3.467,17.625,4.6,17.186l1.24-.455v3.122c-2.439.095-4.4.59-4.882,1.231a.508.508,0,0,0-.117.312v1.042C.837,23.3,3.449,24,6.669,24s5.832-.7,5.832-1.562V21.4c0-.786-2.173-1.437-5-1.545V16.172l6.873-2.3C15.863,13.353,16.28,10.746,15.309,8.046Z\"},{name:\"hue_bloom\",d:\"M18.077,21.131a33.074,33.074,0,0,1-8.772-6.337A32.051,32.051,0,0,1,2.881,5.939a.418.418,0,0,1,.491-.569,8.134,8.134,0,0,1,1.9.777A37.564,37.564,0,0,1,17.9,18.744a7.232,7.232,0,0,1,.752,1.927A.413.413,0,0,1,18.077,21.131ZM19,18.146A38.6,38.6,0,0,0,5.868,5.048,7.336,7.336,0,0,0,2.521,4a2.706,2.706,0,0,0-.908.151C.578,4.6.01,5.823.01,8.513A14.719,14.719,0,0,0,3.5,17.62L.146,22.679a.834.834,0,0,0,.69,1.3l5.5-.019a1.665,1.665,0,0,0,1.381-.742l.837-1.257A14.089,14.089,0,0,0,15.532,24a5.471,5.471,0,0,0,4.113-1.324C20.132,22.22,20.285,20.513,19,18.146Z\"},{name:\"hue_centris\",d:\"M15.287,12.51c.544-.208,1.469.57,1.919,1.659.433,1.048.379,2.061-.109,2.322l-4.866,2.193c-.716.243-1.676-.592-2.143-1.867-.452-1.23-.279-2.419.377-2.718l.072-.029Zm-2.751,3.452c-.266-.725-.811-1.2-1.217-1.062s-.52.838-.253,1.562.811,1.2,1.218,1.062S12.8,16.686,12.536,15.962ZM4.793,5.039a.626.626,0,0,1,.334-.029l.083.021L19.573,9.819A.624.624,0,0,1,20,10.34l0,.073v3.509a.625.625,0,0,1-.335.553l-.071.032-.9.338a5.2,5.2,0,0,0-.331-1.151c-.49-1.188-1.6-2.467-2.884-2.467a1.8,1.8,0,0,0-.485.066l-.116.037-4.73,1.555a2.177,2.177,0,0,0-1.261,1.152l-.055.137-8.4-2.8A.627.627,0,0,1,0,10.851l0-.072V7.27a.625.625,0,0,1,.335-.553l.071-.032Zm.073,4.066a.624.624,0,0,0-.335-.017l-.082.025L2,10.033a.188.188,0,0,0-.039.332L2,10.387l6.279,2.219a.623.623,0,0,0,.335.017L8.7,12.6l2.452-.92a.188.188,0,0,0,.039-.332l-.046-.022Z\"},{name:\"hue_go\",d:\"M15.725,18.177A48.985,48.985,0,0,1,5.839,8.285c-2.306-3.265-1.6-4.146,1.636-1.9A48.362,48.362,0,0,1,17.611,16.53C19.86,19.775,18.985,20.482,15.725,18.177Zm3.026-1.936a39.146,39.146,0,0,0-10.988-11c-1.794-1.1-3.038-1.465-3.621-1.12A11.653,11.653,0,0,0,0,12.976,11,11,0,0,0,4.032,21.5H3.75a1.25,1.25,0,1,0,0,2.5H10.31a1.206,1.206,0,0,0,.234-.023c.158.007.313.023.473.023a11.928,11.928,0,0,0,8.86-4.129C20.221,19.285,19.85,18.038,18.751,16.241Z\"},{name:\"hue_iris\",d:\"M18,15.938c-1.279-.414-3.16-1.645-5.712-4.2A19.414,19.414,0,0,1,8.113,6.049.414.414,0,0,1,8.584,5.5a5.883,5.883,0,0,1,1.336.464,15.738,15.738,0,0,1,4.722,3.416,15.723,15.723,0,0,1,3.415,4.722,5.764,5.764,0,0,1,.468,1.356A.415.415,0,0,1,18,15.938Zm-2.965,3.487a.416.416,0,0,1-.4.287.429.429,0,0,1-.128-.02,13.24,13.24,0,0,1-4.188-2.711c-1.914,1.049-5.043,2.291-4.962,2.826.155,1.022-.458,1.588-1.613.433s-.589-1.767.435-1.612c.537.081,1.784-3.089,2.838-5A16.055,16.055,0,0,1,4.362,9.554a.416.416,0,1,1,.779-.293,19.177,19.177,0,0,0,4.077,5.545c2.81,2.81,4.567,3.777,5.546,4.095A.416.416,0,0,1,15.032,19.425Zm4.341-5.649a22.087,22.087,0,0,0-9.093-9.16c-1.384-.65-2.417-.764-3.043-.443-.077.048-.153.1-.229.152A15.387,15.387,0,0,0,4.6,6.275C-.1,10.967-1.956,16.72,2.681,21.349c4.576,4.569,10.4,2.776,15.1-1.917a15.231,15.231,0,0,0,1.927-2.362c.034-.051.069-.1.1-.152C20.154,16.285,20.043,15.215,19.373,13.776Z\"},{name:\"hue_lightstrip\",d:\"M3.7,14.557a.833.833,0,1,1-.638.991A.834.834,0,0,1,3.7,14.557Zm4.073-.881a.833.833,0,1,1-.639.991A.834.834,0,0,1,7.773,13.676Zm4.072-.88a.833.833,0,1,1-.638.99A.833.833,0,0,1,11.845,12.8Zm4.072-.881a.833.833,0,1,1-.637.991A.834.834,0,0,1,15.917,11.915ZM5.558,17.866,17.895,15.2a1.666,1.666,0,0,0,1.278-1.981,3.987,3.987,0,0,0-4.738-3.057L2.1,12.828A1.666,1.666,0,0,0,.82,14.809,3.988,3.988,0,0,0,5.558,17.866ZM17.5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,17.5,22.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,13.333,22.333Zm-4.167,0A.833.833,0,1,1,10,21.5.833.833,0,0,1,9.167,22.333ZM5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,5,22.333ZM19.167,19h-15C.833,19,0,16.5,0,15.667v4.167A4.166,4.166,0,0,0,4.167,24h15A.833.833,0,0,0,20,23.167V19.833A.833.833,0,0,0,19.167,19ZM15,7.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,15,7.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,10.833,7.333Zm-4.167,0A.833.833,0,1,1,7.5,6.5.833.833,0,0,1,6.667,7.333Zm-4.167,0A.833.833,0,1,1,3.333,6.5.833.833,0,0,1,2.5,7.333ZM15.833,4h-15A.833.833,0,0,0,0,4.833V8.167A.833.833,0,0,0,.833,9h15C19.167,9,20,11.5,20,12.333V8.167A4.166,4.166,0,0,0,15.833,4Z\"},{name:\"hue_lightstrip_pc\",d:\"M3.7,14.557a.833.833,0,1,1-.638.991A.834.834,0,0,1,3.7,14.557Zm4.073-.881a.833.833,0,1,1-.639.991A.834.834,0,0,1,7.773,13.676Zm4.072-.88a.833.833,0,1,1-.637.99A.833.833,0,0,1,11.845,12.8Zm4.073-.881a.833.833,0,1,1-.637.991A.834.834,0,0,1,15.917,11.915ZM5.558,17.866,17.895,15.2a1.666,1.666,0,0,0,1.278-1.981,3.987,3.987,0,0,0-4.738-3.057L2.1,12.828A1.666,1.666,0,0,0,.82,14.809,3.988,3.988,0,0,0,5.558,17.866ZM17.5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,17.5,22.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,13.333,22.333Zm-4.167,0A.833.833,0,1,1,10,21.5.833.833,0,0,1,9.167,22.333ZM5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,5,22.333ZM19.167,19h-15C.833,19,0,16.5,0,15.667v4.167A4.166,4.166,0,0,0,4.167,24h15A.833.833,0,0,0,20,23.167V19.833A.833.833,0,0,0,19.167,19ZM15,7.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,15,7.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,10.833,7.333Zm-4.167,0A.833.833,0,1,1,7.5,6.5.833.833,0,0,1,6.667,7.333Zm-4.167,0A.833.833,0,1,1,3.333,6.5.833.833,0,0,1,2.5,7.333ZM15.833,4h-15A.833.833,0,0,0,0,4.833V8.167A.833.833,0,0,0,.833,9h15C19.167,9,20,11.5,20,12.333V8.167A4.166,4.166,0,0,0,15.833,4Z\"},{name:\"hue_lightstrip_tv\",d:\"M3.7,14.557a.833.833,0,1,1-.638.991A.834.834,0,0,1,3.7,14.557Zm4.073-.881a.833.833,0,1,1-.639.991A.834.834,0,0,1,7.773,13.676Zm4.072-.88a.833.833,0,1,1-.638.99A.833.833,0,0,1,11.845,12.8Zm4.072-.881a.833.833,0,1,1-.637.991A.834.834,0,0,1,15.917,11.915ZM5.558,17.866,17.895,15.2a1.666,1.666,0,0,0,1.278-1.981,3.987,3.987,0,0,0-4.738-3.057L2.1,12.828A1.666,1.666,0,0,0,.82,14.809,3.988,3.988,0,0,0,5.558,17.866ZM17.5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,17.5,22.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,13.333,22.333Zm-4.167,0A.833.833,0,1,1,10,21.5.833.833,0,0,1,9.167,22.333ZM5,22.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,5,22.333ZM19.167,19h-15C.833,19,0,16.5,0,15.667v4.167A4.166,4.166,0,0,0,4.167,24h15A.833.833,0,0,0,20,23.167V19.833A.833.833,0,0,0,19.167,19ZM15,7.333a.833.833,0,1,1,.833-.833A.833.833,0,0,1,15,7.333Zm-4.167,0a.833.833,0,1,1,.833-.833A.833.833,0,0,1,10.833,7.333Zm-4.167,0A.833.833,0,1,1,7.5,6.5.833.833,0,0,1,6.667,7.333Zm-4.167,0A.833.833,0,1,1,3.333,6.5.833.833,0,0,1,2.5,7.333ZM15.833,4h-15A.833.833,0,0,0,0,4.833V8.167A.833.833,0,0,0,.833,9h15C19.167,9,20,11.5,20,12.333V8.167A4.166,4.166,0,0,0,15.833,4Z\"},{name:\"hue_play\",d:\"M18.656,13.776a4.463,4.463,0,0,1-3.741-.187c-.77-.3-13.627-5.6-13.627-5.6s-1.186-.529.109-1c1.6-.581,2.887-.1,4.378.5l12.539,5.034S20.073,13.075,18.656,13.776ZM20,13.184c-.011-.323-.178-.9-1.129-1.287L5.148,6.388A6.8,6.8,0,0,0,2.773,6a4.821,4.821,0,0,0-1.631.243C.219,6.6.032,7.126.01,7.443H.005L0,11.229H0c.019.3.184.788.972,1.125l14.087,5.794a5.156,5.156,0,0,0,1.958.352,4.965,4.965,0,0,0,1.948-.359c.9-.4,1.03-.975,1.027-1.283l0-3.674Z\"},{name:\"hue_signe\",d:\"M4.062,0c1.155,0,2.1.324,2.182.732L6.25.781V13.957c2.089.194,3.652.864,3.745,1.667h0V18.2c0,.654-.974,1.228-2.428,1.543l-.307.061A12.664,12.664,0,0,1,5,20a12.664,12.664,0,0,1-2.264-.2l-.307-.061C.974,19.428,0,18.854,0,18.2a.63.63,0,0,1,0-.075H0v-2.5c.064-.537.783-1.014,1.875-1.329V.781l0-.043C1.951.326,2.9,0,4.062,0ZM5.625,2.5h-2.5V15.474a5.6,5.6,0,0,0,.938.076,4.708,4.708,0,0,0,1.563-.237Z\"},{name:\"hue_tube\",d:\"M17.5,10.285l-3.122,1.134-.627.229L5.625,14.6V13.9A2.948,2.948,0,0,0,4.2,11.572L13.76,8.1l2.322-.844A2.949,2.949,0,0,1,17.5,9.582Zm.628-4.171a1.587,1.587,0,0,0-1.084-.035v0l-1.793.651a1.116,1.116,0,0,0-.128.046L3.813,10.882l-1.1.4-.018.006h0l-1.862.677h0L.744,12V12A1.225,1.225,0,0,0,0,13.22v3.75l3.75,1.365,1.875-.683V15.848L15.653,12.2l2.472.9V13.1l1.854-.674.021.008V8.672A2.967,2.967,0,0,0,18.125,6.114Z\"},{name:\"large_globe_bulb\",d:\"M9.286,19.143l-.36,1.727a.622.622,0,0,1-.273.4l-.278.2-.319.29a1.034,1.034,0,0,1-.7.246H6.925a1.032,1.032,0,0,1-.7-.246l-.294-.269-.3-.216a.625.625,0,0,1-.275-.407L5,19.143l.383.028c.525.039,1.182.062,1.759.062s1.235-.023,1.76-.062ZM4.57,16.569a7.895,7.895,0,0,0,5.144,0l-.308,1.848-.556.041c-.505.038-1.145.06-1.707.06s-1.2-.023-1.706-.06l-.557-.041ZM7.143,2a7.143,7.143,0,0,1,.715,14.25V10.929L9.286,9.5H5l1.429,1.429V16.25A7.145,7.145,0,0,1,.011,9.539L0,9.343l0-.2,0-.2A7.143,7.143,0,0,1,7.143,2Z\"},{name:\"luster_bulb\",d:\"M10.521,5.662A6.338,6.338,0,0,0,6.356,4H5.523L5.3,4.005A6.476,6.476,0,0,0,1.35,5.653,5.23,5.23,0,0,0,0,9.353l0,.434a29.292,29.292,0,0,0,5.831.463,31.376,31.376,0,0,0,5.831-.463c0-.067,0-.142,0-.224C11.676,8.639,11.7,6.823,10.521,5.662Zm1.146,5c0,3.09-2.356,5.729-3.171,6.642-.064.072-.119.133-.162.183a9.787,9.787,0,0,1-2.079.255l-.672,0a9.333,9.333,0,0,1-2.249-.257l-.515-.584C1.825,15.756,0,13.386,0,10.667a31.928,31.928,0,0,0,5.833.475l.612,0A29.251,29.251,0,0,0,11.667,10.667Zm-3.333,7.5-.415,3.525a1.278,1.278,0,0,1-.171.539l-.078.111-.428.53-.037.053-.407.667a.807.807,0,0,1-.561.4l-.1.007H5.526a.753.753,0,0,1-.593-.317l-.063-.092-.407-.667-.075-.1L4,22.342a1.159,1.159,0,0,1-.227-.5l-.022-.147-.415-3.525a20.213,20.213,0,0,0,2.508.158,20.45,20.45,0,0,0,2.2-.122Z\"},{name:\"pendant_long\",d:\"M17.653,11.6,5.236,15.768a.622.622,0,0,1-.418-.008l-2.452-.926a.189.189,0,0,1,.007-.356L14.79,10.309a.616.616,0,0,1,.417.008l2.453.926A.189.189,0,0,1,17.653,11.6Zm1.941-3.4L15.207,6.54a.616.616,0,0,0-.417-.007l-4.165,1.4V4.293C10.625,4.131,10.346,4,10,4s-.625.131-.625.293V8.351l-8.948,3a.63.63,0,0,0-.427.6v2.887a.629.629,0,0,0,.405.589l4.388,1.657a.62.62,0,0,0,.417.008l14.363-4.822a.63.63,0,0,0,.427-.6V8.786A.628.628,0,0,0,19.594,8.2Z\"},{name:\"pendant_round\",d:\"M15.97,19.537a28.562,28.562,0,0,1-11.932,0C.805,18.708.9,17.39,4.179,16.591a28.954,28.954,0,0,1,11.637,0C19.094,17.39,19.2,18.708,15.97,19.537Zm3.968-6.868c-.243-.625-1.237-1.225-2.956-1.7a26.372,26.372,0,0,0-6.148-.79V6.391C10.833,6.175,10.461,6,10,6s-.833.175-.833.391v3.788a26.356,26.356,0,0,0-6.154.79c-1.718.475-2.707,1.075-2.95,1.7A.787.787,0,0,0,0,12.981v6.042a.77.77,0,0,0,.063.313c.238.6,1.157,1.181,2.781,1.649a30.6,30.6,0,0,0,14.319,0c1.618-.468,2.538-1.049,2.775-1.649A.784.784,0,0,0,20,19.023V12.981A.8.8,0,0,0,19.937,12.668Z\"},{name:\"pendant_spot\",d:\"M14.93.866A1.318,1.318,0,0,0,13.242.08L.867,4.574a1.314,1.314,0,0,0,.9,2.47L6.88,5.187V6.906c-1.478.162-2.43.844-2.43,1.8v9.453c0,1.1,1.257,1.84,3.127,1.84s3.127-.74,3.127-1.84V8.708c0-.987-1.015-1.679-2.573-1.812V4.733l6.012-2.183A1.312,1.312,0,0,0,14.93.866ZM9.765,18.161c0,.5-.98.9-2.189.9s-2.189-.4-2.189-.9.98-.9,2.189-.9S9.765,17.663,9.765,18.161Z\"},{name:\"recessed_ceiling\",d:\"M3.023,12.8a19.376,19.376,0,0,1,13.959,0c3.93,1.757,4.056,4.658.183,6.481a19.161,19.161,0,0,1-14.311,0C-1.023,17.458-.9,14.557,3.023,12.8Zm12.215,2.624a23.49,23.49,0,0,0-10.469,0l-.333.1q-.24.074-.451.153l-.267.107c-1.863.8-1.585,1.875.924,2.59a23.175,23.175,0,0,0,10.734,0c2.79-.8,2.813-2.044.2-2.849ZM3,10.266a19.92,19.92,0,0,1,13.974,0c2.063.9,3.068,2.1,3.009,3.3a9.009,9.009,0,0,0-2.33-1.452,19.315,19.315,0,0,0-7.669-1.445,19.3,19.3,0,0,0-7.666,1.445A8.981,8.981,0,0,0,0,13.559C-.058,12.362.945,11.161,3,10.266Z\"},{name:\"recessed_floor\",d:\"M16.977,16.867a19.376,19.376,0,0,1-13.959,0c-3.93-1.757-4.056-4.658-.183-6.481a19.161,19.161,0,0,1,14.311,0C21.023,12.209,20.9,15.11,16.977,16.867ZM4.763,14.243a23.49,23.49,0,0,0,10.469,0l.17-.048.32-.1c1.944-.638,2.3-1.532,1-2.263l-.218-.114a6.053,6.053,0,0,0-.666-.271l-.314-.1-.168-.049a23.174,23.174,0,0,0-10.734,0l-.167.049-.314.1c-2.252.779-2.176,1.893.128,2.648l.32.1ZM17,19.4a19.92,19.92,0,0,1-13.974,0C.959,18.5-.046,17.3.013,16.1a9.009,9.009,0,0,0,2.33,1.452A19.315,19.315,0,0,0,10.011,19a19.3,19.3,0,0,0,7.666-1.445A8.982,8.982,0,0,0,20,16.108C20.058,17.3,19.055,18.506,17,19.4Z\"},{name:\"single_spot\",d:\"M17.926,19.37c-.646,1.855-1.972,3.072-2.962,2.717s-1.267-2.144-.621-4,1.972-3.072,2.962-2.718S18.573,17.515,17.926,19.37Zm.623-5.3L9.167,10.884V9.313a21.575,21.575,0,0,0,5.135-.7c1.35-.391,2.115-.875,2.313-1.375a.641.641,0,0,0,.052-.26V6.346a.655.655,0,0,0-.052-.26c-.2-.521-1.032-1.022-2.463-1.417a25.686,25.686,0,0,0-11.641,0c-1.432.4-2.255.9-2.458,1.417A.656.656,0,0,0,0,6.346v.637a.642.642,0,0,0,.052.26c.2.5.963.984,2.317,1.375a21.541,21.541,0,0,0,5.13.7V10.9A6.657,6.657,0,0,0,4.773,14.28C3.844,16.6,4,18.848,5.123,19.29l9.928,4.62c1.478.518,3.461-1.264,4.427-3.982S20.029,14.587,18.55,14.069Z\"},{name:\"small_globe_bulb\",d:\"M9.091,16.364l-.458,2.2a.789.789,0,0,1-.346.507l-.355.249-.406.369A1.313,1.313,0,0,1,6.641,20H6.086a1.309,1.309,0,0,1-.885-.314l-.375-.342-.386-.275a.8.8,0,0,1-.349-.518l-.455-2.187.488.035c.667.05,1.5.079,2.239.079S7.935,16.449,8.6,16.4Zm.588-3.525-.435,2.6-.707.053c-.644.048-1.458.076-2.173.076s-1.529-.028-2.172-.076l-.71-.053-.433-2.6a7.287,7.287,0,0,0,6.63,0M6.364,0a6.364,6.364,0,0,1,.91,12.663V7.727L9.091,5.909H3.636L5.455,7.727v4.935A6.366,6.366,0,0,1,.015,6.809L0,6.583l0-.219,0-.219A6.364,6.364,0,0,1,6.364,0\"},{name:\"christmas_tree\",d:\"M3.75,4.625A.625.625,0,0,1,4.375,4H5a.625.625,0,0,1,.625.625v5.636a7.12,7.12,0,0,1,4.552,2.418c.092.09.176.173.253.246s.177.169.269.26a5.718,5.718,0,0,0,3.988,2.07,4.478,4.478,0,0,0,1.34-.209l-1.5-5.913a.625.625,0,0,1,.452-.759l.606-.154a.625.625,0,0,1,.759.452l1.388,5.477a5.464,5.464,0,0,0,1.129-1.129.625.625,0,1,1,1.022.719,6.789,6.789,0,0,1-5.2,2.767,6.405,6.405,0,0,1-4.365-1.946L6.067,18.817a.625.625,0,0,1-.884,0l-.442-.442a.625.625,0,0,1,0-.884l4.231-4.233A5.28,5.28,0,0,0,5.313,11.5a5.546,5.546,0,0,0-4.176,2.235.625.625,0,1,1-1.023-.719A7.118,7.118,0,0,1,3.75,10.473Zm.469.156v.625a.313.313,0,0,0,.312.313h.312a.313.313,0,0,0,.312-.312V4.781a.312.312,0,0,0-.312-.312H4.531A.312.312,0,0,0,4.219,4.781Zm10.8,4.387.154.606a.312.312,0,0,0,.38.226l.3-.077a.313.313,0,0,0,.226-.38l-.154-.606a.312.312,0,0,0-.38-.226l-.3.077A.313.313,0,0,0,15.021,9.169ZM6.288,17.491l-.221-.221a.312.312,0,0,0-.442,0l-.442.442a.313.313,0,0,0,0,.442l.221.221a.312.312,0,0,0,.442,0l.442-.442A.313.313,0,0,0,6.288,17.491Z\"},{name:\"string_light\",d:\"M3.75,4.625A.625.625,0,0,1,4.375,4H5a.625.625,0,0,1,.625.625v5.636a7.12,7.12,0,0,1,4.552,2.418c.092.09.176.173.253.246s.177.169.269.26a5.718,5.718,0,0,0,3.988,2.07,4.478,4.478,0,0,0,1.34-.209l-1.5-5.913a.625.625,0,0,1,.452-.759l.606-.154a.625.625,0,0,1,.759.452l1.388,5.477a5.464,5.464,0,0,0,1.129-1.129.625.625,0,1,1,1.022.719,6.79,6.79,0,0,1-5.2,2.767,6.405,6.405,0,0,1-4.365-1.946L6.067,18.817a.625.625,0,0,1-.884,0l-.442-.442a.625.625,0,0,1,0-.884l4.231-4.233A5.28,5.28,0,0,0,5.313,11.5a5.546,5.546,0,0,0-4.176,2.235.625.625,0,1,1-1.023-.719A7.118,7.118,0,0,1,3.75,10.473Zm.469.156v.625a.313.313,0,0,0,.312.312h.312a.312.312,0,0,0,.312-.312V4.781a.312.312,0,0,0-.312-.312H4.531A.312.312,0,0,0,4.219,4.781Zm10.8,4.387.154.606a.312.312,0,0,0,.38.226l.3-.077a.313.313,0,0,0,.226-.38l-.154-.606a.312.312,0,0,0-.38-.226l-.3.077A.313.313,0,0,0,15.021,9.169ZM6.288,17.491l-.221-.221a.312.312,0,0,0-.442,0l-.442.442a.313.313,0,0,0,0,.442l.221.221a.312.312,0,0,0,.442,0l.442-.442A.313.313,0,0,0,6.288,17.491Z\"},{name:\"sultan_bulb\",d:\"M11.087,1.164C9.78-.036,6.349,0,5.876,0H5.79C5.319,0,1.886-.036.581,1.164c-1.23,1.13-.188,3.18.233,4.009l.041.08a18.437,18.437,0,0,0,4.979.579,18.444,18.444,0,0,0,4.979-.579l.04-.079c.421-.828,1.463-2.88.234-4.01m-5.254,5.5a22.6,22.6,0,0,1-4.616-.461,25.943,25.943,0,0,1,1.288,7.647.819.819,0,0,0,.2.574l.368.42A23.468,23.468,0,0,0,5.834,15a23.468,23.468,0,0,0,2.759-.153l.368-.42a.819.819,0,0,0,.2-.574A25.943,25.943,0,0,1,10.45,6.205a22.6,22.6,0,0,1-4.616.461M3.753,18.308l-.418-2.59c.868.084,1.823.115,2.5.115s1.633-.031,2.5-.115l-.418,2.59a.769.769,0,0,1-.25.478l-.389.353a.918.918,0,0,0-.074.077L6.8,19.7a.857.857,0,0,1-.656.3H5.533a.855.855,0,0,1-.655-.3l-.413-.486a.9.9,0,0,0-.073-.077L4,18.786a.771.771,0,0,1-.251-.478\"},{name:\"table_shade\",d:\"M9.894,7.074a11.433,11.433,0,0,1-4.773,0c-1.292-.331-1.252-.858.057-1.178a11.583,11.583,0,0,1,4.655,0C11.144,6.215,11.186,6.743,9.894,7.074Zm5.065,6.038L12.71,5.41l-.028-.08c-.209-.484-1.23-.943-3.056-1.19a15.723,15.723,0,0,0-4.182,0C3.622,4.386,2.6,4.845,2.4,5.33l-.04.126L.043,13.109a.772.772,0,0,0-.037.337c.188,1.267,2.478,2.289,6.667,2.407v4c-2.038.108-3.663.6-4.07,1.227a.559.559,0,0,0-.1.312v1.042c0,.862,2.24,1.562,5,1.562s5-.7,5-1.562V21.4c0-.774-1.8-1.415-4.171-1.539v-4c4.184-.12,6.469-1.143,6.653-2.412A.776.776,0,0,0,14.959,13.112Z\"},{name:\"table_wash\",d:\"M14.526,14.3A22.937,22.937,0,0,1,10.9,10.6c-3.291-4.231-2.119-5.643,2.1-2.25a22.426,22.426,0,0,1,3.708,3.791C20.038,16.462,18.662,17.665,14.526,14.3ZM20,15.222c0-.064,0-.135-.006-.2a4.411,4.411,0,0,0-.631-1.911,21.771,21.771,0,0,0-7.307-7.468,4.433,4.433,0,0,0-1.762-.638.565.565,0,0,0-.15,0A1.044,1.044,0,0,0,10,5C6.25,5,0,11.389,0,15.222a10.265,10.265,0,0,0,4.459,8.509,2.487,2.487,0,0,0,1.4.435h6.877a2.488,2.488,0,0,0,1.467-.483C17.19,21.511,20,17.792,20,15.222Z\"},{name:\"triangle_bulb\",d:\"M8.745,18.091,8.4,19.85a.635.635,0,0,1-.264.406l-.27.2-.31.3a.974.974,0,0,1-.675.25H6.456a.972.972,0,0,1-.675-.251L5.5,20.476l-.294-.22a.639.639,0,0,1-.266-.415l-.347-1.75.372.029c.509.04,1.146.063,1.706.063s1.2-.023,1.706-.063Zm.609-2.446-.417,1.7-.614.048c-.49.038-1.111.061-1.656.061s-1.165-.023-1.654-.061L4.4,17.346l-.416-1.7a13.82,13.82,0,0,0,5.373,0ZM6.667,1a20.153,20.153,0,0,1,5.374.716,1.828,1.828,0,0,1,1.236,2.22l-.033.118L9.523,14.867l-.206.045a13.386,13.386,0,0,1-1.957.251V9L8.745,7.546H4.589L5.974,9v6.162l-.067,0a13.4,13.4,0,0,1-1.9-.25l-.2-.043L.1,4.092A1.844,1.844,0,0,1,1.144,1.764q.073-.028.149-.049A20.154,20.154,0,0,1,6.667,1Z\"},{name:\"spot_bulb\",d:\"M.164,1.929C.918.829,4.227,0,8.182,0c4.518,0,8.182,1.08,8.182,2.412S12.7,4.824,8.182,4.824,0,3.743,0,2.412a.834.834,0,0,1,.164-.483m4.179,8.417A8.568,8.568,0,0,1,1.1,4.625,20.368,20.368,0,0,0,8.182,5.733a20.365,20.365,0,0,0,7.077-1.108,8.566,8.566,0,0,1-3.237,5.722c-.185.17-.2.455-.2,1.023V14.72a1.777,1.777,0,0,1-.424,1.182c-.455.515-1.432.909-3.213.909s-2.758-.394-3.213-.909a1.777,1.777,0,0,1-.424-1.182V11.369c0-.568-.018-.853-.2-1.023m4.748,8.745a.909.909,0,0,0,1.818,0V17.2a4.536,4.536,0,0,1-1.818.485ZM6.364,20a.912.912,0,0,1-.909-.909V17.2a4.536,4.536,0,0,0,1.818.485v1.4A.912.912,0,0,1,6.364,20\"},{name:\"wall_washer\",d:\"M18.36,11.667a.334.334,0,0,0,.147-.612L16.716,9.34a1.2,1.2,0,0,0-1.051-.258L1.352,13.236a.343.343,0,0,0-.163.62L3,15.694a1.142,1.142,0,0,0,1.036.266ZM0,13.272a.884.884,0,0,1,.6-.8l15.324-4.44a1.2,1.2,0,0,1,1.051.259l2.57,2.46A1.686,1.686,0,0,1,20,11.81v1.748a.905.905,0,0,1-.6.811l-15.374,4.8a2.386,2.386,0,0,1-1.194,0L.6,18.5a.9.9,0,0,1-.6-.807Z\"},{name:\"wall_spot\",d:\"M16.159,18.93c-1.589,1.159-3.384,1.4-4.008.538s.16-2.5,1.749-3.659,3.384-1.4,4.008-.539S17.749,17.771,16.159,18.93Zm3.52-4.1L12.392,6.5c-.748-.966-2.942-.477-4.9,1.092s-3,3.9-2.249,4.869l.73,1.043H4.145a13.474,13.474,0,0,0-.368-2.748c-.215-.809-.482-1.269-.757-1.387a.33.33,0,0,0-.143-.032H1.289a.346.346,0,0,0-.143.032c-.286.122-.561.619-.779,1.478a16.8,16.8,0,0,0,0,6.984c.218.859.493,1.353.779,1.475a.345.345,0,0,0,.143.031H2.878a.329.329,0,0,0,.143-.031c.275-.118.542-.578.757-1.391a13.505,13.505,0,0,0,.368-2.745H7.14l4.122,5.886c.923,1.292,3.555.946,5.88-.771S20.6,16.125,19.679,14.835Z\"},{name:\"wall_shade\",d:\"M14.888,7.079a11.324,11.324,0,0,1-4.773,0c-1.293-.334-1.253-.867.057-1.189a11.469,11.469,0,0,1,4.656,0C16.138,6.212,16.179,6.744,14.888,7.079Zm5.072,5.882L17.71,5.386l-.028-.078c-.209-.476-1.23-.928-3.056-1.17a15.9,15.9,0,0,0-4.183,0C8.621,4.38,7.6,4.832,7.4,5.308l-.041.123L5.043,12.957a.734.734,0,0,0-.038.331c.186,1.228,2.413,2.219,6.483,2.36a4.6,4.6,0,0,1-7.337,2.316,16.26,16.26,0,0,0-.374-3.26c-.215-.877-.481-1.374-.756-1.5a.3.3,0,0,0-.143-.034H1.29a.309.309,0,0,0-.143.034c-.287.132-.562.669-.779,1.6a19.658,19.658,0,0,0,0,7.567c.218.931.493,1.465.779,1.6A.31.31,0,0,0,1.29,24H2.878a.3.3,0,0,0,.143-.034c.275-.129.541-.626.756-1.507a14.838,14.838,0,0,0,.343-2.527,6.268,6.268,0,0,0,9.084-4.276c4.269-.1,6.6-1.113,6.789-2.373A.763.763,0,0,0,19.959,12.96Z\"},{name:\"wall_lantern\",d:\"M14.813,21.125a6.863,6.863,0,0,0-3.793,0l-.909-6.466a23.191,23.191,0,0,0,5.611,0ZM17.985,11.3a18.049,18.049,0,0,0-4.718-.62,5.815,5.815,0,0,0-9.2-3.88,9.72,9.72,0,0,0-.287-1.5c-.215-.743-.481-1.163-.756-1.273A.373.373,0,0,0,2.879,4H1.289a.378.378,0,0,0-.143.028C.86,4.14.585,4.6.367,5.383a14.15,14.15,0,0,0,0,6.4c.218.788.493,1.241.78,1.353a.378.378,0,0,0,.143.028H2.879a.373.373,0,0,0,.143-.028c.275-.109.541-.53.756-1.275a12.133,12.133,0,0,0,.382-3A4.253,4.253,0,0,1,11.7,10.7a16.765,16.765,0,0,0-3.854.6c-2.744.828-2.656,2.147.131,2.946.128.037.275.062.409.1l1.2,8.538c.1.374.695.829,2.065,1.031a8.748,8.748,0,0,0,2.538,0c1.368-.2,1.933-.659,2.063-1.029l1.2-8.538c.136-.034.286-.061.415-.1C20.649,13.443,20.733,12.125,17.985,11.3Z\"},{name:\"vintage_candle_bulb\",d:\"M6.25,20.575,5.9,22.647a.592.592,0,0,1-.144.318l-.065.065-.324.283-.061.061-.343.389a.716.716,0,0,1-.441.231L4.421,24H3.913a.736.736,0,0,1-.474-.168l-.071-.07-.343-.389-.061-.061-.325-.283a.614.614,0,0,1-.19-.3l-.017-.086-.348-2.072c.271.025.553.044.828.058l.539.022.495.01h.444l.495-.01.539-.022c.184-.009.37-.021.554-.035Zm2.082-5.351,0,.109a6.03,6.03,0,0,1-1.442,4.323,19.576,19.576,0,0,1-2.725.177,19.607,19.607,0,0,1-2.726-.177A6.034,6.034,0,0,1,0,15.333l0-.109a18.6,18.6,0,0,0,4.165.443A18.6,18.6,0,0,0,8.332,15.224ZM4.167,4C4.91,4,5.819,5.348,6.6,7.23l.171.427.166.442q.082.225.16.456l.154.468q.038.118.074.238l.143.482q.035.121.068.243l.13.491.121.495c.1.413.183.828.256,1.24l.082.492c.051.327.093.65.126.967l.043.471q.009.116.016.231a13.713,13.713,0,0,1-2.77.419.905.905,0,0,0,.222-.586.977.977,0,0,0-.642-.891l-.111-.04-1.589-.5c-.056-.021-.079-.04-.079-.085s.023-.06.079-.083l.109-.037,1.53-.481a.992.992,0,0,0,.773-.916.96.96,0,0,0-.657-.875l-.115-.041-1.48-.466c-.116-.036-.168-.056-.168-.137,0-.064.034-.09.1-.114l.054-.018L5.52,8.993a.417.417,0,0,0-.143-.817L5.3,8.188l-1.977.533a1,1,0,0,0-.753.931.976.976,0,0,0,.642.891l.111.04,1.48.465c.135.043.188.059.188.121s-.024.071-.08.089l-.109.033-1.53.48a.99.99,0,0,0-.772.916.958.958,0,0,0,.656.874l.115.041,1.481.466c.115.036.168.052.168.136s-.034.094-.094.114l-.05.016L2.909,14.8a13.993,13.993,0,0,1-2.883-.426c.023-.383.062-.779.115-1.182l.07-.487.082-.492c.088-.494.195-.993.315-1.488l.125-.493.134-.488Q.9,9.621.939,9.5l.147-.477q.075-.236.154-.468L1.4,8.1q.041-.112.082-.223l.168-.435q.085-.213.173-.418L2,6.624C2.715,5.065,3.506,4,4.167,4Z\"},{name:\"vintage_bulb\",d:\"M9.267,18.452a2.132,2.132,0,0,0,.133.641A.906.906,0,0,1,9.108,20.1L8.75,22.311a.757.757,0,0,1-.25.474l-.392.358-.075.075-.408.482a.834.834,0,0,1-.65.3H6.358a.834.834,0,0,1-.65-.3L5.3,23.218l-.075-.075-.392-.358a.756.756,0,0,1-.25-.474l-.358-2.238a.906.906,0,0,1-.292-1.007,2.042,2.042,0,0,0,.133-.64,25.493,25.493,0,0,0,2.8.158C7.6,18.585,8.433,18.535,9.267,18.452Zm4.067-7.786a6.646,6.646,0,0,1-.883,3.327l-.092.141c-.083.133-.167.266-.258.391-1.133,1.647-2.058,2-2.625,3.069a23.6,23.6,0,0,1-2.592.141,24.953,24.953,0,0,1-3.033-.183c-.567-1.031-1.483-1.406-2.6-3.028-.092-.125-.175-.258-.258-.391L.9,13.994a6.663,6.663,0,1,1,12.433-3.327Zm-5,.474a.964.964,0,0,0,0-1.855L5.75,8.579c-.233-.058-.358-.183-.358-.266s.125-.2.342-.266l2.683-.665a.4.4,0,0,0,.3-.5.425.425,0,0,0-.5-.308l-2.692.665a1.182,1.182,0,0,0-.967,1.073,1.174,1.174,0,0,0,.967,1.073l2.567.715a.133.133,0,0,1,.1.133.125.125,0,0,1-.1.125L5,11.19a.94.94,0,0,0-.708.923A.957.957,0,0,0,5,13.045l2.583.657c.233.058.358.183.358.266s-.125.2-.342.266L5,14.842a.418.418,0,1,0,.092.832h.1l2.617-.607a1.182,1.182,0,0,0,.967-1.073,1.182,1.182,0,0,0-.958-1.065l-2.575-.707a.116.116,0,0,1-.1-.125.125.125,0,0,1,.1-.125Z\"},{name:\"default\",d:\"M0,5.417A5.89,5.89,0,0,1,5.833,0a5.89,5.89,0,0,1,5.833,5.417,3.26,3.26,0,0,1-.044.472c-.009.067-.019.132-.027.2a5.733,5.733,0,0,1-.106.589A15.809,15.809,0,0,1,5.833,7.5,15.809,15.809,0,0,1,.177,6.677a5.733,5.733,0,0,1-.106-.589c-.008-.067-.017-.132-.027-.2A3.26,3.26,0,0,1,0,5.417M.477,7.673A8.829,8.829,0,0,0,1.483,9.5a5.371,5.371,0,0,1,1.008,2.169A10.128,10.128,0,0,1,2.639,14a.819.819,0,0,0,.741.879A24,24,0,0,0,5.833,15a23.984,23.984,0,0,0,2.453-.12A.82.82,0,0,0,9.028,14a10.128,10.128,0,0,1,.148-2.334A5.383,5.383,0,0,1,10.184,9.5a8.829,8.829,0,0,0,1.005-1.824,20.152,20.152,0,0,1-5.356.66,20.152,20.152,0,0,1-5.356-.66m2.856,8.045.418,2.59a.769.769,0,0,0,.25.477l.389.353a.9.9,0,0,1,.073.077l.412.486a.855.855,0,0,0,.655.3h.608a.855.855,0,0,0,.655-.3l.412-.486a.9.9,0,0,1,.072-.077l.389-.353a.769.769,0,0,0,.25-.477l.418-2.59c-.868.084-1.822.115-2.5.115s-1.632-.031-2.5-.115\"}]"
+  },
+  "constants": [
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6309952,
+      "end": 6309961,
+      "source": "s_=\"INIT\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6309962,
+      "end": 6309975,
+      "source": "I_=\"SCANNING\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6309976,
+      "end": 6309992,
+      "source": "O_=\"SCAN_CANCEL\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6309993,
+      "end": 6310009,
+      "source": "A_=\"PAIR_CANCEL\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310010,
+      "end": 6310026,
+      "source": "S_=\"SCANNING_IP\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310027,
+      "end": 6310043,
+      "source": "R_=\"SCAN_FAILED\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310044,
+      "end": 6310064,
+      "source": "N_=\"SCAN_SUCCESSFUL\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310065,
+      "end": 6310090,
+      "source": "l_=\"WAIT_USER_CLICK_PAIR\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310091,
+      "end": 6310103,
+      "source": "C_=\"PAIRING\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310104,
+      "end": 6310120,
+      "source": "d_=\"PAIR_FAILED\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310121,
+      "end": 6310136,
+      "source": "D_=\"RETRY_PAIR\""
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6310137,
+      "end": 6310153,
+      "source": "c_=\"Philips Hue\""
+    }
+  ],
+  "defaults": [
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6824160,
+      "end": 6824292,
+      "source": "wp={isPaired:!1,bridgeEnabled:!0,isLoading:!0,isControl:!0,groups:[],activeGroup:\"\",devices:[],connected:1,channels:1,unreachable:1}"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6824411,
+      "end": 6824445,
+      "source": "kp={status:s_,ip:\"192.168.50.158\"}"
+    }
+  ],
+  "brightness": {
+    "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "offset": 6710300,
+    "end": 6710494,
+    "source": "tR={brightness:{isEnabled:!1,value:0},multiDeviceBrightness:{isEnabled:!1,applyToBoth:!1,devices:{dock:0,mouse:0}},nanoLeafEnabled:!0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+  },
+  "lighting": [
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6261079,
+      "end": 6261273,
+      "source": "x=[{name:w.Rb7,id:X.AoV.Ambient_Effect},{name:w.ncy,id:X.AoV.Audio_Meter_Effect},{name:w.xkP,id:X.AoV.Breathing_Effect},{name:w.k9y,id:X.AoV.Spectrum_Effect},{name:w.DU0,id:X.AoV.Static_Effect}]"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6084744,
+      "end": 6085310,
+      "source": "{[HE.Static_Effect]:{color1:\"#00ff00\"},[HE.Ripple_Effect]:{color1:\"#00ff00\"},[HE.Ambient_Effect]:{screen:\"full\"},[HE.Audio_Meter_Effect]:{color1:\"#00ff00\",colorBoost:1},[HE.Breathing_Effect]:{color1:\"#00ff00\",color2:\"no-color\",isRandom:!1},[HE.Reactive_Effect]:{color1:\"#00ff00\",duration:2},[HE.Starlight_Effect]:{color1:\"#00ff00\",color2:\"no-color\",isRandom:!1,duration:2},[HE.Wave_Effect]:{direction:2},[HE.Wheel_Effect]:{direction:1},[HE.Radiate_Effect]:{type:\"static\",color:\"#00ff00\"},[HE.Tidal_Effect]:{color1:\"#00ff00\",color2:\"#0000FF\",isRandom:!1,direction:1}}"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6716102,
+      "end": 6716585,
+      "source": "TR={selectedEffectId:3,effectSettings:[],cachedEffectSettings:{},canSyncQuickEffect:!1,hasReactiveWarning:!1,customColors:[],isChromaEnabled:!1,isChromaVisualizerEnabled:!1,chromaConnectApp:{appName:\"\",appIcon:!1},chromaConnectDevicesStatus:!1,syncQuickEffect:!1,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],chromaProfiles:[],selectedChromaProfileGuid:\"\",inActiveQuickEffect:[],isDynamicLighting:!1,usePowerSavingQuickEffect:!1,powerSavingMode:!1,quickEffectsPorts:[]}"
+    }
+  ],
+  "palette": {
+    "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "offset": 6559222,
+    "end": 6559637,
+    "source": "dn=[\"#ffffff\",\"#ffc0c0\",\"#ffe0c0\",\"#ffffc0\",\"#c0ffc0\",\"#c0ffff\",\"#c0c0ff\",\"#ffc0ff\",\"#e0e0e0\",\"#ff8080\",\"#ffc182\",\"#ffff80\",\"#80ff80\",\"#80ffff\",\"#8080ff\",\"#ff80ff\",\"#c0c0c0\",\"#ff0000\",\"#ff8000\",\"#ffff00\",\"#00ff00\",\"#00ffff\",\"#0000ff\",\"#ff00ff\",\"#808080\",\"#c00000\",\"#c06000\",\"#c0c000\",\"#00c000\",\"#00c0c0\",\"#0000c0\",\"#c000c0\",\"#404040\",\"#800000\",\"#804000\",\"#808000\",\"#008000\",\"#008080\",\"#000080\",\"#800080\",\"no-color\"]"
+  },
+  "effect_components": [
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6582549,
+      "end": 6583745,
+      "source": "class Fn extends y.Component{constructor(){super(...arguments),this.onColor1Change=e=>{console.log(\"color1 :\".concat(e)),this.updateEffect({color1:e})},this.onColor2Change=e=>{console.log(\"color2 :\".concat(e)),this.updateEffect({color2:e})},this.toggleRandom=()=>{this.updateEffect({isRandom:!this.props.effectSetting.isRandom})},this.updateEffect=e=>{this.props.updateEffect(this.props.effectId,(0,b.A)((0,b.A)({},this.props.effectSetting),e),this.props.regionId)},this.onMouseDown=e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}}render(){const e=this.props.effectSetting,E=e.color1,_=e.color2,a=e.isRandom;return(0,q.jsx)(\"div\",{className:\"effects-area\",\"data-effect\":\"breathing\",children:(0,q.jsxs)(\"div\",{className:\"flex wrap-150\",children:[(0,q.jsx)(gn,{name:w.arT,nameParams:{num:1},selectedColor:E,disabled:a,onChange:this.onColor1Change,onMouseDown:this.onMouseDown}),(0,q.jsx)(gn,{name:w.arT,nameParams:{num:2},selectedColor:_,disabled:a,onChange:this.onColor2Change,onMouseDown:this.onMouseDown}),(0,q.jsx)(Bn,{id:\"randColor\",active:a,onCheck:this.toggleRandom,name:w.XE0,extraClass:\"random-color has-color\",onMouseDown:this.onMouseDown})]})})}}"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6598723,
+      "end": 6599258,
+      "source": "class RT extends y.Component{constructor(){super(...arguments),this.onChange=e=>{console.log(\"color1 :\".concat(e)),this.props.updateEffect(this.props.effectId,{color1:e},this.props.regionId)},this.onMouseDown=e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}}render(){return(0,q.jsx)(\"div\",{className:\"flex effects-area\",\"data-effect\":\"static\",children:(0,q.jsx)(gn,{name:w.o$r,hideNoColor:!0,selectedColor:this.props.effectSetting.color1,onChange:this.onChange,onMouseDown:this.onMouseDown})})}}"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6618617,
+      "end": 6620021,
+      "source": "class qT extends y.Component{constructor(){super(...arguments),this.stepperRegex=/^[0-9]+([.][0-9]+)?$/,this.changeColorBoost=e=>{this.props.effectSetting.colorBoost!==e&&(e%.25!==0&&(e=e-e%.25+.25),this.props.updateEffect(this.props.effectId,{colorBoost:parseFloat(e)},this.props.regionId))},this.onColor1Change=e=>{console.log(\"color1 :\".concat(e)),this.props.updateEffect(this.props.effectId,{colorBoost:1,color1:e})},this.renderColorBoost=()=>(0,q.jsx)(\"div\",{className:\"flex effects-area\",\"data-effect\":\"audioMeter\",children:(0,q.jsxs)(\"div\",{className:\"flex flex-v direction-area mt20\",children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ve.A,{text:w.WLd})}),(0,q.jsx)(xT,{value:this.props.effectSetting.colorBoost,setParentState:this.changeColorBoost,active:!0,maxLength:4,maxValue:4,minValue:.25,allowDecimals:!0,roundUpDecimals:!0,stepValue:.25,stepperRegex:this.stepperRegex,onMouseDown:e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}})]})}),this.renderColorPicker=()=>(0,q.jsx)(\"div\",{className:\"flex effects-area\",\"data-effect\":\"static\",children:(0,q.jsx)(gn,{name:(0,_e.JN)(w.arT,{num:1}),selectedColor:this.props.color1,onChange:this.onColor1Change,hideNoColor:!1})}),this.renderAudioMeter=()=>{var e;return null!==(e=jT.ble)&&void 0!==e&&e.quickEffectUseHardware?this.renderColorPicker():this.renderColorBoost()}}render(){return this.renderAudioMeter()}}"
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6622067,
+      "end": 6622981,
+      "source": "class nr extends y.Component{constructor(){super(...arguments),this.screenList=[\"full\",\"left\",\"top\",\"right\",\"bottom\"],this.updateEffect=e=>{this.props.updateEffect(this.props.effectId,(0,b.A)((0,b.A)({},this.props.effectSetting),e),this.props.regionId)},this.updateSelectedScreen=e=>{this.updateEffect({screen:e})},this.renderScreens=()=>{const e=this.props.effectSetting;return this.screenList.map((E,_)=>(0,q.jsx)(\"div\",{className:\"screen \".concat(E===e.screen?\"selected\":\"\",\" \").concat(E,\" \"),onClick:()=>{this.updateSelectedScreen(E)},onMouseDown:e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}},_))}}render(){return(0,q.jsx)(\"div\",{className:\"flex effects-area\",\"data-effect\":\"ambient\",children:(0,q.jsxs)(\"div\",{className:\"flex flex-v direction-area mt20\",children:[(0,q.jsx)(\"div\",{className:\"mb30\",children:(0,q.jsx)(ve.A,{text:w._ec})}),this.renderScreens()]})})}}"
+    }
+  ],
+  "common_labels": [
+    {
+      "export": "Rb7",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147893,
+      "end": 6147902,
+      "source": "\"AMBIENT\""
+    },
+    {
+      "export": "ncy",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147859,
+      "end": 6147872,
+      "source": "\"AUDIO_METER\""
+    },
+    {
+      "export": "xkP",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147738,
+      "end": 6147749,
+      "source": "\"BREATHING\""
+    },
+    {
+      "export": "k9y",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147767,
+      "end": 6147785,
+      "source": "\"SPECTRUM_CYCLING\""
+    },
+    {
+      "export": "DU0",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147789,
+      "end": 6147797,
+      "source": "\"STATIC\""
+    },
+    {
+      "export": "MJD",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6146913,
+      "end": 6146932,
+      "source": "\"GLOBAL_BRIGHTNESS\""
+    },
+    {
+      "export": "a1g",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6148459,
+      "end": 6148471,
+      "source": "\"BRIGHTNESS\""
+    },
+    {
+      "export": "WpG",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6146871,
+      "end": 6146891,
+      "source": "\"BRIGHTNESS_TOOLTIP\""
+    },
+    {
+      "export": "KFn",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6146894,
+      "end": 6146899,
+      "source": "\"OFF\""
+    },
+    {
+      "export": "zrT",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6146902,
+      "end": 6146910,
+      "source": "\"BRIGHT\""
+    },
+    {
+      "export": "tQN",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147141,
+      "end": 6147150,
+      "source": "\"EFFECTS\""
+    },
+    {
+      "export": "Zsw",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147173,
+      "end": 6147190,
+      "source": "\"EFFECTS_TOOLTIP\""
+    },
+    {
+      "export": "arT",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6148167,
+      "end": 6148184,
+      "source": "\"COLOR_DROP_NAME\""
+    },
+    {
+      "export": "XE0",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6148149,
+      "end": 6148163,
+      "source": "\"RANDOM_COLOR\""
+    },
+    {
+      "export": "o$r",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147925,
+      "end": 6147932,
+      "source": "\"COLOR\""
+    },
+    {
+      "export": "WLd",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147960,
+      "end": 6147978,
+      "source": "\"TEXT_COLOR_BOOST\""
+    },
+    {
+      "export": "_ec",
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+      "offset": 6147936,
+      "end": 6147956,
+      "source": "\"TEXT_SCREEN_REGION\""
+    }
+  ],
+  "mounted_root": {
+    "offset": 6689360,
+    "end": 6689820,
+    "source": "))||0;function qA(e){let E=e.activeView,_=e.isPaired;const a=(0,V.useSelector)(e=>e.languageReducer.lang);return(0,y.useEffect)(()=>{const e=\"zh-CN\"===a?\"\\u79c0 (HUE)\":\"HUE\";document.title=e},[a]),E===w._$r?(0,q.jsx)(hA,{}):_?(0,q.jsx)(pA,{}):(0,q.jsx)(Fi,{})}const QA=(e,E)=>{var _;e&&(null===(_=window.reduxStore)||void 0===_||_.dispatch({type:e,payload:E}))};const JA=(0,V.connect)(null,e=>(0,z.zH)((0,b.A)((0,b.A)({},t),E),e))(function(e){let E=e.setChroma"
+  },
+  "css": {
+    "path": ".ref/devices/769/static/css/main.341edb83.css",
+    "sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "rules": [
+      ".key-config .stepper,.modes-area .stepper,.stepper{border:1px solid #5d5d5d;box-sizing:border-box;height:27px;position:relative;transition:opacity .2s;width:60px;will-change:opacity}",
+      ".key-config .stepper,.modes-area .stepper input,.stepper{background-color:#111;border:none;box-sizing:border-box;color:#ccc;font-size:14px;height:25px;left:0;line-height:17px;padding:5px 18px 5px 5px;text-align:left;width:58px}",
+      ".modes-area .effects-area[data-effect=audioMeter] .stepper input{background-color:#0000}",
+      ".effects-area{position:relative}",
+      ".effects-area .slider-label{margin-bottom:5px}",
+      ".effects-area[data-effect=breathing],.effects-area[data-effect=starlight]{display:flex}",
+      ".effects-area[data-effect=ambient] .has-color,.effects-area[data-effect=audioMeter] .has-color,.effects-area[data-effect=fire] .has-color,.effects-area[data-effect=reactive] #secondColor,.effects-area[data-effect=reactive] .random-color,.effects-area[data-effect=ripple] #secondColor,.effects-area[data-effect=ripple] .random-color,.effects-area[data-effect=spectrum] .has-color,.effects-area[data-effect=static] #secondColor,.effects-area[data-effect=static] .random-color,.effects-area[data-effect=warning] .has-color,.effects-area[data-effect=wave] .has-color,.effects-area[data-effect=wheel] .has-color{display:none}",
+      ".chroma-sync{align-items:center;position:relative}",
+      ".chroma-sync .chroma-sync-text{text-decoration:underline;width:340px}",
+      ".chroma-sync:hover{color:#44d62c}",
+      ".chroma-sync:active{color:#44d62c;opacity:.7}",
+      ".chroma-sync.off{opacity:.3;pointer-events:none}",
+      ".effects-area[data-effect=wave] .direction-area{display:flex!important}",
+      ".effects-area[data-effect=wave] #waveSlider{align-items:flex-end}",
+      ".effects-area[data-effect=wave] .slider-wrapper{width:315px}",
+      ".effects-area[data-effect=wave] .slider-wrapper>div{margin-top:10px}",
+      ".effects-area[data-effect=ambient] .direction-area,.effects-area[data-effect=audioMeter] .direction-area,.effects-area[data-effect=wheel] .direction-area{display:flex!important}",
+      ".effects-area[data-effect=battery]{margin-top:20px}",
+      ".effects-area[data-effect=battery] .battery-header{display:flex;position:relative}",
+      ".effects-area[data-effect=battery] .battery-help-container{left:32px;position:relative;top:-8px}",
+      ".effects-area[data-effect=battery] .battery-level{background-image:url(../../static/media/icon_battery_graph.5140e4be.svg);background-repeat:no-repeat;background-size:cover;height:10px;margin:5px 0}",
+      ".effects-area[data-effect=battery] p{margin:0}",
+      ".effects-area[data-effect=battery] .battery-percent{display:flex;justify-content:space-between}",
+      ".effects-area[data-effect=reactive] #reactiveSlider,.effects-area[data-effect=starlight] #starSlider{display:block}",
+      ".screen{border:1px solid #707070;border-radius:0;height:16px;position:absolute;top:40px;width:24px}",
+      ".screen.selected{border:1.5px solid #44d62c}",
+      ".screen.full{background-color:#fff;margin-left:0}",
+      ".screen.left{margin-left:30px}",
+      ".screen.relative{flex:none;margin-top:5px;position:relative;top:0}",
+      ".screen.full.relative{margin-right:10px}",
+      ".screen.left.relative{margin-left:0}",
+      ".screen.right.relative,.screen.screen.bottom.relative,.screen.top.relative{margin-left:10px}",
+      ".screen.left:before{background-color:#fff;content:\"\";display:inline-block;height:14px;width:4px}",
+      ".screen.top{margin-left:60px}",
+      ".screen.top:before{background-color:#fff;content:\"\";display:inline-block;height:4px;margin-bottom:19px;width:22px}",
+      ".screen.right{margin-left:90px}",
+      ".screen.right:before{background-color:#fff;content:\"\";display:inline-block;height:14px;margin-left:18px;width:4px}",
+      ".screen.bottom{margin-left:120px}",
+      ".screen.bottom:before{background-color:#fff;content:\"\";display:inline-block;height:4px;width:22px}",
+      ".modes-area>div:last-child{margin-bottom:0}",
+      ".modes-area>.warn-wrapper{color:#999;display:flex;font-size:14px;gap:5px;line-height:17px;padding-top:20px}",
+      ".modes-area>.warn-wrapper .info-icon{background-image:url(../../static/media/info-icon.769264c1.svg);background-position:50%;background-repeat:no-repeat;background-size:cover;flex-shrink:0;height:20px;margin:2px;width:20px}",
+      ".modes-area>.warn-wrapper .link{cursor:pointer;text-decoration:underline}",
+      ".twoway-lighting{background-color:#111;border:1px solid #5d5d5d;border-radius:18px;height:36px;padding:5px;transition:border-color .2s,background-color .5s;will-change:border-color,background-color}",
+      ".twoway-lighting:active{background-color:#0000001a}",
+      ".twoway-lighting .lighting-effect{border-radius:13px;height:26px;padding:5px 10px;position:relative}",
+      ".quickeffect-text{color:#ccc;font-size:14px;line-height:17px;margin-bottom:20px;white-space:pre-line}",
+      ".install-chroma-img,.install-sensa-img{background-image:url(../../static/media/install_chroma.85d4bc96.avif);height:180px;position:relative;width:520px}",
+      ".install-chroma-img .btn-install-chroma,.install-sensa-img .btn-install-chroma{background-color:#44d62c;border:1px solid #44d62c;border-radius:2px;bottom:20px;color:#111;font-size:12px;left:50%;padding:4px 15px;position:absolute;transform:translateX(-50%)}",
+      ".install-chroma-img .btn-install-chroma:hover,.install-sensa-img .btn-install-chroma:hover{background-color:#7de36c}",
+      ".install-chroma-img .btn-install-chroma:active,.install-sensa-img .btn-install-chroma:active{background-color:#44d62c;opacity:.8}",
+      ".install-chroma-img .btn-install-chroma[data-disabled=true],.install-sensa-img .btn-install-chroma[data-disabled=true]{background-color:#44d62c;display:flex;pointer-events:none}",
+      ".install-chroma-img .btn-install-chroma[data-disabled=true]:before,.install-sensa-img .btn-install-chroma[data-disabled=true]:before{animation:spin 1s linear infinite;background-image:url('data:image/svg+xml;utf8,%3Csvg fill=\"none\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" stroke=\"%23111111\"%3E%3Cg fill-rule=\"evenodd\" stroke-width=\"2\"%3E%3Ccircle opacity=\".3\" cx=\"12\" cy=\"12\" r=\"11\"%3E%3C/circle%3E%3Cpath d=\"M12 1c2.8 0 5.6 1.1 7.8 3.2 4.3 4.3 4.3 11.3 0 15.6s-11.3 4.3-15.6 0\"%3E%3C/path%3E%3C/g%3E%3C/svg%3E');background-repeat:no-repeat;background-size:contain;content:\"\";display:block;height:16px;margin-right:5px;position:relative;width:16px}",
+      ".chroma-studio-btn,.install-sensa-btn,.launch-sensa-btn{align-items:center;background-color:#111;background-image:url(../../static/media/logo_chromastudio.5b277459.svg);background-position:16px;background-repeat:no-repeat;background-size:30px 30px;border:1px solid #ccc;border-radius:3px;display:flex;height:50px;padding-left:56px;text-transform:uppercase;width:240px}",
+      ".chroma-studio-btn:hover,.install-sensa-btn:hover,.launch-sensa-btn:hover{background-color:#000}",
+      ".chroma-studio-btn:active,.install-sensa-btn:active,.launch-sensa-btn:active{background-color:#111}",
+      ".effect-wrapper .effects-area .stepper{border:1px solid #5d5d5d;box-sizing:border-box;height:27px;margin-top:10px;position:relative;transition:opacity .2s;width:60px;will-change:opacity}",
+      ".effect-wrapper .effects-area .stepper input{background-color:#111;border:none;box-sizing:border-box;color:#ccc;font-size:14px;height:25px;line-height:17px;padding:5px 18px 5px 5px;text-align:left;width:58px}",
+      ".effect-wrapper .effects-area .stepper:hover{border:1px solid #44d62c}",
+      ".effect-wrapper .effects-area[data-effect=breathing]{flex-wrap:wrap;gap:15px;justify-content:space-between;max-width:150px}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150{flex-wrap:wrap}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>div:not(:last-child){flex:0 0 50%!important}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>div:not(:last-child) .dropdown-area{margin-top:15px}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.last-child{margin-top:10px}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.random-color{margin:30px 0 0}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.random-color .random-color{margin:0}",
+      ".effect-wrapper .effects-area[data-effect=breathing] .dropdown-area{margin-right:0}",
+      ".chroma-sync-text .popup{background-color:#000;border:1px solid #5d5d5d;display:flex;flex-direction:column;left:36px;min-width:180px;position:absolute;top:100%;z-index:10}",
+      ".chroma-sync-text .popup div{align-items:center;color:#ccc;display:flex;flex:1 1;font-size:14px;padding:5px 6px}",
+      ".chroma-sync-text .popup div:hover{background-color:hsla(0,0%,100%,.102)}",
+      "#multipleBrightness .multiple-quickeffect .quickeffect .effects-area .wrap-150,#multipleBrightness .multiple-quickeffect .quickeffect .effects-area--wireless .wrap-150{flex-wrap:wrap;width:150px}",
+      ".BridgeLogo_logo__c1O30{background-image:url(../../static/media/hue_scan_logo.f8b7c5c4.svg);background-position:50%;background-repeat:no-repeat;height:80px;width:80px}",
+      ".BridgeLogo_logo__c1O30 .BridgeLogo_loading__DERLa{background-image:url(../../static/media/preloader.ef2d0235.svg);background-position:50%;background-repeat:no-repeat;background-size:44px;height:100%;width:100%}",
+      ".BridgeLogo_logo__c1O30.BridgeLogo_pair__LHLWB{background-image:url(../../static/media/hue_pair_logo.03717074.svg);height:89px;width:93px}",
+      ".Home_wrapper__cLM2H{text-align:center}",
+      ".Home_wrapper__cLM2H .Home_title__SxjOB{color:#44d62c;font-family:RazerF5,sans-serif;font-size:21px;margin-bottom:20px}",
+      ".Home_wrapper__cLM2H .Home_logo__yjKrE{margin:20px auto}",
+      ".Home_wrapper__cLM2H .Home_btnGroup__8wEvQ{align-items:center;display:flex;gap:10px;justify-content:center;margin-top:10px}",
+      ".Home_wrapper__cLM2H .Home_btn__5MMr3{align-items:center;background-color:#44d62c;border:1px solid #0000004d;border-radius:3px;color:#212121;display:flex;font-family:Roboto,sans-serif;font-size:12px;height:27px;justify-content:center;min-width:90px;padding:0 1rem;text-transform:uppercase}",
+      ".Home_wrapper__cLM2H .Home_btn__5MMr3:hover{opacity:.8}",
+      ".Home_wrapper__cLM2H .Home_btn__5MMr3.Home_secondary__MnPRz{background-color:#707070;color:#fff}",
+      ".Home_wrapper__cLM2H .Home_error__UGV1W{color:#c8323c}",
+      ".Home_wrapper__cLM2H .Home_ipInput__6MVTC{border:1px solid #5d5d5d;display:flex;padding:5px 6px}",
+      ".Home_wrapper__cLM2H .Home_ipInput__6MVTC>input{background:#0000;border:0;color:#ccc;font-family:Roboto,sans-serif;font-size:14px;padding:0;text-align:center;width:27px}",
+      ".Home_wrapper__cLM2H .Home_progressWrapper__VQhXO{align-items:center;display:flex;height:20px;justify-content:center;margin:10px auto 0;position:relative;width:300px}",
+      ".Home_wrapper__cLM2H .Home_progressWrapper__VQhXO .Home_progress__VIf8x{background-color:#44d62c4d;border-radius:2.5px;height:5px;overflow:hidden;position:relative;width:100%}",
+      ".Home_wrapper__cLM2H .Home_progressWrapper__VQhXO .Home_progress__VIf8x .Home_child__8waW\\+{animation:Home_move__oy9kP 2s linear infinite;background-color:#44d62c;border-radius:2.5px;height:5px;position:absolute;width:80px}",
+      ".Home_wrapper__cLM2H .Home_progressWrapper__VQhXO .Home_close__cc3go{background-image:url(../../static/media/icon_close_enclosed_1.d8da72c9.svg);height:20px;left:100%;margin-left:10px;position:absolute;width:20px}",
+      ".Home_wrapper__cLM2H .Home_progressWrapper__VQhXO .Home_close__cc3go:hover{background-image:url(../../static/media/icon_close_enclosed_1_hover.0e64013b.svg)}",
+      ".modes-area{clear:both;display:none;padding-top:20px}",
+      ".modes-area.active{display:block}",
+      ".modes-area.invisible{display:block;visibility:hidden}",
+      ".Bridge_z2__ZeKbD{z-index:2}",
+      ".Bridge_wrapper__QGBKS{display:flex;gap:20px}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q{margin:10px;position:relative}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q:hover .Bridge_logo__EEQIp{opacity:.7}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q:hover>:not(.Bridge_logo__EEQIp){display:flex}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q>:not(.Bridge_logo__EEQIp){display:none}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_load__In9Gv,.Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_remove__qmAKf{align-items:center;border:2px solid #ffffff80;border-radius:50%;height:30px;justify-content:center;position:absolute;transform:translate(-50%,-50%);width:30px}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_load__In9Gv:hover,.Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_remove__qmAKf:hover{border-color:#fff}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_load__In9Gv:hover path,.Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_remove__qmAKf:hover path{fill:#fff!important}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_load__In9Gv{left:50%;top:50%}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_load__In9Gv:hover{background:#44d62c}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_remove__qmAKf{left:0;top:100%}",
+      ".Bridge_wrapper__QGBKS .Bridge_logoWrapper__rV25q .Bridge_remove__qmAKf:hover{background:#c8323c}",
+      ".Bridge_wrapper__QGBKS .Bridge_name__wEQxh{margin-top:20px;text-align:center}",
+      ".Bridge_wrapper__QGBKS .dropdown-area{margin:0 0 20px}",
+      ".Bridge_wrapper__QGBKS .Bridge_notConnected__qYezS{background-image:url(../../static/media/icon_wifi_no.64ffc4f3.svg);background-position-y:center;background-repeat:no-repeat;margin-bottom:10px;padding-left:30px}",
+      ".Bridge_wrapper__QGBKS .Bridge_streamBusy__uHVAY{background-image:url(../../static/media/icon_wifi_error.0ee0e294.svg);background-position-y:center;background-repeat:no-repeat;color:#c8323c;margin-bottom:10px;padding-left:30px}",
+      ".Bridge_delAlert__bMYGg{top:180px}",
+      ".Bridge_bridgeControl__seMJL{border-color:#fd8611!important;padding-bottom:15px;padding-top:15px;top:60px;width:300px}",
+      ".Bridge_bridgeControl__seMJL .Bridge_desc__1A1pc{color:#fd8611;font-weight:700;margin-bottom:10px}",
+      ".Bridge_bridgeControl__seMJL .thx-btn{background-color:#44d62c!important;color:#000!important}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM{grid-column-gap:10px;grid-row-gap:10px;column-gap:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,255px));row-gap:10p}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7{display:flex;gap:10px;padding:10px}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7.Brightness_selected__99F3s,.Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7:hover{background-color:#222;outline:1px solid #000}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7 .Brightness_checkbox__xy\\+P9{display:inline-block}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7 .Brightness_item__wLbqy{border:1px solid #0000;border-radius:3px;transition:all .3s ease;width:100%}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7 .Brightness_item__wLbqy .Brightness_name__R7Q1z{align-items:center;display:flex;gap:5px}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_list__irVQM .Brightness_item-wrapper__Jczi7 .Brightness_item__wLbqy .Brightness_name__R7Q1z img{margin-right:10px}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_header__Afamm{display:flex;justify-content:space-between;margin:20px auto 10px}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_header__Afamm .Brightness_left__XEXqK{align-items:center;display:inline-flex;text-transform:lowercase}",
+      ".Brightness_widget__TGXrH .Brightness_container__nGlWG .Brightness_header__Afamm .Brightness_right__uZNxJ{cursor:pointer;margin-left:auto;text-decoration:underline}",
+      ".Brightness_widget__TGXrH .Brightness_bulb__1CVM7{background-image:url(../../static/media/hue_light_logo.c2e4853c.svg);background-size:contain;height:20px;width:20px}",
+      ".Brightness_disabled__MXWE-{opacity:.3;pointer-events:none}",
+      ".Devices_info__1VgJz{margin-bottom:24px}",
+      ".Devices_device__SpYiM{align-items:center;display:flex;gap:10px;margin-top:8px}",
+      ".Devices_device__SpYiM .Devices_bulb__LpXf6{background-size:contain;height:20px;width:20px}"
+    ]
+  },
+  "manifest": {
+    "path": ".ref/devices/769/asset-manifest.json",
+    "sha256": "e386322f0423f071a002675174d7c7f4fefd2baa2c49ef489a1edd89c443927c"
+  },
+  "components": [
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6540541,
+      "end": 6540742,
+      "source": "function Ii(e){let E=e.className,_=void 0===E?\"\":E,a=e.isLoading,t=e.isPair;return(0,q.jsx)(\"div\",{className:\"\".concat(_,\" \").concat(Ti,\" \").concat(t&&si),children:a&&(0,q.jsx)(\"div\",{className:ri})})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"\".concat(_,\" \").concat(Ti,\" \").concat(t&&si)"
+          },
+          "offset": 6540623
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "BridgeLogo_loading__DERLa"
+          },
+          "expressions": {},
+          "offset": 6540708
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6542163,
+      "end": 6542497,
+      "source": "function Gi(){const e=(0,V.useDispatch)();return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_CONTENT\"})}),(0,q.jsx)(\"div\",{className:Ri,children:(0,q.jsx)(\"button\",{className:Ni,onClick:()=>{Mi(e,I_),mi=setTimeout(()=>Ui(e),13e3)},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN\"})})})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6542211
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6542244
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6542270
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_btnGroup__8wEvQ"
+          },
+          "expressions": {},
+          "offset": 6542318
+        },
+        {
+          "component": "\"button\"",
+          "props": {
+            "className": "Home_btn__5MMr3"
+          },
+          "expressions": {
+            "onClick": "()=>{Mi(e,I_),mi=setTimeout(()=>Ui(e),13e3)}"
+          },
+          "offset": 6542357
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN"
+          },
+          "expressions": {},
+          "offset": 6542452
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6542497,
+      "end": 6542870,
+      "source": "function hi(){const e=(0,V.useDispatch)();return(0,y.useEffect)(()=>()=>{mi&&(clearTimeout(mi),mi=null)},[]),(0,q.jsxs)(q.Fragment,{children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCANNING_CONTENT\"})}),(0,q.jsx)(\"div\",{className:Ri,children:(0,q.jsx)(\"button\",{className:pi,onClick:()=>{Mi(e,O_)},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCANNING\"})})})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6542606
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6542639
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCANNING_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6542665
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_btnGroup__8wEvQ"
+          },
+          "expressions": {},
+          "offset": 6542717
+        },
+        {
+          "component": "\"button\"",
+          "props": {},
+          "expressions": {
+            "className": "pi",
+            "onClick": "()=>{Mi(e,O_)}"
+          },
+          "offset": 6542756
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCANNING"
+          },
+          "expressions": {},
+          "offset": 6542821
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6541045,
+      "end": 6542039,
+      "source": "function Pi(e){let E=e.ip,_=e.setIP;const a=(0,y.useRef)(null),t=(0,y.useRef)(null),o=(0,y.useRef)(null),i=(0,y.useRef)(null),n=(e,a)=>{const t=E.slice(),o=parseInt(e.target.value);t[a]=Number.isNaN(o)?\"\":o>255?255:o,_(t)},T=(e,E,_)=>{8===e.keyCode&&0===e.target.value.length?E.current.focus():3===e.target.value.length&&_.current.focus()};return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_MANUAL_IP\"})}),(0,q.jsxs)(\"div\",{className:di,children:[(0,q.jsx)(\"input\",{type:\"text\",pattern:\"[0-9]*\",ref:a,maxLength:\"3\",onChange:e=>n(e,0),onKeyUp:e=>T(e,a,t),value:E[0]}),\".\",(0,q.jsx)(\"input\",{type:\"text\",pattern:\"[0-9]*\",maxLength:\"3\",onChange:e=>n(e,1),ref:t,onKeyUp:e=>T(e,a,o),value:E[1]}),\".\",(0,q.jsx)(\"input\",{type:\"text\",pattern:\"[0-9]*\",maxLength:\"3\",onChange:e=>n(e,2),ref:o,onKeyUp:e=>T(e,t,i),value:E[2]}),\".\",(0,q.jsx)(\"input\",{type:\"text\",pattern:\"[0-9]*\",maxLength:\"3\",onChange:e=>n(e,3),onKeyUp:e=>T(e,o,i),ref:i,value:E[3]})]})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6541391
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6541424
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_MANUAL_IP"
+          },
+          "expressions": {},
+          "offset": 6541450
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_ipInput__6MVTC"
+          },
+          "expressions": {},
+          "offset": 6541500
+        },
+        {
+          "component": "\"input\"",
+          "props": {
+            "type": "text",
+            "pattern": "[0-9]*",
+            "maxLength": "3"
+          },
+          "expressions": {
+            "ref": "a",
+            "onChange": "e=>n(e,0)",
+            "onKeyUp": "e=>T(e,a,t)",
+            "value": "E[0]"
+          },
+          "offset": 6541541
+        },
+        {
+          "component": "\"input\"",
+          "props": {
+            "type": "text",
+            "pattern": "[0-9]*",
+            "maxLength": "3"
+          },
+          "expressions": {
+            "onChange": "e=>n(e,1)",
+            "ref": "t",
+            "onKeyUp": "e=>T(e,a,o)",
+            "value": "E[1]"
+          },
+          "offset": 6541665
+        },
+        {
+          "component": "\"input\"",
+          "props": {
+            "type": "text",
+            "pattern": "[0-9]*",
+            "maxLength": "3"
+          },
+          "expressions": {
+            "onChange": "e=>n(e,2)",
+            "ref": "o",
+            "onKeyUp": "e=>T(e,t,i)",
+            "value": "E[2]"
+          },
+          "offset": 6541789
+        },
+        {
+          "component": "\"input\"",
+          "props": {
+            "type": "text",
+            "pattern": "[0-9]*",
+            "maxLength": "3"
+          },
+          "expressions": {
+            "onChange": "e=>n(e,3)",
+            "onKeyUp": "e=>T(e,o,i)",
+            "ref": "i",
+            "value": "E[3]"
+          },
+          "offset": 6541913
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6542870,
+      "end": 6543657,
+      "source": "function Hi(){const e=(0,V.useDispatch)(),E=(0,y.useState)([\"\",\"\",\"\",\"\"]),_=(0,W.A)(E,2),a=_[0],t=_[1];return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsxs)(\"div\",{className:Ci,children:[(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_AGAIN_CONTENT\"}),(0,q.jsx)(\"br\",{}),(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT\"})]}),(0,q.jsx)(\"div\",{className:Ri,children:(0,q.jsx)(\"button\",{className:Ni,onClick:()=>{Mi(e,I_),mi=setTimeout(()=>Ui(e),13e3)},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_AGAIN\"})})}),(0,q.jsx)(\"div\",{style:{margin:\"10px 0\"},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_AGAIN_OR\"})}),(0,q.jsxs)(\"div\",{className:Ri,children:[(0,q.jsx)(Pi,{ip:a,setIP:t}),(0,q.jsx)(\"button\",{className:pi,onClick:()=>{Mi(e,S_,a)},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_SCAN_SEARCH\"})})]})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6542979
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_error__UGV1W"
+          },
+          "expressions": {},
+          "offset": 6543012
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_AGAIN_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6543053
+        },
+        {
+          "component": "\"br\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6543105
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_AGAIN_FOLLOW_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6543124
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_btnGroup__8wEvQ"
+          },
+          "expressions": {},
+          "offset": 6543186
+        },
+        {
+          "component": "\"button\"",
+          "props": {
+            "className": "Home_btn__5MMr3"
+          },
+          "expressions": {
+            "onClick": "()=>{Mi(e,I_),mi=setTimeout(()=>Ui(e),13e3)}"
+          },
+          "offset": 6543225
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_AGAIN"
+          },
+          "expressions": {},
+          "offset": 6543320
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "style": {
+              "margin": "10px 0"
+            }
+          },
+          "expressions": {},
+          "offset": 6543368
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_AGAIN_OR"
+          },
+          "expressions": {},
+          "offset": 6543418
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_btnGroup__8wEvQ"
+          },
+          "expressions": {},
+          "offset": 6543467
+        },
+        {
+          "component": "Pi",
+          "props": {},
+          "expressions": {
+            "ip": "a",
+            "setIP": "t"
+          },
+          "offset": 6543508
+        },
+        {
+          "component": "\"button\"",
+          "props": {},
+          "expressions": {
+            "className": "pi",
+            "onClick": "()=>{Mi(e,S_,a)}"
+          },
+          "offset": 6543537
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_SCAN_SEARCH"
+          },
+          "expressions": {},
+          "offset": 6543604
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6543657,
+      "end": 6543961,
+      "source": "function gi(){const e=(0,V.useDispatch)();return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ni,{text:\"TEXT_CASE_PAIR_CONTENT\"})}),(0,q.jsx)(\"div\",{className:Ri,children:(0,q.jsx)(\"button\",{className:Ni,onClick:()=>{Mi(e,l_)},children:(0,q.jsx)(ni,{text:\"TEXT_CASE_PAIR\"})})})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6543705
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6543738
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_PAIR_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6543764
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_btnGroup__8wEvQ"
+          },
+          "expressions": {},
+          "offset": 6543812
+        },
+        {
+          "component": "\"button\"",
+          "props": {
+            "className": "Home_btn__5MMr3"
+          },
+          "expressions": {
+            "onClick": "()=>{Mi(e,l_)}"
+          },
+          "offset": 6543851
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_PAIR"
+          },
+          "expressions": {},
+          "offset": 6543916
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6543961,
+      "end": 6544294,
+      "source": "function fi(){const e=(0,V.useDispatch)();return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsx)(\"div\",{children:(0,q.jsx)(ni,{text:\"TEXT_CASE_PAIRING_CONTENT\"})}),(0,q.jsxs)(\"div\",{className:Di,children:[(0,q.jsx)(\"div\",{className:ci,children:(0,q.jsx)(\"div\",{className:ui})}),(0,q.jsx)(\"div\",{className:Li,onClick:()=>{Mi(e,A_)}})]})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6544009
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6544042
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_PAIRING_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6544068
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_progressWrapper__VQhXO"
+          },
+          "expressions": {},
+          "offset": 6544119
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_progress__VIf8x"
+          },
+          "expressions": {},
+          "offset": 6544160
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_child__8waW+"
+          },
+          "expressions": {},
+          "offset": 6544199
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_close__cc3go"
+          },
+          "expressions": {
+            "onClick": "()=>{Mi(e,A_)}"
+          },
+          "offset": 6544233
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6544294,
+      "end": 6544826,
+      "source": "function vi(e){let E=e.disabled;return(0,q.jsxs)(q.Fragment,{children:[(0,q.jsxs)(\"div\",{className:Ci,children:[(0,q.jsx)(ni,{text:\"TEXT_CASE_CONNECT_FAIL_CONTENT\"}),(0,q.jsx)(\"br\",{}),(0,q.jsx)(ni,{text:\"TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT\"})]}),(0,q.jsxs)(\"div\",{className:\"\".concat(Ri,\" \").concat(E?\"disabled\":\"\"),children:[(0,q.jsx)(\"button\",{className:pi,children:(0,q.jsx)(ni,{text:\"TEXT_CASE_CONNECT_FAIL_RETRY\"})}),(0,q.jsx)(\"button\",{className:pi,children:(0,q.jsx)(ni,{text:\"TEXT_CASE_CONNECT_FAIL_START_OVER\"})})]})]})}",
+      "jsx": [
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6544332
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_error__UGV1W"
+          },
+          "expressions": {},
+          "offset": 6544365
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_CONNECT_FAIL_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6544406
+        },
+        {
+          "component": "\"br\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6544460
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_CONNECT_FAIL_FOLLOW_CONTENT"
+          },
+          "expressions": {},
+          "offset": 6544479
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"\".concat(Ri,\" \").concat(E?\"disabled\":\"\")"
+          },
+          "offset": 6544543
+        },
+        {
+          "component": "\"button\"",
+          "props": {},
+          "expressions": {
+            "className": "pi"
+          },
+          "offset": 6544623
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_CONNECT_FAIL_RETRY"
+          },
+          "expressions": {},
+          "offset": 6544665
+        },
+        {
+          "component": "\"button\"",
+          "props": {},
+          "expressions": {
+            "className": "pi"
+          },
+          "offset": 6544719
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_CASE_CONNECT_FAIL_START_OVER"
+          },
+          "expressions": {},
+          "offset": 6544761
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6544826,
+      "end": 6545111,
+      "source": "function Bi(e){switch(e.status){case s_:return(0,q.jsx)(Gi,{});case I_:case S_:return(0,q.jsx)(hi,{});case R_:case O_:case A_:return(0,q.jsx)(Hi,{});case N_:return(0,q.jsx)(gi,{});case C_:return(0,q.jsx)(fi,{});case d_:return(0,q.jsx)(vi,{});case D_:return(0,q.jsx)(vi,{disabled:!0})}}",
+      "jsx": [
+        {
+          "component": "Gi",
+          "props": {},
+          "expressions": {},
+          "offset": 6544872
+        },
+        {
+          "component": "hi",
+          "props": {},
+          "expressions": {},
+          "offset": 6544911
+        },
+        {
+          "component": "Hi",
+          "props": {},
+          "expressions": {},
+          "offset": 6544958
+        },
+        {
+          "component": "gi",
+          "props": {},
+          "expressions": {},
+          "offset": 6544989
+        },
+        {
+          "component": "fi",
+          "props": {},
+          "expressions": {},
+          "offset": 6545020
+        },
+        {
+          "component": "vi",
+          "props": {},
+          "expressions": {},
+          "offset": 6545051
+        },
+        {
+          "component": "vi",
+          "props": {
+            "disabled": true
+          },
+          "expressions": {},
+          "offset": 6545082
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6545111,
+      "end": 6545643,
+      "source": "function Fi(){const e=(0,V.useSelector)(e=>e.integrationReducer.status);return(0,q.jsx)(Zo,{children:(0,q.jsx)(Jo,{title:\"\",children:(0,q.jsxs)(\"div\",{className:Oi,children:[(0,q.jsx)(\"div\",{className:Ai,children:(0,q.jsx)(ni,{text:\"TEXT_HUE_CHROMA_INTEGRATION\"})}),(0,q.jsxs)(\"div\",{children:[(0,q.jsx)(ni,{text:\"TEXT_INTEGRATION_CONTENT_1\"}),(0,q.jsx)(\"br\",{}),(0,q.jsx)(ni,{text:\"TEXT_INTEGRATION_CONTENT_2\"})]}),(0,q.jsx)(Ii,{className:Si,isLoading:e===I_||e===S_||e===D_,isPair:e===C_||e===d_}),(0,q.jsx)(Bi,{status:e})]})})})}",
+      "jsx": [
+        {
+          "component": "Zo",
+          "props": {},
+          "expressions": {},
+          "offset": 6545189
+        },
+        {
+          "component": "Jo",
+          "props": {
+            "title": ""
+          },
+          "expressions": {},
+          "offset": 6545212
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_wrapper__cLM2H"
+          },
+          "expressions": {},
+          "offset": 6545244
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Home_title__SxjOB"
+          },
+          "expressions": {},
+          "offset": 6545285
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_HUE_CHROMA_INTEGRATION"
+          },
+          "expressions": {},
+          "offset": 6545324
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6545377
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_INTEGRATION_CONTENT_1"
+          },
+          "expressions": {},
+          "offset": 6545405
+        },
+        {
+          "component": "\"br\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6545455
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "TEXT_INTEGRATION_CONTENT_2"
+          },
+          "expressions": {},
+          "offset": 6545474
+        },
+        {
+          "component": "Ii",
+          "props": {
+            "className": "Home_logo__yjKrE"
+          },
+          "expressions": {
+            "isLoading": "e===I_||e===S_||e===D_",
+            "isPair": "e===C_||e===d_"
+          },
+          "offset": 6545527
+        },
+        {
+          "component": "Bi",
+          "props": {},
+          "expressions": {
+            "status": "e"
+          },
+          "offset": 6545611
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6685873,
+      "end": 6686651,
+      "source": "e=>{let E=e.isLoading;const _=(0,y.useState)(!1),a=(0,W.A)(_,2),t=a[0],o=a[1],i=(0,y.useRef)(null),n=(0,y.useRef)(null);(0,y.useEffect)(()=>{n.current=t},[t]);(0,y.useEffect)(()=>((e=>{!1===k.A.get(u_)?o(!1):e||o(!0)})(E),document.addEventListener(\"click\",T),()=>{document.removeEventListener(\"click\",T)}),[E]),(0,y.useEffect)(()=>{const e=document.querySelector(\".HUE_TUTORIAL_INCLUDED\");if(e)return e.addEventListener(\"click\",T),()=>{e.removeEventListener(\"click\",T)}},[]);const T=()=>{n.current&&i.current&&(o(!1),k.A.set(u_,!1))};return(0,q.jsxs)(\"div\",{\"data-test-id\":\"hue-tutorial\",className:\"\".concat(DA,\" \").concat(t?cA:\"\"),ref:i,children:[(0,q.jsx)(\"img\",{className:uA,src:dA,alt:\"circle dot\"}),(0,q.jsx)(\"div\",{className:LA,children:oi(\"ADVANCED_EFFECT_DETAILS\")})]})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {
+            "data-test-id": "hue-tutorial"
+          },
+          "expressions": {
+            "className": "\"\".concat(DA,\" \").concat(t?cA:\"\")",
+            "ref": "i"
+          },
+          "offset": 6686413
+        },
+        {
+          "component": "\"img\"",
+          "props": {
+            "className": "Tutorial_dot__yrvHG",
+            "alt": "circle dot"
+          },
+          "expressions": {
+            "src": "dA"
+          },
+          "offset": 6686521
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Tutorial_popup__Hzxa7"
+          },
+          "expressions": {},
+          "offset": 6686577
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6545643,
+      "end": 6545810,
+      "source": "class Vi extends y.Component{render(){const e=this.props,E=e.children,_=e.direction;var a=\"widget-col col-\".concat(_);return(0,q.jsx)(\"div\",{className:a,children:E})}}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "a"
+          },
+          "offset": 6545767
+        }
+      ],
+      "render": [
+        {
+          "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+          "offset": 6545678,
+          "end": 6545809,
+          "source": "(){const e=this.props,E=e.children,_=e.direction;var a=\"widget-col col-\".concat(_);return(0,q.jsx)(\"div\",{className:a,children:E})}"
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6677381,
+      "end": 6677972,
+      "source": "function FO(e){let E=e.title,_=e.tips,a=e.toggleSwitch,t=e.active,o=e.className,i=void 0===o?\"\":o,n=e.children;return(0,q.jsxs)(\"div\",{className:\"widget \".concat(i),children:[(0,q.jsx)(\"div\",{className:\"titleRow\",children:(0,q.jsxs)(\"div\",{className:\"title\",children:[\"string\"===typeof E?(0,q.jsx)(ni,{text:E}):E,a&&(0,q.jsx)(\"div\",{className:t?\"switch on\":\"switch\",onClick:a,children:(0,q.jsx)(\"div\",{className:\"handle\"})})]})}),n,(0,q.jsxs)(\"div\",{children:[(0,q.jsx)(\"div\",{className:\"help\"}),(0,q.jsx)(\"div\",{className:\"tip\",children:\"string\"===typeof _?(0,q.jsx)(ni,{text:_}):_})]})]})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"widget \".concat(i)"
+          },
+          "offset": 6677498
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "titleRow"
+          },
+          "expressions": {},
+          "offset": 6677556
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "title"
+          },
+          "expressions": {},
+          "offset": 6677603
+        },
+        {
+          "component": "ni",
+          "props": {},
+          "expressions": {
+            "text": "E"
+          },
+          "offset": 6677669
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "t?\"switch on\":\"switch\"",
+            "onClick": "a"
+          },
+          "offset": 6677697
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "handle"
+          },
+          "expressions": {},
+          "offset": 6677766
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6677813
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "help"
+          },
+          "expressions": {},
+          "offset": 6677841
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "tip"
+          },
+          "expressions": {},
+          "offset": 6677877
+        },
+        {
+          "component": "ni",
+          "props": {},
+          "expressions": {
+            "text": "_"
+          },
+          "offset": 6677939
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6678234,
+      "end": 6678589,
+      "source": "function WO(e){let E=e.className,_=void 0===E?\"\":E,a=e.confirm,t=e.close,o=e.button,i=e.children;const n=(0,y.useRef)(null);return VO(n,()=>t()),(0,q.jsxs)(\"div\",{ref:n,className:\"profile-del show \".concat(_),children:[(0,q.jsx)(\"div\",{className:\"body-text t-center\",children:i}),(0,q.jsx)(\"div\",{className:\"thx-btn\",onClick:()=>{a(),t()},children:o})]})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "ref": "n",
+            "className": "\"profile-del show \".concat(_)"
+          },
+          "offset": 6678379
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "body-text t-center"
+          },
+          "expressions": {},
+          "offset": 6678453
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "thx-btn"
+          },
+          "expressions": {
+            "onClick": "()=>{a(),t()}"
+          },
+          "offset": 6678514
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6678920,
+      "end": 6681033,
+      "source": "function QO(){const e=(0,V.useDispatch)(),E=(0,V.useSelector)(e=>e.hueLightingReducer.bridgeEnabled),_=(0,V.useSelector)(e=>e.hueLightingReducer.isLoading),a=(0,V.useSelector)(e=>e.hueLightingReducer.isControl),t=(0,V.useSelector)(e=>e.hueLightingReducer.groups),o=(0,V.useSelector)(e=>e.hueLightingReducer.activeGroup),i=(0,y.useState)(!1),n=(0,W.A)(i,2),T=n[0],r=n[1],s=(0,y.useState)(!1),I=(0,W.A)(s,2),O=I[0],A=I[1],S=()=>{BO(!1)};return(0,y.useEffect)(()=>(H.A.on(\"systemsuspend\",S),()=>{H.A.on(\"systemsuspend\",S)}),[]),(0,q.jsxs)(FO,{title:\"BRIDGE\",tips:\"BRIDGE_TIP\",toggleSwitch:()=>{E?e(BO(!1)):r(!0)},active:E,className:bO,children:[T&&(0,q.jsxs)(WO,{className:jO,confirm:()=>e(BO(!0)),close:()=>r(!1),button:(0,q.jsx)(ni,{text:\"ENABLE\"}),children:[(0,q.jsx)(\"div\",{className:qO,children:(0,q.jsx)(ni,{text:\"BRIDGE_CONTROL\"})}),(0,q.jsx)(ni,{text:\"BRIDGE_CONTROL_DES\"})]}),(0,q.jsxs)(\"div\",{className:yO,children:[(0,q.jsxs)(\"div\",{children:[(0,q.jsxs)(\"div\",{className:YO,children:[(0,q.jsx)(Ii,{className:zO,isLoading:_}),!_&&!O&&(0,q.jsxs)(q.Fragment,{children:[E&&(0,q.jsx)(\"div\",{className:wO,onClick:E=>{E.stopPropagation(),e({type:f_})},children:(0,q.jsx)(vO,{})}),(0,q.jsx)(\"div\",{className:KO,onClick:e=>{e.stopPropagation(),A(!0)},children:(0,q.jsx)(UO,{})})]})]}),(0,q.jsx)(\"div\",{className:kO,children:c_}),!_&&O&&(0,q.jsx)(WO,{className:ZO,confirm:()=>{var e;null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_REMOVE_BRIDGE\",timerTick:window.currentTimerTick||Date.now()})},close:()=>A(!1),button:(0,q.jsx)(ve.A,{text:w.SJi}),children:(0,q.jsx)(ni,{text:\"DELETE_BRIDGE\"})})]}),E?(0,q.jsxs)(\"div\",{children:[(0,q.jsx)(Cn,{dataSet:t,selectOption:E=>{return e((_=t[E].id,{type:v_,payload:_}));var _},value:t.findIndex(e=>e.id===o)}),(0,q.jsx)(ni,{text:\"BRIDGE_DESC\"})]}):a?(0,q.jsxs)(\"div\",{children:[(0,q.jsx)(\"div\",{className:XO,children:(0,q.jsx)(ve.A,{text:w._l5})}),(0,q.jsx)(ni,{text:\"BRIDGE_NOT_CONNECTED\"})]}):(0,q.jsxs)(\"div\",{children:[(0,q.jsx)(\"div\",{className:xO,children:(0,q.jsx)(ni,{text:\"STREAM_BUSY\"})}),(0,q.jsx)(ni,{text:\"STREAM_BUSY_DESC\"})]})]})]})}",
+      "jsx": [
+        {
+          "component": "FO",
+          "props": {
+            "title": "BRIDGE",
+            "tips": "BRIDGE_TIP",
+            "className": "Bridge_z2__ZeKbD"
+          },
+          "expressions": {
+            "toggleSwitch": "()=>{E?e(BO(!1)):r(!0)}",
+            "active": "E"
+          },
+          "offset": 6679445
+        },
+        {
+          "component": "WO",
+          "props": {
+            "className": "Bridge_bridgeControl__seMJL"
+          },
+          "expressions": {
+            "confirm": "()=>e(BO(!0))",
+            "close": "()=>r(!1)",
+            "button": "(0,q.jsx)(ni,{text:\"ENABLE\"})"
+          },
+          "offset": 6679565
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "ENABLE"
+          },
+          "expressions": {},
+          "offset": 6679638
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_desc__1A1pc"
+          },
+          "expressions": {},
+          "offset": 6679678
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "BRIDGE_CONTROL"
+          },
+          "expressions": {},
+          "offset": 6679717
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "BRIDGE_CONTROL_DES"
+          },
+          "expressions": {},
+          "offset": 6679757
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_wrapper__QGBKS"
+          },
+          "expressions": {},
+          "offset": 6679802
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6679843
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_logoWrapper__rV25q"
+          },
+          "expressions": {},
+          "offset": 6679871
+        },
+        {
+          "component": "Ii",
+          "props": {
+            "className": "Bridge_logo__EEQIp"
+          },
+          "expressions": {
+            "isLoading": "_"
+          },
+          "offset": 6679912
+        },
+        {
+          "component": "q.Fragment",
+          "props": {},
+          "expressions": {},
+          "offset": 6679961
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_load__In9Gv"
+          },
+          "expressions": {
+            "onClick": "E=>{E.stopPropagation(),e({type:f_})}"
+          },
+          "offset": 6679997
+        },
+        {
+          "component": "vO",
+          "props": {},
+          "expressions": {},
+          "offset": 6680082
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_remove__qmAKf"
+          },
+          "expressions": {
+            "onClick": "e=>{e.stopPropagation(),A(!0)}"
+          },
+          "offset": 6680101
+        },
+        {
+          "component": "UO",
+          "props": {},
+          "expressions": {},
+          "offset": 6680179
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_name__wEQxh"
+          },
+          "expressions": {},
+          "offset": 6680204
+        },
+        {
+          "component": "WO",
+          "props": {
+            "className": "Bridge_delAlert__bMYGg"
+          },
+          "expressions": {
+            "confirm": "()=>{var e;null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_REMOVE_BRIDGE\",timerTick:window.currentTimerTick||Date.now()})}",
+            "close": "()=>A(!1)",
+            "button": "(0,q.jsx)(ve.A,{text:w.SJi})"
+          },
+          "offset": 6680255
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "DELETE"
+          },
+          "expressions": {},
+          "offset": 6680462
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "DELETE_BRIDGE"
+          },
+          "expressions": {},
+          "offset": 6680500
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6680544
+        },
+        {
+          "component": "Cn",
+          "props": {},
+          "expressions": {
+            "dataSet": "t",
+            "selectOption": "E=>{return e((_=t[E].id,{type:v_,payload:_}));var _}",
+            "value": "t.findIndex(e=>e.id===o)"
+          },
+          "offset": 6680572
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "BRIDGE_DESC"
+          },
+          "expressions": {},
+          "offset": 6680695
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6680735
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_notConnected__qYezS"
+          },
+          "expressions": {},
+          "offset": 6680763
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "NOT_CONNECTED"
+          },
+          "expressions": {},
+          "offset": 6680802
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "BRIDGE_NOT_CONNECTED"
+          },
+          "expressions": {},
+          "offset": 6680833
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6680880
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Bridge_streamBusy__uHVAY"
+          },
+          "expressions": {},
+          "offset": 6680908
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "STREAM_BUSY"
+          },
+          "expressions": {},
+          "offset": 6680947
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "STREAM_BUSY_DESC"
+          },
+          "expressions": {},
+          "offset": 6680984
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6681549,
+      "end": 6681849,
+      "source": "e=>{let E=e.svgName,_=void 0===E?\"default\":E;const a=(L_.find(e=>e.name===_)||{}).d,t=L_.find(e=>\"default\"===e.name)||{};return(0,q.jsx)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",viewBox:\"0 0 16 28\",name:_,style:AA,children:(0,q.jsx)(\"path\",{fill:\"#AFAFAF\",d:a||(null===t||void 0===t?void 0:t.d)})})}",
+      "jsx": [
+        {
+          "component": "\"svg\"",
+          "props": {
+            "xmlns": "http://www.w3.org/2000/svg",
+            "viewBox": "0 0 16 28",
+            "style": {
+              "width": 20,
+              "height": 20,
+              "backgroundSize": "contain"
+            }
+          },
+          "expressions": {
+            "name": "_"
+          },
+          "offset": 6681676
+        },
+        {
+          "component": "\"path\"",
+          "props": {
+            "fill": "#AFAFAF"
+          },
+          "expressions": {
+            "d": "a||(null===t||void 0===t?void 0:t.d)"
+          },
+          "offset": 6681773
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6682735,
+      "end": 6683742,
+      "source": "e=>{let E=e.item,_=e.selectedDevices;const a=_.includes(E.deviceId),t=(0,V.useDispatch)(),o=(0,V.useSelector)(e=>e.portsReducer.ports),i=(0,V.useSelector)(e=>e.hueLightingReducer.bridgeEnabled),n=(0,V.useSelector)(e=>e.hueLightingReducer.isLoading),T=E.rawData,r=T.physicalName,s=T.physicalArcheType,I=E.regionId,O=E.isOn,A=(0,y.useMemo)(()=>{var e,E;const _=o.find(e=>e.id===Number(I));return null!==(e=null===_||void 0===_||null===(E=_.brightness)||void 0===E?void 0:E.value)&&void 0!==e?e:50},[o]);return(0,q.jsx)(\"div\",{className:\"\".concat(_A,\" \").concat(a&&aA),children:(0,q.jsxs)(\"div\",{className:oA,children:[(0,q.jsxs)(\"div\",{className:iA,children:[(0,q.jsx)(SA,{svgName:s}),(0,q.jsx)(\"span\",{children:r})]}),(0,q.jsx)(\"div\",{style:{marginTop:5},children:(0,q.jsx)(OT,{min:0,max:100,step:1,value:A,active:O&&i&&!n,changeValue:(e=>E=>{_.length>1&&(e=>{_.forEach(E=>{JO({id:E,value:e})(t)})})(E);const a=parseInt(e);JO({id:a,value:E})(t)})(I),minTag:w.KFn,maxTag:w.zrT,extraClass:i&&!n?\"\":sA})})]})})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"\".concat(_A,\" \").concat(a&&aA)"
+          },
+          "offset": 6683242
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_item__wLbqy"
+          },
+          "expressions": {},
+          "offset": 6683310
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_name__R7Q1z"
+          },
+          "expressions": {},
+          "offset": 6683351
+        },
+        {
+          "component": "SA",
+          "props": {},
+          "expressions": {
+            "svgName": "s"
+          },
+          "offset": 6683392
+        },
+        {
+          "component": "\"span\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6683418
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "style": {
+              "marginTop": 5
+            }
+          },
+          "expressions": {},
+          "offset": 6683452
+        },
+        {
+          "component": "OT",
+          "props": {
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "minTag": "OFF",
+            "maxTag": "BRIGHT"
+          },
+          "expressions": {
+            "value": "A",
+            "active": "O&&i&&!n",
+            "changeValue": "(e=>E=>{_.length>1&&(e=>{_.forEach(E=>{JO({id:E,value:e})(t)})})(E);const a=parseInt(e);JO({id:a,value:E})(t)})(I)",
+            "extraClass": "i&&!n?\"\":sA"
+          },
+          "offset": 6683498
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6683746,
+      "end": 6683963,
+      "source": "e=>{let E=e.devices,_=e.handleSelectDevice,a=e.selectedDevices;return E&&E.length?(0,q.jsx)(\"div\",{className:EA,children:E.map((e,E)=>(0,q.jsx)(NA,{item:e,handleSelectDevice:_,selectedDevices:a},E.toString()))}):null}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_list__irVQM"
+          },
+          "expressions": {},
+          "offset": 6683828
+        },
+        {
+          "component": "NA",
+          "props": {},
+          "expressions": {
+            "item": "e",
+            "handleSelectDevice": "_",
+            "selectedDevices": "a"
+          },
+          "offset": 6683880
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6683964,
+      "end": 6685703,
+      "source": "function CA(){const e=(0,y.useState)({selectedDevices:[]}),E=(0,W.A)(e,2),_=E[0],a=E[1],t=(0,V.useDispatch)(),o=(0,V.useSelector)(e=>e.hueLightingReducer.bridgeEnabled),i=(0,V.useSelector)(e=>e.hueLightingReducer.isLoading),n=(0,V.useSelector)(e=>e.brightnessReducer.brightness),T=(0,V.useSelector)(e=>e.hueLightingReducer.devices),r=(0,y.useCallback)(e=>{_.selectedDevices.includes(e)?a(E=>(0,b.A)((0,b.A)({},E),{},{selectedDevices:[...E.selectedDevices].filter(E=>E!==e)})):a(E=>(0,b.A)((0,b.A)({},E),{},{selectedDevices:[...E.selectedDevices,e]}))},[_.selectedDevices]),s=void 0===(null===n||void 0===n?void 0:n.isGlobalBrightness)||!0===(null===n||void 0===n?void 0:n.isGlobalBrightness),I=e=>{(e=>E=>{void 0!==e&&E({type:X.tTR,payload:e})})((0,b.A)((0,b.A)({},n),e))(t)};return(0,q.jsx)(FO,{title:(0,q.jsx)(ve.A,{text:w.a1g}),tips:(0,q.jsx)(ve.A,{text:w.WpG}),toggleSwitch:()=>I({isEnabled:!n.isEnabled}),active:n.isEnabled,className:\"\".concat($O,\" \").concat(o&&!i?\"\":sA),children:(0,q.jsxs)(\"div\",{className:\"\".concat(eA,\" \").concat(o&&!i&&n.isEnabled?\"\":\"\".concat(sA)),children:[(0,q.jsx)(Bn,{extraClass:tA,id:\"globalBrightness\",name:w.MJD,onCheck:()=>I({isGlobalBrightness:!n.isGlobalBrightness}),active:s}),!s&&(0,q.jsxs)(\"div\",{className:nA,children:[(0,q.jsxs)(\"div\",{className:TA,children:[T.filter(e=>!0===e.isOn).length,\"\\xa0\",(0,q.jsx)(ve.A,{text:w._YG}),\";\\xa0\",T.filter(e=>!0!==e.isOn).length,\"\\xa0\",(0,q.jsx)(ve.A,{text:w.Drs})]}),(0,q.jsx)(\"div\",{className:rA})]}),s?(0,q.jsx)(OT,{min:0,max:100,step:1,minTag:w.KFn,maxTag:w.zrT,value:n.value,active:n.isEnabled&&o&&!i,changeValue:e=>I({value:e,isEnabled:!0}),extraClass:o&&!i?\"\":sA}):(0,q.jsx)(lA,{devices:T,handleSelectDevice:r,selectedDevices:_.selectedDevices})]})})}",
+      "jsx": [
+        {
+          "component": "FO",
+          "props": {},
+          "expressions": {
+            "title": "(0,q.jsx)(ve.A,{text:w.a1g})",
+            "tips": "(0,q.jsx)(ve.A,{text:w.WpG})",
+            "toggleSwitch": "()=>I({isEnabled:!n.isEnabled})",
+            "active": "n.isEnabled",
+            "className": "\"\".concat($O,\" \").concat(o&&!i?\"\":sA)"
+          },
+          "offset": 6684746
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "BRIGHTNESS"
+          },
+          "expressions": {},
+          "offset": 6684766
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "BRIGHTNESS_TOOLTIP"
+          },
+          "expressions": {},
+          "offset": 6684800
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"\".concat(eA,\" \").concat(o&&!i&&n.isEnabled?\"\":\"\".concat(sA))"
+          },
+          "offset": 6684950
+        },
+        {
+          "component": "Bn",
+          "props": {
+            "extraClass": "Brightness_checkbox__xy+P9",
+            "id": "globalBrightness",
+            "name": "GLOBAL_BRIGHTNESS"
+          },
+          "expressions": {
+            "onCheck": "()=>I({isGlobalBrightness:!n.isGlobalBrightness})",
+            "active": "s"
+          },
+          "offset": 6685050
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_header__Afamm"
+          },
+          "expressions": {},
+          "offset": 6685184
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_left__XEXqK"
+          },
+          "expressions": {},
+          "offset": 6685225
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "CONNECTED"
+          },
+          "expressions": {},
+          "offset": 6685305
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "UNREACHABLE"
+          },
+          "expressions": {},
+          "offset": 6685381
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Brightness_right__uZNxJ"
+          },
+          "expressions": {},
+          "offset": 6685413
+        },
+        {
+          "component": "OT",
+          "props": {
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "minTag": "OFF",
+            "maxTag": "BRIGHT"
+          },
+          "expressions": {
+            "value": "n.value",
+            "active": "n.isEnabled&&o&&!i",
+            "changeValue": "e=>I({value:e,isEnabled:!0})",
+            "extraClass": "o&&!i?\"\":sA"
+          },
+          "offset": 6685450
+        },
+        {
+          "component": "lA",
+          "props": {},
+          "expressions": {
+            "devices": "T",
+            "handleSelectDevice": "r",
+            "selectedDevices": "_.selectedDevices"
+          },
+          "offset": 6685617
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6681850,
+      "end": 6682726,
+      "source": "function RA(){const e=(0,V.useSelector)(e=>e.hueLightingReducer.bridgeEnabled),E=(0,V.useSelector)(e=>e.hueLightingReducer.isLoading),_=(0,V.useSelector)(e=>e.hueLightingReducer.devices);return(0,q.jsxs)(FO,{title:(0,q.jsx)(ve.A,{text:w.db_}),tips:\"DEVICES_TIP\",className:e&&!E?\"\":\"disabled\",children:[(0,q.jsxs)(\"div\",{className:IA,children:[_.filter(e=>!0===e.isOn).length,\"\\xa0\",(0,q.jsx)(ni,{text:\"CONNECTED\"}),\";\\xa0\",new Set(_.map(e=>e.name)).size,\"\\xa0\",(0,q.jsx)(ni,{text:\"CHANNELS\"}),\";\\xa0\",_.filter(e=>!0!==e.isOn).length,\"\\xa0\",(0,q.jsx)(ni,{text:\"UNREACHABLE\"})]}),(0,q.jsx)(\"div\",{children:_.map(e=>{var E;return(0,q.jsxs)(\"div\",{className:OA,children:[(0,q.jsx)(SA,{svgName:null===(E=e.rawData)||void 0===E?void 0:E.physicalArcheType}),(0,q.jsx)(\"div\",{className:e.isOn?\"\":\"disabled\",children:e.productName}),(0,q.jsx)(\"div\",{children:e.name})]},e.name)})})]})}",
+      "jsx": [
+        {
+          "component": "FO",
+          "props": {
+            "tips": "DEVICES_TIP"
+          },
+          "expressions": {
+            "title": "(0,q.jsx)(ve.A,{text:w.db_})",
+            "className": "e&&!E?\"\":\"disabled\""
+          },
+          "offset": 6682043
+        },
+        {
+          "component": "ve.A",
+          "props": {
+            "text": "DEVICE"
+          },
+          "expressions": {},
+          "offset": 6682064
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Devices_info__1VgJz"
+          },
+          "expressions": {},
+          "offset": 6682152
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "CONNECTED"
+          },
+          "expressions": {},
+          "offset": 6682232
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "CHANNELS"
+          },
+          "expressions": {},
+          "offset": 6682311
+        },
+        {
+          "component": "ni",
+          "props": {
+            "text": "UNREACHABLE"
+          },
+          "expressions": {},
+          "offset": 6682390
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6682428
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "Devices_device__SpYiM"
+          },
+          "expressions": {},
+          "offset": 6682476
+        },
+        {
+          "component": "SA",
+          "props": {},
+          "expressions": {
+            "svgName": "null===(E=e.rawData)||void 0===E?void 0:E.physicalArcheType"
+          },
+          "offset": 6682517
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "e.isOn?\"\":\"disabled\""
+          },
+          "offset": 6682601
+        },
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {},
+          "offset": 6682674
+        }
+      ],
+      "render": []
+    },
+    {
+      "path": ".ref/devices/769/static/js/main.ad1113f8.js",
+      "offset": 6686652,
+      "end": 6687283,
+      "source": "function pA(){const e=(0,V.useSelector)(e=>e.hueLightingReducer.bridgeEnabled),E=(0,V.useSelector)(e=>e.hueLightingReducer.isLoading);return(0,y.useEffect)(()=>{const e=document.querySelector(\".HUE_TUTORIAL_INCLUDED\");if(e){const _=document.createElement(\"div\");_.id=\"dot-container\",e.appendChild(_);(0,d.createRoot)(_).render((0,q.jsx)(PA,{isLoading:E}))}},[E]),(0,q.jsxs)(Zo,{children:[(0,q.jsxs)(Wi,{direction:\"left\",children:[(0,q.jsx)(QO,{}),(0,q.jsx)(PO,{extraClass:e&&!E?\"\":\"disabled\",tabClassName:{extraClassB:\"HUE_TUTORIAL_INCLUDED\"}})]}),(0,q.jsxs)(Wi,{direction:\"right\",children:[(0,q.jsx)(CA,{}),(0,q.jsx)(RA,{})]})]})}",
+      "jsx": [
+        {
+          "component": "PA",
+          "props": {},
+          "expressions": {
+            "isLoading": "E"
+          },
+          "offset": 6686979
+        },
+        {
+          "component": "Zo",
+          "props": {},
+          "expressions": {},
+          "offset": 6687015
+        },
+        {
+          "component": "Wi",
+          "props": {
+            "direction": "left"
+          },
+          "expressions": {},
+          "offset": 6687040
+        },
+        {
+          "component": "QO",
+          "props": {},
+          "expressions": {},
+          "offset": 6687082
+        },
+        {
+          "component": "PO",
+          "props": {
+            "tabClassName": {
+              "extraClassB": "HUE_TUTORIAL_INCLUDED"
+            }
+          },
+          "expressions": {
+            "extraClass": "e&&!E?\"\":\"disabled\""
+          },
+          "offset": 6687099
+        },
+        {
+          "component": "Wi",
+          "props": {
+            "direction": "right"
+          },
+          "expressions": {},
+          "offset": 6687200
+        },
+        {
+          "component": "CA",
+          "props": {},
+          "expressions": {},
+          "offset": 6687243
+        },
+        {
+          "component": "RA",
+          "props": {},
+          "expressions": {},
+          "offset": 6687260
+        }
+      ],
+      "render": []
+    }
+  ]
+}

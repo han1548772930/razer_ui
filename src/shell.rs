@@ -10,7 +10,7 @@ use crate::{
     ui::surface,
 };
 use gpui_kit::component::{
-    button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
+    button::{ButtonCustomVariant, ButtonRounded, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -36,6 +36,7 @@ mod release_notes;
 mod runtime_page;
 mod service_pages;
 mod settings_page;
+mod tray;
 use introduction_tour::TourKind;
 
 #[derive(Clone, PartialEq)]
@@ -48,13 +49,7 @@ enum Location {
     FirmwareUpdate,
     ProfileMigration,
 }
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum SaveScope {
-    Workspace,
-    Profiles,
-}
 struct PreparedSave {
-    scope: SaveScope,
     window: AnyWindowHandle,
     file: store::WorkspaceFile,
 }
@@ -70,7 +65,6 @@ fn save_continuation(
     succeeded: bool,
     queued: bool,
     auxiliary_pending: bool,
-    dirty: bool,
 ) -> SaveContinuation {
     if !succeeded {
         // A later successful write in another scope must not hide this failure
@@ -86,15 +80,20 @@ fn save_continuation(
         SaveContinuation::Queued
     } else if auxiliary_pending {
         SaveContinuation::Auxiliary
-    } else if std::mem::take(close_requested) && !dirty {
+    } else if std::mem::take(close_requested) {
         SaveContinuation::Close
     } else {
-        // Uncaptured edits keep the app open. Consume the old close request so
-        // a later, unrelated ordinary Save does not unexpectedly exit.
         SaveContinuation::Idle
     }
 }
 pub struct AppShell {
+    #[cfg(target_os = "windows")]
+    main_window: AnyWindowHandle,
+    tray: Option<tray::DesktopTray>,
+    tray_events: Option<Task<()>>,
+    tray_startup: Option<Task<()>>,
+    tray_click: Option<Task<()>>,
+    tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
@@ -183,6 +182,13 @@ impl AppShell {
             save_task: None,
             pending_saves: VecDeque::new(),
             close_requested: false,
+            tray: None,
+            #[cfg(target_os = "windows")]
+            main_window: window.window_handle(),
+            tray_events: None,
+            tray_startup: None,
+            tray_click: None,
+            tray_ignore_release: false,
             storage_error: error,
             status: "本地配置预览 · 尚未写入硬件".into(),
             dashboard_state: cx.new(|_| main_pages::DashboardState::new(dashboard)),
@@ -250,6 +256,9 @@ impl AppShell {
                     cx.notify();
                 }
                 settings_page::SettingsEvent::Language => {
+                    if let Some(tray) = &mut this.tray {
+                        tray.refresh(cx);
+                    }
                     for device in &this.devices {
                         device.update(cx, |device, cx| device.refresh_locale(window, cx));
                     }
@@ -360,7 +369,11 @@ impl AppShell {
                 this.add_preview(pid, window, cx);
             }
         }
-        if let Some(key) = args.iter().position(|a| a == "--tab").and_then(|p| args.get(p + 1)) {
+        if let Some(key) = args
+            .iter()
+            .position(|a| a == "--tab")
+            .and_then(|p| args.get(p + 1))
+        {
             let tab = Tab::from_arg(key);
             if tab.is_some_and(Tab::is_main) {
                 this.location = Location::Main(tab.unwrap());
@@ -368,20 +381,39 @@ impl AppShell {
                 this.location = Location::Pairing;
             } else {
                 let normalized = key.to_ascii_uppercase();
-                let device = this.devices.iter().rev().find(|d| {
-                    let pid = d.read(cx).device(cx).product_id;
-                    let original = Tab::for_product(pid);
-                    tab.is_some_and(|t| original.contains(&t) || (t == Tab::Help && !original.is_empty()))
-                        || crate::product::registered(pid).and_then(|p| p.primary_navigation()).is_some_and(|n| n.pages().iter().any(|p| p.id().key() == key || p.kind().key() == normalized || p.kind().key().strip_prefix("TAB_") == Some(normalized.as_str())))
-                }).cloned();
+                let device = this
+                    .devices
+                    .iter()
+                    .rev()
+                    .find(|d| {
+                        let pid = d.read(cx).device(cx).product_id;
+                        let original = Tab::for_product(pid);
+                        tab.is_some_and(|t| {
+                            original.contains(&t) || (t == Tab::Help && !original.is_empty())
+                        }) || crate::product::registered(pid)
+                            .and_then(|p| p.primary_navigation())
+                            .is_some_and(|n| {
+                                n.pages().iter().any(|p| {
+                                    p.id().key() == key
+                                        || p.kind().key() == normalized
+                                        || p.kind().key().strip_prefix("TAB_")
+                                            == Some(normalized.as_str())
+                                })
+                            })
+                    })
+                    .cloned();
                 if let Some(device) = device {
                     let identity = device.read(cx).identity(cx);
-                    device.update(cx, |d,cx| {
-                        if let Some(tab) = tab { d.set_page(tab, window, cx); }
+                    device.update(cx, |d, cx| {
+                        if let Some(tab) = tab {
+                            d.set_page(tab, window, cx);
+                        }
                         d.set_source_page(key, window, cx);
                     });
                     this.location = Location::Device(identity);
-                } else { this.status = "?????????????".into(); }
+                } else {
+                    this.status = "?????????????".into();
+                }
             }
         }
         this.host_tabs.visit(&this.location, cx);
@@ -401,12 +433,10 @@ impl AppShell {
             let Some(entity) = weak.upgrade() else {
                 return true;
             };
-            if !entity.read(cx).dirty(cx) && entity.read(cx).save_task.is_none() {
-                return true;
-            }
-            entity.update(cx, |this, cx| this.confirm_close(window, cx));
+            entity.update(cx, |this, cx| this.request_window_close(window, cx));
             false
         });
+        this.install_tray(window, cx);
         this
     }
     fn add_device(&mut self, mut device: Device, window: &mut Window, cx: &mut Context<Self>) {
@@ -420,9 +450,8 @@ impl AppShell {
         let entity =
             cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
         self.subscriptions.push(
-            cx.subscribe_in(&entity, window, |this, _, event, window, cx| match event {
+            cx.subscribe_in(&entity, window, |this, _, event, _window, cx| match event {
                 WorkspaceEvent::Changed => cx.notify(),
-                WorkspaceEvent::SaveRequested => this.save(false, window, cx),
                 WorkspaceEvent::IntroDismissed => {
                     this.tracking_intro_seen = true;
                     for device in &this.devices {
@@ -440,15 +469,6 @@ impl AppShell {
         }
         self.devices.push(entity);
         self.sync_app_picker(window, cx);
-    }
-    fn dirty(&self, cx: &App) -> bool {
-        self.tracking_intro_seen != self.saved_intro_seen
-            || self.dashboard_state.read(cx).pending()
-            || self.host_tabs.order_pending()
-            || cx.global::<CustomColors>().dirty()
-            || self.settings.read(cx).dirty()
-            || self.shortcuts.read(cx).dirty()
-            || self.devices.iter().any(|d| d.read(cx).dirty(cx))
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
@@ -633,12 +653,6 @@ impl AppShell {
             );
         }
     }
-    fn save(&mut self, close_after: bool, window: &mut Window, cx: &mut Context<Self>) {
-        self.save_with_scope(SaveScope::Workspace, close_after, window, cx);
-    }
-    fn save_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.save_with_scope(SaveScope::Profiles, false, window, cx);
-    }
     fn discard_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.save_task.is_some() {
             return;
@@ -721,41 +735,18 @@ impl AppShell {
             || cx.global::<CustomColors>().dirty()
             || self.shortcuts.read(cx).committed_pending()
     }
-    fn save_with_scope(
-        &mut self,
-        scope: SaveScope,
-        close_after: bool,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn save_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(error) = &self.storage_error {
             self.status = format!("未保存：原配置文件无法读取（{error}）。请先修复配置文件。");
             cx.notify();
             return;
         }
-        if scope == SaveScope::Workspace {
-            for device in &self.devices {
-                if !device.update(cx, |d, cx| d.prepare_save(window, cx)) {
-                    self.status = "请先补全按键映射，或关闭编辑并丢弃映射草稿。".into();
-                    cx.notify();
-                    return;
-                }
-            }
-            if !self
-                .shortcuts
-                .update(cx, |s, cx| s.prepare_save(window, cx))
-            {
-                self.status = "请先补全全局快捷键，或丢弃快捷键草稿。".into();
-                cx.notify();
-                return;
-            }
-        }
-        let devices: Vec<Device> = self.devices.iter().map(|d| d.read(cx).snapshot(cx)).collect();
-        let shortcuts = if scope == SaveScope::Workspace {
-            self.shortcuts.read(cx).snapshot()
-        } else {
-            self.shortcuts.read(cx).saved_snapshot()
-        };
+        let devices: Vec<Device> = self
+            .devices
+            .iter()
+            .map(|d| d.read(cx).snapshot(cx))
+            .collect();
+        let shortcuts = self.shortcuts.read(cx).saved_snapshot();
         let preferences = self.settings.read(cx).snapshot();
         let custom_colors = cx.global::<CustomColors>().colors();
         let intro = self.tracking_intro_seen;
@@ -767,9 +758,7 @@ impl AppShell {
             .with_custom_colors(custom_colors)
             .with_host_tab_order(host_order)
             .with_dashboard(dashboard);
-        self.close_requested |= close_after;
         self.pending_saves.push_back(PreparedSave {
-            scope,
             window: window.window_handle(),
             file,
         });
@@ -785,14 +774,8 @@ impl AppShell {
         // Keep validated device drafts captured at the click. Preferences have
         // immediate semantics, so a queued save always takes their latest value.
         request.file.preferences = self.settings.read(cx).snapshot();
-        if request.scope == SaveScope::Profiles {
-            request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
-        }
-        let PreparedSave {
-            scope,
-            window,
-            file,
-        } = request;
+        request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
+        let PreparedSave { window, file } = request;
         let snapshot = file.clone();
         let path = store::store_path();
         self.status = "正在保存到本机…".into();
@@ -808,7 +791,6 @@ impl AppShell {
                     Ok(()) => {
                         let store::WorkspaceFile {
                             devices,
-                            shortcuts,
                             preferences,
                             custom_colors,
                             tracking_intro_seen: intro,
@@ -819,10 +801,6 @@ impl AppShell {
                         // Commit exactly the captured revision. New edits during I/O stay dirty.
                         for (entity, snapshot) in this.devices.iter().zip(devices) {
                             entity.update(cx, |d, cx| d.mark_saved(snapshot, cx));
-                        }
-                        if scope == SaveScope::Workspace {
-                            this.shortcuts
-                                .update(cx, |s, cx| s.mark_saved(shortcuts, cx));
                         }
                         this.saved_intro_seen = intro;
                         this.host_tabs.mark_order_saved(host_order);
@@ -856,15 +834,20 @@ impl AppShell {
         true
     }
     fn continue_save_queue(&mut self, succeeded: bool, cx: &mut Context<Self>) {
+        #[cfg(target_os = "windows")]
+        if self.close_requested && !succeeded {
+            let handle = self.main_window;
+            cx.defer(move |cx| {
+                let _ = handle.update(cx, |_, window, _| tray::native::show(window));
+            });
+        }
         let queued = !self.pending_saves.is_empty();
         let auxiliary_pending = self.auxiliary_preferences_pending(cx);
-        let dirty = self.dirty(cx);
         match save_continuation(
             &mut self.close_requested,
             succeeded,
             queued,
             auxiliary_pending,
-            dirty,
         ) {
             SaveContinuation::Queued => {
                 self.start_pending_save(cx);
@@ -938,55 +921,34 @@ impl AppShell {
         }));
         self.sync_persistence_state(cx);
     }
+    fn request_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        #[cfg(target_os = "windows")]
+        if let Some(tray) = &mut self.tray {
+            tray.hide_popup(cx);
+            tray::native::hide(window);
+            return;
+        }
+        // If the tray could not be created, keep a reachable exit route.
+        self.request_exit(window, cx);
+    }
+
     fn request_exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some((page, _)) = &self.firmware_update {
             if !page.update(cx, |page, cx| page.allow_close(window, cx)) {
+                #[cfg(target_os = "windows")]
+                tray::native::show(window);
                 self.navigate(Location::FirmwareUpdate, window, cx);
                 return;
             }
         }
-        if self.dirty(cx) || self.save_task.is_some() {
-            self.confirm_close(window, cx);
+        // Closing is not a Save command. Drain only writes already requested;
+        // unsubmitted profile/mapping drafts do not create an exit prompt.
+        if self.save_task.is_some() || !self.pending_saves.is_empty() {
+            self.close_requested = true;
+            self.start_pending_save(cx);
         } else {
             cx.quit();
         }
-    }
-    fn confirm_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let entity = cx.entity();
-        window.open_dialog(cx, move |dialog, _, cx| {
-            let entity = entity.clone();
-            let cancel = entity.clone();
-            let saving = entity.read(cx).save_task.is_some();
-            dialog
-                .title("保存本地更改？")
-                .child("尚有未保存的配置。关闭前可以保存，或放弃本次更改。")
-                .footer(
-                    h_flex()
-                        .gap_3()
-                        .justify_end()
-                        .child(Button::new("close-cancel").label("取消").on_click(
-                            move |_, w, cx| {
-                                cancel.update(cx, |this, _| this.close_requested = false);
-                                w.close_dialog(cx);
-                            },
-                        ))
-                        .child(
-                            Button::new("close-discard")
-                                .label("不保存并关闭")
-                                .on_click(|_, _, cx| cx.quit()),
-                        )
-                        .child(
-                            Button::new("close-save")
-                                .label("保存并关闭")
-                                .primary()
-                                .disabled(saving)
-                                .on_click(move |_, w, cx| {
-                                    w.close_dialog(cx);
-                                    entity.update(cx, |this, cx| this.save(true, w, cx));
-                                }),
-                        ),
-                )
-        });
     }
     fn add_preview(&mut self, pid: u32, window: &mut Window, cx: &mut Context<Self>) {
         if crate::product::registered(pid).is_none() {
@@ -999,9 +961,12 @@ impl AppShell {
             .any(|d| d.read(cx).device(cx).serial_number == serial)
         {
             let mut device = crate::demo::mouse_mat_preview(pid)
-                .or_else(|| crate::demo::registered_preview(pid)).expect("registered preview");
+                .or_else(|| crate::demo::registered_preview(pid))
+                .expect("registered preview");
             // 653's own root selects layoutId || 1 for its default preview.
-            if pid == 653 { device.layout_id = 1; }
+            if pid == 653 {
+                device.layout_id = 1;
+            }
             self.add_device(device, window, cx);
         }
         let key = self
@@ -1170,9 +1135,9 @@ impl AppShell {
                             .iter()
                             .filter_map(|device| {
                                 let device = device.read(cx);
-                                device
-                                    .committed_pending(cx)
-                                    .then(|| (device.identity(cx), device.device(cx).display_name()))
+                                device.committed_pending(cx).then(|| {
+                                    (device.identity(cx), device.device(cx).display_name())
+                                })
                             })
                             .collect(),
                         self.save_task.is_some(),

@@ -1,0 +1,2412 @@
+{
+  "method": "Acorn lexical resolution; vendor code not executed",
+  "generator_sha256": "71bd81f06b125fc205fb300e51a4157a3d7eea74c5910739791d78987a50501d",
+  "resolver_sha256": "fb74171c7186a5cb1b3db2b2dc64bf99c259e9cccc964cd9db7aa362c3d688f8",
+  "product_id": 164,
+  "name": "Razer Mouse Dock Pro",
+  "source_files": [
+    {
+      "path": ".ref/devices/164/static/js/main.458d4103.js",
+      "sha256": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40"
+    }
+  ],
+  "pages": [
+    {
+      "key": "TAB_CUSTOMIZE",
+      "path": ".ref/devices/164/static/js/main.458d4103.js",
+      "offset": 4575203,
+      "component": {
+        "path": ".ref/devices/164/static/js/main.458d4103.js",
+        "offset": 4575230,
+        "end": 4575254,
+        "source": "(0,w.jsx)(Fr.default,{})"
+      },
+      "route": null,
+      "components": [
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 28671,
+          "end": 28825,
+          "source": "class i extends _.Component{render(){const{children:e,className:E}=this.props;return(0,t.jsx)(\"div\",{className:`body-widgets flex ${E||\"\"}`,children:e})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`body-widgets flex ${E||\"\"}`"
+              },
+              "offset": 28755
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 28705,
+              "end": 28824,
+              "source": "(){const{children:e,className:E}=this.props;return(0,t.jsx)(\"div\",{className:`body-widgets flex ${E||\"\"}`,children:e})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3978158,
+          "end": 3978338,
+          "source": "e=>{let{pid:E,editionId:_,...t}=e;const[i]=O(E,_,\"background\",e=>Promise.all([a(8446)(`./${E}_${e}/img_prods/device-background.svg`)]));return i?(0,I.jsx)(\"img\",{src:i,...t}):null}",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "i"
+              },
+              "offset": 3978303
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3975313,
+          "end": 3976436,
+          "source": "e=>{let{pid:E,editionId:_,...t}=e;const{className:i,height:o,earbudBatteries:s,isSvg:r,...T}=t,A=r?\"svg\":\"png\",S=\"EARBUDS\"===n.DeviceInfo.subCategory&&r,[l]=O(E,_,`left-3x-${A}`,e=>Promise.all([a(5430)(`./${E}_${e}/img_prods/prd-l-3x.${A}`)])),[R]=O(E,_,`right-3x-${A}`,e=>Promise.all([a(2112)(`./${E}_${e}/img_prods/prd-r-3x.${A}`)])),[d]=O(E,_,`single-3x-${A}`,e=>r?Promise.all([a(903)(`./${E}_${e}/img_prods/prd-3x.svg`)]).catch(()=>Promise.all([a(616)(`./${E}_${e}/img_svgs/prd.svg`)])):Promise.all([a(6140)(`./${E}_${e}/img_prods/prd-3x.png`)]));if(S&&l&&R){const e=o||160,E=(null===s||void 0===s?void 0:s.left)<0||(null===s||void 0===s?void 0:s.left)>100?\"disabled\":\"\",a=(null===s||void 0===s?void 0:s.right)<0||(null===s||void 0===s?void 0:s.right)>100?\"disabled\":\"\";return(0,I.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,I.jsx)(\"img\",{src:l,srcSet:`${l} 1x, ${l} 3x`,...T,height:e,className:`${i} ${E} audio-left`}),(0,I.jsx)(\"img\",{src:R,srcSet:`${R} 1x, ${R} 3x`,...T,height:e,className:`${i} ${a} audio-right`})]})}return d?(0,I.jsx)(\"img\",{src:d,srcSet:`${d} 1x, ${d} 3x`,...T,height:o,className:i}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "earbuds-img"
+              },
+              "expressions": {},
+              "offset": 3976093
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "l",
+                "srcSet": "`${l} 1x, ${l} 3x`",
+                "height": "e",
+                "className": "`${i} ${E} audio-left`"
+              },
+              "offset": 3976145
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "R",
+                "srcSet": "`${R} 1x, ${R} 3x`",
+                "height": "e",
+                "className": "`${i} ${a} audio-right`"
+              },
+              "offset": 3976243
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "d",
+                "srcSet": "`${d} 1x, ${d} 3x`",
+                "height": "o",
+                "className": "i"
+              },
+              "offset": 3976354
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3979966,
+          "end": 3980540,
+          "source": "e=>{let E=[[.02,.05,.07,.07,.07,.1,.2,.2,.2,.2,.2,.2],[.1,.1,.1,.1,.2,.2,.3,.3,.3,.3,.3,.3],[.13,.13,.13,.13,.13,.2,.2,.2,.3,.3,.5,.5],[.2,.3,.3,.3,.3,.3,.5,.5,.5,.5,.5,.7],[.2,.3,.3,.3,.5,.5,.6,.6,.6,.6,.6,.8],[.2,.3,.3,.3,.5,.5,.6,.6,.7,.7,.7,.8]];E=E.concat([...E].reverse());const a=E.map((E,a)=>{const _=e.left?E:[...E].reverse();return(0,I.jsx)(\"div\",{className:\"dot-row\",children:_.map((e,E)=>(0,I.jsx)(\"div\",{className:\"dot-wrap\",style:{opacity:e},children:(0,I.jsx)(\"div\",{className:\"dot\"})},`${a}-${E}`))},a)});return(0,I.jsx)(\"div\",{className:\"part\",children:a})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-row"
+              },
+              "expressions": {},
+              "offset": 3980307
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-wrap"
+              },
+              "expressions": {
+                "style": "{opacity:e}"
+              },
+              "offset": 3980366
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot"
+              },
+              "expressions": {},
+              "offset": 3980431
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "part"
+              },
+              "expressions": {},
+              "offset": 3980493
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3980543,
+          "end": 3980786,
+          "source": "()=>{let e=[.25,.3,.5,.7,.8,.8];e=e.concat([...e].reverse());const E=e.map((e,E)=>(0,I.jsx)(\"div\",{className:\"dot-wrap\",style:{opacity:e},children:(0,I.jsx)(\"div\",{className:\"dot\"})},E));return(0,I.jsx)(\"div\",{className:\"dot-col\",children:E})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-wrap"
+              },
+              "expressions": {
+                "style": "{opacity:e}"
+              },
+              "offset": 3980625
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot"
+              },
+              "expressions": {},
+              "offset": 3980690
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-col"
+              },
+              "expressions": {},
+              "offset": 3980736
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3980789,
+          "end": 3980901,
+          "source": "()=>{let e=[];for(let E=0;E<34;E++)e.push((0,I.jsx)(u,{}));return(0,I.jsx)(\"div\",{className:\"flex\",children:e})}",
+          "jsx": [
+            {
+              "component": "u",
+              "props": {},
+              "expressions": {},
+              "offset": 3980831
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "flex"
+              },
+              "expressions": {},
+              "offset": 3980854
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3979841,
+          "end": 3979963,
+          "source": "()=>(0,I.jsxs)(\"div\",{className:\"body-wrapper-content\",children:[(0,I.jsx)(c,{left:!0}),(0,I.jsx)(C,{}),(0,I.jsx)(c,{})]})",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "body-wrapper-content"
+              },
+              "expressions": {},
+              "offset": 3979845
+            },
+            {
+              "component": "c",
+              "props": {
+                "left": true
+              },
+              "expressions": {},
+              "offset": 3979906
+            },
+            {
+              "component": "C",
+              "props": {},
+              "expressions": {},
+              "offset": 3979929
+            },
+            {
+              "component": "c",
+              "props": {},
+              "expressions": {},
+              "offset": 3979945
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 4024861,
+          "end": 4025689,
+          "source": "class o extends t().Component{constructor(e){super(e),this.handleMouseMove=e=>{this.raf&&cancelAnimationFrame(this.raf),this.raf=requestAnimationFrame(()=>{this.setState({x:e.clientX,y:e.clientY,visible:!0})})},this.handleMouseLeave=()=>{this.raf&&cancelAnimationFrame(this.raf),this.setState({visible:!1})},this.state={x:0,y:0,visible:!1},this.raf=null}componentDidMount(){window.addEventListener(\"mousemove\",this.handleMouseMove,{passive:!0}),window.addEventListener(\"mouseout\",this.handleMouseLeave,{passive:!0})}componentWillUnmount(){this.raf&&cancelAnimationFrame(this.raf),window.removeEventListener(\"mousemove\",this.handleMouseMove),window.removeEventListener(\"mouseout\",this.handleMouseLeave)}render(){const{x:e,y:E,visible:a}=this.state;return(0,i.jsx)(i.Fragment,{children:this.props.children({x:e,y:E,visible:a})})}}",
+          "jsx": [
+            {
+              "component": "i.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 4025614
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 4025569,
+              "end": 4025688,
+              "source": "(){const{x:e,y:E,visible:a}=this.state;return(0,i.jsx)(i.Fragment,{children:this.props.children({x:e,y:E,visible:a})})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3972701,
+          "end": 3973070,
+          "source": "class i extends _.Component{constructor(e){super(e),this.el=document.createElement(\"div\")}componentDidMount(){const{containerId:e}=this.props;let E;e&&(E=document.getElementById(e)),E||(E=document.body),this.container=E,E&&E.appendChild(this.el)}componentWillUnmount(){this.container.removeChild(this.el)}render(){return(0,t.createPortal)(this.props.children,this.el)}}",
+          "jsx": [],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 3973012,
+              "end": 3973069,
+              "source": "(){return(0,t.createPortal)(this.props.children,this.el)}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 4026313,
+          "end": 4029607,
+          "source": "class A extends _.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const E=null===(e=this.tooltip)||void 0===e?void 0:e.current,a=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(E){const e=E.getBoundingClientRect();if(this.state.position===T&&\"number\"===typeof this.state.style.left&&this.props.target){var _;const a=(null===(_=E.firstElementChild)||void 0===_?void 0:_.getBoundingClientRect().width)||e.width,t=O(this.props.target,I);let i=t.x;i+a>window.innerWidth-8?i=window.innerWidth-8-a:i<8&&(i=8),this.setState(e=>({style:{...e.style,left:i+a-t.width}}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(E=>({style:{...E.style,left:E.style.left+window.innerWidth-8-e.right}}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(E=>({style:{...E.style,left:E.style.left+8-e.left}}));else if(e.right>window.innerWidth){const e=a.findIndex(e=>this.state.position===e);this.setState({position:a[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let{position:E}=e.props;const{target:a}=e.props;console.log(a);let _={};if(a){const e=O(a,E);_={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:E,style:_},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,i.jsx)(n,{children:e=>{let{x:E,y:a,visible:_}=e;const t=window.innerWidth,o=window.innerHeight,n=Math.min(320,320),s=n/2,r=a+25+40<o?a+25:Math.max(8,a-40-8),T=Math.min(Math.max(E+50,8+s),t-8-s);return _&&(0,i.jsx)(\"div\",{style:{position:\"fixed\",top:r,left:T,maxWidth:n,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||T,style:{}},this.tooltip=(0,_.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const{isMounted:E}=this.props;e.isMounted!==E&&(E?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const{tooltip:e,showTooltip:E,hideTooltip:a,renderTooltipWithCursor:_}=this,{shouldRender:t,showClassName:o,position:n,style:r}=this.state,{isMounted:T,className:I,children:O,target:A,isFollowCursor:S=!1}=this.props;if(S&&T)return(0,i.jsx)(s.A,{children:_()});const l=(0,i.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof T?E:()=>{},onMouseLeave:\"boolean\"!==typeof T?a:()=>{},className:`tooltip-razer ${n} ${o} ${I}`,style:{...r,pointerEvents:A?\"none\":\"inherit\"},children:t?(0,i.jsx)(\"div\",{ref:e,className:\"main\",children:(0,i.jsx)(\"div\",{className:\"wrapper\",children:O})}):null});return A?(0,i.jsx)(s.A,{children:l}):l}}",
+          "jsx": [
+            {
+              "component": "n",
+              "props": {},
+              "expressions": {},
+              "offset": 4028035
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "role": "tooltip"
+              },
+              "expressions": {
+                "style": "{position:\"fixed\",top:r,left:T,maxWidth:n,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"}"
+              },
+              "offset": 4028242
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {},
+              "offset": 4029220
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "onMouseEnter": "\"boolean\"!==typeof T?E:()=>{}",
+                "onMouseLeave": "\"boolean\"!==typeof T?a:()=>{}",
+                "className": "`tooltip-razer ${n} ${o} ${I}`",
+                "style": "{...r,pointerEvents:A?\"none\":\"inherit\"}"
+              },
+              "offset": 4029258
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "main"
+              },
+              "expressions": {
+                "ref": "e"
+              },
+              "offset": 4029459
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "wrapper"
+              },
+              "expressions": {},
+              "offset": 4029508
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {},
+              "offset": 4029576
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 4028987,
+              "end": 4029606,
+              "source": "(){const{tooltip:e,showTooltip:E,hideTooltip:a,renderTooltipWithCursor:_}=this,{shouldRender:t,showClassName:o,position:n,style:r}=this.state,{isMounted:T,className:I,children:O,target:A,isFollowCursor:S=!1}=this.props;if(S&&T)return(0,i.jsx)(s.A,{children:_()});const l=(0,i.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof T?E:()=>{},onMouseLeave:\"boolean\"!==typeof T?a:()=>{},className:`tooltip-razer ${n} ${o} ${I}`,style:{...r,pointerEvents:A?\"none\":\"inherit\"},children:t?(0,i.jsx)(\"div\",{ref:e,className:\"main\",children:(0,i.jsx)(\"div\",{className:\"wrapper\",children:O})}):null});return A?(0,i.jsx)(s.A,{children:l}):l}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 6981,
+          "end": 8168,
+          "source": "e=>{let{text:E,data:a,lang:_,clickableData:s,onClick:r,underlineData:T,capitalizeFirst:I,allowHtml:O,onMouseEnter:A,onMouseLeave:S}=e;\"string\"!==typeof E&&(E=\"\");const l=((e,E)=>{const a={};for(const _ of Object.keys(e||{}))a[_]=n(e[_],E);return a})(a,_);if(T){let e=(0,t.JN)(E,{...l,_lang:_});e=o(e,I);const a=Object.keys(l).reduce((e,E)=>{const a=l[E],_=\"string\"===typeof a?a:String(null!==a&&void 0!==a?a:\"\");if(_.length>0&&e.includes(_)){const a=e.split(_),t=[];T&&t.push(\"translator-underline\"),s&&t.push(\"translator-clickable\");const o=t.join(\" \"),n=e=>(0,i.jsx)(\"span\",{className:o,onClick:s?()=>r&&r(_,E):void 0,onMouseEnter:A,onMouseLeave:S,role:s?\"button\":void 0,tabIndex:s?0:void 0,style:{opacity:!1===s?.3:1},children:_},`${E}-${e}`),I=[a[0]];for(let e=1;e<a.length;e++)I.push(n(e),a[e]);return I}return e},e);return(0,i.jsxs)(i.Fragment,{children:[(0,i.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),a]})}let R=(0,t.JN)(E,{...l,_lang:_});return R=o(R,I),O&&\"string\"===typeof R?(0,i.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:R}}):(0,i.jsx)(i.Fragment,{children:R})}",
+          "jsx": [
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "o",
+                "onClick": "s?()=>r&&r(_,E):void 0",
+                "onMouseEnter": "A",
+                "onMouseLeave": "S",
+                "role": "s?\"button\":void 0",
+                "tabIndex": "s?0:void 0",
+                "style": "{opacity:!1===s?.3:1}"
+              },
+              "offset": 7540
+            },
+            {
+              "component": "i.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 7809
+            },
+            {
+              "component": "\"style\"",
+              "props": {},
+              "expressions": {},
+              "offset": 7842
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "dangerouslySetInnerHTML": "{__html:R}"
+              },
+              "offset": 8078
+            },
+            {
+              "component": "i.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 8133
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3973458,
+          "end": 3975310,
+          "source": "e=>{let{pid:E,editionId:_,...i}=e;const{className:o,height:A,earbudBatteries:S,isSvg:l,...R}=i,d=l?\"svg\":\"png\",N=\"EARBUDS\"===n.DeviceInfo.subCategory&&l,[c,u]=t().useState(!1),[C,D]=t().useState(!1),[L,P]=O(E,_,`left-${d}`,e=>Promise.all([a(2340)(`./${E}_${e}/img_prods/prd-l-1x.${d}`),a(5430)(`./${E}_${e}/img_prods/prd-l-3x.${d}`)])),[p,m]=O(E,_,`right-${d}`,e=>Promise.all([a(8162)(`./${E}_${e}/img_prods/prd-r-1x.${d}`),a(2112)(`./${E}_${e}/img_prods/prd-r-3x.${d}`)])),[M,U]=O(E,_,`single-${d}`,e=>l?Promise.all([a(9385)(`./${E}_${e}/img_prods/prd-1x.svg`),a(903)(`./${E}_${e}/img_prods/prd-3x.svg`)]).catch(()=>{const _=a(616)(`./${E}_${e}/img_svgs/prd.svg`);return Promise.all([_,_])}):Promise.all([a(4589)(`./${E}_${e}/img_prods/prd-1x.png`),a(6140)(`./${E}_${e}/img_prods/prd-3x.png`)])),h=function(){let e=arguments.length>0&&void 0!==arguments[0]&&arguments[0];return()=>{e&&(null===S||void 0===S?void 0:S.left)<=0?u(!0):!e&&(null===S||void 0===S?void 0:S.right)<=0&&D(!0)}},G=()=>{u(!1),D(!1)};if(N&&L&&P&&p&&m){const e=A||160,E=(null===S||void 0===S?void 0:S.left)<0||(null===S||void 0===S?void 0:S.left)>100,a=(null===S||void 0===S?void 0:S.right)<0||(null===S||void 0===S?void 0:S.right)>100;return(0,I.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,I.jsx)(\"img\",{src:L,srcSet:`${L} 1x, ${P} 3x`,...R,onMouseEnter:h(!0),onMouseLeave:G,height:e,className:`${o} ${E?\"disabled\":\"\"} audio-left`,id:\"disconnected-left\"}),(0,I.jsx)(\"img\",{src:p,srcSet:`${p} 1x, ${m} 3x`,...R,onMouseEnter:h(),onMouseLeave:G,height:e,className:`${o} ${a?\"disabled\":\"\"} audio-right`,id:\"disconnected-right\"}),(0,I.jsx)(T.A,{isFollowCursor:!0,position:\"bottom-left\",isMounted:c||C,target:\"disconnected-\"+(c?\"left\":\"right\"),children:(0,I.jsx)(s.A,{text:r._NJ})})]})}return M&&U?(0,I.jsx)(\"img\",{src:M,srcSet:`${M} 1x, ${U} 3x`,...R,height:A,className:o}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "earbuds-img"
+              },
+              "expressions": {},
+              "offset": 3974671
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-left"
+              },
+              "expressions": {
+                "src": "L",
+                "srcSet": "`${L} 1x, ${P} 3x`",
+                "onMouseEnter": "h(!0)",
+                "onMouseLeave": "G",
+                "height": "e",
+                "className": "`${o} ${E?\"disabled\":\"\"} audio-left`"
+              },
+              "offset": 3974723
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-right"
+              },
+              "expressions": {
+                "src": "p",
+                "srcSet": "`${p} 1x, ${m} 3x`",
+                "onMouseEnter": "h()",
+                "onMouseLeave": "G",
+                "height": "e",
+                "className": "`${o} ${a?\"disabled\":\"\"} audio-right`"
+              },
+              "offset": 3974892
+            },
+            {
+              "component": "T.A",
+              "props": {
+                "isFollowCursor": true,
+                "position": "bottom-left"
+              },
+              "expressions": {
+                "isMounted": "c||C",
+                "target": "\"disconnected-\"+(c?\"left\":\"right\")"
+              },
+              "offset": 3975061
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "DISCONNECTED"
+              },
+              "expressions": {},
+              "offset": 3975183
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "M",
+                "srcSet": "`${M} 1x, ${U} 3x`",
+                "height": "A",
+                "className": "o"
+              },
+              "offset": 3975228
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3976439,
+          "end": 3978155,
+          "source": "e=>{let{productId:E,editionId:a,layoutId:_,...i}=e;const o=`${t().useMemo(()=>`${{NODE_ENV:\"production\",PUBLIC_URL:\".\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-m15-beta#866f3b7fba79101f4e8e9a5eb59b33cf5416ed3c#2608270957\",BUILD_TAG:\"master-m15-beta#866f3b7fba79101f4e8e9a5eb59b33cf5416ed3c#2608270957@1787824823909\",IS_OPTIMIZED:!1,REACT_APP_ENVIRONMENT:\"production\",REACT_APP_SHOW_VERSION:\"0\",REACT_APP_SHOW_REDUX:\"0\",REACT_APP_SHOW_LOGS:\"0\",REACT_APP_DEVELOPER_SHORTCUTS_ENABLED:\"0\",REACT_APP_HOST_URL:\"https://apps.razer.com/synapse\",REACT_APP_REMOTE_STORAGE_USER_ADDRESS:\"userid@gors.razerapi.com\",REACT_APP_URL_RAZER_REGION_SELECTOR:\"https://apps.razer.com/synapse/region-selector/\",REACT_APP_AUDIO_S3_ENDPOINT:\"https://app-assets.razer.com/sophie/\",REACT_APP_RAZER_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_PUBSUB_WEBSOCKET:\"wss://pubsub.razersynapse.com/ws\",REACT_APP_AMAZON_SCOPE:\"alexa:all profile alexa::ask:skills:readwrite\",REACT_APP_AMAZON_ALEXA_PRODUCT_ID:\"Razer_Synapse\",REACT_APP_AMAZON_ALEXA_DEVICE_SERIAL_NUMBER:\"123\",REACT_APP_AMAZON_ALEXA_SKILL_ID:\"amzn1.ask.skill.47c9d48c-f128-4fa4-846a-df3287ef53b9\",REACT_APP_AMAZON_ALEXA_SKILL_STAGE:\"live\",REACT_APP_AMAZON_ALEXA_SKILL_REDIRECT:\"https://razer-alexa.razer.com/api/authresponse\",REACT_APP_RAZER_ALEXA_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_ALEXA_PUBSUB_WEBSOCKET:\"wss://pubsub-alexa.razerapi.com/ws\"}.REACT_APP_HOST_UR||location.origin}/synapse/products/${E}/ui/${E}_${a}/PluginImages`,[E,a,_])}/${E}_${a}_${_||0}_dashboard3x.avif`;return o?(0,I.jsx)(\"img\",{src:o,srcSet:`${o} 1x, ${o} 3x`,...i}):null}",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "o",
+                "srcSet": "`${o} 1x, ${o} 3x`"
+              },
+              "offset": 3978094
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3978339,
+          "end": 3979833,
+          "source": "class d extends _.Component{componentDidUpdate(e){e.pairedInfo!==this.props.pairedInfo&&this.forceUpdate()}render(){var e,E;const a=new URL(window.location.href).searchParams.get(\"displayMode\"),_=n.DeviceInfo.showPairedMouseOnTop,t=null===(e=n.DeviceInfo)||void 0===e?void 0:e.category,i=null===(E=this.props.pairedInfo)||void 0===E?void 0:E.find(e=>\"MOUSE\"===e.category);if(\"chromaApp\"===a)return null;let o=n.DeviceInfo.productId;this.props.editionId,this.props.widthExtend,_&&i&&(i.productId,i.editionId,i.layoutId,this.props.widthExtend);return this.props.customDotPattern?(0,I.jsxs)(\"div\",{className:\"dot-container\",children:[(0,I.jsx)(R,{pid:o,editionId:this.props.editionId,width:400,height:325,className:\"box-img img-nodrag\"}),(0,I.jsx)(S,{pid:o,editionId:this.props.editionId,style:{zIndex:100},width:325,height:this.props.height||250,className:\"box-img img-nodrag\",isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),(0,I.jsx)(N,{})]}):(0,I.jsxs)(\"div\",{className:\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\"),children:[(0,I.jsx)(A,{pid:o,editionId:this.props.editionId,height:this.props.height||250,className:\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\"),isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),_&&i?(0,I.jsx)(l,{productId:i.productId,editionId:i.editionId,layoutId:i.layoutId,height:100,className:\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")}):null,(0,I.jsx)(\"div\",{className:\"dim-corner\"})]})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-container"
+              },
+              "expressions": {},
+              "offset": 3978916
+            },
+            {
+              "component": "R",
+              "props": {
+                "pid": 164,
+                "width": 400,
+                "height": 325,
+                "className": "box-img img-nodrag"
+              },
+              "expressions": {
+                "editionId": "this.props.editionId"
+              },
+              "offset": 3978970
+            },
+            {
+              "component": "S",
+              "props": {
+                "pid": 164,
+                "style": {
+                  "zIndex": 100
+                },
+                "width": 325,
+                "className": "box-img img-nodrag"
+              },
+              "expressions": {
+                "editionId": "this.props.editionId",
+                "height": "this.props.height||250",
+                "isSvg": "this.props.isSvg",
+                "earbudBatteries": "this.props.earbudBatteries"
+              },
+              "offset": 3979074
+            },
+            {
+              "component": "N",
+              "props": {},
+              "expressions": {},
+              "offset": 3979282
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\")"
+              },
+              "offset": 3979301
+            },
+            {
+              "component": "A",
+              "props": {
+                "pid": 164
+              },
+              "expressions": {
+                "editionId": "this.props.editionId",
+                "height": "this.props.height||250",
+                "className": "\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")",
+                "isSvg": "this.props.isSvg",
+                "earbudBatteries": "this.props.earbudBatteries"
+              },
+              "offset": 3979397
+            },
+            {
+              "component": "l",
+              "props": {
+                "height": 100
+              },
+              "expressions": {
+                "productId": "i.productId",
+                "editionId": "i.editionId",
+                "layoutId": "i.layoutId",
+                "className": "\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")"
+              },
+              "offset": 3979625
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dim-corner"
+              },
+              "expressions": {},
+              "offset": 3979787
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 3978452,
+              "end": 3979832,
+              "source": "(){var e,E;const a=new URL(window.location.href).searchParams.get(\"displayMode\"),_=n.DeviceInfo.showPairedMouseOnTop,t=null===(e=n.DeviceInfo)||void 0===e?void 0:e.category,i=null===(E=this.props.pairedInfo)||void 0===E?void 0:E.find(e=>\"MOUSE\"===e.category);if(\"chromaApp\"===a)return null;let o=n.DeviceInfo.productId;this.props.editionId,this.props.widthExtend,_&&i&&(i.productId,i.editionId,i.layoutId,this.props.widthExtend);return this.props.customDotPattern?(0,I.jsxs)(\"div\",{className:\"dot-container\",children:[(0,I.jsx)(R,{pid:o,editionId:this.props.editionId,width:400,height:325,className:\"box-img img-nodrag\"}),(0,I.jsx)(S,{pid:o,editionId:this.props.editionId,style:{zIndex:100},width:325,height:this.props.height||250,className:\"box-img img-nodrag\",isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),(0,I.jsx)(N,{})]}):(0,I.jsxs)(\"div\",{className:\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\"),children:[(0,I.jsx)(A,{pid:o,editionId:this.props.editionId,height:this.props.height||250,className:\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\"),isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),_&&i?(0,I.jsx)(l,{productId:i.productId,editionId:i.editionId,layoutId:i.layoutId,height:100,className:\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")}):null,(0,I.jsx)(\"div\",{className:\"dim-corner\"})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 12078,
+          "end": 12731,
+          "source": "class i extends _.Component{constructor(e){super(e),this.toggleSwitch=e=>{\"undefined\"!==this.props.disable&&!0===this.props.disable||\"keyPressed\"===this.props.className||(this.setState({active:!this.props.active}),this.props.onClick(e))},this.state={active:this.props.active}}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){return(0,t.jsx)(\"div\",{className:(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\"),onClick:this.toggleSwitch.bind(this),children:(0,t.jsx)(\"div\",{className:\"handle\"})})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\")",
+                "onClick": "this.toggleSwitch.bind(this)"
+              },
+              "offset": 12487
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "handle"
+              },
+              "expressions": {},
+              "offset": 12690
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 12478,
+              "end": 12730,
+              "source": "(){return(0,t.jsx)(\"div\",{className:(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\"),onClick:this.toggleSwitch.bind(this),children:(0,t.jsx)(\"div\",{className:\"handle\"})})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3927350,
+          "end": 3931268,
+          "source": "class S extends _.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.props.toggleSwitch()},this.positionTip=()=>{const e=document.querySelector(\".main-container > #body-wrapper\"),E=this.tipDiv.current,a=this.helpRef.current,_=null===a||void 0===a?void 0:a.closest(\".widget\");if(!E||!a||!_)return;const t=_.getBoundingClientRect();E.style.position=\"fixed\",E.style.right=\"auto\",E.style.visibility=\"visible\",E.style.opacity=\"1\";let i=t.right-14-E.offsetWidth,o=t.top+34;if(E.style.left=`${i}px`,E.style.top=`${o}px`,!e)return;const n=e.getBoundingClientRect();let s=E.getBoundingClientRect();if(s.right>n.right&&(i=n.right-14-E.offsetWidth,E.style.left=`${i}px`,s=E.getBoundingClientRect()),s.left<n.left&&(i=n.left+14,E.style.left=`${i}px`,s=E.getBoundingClientRect()),s.bottom>n.bottom){const e=a.getBoundingClientRect();i=e.right+8,o=e.top,E.style.left=`${i}px`,E.style.top=`${o}px`,s=E.getBoundingClientRect(),s.right>n.right&&(i=e.left-8-s.width,E.style.left=`${i}px`),s=E.getBoundingClientRect(),s.bottom>n.bottom&&(o-=s.bottom-n.bottom+10,E.style.top=`${o}px`)}},this.onHover=()=>{this.setState({showTip:!0},this.positionTip)},this.onLeave=()=>{this.setState({showTip:!1})};const{active:E}=this.props;this.state={active:E,showTip:!1,showFWUpdateTip:!1,tooltipX:0,tooltipY:0},this.tipDiv=t().createRef(),this.tipRef=t().createRef(),this.helpRef=t().createRef(),this._tipX=0,this._tipY=0}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){var e;const{id:E,title:a,tips:_,centerTips:t,children:i,hasSwitch:S=!1,disableSwitchTips:l,extraClass:R,customStyle:d,extraTitle:N,besideTitle:c,increaseZIndex:u,supportsShortcut:C,disable:D,renderShortcut:L,keyPressed:P,hasTutorialButton:p,allowHtml:m,currentFWVersion:M,hasFWUpdate:U=!1,fwUpdateComponent:h,isHyperPolling:G=!1,ignoreBottomOverflow:g=!1}=this.props,{toggleSwitch:f}=this,{active:H}=this.state,v=(null===(e=O.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},B=(0,I.ju)(h,v,M)&&U;var F=`widget ${G?\"hyperPolling\":\"\"} ${R||\"\"} ${u?\"increase-zindex\":\"\"} ${B?\"disabled\":\"\"}`,b=void 0!==_?(0,A.jsxs)(A.Fragment,{children:[(0,A.jsx)(\"div\",{className:\"help\",ref:this.helpRef,role:\"button\",\"aria-label\":(0,T.JN)(_),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,o.createPortal)((0,A.jsx)(\"div\",{className:\"tip body-widget-tip-portal\",ref:this.tipDiv,children:\"string\"!==typeof _?_:(0,A.jsx)(s.A,{text:_})}),document.body),p?(0,A.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,y=S?(0,A.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,A.jsx)(n.A,{disable:this.props.disable,active:H,onClick:f,className:P||\"\"}),l&&D?(0,A.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,A.jsx)(s.A,{text:l})}):null]}):null,V=\"\"!==a?(0,A.jsxs)(\"div\",{className:\"titleRow\",children:[(0,A.jsxs)(\"div\",{className:\"title\",children:[(0,A.jsx)(s.A,{text:a,allowHtml:m}),y,c]}),(0,A.jsx)(\"div\",{children:N}),C?L:null]}):null;return(0,A.jsxs)(\"div\",{className:\"widget-container\",children:[(0,A.jsxs)(\"div\",{className:F,id:E,style:d,children:[V,i,b]}),t&&(F.includes(\"disabled\")||!1===H)&&(0,A.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,A.jsx)(s.A,{text:t})}),B&&(0,A.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const E=e.clientX,a=e.clientY+25;this._tipX=E,this._tipY=a,this.setState({showFWUpdateTip:!0,tooltipX:E,tooltipY:a})},onMouseMove:e=>{const E=e.clientX,a=e.clientY+25;this._tipX===E&&this._tipY===a||(this._tipX=E,this._tipY=a,this.setState({tooltipX:E,tooltipY:a}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,A.jsx)(s.A,{text:r.AG3})}),B&&this.state.showFWUpdateTip&&(0,A.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,A.jsx)(s.A,{text:r.ssg})})]})}}",
+          "jsx": [
+            {
+              "component": "A.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 3929481
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "help",
+                "role": "button"
+              },
+              "expressions": {
+                "ref": "this.helpRef",
+                "aria-label": "(0,T.JN)(_)",
+                "onMouseOver": "this.onHover",
+                "onMouseLeave": "this.onLeave"
+              },
+              "offset": 3929514
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "tip body-widget-tip-portal"
+              },
+              "expressions": {
+                "ref": "this.tipDiv"
+              },
+              "offset": 3929696
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "_"
+              },
+              "offset": 3929799
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "tutorial-icon widget-tutorial-icon"
+              },
+              "expressions": {
+                "onClick": "this.props.onClickTutorialButton"
+              },
+              "offset": 3929842
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "widget-switch"
+              },
+              "expressions": {},
+              "offset": 3929966
+            },
+            {
+              "component": "n.A",
+              "props": {},
+              "expressions": {
+                "disable": "this.props.disable",
+                "active": "H",
+                "onClick": "f",
+                "className": "P||\"\""
+              },
+              "offset": 3930020
+            },
+            {
+              "component": "\"p\"",
+              "props": {
+                "className": "widget-switch-tooltip"
+              },
+              "expressions": {},
+              "offset": 3930104
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "l"
+              },
+              "offset": 3930162
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "titleRow"
+              },
+              "expressions": {},
+              "offset": 3930210
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "title"
+              },
+              "expressions": {},
+              "offset": 3930259
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "a",
+                "allowHtml": "m"
+              },
+              "offset": 3930305
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {},
+              "offset": 3930348
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "widget-container"
+              },
+              "expressions": {},
+              "offset": 3930401
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "F",
+                "id": "E",
+                "style": "d"
+              },
+              "offset": 3930458
+            },
+            {
+              "component": "\"p\"",
+              "props": {
+                "className": "widget-body-tooltip"
+              },
+              "expressions": {},
+              "offset": 3930557
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "t"
+              },
+              "offset": 3930613
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "warning-fw-update",
+                "style": {
+                  "zIndex": 100
+                }
+              },
+              "expressions": {
+                "onMouseEnter": "e=>{const E=e.clientX,a=e.clientY+25;this._tipX=E,this._tipY=a,this.setState({showFWUpdateTip:!0,tooltipX:E,tooltipY:a})}",
+                "onMouseMove": "e=>{const E=e.clientX,a=e.clientY+25;this._tipX===E&&this._tipY===a||(this._tipX=E,this._tipY=a,this.setState({tooltipX:E,tooltipY:a}))}",
+                "onMouseLeave": "()=>{this.setState({showFWUpdateTip:!1})}"
+              },
+              "offset": 3930642
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "FW_UPDATE_REQUIRED"
+              },
+              "expressions": {},
+              "offset": 3931056
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "warning-fw-update-tip"
+              },
+              "expressions": {
+                "style": "{top:this.state.tooltipY,left:this.state.tooltipX}"
+              },
+              "offset": 3931117
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "FW_UPDATE_MESSAGE"
+              },
+              "expressions": {},
+              "offset": 3931234
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 3928875,
+              "end": 3931267,
+              "source": "(){var e;const{id:E,title:a,tips:_,centerTips:t,children:i,hasSwitch:S=!1,disableSwitchTips:l,extraClass:R,customStyle:d,extraTitle:N,besideTitle:c,increaseZIndex:u,supportsShortcut:C,disable:D,renderShortcut:L,keyPressed:P,hasTutorialButton:p,allowHtml:m,currentFWVersion:M,hasFWUpdate:U=!1,fwUpdateComponent:h,isHyperPolling:G=!1,ignoreBottomOverflow:g=!1}=this.props,{toggleSwitch:f}=this,{active:H}=this.state,v=(null===(e=O.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},B=(0,I.ju)(h,v,M)&&U;var F=`widget ${G?\"hyperPolling\":\"\"} ${R||\"\"} ${u?\"increase-zindex\":\"\"} ${B?\"disabled\":\"\"}`,b=void 0!==_?(0,A.jsxs)(A.Fragment,{children:[(0,A.jsx)(\"div\",{className:\"help\",ref:this.helpRef,role:\"button\",\"aria-label\":(0,T.JN)(_),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,o.createPortal)((0,A.jsx)(\"div\",{className:\"tip body-widget-tip-portal\",ref:this.tipDiv,children:\"string\"!==typeof _?_:(0,A.jsx)(s.A,{text:_})}),document.body),p?(0,A.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,y=S?(0,A.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,A.jsx)(n.A,{disable:this.props.disable,active:H,onClick:f,className:P||\"\"}),l&&D?(0,A.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,A.jsx)(s.A,{text:l})}):null]}):null,V=\"\"!==a?(0,A.jsxs)(\"div\",{className:\"titleRow\",children:[(0,A.jsxs)(\"div\",{className:\"title\",children:[(0,A.jsx)(s.A,{text:a,allowHtml:m}),y,c]}),(0,A.jsx)(\"div\",{children:N}),C?L:null]}):null;return(0,A.jsxs)(\"div\",{className:\"widget-container\",children:[(0,A.jsxs)(\"div\",{className:F,id:E,style:d,children:[V,i,b]}),t&&(F.includes(\"disabled\")||!1===H)&&(0,A.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,A.jsx)(s.A,{text:t})}),B&&(0,A.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const E=e.clientX,a=e.clientY+25;this._tipX=E,this._tipY=a,this.setState({showFWUpdateTip:!0,tooltipX:E,tooltipY:a})},onMouseMove:e=>{const E=e.clientX,a=e.clientY+25;this._tipX===E&&this._tipY===a||(this._tipX=E,this._tipY=a,this.setState({tooltipX:E,tooltipY:a}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,A.jsx)(s.A,{text:r.AG3})}),B&&this.state.showFWUpdateTip&&(0,A.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,A.jsx)(s.A,{text:r.ssg})})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 71129,
+          "end": 72157,
+          "source": "e=>{let{deviceInfo:E={}}=e;const a=(0,n.useSelector)(e=>e.deviceReducer.serialNumber),_=!(0,n.useSelector)(e=>e.deviceReducer.isDongle),t=()=>(0,ue.WU)({...E,...a?{serialNumber:a}:{}}).catch(e=>{console.error(\"[MultiDevicePairing] Failed to open pairing page\",e)}),i=E.canPairTwoDevices?T.pC2:E.isProductivity?T.A4y:T.EXM;return(0,I.jsxs)(K.A,{title:E.isProductivity?T.E4q:T.f9h,tips:i,children:[E.isProductivity?(0,I.jsx)(\"div\",{style:{marginBottom:\"10px\"},children:(0,I.jsx)(s.A,{text:T.NtE})}):null,(0,I.jsxs)(\"div\",{className:\"img-text flex\",children:[(0,I.jsx)(\"div\",{className:\"mr20 multipairing \"+(E.isProductivity?\"productivity\":\"\")}),(0,I.jsx)(\"div\",{className:\"external \"+(_?`${Ce.A.disabled} ${Ce.A.launchUtilityTopPosition}`:\"\"),onClick:_?void 0:t,role:\"button\",tabIndex:_?-1:0,\"aria-disabled\":_,onKeyDown:e=>{_||\"Enter\"!==e.key&&\" \"!==e.key||(e.preventDefault(),t())},children:(0,I.jsx)(s.A,{text:T.JSN})})]}),_?(0,I.jsx)(\"div\",{className:Ce.A.launchUtilityEnableInfo,children:(0,I.jsx)(s.A,{text:T.JWw})}):null]})}",
+          "jsx": [
+            {
+              "component": "K.A",
+              "props": {},
+              "expressions": {
+                "title": "E.isProductivity?T.E4q:T.f9h",
+                "tips": "i"
+              },
+              "offset": 71457
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "style": {
+                  "marginBottom": "10px"
+                }
+              },
+              "expressions": {},
+              "offset": 71542
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "MULTI_DEVICE_PAIRING_DESCRIPTION"
+              },
+              "expressions": {},
+              "offset": 71596
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text flex"
+              },
+              "expressions": {},
+              "offset": 71631
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"mr20 multipairing \"+(E.isProductivity?\"productivity\":\"\")"
+              },
+              "offset": 71685
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "role": "button"
+              },
+              "expressions": {
+                "className": "\"external \"+(_?`${Ce.A.disabled} ${Ce.A.launchUtilityTopPosition}`:\"\")",
+                "onClick": "_?void 0:t",
+                "tabIndex": "_?-1:0",
+                "aria-disabled": "_",
+                "onKeyDown": "e=>{_||\"Enter\"!==e.key&&\" \"!==e.key||(e.preventDefault(),t())}"
+              },
+              "offset": 71772
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "OPEN_PAIRING_UTILITY"
+              },
+              "expressions": {},
+              "offset": 72019
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "MultiDevicePairing_launchUtilityEnableInfo__jA92J"
+              },
+              "expressions": {},
+              "offset": 72054
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "ENABLE_LAUNCH_PAIRING_UTILITY_INFO"
+              },
+              "expressions": {},
+              "offset": 72119
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 53302,
+          "end": 53781,
+          "source": "e=>{const{title:E,view:a,close:_,removeRoot:i}=e,o=t().useCallback(e=>{if(_){const E=_(e);if(E instanceof Promise)return void E.then(e=>{!1!==e&&i()});!1!==E&&i()}else i()},[_]);return(0,I.jsxs)(I.Fragment,{children:[(0,I.jsx)(\"div\",{className:V,style:{position:\"fixed\"}}),(0,I.jsxs)(\"div\",{className:W,style:{position:\"fixed\"},children:[(0,I.jsxs)(\"div\",{className:Y,children:[(0,I.jsx)(\"span\",{children:(0,I.jsx)(s.A,{text:E})}),(0,I.jsx)(\"img\",{src:w.A,onClick:o})]}),a]})]})}",
+          "jsx": [
+            {
+              "component": "I.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 53486
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "Dialog_backDrop__yNvt7",
+                "style": {
+                  "position": "fixed"
+                }
+              },
+              "expressions": {},
+              "offset": 53519
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "Dialog_modal__0cpu7",
+                "style": {
+                  "position": "fixed"
+                }
+              },
+              "expressions": {},
+              "offset": 53575
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "Dialog_header__n6HZj"
+              },
+              "expressions": {},
+              "offset": 53640
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {},
+              "offset": 53680
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "E"
+              },
+              "offset": 53707
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "w.A",
+                "onClick": "o"
+              },
+              "offset": 53733
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 13015,
+          "end": 13097,
+          "source": "e=>{let{isMounted:E}=e;return E?(0,_.jsx)(\"div\",{className:\"spinner-razer\"}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "spinner-razer"
+              },
+              "expressions": {},
+              "offset": 13047
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 50833,
+          "end": 52016,
+          "source": "class O extends _.Component{constructor(e){super(e),this.checkMe=()=>{var e,E,a,_;const t=this.props.effectSettings.filter(e=>e.effectId===this.props.selectedEffectId);this.props.onCheck(null!==(e=this.props.name)&&void 0!==e?e:this.props.id,null===(E=this.props.inActiveEffectSettings)||void 0===E||null===(a=E.inActiveEffectSetting)||void 0===a?void 0:a.color1,null===(_=t[0])||void 0===_?void 0:_.color1)},this.handleClick=e=>{1!==e.nativeEvent.which&&3!==e.nativeEvent.which||this.checkMe()};const{active:E,disabled:a}=this.props;this.state={active:E,disabled:a}}componentDidUpdate(e){const{active:E,disabled:a}=this.props;E!==e.active&&this.setState({active:E}),a!==e.disabled&&this.setState({disabled:a})}render(){const{id:e,name:E,customName:a,extraClass:_,allowLeftClick:t}=this.props,{active:i,disabled:o}=this.state,{checkMe:n}=this;var O=`radio-item ${_||\"\"} ${o?\"disabled\":\"\"}`;return(0,I.jsxs)(\"div\",{tooltip:i?(0,r.JN)(T.HcD):(0,r.JN)(T._pM),className:O,children:[(0,I.jsx)(\"input\",{type:\"radio\",id:e,checked:i,onChange:n}),(0,I.jsx)(\"label\",{htmlFor:e,onClick:t?this.handleClick:()=>{},onContextMenu:t?this.handleClick:()=>{},children:a||(0,I.jsx)(s.A,{text:E})})]})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "tooltip": "i?(0,r.JN)(T.HcD):(0,r.JN)(T._pM)",
+                "className": "O"
+              },
+              "offset": 51729
+            },
+            {
+              "component": "\"input\"",
+              "props": {
+                "type": "radio"
+              },
+              "expressions": {
+                "id": "e",
+                "checked": "i",
+                "onChange": "n"
+              },
+              "offset": 51811
+            },
+            {
+              "component": "\"label\"",
+              "props": {},
+              "expressions": {
+                "htmlFor": "e",
+                "onClick": "t?this.handleClick:()=>{}",
+                "onContextMenu": "t?this.handleClick:()=>{}"
+              },
+              "offset": 51871
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "E"
+              },
+              "offset": 51986
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 51550,
+              "end": 52015,
+              "source": "(){const{id:e,name:E,customName:a,extraClass:_,allowLeftClick:t}=this.props,{active:i,disabled:o}=this.state,{checkMe:n}=this;var O=`radio-item ${_||\"\"} ${o?\"disabled\":\"\"}`;return(0,I.jsxs)(\"div\",{tooltip:i?(0,r.JN)(T.HcD):(0,r.JN)(T._pM),className:O,children:[(0,I.jsx)(\"input\",{type:\"radio\",id:e,checked:i,onChange:n}),(0,I.jsx)(\"label\",{htmlFor:e,onClick:t?this.handleClick:()=>{},onContextMenu:t?this.handleClick:()=>{},children:a||(0,I.jsx)(s.A,{text:E})})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 54905,
+          "end": 55490,
+          "source": "e=>{let{scandevices:E,lang:a}=e;const{state:_,callAction:i}=t().useContext(Q),{selectedIndex:o}=_;return(0,I.jsxs)(\"div\",{className:\"scan-devices-list\",children:[(0,I.jsxs)(\"div\",{className:\"radio-group-title\",children:[\"\"+(1===E.length?\"\":E.length+\" \"),(0,I.jsx)(s.A,{text:T.pX1})]}),(0,I.jsx)(\"div\",{className:\"radio-group\",children:E.map((e,E)=>(0,I.jsx)(A,{extraClass:\"radio-item-duallink\",id:\"\"+(\"radio-duallink\"+E),name:`${e.name[a]||e.name.en}`,value:E,active:o===E,disable:!1,onCheck:()=>{i({type:\"SET_SELECTED_INDEX\",payload:{selectedIndex:E}})}},`${e.productId}-${E}`))})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "scan-devices-list"
+              },
+              "expressions": {},
+              "offset": 55009
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "radio-group-title"
+              },
+              "expressions": {},
+              "offset": 55067
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "DUALLINK_SCAN_DEVICE_FOUND"
+              },
+              "expressions": {},
+              "offset": 55159
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "radio-group"
+              },
+              "expressions": {},
+              "offset": 55190
+            },
+            {
+              "component": "A",
+              "props": {
+                "extraClass": "radio-item-duallink",
+                "disable": false
+              },
+              "expressions": {
+                "id": "\"\"+(\"radio-duallink\"+E)",
+                "name": "`${e.name[a]||e.name.en}`",
+                "value": "E",
+                "active": "o===E",
+                "onCheck": "()=>{i({type:\"SET_SELECTED_INDEX\",payload:{selectedIndex:E}})}"
+              },
+              "offset": 55253
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 59904,
+          "end": 62845,
+          "source": "e=>{let{status:E,bindInfo:a,add:_,rescan:i,canUnpair:o,onClick:n,scandevices:r}=e;if(0===a.length||E===J.JUSTUNPAIR)return(0,I.jsxs)(\"div\",{className:`${D} nospecificdevice`,draggable:!1,children:[(0,I.jsx)(\"div\",{className:\"icon-category-hyperpolling hyperpolling-mouse-category\"}),(0,I.jsx)(\"div\",{className:\"icon-button-hyperpolling\",children:E===J.LOADED?(0,I.jsx)(\"div\",{className:\"icon-button-text-hyperpolling\",onClick:_,children:(0,I.jsx)(s.A,{text:T.gjU})}):E===J.SCANNING||E===J.PAIRING||E===J.JUSTUNPAIR?(0,I.jsx)(\"div\",{className:`${L}`}):E===J.SCANNED&&0===r.length?(0,I.jsx)(\"div\",{className:\"icon-button-text-hyperpolling\",onClick:i,children:(0,I.jsx)(s.A,{text:T.zt5})}):(0,I.jsx)(\"div\",{className:\"icon-button-text-hyperpolling\",onClick:_,children:(0,I.jsx)(s.A,{text:T.gjU})})})]});{var O,A,S;let e=`${t().useMemo(()=>{var e,E,_;return`${{NODE_ENV:\"production\",PUBLIC_URL:\".\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-m15-beta#866f3b7fba79101f4e8e9a5eb59b33cf5416ed3c#2608270957\",BUILD_TAG:\"master-m15-beta#866f3b7fba79101f4e8e9a5eb59b33cf5416ed3c#2608270957@1787824823909\",IS_OPTIMIZED:!1,REACT_APP_ENVIRONMENT:\"production\",REACT_APP_SHOW_VERSION:\"0\",REACT_APP_SHOW_REDUX:\"0\",REACT_APP_SHOW_LOGS:\"0\",REACT_APP_DEVELOPER_SHORTCUTS_ENABLED:\"0\",REACT_APP_HOST_URL:\"https://apps.razer.com/synapse\",REACT_APP_REMOTE_STORAGE_USER_ADDRESS:\"userid@gors.razerapi.com\",REACT_APP_URL_RAZER_REGION_SELECTOR:\"https://apps.razer.com/synapse/region-selector/\",REACT_APP_AUDIO_S3_ENDPOINT:\"https://app-assets.razer.com/sophie/\",REACT_APP_RAZER_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_PUBSUB_WEBSOCKET:\"wss://pubsub.razersynapse.com/ws\",REACT_APP_AMAZON_SCOPE:\"alexa:all profile alexa::ask:skills:readwrite\",REACT_APP_AMAZON_ALEXA_PRODUCT_ID:\"Razer_Synapse\",REACT_APP_AMAZON_ALEXA_DEVICE_SERIAL_NUMBER:\"123\",REACT_APP_AMAZON_ALEXA_SKILL_ID:\"amzn1.ask.skill.47c9d48c-f128-4fa4-846a-df3287ef53b9\",REACT_APP_AMAZON_ALEXA_SKILL_STAGE:\"live\",REACT_APP_AMAZON_ALEXA_SKILL_REDIRECT:\"https://razer-alexa.razer.com/api/authresponse\",REACT_APP_RAZER_ALEXA_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_ALEXA_PUBSUB_WEBSOCKET:\"wss://pubsub-alexa.razerapi.com/ws\"}.REACT_APP_HOST_UR||location.origin}/synapse/products/${null===(e=a[0])||void 0===e?void 0:e.productId}/ui/${null===(E=a[0])||void 0===E?void 0:E.productId}_${null===(_=a[0])||void 0===_?void 0:_.editionId}/PluginImages`},[a])}/${null===(O=a[0])||void 0===O?void 0:O.productId}_${null===(A=a[0])||void 0===A?void 0:A.editionId}_${null===(S=a[0])||void 0===S?void 0:S.layoutId}_dashboard1x.`;return e=(0,X.A)(e+\"avif\",e+\"png\"),(0,I.jsx)(\"div\",{className:`${D}`,draggable:!1,style:{backgroundImage:`url('${e}')`},children:(0,I.jsx)(\"div\",{className:`${N}`,onClick:n,style:o?{}:{display:\"none\"},children:E===J.PAIRED?(0,I.jsx)(s.A,{text:T.ssI}):null})})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "draggable": false
+              },
+              "expressions": {
+                "className": "`${D} nospecificdevice`"
+              },
+              "offset": 60026
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-category-hyperpolling hyperpolling-mouse-category"
+              },
+              "expressions": {},
+              "offset": 60101
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-button-hyperpolling"
+              },
+              "expressions": {},
+              "offset": 60187
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-button-text-hyperpolling"
+              },
+              "expressions": {
+                "onClick": "_"
+              },
+              "offset": 60263
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "ADD"
+              },
+              "expressions": {},
+              "offset": 60341
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${L}`"
+              },
+              "offset": 60419
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-button-text-hyperpolling"
+              },
+              "expressions": {
+                "onClick": "i"
+              },
+              "offset": 60483
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "RESCAN"
+              },
+              "expressions": {},
+              "offset": 60561
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-button-text-hyperpolling"
+              },
+              "expressions": {
+                "onClick": "_"
+              },
+              "offset": 60591
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "ADD"
+              },
+              "expressions": {},
+              "offset": 60669
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "draggable": false
+              },
+              "expressions": {
+                "className": "`${D}`",
+                "style": "{backgroundImage:`url('${e}')`}"
+              },
+              "offset": 62619
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${N}`",
+                "onClick": "n",
+                "style": "o?{}:{display:\"none\"}"
+              },
+              "offset": 62713
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIR"
+              },
+              "expressions": {},
+              "offset": 62807
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 57559,
+          "end": 59900,
+          "source": "e=>{var E;let{status:a,scan:_,unPair:t,bindInfo:i,cancelSelect:o,bindDevice:n,scandevices:r,lang:O,cancelUnpair:A,confirmUnpair:S,deviceInfo:l}=e;const R=i[0]||{},d=null!==(E=R.productName)&&void 0!==E?E:R.name;return(0,I.jsx)(\"div\",{className:\"box-item \"+(i.length>0?\"showborderline\":\"\"),children:(0,I.jsxs)(\"div\",{className:\"box-inner\",children:[a===J.UNPAIRING?(0,I.jsxs)(\"div\",{className:\"confirm-unpairing\",children:[(0,I.jsx)(\"div\",{className:\"confirm-unpairing-content\",children:(0,I.jsx)(s.A,{text:l.hyperpollingConfirmText})}),(0,I.jsxs)(\"div\",{className:\"box-unpairselect-tag\",children:[(0,I.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-cancel\",onClick:A,children:(0,I.jsx)(s.A,{text:T.bOp})}),(0,I.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-confirm\",onClick:()=>t(R.dongleId||R.productId),children:(0,I.jsx)(s.A,{text:T.Mh0})})]})]}):null,(0,I.jsx)(\"div\",{className:\"box-category\",children:(0,I.jsx)(s.A,{text:T.kBv})}),a===J.SCANNED&&r.length>=1?(0,I.jsx)(se,{scandevices:r,lang:O}):(0,I.jsx)(Ae,{status:a,bindInfo:i,add:_,rescan:_,canUnpair:a===J.PAIRED,scandevices:r,onClick:()=>{S()}}),a===J.SCANNING?(0,I.jsx)(\"div\",{className:\"box-scanningdevice-tag\",children:(0,I.jsx)(s.A,{text:T.kiV})}):a===J.SCANNED&&r.length>1?(0,I.jsxs)(\"div\",{className:\"box-scanselect-tag\",children:[(0,I.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-cancel\",onClick:o,children:(0,I.jsx)(s.A,{text:T.bOp})}),(0,I.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-pair\",onClick:n,children:(0,I.jsx)(s.A,{text:T.BuT})})]}):a===J.SCANNED&&0===r.length?(0,I.jsx)(\"div\",{className:\"box-selectnodevice-tag\",children:(0,I.jsx)(s.A,{text:T.kEL})}):a===J.PAIRING?(0,I.jsx)(\"div\",{className:\"box-bindingdevice-tag\",children:(0,I.jsx)(s.A,{text:T.rQd})}):a===J.PAIR_FAILED?(0,I.jsx)(\"div\",{className:\"box-bindfail-tag\",children:(0,I.jsx)(s.A,{text:T.lwW})}):a===J.JUSTUNPAIR?(0,I.jsx)(\"div\",{className:\"box-unbindingdevice-tag\",children:(0,I.jsx)(s.A,{text:T.ca6})}):[J.PAIRED,J.UNPAIR_FAILED].includes(a)&&i.length>0?(0,I.jsxs)(\"div\",{className:\"box-device-tag\",children:[d[O]||d.en,a===J.UNPAIR_FAILED?(0,I.jsx)(\"div\",{className:\"box-device-extrainfo\",children:(0,I.jsx)(s.A,{text:T.evT})}):null]}):(0,I.jsx)(\"a\",{className:\"box-tips-tag\",onClick:Te,children:(0,I.jsx)(s.A,{text:T.RFv})})]})})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"box-item \"+(i.length>0?\"showborderline\":\"\")"
+              },
+              "offset": 57776
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-inner"
+              },
+              "expressions": {},
+              "offset": 57857
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "confirm-unpairing"
+              },
+              "expressions": {},
+              "offset": 57923
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "confirm-unpairing-content"
+              },
+              "expressions": {},
+              "offset": 57981
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "l.hyperpollingConfirmText"
+              },
+              "offset": 58045
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-tag"
+              },
+              "expressions": {},
+              "offset": 58095
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-button box-unpairselect-cancel"
+              },
+              "expressions": {
+                "onClick": "A"
+              },
+              "offset": 58156
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "CANCEL"
+              },
+              "expressions": {},
+              "offset": 58252
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-button box-unpairselect-confirm"
+              },
+              "expressions": {
+                "onClick": "()=>t(R.dongleId||R.productId)"
+              },
+              "offset": 58282
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "CONFIRM"
+              },
+              "expressions": {},
+              "offset": 58408
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-category"
+              },
+              "expressions": {},
+              "offset": 58449
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "MOUSE"
+              },
+              "expressions": {},
+              "offset": 58500
+            },
+            {
+              "component": "se",
+              "props": {},
+              "expressions": {
+                "scandevices": "r",
+                "lang": "O"
+              },
+              "offset": 58557
+            },
+            {
+              "component": "Ae",
+              "props": {},
+              "expressions": {
+                "status": "a",
+                "bindInfo": "i",
+                "add": "_",
+                "rescan": "_",
+                "canUnpair": "a===J.PAIRED",
+                "scandevices": "r",
+                "onClick": "()=>{S()}"
+              },
+              "offset": 58594
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanningdevice-tag"
+              },
+              "expressions": {},
+              "offset": 58715
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "SCANNING"
+              },
+              "expressions": {},
+              "offset": 58776
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-tag"
+              },
+              "expressions": {},
+              "offset": 58832
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-button box-scanselect-cancel"
+              },
+              "expressions": {
+                "onClick": "o"
+              },
+              "offset": 58891
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "CANCEL"
+              },
+              "expressions": {},
+              "offset": 58983
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-button box-scanselect-pair"
+              },
+              "expressions": {
+                "onClick": "n"
+              },
+              "offset": 59013
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "PAIR"
+              },
+              "expressions": {},
+              "offset": 59103
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-selectnodevice-tag"
+              },
+              "expressions": {},
+              "offset": 59164
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "NO_DEVICE_FOUND"
+              },
+              "expressions": {},
+              "offset": 59225
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-bindingdevice-tag"
+              },
+              "expressions": {},
+              "offset": 59269
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "PAIRING"
+              },
+              "expressions": {},
+              "offset": 59329
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-bindfail-tag"
+              },
+              "expressions": {},
+              "offset": 59377
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "PAIRING_FAILED"
+              },
+              "expressions": {},
+              "offset": 59432
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unbindingdevice-tag"
+              },
+              "expressions": {},
+              "offset": 59479
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIRING"
+              },
+              "expressions": {},
+              "offset": 59541
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-device-tag"
+              },
+              "expressions": {},
+              "offset": 59622
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-device-extrainfo"
+              },
+              "expressions": {},
+              "offset": 59708
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIRING_FAILED"
+              },
+              "expressions": {},
+              "offset": 59767
+            },
+            {
+              "component": "\"a\"",
+              "props": {
+                "className": "box-tips-tag"
+              },
+              "expressions": {
+                "onClick": "Te"
+              },
+              "offset": 59805
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "VIEW_COMPATIBLE_DEVICES"
+              },
+              "expressions": {},
+              "offset": 59865
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 56486,
+          "end": 57555,
+          "source": "e=>{let{status:E,scan:a,bindInfo:_,unPair:t,cancelSelect:i,bindDevice:o,scandevices:n,lang:s,cancelUnpair:r,confirmUnpair:T,deviceInfo:O}=e;return(0,I.jsxs)(\"div\",{className:\"hyperpolling-device-content\",children:[(0,I.jsxs)(\"div\",{className:\"hyperpolling-mouse-dock\",children:[(0,I.jsx)(\"img\",{className:\"dongle-img-box\",src:O.imgPairing,srcSet:`${O.imgPairing} 1x, ${O.imgPairing} 3x`}),(0,I.jsx)(\"div\",{className:\"dongle-info\",children:(0,I.jsx)(\"div\",{className:\"display-block info-text\",children:`${\"zh-cn\"===s?O.deviceName[s]:O.deviceName.en}`})})]}),(e=>{let E=\"not-connected\";switch(e){case J.LOADED:case J.SCANNING:case J.PAIRING:case J.SCANNED:case J.JUSTUNPAIR:case J.UNPAIRING:E=\"connecting\";break;case J.PAIRED:E=\"connected\";break;default:E=\"not-connected\"}return(0,I.jsx)(\"div\",{className:`connect-dot ${E}`})})(E),(0,I.jsx)(\"div\",{className:\"hyperpolling-device-box\",children:(0,I.jsx)(\"div\",{children:(0,I.jsx)(Oe,{status:E,bindInfo:_,scan:a,unPair:t,cancelSelect:i,bindDevice:o,scandevices:n,lang:s,cancelUnpair:r,confirmUnpair:T,deviceInfo:O})})})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "hyperpolling-device-content"
+              },
+              "expressions": {},
+              "offset": 56632
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "hyperpolling-mouse-dock"
+              },
+              "expressions": {},
+              "offset": 56700
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "className": "dongle-img-box"
+              },
+              "expressions": {
+                "src": "O.imgPairing",
+                "srcSet": "`${O.imgPairing} 1x, ${O.imgPairing} 3x`"
+              },
+              "offset": 56764
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dongle-info"
+              },
+              "expressions": {},
+              "offset": 56875
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "display-block info-text"
+              },
+              "expressions": {},
+              "offset": 56925
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`connect-dot ${E}`"
+              },
+              "offset": 57262
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "hyperpolling-device-box"
+              },
+              "expressions": {},
+              "offset": 57315
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {},
+              "offset": 57377
+            },
+            {
+              "component": "Oe",
+              "props": {},
+              "expressions": {
+                "status": "E",
+                "bindInfo": "_",
+                "scan": "a",
+                "unPair": "t",
+                "cancelSelect": "i",
+                "bindDevice": "o",
+                "scandevices": "n",
+                "lang": "s",
+                "cancelUnpair": "r",
+                "confirmUnpair": "T",
+                "deviceInfo": "O"
+              },
+              "offset": 57403
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 55494,
+          "end": 56397,
+          "source": "e=>{let{status:E,scandevices:a,deviceInfo:_}=e;return[J.LOADED,J.SCANNING,J.PAIR_FAILED,J.UNPAIR_FAILED].includes(E)?(0,I.jsxs)(\"div\",{className:`${h}`,children:[(0,I.jsx)(\"div\",{className:`${G}`}),(0,I.jsxs)(\"ul\",{className:`${g}`,children:[(0,I.jsx)(\"li\",{className:`${f}`,children:(0,I.jsx)(s.A,{text:T.VcX})}),(0,I.jsx)(\"li\",{className:`${f}`,children:(0,I.jsx)(s.A,{text:T.XBA})}),(0,I.jsx)(\"li\",{className:`${f}`,children:(0,I.jsx)(s.A,{text:T.PSG})}),(0,I.jsx)(\"li\",{className:`${f}`,children:(0,I.jsx)(s.A,{text:_.hyperpollingNoteFour})}),(0,I.jsx)(\"li\",{className:`${f}`,children:(0,I.jsx)(s.A,{text:T.DxM})})]})]}):E===J.PAIRED||E===J.UNPAIRED?(0,I.jsx)(\"div\",{className:`${H}`,children:E===J.UNPAIRED?(0,I.jsx)(s.A,{text:T.kTs}):E===J.PAIRED&&a.length>=1?(0,I.jsx)(s.A,{text:T.T8n}):\"\"}):E===J.SCANNED&&a.length>1?(0,I.jsx)(\"div\",{className:`${H}`,children:(0,I.jsx)(s.A,{text:T._AH})}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${h}`"
+              },
+              "offset": 55611
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${G}`"
+              },
+              "offset": 55656
+            },
+            {
+              "component": "\"ul\"",
+              "props": {},
+              "expressions": {
+                "className": "`${g}`"
+              },
+              "offset": 55692
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${f}`"
+              },
+              "offset": 55736
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE"
+              },
+              "expressions": {},
+              "offset": 55778
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${f}`"
+              },
+              "offset": 55808
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "DUALLINK_NOTE_TWO"
+              },
+              "expressions": {},
+              "offset": 55850
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${f}`"
+              },
+              "offset": 55880
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "DUALLINK_NOTE_THREE"
+              },
+              "expressions": {},
+              "offset": 55922
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${f}`"
+              },
+              "offset": 55952
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "_.hyperpollingNoteFour"
+              },
+              "offset": 55994
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${f}`"
+              },
+              "offset": 56041
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "DUALLINK_NOTE_FIVE"
+              },
+              "expressions": {},
+              "offset": 56083
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${H}`"
+              },
+              "offset": 56148
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIRING_COMPLETE"
+              },
+              "expressions": {},
+              "offset": 56206
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "PAIRING_COMPLETE"
+              },
+              "expressions": {},
+              "offset": 56260
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${H}`"
+              },
+              "offset": 56319
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "RADIO_SELECT_TIPS"
+              },
+              "expressions": {},
+              "offset": 56362
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 62849,
+          "end": 63619,
+          "source": "e=>{let{status:E,bindInfo:a,scan:_,unPair:i,scannedInfo:o,setStatus:n,cancelUnpair:r,confirmUnpair:T,lang:O,deviceInfo:A}=e;const{state:S}=t().useContext(Q),{selectedIndex:l}=S,R=t().useMemo(()=>o||[],[o]),d=t().useMemo(()=>(o||[])[l],[l,o]),N=t().useCallback(()=>{d&&(n(J.PAIRING),oe(\"DUALLINK_BIND_DEVICE\",{mode:ee,device:d}))},[d]);return(0,I.jsxs)(\"div\",{className:`${P}`,children:[(0,I.jsx)(\"div\",{className:`${U} ${p}`,children:(0,I.jsx)(\"div\",{className:`${m} ${M}`,children:(0,I.jsx)(s.A,{text:A.hyperpollingHeader})})}),(0,I.jsx)(Ie,{status:E||\"\",scan:_,unPair:i,cancelSelect:()=>{o=[],oe(\"DUALLINK_BIND_INFO\",{})},bindDevice:N,scandevices:R,lang:O,cancelUnpair:r,confirmUnpair:T,bindInfo:a,deviceInfo:A}),(0,I.jsx)(re,{status:E,scandevices:R,deviceInfo:A})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${P}`"
+              },
+              "offset": 63190
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${U} ${p}`"
+              },
+              "offset": 63235
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${m} ${M}`"
+              },
+              "offset": 63283
+            },
+            {
+              "component": "s.A",
+              "props": {},
+              "expressions": {
+                "text": "A.hyperpollingHeader"
+              },
+              "offset": 63331
+            },
+            {
+              "component": "Ie",
+              "props": {},
+              "expressions": {
+                "status": "E||\"\"",
+                "scan": "_",
+                "unPair": "i",
+                "cancelSelect": "()=>{o=[],oe(\"DUALLINK_BIND_INFO\",{})}",
+                "bindDevice": "N",
+                "scandevices": "R",
+                "lang": "O",
+                "cancelUnpair": "r",
+                "confirmUnpair": "T",
+                "bindInfo": "a",
+                "deviceInfo": "A"
+              },
+              "offset": 63378
+            },
+            {
+              "component": "re",
+              "props": {},
+              "expressions": {
+                "status": "E",
+                "scandevices": "R",
+                "deviceInfo": "A"
+              },
+              "offset": 63564
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 63684,
+          "end": 66658,
+          "source": "e=>{let{deviceInfo:E,globallang:a,pairedInfo:_,updatePairedInfo:i,closeDialog:o,setTempPairedInfo:n}=e;const[s,r]=t().useReducer(te,{...Ee,deviceInfo:E,bindInfo:_}),{status:T,bindInfo:O,scannedInfo:A,lang:S}=s;(T===J.LOADED||T.PAIRED)&&ne();const d=t().useCallback(e=>{r({type:\"SET_STATUS\",payload:{status:e}})},[]),N=t().useCallback(e=>{r({type:\"SET_LANG\",payload:{lang:e}})},[]),c=t().useCallback(e=>{r(e)},[]),u=()=>{ne(),r({type:\"SET_STATUS\",payload:{status:J.SCANNING}}),oe(\"DUALLINK_SCAN_DEVICE\",{status:$})},C=e=>{r({type:\"SET_STATUS\",payload:{status:J.JUSTUNPAIR}}),oe(\"DUALLINK_UNBIND_DEVICE\",{productId:e})},D=()=>{r({type:\"SET_STATUS\",payload:{status:J.UNPAIRING}})},L=()=>{r({type:\"SET_STATUS\",payload:{status:J.PAIRED}})};return t().useEffect(()=>{N(a)},[a]),t().useEffect(()=>{d(J.LOADING),oe(\"DUALLINK_BIND_INFO\",{})},[]),t().useEffect(()=>{v.A.onBCEvent(x.qg.MW_RESPONSE_UI,e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",a,_,t),t){let e=\"\";return\"DUALLINK_BIND_INFO\"===a?(e=\"Fail to get bind Info\",c({type:\"SET_ERROR\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===a?(e=\"Fail to scan other devices\",c({type:\"SET_ERROR\",payload:{status:J.SCANNED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===a?(e=\"Fail to bind device\",c({type:\"SET_ERROR\",payload:{status:J.PAIR_FAILED}}),_e=setTimeout(()=>{c({type:\"SET_BINDINFO\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===a&&(e=\"Fail to unbind device\",c({type:\"SET_ERROR\",payload:{status:J.UNPAIR_FAILED}}),_e=setTimeout(()=>{c({type:\"SET_STATUS\",payload:{status:J.PAIRED}})},4e3)),void console.error(`errMsg ${e}`)}switch(a){case\"DUALLINK_BIND_INFO\":0==_.length?c({type:\"SET_BINDINFO\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}}):c({type:\"SET_BINDINFO\",payload:{status:J.PAIRED,bindInfo:_,scannedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":1===_.length?(c({type:\"SET_SCANNED_INFO\",payload:{status:J.PAIRING,scannedInfo:_}}),oe(\"DUALLINK_BIND_DEVICE\",{mode:ee,device:_[0]})):c({type:\"SET_SCANNED_INFO\",payload:{status:J.SCANNED,scannedInfo:_}});break;case\"DUALLINK_BIND_DEVICE\":c({type:\"SET_BINDINFO\",payload:{status:J.PAIRED,bindInfo:[_.device],selectedIndex:0}}),i([_.device]),o();break;case\"DUALLINK_UNBIND_DEVICE\":c({type:\"SET_STATUS\",payload:{status:J.UNPAIRED}}),i([]),n(null),o()}})},[]),T===J.LOADING?(0,I.jsx)(\"div\",{className:R,children:(0,I.jsx)(l.A,{isMounted:!0})}):T===J.LOADED||T===J.SCANNING||T===J.SCANNED||T===J.PAIRING||T===J.PAIRED||T===J.JUSTUNPAIR||T===J.UNPAIRING||T===J.UNPAIRED||T===J.PAIR_FAILED||T===J.UNPAIR_FAILED?(0,I.jsx)(Q.Provider,{value:{state:s,callAction:c},children:(0,I.jsx)(Se,{status:T,bindInfo:O,scannedInfo:A,scan:u,unPair:C,setStatus:d,confirmUnpair:D,cancelUnpair:L,lang:S,deviceInfo:E})}):(0,I.jsx)(\"div\",{className:R,children:(0,I.jsx)(l.A,{isMounted:!0})})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_loading__Yc+SI"
+              },
+              "expressions": {},
+              "offset": 66163
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "isMounted": true
+              },
+              "expressions": {},
+              "offset": 66201
+            },
+            {
+              "component": "Q.Provider",
+              "props": {},
+              "expressions": {
+                "value": "{state:s,callAction:c}"
+              },
+              "offset": 66397
+            },
+            {
+              "component": "Se",
+              "props": {},
+              "expressions": {
+                "status": "T",
+                "bindInfo": "O",
+                "scannedInfo": "A",
+                "scan": "u",
+                "unPair": "C",
+                "setStatus": "d",
+                "confirmUnpair": "D",
+                "cancelUnpair": "L",
+                "lang": "S",
+                "deviceInfo": "E"
+              },
+              "offset": 66457
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_loading__Yc+SI"
+              },
+              "expressions": {},
+              "offset": 66588
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "isMounted": true
+              },
+              "expressions": {},
+              "offset": 66626
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 63623,
+          "end": 66659,
+          "source": "(0,n.connect)(e=>({globallang:e.languageReducer.lang}),null)(e=>{let{deviceInfo:E,globallang:a,pairedInfo:_,updatePairedInfo:i,closeDialog:o,setTempPairedInfo:n}=e;const[s,r]=t().useReducer(te,{...Ee,deviceInfo:E,bindInfo:_}),{status:T,bindInfo:O,scannedInfo:A,lang:S}=s;(T===J.LOADED||T.PAIRED)&&ne();const d=t().useCallback(e=>{r({type:\"SET_STATUS\",payload:{status:e}})},[]),N=t().useCallback(e=>{r({type:\"SET_LANG\",payload:{lang:e}})},[]),c=t().useCallback(e=>{r(e)},[]),u=()=>{ne(),r({type:\"SET_STATUS\",payload:{status:J.SCANNING}}),oe(\"DUALLINK_SCAN_DEVICE\",{status:$})},C=e=>{r({type:\"SET_STATUS\",payload:{status:J.JUSTUNPAIR}}),oe(\"DUALLINK_UNBIND_DEVICE\",{productId:e})},D=()=>{r({type:\"SET_STATUS\",payload:{status:J.UNPAIRING}})},L=()=>{r({type:\"SET_STATUS\",payload:{status:J.PAIRED}})};return t().useEffect(()=>{N(a)},[a]),t().useEffect(()=>{d(J.LOADING),oe(\"DUALLINK_BIND_INFO\",{})},[]),t().useEffect(()=>{v.A.onBCEvent(x.qg.MW_RESPONSE_UI,e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",a,_,t),t){let e=\"\";return\"DUALLINK_BIND_INFO\"===a?(e=\"Fail to get bind Info\",c({type:\"SET_ERROR\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===a?(e=\"Fail to scan other devices\",c({type:\"SET_ERROR\",payload:{status:J.SCANNED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===a?(e=\"Fail to bind device\",c({type:\"SET_ERROR\",payload:{status:J.PAIR_FAILED}}),_e=setTimeout(()=>{c({type:\"SET_BINDINFO\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===a&&(e=\"Fail to unbind device\",c({type:\"SET_ERROR\",payload:{status:J.UNPAIR_FAILED}}),_e=setTimeout(()=>{c({type:\"SET_STATUS\",payload:{status:J.PAIRED}})},4e3)),void console.error(`errMsg ${e}`)}switch(a){case\"DUALLINK_BIND_INFO\":0==_.length?c({type:\"SET_BINDINFO\",payload:{status:J.LOADED,bindInfo:[],scannedInfo:[]}}):c({type:\"SET_BINDINFO\",payload:{status:J.PAIRED,bindInfo:_,scannedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":1===_.length?(c({type:\"SET_SCANNED_INFO\",payload:{status:J.PAIRING,scannedInfo:_}}),oe(\"DUALLINK_BIND_DEVICE\",{mode:ee,device:_[0]})):c({type:\"SET_SCANNED_INFO\",payload:{status:J.SCANNED,scannedInfo:_}});break;case\"DUALLINK_BIND_DEVICE\":c({type:\"SET_BINDINFO\",payload:{status:J.PAIRED,bindInfo:[_.device],selectedIndex:0}}),i([_.device]),o();break;case\"DUALLINK_UNBIND_DEVICE\":c({type:\"SET_STATUS\",payload:{status:J.UNPAIRED}}),i([]),n(null),o()}})},[]),T===J.LOADING?(0,I.jsx)(\"div\",{className:R,children:(0,I.jsx)(l.A,{isMounted:!0})}):T===J.LOADED||T===J.SCANNING||T===J.SCANNED||T===J.PAIRING||T===J.PAIRED||T===J.JUSTUNPAIR||T===J.UNPAIRING||T===J.UNPAIRED||T===J.PAIR_FAILED||T===J.UNPAIR_FAILED?(0,I.jsx)(Q.Provider,{value:{state:s,callAction:c},children:(0,I.jsx)(Se,{status:T,bindInfo:O,scannedInfo:A,scan:u,unPair:C,setStatus:d,confirmUnpair:D,cancelUnpair:L,lang:S,deviceInfo:E})}):(0,I.jsx)(\"div\",{className:R,children:(0,I.jsx)(l.A,{isMounted:!0})})})",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_loading__Yc+SI"
+              },
+              "expressions": {},
+              "offset": 66163
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "isMounted": true
+              },
+              "expressions": {},
+              "offset": 66201
+            },
+            {
+              "component": "Q.Provider",
+              "props": {},
+              "expressions": {
+                "value": "{state:s,callAction:c}"
+              },
+              "offset": 66397
+            },
+            {
+              "component": "Se",
+              "props": {},
+              "expressions": {
+                "status": "T",
+                "bindInfo": "O",
+                "scannedInfo": "A",
+                "scan": "u",
+                "unPair": "C",
+                "setStatus": "d",
+                "confirmUnpair": "D",
+                "cancelUnpair": "L",
+                "lang": "S",
+                "deviceInfo": "E"
+              },
+              "offset": 66457
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_loading__Yc+SI"
+              },
+              "expressions": {},
+              "offset": 66588
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "isMounted": true
+              },
+              "expressions": {},
+              "offset": 66626
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 66663,
+          "end": 71018,
+          "source": "e=>{var E,a,i;let{deviceInfo:o}=e;const[r,O]=t().useState([]),A=(0,n.useSelector)(e=>e.languageReducer.lang).toLowerCase(),l=(0,n.useSelector)(e=>e.commonReducer.validDevices),[R,D]=t().useState(null),[L,P]=t().useState(!1),p=(0,_.useRef)(0),m=(0,_.useRef)(l),M=(0,_.useRef)(R),U=(0,_.useMemo)(()=>l.some(e=>{var E;return e.productId===(null===R||void 0===R?void 0:R.productId)||e.productId===(null===(E=r[0])||void 0===E?void 0:E.productId)}),[l,r]),h=q(),G=(0,_.useMemo)(()=>h(U?T.Qkp:T.VYK,{start:\"|||\",end:\"|||\"}).split(\"|||\"),[h]),g=t().useCallback(()=>{const{close:e}=((e,E)=>{const{container:a}=e,_=document.createElement(\"div\");a?a.appendChild(_):document.body.appendChild(_);const t=()=>{a?a.removeChild(_):document.body.removeChild(_)};return y().render((0,I.jsx)(n.Provider,{store:z.A,children:(0,I.jsx)(k,{...e,close:E,removeRoot:t})}),_),{close:t}})({title:T.UVv,view:(0,I.jsx)(le,{deviceInfo:o,pairedInfo:r,updatePairedInfo:O,setTempPairedInfo:D,closeDialog:()=>{setTimeout(()=>{e&&e()},1e3)}})},()=>{ne(),P(!1),oe(\"DUALLINK_CANCEL\",{})})},[]);(0,_.useEffect)(()=>{m.current=l,M.current=R},[l,R]);const f=t().useCallback(e=>{var E;let{payload:a}=e;if(0===a.length)return;null===M.current&&(D(a[0]),P(!0),p.current=0);const _=null===(E=a[0])||void 0===E?void 0:E.editionId,t=m.current.some(e=>{var E;return e.productId===(null===(E=a[0])||void 0===E?void 0:E.productId)&&e.editionId===_});if(t)return O(a),void P(!1);p.current+=1,p.current<=5?setTimeout(()=>{oe(\"DUALLINK_BIND_INFO\",{})},1e3):P(!1)},[D,P,O]);t().useEffect(()=>{const e=async e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(\"DUALLINK_BIND_INFO\"===a&&f({payload:_}),\"undefined\"!==typeof ie[a]){!1!==await ie[a](t,_)&&delete ie[a]}else\"DUALLINK_BIND_INFO\"!==a&&console.warn(\"ignore DEVICE_BC_EVENT.MW_RESPONSE_UI type=%s msgData=\",a,E)};return v.A.onBCEvent(x.qg.MW_RESPONSE_UI,e),()=>{v.A.offBCEvent(x.qg.MW_RESPONSE_UI,e)}},[f]),t().useEffect(()=>{oe(\"DUALLINK_BIND_INFO\",{})},[U]);const H=async()=>{let e=0;if(\"function\"!==typeof j.A.activateWindowServiceClient||!r[0].productId)return;const E=(0,F.Oh)(r[0].productId),a=E.replace(/mw/g,\"ui\"),_=await(0,B.id)(a,!1),t=await(0,B.id)(E,!1);_||(e=200);const i=t&&t.url.match(/\\/synapse\\/.*/);if(Array.isArray(i)&&i[0]){const e=i[0].replace(/mw/g,\"ui\"),a=E.replace(/mw/g,\"ui\");if(e&&a){const E=[\"shouldFocus=1\",\"policy=3,tab_visible=1\"];window.open(e,a,E.join(\",\"))}}setTimeout(()=>{const e=new BroadcastChannel(E);e.postMessage({type:Z.mQR,payload:\"TAB_PERFORMANCE\"}),e.close()},e)};return(0,I.jsx)(K.A,{title:T.FeU,tips:T.A4y,children:r.length<=0&&!R?(0,I.jsxs)(\"div\",{className:\"img-text flex\",style:{gap:\"20px\"},children:[(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"}),(0,I.jsx)(\"div\",{className:\"external\",onClick:g,children:(0,I.jsx)(s.A,{text:T.JSN})})]}):r.length<=0&&R?(0,I.jsx)(\"div\",{className:\"img-text\",children:(0,I.jsxs)(\"div\",{className:d,children:[(0,I.jsx)(\"div\",{className:\"img-text flex\",children:(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,I.jsxs)(\"div\",{className:`${c}`,children:[(0,I.jsxs)(\"div\",{className:`${u}`,onClick:L?null:g,children:[(0,I.jsx)(\"span\",{children:(null===R||void 0===R?void 0:R.name[A])||(null===R||void 0===R?void 0:R.name.en)}),L&&(0,I.jsx)(\"img\",{src:S,alt:\"loading...\",className:\"skeleton\"})]}),(0,I.jsx)(\"div\",{className:`${C}`,children:(0,I.jsx)(\"span\",{onClick:U?H:null,children:G.map((e,E)=>1===E?(0,I.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,I.jsx)(\"u\",{children:e})},E):e)})})]}),(0,I.jsx)(\"div\",{className:N,onClick:g,children:(0,I.jsx)(s.A,{text:T.ssI})})]})}):(0,I.jsx)(\"div\",{className:\"img-text\",children:(0,I.jsxs)(\"div\",{className:`${d}`,children:[(0,I.jsx)(\"div\",{className:\"img-text flex\",children:(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,I.jsxs)(\"div\",{className:`${c}`,children:[(0,I.jsx)(\"div\",{className:`${u}`,onClick:g,children:null!==(E=r[0])&&void 0!==E&&E.productName[A]?null===(a=r[0])||void 0===a?void 0:a.productName[A]:null===(i=r[0])||void 0===i?void 0:i.productName.en}),(0,I.jsx)(\"div\",{className:`${C}`,children:(0,I.jsx)(\"span\",{onClick:U?H:null,children:G.map((e,E)=>1===E?(0,I.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,I.jsx)(\"u\",{children:e})},E):e)})})]}),(0,I.jsx)(\"div\",{className:`${N}`,onClick:g,children:(0,I.jsx)(s.A,{text:T.ssI})})]})})})}",
+          "jsx": [
+            {
+              "component": "n.Provider",
+              "props": {},
+              "expressions": {
+                "store": "z.A"
+              },
+              "offset": 67427
+            },
+            {
+              "component": "k",
+              "props": {},
+              "expressions": {
+                "close": "E",
+                "removeRoot": "t"
+              },
+              "offset": 67468
+            },
+            {
+              "component": "le",
+              "props": {},
+              "expressions": {
+                "deviceInfo": "o",
+                "pairedInfo": "r",
+                "updatePairedInfo": "O",
+                "setTempPairedInfo": "D",
+                "closeDialog": "()=>{setTimeout(()=>{e&&e()},1e3)}"
+              },
+              "offset": 67544
+            },
+            {
+              "component": "K.A",
+              "props": {
+                "title": "HYPERPOLLING_WIRELESS",
+                "tips": "MULTI__DUALINK_PROPERTIES_TOOLTIP"
+              },
+              "expressions": {},
+              "offset": 69188
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text flex",
+                "style": {
+                  "gap": "20px"
+                }
+              },
+              "expressions": {},
+              "offset": 69251
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "multipairing hyperpolling"
+              },
+              "expressions": {},
+              "offset": 69324
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "external"
+              },
+              "expressions": {
+                "onClick": "g"
+              },
+              "offset": 69381
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "OPEN_PAIRING_UTILITY"
+              },
+              "expressions": {},
+              "offset": 69438
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text"
+              },
+              "expressions": {},
+              "offset": 69486
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_pairInfoBox__O0QbD"
+              },
+              "expressions": {},
+              "offset": 69533
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text flex"
+              },
+              "expressions": {},
+              "offset": 69573
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "multipairing hyperpolling"
+              },
+              "expressions": {},
+              "offset": 69625
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${c}`"
+              },
+              "offset": 69684
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${u}`",
+                "onClick": "L?null:g"
+              },
+              "offset": 69729
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {},
+              "offset": 69791
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "alt": "loading...",
+                "className": "skeleton"
+              },
+              "expressions": {
+                "src": "S"
+              },
+              "offset": 69904
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${C}`"
+              },
+              "offset": 69970
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "onClick": "U?H:null"
+              },
+              "offset": 70013
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "hyperpolling-span-hover"
+              },
+              "expressions": {},
+              "offset": 70076
+            },
+            {
+              "component": "\"u\"",
+              "props": {},
+              "expressions": {},
+              "offset": 70139
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWireless_unpairbutton__i-SxL"
+              },
+              "expressions": {
+                "onClick": "g"
+              },
+              "offset": 70181
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIR"
+              },
+              "expressions": {},
+              "offset": 70229
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text"
+              },
+              "expressions": {},
+              "offset": 70264
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${d}`"
+              },
+              "offset": 70311
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text flex"
+              },
+              "expressions": {},
+              "offset": 70356
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "multipairing hyperpolling"
+              },
+              "expressions": {},
+              "offset": 70408
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${c}`"
+              },
+              "offset": 70467
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${u}`",
+                "onClick": "g"
+              },
+              "offset": 70512
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${C}`"
+              },
+              "offset": 70717
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "onClick": "U?H:null"
+              },
+              "offset": 70760
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "hyperpolling-span-hover"
+              },
+              "expressions": {},
+              "offset": 70823
+            },
+            {
+              "component": "\"u\"",
+              "props": {},
+              "expressions": {},
+              "offset": 70886
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${N}`",
+                "onClick": "g"
+              },
+              "offset": 70928
+            },
+            {
+              "component": "s.A",
+              "props": {
+                "text": "UNPAIR"
+              },
+              "expressions": {},
+              "offset": 70981
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 72173,
+          "end": 72932,
+          "source": "class Pe extends _.Component{constructor(e){super(e),this.state={showMultiPairingFeature:!1}}componentDidMount(){(async()=>({showMultiPairingFeature:!!(await(0,Le.A)(\"global.multipairing\"))?.provisionFlags}))().then(e=>{let{showMultiPairingFeature:E}=e;this.setState({showMultiPairingFeature:E})}).catch(e=>{console.log(\"TopViewComponent showMultiPairingFeature error:\",e)})}render(){const e={deviceName:{en:ce.DeviceInfo.deviceName,\"zh-cn\":\"Razer 鼠标底座专业版\"},imgPairing:Ne,hyperpollingNoteFour:T.Ts4,hyperpollingHeader:T.p5h,hyperpollingConfirmText:T.CEh};return(0,I.jsxs)(i.A,{children:[(0,I.jsx)(o.default,{}),ce.DeviceInfo.isMultiPairingSupported&&this.state.showMultiPairingFeature?(0,I.jsx)(De,{deviceInfo:ce.DeviceInfo}):(0,I.jsx)(de,{deviceInfo:e})]})}}",
+          "jsx": [
+            {
+              "component": "i.A",
+              "props": {},
+              "expressions": {},
+              "offset": 72734
+            },
+            {
+              "component": "o.default",
+              "props": {},
+              "expressions": {},
+              "offset": 72760
+            },
+            {
+              "component": "De",
+              "props": {
+                "deviceInfo": {
+                  "deviceName": "Razer Mouse Dock Pro",
+                  "productId": 164,
+                  "vendorId": 5426,
+                  "masterGuideURL": "https://dl.razerzone.com/master-guides/RazerSynapse3/MOUSEDOCKPRO-0000164-",
+                  "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/6228/kw/mouse%20dock",
+                  "WAVE_DIRECTION": "CWCCW",
+                  "category": "ACCESSORY",
+                  "claimInterface": 0,
+                  "isSpecialAccessory": true,
+                  "isMultiPairingSupported": true
+                }
+              },
+              "expressions": {},
+              "offset": 72858
+            },
+            {
+              "component": "de",
+              "props": {},
+              "expressions": {
+                "deviceInfo": "e"
+              },
+              "offset": 72899
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/164/static/js/main.458d4103.js",
+              "offset": 72554,
+              "end": 72931,
+              "source": "(){const e={deviceName:{en:ce.DeviceInfo.deviceName,\"zh-cn\":\"Razer 鼠标底座专业版\"},imgPairing:Ne,hyperpollingNoteFour:T.Ts4,hyperpollingHeader:T.p5h,hyperpollingConfirmText:T.CEh};return(0,I.jsxs)(i.A,{children:[(0,I.jsx)(o.default,{}),ce.DeviceInfo.isMultiPairingSupported&&this.state.showMultiPairingFeature?(0,I.jsx)(De,{deviceInfo:ce.DeviceInfo}):(0,I.jsx)(de,{deviceInfo:e})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 4575230,
+          "end": 4575254,
+          "source": "(0,w.jsx)(Fr.default,{})",
+          "jsx": [
+            {
+              "component": "Fr.default",
+              "props": {},
+              "expressions": {},
+              "offset": 4575230
+            }
+          ],
+          "render": []
+        }
+      ],
+      "default_props": [
+        {
+          "values": {
+            "data": {},
+            "clickableData": false,
+            "onClick": null,
+            "underlineData": false,
+            "capitalizeFirst": false,
+            "allowHtml": false,
+            "onMouseEnter": null,
+            "onMouseLeave": null
+          },
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 8169,
+          "end": 8308,
+          "source": "s.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null}"
+        },
+        {
+          "values": {
+            "allowHtml": false
+          },
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 3931268,
+          "end": 3931297,
+          "source": "S.defaultProps={allowHtml:!1}"
+        },
+        {
+          "values": {
+            "position": "bottom-right",
+            "className": ""
+          },
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "offset": 4029607,
+          "end": 4029647,
+          "source": "A.defaultProps={position:r,className:\"\"}"
+        }
+      ]
+    }
+  ]
+}

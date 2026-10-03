@@ -1,0 +1,514 @@
+[
+  {
+    "product_id": 740,
+    "labels": {
+      "title": "KEYBOARD_SWITCH_CALIBRATION",
+      "introduction": "CALIBRATION_INFO_NOTIFICATION",
+      "description": "KEYBOARD_SWITCH_CALIBRATION_DESC",
+      "start": "CALIBRATE",
+      "note": "CALIBRATION_INFO",
+      "mode": "SWITCH_CALIBRATION_MODE",
+      "select_key": "CALIBRATING_STEP_1",
+      "press_key": "CALIBRATING_STEP_2",
+      "release_key": "CALIBRATING_STEP_3",
+      "success": "SUCCESSFUL_CALIBRATION",
+      "failure": "FAILED_CALIBRATION",
+      "restart": "RESTART",
+      "calibrating": "CALIBRATING",
+      "next": "NEXT",
+      "done": "DONE",
+      "cancel": "CANCEL"
+    },
+    "modal_width": 850,
+    "sources": [
+      {
+        "path": ".ref/devices/740/static/js/main.e1791e16.js",
+        "sha256": "22424f5f208c5a77a0e54ca1287ee1ccb4816af3420ba82fc95e452ef72a7452"
+      },
+      {
+        "path": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
+        "sha256": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda"
+      }
+    ],
+    "components": [
+      {
+        "symbol": "fa",
+        "offset": 279315,
+        "end": 279996
+      },
+      {
+        "symbol": "la",
+        "offset": 261429,
+        "end": 263275
+      },
+      {
+        "symbol": "ca",
+        "offset": 263284,
+        "end": 263657
+      },
+      {
+        "symbol": "Sa",
+        "offset": 266006,
+        "end": 266884
+      },
+      {
+        "symbol": "Ca",
+        "offset": 266893,
+        "end": 266895
+      },
+      {
+        "symbol": "Ea",
+        "offset": 266899,
+        "end": 278138
+      },
+      {
+        "symbol": "_a",
+        "offset": 278142,
+        "end": 279311
+      },
+      {
+        "symbol": "Aa",
+        "offset": 280000,
+        "end": 281346
+      }
+    ],
+    "css": [
+      {
+        "path": ".ref/devices/740/static/css/9908.fadb8afb.chunk.css",
+        "sha256": "f22c3de4b872d2466f79782dcdbde10fe97c82240dd053fdf10aa9699a2711db",
+        "rules": [
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i{background-color:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;gap:10px;height:27px;line-height:14px;min-width:90px;text-align:center;text-transform:uppercase;transition:opacity .3s;-webkit-user-select:none;user-select:none;will-change:opacity}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i.KeyboardSwitchCalibrationV2_green__0gjAZ{background-color:#44d62c;color:#000;width:146px}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i.KeyboardSwitchCalibrationV2_green__0gjAZ:hover:not(:disabled){background-color:#6ade57}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i:disabled{opacity:.3;pointer-events:none}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG{align-items:center;display:flex;gap:10px;justify-content:center;margin:20px 0}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V{border-radius:50%;height:8px;transition:all .3s ease;width:8px}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_inactive__cHfc4{background-color:#444}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_active__VcS6h{background-color:#44d62c}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_completed__vA8DQ{background-color:#444}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT{margin-top:20px}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede{align-items:center;display:flex;flex-direction:row;gap:4px;justify-content:center;margin-left:10px}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span{flex:1 1}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span:first-child{text-align:right}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span:last-child{text-align:left}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_btn__VuK9i{display:block;margin:20px auto 0}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o{background-color:#44d62c4d;border-radius:2.5px;height:5px;margin:10px auto 0}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o .KeyboardSwitchCalibrationV2_progress-bar__usUOO{background-color:#44d62c;border-radius:2.5px;height:5px;transition:width .3s ease}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o .KeyboardSwitchCalibrationV2_progress-bar--error__csAAU{background-color:#fd4949}",
+          ".KeyboardSwitchCalibrationV2_step-description__EfoPH{margin-top:20px;text-align:center}",
+          ".KeyboardSwitchCalibrationV2_verification-text__TKCf2{margin-top:6px;text-align:center}",
+          ".KeyboardSwitchCalibrationV2_calibrationInfo__Rv\\+RP{color:#999;display:flex;font-size:12px;gap:5px;margin-top:20px;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_backdrop__n-0P\\+{align-items:center;background:#0000008c;display:flex;inset:0;justify-content:center;position:fixed;z-index:9999}",
+          ".popup-widget .KeyboardSwitchCalibrationModal_kb-calibration__5-ubA.backdrop .choose-a-mat{max-height:100vh!important}",
+          ".popup-widget .KeyboardSwitchCalibrationModal_kb-calibration__5-ubA.backdrop .choose-a-mat .head{padding:9px 0 8px}",
+          ".KeyboardSwitchCalibrationModal_modal__bJBGn{background:#222;border:1px solid #ffffff14;border-radius:10px;display:flex;flex-direction:column;height:min(620px,90vh);position:relative;width:min(980px,95vw)}",
+          ".KeyboardSwitchCalibrationModal_header__59UQg{border-bottom:1px solid #ffffff0f;padding:16px;position:relative;text-align:center}",
+          ".KeyboardSwitchCalibrationModal_title__kmxjv{color:#999;font-size:16px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_closeIcon__imKFr{background-image:url(../../static/media/icon_close_white.8ab462b8.svg);background-position:50%;background-repeat:no-repeat;cursor:pointer;height:24px;margin-left:auto;margin-right:0;position:absolute;right:10px;top:10px;width:24px}",
+          ".KeyboardSwitchCalibrationModal_steps__0PBqy{align-items:center;display:flex;justify-content:center;padding:14px}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k{align-items:center;background:#ffffff40;border-radius:50%;color:#111;display:flex;font-size:18px;font-weight:400;height:34px;justify-content:center;width:34px}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_active__hi3f4{background:#fff9}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_done__Q5ybn{background:#44d62c}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_stepEnd__uNoR9{opacity:.3}",
+          ".KeyboardSwitchCalibrationModal_line__-4\\+ES{background:none;border-top:2px dotted #707070;height:2px;margin:0 10px;width:80px}",
+          ".KeyboardSwitchCalibrationModal_content__v0ypV{flex:1 1;padding:20px}",
+          ".KeyboardSwitchCalibrationModal_contentHidden__GQcRd{visibility:hidden}",
+          ".KeyboardSwitchCalibrationModal_sectionTitle__Wm0fY{color:#44d62c;font-size:16px;margin-bottom:10px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_panel__JHSrV{background:#2b2b2b;border-radius:10px;display:flex;gap:80px;margin-bottom:20px;padding:0 30px}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB{align-items:center;background:#444;border:1px solid #222;border-radius:5px;color:#fff;display:flex;font-size:14px;height:40px;justify-content:center;margin:30px 0;text-align:center;width:80px}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB.KeyboardSwitchCalibrationModal_capturing__Yfpfy{border-color:#44d62c}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB.KeyboardSwitchCalibrationModal_selected__xfzHn{opacity:.3}",
+          ".KeyboardSwitchCalibrationModal_panelText__m2kJQ{align-items:center;color:#ffffffbf;display:flex;margin:20px 0;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_listening__ZUXgQ{color:#5cff5c;font-size:12px;margin-top:6px}",
+          ".KeyboardSwitchCalibrationModal_footer__pVfsq{bottom:0;display:flex;gap:12px;justify-content:center;left:0;padding:16px;position:absolute;width:100%}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS{background-color:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;gap:10px;height:27px;line-height:14px;min-width:90px;text-align:center;text-transform:uppercase;transition:opacity .3s;-webkit-user-select:none;user-select:none;will-change:opacity}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS.KeyboardSwitchCalibrationModal_green__B3Gg5{background-color:#44d62c;color:#000}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS.KeyboardSwitchCalibrationModal_green__B3Gg5:hover:not(:disabled){background-color:#6ade57}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS:disabled{opacity:.3;pointer-events:none}",
+          ".KeyboardSwitchCalibrationModal_calibratingContainer__\\+URBN{display:flex;flex-direction:column;gap:8px}",
+          ".KeyboardSwitchCalibrationModal_calibratingBody__\\+MhrA{background:#44d62c4d;border-radius:999px;height:5px;overflow:hidden;position:relative;width:100%}",
+          ".KeyboardSwitchCalibrationModal_calibratingLoading__n2vx6{animation:KeyboardSwitchCalibrationModal_loading__xndeV 2s ease-in-out infinite;background:linear-gradient(90deg,#44d62c,#44d62c,#44d62c);border-radius:999px;height:100%;position:absolute;width:25%}",
+          "@keyframes KeyboardSwitchCalibrationModal_loading__xndeV{0%{left:-25%}",
+          ".KeyboardSwitchCalibrationModal_result__Srn6J{align-items:center;display:flex;flex-direction:column;gap:20px;margin-top:20px}",
+          ".KeyboardSwitchCalibrationModal_checkIcon__EkvKS{fill:#000000d9}",
+          ".KeyboardSwitchCalibrationModal_successText__cYlkQ{color:#44d62c;font-size:16px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_failedText__T4yKF{color:#fd4949;font-size:16px;text-align:center;text-transform:uppercase;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_caret__kBVRX{animation:KeyboardSwitchCalibrationModal_blink__gzKcV 1.1s steps(1) infinite;display:inline-block;font-weight:800}",
+          "@keyframes KeyboardSwitchCalibrationModal_blink__gzKcV{0%,50%,to{opacity:1}",
+          ".choose-a-mat{background-color:#222;border-radius:5px 5px 0 0;bottom:0;left:50%;max-height:95vh;max-width:1050px;min-width:800px;position:absolute;top:100%;transform:translate(-50%);transition:top .3s;will-change:top}",
+          ".choose-a-mat .head .close{background-image:url(../../static/media/icon_close.55fe41f1.svg);right:0}",
+          ".choose-a-mat .head .back,.choose-a-mat .head .close{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;top:0;transition:background-color .2s;width:36px;will-change:background-color}",
+          ".choose-a-mat .head .back{background-image:url(../../static/media/icon_back_arrow.b39e4841.svg);left:0}",
+          ".choose-a-mat .head{box-shadow:0 1px 0 0 #5d5d5d;color:#999;font-family:RazerF5;font-size:16px;height:36px;line-height:19px;padding:9px 0 8px;position:relative;text-align:center;text-transform:uppercase;z-index:1}",
+          ".choose-a-mat .head .back:hover,.choose-a-mat .head .close:hover{background-color:#ffffff1a}",
+          ".choose-a-mat .head .back:active,.choose-a-mat .head .close:active{background-color:#0000001a}",
+          ".choose-a-mat .body.scrollable{max-height:calc(100% - 36px);overflow-y:scroll;padding:20px 0 30px 25px}",
+          ".choose-a-mat .body .desc{color:#ccc;font-size:14px;line-height:17px;margin-bottom:10px;text-align:center}",
+          "@media screen and (min-width:1400px){.choose-a-mat{width:1050px}",
+          "@media screen and (max-width:1398px)and (min-width:800px){.choose-a-mat.popup-calibration{width:800px}",
+          "@media screen and (max-width:799px){.choose-a-mat.popup-calibration{min-width:546px}",
+          ".choose-a-mat .body .illust,.illust-inverted{height:340px;margin:20px auto;width:500px}",
+          ".choose-a-mat .body .step-1 .illust{background-image:url(../../static/media/mouse_calibration_1.f0c7bbe8.svg)}",
+          ".choose-a-mat .body .step-1 .illust-inverted{background-image:url(../../static/media/mouse_calibration_1_inverted.defc1125.svg)}",
+          ".choose-a-mat .body .step-2 .illust{background-image:url(../../static/media/mouse_calibration_2.518758cc.svg)}",
+          ".choose-a-mat .body .step-2 .illust-inverted{background-image:url(../../static/media/mouse_calibration_2_inverted.8ce2cf1f.svg)}",
+          ".choose-a-mat .body .complete .illust{background-image:url(../../static/media/mouse_calibration_complete.0fcb4d53.svg)}",
+          ".choose-a-mat .body .error .illust{background-image:url(../../static/media/mouse_calibration_error.a227b74c.svg)}",
+          ".choose-a-mat .body .span{animation:blink 2s linear infinite;color:#fff;font-family:cursive;font-size:26px;text-align:center}",
+          ".popup-widget .backdrop{height:100%;overflow:hidden;position:fixed}",
+          ".popup-widget .backdrop .choose-a-mat{border-radius:5px 5px 0 0;margin-top:110px;max-height:calc(100vh - 110px)!important}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar::-webkit-scrollbar-track{background:#0000}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar{height:100%;overflow-y:hidden;padding:20px 0 42px 25px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .drag-area{padding-bottom:25px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content{height:calc(100% - 10px);overflow-y:scroll}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp{grid-gap:8px;display:grid;gap:8px;grid-template-columns:repeat(3,33%);height:calc(100% - 10px);overflow-x:hidden;overflow-y:scroll;padding:0 32px 20px 0}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app{align-items:center;color:#ccc;display:flex;flex-direction:column;font-size:14px;justify-content:center;line-height:17px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .no-available{margin-bottom:10px;text-align:center}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .add-app-description>span{color:#44d62c;cursor:pointer;margin-right:3px;text-decoration:underline}",
+          ".popup-widget .backdrop .choose-a-mat .head{padding:20px 0 10px}",
+          ".popup-widget .backdrop.no-popup,.popup-widget .backdrop.no-popup .choose-a-mat{transition:none 0s ease 0s;transition:initial;-webkit-transition:unset;will-change:auto}",
+          ".device_to_linked_game .choose-a-mat{min-width:0;width:calc(100vw - 40px)}",
+          "@media(min-width:1600px){.device_to_linked_game .choose-a-mat.linked-games-popup{max-width:none;width:1300px!important}",
+          ".introduction-calibration-container{align-items:center;background-color:#2d2d2d;border-radius:5px;display:flex;flex-direction:column;gap:16px;justify-content:center;max-width:760px;min-height:129px;padding:27.5px 20px;position:relative;text-align:center}",
+          ".introduction-calibration-container.hidden{display:none}",
+          ".introduction-calibration-container .heading-container{align-items:center;color:#44d62c;display:flex;font-family:RazerF5,sans-serif;font-size:26px;font-weight:300;justify-content:center;text-transform:uppercase}",
+          ".introduction-calibration-container .body-container{align-items:center;color:#ccc;display:flex;font-size:14px;justify-content:center}",
+          ".introduction-calibration-container .btn-close{background-image:url(../../static/media/icon_close_white.8ab462b8.svg);background-position:50%;background-repeat:no-repeat;cursor:pointer;height:24px;margin-left:auto;margin-right:0;position:absolute;right:10px;top:10px;width:24px}"
+        ]
+      },
+      {
+        "path": ".ref/devices/740/static/css/main.50621167.css",
+        "sha256": "552a462b7df26c3e82c1c0f3c2657a3c45069b4058dc98ff873893087ae925ec",
+        "rules": [
+          ".backdrop{background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity}",
+          ".backdrop,.backdrop.glow{background-position:bottom;background-repeat:no-repeat}",
+          ".backdrop.glow{background-image:url(../../static/media/background_glow.43f70cb2.svg)}",
+          ".backdrop.show{opacity:1;visibility:visible;z-index:106}",
+          ".backdrop.show .choose-a-mat{top:100px}",
+          ".main-container.backdrop-on .nav-tabs{opacity:.3;pointer-events:none}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat{max-height:100vh!important}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .scrollable{overflow-y:visible!important}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .custom-cover-art .refresh-cover-art{padding-top:60px}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .custom-cover-art .tooltip{background-color:#000;border:1px solid #5d5d5d;font-size:14px;margin-left:30px;padding:8px 10px;width:max-content}",
+          ".backdrop{height:100%!important}",
+          "@media only screen and (max-width:1284px){.device_linked_game .popup-widget .game-detail .choose-a-mat{max-width:800px}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .scrollable{overflow-y:visible!important}",
+          ".dashboard .box-group .title:hover .drag-icon:before,.dashboard .box-group .title:hover~.backdrop-box,.dashboard .box-group:hover .title .drag-icon:before{opacity:1;visibility:visible}",
+          ".dashboard .box-group:not(.expand) .backdrop-box{transition:all .1s ease-in-out 0s}",
+          ".dashboard .box-group.dragging .backdrop-box{border:2px solid #44d62c;border-radius:5px;opacity:1;transition:all .1s ease-in-out 0s;visibility:visible}",
+          ".dashboard .box-group .backdrop-box{background-color:#333;border-radius:5px;bottom:10px;left:0;max-height:40px;opacity:0;position:absolute;right:0;top:0;transition:visibility .3s ease-in-out 0s,opacity .3s ease-in-out 0s,max-height .3s ease-in-out .3s;visibility:hidden;z-index:0}",
+          ".dashboard .box-group.expand .backdrop-box{bottom:0;max-height:2000px}",
+          ".haptic-content .backdrop{position:fixed}",
+          ".haptic-content .backdrop .choose-a-mat{width:850px}"
+        ]
+      }
+    ],
+    "locales": [
+      {
+        "path": ".ref/devices/740/static/js/trans-de.5b28f74c.chunk.js",
+        "sha256": "4589ea5177ef723cdec430b2fb767065b5222edd157c6c2fb362f9ad370f25d7"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-en.a927c823.chunk.js",
+        "sha256": "9c0706d30bfbb23492e5a52db26755921611d35cb5b5aa6b854e9f9eaf3ce21e"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-es.ce7336f2.chunk.js",
+        "sha256": "ea15a036991fe5cb8b19f7526675b8d02d44f5c9e7d1c8007b4bf0c13ccc5b3c"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-fr.986a6156.chunk.js",
+        "sha256": "6b795070701b4664d37fd11c036dc563805f3822b07dae20116002b3efc8e88e"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-ja.eba7effe.chunk.js",
+        "sha256": "98b9842adff43d96a25216cefc45129fcb04fb6b3958c1dddbee93711fdadf70"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-kr.b7bf64a9.chunk.js",
+        "sha256": "5e50718564fd249f0edf6e13a32ef407b6113afa7c374c1713cdc127af50782f"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-pt-BR.83689a64.chunk.js",
+        "sha256": "1e81bd8f5bde5ea47ee9b8615c1ea8fe4034305058ddaf0051c93cf7843541c0"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-ru.e3164ca3.chunk.js",
+        "sha256": "1af85a6631066dc2cabc0ee9c9d6f8a149d918b5fa6df0959a251699c1f7c955"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-zh-CN.3ad526e8.chunk.js",
+        "sha256": "488a75a8f442b92f0aa21c948b10fd2cfc119a0ab9ade2688b05020b9cb78192"
+      },
+      {
+        "path": ".ref/devices/740/static/js/trans-zh-TW.da37a2b1.chunk.js",
+        "sha256": "828b0ba7e98494e040efbe5c7c68e410e241c307d98ce252c0628a64080f5202"
+      }
+    ],
+    "service_contract": [
+      "initCalibration",
+      "calibrateBottom",
+      "verifyBottom",
+      "calibrateTop",
+      "verifyTop",
+      "stopCalibration"
+    ],
+    "idle_error_timeout_ms": 15000
+  },
+  {
+    "product_id": 746,
+    "labels": {
+      "title": "KEYBOARD_SWITCH_CALIBRATION",
+      "introduction": "CALIBRATION_INFO_NOTIFICATION",
+      "description": "KEYBOARD_SWITCH_CALIBRATION_DESC",
+      "start": "CALIBRATE",
+      "note": "CALIBRATION_INFO",
+      "mode": "SWITCH_CALIBRATION_MODE",
+      "select_key": "CALIBRATING_STEP_1",
+      "press_key": "CALIBRATING_STEP_2",
+      "release_key": "CALIBRATING_STEP_3",
+      "success": "SUCCESSFUL_CALIBRATION",
+      "failure": "FAILED_CALIBRATION",
+      "restart": "RESTART",
+      "calibrating": "CALIBRATING",
+      "next": "NEXT",
+      "done": "DONE",
+      "cancel": "CANCEL"
+    },
+    "modal_width": 850,
+    "sources": [
+      {
+        "path": ".ref/devices/746/static/js/main.dded1bab.js",
+        "sha256": "437631aa42f64d5c9e90044fb8544252393a92ac32e7f023e82d2a164eed2397"
+      },
+      {
+        "path": ".ref/devices/746/static/js/6498.86d76d1a.chunk.js",
+        "sha256": "e8cf975f0d6737be756bac3860dc761684c4c43596c6530b6abcb579bc0a9c13"
+      }
+    ],
+    "components": [
+      {
+        "symbol": "fa",
+        "offset": 287051,
+        "end": 287732
+      },
+      {
+        "symbol": "la",
+        "offset": 269165,
+        "end": 271011
+      },
+      {
+        "symbol": "ca",
+        "offset": 271020,
+        "end": 271393
+      },
+      {
+        "symbol": "Sa",
+        "offset": 273742,
+        "end": 274620
+      },
+      {
+        "symbol": "Ca",
+        "offset": 274629,
+        "end": 274631
+      },
+      {
+        "symbol": "Ea",
+        "offset": 274635,
+        "end": 285874
+      },
+      {
+        "symbol": "_a",
+        "offset": 285878,
+        "end": 287047
+      },
+      {
+        "symbol": "Aa",
+        "offset": 287736,
+        "end": 289082
+      }
+    ],
+    "css": [
+      {
+        "path": ".ref/devices/746/static/css/6498.16d225ad.chunk.css",
+        "sha256": "2e45e69563eee93c4bb009c153cad5c420a3904655a5f2b8bd338ce6657d6a84",
+        "rules": [
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i{background-color:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;gap:10px;height:27px;line-height:14px;min-width:90px;text-align:center;text-transform:uppercase;transition:opacity .3s;-webkit-user-select:none;user-select:none;will-change:opacity}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i.KeyboardSwitchCalibrationV2_green__0gjAZ{background-color:#44d62c;color:#000;width:146px}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i.KeyboardSwitchCalibrationV2_green__0gjAZ:hover:not(:disabled){background-color:#6ade57}",
+          ".KeyboardSwitchCalibrationV2_btn__VuK9i:disabled{opacity:.3;pointer-events:none}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG{align-items:center;display:flex;gap:10px;justify-content:center;margin:20px 0}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V{border-radius:50%;height:8px;transition:all .3s ease;width:8px}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_inactive__cHfc4{background-color:#444}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_active__VcS6h{background-color:#44d62c}",
+          ".KeyboardSwitchCalibrationV2_progress-dots__-HenG .KeyboardSwitchCalibrationV2_dot__moV1V.KeyboardSwitchCalibrationV2_completed__vA8DQ{background-color:#444}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT{margin-top:20px}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede{align-items:center;display:flex;flex-direction:row;gap:4px;justify-content:center;margin-left:10px}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span{flex:1 1}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span:first-child{text-align:right}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_calibration-key__R5ede span:last-child{text-align:left}",
+          ".KeyboardSwitchCalibrationV2_calibration-content__xFmvT .KeyboardSwitchCalibrationV2_btn__VuK9i{display:block;margin:20px auto 0}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o{background-color:#44d62c4d;border-radius:2.5px;height:5px;margin:10px auto 0}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o .KeyboardSwitchCalibrationV2_progress-bar__usUOO{background-color:#44d62c;border-radius:2.5px;height:5px;transition:width .3s ease}",
+          ".KeyboardSwitchCalibrationV2_calibration-progress__qvg0o .KeyboardSwitchCalibrationV2_progress-bar--error__csAAU{background-color:#fd4949}",
+          ".KeyboardSwitchCalibrationV2_step-description__EfoPH{margin-top:20px;text-align:center}",
+          ".KeyboardSwitchCalibrationV2_verification-text__TKCf2{margin-top:6px;text-align:center}",
+          ".KeyboardSwitchCalibrationV2_calibrationInfo__Rv\\+RP{color:#999;display:flex;font-size:12px;gap:5px;margin-top:20px;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_backdrop__n-0P\\+{align-items:center;background:#0000008c;display:flex;inset:0;justify-content:center;position:fixed;z-index:9999}",
+          ".popup-widget .KeyboardSwitchCalibrationModal_kb-calibration__5-ubA.backdrop .choose-a-mat{max-height:100vh!important}",
+          ".popup-widget .KeyboardSwitchCalibrationModal_kb-calibration__5-ubA.backdrop .choose-a-mat .head{padding:9px 0 8px}",
+          ".KeyboardSwitchCalibrationModal_modal__bJBGn{background:#222;border:1px solid #ffffff14;border-radius:10px;display:flex;flex-direction:column;height:min(620px,90vh);position:relative;width:min(980px,95vw)}",
+          ".KeyboardSwitchCalibrationModal_header__59UQg{border-bottom:1px solid #ffffff0f;padding:16px;position:relative;text-align:center}",
+          ".KeyboardSwitchCalibrationModal_title__kmxjv{color:#999;font-size:16px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_closeIcon__imKFr{background-image:url(../../static/media/icon_close_white.8ab462b8.svg);background-position:50%;background-repeat:no-repeat;cursor:pointer;height:24px;margin-left:auto;margin-right:0;position:absolute;right:10px;top:10px;width:24px}",
+          ".KeyboardSwitchCalibrationModal_steps__0PBqy{align-items:center;display:flex;justify-content:center;padding:14px}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k{align-items:center;background:#ffffff40;border-radius:50%;color:#111;display:flex;font-size:18px;font-weight:400;height:34px;justify-content:center;width:34px}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_active__hi3f4{background:#fff9}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_done__Q5ybn{background:#44d62c}",
+          ".KeyboardSwitchCalibrationModal_step__Dab8k.KeyboardSwitchCalibrationModal_stepEnd__uNoR9{opacity:.3}",
+          ".KeyboardSwitchCalibrationModal_line__-4\\+ES{background:none;border-top:2px dotted #707070;height:2px;margin:0 10px;width:80px}",
+          ".KeyboardSwitchCalibrationModal_content__v0ypV{flex:1 1;padding:20px}",
+          ".KeyboardSwitchCalibrationModal_contentHidden__GQcRd{visibility:hidden}",
+          ".KeyboardSwitchCalibrationModal_sectionTitle__Wm0fY{color:#44d62c;font-size:16px;margin-bottom:10px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_panel__JHSrV{background:#2b2b2b;border-radius:10px;display:flex;gap:80px;margin-bottom:20px;padding:0 30px}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB{align-items:center;background:#444;border:1px solid #222;border-radius:5px;color:#fff;display:flex;font-size:14px;height:40px;justify-content:center;margin:30px 0;text-align:center;width:80px}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB.KeyboardSwitchCalibrationModal_capturing__Yfpfy{border-color:#44d62c}",
+          ".KeyboardSwitchCalibrationModal_keyBox__3nBaB.KeyboardSwitchCalibrationModal_selected__xfzHn{opacity:.3}",
+          ".KeyboardSwitchCalibrationModal_panelText__m2kJQ{align-items:center;color:#ffffffbf;display:flex;margin:20px 0;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_listening__ZUXgQ{color:#5cff5c;font-size:12px;margin-top:6px}",
+          ".KeyboardSwitchCalibrationModal_footer__pVfsq{bottom:0;display:flex;gap:12px;justify-content:center;left:0;padding:16px;position:absolute;width:100%}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS{background-color:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;gap:10px;height:27px;line-height:14px;min-width:90px;text-align:center;text-transform:uppercase;transition:opacity .3s;-webkit-user-select:none;user-select:none;will-change:opacity}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS.KeyboardSwitchCalibrationModal_green__B3Gg5{background-color:#44d62c;color:#000}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS.KeyboardSwitchCalibrationModal_green__B3Gg5:hover:not(:disabled){background-color:#6ade57}",
+          ".KeyboardSwitchCalibrationModal_btn__-kfHS:disabled{opacity:.3;pointer-events:none}",
+          ".KeyboardSwitchCalibrationModal_calibratingContainer__\\+URBN{display:flex;flex-direction:column;gap:8px}",
+          ".KeyboardSwitchCalibrationModal_calibratingBody__\\+MhrA{background:#44d62c4d;border-radius:999px;height:5px;overflow:hidden;position:relative;width:100%}",
+          ".KeyboardSwitchCalibrationModal_calibratingLoading__n2vx6{animation:KeyboardSwitchCalibrationModal_loading__xndeV 2s ease-in-out infinite;background:linear-gradient(90deg,#44d62c,#44d62c,#44d62c);border-radius:999px;height:100%;position:absolute;width:25%}",
+          "@keyframes KeyboardSwitchCalibrationModal_loading__xndeV{0%{left:-25%}",
+          ".KeyboardSwitchCalibrationModal_result__Srn6J{align-items:center;display:flex;flex-direction:column;gap:20px;margin-top:20px}",
+          ".KeyboardSwitchCalibrationModal_checkIcon__EkvKS{fill:#000000d9}",
+          ".KeyboardSwitchCalibrationModal_successText__cYlkQ{color:#44d62c;font-size:16px;text-transform:uppercase}",
+          ".KeyboardSwitchCalibrationModal_failedText__T4yKF{color:#fd4949;font-size:16px;text-align:center;text-transform:uppercase;white-space:pre-line}",
+          ".KeyboardSwitchCalibrationModal_caret__kBVRX{animation:KeyboardSwitchCalibrationModal_blink__gzKcV 1.1s steps(1) infinite;display:inline-block;font-weight:800}",
+          "@keyframes KeyboardSwitchCalibrationModal_blink__gzKcV{0%,50%,to{opacity:1}",
+          ".choose-a-mat{background-color:#222;border-radius:5px 5px 0 0;bottom:0;left:50%;max-height:95vh;max-width:1050px;min-width:800px;position:absolute;top:100%;transform:translate(-50%);transition:top .3s;will-change:top}",
+          ".choose-a-mat .head .close{background-image:url(../../static/media/icon_close.55fe41f1.svg);right:0}",
+          ".choose-a-mat .head .back,.choose-a-mat .head .close{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;top:0;transition:background-color .2s;width:36px;will-change:background-color}",
+          ".choose-a-mat .head .back{background-image:url(../../static/media/icon_back_arrow.b39e4841.svg);left:0}",
+          ".choose-a-mat .head{box-shadow:0 1px 0 0 #5d5d5d;color:#999;font-family:RazerF5;font-size:16px;height:36px;line-height:19px;padding:9px 0 8px;position:relative;text-align:center;text-transform:uppercase;z-index:1}",
+          ".choose-a-mat .head .back:hover,.choose-a-mat .head .close:hover{background-color:#ffffff1a}",
+          ".choose-a-mat .head .back:active,.choose-a-mat .head .close:active{background-color:#0000001a}",
+          ".choose-a-mat .body.scrollable{max-height:calc(100% - 36px);overflow-y:scroll;padding:20px 0 30px 25px}",
+          ".choose-a-mat .body .desc{color:#ccc;font-size:14px;line-height:17px;margin-bottom:10px;text-align:center}",
+          "@media screen and (min-width:1400px){.choose-a-mat{width:1050px}",
+          "@media screen and (max-width:1398px)and (min-width:800px){.choose-a-mat.popup-calibration{width:800px}",
+          "@media screen and (max-width:799px){.choose-a-mat.popup-calibration{min-width:546px}",
+          ".choose-a-mat .body .illust,.illust-inverted{height:340px;margin:20px auto;width:500px}",
+          ".choose-a-mat .body .step-1 .illust{background-image:url(../../static/media/mouse_calibration_1.f0c7bbe8.svg)}",
+          ".choose-a-mat .body .step-1 .illust-inverted{background-image:url(../../static/media/mouse_calibration_1_inverted.defc1125.svg)}",
+          ".choose-a-mat .body .step-2 .illust{background-image:url(../../static/media/mouse_calibration_2.518758cc.svg)}",
+          ".choose-a-mat .body .step-2 .illust-inverted{background-image:url(../../static/media/mouse_calibration_2_inverted.8ce2cf1f.svg)}",
+          ".choose-a-mat .body .complete .illust{background-image:url(../../static/media/mouse_calibration_complete.0fcb4d53.svg)}",
+          ".choose-a-mat .body .error .illust{background-image:url(../../static/media/mouse_calibration_error.a227b74c.svg)}",
+          ".choose-a-mat .body .span{animation:blink 2s linear infinite;color:#fff;font-family:cursive;font-size:26px;text-align:center}",
+          ".popup-widget .backdrop{height:100%;overflow:hidden;position:fixed}",
+          ".popup-widget .backdrop .choose-a-mat{border-radius:5px 5px 0 0;margin-top:110px;max-height:calc(100vh - 110px)!important}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar::-webkit-scrollbar-track{background:#0000}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar{height:100%;overflow-y:hidden;padding:20px 0 42px 25px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .drag-area{padding-bottom:25px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content{height:calc(100% - 10px);overflow-y:scroll}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp{grid-gap:8px;display:grid;gap:8px;grid-template-columns:repeat(3,33%);height:calc(100% - 10px);overflow-x:hidden;overflow-y:scroll;padding:0 32px 20px 0}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app{align-items:center;color:#ccc;display:flex;flex-direction:column;font-size:14px;justify-content:center;line-height:17px}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .no-available{margin-bottom:10px;text-align:center}",
+          ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .add-app-description>span{color:#44d62c;cursor:pointer;margin-right:3px;text-decoration:underline}",
+          ".popup-widget .backdrop .choose-a-mat .head{padding:20px 0 10px}",
+          ".popup-widget .backdrop.no-popup,.popup-widget .backdrop.no-popup .choose-a-mat{transition:none 0s ease 0s;transition:initial;-webkit-transition:unset;will-change:auto}",
+          ".device_to_linked_game .choose-a-mat{min-width:0;width:calc(100vw - 40px)}",
+          "@media(min-width:1600px){.device_to_linked_game .choose-a-mat.linked-games-popup{max-width:none;width:1300px!important}",
+          ".introduction-calibration-container{align-items:center;background-color:#2d2d2d;border-radius:5px;display:flex;flex-direction:column;gap:16px;justify-content:center;max-width:760px;min-height:129px;padding:27.5px 20px;position:relative;text-align:center}",
+          ".introduction-calibration-container.hidden{display:none}",
+          ".introduction-calibration-container .heading-container{align-items:center;color:#44d62c;display:flex;font-family:RazerF5,sans-serif;font-size:26px;font-weight:300;justify-content:center;text-transform:uppercase}",
+          ".introduction-calibration-container .body-container{align-items:center;color:#ccc;display:flex;font-size:14px;justify-content:center}",
+          ".introduction-calibration-container .btn-close{background-image:url(../../static/media/icon_close_white.8ab462b8.svg);background-position:50%;background-repeat:no-repeat;cursor:pointer;height:24px;margin-left:auto;margin-right:0;position:absolute;right:10px;top:10px;width:24px}"
+        ]
+      },
+      {
+        "path": ".ref/devices/746/static/css/main.edb9022c.css",
+        "sha256": "d5a16a51b17a91b945729e123b8c3baf5a65737a9b9263291051c18d262102aa",
+        "rules": [
+          ".backdrop{background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity}",
+          ".backdrop,.backdrop.glow{background-position:bottom;background-repeat:no-repeat}",
+          ".backdrop.glow{background-image:url(../../static/media/background_glow.43f70cb2.svg)}",
+          ".backdrop.show{opacity:1;visibility:visible;z-index:106}",
+          ".backdrop.show .choose-a-mat{top:100px}",
+          ".main-container.backdrop-on .nav-tabs{opacity:.3;pointer-events:none}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat{max-height:100vh!important}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .scrollable{overflow-y:visible!important}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .custom-cover-art .refresh-cover-art{padding-top:60px}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .custom-cover-art .tooltip{background-color:#000;border:1px solid #5d5d5d;font-size:14px;margin-left:30px;padding:8px 10px;width:max-content}",
+          ".backdrop{height:100%!important}",
+          "@media only screen and (max-width:1284px){.device_linked_game .popup-widget .game-detail .choose-a-mat{max-width:800px}",
+          ".device_linked_game .popup-widget .game-detail .choose-a-mat .scrollable{overflow-y:visible!important}",
+          ".dashboard .box-group .title:hover .drag-icon:before,.dashboard .box-group .title:hover~.backdrop-box,.dashboard .box-group:hover .title .drag-icon:before{opacity:1;visibility:visible}",
+          ".dashboard .box-group:not(.expand) .backdrop-box{transition:all .1s ease-in-out 0s}",
+          ".dashboard .box-group.dragging .backdrop-box{border:2px solid #44d62c;border-radius:5px;opacity:1;transition:all .1s ease-in-out 0s;visibility:visible}",
+          ".dashboard .box-group .backdrop-box{background-color:#333;border-radius:5px;bottom:10px;left:0;max-height:40px;opacity:0;position:absolute;right:0;top:0;transition:visibility .3s ease-in-out 0s,opacity .3s ease-in-out 0s,max-height .3s ease-in-out .3s;visibility:hidden;z-index:0}",
+          ".dashboard .box-group.expand .backdrop-box{bottom:0;max-height:2000px}",
+          ".haptic-content .backdrop{position:fixed}",
+          ".haptic-content .backdrop .choose-a-mat{width:850px}"
+        ]
+      }
+    ],
+    "locales": [
+      {
+        "path": ".ref/devices/746/static/js/trans-de.6a267477.chunk.js",
+        "sha256": "4656c73d2cb18819ee1ee83b682d54048e5ae5bcde7dfec9fa221ffa51b60ab3"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-en.ccf78079.chunk.js",
+        "sha256": "784caa0c9e71c1638effb0608edf479e79ea26632e1feda3455ba09a7cbc2387"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-es.6d260131.chunk.js",
+        "sha256": "e5b93e705e267811465b6b0c915642821f6ae6f6865fa88e96da07171219ddb6"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-fr.be39e576.chunk.js",
+        "sha256": "1de731504a5f043bf46b143c7b56a9421abda2ed07aaf336a23d223b61aafd7a"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-ja.e026417c.chunk.js",
+        "sha256": "bc7ca43891232a70920016d106b6973b6908530416bf41a4950026a40ac98b38"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-kr.c0336981.chunk.js",
+        "sha256": "cfd13fdffbe069fdc0dd283b91a99d4d8ed6af540513a5c14229d098ec11857e"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-pt-BR.36abd536.chunk.js",
+        "sha256": "486016cd2f6de05c1f20b882c2772da3908ffb0560d359e5afad0b7f54589cc6"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-ru.334b7179.chunk.js",
+        "sha256": "a432c1950c99b15aa7038b06bd3a3f6bc8bb8cce4cd7e7daf3e3222ededaa652"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-zh-CN.65e21d1b.chunk.js",
+        "sha256": "cd3a79ab2bbdaa6bd552428d56011fa94d9d1f8680b29662c00ee94ab80776d5"
+      },
+      {
+        "path": ".ref/devices/746/static/js/trans-zh-TW.0ddaf0bb.chunk.js",
+        "sha256": "a8c348c578d735e58aaaddd88d09c7db2c29c1e61b2f80bf7b373f025dea43a2"
+      }
+    ],
+    "service_contract": [
+      "initCalibration",
+      "calibrateBottom",
+      "verifyBottom",
+      "calibrateTop",
+      "verifyTop",
+      "stopCalibration"
+    ],
+    "idle_error_timeout_ms": 15000
+  }
+]

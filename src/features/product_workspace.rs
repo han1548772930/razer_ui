@@ -15,47 +15,67 @@ pub(crate) struct ProductWorkspace {
 impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
-    pub(crate) fn new(device: Device, intro: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(
+        device: Device,
+        intro: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         if !Tab::for_product(device.product_id).is_empty() {
             let entity = cx.new(|cx| DeviceWorkspace::new(device, intro, window, cx));
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::SaveRequested => WorkspaceEvent::SaveRequested,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                 });
                 cx.notify();
             });
-            Self { body: Body::Existing(entity), _subscription: subscription }
+            Self {
+                body: Body::Existing(entity),
+                _subscription: subscription,
+            }
         } else {
             let entity = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::SaveRequested => WorkspaceEvent::SaveRequested,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                 });
                 cx.notify();
             });
-            Self { body: Body::Source(entity), _subscription: subscription }
+            Self {
+                body: Body::Source(entity),
+                _subscription: subscription,
+            }
         }
     }
     pub(crate) fn device<'a>(&'a self, cx: &'a App) -> &'a Device {
-        match &self.body { Body::Existing(e) => e.read(cx).device(), Body::Source(e) => e.read(cx).device() }
+        match &self.body {
+            Body::Existing(e) => e.read(cx).device(),
+            Body::Source(e) => e.read(cx).device(),
+        }
     }
     pub(crate) fn identity(&self, cx: &App) -> String {
         let d = self.device(cx);
-        format!("{}:{}:{}", d.product_id, d.serial_number, d.device_container_id)
+        format!(
+            "{}:{}:{}",
+            d.product_id, d.serial_number, d.device_container_id
+        )
     }
-    pub(crate) fn snapshot(&self, cx: &App) -> Device { self.device(cx).clone() }
+    pub(crate) fn snapshot(&self, cx: &App) -> Device {
+        self.device(cx).clone()
+    }
     pub(crate) fn saved_snapshot(&self, cx: &App) -> Device {
-        match &self.body { Body::Existing(e) => e.read(cx).saved_snapshot(), Body::Source(e) => e.read(cx).saved_snapshot() }
-    }
-    pub(crate) fn dirty(&self, cx: &App) -> bool {
-        match &self.body { Body::Existing(e) => e.read(cx).dirty(), Body::Source(e) => e.read(cx).dirty() }
+        match &self.body {
+            Body::Existing(e) => e.read(cx).saved_snapshot(),
+            Body::Source(e) => e.read(cx).saved_snapshot(),
+        }
     }
     pub(crate) fn committed_pending(&self, cx: &App) -> bool {
-        match &self.body { Body::Existing(e) => e.read(cx).committed_pending(), Body::Source(e) => e.read(cx).dirty() }
+        match &self.body {
+            Body::Existing(e) => e.read(cx).committed_pending(),
+            Body::Source(e) => e.read(cx).dirty(),
+        }
     }
     pub(crate) fn discard_would_remove_mapping(&self, cx: &App) -> bool {
         matches!(&self.body, Body::Existing(e) if e.read(cx).discard_would_remove_mapping())
@@ -74,14 +94,23 @@ impl ProductWorkspace {
         }
         cx.notify();
     }
-    pub(crate) fn discard_committed(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn discard_committed(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
         match &self.body {
             Body::Existing(e) => e.update(cx, |v, cx| v.discard_committed(window, cx)),
-            Body::Source(e) => { e.update(cx, |v, cx| v.discard(window, cx)); true }
+            Body::Source(e) => {
+                e.update(cx, |v, cx| v.discard(window, cx));
+                true
+            }
         }
     }
     pub(crate) fn set_intro_seen(&mut self, seen: bool, cx: &mut Context<Self>) {
-        if let Body::Existing(e) = &self.body { e.update(cx, |v, cx| v.set_intro_seen(seen, cx)); }
+        if let Body::Existing(e) = &self.body {
+            e.update(cx, |v, cx| v.set_intro_seen(seen, cx));
+        }
     }
     pub(crate) fn set_page(&mut self, page: Tab, window: &mut Window, cx: &mut Context<Self>) {
         match &self.body {
@@ -90,14 +119,20 @@ impl ProductWorkspace {
         }
         cx.notify();
     }
-    pub(crate) fn set_source_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
-        if let Body::Source(e) = &self.body { e.update(cx, |v, cx| v.set_page_key(key, window, cx)); }
-    }
-    pub(crate) fn prepare_save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        match &self.body { Body::Existing(e) => e.update(cx, |v, cx| v.prepare_save(window, cx)), Body::Source(_) => true }
+    pub(crate) fn set_source_page(
+        &mut self,
+        key: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(e) = &self.body {
+            e.update(cx, |v, cx| v.set_page_key(key, window, cx));
+        }
     }
     pub(crate) fn dismiss_profile_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if let Body::Existing(e) = &self.body { e.update(cx, |v, cx| v.dismiss_profile_dialog(window, cx)); }
+        if let Body::Existing(e) = &self.body {
+            e.update(cx, |v, cx| v.dismiss_profile_dialog(window, cx));
+        }
     }
     pub(crate) fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         match &self.body {
@@ -108,6 +143,9 @@ impl ProductWorkspace {
 }
 impl Render for ProductWorkspace {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        match &self.body { Body::Existing(e) => e.clone().into_any_element(), Body::Source(e) => e.clone().into_any_element() }
+        match &self.body {
+            Body::Existing(e) => e.clone().into_any_element(),
+            Body::Source(e) => e.clone().into_any_element(),
+        }
     }
 }

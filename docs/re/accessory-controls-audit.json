@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "5d17f7c027cbafa6526d683aae584e2f9cee6ef5177f5d9a53363f2439cb5907",
+  "generator_sha256": "00c4c10e5ffd63f32e4fc50ecccc2801cb94438007dfe39d5c3158e23a119e8b",
   "products": [
     {
       "product_id": 126,
@@ -719,11 +719,29 @@
           "sha256": "91be207e03f5b94502c44199ee11e6eabe87e2347363f8b6e307014b53f5ee09"
         }
       ],
-      "initial_sources": [],
-      "pages": [],
-      "pending_pages": [
-        "TAB_CUSTOMIZE"
-      ]
+      "initial_sources": [
+        {
+          "field": "indicatorLedStatus",
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "offset": 164479,
+          "end": 164561,
+          "kind": "reducer seed before hardware hydration"
+        },
+        {
+          "field": "indicator modes",
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "offset": 230221,
+          "end": 230275,
+          "kind": "literal source enum"
+        }
+      ],
+      "pages": [
+        {
+          "key": "TAB_CUSTOMIZE",
+          "controls": 1
+        }
+      ],
+      "pending_pages": []
     },
     {
       "product_id": 207,
@@ -761,11 +779,29 @@
           "sha256": "bc5c510b673c1ee73db92f12a666b15a3137fccdfb5ed62a80000a88696a6770"
         }
       ],
-      "initial_sources": [],
-      "pages": [],
-      "pending_pages": [
-        "TAB_CUSTOMIZE"
-      ]
+      "initial_sources": [
+        {
+          "field": "autoPairing",
+          "path": ".ref/devices/207/static/js/main.9b300921.js",
+          "offset": 4095696,
+          "end": 4095792,
+          "kind": "reducer seed before hardware hydration"
+        },
+        {
+          "field": "batteryOptimizer",
+          "path": ".ref/devices/207/static/js/main.9b300921.js",
+          "offset": 4093269,
+          "end": 4093427,
+          "kind": "reducer seed before hardware hydration"
+        }
+      ],
+      "pages": [
+        {
+          "key": "TAB_CUSTOMIZE",
+          "controls": 3
+        }
+      ],
+      "pending_pages": []
     },
     {
       "product_id": 241,
@@ -1738,7 +1774,36 @@
           "sha256": "610b0c9c6796400df115f40298c399ab6055689d402b246ecdec4930a91680c0"
         }
       ],
-      "initial_sources": [],
+      "initial_sources": [
+        {
+          "field": "masterVolume",
+          "path": ".ref/devices/3331/static/js/main.37e94222.js",
+          "offset": 3850185,
+          "end": 3850385,
+          "kind": "reducer seed before hardware hydration"
+        },
+        {
+          "field": "pcVolume",
+          "path": ".ref/devices/3331/static/js/main.37e94222.js",
+          "offset": 3850185,
+          "end": 3850385,
+          "kind": "reducer seed before hardware hydration"
+        },
+        {
+          "field": "hdmiVolume",
+          "path": ".ref/devices/3331/static/js/main.37e94222.js",
+          "offset": 3850185,
+          "end": 3850385,
+          "kind": "reducer seed before hardware hydration"
+        },
+        {
+          "field": "micVolume",
+          "path": ".ref/devices/3331/static/js/main.37e94222.js",
+          "offset": 3850185,
+          "end": 3850385,
+          "kind": "reducer seed before hardware hydration"
+        }
+      ],
       "pages": [
         {
           "key": "TAB_SETTING",
@@ -3605,7 +3670,7 @@
       "pages": [
         {
           "key": "TAB_LIGHTING",
-          "controls": 2
+          "controls": 5
         }
       ],
       "pending_pages": [
@@ -6289,7 +6354,15 @@
           "sha256": "d548a2d50b20576d287db7a1e7d9c1438e1c6e01e78653b275542e52c7c7eb34"
         }
       ],
-      "initial_sources": [],
+      "initial_sources": [
+        {
+          "field": "powerSaving",
+          "path": ".ref/devices/3940/static/js/main.0d3c913d.js",
+          "offset": 404156,
+          "end": 404253,
+          "kind": "reducer seed before hardware hydration"
+        }
+      ],
       "pages": [
         {
           "key": "TAB_LIGHTING",
@@ -6394,7 +6467,15 @@
           "sha256": "b39098d42fd68a6f2de33e8da871f6c6dd466fbefc4890aab0fc8830f1460663"
         }
       ],
-      "initial_sources": [],
+      "initial_sources": [
+        {
+          "field": "powerSaving",
+          "path": ".ref/devices/3942/static/js/main.07f59396.js",
+          "offset": 437947,
+          "end": 438044,
+          "kind": "reducer seed before hardware hydration"
+        }
+      ],
       "pages": [
         {
           "key": "TAB_LIGHTING",
@@ -7023,7 +7104,15 @@
           "sha256": "45c2ea5081aaceccfce71fea6a4976128a607dc59e0bd4f709c64734c3ecabf1"
         }
       ],
-      "initial_sources": [],
+      "initial_sources": [
+        {
+          "field": "powerSaving",
+          "path": ".ref/devices/3949/static/js/main.5f0af02d.js",
+          "offset": 4030728,
+          "end": 4030825,
+          "kind": "reducer seed before hardware hydration"
+        }
+      ],
       "pages": [
         {
           "key": "TAB_POWER",

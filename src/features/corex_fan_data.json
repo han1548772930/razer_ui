@@ -1,0 +1,702 @@
+{
+  "product_id": 3921,
+  "modes": {
+    "Auto": "Auto",
+    "Smart": "Manual"
+  },
+  "min_rpm": 1000,
+  "max_rpm": 2800,
+  "curves": {
+    "quiet": {
+      "gpu": [
+        {
+          "temperature": 50,
+          "fanSpeedValue": 1000
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 1200
+        },
+        {
+          "temperature": 65,
+          "fanSpeedValue": 1400
+        },
+        {
+          "temperature": 70,
+          "fanSpeedValue": 1650
+        },
+        {
+          "temperature": 75,
+          "fanSpeedValue": 1900
+        },
+        {
+          "temperature": 80,
+          "fanSpeedValue": 2200
+        },
+        {
+          "temperature": 85,
+          "fanSpeedValue": 2500
+        }
+      ],
+      "chassis": [
+        {
+          "temperature": 30,
+          "fanSpeedValue": 1000
+        },
+        {
+          "temperature": 35,
+          "fanSpeedValue": 1150
+        },
+        {
+          "temperature": 40,
+          "fanSpeedValue": 1300
+        },
+        {
+          "temperature": 45,
+          "fanSpeedValue": 1500
+        },
+        {
+          "temperature": 50,
+          "fanSpeedValue": 1750
+        },
+        {
+          "temperature": 55,
+          "fanSpeedValue": 2000
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 2250
+        }
+      ]
+    },
+    "balanced": {
+      "gpu": [
+        {
+          "temperature": 45,
+          "fanSpeedValue": 1050
+        },
+        {
+          "temperature": 55,
+          "fanSpeedValue": 1300
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 1600
+        },
+        {
+          "temperature": 65,
+          "fanSpeedValue": 1900
+        },
+        {
+          "temperature": 70,
+          "fanSpeedValue": 2200
+        },
+        {
+          "temperature": 75,
+          "fanSpeedValue": 2450
+        },
+        {
+          "temperature": 80,
+          "fanSpeedValue": 2650
+        },
+        {
+          "temperature": 85,
+          "fanSpeedValue": 2800
+        }
+      ],
+      "chassis": [
+        {
+          "temperature": 25,
+          "fanSpeedValue": 1000
+        },
+        {
+          "temperature": 30,
+          "fanSpeedValue": 1150
+        },
+        {
+          "temperature": 35,
+          "fanSpeedValue": 1300
+        },
+        {
+          "temperature": 40,
+          "fanSpeedValue": 1550
+        },
+        {
+          "temperature": 45,
+          "fanSpeedValue": 1800
+        },
+        {
+          "temperature": 50,
+          "fanSpeedValue": 2050
+        },
+        {
+          "temperature": 55,
+          "fanSpeedValue": 2300
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 2550
+        }
+      ]
+    },
+    "performance": {
+      "gpu": [
+        {
+          "temperature": 40,
+          "fanSpeedValue": 1200
+        },
+        {
+          "temperature": 50,
+          "fanSpeedValue": 1600
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 2000
+        },
+        {
+          "temperature": 65,
+          "fanSpeedValue": 2300
+        },
+        {
+          "temperature": 70,
+          "fanSpeedValue": 2500
+        },
+        {
+          "temperature": 75,
+          "fanSpeedValue": 2650
+        },
+        {
+          "temperature": 80,
+          "fanSpeedValue": 2750
+        },
+        {
+          "temperature": 85,
+          "fanSpeedValue": 2800
+        }
+      ],
+      "chassis": [
+        {
+          "temperature": 20,
+          "fanSpeedValue": 1000
+        },
+        {
+          "temperature": 25,
+          "fanSpeedValue": 1150
+        },
+        {
+          "temperature": 30,
+          "fanSpeedValue": 1300
+        },
+        {
+          "temperature": 35,
+          "fanSpeedValue": 1550
+        },
+        {
+          "temperature": 40,
+          "fanSpeedValue": 1800
+        },
+        {
+          "temperature": 45,
+          "fanSpeedValue": 2050
+        },
+        {
+          "temperature": 50,
+          "fanSpeedValue": 2300
+        },
+        {
+          "temperature": 55,
+          "fanSpeedValue": 2550
+        },
+        {
+          "temperature": 60,
+          "fanSpeedValue": 2800
+        }
+      ]
+    }
+  },
+  "translations": {
+    "en": {
+      "SYSTEM_FAN_CONTROL": "FAN CONTROL",
+      "SYSTEM_FAN_TOOLTIP": "Adjust the system's fan speed with automatic settings, or customize it manually.",
+      "SYSTEM_FAN_SPEED": "Fan Speed",
+      "SYSTEM_FAN_TEMPERATURE": "Temperature",
+      "SYSTEM_FAN_CONTROL_AUTO": "Auto (Default)",
+      "SYSTEM_FAN_CONTROL_SMART": "Manual Fan Curve",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "The system automatically adjusts the fan speed.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Customize your own fan profile based on GPU temperature or the internal Chassis temperature sensor.",
+      "SYSTEM_FAN_PRESET_QUIET": "Quiet",
+      "SYSTEM_FAN_PRESET_BALANCED": "Balanced",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Performance",
+      "FAN_OFF": "FAN OFF",
+      "CHASSIS": "Chassis",
+      "GPU": "GPU"
+    },
+    "es": {
+      "SYSTEM_FAN_CONTROL": "CONTROL DEL VENTILADOR",
+      "SYSTEM_FAN_TOOLTIP": "Ajusta la velocidad del ventilador del sistema con configuraciones automáticas o personalízala manualmente.",
+      "SYSTEM_FAN_SPEED": "Velocidad del ventilador",
+      "SYSTEM_FAN_TEMPERATURE": "Temperatura",
+      "SYSTEM_FAN_CONTROL_AUTO": "Automática (predeterminada)",
+      "SYSTEM_FAN_CONTROL_SMART": "Curva del ventilador manual",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "El sistema ajusta automáticamente la velocidad del ventilador.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Personaliza tu propio perfil de ventilador en función de la temperatura de la GPU o del sensor de temperatura interno del chasis.",
+      "SYSTEM_FAN_PRESET_QUIET": "Silencioso",
+      "SYSTEM_FAN_PRESET_BALANCED": "Balanceado",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Rendimiento",
+      "FAN_OFF": "VENTILADOR APAGADO",
+      "CHASSIS": "Chasis",
+      "GPU": "GPU"
+    },
+    "de": {
+      "SYSTEM_FAN_CONTROL": "LÜFTERSTEUERUNG",
+      "SYSTEM_FAN_TOOLTIP": "Du kannst die Lüftergeschwindigkeit des Systems mit automatischen Einstellungen oder manuell anpassen.",
+      "SYSTEM_FAN_SPEED": "Lüftergeschwindigkeit",
+      "SYSTEM_FAN_TEMPERATURE": "Temperatur",
+      "SYSTEM_FAN_CONTROL_AUTO": "Auto (Standard)",
+      "SYSTEM_FAN_CONTROL_SMART": "Manuelle Lüfterkurve",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "Lässt das System automatisch die Lüftergeschwindigkeit anpassen.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Eigenes Lüfterprofil basierend auf GPU-Temperatur oder dem internen Chassis-Temperatursensor anpassen.",
+      "SYSTEM_FAN_PRESET_QUIET": "Leise",
+      "SYSTEM_FAN_PRESET_BALANCED": "Ausgeglichen",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Performance",
+      "FAN_OFF": "LÜFTER AUS",
+      "CHASSIS": "Gehäuse",
+      "GPU": "GPU"
+    },
+    "fr": {
+      "SYSTEM_FAN_CONTROL": "CONTRÔLE DU VENTILATEUR",
+      "SYSTEM_FAN_TOOLTIP": "Réglez la vitesse du ventilateur du système avec des paramètres automatiques ou personnalisez-la manuellement.",
+      "SYSTEM_FAN_SPEED": "Vitesse du ventilateur",
+      "SYSTEM_FAN_TEMPERATURE": "Température",
+      "SYSTEM_FAN_CONTROL_AUTO": "Auto (par défaut)",
+      "SYSTEM_FAN_CONTROL_SMART": "Courbe du ventilateur manuelle",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "Le système ajuste automatiquement la vitesse du ventilateur.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Personnalisez votre propre profil de ventilateur en fonction de la température du GPU ou du capteur de température interne du châssis.",
+      "SYSTEM_FAN_PRESET_QUIET": "Silencieux",
+      "SYSTEM_FAN_PRESET_BALANCED": "Équilibré",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Performance",
+      "FAN_OFF": "VENTILATEUR ARRÊTÉ",
+      "CHASSIS": "Châssis",
+      "GPU": "GPU"
+    },
+    "ja": {
+      "SYSTEM_FAN_CONTROL": "ファンコントロール",
+      "SYSTEM_FAN_TOOLTIP": "自動設定でシステムのファン速度を調整するか、手動でカスタマイズします。",
+      "SYSTEM_FAN_SPEED": "ファン回転速度",
+      "SYSTEM_FAN_TEMPERATURE": "温度",
+      "SYSTEM_FAN_CONTROL_AUTO": "自動 (デフォルト)",
+      "SYSTEM_FAN_CONTROL_SMART": "手動ファン曲線",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "システム側でファンの回転速度を自動設定します",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "GPU 温度または内部シャーシ温度センサーに応じて、独自のファンプロファイルをカスタマイズできます。",
+      "SYSTEM_FAN_PRESET_QUIET": "静音",
+      "SYSTEM_FAN_PRESET_BALANCED": "バランス",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "パフォーマンス",
+      "FAN_OFF": "ファン停止",
+      "CHASSIS": "シャーシ",
+      "GPU": "GPU"
+    },
+    "kr": {
+      "SYSTEM_FAN_CONTROL": "팬 제어",
+      "SYSTEM_FAN_TOOLTIP": "자동 설정으로 시스템의 팬 속도를 조정하거나 수동으로 커스텀 설정할 수 있습니다.",
+      "SYSTEM_FAN_SPEED": "팬 속도",
+      "SYSTEM_FAN_TEMPERATURE": "온도",
+      "SYSTEM_FAN_CONTROL_AUTO": "자동(기본)",
+      "SYSTEM_FAN_CONTROL_SMART": "수동 팬 커브",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "시스템이 팬 속도를 자동으로 조정합니다.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "GPU 온도 또는 내부 섀시 온도 센서를 기준으로 나만의 팬 프로파일을 설정하세요.",
+      "SYSTEM_FAN_PRESET_QUIET": "조용함",
+      "SYSTEM_FAN_PRESET_BALANCED": "밸런스",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "성능",
+      "FAN_OFF": "팬 꺼짐",
+      "CHASSIS": "케이스",
+      "GPU": "GPU"
+    },
+    "pt-BR": {
+      "SYSTEM_FAN_CONTROL": "CONTROLE DE VENTOINHA",
+      "SYSTEM_FAN_TOOLTIP": "Ajuste a velocidade da ventoinha do sistema com configurações automáticas ou personalize-a manualmente.",
+      "SYSTEM_FAN_SPEED": "Velocidade da ventoinha",
+      "SYSTEM_FAN_TEMPERATURE": "Temperatura",
+      "SYSTEM_FAN_CONTROL_AUTO": "Automática (padrão)",
+      "SYSTEM_FAN_CONTROL_SMART": "Curva manual da ventoinha",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "O sistema define automaticamente a velocidade do ventilador.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Personalize seu próprio perfil de ventoinha com base na temperatura da GPU ou no sensor de temperatura interno do chassi.",
+      "SYSTEM_FAN_PRESET_QUIET": "Silêncio",
+      "SYSTEM_FAN_PRESET_BALANCED": "Equilibrado",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Desempenho",
+      "FAN_OFF": "VENTOINHA DESLIGADA",
+      "CHASSIS": "Chassi",
+      "GPU": "GPU"
+    },
+    "ru": {
+      "SYSTEM_FAN_CONTROL": "УПРАВЛЕНИЕ ВЕНТИЛЯТОРАМИ",
+      "SYSTEM_FAN_TOOLTIP": "Отрегулируйте скорость вращения вентилятора системы с помощью автоматических настроек либо вручную.",
+      "SYSTEM_FAN_SPEED": "Скорость вращения вентиляторов",
+      "SYSTEM_FAN_TEMPERATURE": "Температура",
+      "SYSTEM_FAN_CONTROL_AUTO": "Автоматически (по умолчанию)",
+      "SYSTEM_FAN_CONTROL_SMART": "Ручная кривая вентилятора",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "Система автоматически регулирует скорость вентилятора.",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "Настройте собственный профиль вентилятора в зависимости от температуры GPU или внутреннего датчика температуры корпуса.",
+      "SYSTEM_FAN_PRESET_QUIET": "Тихий",
+      "SYSTEM_FAN_PRESET_BALANCED": "Сбалансированный",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "Производительность",
+      "FAN_OFF": "ВЕНТИЛЯТОР ВЫКЛ",
+      "CHASSIS": "Корпус",
+      "GPU": "ГП"
+    },
+    "zh-CN": {
+      "SYSTEM_FAN_CONTROL": "风扇控制",
+      "SYSTEM_FAN_TOOLTIP": "通过自动设置调节系统风扇转速，或手动自定义风扇转速。",
+      "SYSTEM_FAN_SPEED": "风扇转速",
+      "SYSTEM_FAN_TEMPERATURE": "温度",
+      "SYSTEM_FAN_CONTROL_AUTO": "自动（默认）",
+      "SYSTEM_FAN_CONTROL_SMART": "手动风扇曲线",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "系统自动调节风扇转速。",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "根据 GPU 温度或机箱内部温度传感器自定义风扇配置文件。",
+      "SYSTEM_FAN_PRESET_QUIET": "安静",
+      "SYSTEM_FAN_PRESET_BALANCED": "平衡",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "性能",
+      "FAN_OFF": "风扇关闭",
+      "CHASSIS": "机箱",
+      "GPU": "显卡"
+    },
+    "zh-TW": {
+      "SYSTEM_FAN_CONTROL": "風扇控制",
+      "SYSTEM_FAN_TOOLTIP": "以自動設定調整系統風扇速度，或是手動自訂。",
+      "SYSTEM_FAN_SPEED": "風扇速度",
+      "SYSTEM_FAN_TEMPERATURE": "溫度",
+      "SYSTEM_FAN_CONTROL_AUTO": "自動（預設）",
+      "SYSTEM_FAN_CONTROL_SMART": "手動風扇曲線",
+      "SYSTEM_FAN_CONTROL_AUTO_DESCRIPTION": "系統自動調整風扇速度。",
+      "SYSTEM_FAN_CONTROL_SMART_DESCRIPTION": "根據 GPU 溫度或機箱內部溫度感測器自訂你的風扇設定檔。",
+      "SYSTEM_FAN_PRESET_QUIET": "安靜",
+      "SYSTEM_FAN_PRESET_BALANCED": "平衡",
+      "SYSTEM_FAN_PRESET_PERFORMANCE": "效能",
+      "FAN_OFF": "風扇關閉",
+      "CHASSIS": "機箱",
+      "GPU": "顯卡"
+    }
+  },
+  "initial": {
+    "fanMode": "Manual",
+    "activeManualPreset": "quiet",
+    "manualPresets": [
+      {
+        "mode": "quiet",
+        "smartFanCurve": {
+          "activeTemperatureMode": "gpu",
+          "gpu": [
+            {
+              "temperature": 50,
+              "fanSpeedValue": 1000
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 1200
+            },
+            {
+              "temperature": 65,
+              "fanSpeedValue": 1400
+            },
+            {
+              "temperature": 70,
+              "fanSpeedValue": 1650
+            },
+            {
+              "temperature": 75,
+              "fanSpeedValue": 1900
+            },
+            {
+              "temperature": 80,
+              "fanSpeedValue": 2200
+            },
+            {
+              "temperature": 85,
+              "fanSpeedValue": 2500
+            }
+          ],
+          "chassis": [
+            {
+              "temperature": 30,
+              "fanSpeedValue": 1000
+            },
+            {
+              "temperature": 35,
+              "fanSpeedValue": 1150
+            },
+            {
+              "temperature": 40,
+              "fanSpeedValue": 1300
+            },
+            {
+              "temperature": 45,
+              "fanSpeedValue": 1500
+            },
+            {
+              "temperature": 50,
+              "fanSpeedValue": 1750
+            },
+            {
+              "temperature": 55,
+              "fanSpeedValue": 2000
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 2250
+            }
+          ]
+        }
+      },
+      {
+        "mode": "balanced",
+        "smartFanCurve": {
+          "activeTemperatureMode": "gpu",
+          "gpu": [
+            {
+              "temperature": 45,
+              "fanSpeedValue": 1050
+            },
+            {
+              "temperature": 55,
+              "fanSpeedValue": 1300
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 1600
+            },
+            {
+              "temperature": 65,
+              "fanSpeedValue": 1900
+            },
+            {
+              "temperature": 70,
+              "fanSpeedValue": 2200
+            },
+            {
+              "temperature": 75,
+              "fanSpeedValue": 2450
+            },
+            {
+              "temperature": 80,
+              "fanSpeedValue": 2650
+            },
+            {
+              "temperature": 85,
+              "fanSpeedValue": 2800
+            }
+          ],
+          "chassis": [
+            {
+              "temperature": 25,
+              "fanSpeedValue": 1000
+            },
+            {
+              "temperature": 30,
+              "fanSpeedValue": 1150
+            },
+            {
+              "temperature": 35,
+              "fanSpeedValue": 1300
+            },
+            {
+              "temperature": 40,
+              "fanSpeedValue": 1550
+            },
+            {
+              "temperature": 45,
+              "fanSpeedValue": 1800
+            },
+            {
+              "temperature": 50,
+              "fanSpeedValue": 2050
+            },
+            {
+              "temperature": 55,
+              "fanSpeedValue": 2300
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 2550
+            }
+          ]
+        }
+      },
+      {
+        "mode": "performance",
+        "smartFanCurve": {
+          "activeTemperatureMode": "gpu",
+          "gpu": [
+            {
+              "temperature": 40,
+              "fanSpeedValue": 1200
+            },
+            {
+              "temperature": 50,
+              "fanSpeedValue": 1600
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 2000
+            },
+            {
+              "temperature": 65,
+              "fanSpeedValue": 2300
+            },
+            {
+              "temperature": 70,
+              "fanSpeedValue": 2500
+            },
+            {
+              "temperature": 75,
+              "fanSpeedValue": 2650
+            },
+            {
+              "temperature": 80,
+              "fanSpeedValue": 2750
+            },
+            {
+              "temperature": 85,
+              "fanSpeedValue": 2800
+            }
+          ],
+          "chassis": [
+            {
+              "temperature": 20,
+              "fanSpeedValue": 1000
+            },
+            {
+              "temperature": 25,
+              "fanSpeedValue": 1150
+            },
+            {
+              "temperature": 30,
+              "fanSpeedValue": 1300
+            },
+            {
+              "temperature": 35,
+              "fanSpeedValue": 1550
+            },
+            {
+              "temperature": 40,
+              "fanSpeedValue": 1800
+            },
+            {
+              "temperature": 45,
+              "fanSpeedValue": 2050
+            },
+            {
+              "temperature": 50,
+              "fanSpeedValue": 2300
+            },
+            {
+              "temperature": 55,
+              "fanSpeedValue": 2550
+            },
+            {
+              "temperature": 60,
+              "fanSpeedValue": 2800
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "axes": {
+    "gpu": [
+      30,
+      40,
+      45,
+      50,
+      55,
+      60,
+      65,
+      70,
+      75,
+      80,
+      85
+    ],
+    "chassis": [
+      20,
+      25,
+      30,
+      35,
+      40,
+      45,
+      50,
+      55,
+      60
+    ]
+  },
+  "source_files": [
+    {
+      "path": ".ref/devices/3921/static/js/main.77ab7933.js",
+      "sha256": "f6e8bc151c8e31bd40b3ecca41bba75cc78d7b79f05a970cf416cc5ef955beaa"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/430.ffb57133.chunk.js",
+      "sha256": "ac9b40982c40149a09070c8acea94ef90ee273c24f926a7c85023ac4309c1533"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/143.3aa83737.chunk.js",
+      "sha256": "d36fd164ede0df78d5e2db6c6c6323b0acde1322066da6383755f3f3cda7528c"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/168.72d39397.chunk.js",
+      "sha256": "37ae58edae398c0358bd4511d1e5eb28a0619df53f4d9ad2dd566a466246d578"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/236.c9ae136d.chunk.js",
+      "sha256": "73545dca29c34fe74644fff3f128293a50915b122ed5a9aab509cc8fbe83b239"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/248.a22e66bb.chunk.js",
+      "sha256": "7f8790c349a69105ceff3f0f894c427f11065c1d2e67eae4de2f879a61c16192"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/374.4a1ba77a.chunk.js",
+      "sha256": "e6058366b291a8cc70f482a5d79fbc62ad87c8fe45a1574c8a43125a0a1c49dd"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/536.00db8486.chunk.js",
+      "sha256": "cdec057e090ee0562ef03c42bb9145b64a79efff136a9cf1eebe0df5a7721263"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/543.38f5f974.chunk.js",
+      "sha256": "08db2256385441d571aad593a36720a0f745e5e921c746e734d85ae52d74a7fe"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/613.7c3259c3.chunk.js",
+      "sha256": "887ffb8b97fd7d0978445f1ae7dd064571f5074defd7416844c0dd1255c63d49"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/64.b1407ff0.chunk.js",
+      "sha256": "1bd9601e01932f2668069795cd35ff2ec2cbeec962bd15b3095ea10f8007943a"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/684.ebbca785.chunk.js",
+      "sha256": "24e71557871714ac3792efd1380446913031bbf13428ba376863f3122fca6e0b"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/854.c558526e.chunk.js",
+      "sha256": "302f54c3e0eb9715a9b40e3d902a903a185e0809db9f3acca214c0acdaed45ca"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/AppFolderInstallationChecker.41891ac2.chunk.js",
+      "sha256": "d40de7d2497dd10dcce7b1f43df4df50f721f799746dece0fbfc6fc02e7a5bc8"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/DynamicSensitivityTutorialIcon.cb8c62cd.chunk.js",
+      "sha256": "46f73239fb368ff455ea7a633c89658db48e15b42ae7a23470d53833c1bebdc4"
+    },
+    {
+      "path": ".ref/devices/3921/static/js/DynamicSensitivityTutorialPopup.1f07953c.chunk.js",
+      "sha256": "665756b8ff888eed2b69ce1d8f1ef9d28d82fa6e7cbeaeb03d24a9afe6f60132"
+    }
+  ],
+  "rule": "2..20 points; fixed temperature on vertical drag; speed clamped between neighbours; reset both targets in active preset",
+  "state_source": {
+    "path": ".ref/devices/3921/static/js/main.77ab7933.js",
+    "offset": 247850,
+    "end": 248323,
+    "sha256": "7abb8610bd8278827763fa3a5ec5ae1f98c89dd3e4aed1dfcc8745083db7d4e9"
+  }
+}

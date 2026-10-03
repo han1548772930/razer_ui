@@ -1,6 +1,7 @@
 //! Retained Help UI from each product's mounted current source component.
 use crate::{i18n, model::Device, ui::surface};
 use gpui_kit::base::{Button as BaseButton, Link};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
@@ -11,12 +12,13 @@ struct Help {
     product_id: u32,
     support: Option<String>,
     guide: Option<String>,
-    #[serde(default)]
     pages: Vec<HelpPage>,
 }
 #[derive(Deserialize)]
 struct HelpPage {
     offset: usize,
+    serial: bool,
+    registration: bool,
     firmware: bool,
     view_more: bool,
     reset: bool,
@@ -286,24 +288,27 @@ impl Render for SourceHelp {
             );
         }
         let serial = self.device.serial_number.clone();
-        let mut right = v_flex().gap(surface::css(20.)).child(
-            surface::panel(i18n::t("SERIAL_NUM"), cx)
-                .child(format!("{} {serial}", i18n::t("SERIAL")))
-                .child(
-                    help_button(
-                        "source-help-copy",
-                        i18n::t(if self.copied_serial {
-                            "COPIED_SERIAL"
-                        } else {
-                            "COPY_SERIAL"
-                        }),
-                        serial.is_empty() || self.copied_serial,
-                        cx,
-                    )
-                    .self_start()
-                    .on_click(cx.listener(|this, _, window, cx| this.copy_serial(window, cx))),
-                ),
-        );
+        let mut right = v_flex().gap(surface::css(20.));
+        if page.serial {
+            right = right.child(
+                surface::panel(i18n::t("SERIAL_NUM"), cx)
+                    .child(format!("{} {serial}", i18n::t("SERIAL")))
+                    .child(
+                        help_button(
+                            "source-help-copy",
+                            i18n::t(if self.copied_serial {
+                                "COPIED_SERIAL"
+                            } else {
+                                "COPY_SERIAL"
+                            }),
+                            serial.is_empty() || self.copied_serial,
+                            cx,
+                        )
+                        .self_start()
+                        .on_click(cx.listener(|this, _, window, cx| this.copy_serial(window, cx))),
+                    ),
+            );
+        }
         let firmware = &self.device.firmware_info.current_fw_version;
         if page.firmware && !firmware.is_empty() {
             let mut panel = surface::panel(i18n::t("DEVICE_HEADER"), cx)
@@ -344,14 +349,16 @@ impl Render for SourceHelp {
             }
             right = right.child(panel);
         }
-        right = right.child(
-            surface::panel(i18n::t("PRODUCT_REGISTRATION"), cx).child(help_link(
-                "source-help-register",
-                "REGISTER_ONLINE",
-                "https://www.razer.com/product-registration",
-                cx,
-            )),
-        );
+        if page.registration {
+            right = right.child(surface::panel(i18n::t("PRODUCT_REGISTRATION"), cx).child(
+                help_link(
+                    "source-help-register",
+                    "REGISTER_ONLINE",
+                    "https://www.razer.com/product-registration",
+                    cx,
+                ),
+            ));
+        }
         surface::page_columns()
             .child(surface::page_column(left))
             .child(surface::page_column(right))

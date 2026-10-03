@@ -176,8 +176,9 @@ impl MouseProductWorkspace {
     }
 
     pub(crate) fn set_page(&mut self, key: &str, _window: &mut Window, cx: &mut Context<Self>) {
-        if (self.spec.has_page(key) || key == "TAB_PAIRING") && self.page != key {
+        if self.page != key {
             self.page = key.into();
+            self.mapping_input = None;
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
@@ -1048,7 +1049,10 @@ impl Render for MouseProductWorkspace {
             "TAB_PAIRING" => surface::panel("配对", cx)
                 .child(surface::note("配对界面尚未接入。", cx))
                 .into_any_element(),
-            _ => self.customize(cx),
+            "TAB_CUSTOMIZE" => self.customize(cx),
+            _ => surface::panel(crate::i18n::t(&self.page), cx)
+                .child(surface::note("此页面的原生控件仍在接入。", cx))
+                .into_any_element(),
         };
         div()
             .id("mouse-product-body")

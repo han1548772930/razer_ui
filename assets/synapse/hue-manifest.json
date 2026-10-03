@@ -1,0 +1,522 @@
+[
+  {
+    "source": ".ref/devices/769/static/media/icon_battery_graph.5140e4be.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/icon_battery_graph.5140e4be.svg",
+    "asset": "synapse/hue-icon_battery_graph.svg",
+    "output": "assets/synapse/hue-icon_battery_graph.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "8f89dd12860689719b2258f2bcb5c82d6bcc2092c3691111f5622c5d28093605",
+    "output_sha256": "8f89dd12860689719b2258f2bcb5c82d6bcc2092c3691111f5622c5d28093605"
+  },
+  {
+    "source": ".ref/devices/769/static/media/info-icon.769264c1.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/info-icon.769264c1.svg",
+    "asset": "synapse/hue-info-icon.svg",
+    "output": "assets/synapse/hue-info-icon.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "0e8f5d9d322ac12af2ffa96160e700253ffbaae77aa3d4b8e037a67b7e7d423b",
+    "output_sha256": "0e8f5d9d322ac12af2ffa96160e700253ffbaae77aa3d4b8e037a67b7e7d423b"
+  },
+  {
+    "source": ".ref/devices/769/static/media/install_chroma.85d4bc96.avif",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/install_chroma.85d4bc96.avif",
+    "asset": "synapse/hue-install_chroma.png",
+    "output": "assets/synapse/hue-install_chroma.png",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "e624332d26c6acc5c3068ebd85b3b1be2db76dbaebb06f8f425eccb401ca2ea5",
+    "output_sha256": "caaeffb171c29af848f62bd64abf1000354fd4c0456e6a0756bf08c22ccfd6bc"
+  },
+  {
+    "source": ".ref/devices/769/static/media/logo_chromastudio.5b277459.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/logo_chromastudio.5b277459.svg",
+    "asset": "synapse/hue-logo_chromastudio.svg",
+    "output": "assets/synapse/hue-logo_chromastudio.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "917585df1dcb00e83a79330503f232c20396cfdd5c7ba293c232c772b8bbfc68",
+    "output_sha256": "917585df1dcb00e83a79330503f232c20396cfdd5c7ba293c232c772b8bbfc68"
+  },
+  {
+    "source": ".ref/devices/769/static/media/hue_scan_logo.f8b7c5c4.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/hue_scan_logo.f8b7c5c4.svg",
+    "asset": "synapse/hue-hue_scan_logo.svg",
+    "output": "assets/synapse/hue-hue_scan_logo.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "1969f1ba29b51cbf25ab521ce5003d8a602ba15cdffb0bbb6d4406ffc3fbcaf0",
+    "output_sha256": "1969f1ba29b51cbf25ab521ce5003d8a602ba15cdffb0bbb6d4406ffc3fbcaf0"
+  },
+  {
+    "source": ".ref/devices/769/static/media/preloader.ef2d0235.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/preloader.ef2d0235.svg",
+    "asset": "synapse/hue-preloader.svg",
+    "output": "assets/synapse/hue-preloader.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+    "output_sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83"
+  },
+  {
+    "source": ".ref/devices/769/static/media/hue_pair_logo.03717074.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/hue_pair_logo.03717074.svg",
+    "asset": "synapse/hue-hue_pair_logo.svg",
+    "output": "assets/synapse/hue-hue_pair_logo.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "744936755c32b2738e092d1833242ed698e6293bc0c6b6a16e07a7214f67988d",
+    "output_sha256": "744936755c32b2738e092d1833242ed698e6293bc0c6b6a16e07a7214f67988d"
+  },
+  {
+    "source": ".ref/devices/769/static/media/icon_close_enclosed_1.d8da72c9.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/icon_close_enclosed_1.d8da72c9.svg",
+    "asset": "synapse/hue-icon_close_enclosed_1.svg",
+    "output": "assets/synapse/hue-icon_close_enclosed_1.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "b6b052434bf1ab8b361082931002f9b68ef941afda57fb8959bc486bb006837d",
+    "output_sha256": "b6b052434bf1ab8b361082931002f9b68ef941afda57fb8959bc486bb006837d"
+  },
+  {
+    "source": ".ref/devices/769/static/media/icon_close_enclosed_1_hover.0e64013b.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/icon_close_enclosed_1_hover.0e64013b.svg",
+    "asset": "synapse/hue-icon_close_enclosed_1_hover.svg",
+    "output": "assets/synapse/hue-icon_close_enclosed_1_hover.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "d2df139a73404c5986323fad3d06bffafe4fbeb750b28adaf91e26b6c536f1bc",
+    "output_sha256": "d2df139a73404c5986323fad3d06bffafe4fbeb750b28adaf91e26b6c536f1bc"
+  },
+  {
+    "source": ".ref/devices/769/static/media/icon_wifi_no.64ffc4f3.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/icon_wifi_no.64ffc4f3.svg",
+    "asset": "synapse/hue-icon_wifi_no.svg",
+    "output": "assets/synapse/hue-icon_wifi_no.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "638951661ac705e24397cd40b7be3d2aaba73494816abb75b3349110673f514b",
+    "output_sha256": "638951661ac705e24397cd40b7be3d2aaba73494816abb75b3349110673f514b"
+  },
+  {
+    "source": ".ref/devices/769/static/media/icon_wifi_error.0ee0e294.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/icon_wifi_error.0ee0e294.svg",
+    "asset": "synapse/hue-icon_wifi_error.svg",
+    "output": "assets/synapse/hue-icon_wifi_error.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "04d9e301d9097acd586f29eb639690a1821c1ce63f6e0fd9cbad1b9d9b1e18e0",
+    "output_sha256": "04d9e301d9097acd586f29eb639690a1821c1ce63f6e0fd9cbad1b9d9b1e18e0"
+  },
+  {
+    "source": ".ref/devices/769/static/media/hue_light_logo.c2e4853c.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/hue_light_logo.c2e4853c.svg",
+    "asset": "synapse/hue-hue_light_logo.svg",
+    "output": "assets/synapse/hue-hue_light_logo.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "2b5db331c603fcfd8f7bf882f013fc50d90f997b8504da4ac1adca616842e5a1",
+    "output_sha256": "2b5db331c603fcfd8f7bf882f013fc50d90f997b8504da4ac1adca616842e5a1"
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-bollard.svg",
+    "output_sha256": "b6fb29d6787aa4031bf8bb1cd7e3d242fefc1709737dc12a7655ab41431cbea6",
+    "archetype": "bollard",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-candle_bulbs.svg",
+    "output_sha256": "a130ff23e5383f7bb78af8e3cd1676c2eca649101a7fbaff2d184739fc6358e0",
+    "archetype": "candle_bulbs",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ceiling_horizontal.svg",
+    "output_sha256": "fb4e4cfaa96c5e0484303c371ff4344ef865e176d9cfa38d9ba8e3522b8a83db",
+    "archetype": "ceiling_horizontal",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ceiling_round2.svg",
+    "output_sha256": "c3bc03d94bbd85353561c557e773df136dc9330ab0532e2eae81e3ff2b25e6ef",
+    "archetype": "ceiling_round2",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ceiling_square.svg",
+    "output_sha256": "a6ebf9bdb43604551194f570a1470231cadaa134fe3d086782d51c64bcf93005",
+    "archetype": "ceiling_square",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ceiling_tube.svg",
+    "output_sha256": "e8d47234e0ed7ecc4cab4a2cc865d87bbe2466dfd4af6a32c45727d7880b47ff",
+    "archetype": "ceiling_tube",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-classic_bulb.svg",
+    "output_sha256": "a083c74e1821d184530e7ebe516cb228660550d8736865e300de1e47ecbd7de3",
+    "archetype": "classic_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-double_spot.svg",
+    "output_sha256": "79d283d3a5a7028145cd07d1135d96e5f91fa075c7df32895106ddff8cfd98c9",
+    "archetype": "double_spot",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-edison_bulb.svg",
+    "output_sha256": "c8a2458eb639e8be5ab7bf7c6ba050c67bdabd28b6e55da323d5cc90179ef18f",
+    "archetype": "edison_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ellipse_bulb.svg",
+    "output_sha256": "2a2e72f9c8d050b497f16f587b0716406c02f924985059ea9ee1bd0b1c3eefc6",
+    "archetype": "ellipse_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-flexible_lamp.svg",
+    "output_sha256": "a130ff23e5383f7bb78af8e3cd1676c2eca649101a7fbaff2d184739fc6358e0",
+    "archetype": "flexible_lamp",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-flood_bulb.svg",
+    "output_sha256": "16e3d7f77cab5272c5be5258d2efffb2ee25e0bb702140db11e651ad19425409",
+    "archetype": "flood_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-floor_lantern.svg",
+    "output_sha256": "9fab8519d2ea813eca3a5550e4eceb02df8f6537956e0baed863294c02ca9175",
+    "archetype": "floor_lantern",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-floor_shade.svg",
+    "output_sha256": "f448d928a1d591000b6517a72ffaeae046806f8a3d586156ca08384c35d173d9",
+    "archetype": "floor_shade",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-ground_spot.svg",
+    "output_sha256": "65a7c7bf061b5f78495310b30486b3cddf87a7e41f0fdff42eacd2bdb28f9e8b",
+    "archetype": "ground_spot",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_bloom.svg",
+    "output_sha256": "98f9b5c2e410de3df40f729c0e15d5a5cb74216f24fcfb799b33226852938634",
+    "archetype": "hue_bloom",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_centris.svg",
+    "output_sha256": "a787c9bc02fd3143ad975bece003a46a0b5a2ec2a7c7ac81f4a185a49aeb0abf",
+    "archetype": "hue_centris",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_go.svg",
+    "output_sha256": "0e55d2794e6451a14d9eedd0f05a5549b566aa768867c0ccef78b6d49661d5ab",
+    "archetype": "hue_go",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_iris.svg",
+    "output_sha256": "5cf2be160a7102a4f3c54f1a9fb29562722d110f05b19bf92f1022f67253c2c5",
+    "archetype": "hue_iris",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_lightstrip.svg",
+    "output_sha256": "fceb64ccc2a3e63465b8fc136af7f1b9f1ff2669b5aed8535922f13b0ab9e384",
+    "archetype": "hue_lightstrip",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_lightstrip_pc.svg",
+    "output_sha256": "f886601d0d909576ace2a951bd30be450151752f5bb2659fb91903a38419f724",
+    "archetype": "hue_lightstrip_pc",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_lightstrip_tv.svg",
+    "output_sha256": "fceb64ccc2a3e63465b8fc136af7f1b9f1ff2669b5aed8535922f13b0ab9e384",
+    "archetype": "hue_lightstrip_tv",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_play.svg",
+    "output_sha256": "7135fd41838aab0f5b250665d5b3895e5fb0521bffb248113bf5ed88ed2c46be",
+    "archetype": "hue_play",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_signe.svg",
+    "output_sha256": "b95c4fb45ee58263be379454b9a5eaa992fefb5b37dc73e011c49158d42a3e49",
+    "archetype": "hue_signe",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-hue_tube.svg",
+    "output_sha256": "79dfce22f9b9544faf21152e1a568fad31e8fe68bade7a1109a8abf249d3b669",
+    "archetype": "hue_tube",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-large_globe_bulb.svg",
+    "output_sha256": "f27cf6cb468a6d40af8c9b702b19a99b625b2780488912a287b5d6e720c7e5bb",
+    "archetype": "large_globe_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-luster_bulb.svg",
+    "output_sha256": "cc1a885ddb98dd5a8ff38f4ae4d575e4f40fc599e61453e8b5899aa6ee3b9b3c",
+    "archetype": "luster_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-pendant_long.svg",
+    "output_sha256": "763e28c78a54262fb9a217e2ea0ec7df20247a1b16e7028152ab21a1c4f5774a",
+    "archetype": "pendant_long",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-pendant_round.svg",
+    "output_sha256": "b676c7ffd9bcac5aa28f7f89e2bbe3faf33c6bf37f5ceec8b58b283528ed3dd3",
+    "archetype": "pendant_round",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-pendant_spot.svg",
+    "output_sha256": "194c1463819f009cb8b11bdd19668b0160d53c73a62b5f3624c19e8c5c606131",
+    "archetype": "pendant_spot",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-recessed_ceiling.svg",
+    "output_sha256": "d4cb9e1f9e21cc056ebbadd074cc4b986ba6ed770b9a9e6c046735e999fd6a76",
+    "archetype": "recessed_ceiling",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-recessed_floor.svg",
+    "output_sha256": "28d3f574b64a2c006d43866e10d7c4fc5a4446d40d3c00b7a559639e6a00c80c",
+    "archetype": "recessed_floor",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-single_spot.svg",
+    "output_sha256": "1f45a91f1074973ea1748a98587e744a80591657d3eeda8fd5ef8757531e9610",
+    "archetype": "single_spot",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-small_globe_bulb.svg",
+    "output_sha256": "14e8e12944876de969de3fb4d378131e805146a1aed8365d28a54b4ff8f6e6fd",
+    "archetype": "small_globe_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-christmas_tree.svg",
+    "output_sha256": "87bd856f82a6a817d8118326940e0334838ffa3d1d2c2d62b13a4c5adaa7fe04",
+    "archetype": "christmas_tree",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-string_light.svg",
+    "output_sha256": "ee869b72de1b48f2532ba7dd0473230ad26aa3215cc8f808761fbaf076dc7949",
+    "archetype": "string_light",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-sultan_bulb.svg",
+    "output_sha256": "cc56d3c52111e5d1a0020273269a1c6a364b59d32651792b925139aa7317c9ab",
+    "archetype": "sultan_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-table_shade.svg",
+    "output_sha256": "b03d0fb8a62653d1244c40d23c638d2e4e17795ed3e8fc6938c974786a81059a",
+    "archetype": "table_shade",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-table_wash.svg",
+    "output_sha256": "0af7b631b1668648ed1dc720bac717d392632ff9938bcb470c1ca5e6b96fe8f5",
+    "archetype": "table_wash",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-triangle_bulb.svg",
+    "output_sha256": "6fb3b337dd4d4d8186ea773f119400d22721bd75310861a43e6198b9b7377f69",
+    "archetype": "triangle_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-spot_bulb.svg",
+    "output_sha256": "b01d6e7d7884e98b7ee2c858c699d4485badbe6fb53a91baeeebc48b03f3050c",
+    "archetype": "spot_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-wall_washer.svg",
+    "output_sha256": "e7d99ef946f733d6a41920d53203fec70c769c2a0844c47d0c7ac7ccc0f3bc7f",
+    "archetype": "wall_washer",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-wall_spot.svg",
+    "output_sha256": "8d33a331a4feaa56c5c59d786c25f7e62ea8af3ea5868b6003bf9d167c0d901d",
+    "archetype": "wall_spot",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-wall_shade.svg",
+    "output_sha256": "817cf805bff33992e90692ff21777f0fbe8b3e8a32d93334b7626967e5042202",
+    "archetype": "wall_shade",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-wall_lantern.svg",
+    "output_sha256": "f4612cebb17a16dd1130fcb0008080734bc74e97ad4cd26ee37a01d1cbe96edf",
+    "archetype": "wall_lantern",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-vintage_candle_bulb.svg",
+    "output_sha256": "04ca6f8acee56ae67e9e56c6a619feaa0178005795226b19fcb191d94864c744",
+    "archetype": "vintage_candle_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-vintage_bulb.svg",
+    "output_sha256": "39cc17fc44a11c59f7c4e9fb2559acadb697b83b4abcca0dd24aab2fd8a34bb1",
+    "archetype": "vintage_bulb",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-light-default.svg",
+    "output_sha256": "a083c74e1821d184530e7ebe516cb228660550d8736865e300de1e47ecbd7de3",
+    "archetype": "default",
+    "source_offset": 6310177
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-bridge-refresh.svg",
+    "output_sha256": "ff4871e8ba4919bae6a2ee6a74ea273934b440d44fbd2e0894e824882c04da39",
+    "source_offset": 6676253,
+    "source_end": 6677381
+  },
+  {
+    "source": ".ref/devices/769/static/js/main.ad1113f8.js",
+    "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
+    "output": "assets/synapse/hue-bridge-remove.svg",
+    "output_sha256": "53d498cb499c869c305b789b11a6127793038e3289028605e58d8cab1e3da704",
+    "source_offset": 6675099,
+    "source_end": 6676200
+  }
+]

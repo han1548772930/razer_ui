@@ -56,6 +56,25 @@ for product in help_evidence["products"]:
     for page in product["pages"]:
         candidates = [c for c in page["components"] if "copyDeviceSerial=" in c["source"]]
         if not candidates:
+            # Hue has a support-only function component, not the shared device
+            # Help class. Its links are literal JSX props in its own mount.
+            support_only = [c for c in page['components'] if 'className:"help-component"' in c['source']]
+            if pid == 769 and len(support_only) == 1:
+                component = support_only[0]
+                source = component['source']
+                guide = re.search(r'"(https://dl\.razerzone\.com/master-guides/[^"\s]+)"\.concat\([\w$]+,"\.pdf"\)', source)
+                links = [j['props']['href'] for j in component['jsx'] if isinstance(j['props'].get('href'), str)]
+                support = [url for url in links if url.startswith('https://mysupport.razer.com/')]
+                assert guide and len(support) == 1 and 'https://support.razer.com' in links, pid
+                records[pid]['support'] = support[0]
+                records[pid]['guide'] = guide[1]
+                pages.append(dict(offset=page['offset'], source=page['path'], firmware=False,
+                    view_more=False, serial=False, registration=False, support=True,
+                    reset=False, oled_reset=False, reset_title='FACTORY_RESET_PROFILES',
+                    obm=False, firmware_reset=None, system_info=False, tutorial=False,
+                    thx_instructions=False, camo=False,
+                    class_source=component['path'], class_offset=component['offset']))
+                continue
             raise ValueError(f"Unresolved mounted Help class {pid}/{page['offset']}")
         component = min(candidates, key=lambda c:len(c["source"]))
         source = component["source"]
@@ -66,7 +85,9 @@ for product in help_evidence["products"]:
             # Older current products have a Babel class method table.
             assert 'key:"render",value:function()' in source, pid
             render = source.split('key:"render",value:function()', 1)[1]
-        assert 'this.props.masterGuide).concat(' in render and '\".pdf\"' in render, pid
+        concat_guide = 'this.props.masterGuide).concat(' in render and '\".pdf\"' in render
+        template_guide = re.search(r'`\$\{this\.props\.masterGuide\}\$\{[\w$]+\}\.pdf`', render)
+        assert concat_guide or template_guide, pid
         assert 'https://support.razer.com' in render and 'https://www.razer.com/product-registration' in render, pid
         props = {}
         for default in page["default_props"]:

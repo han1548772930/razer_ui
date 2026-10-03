@@ -1,0 +1,2789 @@
+{
+  "method": "Acorn lexical resolution; vendor code not executed",
+  "generator_sha256": "71bd81f06b125fc205fb300e51a4157a3d7eea74c5910739791d78987a50501d",
+  "resolver_sha256": "fb74171c7186a5cb1b3db2b2dc64bf99c259e9cccc964cd9db7aa362c3d688f8",
+  "product_id": 241,
+  "name": "Razer Mouse Dock V2 Pro",
+  "source_files": [
+    {
+      "path": ".ref/devices/241/static/js/11.219fb515.chunk.js",
+      "sha256": "d39889eed8d9c2443c0a57b075018604c8e4283a70ef98dc554ac712f667dc61"
+    },
+    {
+      "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+      "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2"
+    },
+    {
+      "path": ".ref/devices/241/static/js/main.899712fe.js",
+      "sha256": "65fe2c4069ece8270903895ce32c6c610d5eb8fec94bd944f5791c2376509a02"
+    },
+    {
+      "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+      "sha256": "b224317c425ec86a5d4f38b5b72b487842b97c7289cfd207ca23814235d45491"
+    }
+  ],
+  "pages": [
+    {
+      "key": "TAB_PAIRING",
+      "path": ".ref/devices/241/static/js/11.219fb515.chunk.js",
+      "offset": 311151,
+      "component": {
+        "path": ".ref/devices/241/static/js/11.219fb515.chunk.js",
+        "offset": 311178,
+        "end": 311202,
+        "source": "(0,C.jsx)(Oi.default,{})"
+      },
+      "route": null,
+      "components": [
+        {
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 18173,
+          "end": 18327,
+          "source": "class s extends i.Component{render(){const{children:e,className:t}=this.props;return(0,o.jsx)(\"div\",{className:`body-widgets flex ${t||\"\"}`,children:e})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`body-widgets flex ${t||\"\"}`"
+              },
+              "offset": 388113
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/main.899712fe.js",
+              "offset": 18207,
+              "end": 18326,
+              "source": "(){const{children:e,className:t}=this.props;return(0,o.jsx)(\"div\",{className:`body-widgets flex ${t||\"\"}`,children:e})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 11036,
+          "end": 11864,
+          "source": "class n extends o().Component{constructor(e){super(e),this.handleMouseMove=e=>{this.raf&&cancelAnimationFrame(this.raf),this.raf=requestAnimationFrame(()=>{this.setState({x:e.clientX,y:e.clientY,visible:!0})})},this.handleMouseLeave=()=>{this.raf&&cancelAnimationFrame(this.raf),this.setState({visible:!1})},this.state={x:0,y:0,visible:!1},this.raf=null}componentDidMount(){window.addEventListener(\"mousemove\",this.handleMouseMove,{passive:!0}),window.addEventListener(\"mouseout\",this.handleMouseLeave,{passive:!0})}componentWillUnmount(){this.raf&&cancelAnimationFrame(this.raf),window.removeEventListener(\"mousemove\",this.handleMouseMove),window.removeEventListener(\"mouseout\",this.handleMouseLeave)}render(){const{x:e,y:t,visible:s}=this.state;return(0,r.jsx)(r.Fragment,{children:this.props.children({x:e,y:t,visible:s})})}}",
+          "jsx": [
+            {
+              "component": "r.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 907701
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+              "offset": 11744,
+              "end": 11863,
+              "source": "(){const{x:e,y:t,visible:s}=this.state;return(0,r.jsx)(r.Fragment,{children:this.props.children({x:e,y:t,visible:s})})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 2190,
+          "end": 2559,
+          "source": "class r extends i.Component{constructor(e){super(e),this.el=document.createElement(\"div\")}componentDidMount(){const{containerId:e}=this.props;let t;e&&(t=document.getElementById(e)),t||(t=document.body),this.container=t,t&&t.appendChild(this.el)}componentWillUnmount(){this.container.removeChild(this.el)}render(){return(0,o.createPortal)(this.props.children,this.el)}}",
+          "jsx": [],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+              "offset": 2501,
+              "end": 2558,
+              "source": "(){return(0,o.createPortal)(this.props.children,this.el)}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 12488,
+          "end": 15782,
+          "source": "class u extends i.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const t=null===(e=this.tooltip)||void 0===e?void 0:e.current,s=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(t){const e=t.getBoundingClientRect();if(this.state.position===h&&\"number\"===typeof this.state.style.left&&this.props.target){var i;const s=(null===(i=t.firstElementChild)||void 0===i?void 0:i.getBoundingClientRect().width)||e.width,o=p(this.props.target,c);let r=o.x;r+s>window.innerWidth-8?r=window.innerWidth-8-s:r<8&&(r=8),this.setState(e=>({style:{...e.style,left:r+s-o.width}}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(t=>({style:{...t.style,left:t.style.left+window.innerWidth-8-e.right}}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(t=>({style:{...t.style,left:t.style.left+8-e.left}}));else if(e.right>window.innerWidth){const e=s.findIndex(e=>this.state.position===e);this.setState({position:s[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let{position:t}=e.props;const{target:s}=e.props;console.log(s);let i={};if(s){const e=p(s,t);i={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:t,style:i},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,r.jsx)(d,{children:e=>{let{x:t,y:s,visible:i}=e;const o=window.innerWidth,n=window.innerHeight,d=Math.min(320,320),a=d/2,l=s+25+40<n?s+25:Math.max(8,s-40-8),h=Math.min(Math.max(t+50,8+a),o-8-a);return i&&(0,r.jsx)(\"div\",{style:{position:\"fixed\",top:l,left:h,maxWidth:d,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||h,style:{}},this.tooltip=(0,i.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const{isMounted:t}=this.props;e.isMounted!==t&&(t?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const{tooltip:e,showTooltip:t,hideTooltip:s,renderTooltipWithCursor:i}=this,{shouldRender:o,showClassName:n,position:d,style:l}=this.state,{isMounted:h,className:c,children:p,target:u,isFollowCursor:m=!1}=this.props;if(m&&h)return(0,r.jsx)(a.A,{children:i()});const _=(0,r.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof h?t:()=>{},onMouseLeave:\"boolean\"!==typeof h?s:()=>{},className:`tooltip-razer ${d} ${n} ${c}`,style:{...l,pointerEvents:u?\"none\":\"inherit\"},children:o?(0,r.jsx)(\"div\",{ref:e,className:\"main\",children:(0,r.jsx)(\"div\",{className:\"wrapper\",children:p})}):null});return u?(0,r.jsx)(a.A,{children:_}):_}}",
+          "jsx": [
+            {
+              "component": "d",
+              "props": {},
+              "expressions": {},
+              "offset": 910122
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "role": "tooltip"
+              },
+              "expressions": {
+                "style": "{position:\"fixed\",top:l,left:h,maxWidth:d,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"}"
+              },
+              "offset": 910329
+            },
+            {
+              "component": "a.A",
+              "props": {},
+              "expressions": {},
+              "offset": 911307
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "onMouseEnter": "\"boolean\"!==typeof h?t:()=>{}",
+                "onMouseLeave": "\"boolean\"!==typeof h?s:()=>{}",
+                "className": "`tooltip-razer ${d} ${n} ${c}`",
+                "style": "{...l,pointerEvents:u?\"none\":\"inherit\"}"
+              },
+              "offset": 911345
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "main"
+              },
+              "expressions": {
+                "ref": "e"
+              },
+              "offset": 911546
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "wrapper"
+              },
+              "expressions": {},
+              "offset": 911595
+            },
+            {
+              "component": "a.A",
+              "props": {},
+              "expressions": {},
+              "offset": 911663
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+              "offset": 15162,
+              "end": 15781,
+              "source": "(){const{tooltip:e,showTooltip:t,hideTooltip:s,renderTooltipWithCursor:i}=this,{shouldRender:o,showClassName:n,position:d,style:l}=this.state,{isMounted:h,className:c,children:p,target:u,isFollowCursor:m=!1}=this.props;if(m&&h)return(0,r.jsx)(a.A,{children:i()});const _=(0,r.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof h?t:()=>{},onMouseLeave:\"boolean\"!==typeof h?s:()=>{},className:`tooltip-razer ${d} ${n} ${c}`,style:{...l,pointerEvents:u?\"none\":\"inherit\"},children:o?(0,r.jsx)(\"div\",{ref:e,className:\"main\",children:(0,r.jsx)(\"div\",{className:\"wrapper\",children:p})}):null});return u?(0,r.jsx)(a.A,{children:_}):_}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 2688,
+          "end": 3875,
+          "source": "e=>{let{text:t,data:n,lang:i,clickableData:c,onClick:l,underlineData:_,capitalizeFirst:E,allowHtml:d,onMouseEnter:p,onMouseLeave:u}=e;\"string\"!==typeof t&&(t=\"\");const A=((e,t)=>{const n={};for(const i of Object.keys(e||{}))n[i]=r(e[i],t);return n})(n,i);if(_){let e=(0,o.JN)(t,{...A,_lang:i});e=a(e,E);const n=Object.keys(A).reduce((e,t)=>{const n=A[t],i=\"string\"===typeof n?n:String(null!==n&&void 0!==n?n:\"\");if(i.length>0&&e.includes(i)){const n=e.split(i),o=[];_&&o.push(\"translator-underline\"),c&&o.push(\"translator-clickable\");const a=o.join(\" \"),r=e=>(0,s.jsx)(\"span\",{className:a,onClick:c?()=>l&&l(i,t):void 0,onMouseEnter:p,onMouseLeave:u,role:c?\"button\":void 0,tabIndex:c?0:void 0,style:{opacity:!1===c?.3:1},children:i},`${t}-${e}`),E=[n[0]];for(let e=1;e<n.length;e++)E.push(r(e),n[e]);return E}return e},e);return(0,s.jsxs)(s.Fragment,{children:[(0,s.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),n]})}let T=(0,o.JN)(t,{...A,_lang:i});return T=a(T,E),d&&\"string\"===typeof T?(0,s.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:T}}):(0,s.jsx)(s.Fragment,{children:T})}",
+          "jsx": [
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "a",
+                "onClick": "c?()=>l&&l(i,t):void 0",
+                "onMouseEnter": "p",
+                "onMouseLeave": "u",
+                "role": "c?\"button\":void 0",
+                "tabIndex": "c?0:void 0",
+                "style": "{opacity:!1===c?.3:1}"
+              },
+              "offset": 373103
+            },
+            {
+              "component": "s.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 373372
+            },
+            {
+              "component": "\"style\"",
+              "props": {},
+              "expressions": {},
+              "offset": 373405
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "dangerouslySetInnerHTML": "{__html:T}"
+              },
+              "offset": 373641
+            },
+            {
+              "component": "s.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 373696
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 927,
+          "end": 2318,
+          "source": "e=>{let{pid:s,editionId:n,...i}=e;const{className:o,height:c,earbudBatteries:I,...v}=i,D=\"EARBUDS\"===d.DeviceInfo.subCategory,[N,m]=a().useState(!1),[g,E]=a().useState(!1),h=a().useCallback(e=>n=>((e,s,n)=>t(8154)(`./${e}_${s}/svg_prods/${n}`))(s,n,e),[s]),f=a().useMemo(()=>h(\"prd-l.svg\"),[h]),x=a().useMemo(()=>h(\"prd-r.svg\"),[h]),y=a().useMemo(()=>h(\"prd.svg\"),[h]),S=p(s,n,D?f:null),C=p(s,n,D?x:null),R=p(s,n,D?null:y),_=function(){let e=arguments.length>0&&void 0!==arguments[0]&&arguments[0];return()=>{e&&(null===I||void 0===I?void 0:I.left)<=0?m(!0):!e&&(null===I||void 0===I?void 0:I.right)<=0&&E(!0)}},P=()=>{m(!1),E(!1)};if(D&&S&&C){const e=c||160,s=(null===I||void 0===I?void 0:I.left)<0||(null===I||void 0===I?void 0:I.left)>100,t=(null===I||void 0===I?void 0:I.right)<0||(null===I||void 0===I?void 0:I.right)>100;return(0,A.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,A.jsx)(\"img\",{src:S,...v,onMouseEnter:_(!0),onMouseLeave:P,height:e,className:`${o} ${s?\"disabled\":\"\"} audio-left`,id:\"disconnected-left\"}),(0,A.jsx)(\"img\",{src:C,...v,onMouseEnter:_(),onMouseLeave:P,height:e,className:`${o} ${t?\"disabled\":\"\"} audio-right`,id:\"disconnected-right\"}),(0,A.jsx)(u.A,{isFollowCursor:!0,position:\"bottom-left\",isMounted:N||g,target:\"disconnected-\"+(N?\"left\":\"right\"),children:(0,A.jsx)(l.A,{text:r._NJ})})]})}return R?(0,A.jsx)(\"img\",{src:R,...v,height:c,className:o}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "earbuds-img"
+              },
+              "expressions": {},
+              "offset": 316571
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-left"
+              },
+              "expressions": {
+                "src": "S",
+                "onMouseEnter": "_(!0)",
+                "onMouseLeave": "P",
+                "height": "e",
+                "className": "`${o} ${s?\"disabled\":\"\"} audio-left`"
+              },
+              "offset": 316623
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-right"
+              },
+              "expressions": {
+                "src": "C",
+                "onMouseEnter": "_()",
+                "onMouseLeave": "P",
+                "height": "e",
+                "className": "`${o} ${t?\"disabled\":\"\"} audio-right`"
+              },
+              "offset": 316766
+            },
+            {
+              "component": "u.A",
+              "props": {
+                "isFollowCursor": true,
+                "position": "bottom-left"
+              },
+              "expressions": {
+                "isMounted": "N||g",
+                "target": "\"disconnected-\"+(N?\"left\":\"right\")"
+              },
+              "offset": 316909
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "DISCONNECTED"
+              },
+              "expressions": {},
+              "offset": 317031
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "R",
+                "height": "c",
+                "className": "o"
+              },
+              "offset": 317073
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 2321,
+          "end": 2562,
+          "source": "e=>{let{productId:s,editionId:t,layoutId:n,...i}=e;const o=a().useMemo(()=>`${`https://apps.razer.com/synapse/synapse/products/${s}/ui/${s}_${t}/PluginImages`}/${s}_${t}_${n||0}_dashboard3x.avif`,[s,t,n]);return(0,A.jsx)(\"img\",{src:o,...i})}",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "o"
+              },
+              "offset": 317343
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 2571,
+          "end": 3420,
+          "source": "function(e){let{height:s,widthExtend:t,showPairedMouseOnTop:n}=e;const i=(0,c.useSelector)(e=>e.deviceReducer.productId),o=(0,c.useSelector)(e=>e.deviceReducer.editionId),d=(0,c.useSelector)(e=>e.deviceReducer.pairedInfo),l=(0,c.useSelector)(e=>e.batteryReducer&&e.batteryReducer.earbudBatteries);if(a().useMemo(()=>new URL(window.location.href).searchParams.get(\"displayMode\"),[]))return null;const r=null===d||void 0===d?void 0:d.find(e=>\"MOUSE\"===e.category);return(0,A.jsxs)(\"div\",{className:\"widget-prod dot-bg earbuds-svg\",children:[(0,A.jsx)(I,{pid:i,editionId:o,height:s||250,className:\"box-img img-nodrag \"+(t?\"width-extend\":\"\"),earbudBatteries:l}),n&&r?(0,A.jsx)(v,{productId:r.productId,editionId:r.editionId,layoutId:r.layoutId,height:100,className:\"img-nodrag \"+(t?\"width-extend\":\"\")}):null,(0,A.jsx)(\"div\",{className:\"dim-corner\"})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "widget-prod dot-bg earbuds-svg"
+              },
+              "expressions": {},
+              "offset": 317850
+            },
+            {
+              "component": "I",
+              "props": {},
+              "expressions": {
+                "pid": "i",
+                "editionId": "o",
+                "height": "s||250",
+                "className": "\"box-img img-nodrag \"+(t?\"width-extend\":\"\")",
+                "earbudBatteries": "l"
+              },
+              "offset": 317921
+            },
+            {
+              "component": "v",
+              "props": {
+                "height": 100
+              },
+              "expressions": {
+                "productId": "r.productId",
+                "editionId": "r.editionId",
+                "layoutId": "r.layoutId",
+                "className": "\"img-nodrag \"+(t?\"width-extend\":\"\")"
+              },
+              "offset": 318045
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dim-corner"
+              },
+              "expressions": {},
+              "offset": 318186
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 7649,
+          "end": 7829,
+          "source": "e=>{let{pid:t,editionId:i,...o}=e;const[r]=p(t,i,\"background\",e=>Promise.all([s(8446)(`./${t}_${e}/img_prods/device-background.svg`)]));return r?(0,c.jsx)(\"img\",{src:r,...o}):null}",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "r"
+              },
+              "offset": 903706
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 4802,
+          "end": 5925,
+          "source": "e=>{let{pid:t,editionId:i,...o}=e;const{className:r,height:n,earbudBatteries:a,isSvg:l,...h}=o,u=l?\"svg\":\"png\",m=\"EARBUDS\"===d.DeviceInfo.subCategory&&l,[_]=p(t,i,`left-3x-${u}`,e=>Promise.all([s(5430)(`./${t}_${e}/img_prods/prd-l-3x.${u}`)])),[g]=p(t,i,`right-3x-${u}`,e=>Promise.all([s(2112)(`./${t}_${e}/img_prods/prd-r-3x.${u}`)])),[v]=p(t,i,`single-3x-${u}`,e=>l?Promise.all([s(903)(`./${t}_${e}/img_prods/prd-3x.svg`)]).catch(()=>Promise.all([s(616)(`./${t}_${e}/img_svgs/prd.svg`)])):Promise.all([s(6140)(`./${t}_${e}/img_prods/prd-3x.png`)]));if(m&&_&&g){const e=n||160,t=(null===a||void 0===a?void 0:a.left)<0||(null===a||void 0===a?void 0:a.left)>100?\"disabled\":\"\",s=(null===a||void 0===a?void 0:a.right)<0||(null===a||void 0===a?void 0:a.right)>100?\"disabled\":\"\";return(0,c.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,c.jsx)(\"img\",{src:_,srcSet:`${_} 1x, ${_} 3x`,...h,height:e,className:`${r} ${t} audio-left`}),(0,c.jsx)(\"img\",{src:g,srcSet:`${g} 1x, ${g} 3x`,...h,height:e,className:`${r} ${s} audio-right`})]})}return v?(0,c.jsx)(\"img\",{src:v,srcSet:`${v} 1x, ${v} 3x`,...h,height:n,className:r}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "earbuds-img"
+              },
+              "expressions": {},
+              "offset": 901494
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "_",
+                "srcSet": "`${_} 1x, ${_} 3x`",
+                "height": "e",
+                "className": "`${r} ${t} audio-left`"
+              },
+              "offset": 901546
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "g",
+                "srcSet": "`${g} 1x, ${g} 3x`",
+                "height": "e",
+                "className": "`${r} ${s} audio-right`"
+              },
+              "offset": 901644
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "v",
+                "srcSet": "`${v} 1x, ${v} 3x`",
+                "height": "n",
+                "className": "r"
+              },
+              "offset": 901755
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 9457,
+          "end": 10031,
+          "source": "e=>{let t=[[.02,.05,.07,.07,.07,.1,.2,.2,.2,.2,.2,.2],[.1,.1,.1,.1,.2,.2,.3,.3,.3,.3,.3,.3],[.13,.13,.13,.13,.13,.2,.2,.2,.3,.3,.5,.5],[.2,.3,.3,.3,.3,.3,.5,.5,.5,.5,.5,.7],[.2,.3,.3,.3,.5,.5,.6,.6,.6,.6,.6,.8],[.2,.3,.3,.3,.5,.5,.6,.6,.7,.7,.7,.8]];t=t.concat([...t].reverse());const s=t.map((t,s)=>{const i=e.left?t:[...t].reverse();return(0,c.jsx)(\"div\",{className:\"dot-row\",children:i.map((e,t)=>(0,c.jsx)(\"div\",{className:\"dot-wrap\",style:{opacity:e},children:(0,c.jsx)(\"div\",{className:\"dot\"})},`${s}-${t}`))},s)});return(0,c.jsx)(\"div\",{className:\"part\",children:s})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-row"
+              },
+              "expressions": {},
+              "offset": 905710
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-wrap"
+              },
+              "expressions": {
+                "style": "{opacity:e}"
+              },
+              "offset": 905769
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot"
+              },
+              "expressions": {},
+              "offset": 905834
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "part"
+              },
+              "expressions": {},
+              "offset": 905896
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 10034,
+          "end": 10277,
+          "source": "()=>{let e=[.25,.3,.5,.7,.8,.8];e=e.concat([...e].reverse());const t=e.map((e,t)=>(0,c.jsx)(\"div\",{className:\"dot-wrap\",style:{opacity:e},children:(0,c.jsx)(\"div\",{className:\"dot\"})},t));return(0,c.jsx)(\"div\",{className:\"dot-col\",children:t})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-wrap"
+              },
+              "expressions": {
+                "style": "{opacity:e}"
+              },
+              "offset": 906028
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot"
+              },
+              "expressions": {},
+              "offset": 906093
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-col"
+              },
+              "expressions": {},
+              "offset": 906139
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 10280,
+          "end": 10392,
+          "source": "()=>{let e=[];for(let t=0;t<34;t++)e.push((0,c.jsx)(E,{}));return(0,c.jsx)(\"div\",{className:\"flex\",children:e})}",
+          "jsx": [
+            {
+              "component": "E",
+              "props": {},
+              "expressions": {},
+              "offset": 906234
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "flex"
+              },
+              "expressions": {},
+              "offset": 906257
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 9332,
+          "end": 9454,
+          "source": "()=>(0,c.jsxs)(\"div\",{className:\"body-wrapper-content\",children:[(0,c.jsx)(x,{left:!0}),(0,c.jsx)(w,{}),(0,c.jsx)(x,{})]})",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "body-wrapper-content"
+              },
+              "expressions": {},
+              "offset": 905248
+            },
+            {
+              "component": "x",
+              "props": {
+                "left": true
+              },
+              "expressions": {},
+              "offset": 905309
+            },
+            {
+              "component": "w",
+              "props": {},
+              "expressions": {},
+              "offset": 905332
+            },
+            {
+              "component": "x",
+              "props": {},
+              "expressions": {},
+              "offset": 905348
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 2947,
+          "end": 4799,
+          "source": "e=>{let{pid:t,editionId:i,...r}=e;const{className:n,height:u,earbudBatteries:m,isSvg:_,...g}=r,v=_?\"svg\":\"png\",f=\"EARBUDS\"===d.DeviceInfo.subCategory&&_,[x,E]=o().useState(!1),[w,A]=o().useState(!1),[y,b]=p(t,i,`left-${v}`,e=>Promise.all([s(2340)(`./${t}_${e}/img_prods/prd-l-1x.${v}`),s(5430)(`./${t}_${e}/img_prods/prd-l-3x.${v}`)])),[N,P]=p(t,i,`right-${v}`,e=>Promise.all([s(8162)(`./${t}_${e}/img_prods/prd-r-1x.${v}`),s(2112)(`./${t}_${e}/img_prods/prd-r-3x.${v}`)])),[R,$]=p(t,i,`single-${v}`,e=>_?Promise.all([s(9385)(`./${t}_${e}/img_prods/prd-1x.svg`),s(903)(`./${t}_${e}/img_prods/prd-3x.svg`)]).catch(()=>{const i=s(616)(`./${t}_${e}/img_svgs/prd.svg`);return Promise.all([i,i])}):Promise.all([s(4589)(`./${t}_${e}/img_prods/prd-1x.png`),s(6140)(`./${t}_${e}/img_prods/prd-3x.png`)])),S=function(){let e=arguments.length>0&&void 0!==arguments[0]&&arguments[0];return()=>{e&&(null===m||void 0===m?void 0:m.left)<=0?E(!0):!e&&(null===m||void 0===m?void 0:m.right)<=0&&A(!0)}},T=()=>{E(!1),A(!1)};if(f&&y&&b&&N&&P){const e=u||160,t=(null===m||void 0===m?void 0:m.left)<0||(null===m||void 0===m?void 0:m.left)>100,s=(null===m||void 0===m?void 0:m.right)<0||(null===m||void 0===m?void 0:m.right)>100;return(0,c.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,c.jsx)(\"img\",{src:y,srcSet:`${y} 1x, ${b} 3x`,...g,onMouseEnter:S(!0),onMouseLeave:T,height:e,className:`${n} ${t?\"disabled\":\"\"} audio-left`,id:\"disconnected-left\"}),(0,c.jsx)(\"img\",{src:N,srcSet:`${N} 1x, ${P} 3x`,...g,onMouseEnter:S(),onMouseLeave:T,height:e,className:`${n} ${s?\"disabled\":\"\"} audio-right`,id:\"disconnected-right\"}),(0,c.jsx)(h.A,{isFollowCursor:!0,position:\"bottom-left\",isMounted:x||w,target:\"disconnected-\"+(x?\"left\":\"right\"),children:(0,c.jsx)(a.A,{text:l._NJ})})]})}return R&&$?(0,c.jsx)(\"img\",{src:R,srcSet:`${R} 1x, ${$} 3x`,...g,height:u,className:n}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "earbuds-img"
+              },
+              "expressions": {},
+              "offset": 900072
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-left"
+              },
+              "expressions": {
+                "src": "y",
+                "srcSet": "`${y} 1x, ${b} 3x`",
+                "onMouseEnter": "S(!0)",
+                "onMouseLeave": "T",
+                "height": "e",
+                "className": "`${n} ${t?\"disabled\":\"\"} audio-left`"
+              },
+              "offset": 900124
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "id": "disconnected-right"
+              },
+              "expressions": {
+                "src": "N",
+                "srcSet": "`${N} 1x, ${P} 3x`",
+                "onMouseEnter": "S()",
+                "onMouseLeave": "T",
+                "height": "e",
+                "className": "`${n} ${s?\"disabled\":\"\"} audio-right`"
+              },
+              "offset": 900293
+            },
+            {
+              "component": "h.A",
+              "props": {
+                "isFollowCursor": true,
+                "position": "bottom-left"
+              },
+              "expressions": {
+                "isMounted": "x||w",
+                "target": "\"disconnected-\"+(x?\"left\":\"right\")"
+              },
+              "offset": 900462
+            },
+            {
+              "component": "a.A",
+              "props": {
+                "text": "DISCONNECTED"
+              },
+              "expressions": {},
+              "offset": 900584
+            },
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "R",
+                "srcSet": "`${R} 1x, ${$} 3x`",
+                "height": "u",
+                "className": "n"
+              },
+              "offset": 900629
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 5928,
+          "end": 7646,
+          "source": "e=>{let{productId:t,editionId:s,layoutId:i,...r}=e;const n=`${o().useMemo(()=>`${{NODE_ENV:\"production\",PUBLIC_URL:\".\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-21sep2026#277a065d3c52dd240cc30fc0fe11f0405595175c#2609140416\",BUILD_TAG:\"master-21sep2026#277a065d3c52dd240cc30fc0fe11f0405595175c#2609140416@1789359564442\",IS_OPTIMIZED:!0,REACT_APP_ENVIRONMENT:\"production\",REACT_APP_SHOW_VERSION:\"0\",REACT_APP_SHOW_REDUX:\"0\",REACT_APP_SHOW_LOGS:\"0\",REACT_APP_DEVELOPER_SHORTCUTS_ENABLED:\"0\",REACT_APP_HOST_URL:\"https://apps.razer.com/synapse\",REACT_APP_REMOTE_STORAGE_USER_ADDRESS:\"userid@gors.razerapi.com\",REACT_APP_URL_RAZER_REGION_SELECTOR:\"https://apps.razer.com/synapse/region-selector/\",REACT_APP_AUDIO_S3_ENDPOINT:\"https://app-assets.razer.com/sophie/\",REACT_APP_RAZER_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_PUBSUB_WEBSOCKET:\"wss://pubsub.razersynapse.com/ws\",REACT_APP_AMAZON_SCOPE:\"alexa:all profile alexa::ask:skills:readwrite\",REACT_APP_AMAZON_ALEXA_PRODUCT_ID:\"Razer_Synapse\",REACT_APP_AMAZON_ALEXA_DEVICE_SERIAL_NUMBER:\"123\",REACT_APP_AMAZON_ALEXA_SKILL_ID:\"amzn1.ask.skill.47c9d48c-f128-4fa4-846a-df3287ef53b9\",REACT_APP_AMAZON_ALEXA_SKILL_STAGE:\"live\",REACT_APP_AMAZON_ALEXA_SKILL_REDIRECT:\"https://razer-alexa.razer.com/api/authresponse\",REACT_APP_RAZER_ALEXA_PUBSUB_ENDPOINT:\"https://pubsub-api.razerapi.com\",REACT_APP_RAZER_ALEXA_PUBSUB_WEBSOCKET:\"wss://pubsub-alexa.razerapi.com/ws\"}.REACT_APP_HOST_UR||location.origin}/synapse/products/${t}/ui/${t}_${s}/PluginImages`,[t,s,i])}/${t}_${s}_${i||0}_dashboard3x.avif`;return n?(0,c.jsx)(\"img\",{src:n,srcSet:`${n} 1x, ${n} 3x`,...r}):null}",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {},
+              "expressions": {
+                "src": "n",
+                "srcSet": "`${n} 1x, ${n} 3x`"
+              },
+              "offset": 903497
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 7830,
+          "end": 9324,
+          "source": "class v extends i.Component{componentDidUpdate(e){e.pairedInfo!==this.props.pairedInfo&&this.forceUpdate()}render(){var e,t;const s=new URL(window.location.href).searchParams.get(\"displayMode\"),i=d.DeviceInfo.showPairedMouseOnTop,o=null===(e=d.DeviceInfo)||void 0===e?void 0:e.category,r=null===(t=this.props.pairedInfo)||void 0===t?void 0:t.find(e=>\"MOUSE\"===e.category);if(\"chromaApp\"===s)return null;let n=d.DeviceInfo.productId;this.props.editionId,this.props.widthExtend,i&&r&&(r.productId,r.editionId,r.layoutId,this.props.widthExtend);return this.props.customDotPattern?(0,c.jsxs)(\"div\",{className:\"dot-container\",children:[(0,c.jsx)(g,{pid:n,editionId:this.props.editionId,width:400,height:325,className:\"box-img img-nodrag\"}),(0,c.jsx)(m,{pid:n,editionId:this.props.editionId,style:{zIndex:100},width:325,height:this.props.height||250,className:\"box-img img-nodrag\",isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),(0,c.jsx)(f,{})]}):(0,c.jsxs)(\"div\",{className:\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\"),children:[(0,c.jsx)(u,{pid:n,editionId:this.props.editionId,height:this.props.height||250,className:\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\"),isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),i&&r?(0,c.jsx)(_,{productId:r.productId,editionId:r.editionId,layoutId:r.layoutId,height:100,className:\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")}):null,(0,c.jsx)(\"div\",{className:\"dim-corner\"})]})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dot-container"
+              },
+              "expressions": {},
+              "offset": 904319
+            },
+            {
+              "component": "g",
+              "props": {
+                "pid": 241,
+                "width": 400,
+                "height": 325,
+                "className": "box-img img-nodrag"
+              },
+              "expressions": {
+                "editionId": "this.props.editionId"
+              },
+              "offset": 904373
+            },
+            {
+              "component": "m",
+              "props": {
+                "pid": 241,
+                "style": {
+                  "zIndex": 100
+                },
+                "width": 325,
+                "className": "box-img img-nodrag"
+              },
+              "expressions": {
+                "editionId": "this.props.editionId",
+                "height": "this.props.height||250",
+                "isSvg": "this.props.isSvg",
+                "earbudBatteries": "this.props.earbudBatteries"
+              },
+              "offset": 904477
+            },
+            {
+              "component": "f",
+              "props": {},
+              "expressions": {},
+              "offset": 904685
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\")"
+              },
+              "offset": 904704
+            },
+            {
+              "component": "u",
+              "props": {
+                "pid": 241
+              },
+              "expressions": {
+                "editionId": "this.props.editionId",
+                "height": "this.props.height||250",
+                "className": "\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")",
+                "isSvg": "this.props.isSvg",
+                "earbudBatteries": "this.props.earbudBatteries"
+              },
+              "offset": 904800
+            },
+            {
+              "component": "_",
+              "props": {
+                "height": 100
+              },
+              "expressions": {
+                "productId": "r.productId",
+                "editionId": "r.editionId",
+                "layoutId": "r.layoutId",
+                "className": "\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")"
+              },
+              "offset": 905028
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dim-corner"
+              },
+              "expressions": {},
+              "offset": 905190
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+              "offset": 7943,
+              "end": 9323,
+              "source": "(){var e,t;const s=new URL(window.location.href).searchParams.get(\"displayMode\"),i=d.DeviceInfo.showPairedMouseOnTop,o=null===(e=d.DeviceInfo)||void 0===e?void 0:e.category,r=null===(t=this.props.pairedInfo)||void 0===t?void 0:t.find(e=>\"MOUSE\"===e.category);if(\"chromaApp\"===s)return null;let n=d.DeviceInfo.productId;this.props.editionId,this.props.widthExtend,i&&r&&(r.productId,r.editionId,r.layoutId,this.props.widthExtend);return this.props.customDotPattern?(0,c.jsxs)(\"div\",{className:\"dot-container\",children:[(0,c.jsx)(g,{pid:n,editionId:this.props.editionId,width:400,height:325,className:\"box-img img-nodrag\"}),(0,c.jsx)(m,{pid:n,editionId:this.props.editionId,style:{zIndex:100},width:325,height:this.props.height||250,className:\"box-img img-nodrag\",isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),(0,c.jsx)(f,{})]}):(0,c.jsxs)(\"div\",{className:\"widget-prod dot-bg \"+(this.props.isSvg?\"earbuds-svg\":\"\"),children:[(0,c.jsx)(u,{pid:n,editionId:this.props.editionId,height:this.props.height||250,className:\"box-img img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\"),isSvg:this.props.isSvg,earbudBatteries:this.props.earbudBatteries}),i&&r?(0,c.jsx)(_,{productId:r.productId,editionId:r.editionId,layoutId:r.layoutId,height:100,className:\"img-nodrag \"+(this.props.widthExtend?\"width-extend\":\"\")}):null,(0,c.jsx)(\"div\",{className:\"dim-corner\"})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 6204,
+          "end": 7390,
+          "source": "class ne extends n.Component{constructor(e){super(e),this.checkMe=()=>{var e,s,t,n;const a=this.props.effectSettings.filter(e=>e.effectId===this.props.selectedEffectId);this.props.onCheck(null!==(e=this.props.name)&&void 0!==e?e:this.props.id,null===(s=this.props.inActiveEffectSettings)||void 0===s||null===(t=s.inActiveEffectSetting)||void 0===t?void 0:t.color1,null===(n=a[0])||void 0===n?void 0:n.color1)},this.handleClick=e=>{1!==e.nativeEvent.which&&3!==e.nativeEvent.which||this.checkMe()};const{active:s,disabled:t}=this.props;this.state={active:s,disabled:t}}componentDidUpdate(e){const{active:s,disabled:t}=this.props;s!==e.active&&this.setState({active:s}),t!==e.disabled&&this.setState({disabled:t})}render(){const{id:e,name:s,customName:t,extraClass:n,allowLeftClick:a}=this.props,{active:i,disabled:o}=this.state,{checkMe:c}=this;var d=`radio-item ${n||\"\"} ${o?\"disabled\":\"\"}`;return(0,A.jsxs)(\"div\",{tooltip:i?(0,te.JN)(r.HcD):(0,te.JN)(r._pM),className:d,children:[(0,A.jsx)(\"input\",{type:\"radio\",id:e,checked:i,onChange:c}),(0,A.jsx)(\"label\",{htmlFor:e,onClick:a?this.handleClick:()=>{},onContextMenu:a?this.handleClick:()=>{},children:t||(0,A.jsx)(l.A,{text:s})})]})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "tooltip": "i?(0,te.JN)(r.HcD):(0,te.JN)(r._pM)",
+                "className": "d"
+              },
+              "offset": 321912
+            },
+            {
+              "component": "\"input\"",
+              "props": {
+                "type": "radio"
+              },
+              "expressions": {
+                "id": "e",
+                "checked": "i",
+                "onChange": "c"
+              },
+              "offset": 321996
+            },
+            {
+              "component": "\"label\"",
+              "props": {},
+              "expressions": {
+                "htmlFor": "e",
+                "onClick": "a?this.handleClick:()=>{}",
+                "onContextMenu": "a?this.handleClick:()=>{}"
+              },
+              "offset": 322056
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "s"
+              },
+              "offset": 322171
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+              "offset": 6922,
+              "end": 7389,
+              "source": "(){const{id:e,name:s,customName:t,extraClass:n,allowLeftClick:a}=this.props,{active:i,disabled:o}=this.state,{checkMe:c}=this;var d=`radio-item ${n||\"\"} ${o?\"disabled\":\"\"}`;return(0,A.jsxs)(\"div\",{tooltip:i?(0,te.JN)(r.HcD):(0,te.JN)(r._pM),className:d,children:[(0,A.jsx)(\"input\",{type:\"radio\",id:e,checked:i,onChange:c}),(0,A.jsx)(\"label\",{htmlFor:e,onClick:a?this.handleClick:()=>{},onContextMenu:a?this.handleClick:()=>{},children:t||(0,A.jsx)(l.A,{text:s})})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 10080,
+          "end": 10681,
+          "source": "e=>{let{scandevices:s,lang:t}=e;const{state:n,callAction:i}=a().useContext(Be),{selectedIndex:o}=n;return(0,A.jsxs)(\"div\",{className:\"scan-devices-list\",children:[(0,A.jsxs)(\"div\",{className:\"radio-group-title\",children:[\"\"+(1===s.length?\"\":s.length+\" \"),(0,A.jsx)(l.A,{text:r.pX1})]}),(0,A.jsx)(\"div\",{className:\"radio-group\",children:s.map((e,s)=>(0,A.jsx)(ae,{extraClass:\"radio-item-duallink\",id:\"\"+(\"radio-duallink\"+s),name:`${e.productName[t]||e.productName.en}`,value:s,active:o===s,disable:!1,onCheck:()=>{i({type:\"SET_SELECTED_INDEX\",payload:{selectedIndex:s}})}},`${e.productId}-${s}`))})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "scan-devices-list"
+              },
+              "expressions": {},
+              "offset": 324996
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "radio-group-title"
+              },
+              "expressions": {},
+              "offset": 325054
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "DUALLINK_SCAN_DEVICE_FOUND"
+              },
+              "expressions": {},
+              "offset": 325146
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "radio-group"
+              },
+              "expressions": {},
+              "offset": 325177
+            },
+            {
+              "component": "ae",
+              "props": {
+                "extraClass": "radio-item-duallink",
+                "disable": false
+              },
+              "expressions": {
+                "id": "\"\"+(\"radio-duallink\"+s)",
+                "name": "`${e.productName[t]||e.productName.en}`",
+                "value": "s",
+                "active": "o===s",
+                "onCheck": "()=>{i({type:\"SET_SELECTED_INDEX\",payload:{selectedIndex:s}})}"
+              },
+              "offset": 325240
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 35845,
+          "end": 37090,
+          "source": "e=>{let{dev:s,master:t,status:n,add:a,rescan:i,canUnpair:o,onClick:c,scandevices:d,canModify:u}=e;if(!s.valid||s.valid&&s.productId!==t.productId&&n===Ge.JUSTUNPAIR){const e=`duallink-${s.category.toLowerCase()}-category`;return(0,A.jsxs)(\"div\",{className:`${pe} nospecificdevice`,draggable:!1,children:[(0,A.jsx)(\"div\",{className:`icon-category-duallink ${e}`}),(0,A.jsx)(\"div\",{className:\"icon-button-duallink\",children:n===Ge.LOADED?(0,A.jsx)(\"div\",{className:\"icon-button-text-duallink add \"+(u?\"\":\"disabled\"),onClick:a,children:(0,A.jsx)(l.A,{text:r.gjU})}):n===Ge.SCANNING||n===Ge.PAIRING||n===Ge.JUSTUNPAIR?(0,A.jsx)(\"div\",{className:`${De}`}):n===Ge.SCANDED&&0===d.length||n===Ge.PAIRED_FAILED?(0,A.jsx)(\"div\",{className:\"icon-button-text-duallink \"+(u?\"\":\"disabled\"),onClick:i,children:(0,A.jsx)(l.A,{text:r.zt5})}):(0,A.jsx)(\"div\",{className:\"icon-button-text-duallink add \"+(u?\"\":\"disabled\"),onClick:a,children:(0,A.jsx)(l.A,{text:r.gjU})})})]})}{const e=cs(s);return s.src=e,(0,A.jsx)(\"div\",{className:`${pe}  ${n===Ge.UNPAIRING&&s.productId!==t.productId?\"hidbox\":\"\"}`,draggable:!1,style:{backgroundImage:`url('${s.src}')`},children:o?(0,A.jsx)(\"div\",{className:`${u?Ie:ve}`,onClick:c,children:(0,A.jsx)(l.A,{text:r.ssI})}):null})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "draggable": false
+              },
+              "expressions": {
+                "className": "`${pe} nospecificdevice`"
+              },
+              "offset": 350884
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`icon-category-duallink ${e}`"
+              },
+              "offset": 350960
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "icon-button-duallink"
+              },
+              "expressions": {},
+              "offset": 351019
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"icon-button-text-duallink add \"+(u?\"\":\"disabled\")",
+                "onClick": "a"
+              },
+              "offset": 351092
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "ADD"
+              },
+              "expressions": {},
+              "offset": 351189
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${De}`"
+              },
+              "offset": 351270
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"icon-button-text-duallink \"+(u?\"\":\"disabled\")",
+                "onClick": "i"
+              },
+              "offset": 351358
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "RESCAN"
+              },
+              "expressions": {},
+              "offset": 351451
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"icon-button-text-duallink add \"+(u?\"\":\"disabled\")",
+                "onClick": "a"
+              },
+              "offset": 351481
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "ADD"
+              },
+              "expressions": {},
+              "offset": 351578
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "draggable": false
+              },
+              "expressions": {
+                "className": "`${pe}  ${n===Ge.UNPAIRING&&s.productId!==t.productId?\"hidbox\":\"\"}`",
+                "style": "{backgroundImage:`url('${s.src}')`}"
+              },
+              "offset": 351643
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${u?Ie:ve}`",
+                "onClick": "c"
+              },
+              "offset": 351804
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIR"
+              },
+              "expressions": {},
+              "offset": 351863
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 32049,
+          "end": 35841,
+          "source": "e=>{let{status:s,scan:t,unPair:n,cancelSelect:a,bindDevice:i,master:o,dev:c,scandevices:d,lang:u,isPairingDock:p=!1,cancelUnpair:I,confirmUnpair:v,canModify:D=!0}=e;return(0,A.jsx)(\"div\",{className:`box-item ${c.connected===Ye?\"showborderline\":\"\"} ${c.productId===o.productId?\"master-box\":\"\"}`,style:{paddingLeft:\"10px\",paddingRight:\"10px\"},children:(0,A.jsxs)(\"div\",{className:\"box-inner\",children:[s===Ge.UNPAIRING&&c.productId!==o.productId?(0,A.jsxs)(\"div\",{className:\"confirm-unpairing\",children:[(0,A.jsx)(\"div\",{className:\"confirm-unpairing-content\",children:p?(0,A.jsx)(l.A,{text:r.hj7,data:{deviceName:o.productName[u]||o.productName.en}}):(0,A.jsx)(l.A,{text:r.NER})}),(0,A.jsxs)(\"div\",{className:\"box-unpairselect-tag\",children:[(0,A.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-cancel\",onClick:I,children:(0,A.jsx)(l.A,{text:r.bOp})}),(0,A.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-confirm\",onClick:()=>n(c.dongleId||c.productId),children:(0,A.jsx)(l.A,{text:r.Mh0})})]})]}):null,(0,A.jsx)(\"div\",{className:\"box-category\",children:\"KEYBOARD\"===c.category?(0,A.jsx)(l.A,{text:r.WQi}):\"MOUSE\"===c.category?(0,A.jsx)(l.A,{text:r.kBv}):\"\"}),s===Ge.SCANDED&&d.length>1&&c.productId!=o.productId?(0,A.jsx)(es,{scandevices:d,lang:u}):(0,A.jsx)(os,{status:s,dev:c,master:o,add:t,canModify:D,rescan:t,canUnpair:(s===Ge.PAIRED||s===Ge.JUST_PAIRED)&&o.productId!=c.productId,scandevices:d,onClick:()=>{v()}}),s===Ge.SCANNING&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-scanningdevice-tag\",children:(0,A.jsx)(l.A,{text:r.kiV})}):s===Ge.SCANDED&&0===d.length&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-selectnodevice-tag\",children:(0,A.jsx)(l.A,{text:r.kEL})}):s===Ge.SCANDED&&d.length>1&&c.productId!=o.productId?(0,A.jsxs)(\"div\",{className:\"box-scanselect-tag\",children:[(0,A.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-cancel\",onClick:a,children:(0,A.jsx)(l.A,{text:r.bOp})}),(0,A.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-pair\",onClick:i,children:(0,A.jsx)(l.A,{text:r.BuT})})]}):s===Ge.PAIRING&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-bindingdevice-tag\",children:(0,A.jsx)(l.A,{text:r.rQd})}):s===Ge.PAIR_FAILED&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-bindfail-tag\",children:(0,A.jsx)(l.A,{text:r.lwW})}):s===Ge.JUSTUNPAIR&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-unbindingdevice-tag\",children:(0,A.jsx)(l.A,{text:r.ca6})}):c.valid?(0,A.jsxs)(\"div\",{className:\"box-device-tag\",children:[c.productName[u]||c.productName.en,s===Ge.UNPAIR_FAILED&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-device-extrainfo\",children:(0,A.jsx)(l.A,{text:r.evT})}):null]}):(0,A.jsxs)(\"a\",{className:\"box-tips-tag\",onClick:ns,children:[(0,A.jsx)(l.A,{text:r.RFv}),(0,A.jsx)(\"svg\",{width:\"24\",height:\"24\",viewBox:\"0 0 24 24\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:(0,A.jsx)(\"path\",{d:\"M13 4L15.79 6.79L11.29 11.29C11.1017 11.4783 10.9959 11.7337 10.9959 12C10.9959 12.2663 11.1017 12.5217 11.29 12.71C11.4783 12.8983 11.7337 13.0041 12 13.0041C12.2663 13.0041 12.5217 12.8983 12.71 12.71L17.21 8.21L20 11V4H13ZM16 13V18H6V8H11C11.2652 8 11.5196 7.89464 11.7071 7.70711C11.8946 7.51957 12 7.26522 12 7C12 6.73478 11.8946 6.48043 11.7071 6.29289C11.5196 6.10536 11.2652 6 11 6H5C4.73478 6 4.48043 6.10536 4.29289 6.29289C4.10536 6.48043 4 6.73478 4 7V19C4 19.2652 4.10536 19.5196 4.29289 19.7071C4.48043 19.8946 4.73478 20 5 20H17C17.2652 20 17.5196 19.8946 17.7071 19.7071C17.8946 19.5196 18 19.2652 18 19V13C18 12.7348 17.8946 12.4804 17.7071 12.2929C17.5196 12.1054 17.2652 12 17 12C16.7348 12 16.4804 12.1054 16.2929 12.2929C16.1054 12.4804 16 12.7348 16 13Z\",fill:\"#CCCCCC\"})})]})]})},c.productName[u]||c.productName.en)}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "style": {
+                  "paddingLeft": "10px",
+                  "paddingRight": "10px"
+                }
+              },
+              "expressions": {
+                "className": "`box-item ${c.connected===Ye?\"showborderline\":\"\"} ${c.productId===o.productId?\"master-box\":\"\"}`"
+              },
+              "offset": 347031
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-inner"
+              },
+              "expressions": {},
+              "offset": 347210
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "confirm-unpairing"
+              },
+              "expressions": {},
+              "offset": 347304
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "confirm-unpairing-content"
+              },
+              "expressions": {},
+              "offset": 347362
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "MOUSE_DOCK_UNPAIR_CONFIRM_TEXT"
+              },
+              "expressions": {
+                "data": "{deviceName:o.productName[u]||o.productName.en}"
+              },
+              "offset": 347428
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIR_CONFIRM_TEXT"
+              },
+              "expressions": {},
+              "offset": 347509
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-tag"
+              },
+              "expressions": {},
+              "offset": 347539
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-button box-unpairselect-cancel"
+              },
+              "expressions": {
+                "onClick": "I"
+              },
+              "offset": 347600
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "CANCEL"
+              },
+              "expressions": {},
+              "offset": 347696
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unpairselect-button box-unpairselect-confirm"
+              },
+              "expressions": {
+                "onClick": "()=>n(c.dongleId||c.productId)"
+              },
+              "offset": 347726
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "CONFIRM"
+              },
+              "expressions": {},
+              "offset": 347852
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-category"
+              },
+              "expressions": {},
+              "offset": 347893
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "KEYBOARD"
+              },
+              "expressions": {},
+              "offset": 347968
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "MOUSE"
+              },
+              "expressions": {},
+              "offset": 348017
+            },
+            {
+              "component": "es",
+              "props": {},
+              "expressions": {
+                "scandevices": "d",
+                "lang": "u"
+              },
+              "offset": 348103
+            },
+            {
+              "component": "os",
+              "props": {},
+              "expressions": {
+                "status": "s",
+                "dev": "c",
+                "master": "o",
+                "add": "t",
+                "canModify": "D",
+                "rescan": "t",
+                "canUnpair": "(s===Ge.PAIRED||s===Ge.JUST_PAIRED)&&o.productId!=c.productId",
+                "scandevices": "d",
+                "onClick": "()=>{v()}"
+              },
+              "offset": 348140
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanningdevice-tag"
+              },
+              "expressions": {},
+              "offset": 348353
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "SCANNING"
+              },
+              "expressions": {},
+              "offset": 348414
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-selectnodevice-tag"
+              },
+              "expressions": {},
+              "offset": 348499
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "NO_DEVICE_FOUND"
+              },
+              "expressions": {},
+              "offset": 348560
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-tag"
+              },
+              "expressions": {},
+              "offset": 348643
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-button box-scanselect-cancel"
+              },
+              "expressions": {
+                "onClick": "a"
+              },
+              "offset": 348702
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "CANCEL"
+              },
+              "expressions": {},
+              "offset": 348794
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-scanselect-button box-scanselect-pair"
+              },
+              "expressions": {
+                "onClick": "i"
+              },
+              "offset": 348824
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "PAIR"
+              },
+              "expressions": {},
+              "offset": 348914
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-bindingdevice-tag"
+              },
+              "expressions": {},
+              "offset": 348988
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "PAIRING"
+              },
+              "expressions": {},
+              "offset": 349048
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-bindfail-tag"
+              },
+              "expressions": {},
+              "offset": 349123
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "PAIRING_FAILED"
+              },
+              "expressions": {},
+              "offset": 349178
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-unbindingdevice-tag"
+              },
+              "expressions": {},
+              "offset": 349252
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIRING"
+              },
+              "expressions": {},
+              "offset": 349314
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-device-tag"
+              },
+              "expressions": {},
+              "offset": 349352
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "box-device-extrainfo"
+              },
+              "expressions": {},
+              "offset": 349489
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIRING_FAILED"
+              },
+              "expressions": {},
+              "offset": 349548
+            },
+            {
+              "component": "\"a\"",
+              "props": {
+                "className": "box-tips-tag"
+              },
+              "expressions": {
+                "onClick": "ns"
+              },
+              "offset": 349586
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "VIEW_COMPATIBLE_DEVICES"
+              },
+              "expressions": {},
+              "offset": 349648
+            },
+            {
+              "component": "\"svg\"",
+              "props": {
+                "width": "24",
+                "height": "24",
+                "viewBox": "0 0 24 24",
+                "fill": "none",
+                "xmlns": "http://www.w3.org/2000/svg"
+              },
+              "expressions": {},
+              "offset": 349676
+            },
+            {
+              "component": "\"path\"",
+              "props": {
+                "d": "M13 4L15.79 6.79L11.29 11.29C11.1017 11.4783 10.9959 11.7337 10.9959 12C10.9959 12.2663 11.1017 12.5217 11.29 12.71C11.4783 12.8983 11.7337 13.0041 12 13.0041C12.2663 13.0041 12.5217 12.8983 12.71 12.71L17.21 8.21L20 11V4H13ZM16 13V18H6V8H11C11.2652 8 11.5196 7.89464 11.7071 7.70711C11.8946 7.51957 12 7.26522 12 7C12 6.73478 11.8946 6.48043 11.7071 6.29289C11.5196 6.10536 11.2652 6 11 6H5C4.73478 6 4.48043 6.10536 4.29289 6.29289C4.10536 6.48043 4 6.73478 4 7V19C4 19.2652 4.10536 19.5196 4.29289 19.7071C4.48043 19.8946 4.73478 20 5 20H17C17.2652 20 17.5196 19.8946 17.7071 19.7071C17.8946 19.5196 18 19.2652 18 19V13C18 12.7348 17.8946 12.4804 17.7071 12.2929C17.5196 12.1054 17.2652 12 17 12C16.7348 12 16.4804 12.1054 16.2929 12.2929C16.1054 12.4804 16 12.7348 16 13Z",
+                "fill": "#CCCCCC"
+              },
+              "expressions": {},
+              "offset": 349792
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 14543,
+          "end": 32045,
+          "source": "e=>{let{status:s,status2:t,scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,slave:d,slave2:u,scandevices:p,lang:I,cancelUnpair:v,confirmUnpair:D,isProductivity:N,newHyperspeedDongleImg:m,canPairTwoDevices:g,isPairingDock:E=!1,showBothDevicesConnectedWarning:h}=e,f=[];g?(d||(d={name:{en:\"\"},productName:\"\",category:\"KEYBOARD\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We}),u||(u={name:{en:\"\"},productName:\"\",category:{MOUSE:\"KEYBOARD\",KEYBOARD:\"MOUSE\"}[d.category]||\"\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We})):d||(d={name:{en:\"\"},productName:\"\",category:{MOUSE:\"KEYBOARD\",KEYBOARD:\"MOUSE\"}[c.category]||\"\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We}),(s===Ge.SCANNING||s===Ge.SCANDED&&(g?p.filter(e=>\"KEYBOARD\"===e.category).length>1:p.length>1)||s===Ge.PAIRING)&&d.connected!==Ye&&(d.connected=Ke),(t===Ge.SCANNING||t===Ge.SCANDED&&p.filter(e=>\"MOUSE\"===e.category).length>1||t===Ge.PAIRING)&&u.connected!==Ye&&(u.connected=Ke),f=g?\"KEYBOARD\"===d.category?[d,u]:[u,d]:\"KEYBOARD\"===c.category?[c,d]:[d,c];const x=()=>(0,A.jsxs)(\"div\",{className:\"display-block info-text\",children:[\"(\",c.productName[I]?c.productName[I]:c.productName.en,\")\"]}),y=N?\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAAABHNCSVQICAgIfAhkiAAAD6dJREFUaEPtWgtUlGUafmcGmBkuw00QEAgQBCFRLoJoiHfABE3SLC0xS7O0dbPtnOxyPO221fGc9pyultu2Wm1bHTU3d2stu3jL66ogch+5iAwi9/tc932/7/9+RvKCIHQ69evwz/zzz/9/z/c+7/M+7zejgF/ZpviV4YXfAA9nxDdu3Oi/evXq7ttuu61puO77s0U4NzfXb8NTG753clRHmozGHVWV+te1WrdD06dPNw8l+J8N8Jn801/pdB7pVqsVFDgKlYMDKGyQr3ZSbzMYDFvGjx/fMRTAfxbAu3bvei4+Pv4Fs9mMYBVgI2T4h57TE0cHRwtOxEdKhfWtwMCQ43jceqvADzvg3Xt2L4wdN/5Tq8Wi4pKpYBG20d4OFYu6UgUI/HCPybzt+3373sd8Nw0W+LAC3rx5c+iCu+afVKocPPsOnAWXQaZ40ySIofGpsFgs7SZjz3u1tXVbMM+LpRNvGv+wAc7MzNS9/MpLB93cdOMEKBvFlYeXY2WbPWj7Y/y5A+a6xWTe023q/mdURNQ/bhb4sAE+eerkJ97e3outFkxHCZOME1/zQ5zW7PgV88BPEO+BjSZKacO0uGQym946m3d2a05OTm1/wj0sgHfs2rE+IT7hLxYbKrIkUFcMDtG1t7eDQqkEFxdnLmDSCTYJqBz9XtSEm52r1WrM9Q31f4yNiX3hRqCHHPCO3TumJyUmf200mVSMsLIkC0Q8nCoEW1tXByN9fRjNrVaKtwg1k3CGjkDKmNnbCiC1LywsBE933drU1LQ3rwd6SAG/+uqrozIyM49ptJoAhlPKUE5a/ooG0NnVBT09PaDT6TBHVRhtXoJdnDHafUcofZTyn8CrVCooKS6Gy42N4OToaA0Jvi0zMTFx77VADxng6Ohop48+/uiwu7tHgig/NEJ7fULlhYu1teDj7Y1UdgEsvozaJExqtRqUQql7dQwvwRHTjs6rqamBiooKdsyKKeOscW4bHRY2GY3L2auBHjLAh48c3BIYGLzabLbIIiQGKm5KeyuOvLu7G7oxwloE2YbRdXJyBA93dxZdRmEyJxJQMWlKTAGanIKCszhRFG0r2NjeBu46XZW/n39yUlKSoS/oIQG87nfrHl6Rm7vFy9tbSbnIgAo+S5SkG3MlxlyVlUkBbW1tLNpKpeTABGpp5ASI3rPgRObl50MXpgOLLrKDrkX3o+ejRgUca2lsTl28eLHRHvQtB5yenh5/x7S0oxqNxsHbywsiIsIB8wpMFt4T8IhJe2kkkh7JmS0P0E6dhNbRFJEDKy7BvL1cz65HVKa9DYESY2hzcnICVxfnRxZkL3hnyADHxcX5pGdmfjvC1+d2qrc0EJptFBO4PSYGwhE8UVGAlhNaVl4pw+WaxLnB9JryHx+UtwZDLZSWllItZvfAPwwox8qvoVY7FZUUFSdv2rSpdcgAP/b4ui9Dw8IyGL1otvFBwsT2+KARRY8dC2PxoXPXseOC78JocGBS3kpWhIDSgxRZ5K2ZrouTKt4Te7qeUqXqbG5rjF//6HqyoFdst4zSy5YvezI2Nm4zBYPyCG0QguSDItDsgXlntpiYuISEhEBCQjwEBgWC2STozq1mrz6J8tU75rwzZ6C9s4MDlSNLfOaTgqlkaWpofGLt2rWv9QUrZORqx2/qWGZWVmZq6h07kG5aihrV1OioKOjo7ISq6mow4msyBxy0mT0n9TbhfsSIETA19Q4WdRowSRUzUDRpUvhZvcX6XIY0rqtD4cXXXJkFlSW6IwOUoNiq1+sfQSpftaUcdISTk5NHzpg9K9/Ly8uHwBpNRhSTRsiYPRvQcMC5c4VwAWul2WxiIImKvaD5JJhMJnBGk5E2NRUS4uPwuUuvEBGVMW/rL9WhUGHeMiXmVLYQpQk9/09CVe3u6hYzf/78tmtFbFCAAwICnHMWL94dFBQ4i6oP1UICQHmGTTx4e3tB3aVLVwAUoK0I0oTn8lzke4o8qWtiQhxMS0sDX19fBq4TmZKfX4CMoHQQYsijKh4ojJ0eOvc0BHvievQcFOD7c3NfGxc7bp1QZD7rUt5i/jIaU1Sl6FqwNDHA9vQW+U17VkP550kLxseOg4dWroDTZ/Kgva2dKTDTB1J/orNEa2etFvT6888+98wzL94oFwcMeN78+VlJyUmfY0TQXHBFFo8rRErOWU5pTmcuaA5Yrnx9fKCsvJxFmQDQcZ7LAMuX3Qd7930HKZOSwRHPZaVHorMwGkosTU2NTXs3PPHEnfiRGy4ADgjw+IkTY7LunHsYHZGOdytchTlgO0VmkUSARFcTHReCZYbW1jYIGBUAY8aMYbX50MFDaDG7GGjSgay5mdCADcGRY8fBzdUNsu7MlGptr1CRMuN9L3+4/YPoAwcO1N8ougNS6YCEBOdFaWk/+Pn7J1Lt3LVjJ7jp3GDy5CnsfmYEJZcgiiZRFcsOFyuMskT5+vp6cHFzhdDQUGjv6IDaixfl/CRnlpSUCB9/8hmbDJpIcm1z5sxi6cDKFtIa2WU8duTYojfeeONf/QE7IMAPrFjxQWRU1DLKp0MHD8NX//mSzbwDDiw+MQFSpkxmbogD5BSmCaA8ZntJpEhhib5Go5E5Jl5XrWwB4IGl98LbW//GajnLU+DWMcDfH6ZPm4oMMFO9hYK8/D+/9NJLz7Lk7ud2U5TOvivn4YlJie8Sjc/rz8O2v29HqprkBTetxglyH1qJM6+W6GsPGIEzQeoFzYSHLKhk/GkSHlqxHHZ/sQcaGhokxlh4NWZNiA3CwkIhJWUSNDc1n3h87bqU/uSt/Vz0G/DktLSJaalTv9E6a3VkKN5+/U3WygljTCsW87LnsQGRoZAjLKswjzRzXlKeC7NPgKkW35WdBVUXauDU6dOgUWvAxdUVGhsb2OdYrSUW4L/w0JAGQ60haefOnfp+BlY+rV+Ag4ODPecvzMnDpiCQlR62pFIE+/Z+A83NTYxPqVOnQsLEBE5jqaaSgJGgdWMLV1NzAYKCg+WSJBRdUHnMmAiIQbe1C6NLLHBFsJ0dndCFQuaADopFGR84Mdb8U3n31tcbPr1ZsP3NYcflK1duDwkNW0JCwbsS7mMV2JeWofspLiqCmeisjEa0kCJ3pchSju7b+zUYcGWD8jMyOhpCUKjkBgOv6enhAYtyFsLb7/4VjT/mM0a8tbUVOpBBvn4jyZwzbDSR5/UVr5aVFG0YCNh+Ac5euHBT7IS459HSKeydTW/Nlboiub6S2cBjqNZEv+NHj8HZvHzqYLDbUbJGgVR95pw5jNqkAevWPAKf7focSLl5rnLXZt/ykW5UVVQcL8jPn4RvD/irl+tSemZGRsqECRMOaDRa5FSvjbMXG1Z3GY2trBMS3REdr66qZtFVIFASNNzhUo4FlXwKeGKZobI2F4GX6MuhBJliP6GkDdyu8globWmuPXH06AxkTNFAo3vdCEdGRobOTM846OHpiSuO3J3LTof6W6awVDZ4nrKI2yswvj6D4nMWbSGtUanVSvTEPXD7hHhATWD9cULcBAhE87Fr9xes12XrUlLK0OBEv0x1+mJl5dzy8vIvBwP2eoAVS3MfPBAUHDSFzTAbBJ9tDlq4KgTObCKnMO25EktNP+5pca5SXwbluCTjqvOC5MkpfHUR/e+yJffA1ve3sUnjQDmVRXvI7ot/ykpKXistLl4/WLDXBJy98O5XIiLHPEUuh1w8iQhbZRHmXlooEw0+t5M8wqLWyr5YWmciQKxm4zXJmKzCevv+hx+xRTi20GfX+fRG2YZpUfV9V3t7RllZWc+QAJ4ybdrSxImTtjs6qJT29oX3oJJJkEy+MA29IMWyDvfUom+VF9cQFNXbe+5eCPnYJxcXl3CLJDFHKrZ8AnBrbGhoKj5XML6xsbH6VoD9SYSXrVrlHxEcUtzU2upGXYi85iDRmrdkUlckRVNEXW4e7BbvRI0VpYw+OzF+Anh5j4Av/7uX+WQZLKMvsYjnMfbAVn1J8bzKyspB5639ZPVVafWqdY9+mxAfP7mrowf0FZXyIjjLX7k1681RGiDlLtsLmyiY0Iemnp4ekDM/G97b9kFv9IVI2UWZFiLP5uW9WHm+nHzyLd1+WpY8PDwys1K/VahscbMT0vFmSihD38wj0dvzilXJvr2w+AaArxVLzTpS1EGFebsyl4kU0VqYF/sKwO6Bca6uqPoh79SJDLx59y1FyxTpKpurn5/P2MTQ/Weaq6Ni48bCfdF3gs2oglLRqAtqkxpLX3FckeNS1PgxYB3Rg/cvhaMn/gclZaXsjr01V1JmPJHMxSWDoe7smdPjcJmoX/3tzU7INY2Hl1dAkNvdAd8bRkOYqbEHYtq84d7IuaAyOzLg1JfKIK9YH+bf8bDlNSkFJkoLc/sPHZLLGzGBR5TnLW3dXd09Px7+cUlbc8PnNwukv+df12m5uweHjd7ofaDBwyGgBn86ZmnqhqgWT1g0eg44InB9xXkwGdFdSYPnec5pLAQrOCgIZkxLw7zdjubCgeDJa1GC8jRYspzFhYVPo09+ub+DH8h5N+yW/PyCo0c95r5HHa4OrW5RwMVGHHBTD0S1eUJW4FTQ2rRQUVnJaGufswSMVPjxR1fDO+9tk770sgfL6c7+IJWLiwr3F+bnzcAjvAEeou2GgMV9w+4JX+Nxu+Y5TYTGv6oZgV/GSDb3QGSHF2T4JoNO6cYibsSIE1jKx2VLFsPX3+0HAy6ei68y7f2yEKz6y/X6U0eP3IGlqF+/0xjMXPQbsLhJ+KLwNW7jNBs1UdrAmgZU1HqMUKsJwtvcYY53InhpPNFQlMKcmdOhBRfqjhw/wX+iwG2iDFwockdbu/nUqZNzLhsM3w0GSH8/e9OApQsrQ3LCVnnEOf/BOco5rLLeChcvYVTbzRDS6gpZfpNh7pTZrN7yX9qxzoP7cOaOOZUxDWylJSXPFxfk/6m/Ax7seQMFLO7rGDQvZKV3itvvncdqxlQabFB7Gd/qMMO4lpEQZw3D3O1k4FhjgcrOGnxKWzytqPDcnoIzp7NZDgzTNljAYpjqwPTgB0akum9wjtZGVtVhxBH4mPM6SFZFsK9KaB2avt339/dj9K6vq7tw4sjpSV1dDTXDhJXd5lYBloH7Twu832eW53qXaG1MlcEKI096QgyEsN9xUJNBv9vBFUfzuXNFk2qryk8OJ9ihACwDD0gJWOo71+tJdYRmrPrfXhDsGEzGgkDbjh89uulChf6GPyIbism41RHuO0Yn35RRS7ymuj0d1BAeNcLkA0XnCj85dfwILuTf+HugXyJgMWYH1xGed4cEhS+o1pesaWlpGbaf/PedtKGO8FAEaVDX/A3woKbvF/Dh3yL8CwjSoIb4f1Bi9NNMFtoaAAAAAElFTkSuQmCC\":m?\"data:image/png;base64,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\":\"data:image/png;base64,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\",S=N?ke:m?Te:be,C=g?cs(c):y,R=g?cs(c):S;return(0,A.jsxs)(\"div\",{className:\"duallink-device-content\",children:[(0,A.jsxs)(\"div\",{className:\"duallink-device-dongle\",children:[g?(0,A.jsxs)(\"div\",{className:\"duallink-master-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsx)(\"div\",{className:\"dongle-info\",children:(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:c.productName[I]?c.productName[I]:c.productName.en})})]}):null,\"KEYBOARD\"===c.category?(0,A.jsxs)(\"div\",{className:\"duallink-keyboard-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsxs)(\"div\",{className:\"dongle-info\",children:[(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:(0,A.jsx)(l.A,{text:N?r.LQd:r.G0o})}),x()]})]}):g?null:(0,A.jsx)(\"div\",{className:\"duallink-keyboard-dongle\"}),\"MOUSE\"===c.category?(0,A.jsxs)(\"div\",{className:\"duallink-mouse-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsxs)(\"div\",{className:\"dongle-info\",children:[(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:(0,A.jsx)(l.A,{text:N?r.LQd:r.G0o})}),x()]})]}):g?null:(0,A.jsx)(\"div\",{className:\"duallink-mouse-dongle\"})]}),g?(0,A.jsxs)(\"div\",{className:\"contect-animated-dot master-mousemat\",children:[(0,A.jsx)(\"div\",{className:\"master-mousemat slave-keyboard-dot \"+(\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\")}),(0,A.jsx)(\"div\",{className:\"master-mousemat-dot\"}),(0,A.jsx)(\"div\",{className:\"master-mousemat slave-mouse-dot \"+(\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\")})]}):(0,A.jsxs)(\"div\",{className:\"contect-animated-dot\",children:[(0,A.jsx)(\"div\",{className:`${\"KEYBOARD\"===c.category?\"master-keyboard-dot\":\"slave-keyboard-dot\"} ${\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\"}`}),(0,A.jsx)(\"div\",{className:`${\"MOUSE\"===c.category?\"master-mouse-dot\":\"slave-mouse-dot\"} ${\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\"}`})]}),(0,A.jsxs)(\"div\",{className:\"duallink-device-box\",children:[(0,A.jsx)(\"div\",{className:\"duallink-keyboard-state\",children:(0,A.jsx)(is,{status:s,canModify:!g||(t!==Ge.PAIRING&&t!==Ge.SCANNING&&t!==Ge.JUSTUNPAIR&&t!==Ge.SCANDED||t===Ge.SCANDED&&0===p.filter(e=>\"MOUSE\"===e.category).length),scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,dev:f[0],scandevices:p.filter(e=>\"KEYBOARD\"===e.category),lang:I,isPairingDock:E,cancelUnpair:v,confirmUnpair:D})}),(0,A.jsx)(\"div\",{className:\"duallink-mouse-state\",children:g?(0,A.jsx)(is,{status:t,canModify:s!==Ge.PAIRING&&s!==Ge.SCANNING&&s!==Ge.JUSTUNPAIR&&s!==Ge.SCANDED||s===Ge.SCANDED&&0===p.filter(e=>\"KEYBOARD\"===e.category).length,scan:()=>n(\"status2\"),unPair:()=>a(f[1].dongleId||f[1].productId,\"status2\"),cancelSelect:()=>i(\"status2\"),bindDevice:()=>o(\"status2\"),master:c,dev:f[1],scandevices:p.filter(e=>\"MOUSE\"===e.category),lang:I,isPairingDock:E,cancelUnpair:()=>v(\"status2\"),confirmUnpair:()=>D(\"status2\")}):(0,A.jsx)(is,{status:s,scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,dev:f[1],scandevices:p,lang:I,isPairingDock:E,cancelUnpair:v,confirmUnpair:D})})]}),h?(0,A.jsxs)(\"div\",{className:`img-text flex ${re}`,children:[(0,A.jsx)(\"span\",{className:ue,\"aria-hidden\":\"true\"}),(0,A.jsx)(\"span\",{className:Ae,children:(0,A.jsx)(l.A,{text:r.h5W})})]}):null]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "display-block info-text"
+              },
+              "expressions": {},
+              "offset": 330420
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-device-content"
+              },
+              "expressions": {},
+              "offset": 343352
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-device-dongle"
+              },
+              "expressions": {},
+              "offset": 343416
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-master-dongle"
+              },
+              "expressions": {},
+              "offset": 343481
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "className": "dongle-img-box"
+              },
+              "expressions": {
+                "src": "C",
+                "srcSet": "`${C} 1x, ${R} 3x`"
+              },
+              "offset": 343544
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dongle-info"
+              },
+              "expressions": {},
+              "offset": 343622
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "display-block info-text"
+              },
+              "expressions": {},
+              "offset": 343672
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-keyboard-dongle"
+              },
+              "expressions": {},
+              "offset": 343821
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "className": "dongle-img-box"
+              },
+              "expressions": {
+                "src": "C",
+                "srcSet": "`${C} 1x, ${R} 3x`"
+              },
+              "offset": 343886
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dongle-info"
+              },
+              "expressions": {},
+              "offset": 343964
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "display-block info-text"
+              },
+              "expressions": {},
+              "offset": 344016
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "N?r.LQd:r.G0o"
+              },
+              "offset": 344078
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-keyboard-dongle"
+              },
+              "expressions": {},
+              "offset": 344133
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-mouse-dongle"
+              },
+              "expressions": {},
+              "offset": 344210
+            },
+            {
+              "component": "\"img\"",
+              "props": {
+                "className": "dongle-img-box"
+              },
+              "expressions": {
+                "src": "C",
+                "srcSet": "`${C} 1x, ${R} 3x`"
+              },
+              "offset": 344272
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "dongle-info"
+              },
+              "expressions": {},
+              "offset": 344350
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "display-block info-text"
+              },
+              "expressions": {},
+              "offset": 344402
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "N?r.LQd:r.G0o"
+              },
+              "offset": 344464
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-mouse-dongle"
+              },
+              "expressions": {},
+              "offset": 344519
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "contect-animated-dot master-mousemat"
+              },
+              "expressions": {},
+              "offset": 344577
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"master-mousemat slave-keyboard-dot \"+(\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\")"
+              },
+              "offset": 344654
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "master-mousemat-dot"
+              },
+              "expressions": {},
+              "offset": 344829
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "\"master-mousemat slave-mouse-dot \"+(\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\")"
+              },
+              "offset": 344880
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "contect-animated-dot"
+              },
+              "expressions": {},
+              "offset": 345055
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${\"KEYBOARD\"===c.category?\"master-keyboard-dot\":\"slave-keyboard-dot\"} ${\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\"}`"
+              },
+              "offset": 345116
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${\"MOUSE\"===c.category?\"master-mouse-dot\":\"slave-mouse-dot\"} ${\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\"}`"
+              },
+              "offset": 345326
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-device-box"
+              },
+              "expressions": {},
+              "offset": 345530
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-keyboard-state"
+              },
+              "expressions": {},
+              "offset": 345590
+            },
+            {
+              "component": "is",
+              "props": {},
+              "expressions": {
+                "status": "s",
+                "canModify": "!g||(t!==Ge.PAIRING&&t!==Ge.SCANNING&&t!==Ge.JUSTUNPAIR&&t!==Ge.SCANDED||t===Ge.SCANDED&&0===p.filter(e=>\"MOUSE\"===e.category).length)",
+                "scan": "n",
+                "unPair": "a",
+                "cancelSelect": "i",
+                "bindDevice": "o",
+                "master": "c",
+                "dev": "f[0]",
+                "scandevices": "p.filter(e=>\"KEYBOARD\"===e.category)",
+                "lang": "I",
+                "isPairingDock": "E",
+                "cancelUnpair": "v",
+                "confirmUnpair": "D"
+              },
+              "offset": 345652
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "duallink-mouse-state"
+              },
+              "expressions": {},
+              "offset": 345989
+            },
+            {
+              "component": "is",
+              "props": {},
+              "expressions": {
+                "status": "t",
+                "canModify": "s!==Ge.PAIRING&&s!==Ge.SCANNING&&s!==Ge.JUSTUNPAIR&&s!==Ge.SCANDED||s===Ge.SCANDED&&0===p.filter(e=>\"KEYBOARD\"===e.category).length",
+                "scan": "()=>n(\"status2\")",
+                "unPair": "()=>a(f[1].dongleId||f[1].productId,\"status2\")",
+                "cancelSelect": "()=>i(\"status2\")",
+                "bindDevice": "()=>o(\"status2\")",
+                "master": "c",
+                "dev": "f[1]",
+                "scandevices": "p.filter(e=>\"MOUSE\"===e.category)",
+                "lang": "I",
+                "isPairingDock": "E",
+                "cancelUnpair": "()=>v(\"status2\")",
+                "confirmUnpair": "()=>D(\"status2\")"
+              },
+              "offset": 346050
+            },
+            {
+              "component": "is",
+              "props": {},
+              "expressions": {
+                "status": "s",
+                "scan": "n",
+                "unPair": "a",
+                "cancelSelect": "i",
+                "bindDevice": "o",
+                "master": "c",
+                "dev": "f[1]",
+                "scandevices": "p",
+                "lang": "I",
+                "isPairingDock": "E",
+                "cancelUnpair": "v",
+                "confirmUnpair": "D"
+              },
+              "offset": 346499
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`img-text flex ${re}`"
+              },
+              "offset": 346661
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "Duallink_bothDevicesConnectedWarningIcon__YjMs-",
+                "aria-hidden": "true"
+              },
+              "expressions": {},
+              "offset": 346721
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "Duallink_bothDevicesConnectedWarningText__YK5Qn"
+              },
+              "expressions": {},
+              "offset": 346775
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "MOUSE_DOCK_BOTH_DEVICES_PAIRING_UTILITY_WARNING"
+              },
+              "expressions": {},
+              "offset": 346815
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 10685,
+          "end": 12225,
+          "source": "e=>{let{status:s,status2:t,master:n,scandevices:a,isProductivity:i,canPairTwoDevices:o,isPairingDock:c}=e;return s===Ge.JUST_PAIRED||s===Ge.UNPAIRED||t===Ge.JUST_PAIRED||t===Ge.UNPAIRED?(0,A.jsx)(\"div\",{className:`${Pe}`,children:s===Ge.UNPAIRED||t===Ge.UNPAIRED?(0,A.jsx)(l.A,{text:r.kTs}):s===Ge.JUST_PAIRED||t===Ge.JUST_PAIRED?(0,A.jsx)(l.A,{text:r.T8n}):\"\"}):[Ge.LOADED,Ge.SCANNING,Ge.PAIR_FAILED,Ge.UNPAIR_FAILED,Ge.SCANDED].includes(s)||[Ge.LOADED,Ge.SCANNING,Ge.PAIR_FAILED,Ge.UNPAIR_FAILED,Ge.SCANDED].includes(t)?(0,A.jsxs)(\"div\",{className:`${fe} ${c?xe:\"\"}`,children:[o?(0,A.jsx)(\"div\",{className:`${ye}`}):\"KEYBOARD\"===n.category?(0,A.jsx)(\"div\",{className:`${Ce}`}):(0,A.jsx)(\"div\",{className:`${Se}`}),(0,A.jsxs)(\"ul\",{className:`${Re}`,children:[(0,A.jsx)(\"li\",{className:`${_e}`,children:(0,A.jsx)(l.A,{text:i?r.mKj:r.VcX})}),(0,A.jsx)(\"li\",{className:`${_e}`,children:(0,A.jsx)(l.A,{text:r.XBA})}),(0,A.jsx)(\"li\",{className:`${_e}`,children:(0,A.jsx)(l.A,{text:r.PSG})}),(0,A.jsx)(\"li\",{className:`${_e}`,children:(0,A.jsx)(l.A,{text:o&&!c?r.q_3:c?r.FY7:r.jDr})}),(0,A.jsx)(\"li\",{className:`${_e}`,children:(0,A.jsx)(l.A,{text:r.DxM})})]})]}):s===Ge.SCANDED&&a.length>1?\"KEYBOARD\"===n.category?(0,A.jsxs)(\"div\",{className:`${Pe}`,children:[(0,A.jsx)(\"span\",{className:`${je}`}),(0,A.jsx)(\"span\",{className:`${Ue}`,children:(0,A.jsx)(l.A,{text:r._AH})})]}):(0,A.jsxs)(\"div\",{className:`${Pe}`,children:[(0,A.jsx)(\"span\",{className:`${je}`,children:(0,A.jsx)(l.A,{text:r._AH})}),(0,A.jsx)(\"span\",{className:`${Ue}`})]}):null}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Pe}`"
+              },
+              "offset": 325682
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIRING_COMPLETE"
+              },
+              "expressions": {},
+              "offset": 325759
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "PAIRING_COMPLETE"
+              },
+              "expressions": {},
+              "offset": 325826
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${fe} ${c?xe:\"\"}`"
+              },
+              "offset": 326018
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${ye}`"
+              },
+              "offset": 326077
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Ce}`"
+              },
+              "offset": 326138
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Se}`"
+              },
+              "offset": 326175
+            },
+            {
+              "component": "\"ul\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Re}`"
+              },
+              "offset": 326212
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${_e}`"
+              },
+              "offset": 326257
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "i?r.mKj:r.VcX"
+              },
+              "offset": 326300
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${_e}`"
+              },
+              "offset": 326338
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "DUALLINK_NOTE_TWO"
+              },
+              "expressions": {},
+              "offset": 326381
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${_e}`"
+              },
+              "offset": 326411
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "DUALLINK_NOTE_THREE"
+              },
+              "expressions": {},
+              "offset": 326454
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${_e}`"
+              },
+              "offset": 326484
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "o&&!c?r.q_3:c?r.FY7:r.jDr"
+              },
+              "offset": 326527
+            },
+            {
+              "component": "\"li\"",
+              "props": {},
+              "expressions": {
+                "className": "`${_e}`"
+              },
+              "offset": 326577
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "DUALLINK_NOTE_FIVE"
+              },
+              "expressions": {},
+              "offset": 326620
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Pe}`"
+              },
+              "offset": 326707
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`${je}`"
+              },
+              "offset": 326753
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Ue}`"
+              },
+              "offset": 326791
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "RADIO_SELECT_TIPS"
+              },
+              "expressions": {},
+              "offset": 326836
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Pe}`"
+              },
+              "offset": 326869
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`${je}`"
+              },
+              "offset": 326915
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "RADIO_SELECT_TIPS"
+              },
+              "expressions": {},
+              "offset": 326960
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Ue}`"
+              },
+              "offset": 326990
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 12229,
+          "end": 14401,
+          "source": "e=>{let{status:s,status2:t,bindInfo:n,deviceInfo:i,scan:o,unPair:d,scanedInfo:u,setStatus:p,cancelUnpair:I,confirmUnpair:v,lang:D}=e;const{state:N}=a().useContext(Be),m=(0,c.useSelector)(e=>e.deviceReducer.editionId),g=(0,c.useSelector)(e=>e.deviceReducer.sidepadLayout),{selectedIndex:E}=N,{dongleId:h,productId:f,canPairTwoDevices:x}=i,y=(0,c.useDispatch)(),[S,C,R]=a().useMemo(()=>{const e=JSON.parse(localStorage.getItem(\"connectedDeviceInfo\"))||[];let s=e.find(e=>e.productId===f&&e.editionId===m);if(s||(s=e.find(e=>e.productId===f)||{}),s){s.dongleId=h,s.editionId=m;const e=((e,s)=>{if(e.isNaga&&void 0!==s&&null!==s)return s})(i,g);void 0!==e&&(s.layoutId=e)}let t=n[0]||void 0,a=[];if(x){a=[s,n.find(e=>\"KEYBOARD\"===e.category),n.find(e=>\"MOUSE\"===e.category)]}else a=t?\"master\"===t.role?[t,s]:[s,t]:[s];return a.map(e=>(e&&(e.valid=!0,e.connected=Ye,Me.has(e.dongleId)&&(e.layoutId=Me.get(e.dongleId))),e))},[n,i,h,m,g,s,t]),_=a().useMemo(()=>u||[],[u]),P=a().useMemo(()=>(u||[])[E],[E,u]),j=a().useCallback(function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),P&&(p(Ge.PAIRING,e),P.dongleId!==Ve?(y((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:P})):y((0,Le.xt)(!0)))},[P]),U=a().useMemo(()=>!(!i.canPairTwoDevices||!i.showBothDevicesConnectedWarning)&&we(n),[n,i.canPairTwoDevices,i.showBothDevicesConnectedWarning]);return(0,A.jsxs)(\"div\",{className:`${Ne}`,children:[(0,A.jsx)(\"div\",{className:`${he} ${me}`,children:(0,A.jsx)(\"div\",{className:`${ge} ${Ee}`,children:(0,A.jsx)(l.A,{text:x?i.pairingDescription||r.Q9M:i.isProductivity?r.RVs:r.q3f})})}),(0,A.jsx)(as,{status:s,status2:t,scan:o,unPair:d,cancelSelect:()=>{Qe(\"DUALLINK_BIND_INFO\",{})},bindDevice:j,master:S,slave:C,slave2:R,scandevices:_,lang:D,cancelUnpair:I,confirmUnpair:v,isProductivity:i.isProductivity,newHyperspeedDongleImg:i.newHyperspeedDongleImg,canPairTwoDevices:i.canPairTwoDevices,isPairingDock:i.isPairingDock,showBothDevicesConnectedWarning:U}),(0,A.jsx)(ss,{status:s,status2:t,master:S,scandevices:_,isProductivity:i.isProductivity,canPairTwoDevices:i.canPairTwoDevices,isPairingDock:i.isPairingDock})]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${Ne}`"
+              },
+              "offset": 328449
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${he} ${me}`"
+              },
+              "offset": 328495
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${ge} ${Ee}`"
+              },
+              "offset": 328545
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "x?i.pairingDescription||r.Q9M:i.isProductivity?r.RVs:r.q3f"
+              },
+              "offset": 328595
+            },
+            {
+              "component": "as",
+              "props": {},
+              "expressions": {
+                "status": "s",
+                "status2": "t",
+                "scan": "o",
+                "unPair": "d",
+                "cancelSelect": "()=>{Qe(\"DUALLINK_BIND_INFO\",{})}",
+                "bindDevice": "j",
+                "master": "S",
+                "slave": "C",
+                "slave2": "R",
+                "scandevices": "_",
+                "lang": "D",
+                "cancelUnpair": "I",
+                "confirmUnpair": "v",
+                "isProductivity": "i.isProductivity",
+                "newHyperspeedDongleImg": "i.newHyperspeedDongleImg",
+                "canPairTwoDevices": "i.canPairTwoDevices",
+                "isPairingDock": "i.isPairingDock",
+                "showBothDevicesConnectedWarning": "U"
+              },
+              "offset": 328680
+            },
+            {
+              "component": "ss",
+              "props": {},
+              "expressions": {
+                "status": "s",
+                "status2": "t",
+                "master": "S",
+                "scandevices": "_",
+                "isProductivity": "i.isProductivity",
+                "canPairTwoDevices": "i.canPairTwoDevices",
+                "isPairingDock": "i.isPairingDock"
+              },
+              "offset": 329051
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 38909,
+          "end": 44774,
+          "source": "e=>{let{deviceInfo:s,pairedInfo:t,closeDialog:n,globallang:i}=e;const[o,d]=a().useReducer(Ze,{...Je,deviceInfo:s,bindInfo:t}),l=(0,c.useSelector)(e=>e.deviceReducer.cancelPairing),r=(0,c.useSelector)(e=>e.deviceReducer.continuePairing),u=(0,c.useDispatch)(),{status:p,status2:I,bindInfo:v,scanedInfo:D,lang:N}=o;p!==Ge.LOADED&&p!==Ge.PAIRED||I!==Ge.LOADED&&I!==Ge.PAIRED||$e();const m=a().useCallback(function(e){let s=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";d({type:\"SET_STATUS\",payload:{[s]:e}})},[]),g=a().useCallback(e=>{d({type:\"SET_LANG\",payload:{lang:e}})},[]),E=a().useCallback(e=>{d(e)},[]),h=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),$e(),d({type:\"SET_STATUS\",payload:{[e]:Ge.SCANNING}}),Qe(\"DUALLINK_SCAN_DEVICE\",{status:Fe,category:s.canPairTwoDevices?\"status\"===e?\"KEYBOARD\":\"MOUSE\":null})},f=function(e){let t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";v.map(s=>(s.productId===e&&(s.connected=We),s)),u((0,Le.AC)(!1)),d({type:\"SET_STATUS\",payload:{[t]:Ge.JUSTUNPAIR}}),Qe(\"DUALLINK_UNBIND_DEVICE\",{productId:e,category:s.canPairTwoDevices?\"status\"===t?\"KEYBOARD\":\"MOUSE\":null})},x=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.UNPAIRING}})},y=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.PAIRED}})};return a().useEffect(()=>{l&&(Qe(\"DUALLINK_CANCEL\",{}),Qe(\"DUALLINK_BIND_INFO\",{}),n(l))},[l]),a().useEffect(()=>{if(r){const e=D&&D.filter(e=>e.dongleId===Ve);Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:e[0]})}u((0,Le.AC)(!1))},[r]),a().useEffect(()=>{g(i)},[i]),a().useEffect(()=>{m(Ge.LOADING),s.canPairTwoDevices&&m(Ge.LOADING,\"status2\"),Qe(\"DUALLINK_BIND_INFO\",{})},[]),a().useEffect(()=>{M.A.onBCEvent(se.qg.MW_RESPONSE_UI,e=>{let{msgData:a}=e;const{type:i,payload:c,error:d}=a;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",i,c,d),d){let e=\"\";return\"DUALLINK_BIND_INFO\"===i?(e=\"Fail to get bind Info\",E({type:\"SET_ERROR\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===i?(e=\"Fail to scan other devices\",p===Ge.SCANNING?E({type:\"SET_ERROR\",payload:{status:Ge.SCANDED,scanedInfo:[]}}):I===Ge.SCANNING&&E({type:\"SET_ERROR\",payload:{status2:Ge.SCANDED,scanedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===i?(e=\"Fail to bind salve device\",p===Ge.PAIRING?E({type:\"SET_ERROR\",payload:{status:Ge.PAIR_FAILED}}):I===Ge.PAIRING&&E({type:\"SET_ERROR\",payload:{status2:Ge.PAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===i&&(e=\"Fail to unbind slave device\",p===Ge.JUSTUNPAIR?(E({type:\"SET_ERROR\",payload:{status:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status:Ge.PAIRED}})},4e3)):I===Ge.JUSTUNPAIR&&(E({type:\"SET_ERROR\",payload:{status2:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status2:Ge.PAIRED}})},4e3))),void console.error(`errMsg ${e}`)}switch(i){case\"DUALLINK_BIND_INFO\":if(0===c.length)E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}});else if(s.canPairTwoDevices){const e=c.some(e=>\"KEYBOARD\"===e.category)?Ge.PAIRED:Ge.LOADED,s=c.some(e=>\"MOUSE\"===e.category)?Ge.PAIRED:Ge.LOADED;E({type:\"SET_BINDINFO\",payload:{status:e,status2:s,bindInfo:c,scanedInfo:[]}}),u((0,Le.ss)(c))}else E({type:\"SET_BINDINFO\",payload:{status:Ge.PAIRED,bindInfo:c,scanedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":s.canPairTwoDevices?1===c.length&&p===Ge.SCANNING&&\"KEYBOARD\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):1===c.length&&I===Ge.SCANNING&&\"MOUSE\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status2:Ge.PAIRING,scanedInfo:c}}),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):E({type:\"SET_SCANED_INFO\",payload:{status:p===Ge.SCANNING?Ge.SCANDED:o.status,status2:I===Ge.SCANNING?Ge.SCANDED:o.status2,scanedInfo:c}}):1===c.length?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):E({type:\"SET_SCANED_INFO\",payload:{status:Ge.SCANDED,scanedInfo:c}});break;case\"DUALLINK_BIND_DEVICE\":{const e=[...t].filter(e=>e.category!==c.device.category);e.push(c.device);const a=s.canPairTwoDevices&&\"KEYBOARD\"===c.device.category||!s.canPairTwoDevices;E({type:\"SET_BINDINFO\",payload:{status:a?Ge.JUST_PAIRED:o.status,status2:a?o.status2:Ge.JUST_PAIRED,bindInfo:e,selectedIndex:0}}),u((0,Le.ss)(e)),s.canPairTwoDevices&&(p!==Ge.PAIRED&&p!==Ge.JUST_PAIRED||I!==Ge.PAIRED&&I!==Ge.JUST_PAIRED)||n();break}case\"DUALLINK_UNBIND_DEVICE\":{let e={};p===Ge.JUSTUNPAIR?e={status:Ge.UNPAIRED}:I===Ge.JUSTUNPAIR&&(e={status2:Ge.UNPAIRED});const s=[...t.filter(e=>e.dongleId!==c.productId)];E({type:\"SET_BINDINFO\",payload:{bindInfo:s,selectedIndex:0,...e}}),u((0,Le.ss)(s));break}}})},[p,I]),p===Ge.LOADING?(0,A.jsx)(\"div\",{className:ie,children:\"loading\"}):p===Ge.LOADED||p===Ge.SCANNING||p===Ge.SCANDED||p===Ge.PAIRING||p===Ge.PAIRED||p===Ge.JUSTUNPAIR||p===Ge.UNPAIRING||p===Ge.UNPAIRED||p===Ge.PAIR_FAILED||p===Ge.UNPAIR_FAILED||p===Ge.JUST_PAIRED?(0,A.jsx)(Be.Provider,{value:{state:o,callAction:E},children:(0,A.jsx)(ts,{status:p,status2:I,bindInfo:v,deviceInfo:s,scanedInfo:D,scan:h,unPair:f,setStatus:m,confirmUnpair:x,cancelUnpair:y,lang:N})}):(0,A.jsxs)(\"div\",{children:[\"staus:\",p,\" bindInfo:\",JSON.stringify(v),\" deviceInfo:\",JSON.stringify(s)]})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "Duallink_loading__UdbRB"
+              },
+              "expressions": {},
+              "offset": 359033
+            },
+            {
+              "component": "Be.Provider",
+              "props": {},
+              "expressions": {
+                "value": "{state:o,callAction:E}"
+              },
+              "offset": 359278
+            },
+            {
+              "component": "ts",
+              "props": {},
+              "expressions": {
+                "status": "p",
+                "status2": "I",
+                "bindInfo": "v",
+                "deviceInfo": "s",
+                "scanedInfo": "D",
+                "scan": "h",
+                "unPair": "f",
+                "setStatus": "m",
+                "confirmUnpair": "x",
+                "cancelUnpair": "y",
+                "lang": "N"
+              },
+              "offset": 359339
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {},
+              "offset": 359479
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 38810,
+          "end": 44775,
+          "source": "(0,c.connect)(e=>({globallang:e.languageReducer.lang,pairedInfo:e.deviceReducer.pairedInfo}),null)(e=>{let{deviceInfo:s,pairedInfo:t,closeDialog:n,globallang:i}=e;const[o,d]=a().useReducer(Ze,{...Je,deviceInfo:s,bindInfo:t}),l=(0,c.useSelector)(e=>e.deviceReducer.cancelPairing),r=(0,c.useSelector)(e=>e.deviceReducer.continuePairing),u=(0,c.useDispatch)(),{status:p,status2:I,bindInfo:v,scanedInfo:D,lang:N}=o;p!==Ge.LOADED&&p!==Ge.PAIRED||I!==Ge.LOADED&&I!==Ge.PAIRED||$e();const m=a().useCallback(function(e){let s=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";d({type:\"SET_STATUS\",payload:{[s]:e}})},[]),g=a().useCallback(e=>{d({type:\"SET_LANG\",payload:{lang:e}})},[]),E=a().useCallback(e=>{d(e)},[]),h=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),$e(),d({type:\"SET_STATUS\",payload:{[e]:Ge.SCANNING}}),Qe(\"DUALLINK_SCAN_DEVICE\",{status:Fe,category:s.canPairTwoDevices?\"status\"===e?\"KEYBOARD\":\"MOUSE\":null})},f=function(e){let t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";v.map(s=>(s.productId===e&&(s.connected=We),s)),u((0,Le.AC)(!1)),d({type:\"SET_STATUS\",payload:{[t]:Ge.JUSTUNPAIR}}),Qe(\"DUALLINK_UNBIND_DEVICE\",{productId:e,category:s.canPairTwoDevices?\"status\"===t?\"KEYBOARD\":\"MOUSE\":null})},x=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.UNPAIRING}})},y=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.PAIRED}})};return a().useEffect(()=>{l&&(Qe(\"DUALLINK_CANCEL\",{}),Qe(\"DUALLINK_BIND_INFO\",{}),n(l))},[l]),a().useEffect(()=>{if(r){const e=D&&D.filter(e=>e.dongleId===Ve);Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:e[0]})}u((0,Le.AC)(!1))},[r]),a().useEffect(()=>{g(i)},[i]),a().useEffect(()=>{m(Ge.LOADING),s.canPairTwoDevices&&m(Ge.LOADING,\"status2\"),Qe(\"DUALLINK_BIND_INFO\",{})},[]),a().useEffect(()=>{M.A.onBCEvent(se.qg.MW_RESPONSE_UI,e=>{let{msgData:a}=e;const{type:i,payload:c,error:d}=a;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",i,c,d),d){let e=\"\";return\"DUALLINK_BIND_INFO\"===i?(e=\"Fail to get bind Info\",E({type:\"SET_ERROR\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===i?(e=\"Fail to scan other devices\",p===Ge.SCANNING?E({type:\"SET_ERROR\",payload:{status:Ge.SCANDED,scanedInfo:[]}}):I===Ge.SCANNING&&E({type:\"SET_ERROR\",payload:{status2:Ge.SCANDED,scanedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===i?(e=\"Fail to bind salve device\",p===Ge.PAIRING?E({type:\"SET_ERROR\",payload:{status:Ge.PAIR_FAILED}}):I===Ge.PAIRING&&E({type:\"SET_ERROR\",payload:{status2:Ge.PAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===i&&(e=\"Fail to unbind slave device\",p===Ge.JUSTUNPAIR?(E({type:\"SET_ERROR\",payload:{status:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status:Ge.PAIRED}})},4e3)):I===Ge.JUSTUNPAIR&&(E({type:\"SET_ERROR\",payload:{status2:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status2:Ge.PAIRED}})},4e3))),void console.error(`errMsg ${e}`)}switch(i){case\"DUALLINK_BIND_INFO\":if(0===c.length)E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}});else if(s.canPairTwoDevices){const e=c.some(e=>\"KEYBOARD\"===e.category)?Ge.PAIRED:Ge.LOADED,s=c.some(e=>\"MOUSE\"===e.category)?Ge.PAIRED:Ge.LOADED;E({type:\"SET_BINDINFO\",payload:{status:e,status2:s,bindInfo:c,scanedInfo:[]}}),u((0,Le.ss)(c))}else E({type:\"SET_BINDINFO\",payload:{status:Ge.PAIRED,bindInfo:c,scanedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":s.canPairTwoDevices?1===c.length&&p===Ge.SCANNING&&\"KEYBOARD\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):1===c.length&&I===Ge.SCANNING&&\"MOUSE\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status2:Ge.PAIRING,scanedInfo:c}}),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):E({type:\"SET_SCANED_INFO\",payload:{status:p===Ge.SCANNING?Ge.SCANDED:o.status,status2:I===Ge.SCANNING?Ge.SCANDED:o.status2,scanedInfo:c}}):1===c.length?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):E({type:\"SET_SCANED_INFO\",payload:{status:Ge.SCANDED,scanedInfo:c}});break;case\"DUALLINK_BIND_DEVICE\":{const e=[...t].filter(e=>e.category!==c.device.category);e.push(c.device);const a=s.canPairTwoDevices&&\"KEYBOARD\"===c.device.category||!s.canPairTwoDevices;E({type:\"SET_BINDINFO\",payload:{status:a?Ge.JUST_PAIRED:o.status,status2:a?o.status2:Ge.JUST_PAIRED,bindInfo:e,selectedIndex:0}}),u((0,Le.ss)(e)),s.canPairTwoDevices&&(p!==Ge.PAIRED&&p!==Ge.JUST_PAIRED||I!==Ge.PAIRED&&I!==Ge.JUST_PAIRED)||n();break}case\"DUALLINK_UNBIND_DEVICE\":{let e={};p===Ge.JUSTUNPAIR?e={status:Ge.UNPAIRED}:I===Ge.JUSTUNPAIR&&(e={status2:Ge.UNPAIRED});const s=[...t.filter(e=>e.dongleId!==c.productId)];E({type:\"SET_BINDINFO\",payload:{bindInfo:s,selectedIndex:0,...e}}),u((0,Le.ss)(s));break}}})},[p,I]),p===Ge.LOADING?(0,A.jsx)(\"div\",{className:ie,children:\"loading\"}):p===Ge.LOADED||p===Ge.SCANNING||p===Ge.SCANDED||p===Ge.PAIRING||p===Ge.PAIRED||p===Ge.JUSTUNPAIR||p===Ge.UNPAIRING||p===Ge.UNPAIRED||p===Ge.PAIR_FAILED||p===Ge.UNPAIR_FAILED||p===Ge.JUST_PAIRED?(0,A.jsx)(Be.Provider,{value:{state:o,callAction:E},children:(0,A.jsx)(ts,{status:p,status2:I,bindInfo:v,deviceInfo:s,scanedInfo:D,scan:h,unPair:f,setStatus:m,confirmUnpair:x,cancelUnpair:y,lang:N})}):(0,A.jsxs)(\"div\",{children:[\"staus:\",p,\" bindInfo:\",JSON.stringify(v),\" deviceInfo:\",JSON.stringify(s)]})})",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "Duallink_loading__UdbRB"
+              },
+              "expressions": {},
+              "offset": 359033
+            },
+            {
+              "component": "Be.Provider",
+              "props": {},
+              "expressions": {
+                "value": "{state:o,callAction:E}"
+              },
+              "offset": 359278
+            },
+            {
+              "component": "ts",
+              "props": {},
+              "expressions": {
+                "status": "p",
+                "status2": "I",
+                "bindInfo": "v",
+                "deviceInfo": "s",
+                "scanedInfo": "D",
+                "scan": "h",
+                "unPair": "f",
+                "setStatus": "m",
+                "confirmUnpair": "x",
+                "cancelUnpair": "y",
+                "lang": "N"
+              },
+              "offset": 359339
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {},
+              "offset": 359479
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 4548,
+          "end": 5201,
+          "source": "class s extends i.Component{constructor(e){super(e),this.toggleSwitch=e=>{\"undefined\"!==this.props.disable&&!0===this.props.disable||\"keyPressed\"===this.props.className||(this.setState({active:!this.props.active}),this.props.onClick(e))},this.state={active:this.props.active}}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){return(0,o.jsx)(\"div\",{className:(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\"),onClick:this.toggleSwitch.bind(this),children:(0,o.jsx)(\"div\",{className:\"handle\"})})}}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\")",
+                "onClick": "this.toggleSwitch.bind(this)"
+              },
+              "offset": 374813
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "handle"
+              },
+              "expressions": {},
+              "offset": 375016
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/main.899712fe.js",
+              "offset": 4948,
+              "end": 5200,
+              "source": "(){return(0,o.jsx)(\"div\",{className:(this.state.active?\"switch on\":\"switch\")+(this.props.disable?\" disabled\":\"\")+(this.props.className?` ${this.props.className}`:\"\"),onClick:this.toggleSwitch.bind(this),children:(0,o.jsx)(\"div\",{className:\"handle\"})})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 309009,
+          "end": 312474,
+          "source": "class p extends i.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.props.toggleSwitch()},this.onHover=()=>{this.setState({showTip:!0},()=>{const e=document.querySelector(\".main-container > #body-wrapper\"),t=this.tipDiv.current;if(!t||!e)return;const n=t.getBoundingClientRect(),i=e.getBoundingClientRect();if((null===n||void 0===n?void 0:n.right)>=i.right&&t.classList.add(\"custom-tip\"),n.bottom>i.bottom){const e=t.previousElementSibling;if(!e)return;const n=e.getBoundingClientRect(),o=8;t.style.position=\"fixed\",t.style.right=\"auto\",t.style.left=`${n.right+o}px`,t.style.top=`${n.top}px`;const s=t.getBoundingClientRect();if(s.right>i.right&&(t.style.left=n.left-o-s.width+\"px\"),!this.props.ignoreBottomOverflow){const e=t.getBoundingClientRect();if(e.bottom>i.bottom){const n=e.bottom-i.bottom+10;t.style.top=parseFloat(t.style.top)-n+\"px\"}}}})},this.onLeave=()=>{this.setState({showTip:!1})};const{active:t}=this.props;this.state={active:t,showTip:!1,showFWUpdateTip:!1,tooltipX:0,tooltipY:0},this.tipDiv=o().createRef(),this._tipX=0,this._tipY=0}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){var e;const{id:t,title:n,tips:i,centerTips:o,children:s,hasSwitch:p=!1,disableSwitchTips:u,extraClass:A,customStyle:T,extraTitle:I,besideTitle:h,increaseZIndex:O,supportsShortcut:S,disable:D,renderShortcut:C,keyPressed:f,hasTutorialButton:g,currentFWVersion:v,hasFWUpdate:m=!1,fwUpdateComponent:N,ignoreBottomOverflow:R=!1,allowHtml:L}=this.props,{toggleSwitch:M}=this,{active:y}=this.state,P=(null===(e=E.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},U=(0,_.ju)(N,P,v)&&m;var b=`widget ${A||\"\"} ${O?\"increase-zindex\":\"\"} ${U?\"disabled\":\"\"}`,w=void 0!==i?(0,d.jsxs)(d.Fragment,{children:[(0,d.jsx)(\"div\",{className:\"help\",role:\"button\",\"aria-label\":(0,l.JN)(i),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,d.jsx)(\"div\",{className:\"tip\",ref:this.tipDiv,children:\"string\"!==typeof i?i:(0,d.jsx)(r.A,{text:i})}),g?(0,d.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,x=p?(0,d.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,d.jsx)(a.A,{disable:this.props.disable,active:y,onClick:M,className:f||\"\"}),u&&D?(0,d.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,d.jsx)(r.A,{text:u})}):null]}):null,G=\"\"!==n?(0,d.jsxs)(\"div\",{className:\"titleRow\",children:[(0,d.jsxs)(\"div\",{className:\"title\",children:[(0,d.jsx)(r.A,{text:n,allowHtml:L}),x,h]}),(0,d.jsx)(\"div\",{children:I}),S?C:null]}):null;return(0,d.jsxs)(\"div\",{className:\"widget-container\",children:[(0,d.jsxs)(\"div\",{className:b,id:t,style:T,children:[G,s,w]}),o&&(b.includes(\"disabled\")||!1===y)&&(0,d.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,d.jsx)(r.A,{text:o})}),U&&(0,d.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const t=e.clientX,n=e.clientY+25;this._tipX=t,this._tipY=n,this.setState({showFWUpdateTip:!0,tooltipX:t,tooltipY:n})},onMouseMove:e=>{const t=e.clientX,n=e.clientY+25;this._tipX===t&&this._tipY===n||(this._tipX=t,this._tipY=n,this.setState({tooltipX:t,tooltipY:n}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,d.jsx)(r.A,{text:c.AG3})}),U&&this.state.showFWUpdateTip&&(0,d.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,d.jsx)(r.A,{text:c.ssg})})]})}}",
+          "jsx": [
+            {
+              "component": "d.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 680617
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "help",
+                "role": "button"
+              },
+              "expressions": {
+                "aria-label": "(0,l.JN)(i)",
+                "onMouseOver": "this.onHover",
+                "onMouseLeave": "this.onLeave"
+              },
+              "offset": 680650
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "tip"
+              },
+              "expressions": {
+                "ref": "this.tipDiv"
+              },
+              "offset": 680796
+            },
+            {
+              "component": "r.A",
+              "props": {},
+              "expressions": {
+                "text": "i"
+              },
+              "offset": 680876
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "tutorial-icon widget-tutorial-icon"
+              },
+              "expressions": {
+                "onClick": "this.props.onClickTutorialButton"
+              },
+              "offset": 680904
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "widget-switch"
+              },
+              "expressions": {},
+              "offset": 681028
+            },
+            {
+              "component": "a.A",
+              "props": {},
+              "expressions": {
+                "disable": "this.props.disable",
+                "active": "y",
+                "onClick": "M",
+                "className": "f||\"\""
+              },
+              "offset": 681082
+            },
+            {
+              "component": "\"p\"",
+              "props": {
+                "className": "widget-switch-tooltip"
+              },
+              "expressions": {},
+              "offset": 681166
+            },
+            {
+              "component": "r.A",
+              "props": {},
+              "expressions": {
+                "text": "u"
+              },
+              "offset": 681224
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "titleRow"
+              },
+              "expressions": {},
+              "offset": 681272
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "title"
+              },
+              "expressions": {},
+              "offset": 681321
+            },
+            {
+              "component": "r.A",
+              "props": {},
+              "expressions": {
+                "text": "n",
+                "allowHtml": "L"
+              },
+              "offset": 681367
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {},
+              "offset": 681410
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "widget-container"
+              },
+              "expressions": {},
+              "offset": 681463
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "b",
+                "id": "t",
+                "style": "T"
+              },
+              "offset": 681520
+            },
+            {
+              "component": "\"p\"",
+              "props": {
+                "className": "widget-body-tooltip"
+              },
+              "expressions": {},
+              "offset": 681619
+            },
+            {
+              "component": "r.A",
+              "props": {},
+              "expressions": {
+                "text": "o"
+              },
+              "offset": 681675
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "warning-fw-update",
+                "style": {
+                  "zIndex": 100
+                }
+              },
+              "expressions": {
+                "onMouseEnter": "e=>{const t=e.clientX,n=e.clientY+25;this._tipX=t,this._tipY=n,this.setState({showFWUpdateTip:!0,tooltipX:t,tooltipY:n})}",
+                "onMouseMove": "e=>{const t=e.clientX,n=e.clientY+25;this._tipX===t&&this._tipY===n||(this._tipX=t,this._tipY=n,this.setState({tooltipX:t,tooltipY:n}))}",
+                "onMouseLeave": "()=>{this.setState({showFWUpdateTip:!1})}"
+              },
+              "offset": 681704
+            },
+            {
+              "component": "r.A",
+              "props": {
+                "text": "FW_UPDATE_REQUIRED"
+              },
+              "expressions": {},
+              "offset": 682118
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "warning-fw-update-tip"
+              },
+              "expressions": {
+                "style": "{top:this.state.tooltipY,left:this.state.tooltipX}"
+              },
+              "offset": 682179
+            },
+            {
+              "component": "r.A",
+              "props": {
+                "text": "FW_UPDATE_MESSAGE"
+              },
+              "expressions": {},
+              "offset": 682296
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/main.899712fe.js",
+              "offset": 310198,
+              "end": 312473,
+              "source": "(){var e;const{id:t,title:n,tips:i,centerTips:o,children:s,hasSwitch:p=!1,disableSwitchTips:u,extraClass:A,customStyle:T,extraTitle:I,besideTitle:h,increaseZIndex:O,supportsShortcut:S,disable:D,renderShortcut:C,keyPressed:f,hasTutorialButton:g,currentFWVersion:v,hasFWUpdate:m=!1,fwUpdateComponent:N,ignoreBottomOverflow:R=!1,allowHtml:L}=this.props,{toggleSwitch:M}=this,{active:y}=this.state,P=(null===(e=E.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},U=(0,_.ju)(N,P,v)&&m;var b=`widget ${A||\"\"} ${O?\"increase-zindex\":\"\"} ${U?\"disabled\":\"\"}`,w=void 0!==i?(0,d.jsxs)(d.Fragment,{children:[(0,d.jsx)(\"div\",{className:\"help\",role:\"button\",\"aria-label\":(0,l.JN)(i),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,d.jsx)(\"div\",{className:\"tip\",ref:this.tipDiv,children:\"string\"!==typeof i?i:(0,d.jsx)(r.A,{text:i})}),g?(0,d.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,x=p?(0,d.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,d.jsx)(a.A,{disable:this.props.disable,active:y,onClick:M,className:f||\"\"}),u&&D?(0,d.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,d.jsx)(r.A,{text:u})}):null]}):null,G=\"\"!==n?(0,d.jsxs)(\"div\",{className:\"titleRow\",children:[(0,d.jsxs)(\"div\",{className:\"title\",children:[(0,d.jsx)(r.A,{text:n,allowHtml:L}),x,h]}),(0,d.jsx)(\"div\",{children:I}),S?C:null]}):null;return(0,d.jsxs)(\"div\",{className:\"widget-container\",children:[(0,d.jsxs)(\"div\",{className:b,id:t,style:T,children:[G,s,w]}),o&&(b.includes(\"disabled\")||!1===y)&&(0,d.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,d.jsx)(r.A,{text:o})}),U&&(0,d.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const t=e.clientX,n=e.clientY+25;this._tipX=t,this._tipY=n,this.setState({showFWUpdateTip:!0,tooltipX:t,tooltipY:n})},onMouseMove:e=>{const t=e.clientX,n=e.clientY+25;this._tipX===t&&this._tipY===n||(this._tipX=t,this._tipY=n,this.setState({tooltipX:t,tooltipY:n}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,d.jsx)(r.A,{text:c.AG3})}),U&&this.state.showFWUpdateTip&&(0,d.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,d.jsx)(r.A,{text:c.ssg})})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 45396,
+          "end": 45443,
+          "source": "()=>(0,A.jsx)(\"img\",{src:N,alt:\"\",className:x})",
+          "jsx": [
+            {
+              "component": "\"img\"",
+              "props": {
+                "alt": "",
+                "className": "HyperPollingWirelessMouseDock_hyperSpeedIcon__XATX8"
+              },
+              "expressions": {
+                "src": "N"
+              },
+              "offset": 360211
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 5827,
+          "end": 6167,
+          "source": "class $ extends n.PureComponent{render(){return(0,A.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",...this.props,children:(0,A.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})})}}",
+          "jsx": [
+            {
+              "component": "\"svg\"",
+              "props": {
+                "width": 20,
+                "height": 20,
+                "viewBox": "0 0 20 20"
+              },
+              "expressions": {},
+              "offset": 320685
+            },
+            {
+              "component": "\"path\"",
+              "props": {
+                "d": "M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z",
+                "fill": "#fd8611"
+              },
+              "expressions": {},
+              "offset": 320764
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+              "offset": 5865,
+              "end": 6166,
+              "source": "(){return(0,A.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",...this.props,children:(0,A.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 48748,
+          "end": 54333,
+          "source": "()=>{var e;const s=(0,c.useDispatch)(),t=(0,c.useSelector)(e=>{var s;return null!==(s=e.deviceReducer.pairedInfo)&&void 0!==s?s:[]}),i=(0,te.mF)((0,c.useSelector)(e=>e.languageReducer.lang)),o=null!==(e=(0,c.useSelector)(e=>e.commonReducer.validDevices))&&void 0!==e?e:[],{connectedRuntime:u,refreshConnectedRuntime:p}=ps(),I=(0,n.useMemo)(()=>t.some(e=>hs(e,o,u,d.DeviceInfo.productId)),[t,o,u]),v=(0,n.useMemo)(()=>!!d.DeviceInfo.showOriginalDongleConnectedWarning&&_s({pairedInfo:t,validDevices:o,connectedRuntime:u,dockDongleId:d.DeviceInfo.dongleId,dockProductId:d.DeviceInfo.productId}),[o,t,u]),D=a().useCallback(()=>{((e,s)=>{var t;null===(t=window.mwBroadcastChannel)||void 0===t||t.postMessage({type:e,payload:s,timerTick:Date.now()})})(\"DUALLINK_BIND_INFO\",{})},[]);a().useEffect(()=>{const e=e=>{let{msgData:t}=e;const{type:n,payload:a}=t;if(\"DUALLINK_BIND_INFO\"===n){const e=Array.isArray(a)?a:[];return s((0,Le.ss)(e)),void p()}\"DUALLINK_BIND_DEVICE\"!==n&&\"DUALLINK_UNBIND_DEVICE\"!==n&&\"SLAVE_CONNECT_EVENT\"!==n||(D(),p())};return M.A.onBCEvent(se.qg.MW_RESPONSE_UI,e),()=>{M.A.offBCEvent(se.qg.MW_RESPONSE_UI,e)}},[s,D,p]),a().useEffect(()=>{D(),p()},[o,D,p]);const N=(0,c.useSelector)(e=>e.deviceReducer.isDualLinkWarning);a().useEffect(()=>{N&&(s((0,Le.xt)(!1)),s((0,Le.AC)(!0)))},[N,s]);const x=(0,n.useMemo)(()=>t.find(e=>\"MOUSE\"===e.category),[t]),H=(0,n.useMemo)(()=>t.find(e=>\"KEYBOARD\"===e.category),[t]),W=(0,n.useMemo)(()=>d.DeviceInfo.showBothDevicesConnectedWarning&&we(t),[t]),K=(0,n.useMemo)(()=>t.some(e=>Cs(e.productId,e.serialNumber)),[t]),Y=(0,n.useMemo)(()=>t.filter(e=>hs(e,o,u,d.DeviceInfo.productId)).some(e=>Cs(e.productId,e.serialNumber)),[t,o,u]),J=(0,n.useMemo)(()=>t.length>1&&(W||I),[t.length,W,I]),V=!W&&(I?Y:K),z=a().useCallback(async e=>{var s;if(null===e||void 0===e||!e.productId||!Es(e,o))return;const t=xs(e.productId),n=((e,s,t,n)=>{const a=xs(null===e||void 0===e?void 0:e.productId),i=s.find(e=>xs(e.productId)===a);if(null!==i&&void 0!==i&&i.deviceContainerId)return i.deviceContainerId;const o=t.find(e=>xs(e.productId)===a&&\"ready\"===e.setupStatus);if(null!==o&&void 0!==o&&o.deviceContainerId)return o.deviceContainerId;const c=xs(n);if(null!=c){var d;const e=t.find(e=>xs(e.productId)===c&&\"ready\"===e.setupStatus),s=null===e||void 0===e||null===(d=e.subDevices)||void 0===d?void 0:d.find(e=>xs(e.productId)===a);if(null!==s&&void 0!==s&&s.deviceContainerId)return s.deviceContainerId}return\"\"})(e,o,u,d.DeviceInfo.productId),a=(0,F.Oh)(e.productId,!0,n),i=(0,F.Oh)(e.productId,!1,n),c=(e=>\"KEYBOARD\"===(null===e||void 0===e?void 0:e.category)?r.M9m:r.hIF)(e),l=\"https://apps.razer.com/synapse\";if(await(0,G.id)(a,!1)&&\"function\"===typeof rs.A.activateWindowServiceClient)return(0,G.yH)(a,c,!0),void fs(a,c);let A=200;const p=await(0,G.id)(i,!1),I=null===p||void 0===p||null===(s=p.url)||void 0===s?void 0:s.match(/\\/synapse\\/.*/);if(null!==I&&void 0!==I&&I[0]){const e=I[0].replace(/mw/g,\"ui\");window.open(e,a,[\"shouldFocus=1\",\"policy=3,tab_visible=1\",`subTab=${c}`].join(\",\"))}else{const e=n?`${l}/synapse/products/${t}/ui/index.html?containerId=${n}`:`${l}/synapse/products/${t}/ui/index.html`;window.open(e,a,[\"shouldFocus=1\",\"policy=3,tab_visible=1\",`subTab=${c}`].join(\",\")),A=400}fs(a,c,A)},[o,u]),q=e=>{if(!e)return null;const s=((e,s)=>{const t=Ds(e,s);return t?t.toLowerCase().replace(/\\b\\w/g,e=>e.toUpperCase()):\"\"})(e,i),t=Es(e,o),{prefix:n,suffix:a}=(e=>{const s=(0,te.mF)(e),t=(0,te.JN)(r.yWF,{deviceName:ms,_lang:s}),n=t.indexOf(ms);return n<0?{prefix:\"Paired with \",suffix:\".\"}:{prefix:t.slice(0,n),suffix:t.slice(n+15)}})(i);return(0,A.jsxs)(\"div\",{className:_,children:[n,t?(0,A.jsx)(\"span\",{className:`hyperpolling-span-hover ${U}`,onClick:()=>z(e),children:(0,A.jsx)(\"u\",{children:s})}):(0,A.jsx)(\"span\",{children:s}),a]},e.productId)},Z=(e,s)=>{if(!e)return null;const t=Ds(e,i),n=Es(e,o);return(0,A.jsxs)(\"div\",{className:j,children:[(0,A.jsx)(\"span\",{children:Ns(s,i)}),\": \",n?(0,A.jsx)(\"span\",{className:`hyperpolling-span-hover ${U}`,onClick:()=>z(e),children:(0,A.jsx)(\"u\",{children:t})}):(0,A.jsx)(\"span\",{children:t})]},e.productId)},$=a().useCallback(()=>{let{close:e}=X({title:r.CfR,view:(0,A.jsx)(ds,{deviceInfo:d.DeviceInfo,closeDialog:()=>{setTimeout(()=>{e&&e(),e=null},1e3)}}),extraClass:oe,headerClass:ce,closeClass:de,bodyClass:le},()=>{})},[]),ne=t.length>0;return(0,A.jsx)(Q.A,{title:r.f9h,tips:d.DeviceInfo.widgetTips,children:ne?(0,A.jsxs)(\"div\",{className:\"img-text\",children:[(0,A.jsxs)(\"div\",{className:`${m} ${y}`,children:[(0,A.jsx)(vs,{}),(0,A.jsxs)(\"div\",{className:S,children:[(0,A.jsxs)(\"div\",{className:`${E} ${R}`,children:[(0,A.jsx)(\"div\",{className:P,children:J?(0,A.jsxs)(A.Fragment,{children:[Z(x,r.kBv),Z(H,r.WQi)]}):1===t.length?q(t[0]):(0,A.jsxs)(A.Fragment,{children:[q(x),q(H)]})}),V?(0,A.jsx)(\"div\",{className:`${h} ${b}`,children:(0,A.jsx)(l.A,{text:I?r.Lps:r.VYK})}):null]}),(0,A.jsx)(\"div\",{className:`${g} ${C}`,onClick:$,children:(0,A.jsx)(l.A,{text:r.ssI})})]})]}),W?(0,A.jsxs)(\"div\",{className:`img-text flex ${O}`,children:[(0,A.jsx)(\"span\",{className:w,\"aria-hidden\":\"true\"}),(0,A.jsx)(\"div\",{className:B,children:(0,A.jsx)(\"p\",{children:(0,A.jsx)(l.A,{text:r.ITG,data:{deviceName:F.Ky.onLang(i).productName}})})})]}):null,v&&(0,A.jsxs)(\"div\",{className:`img-text flex ${T}`,children:[(0,A.jsx)(ee,{className:k}),(0,A.jsx)(\"span\",{className:L,children:(0,A.jsx)(l.A,{text:r.$0G})})]})]}):(0,A.jsxs)(\"div\",{className:`img-text flex ${f}`,children:[(0,A.jsx)(vs,{}),(0,A.jsx)(\"div\",{className:\"external\",onClick:$,children:(0,A.jsx)(l.A,{text:r.JSN})})]})})}",
+          "jsx": [
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_pairedTitle__P6+-O"
+              },
+              "expressions": {},
+              "offset": 367165
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`hyperpolling-span-hover ${U}`",
+                "onClick": "()=>z(e)"
+              },
+              "offset": 367209
+            },
+            {
+              "component": "\"u\"",
+              "props": {},
+              "expressions": {},
+              "offset": 367294
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {},
+              "offset": 367324
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_deviceRow__mUZXV"
+              },
+              "expressions": {},
+              "offset": 367433
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {},
+              "offset": 367473
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {
+                "className": "`hyperpolling-span-hover ${U}`",
+                "onClick": "()=>z(e)"
+              },
+              "offset": 367517
+            },
+            {
+              "component": "\"u\"",
+              "props": {},
+              "expressions": {},
+              "offset": 367602
+            },
+            {
+              "component": "\"span\"",
+              "props": {},
+              "expressions": {},
+              "offset": 367632
+            },
+            {
+              "component": "ds",
+              "props": {
+                "deviceInfo": {
+                  "deviceName": "Razer Mouse Dock V2 Pro",
+                  "productId": 241,
+                  "dongleId": 241,
+                  "vendorId": 5426,
+                  "masterGuideURL": "https://dl.razer.com/master-guides/RazerSynapse4/MOUSEDOCKV2PRO-00000241-",
+                  "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/21069",
+                  "WAVE_DIRECTION": "CWCCW",
+                  "category": "ACCESSORY",
+                  "canPairTwoDevices": true,
+                  "isPairingDock": true,
+                  "showBothDevicesConnectedWarning": true,
+                  "showOriginalDongleConnectedWarning": true,
+                  "widgetTips": "MOUSE_DOCK_MULTI_DEVICE_DUALINK_PROPERTIES_TOOLTIP",
+                  "pairingDescription": "MOUSE_DOCK_DUALINK_PROPERTIES_TOOLTIP",
+                  "claimInterface": 3,
+                  "latestVersionInfo": [],
+                  "UseSVGForProductImage": true
+                }
+              },
+              "expressions": {
+                "closeDialog": "()=>{setTimeout(()=>{e&&e(),e=null},1e3)}"
+              },
+              "offset": 367735
+            },
+            {
+              "component": "Q.A",
+              "props": {
+                "title": "HYPER_SPEED_MULTI_DEVICE_PAIRING",
+                "tips": "MOUSE_DOCK_MULTI_DEVICE_DUALINK_PROPERTIES_TOOLTIP"
+              },
+              "expressions": {},
+              "offset": 367919
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "img-text"
+              },
+              "expressions": {},
+              "offset": 367987
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${m} ${y}`"
+              },
+              "offset": 368036
+            },
+            {
+              "component": "vs",
+              "props": {},
+              "expressions": {},
+              "offset": 368086
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_pairedContentGroup__4-VLu"
+              },
+              "expressions": {},
+              "offset": 368103
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${E} ${R}`"
+              },
+              "offset": 368143
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_deviceList__oshsQ"
+              },
+              "expressions": {},
+              "offset": 368193
+            },
+            {
+              "component": "A.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 368233
+            },
+            {
+              "component": "A.Fragment",
+              "props": {},
+              "expressions": {},
+              "offset": 368312
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${h} ${b}`"
+              },
+              "offset": 368362
+            },
+            {
+              "component": "l.A",
+              "props": {},
+              "expressions": {
+                "text": "I?r.Lps:r.VYK"
+              },
+              "offset": 368410
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`${g} ${C}`",
+                "onClick": "$"
+              },
+              "offset": 368456
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "UNPAIR"
+              },
+              "expressions": {},
+              "offset": 368514
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`img-text flex ${O}`"
+              },
+              "offset": 368552
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_bothDevicesPollingCappedIcon__tpNTT",
+                "aria-hidden": "true"
+              },
+              "expressions": {},
+              "offset": 368611
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_bothDevicesPollingCappedText__wp48D"
+              },
+              "expressions": {},
+              "offset": 368664
+            },
+            {
+              "component": "\"p\"",
+              "props": {},
+              "expressions": {},
+              "offset": 368702
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "MOUSE_DOCK_PRO_DUAL_DEVICE_POLLING_RATE_WARNING"
+              },
+              "expressions": {
+                "data": "{deviceName:F.Ky.onLang(i).productName}"
+              },
+              "offset": 368726
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`img-text flex ${T}`"
+              },
+              "offset": 368814
+            },
+            {
+              "component": "ee",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_dongleWarningIcon__7rBUC"
+              },
+              "expressions": {},
+              "offset": 368873
+            },
+            {
+              "component": "\"span\"",
+              "props": {
+                "className": "HyperPollingWirelessMouseDock_dongleWarningText__zNF1P"
+              },
+              "expressions": {},
+              "offset": 368901
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "MOUSE_DOCK_ORIGINAL_DONGLE_WARNING"
+              },
+              "expressions": {},
+              "offset": 368940
+            },
+            {
+              "component": "\"div\"",
+              "props": {},
+              "expressions": {
+                "className": "`img-text flex ${f}`"
+              },
+              "offset": 368976
+            },
+            {
+              "component": "vs",
+              "props": {},
+              "expressions": {},
+              "offset": 369035
+            },
+            {
+              "component": "\"div\"",
+              "props": {
+                "className": "external"
+              },
+              "expressions": {
+                "onClick": "$"
+              },
+              "offset": 369052
+            },
+            {
+              "component": "l.A",
+              "props": {
+                "text": "OPEN_PAIRING_UTILITY"
+              },
+              "expressions": {},
+              "offset": 369109
+            }
+          ],
+          "render": []
+        },
+        {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "offset": 54400,
+          "end": 54531,
+          "source": "class bs extends n.Component{render(){return(0,A.jsxs)(i.A,{children:[(0,A.jsx)(Us,{}),(0,A.jsx)(js,{deviceInfo:d.DeviceInfo})]})}}",
+          "jsx": [
+            {
+              "component": "i.A",
+              "props": {},
+              "expressions": {},
+              "offset": 369255
+            },
+            {
+              "component": "Us",
+              "props": {},
+              "expressions": {},
+              "offset": 369281
+            },
+            {
+              "component": "js",
+              "props": {
+                "deviceInfo": {
+                  "deviceName": "Razer Mouse Dock V2 Pro",
+                  "productId": 241,
+                  "dongleId": 241,
+                  "vendorId": 5426,
+                  "masterGuideURL": "https://dl.razer.com/master-guides/RazerSynapse4/MOUSEDOCKV2PRO-00000241-",
+                  "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/21069",
+                  "WAVE_DIRECTION": "CWCCW",
+                  "category": "ACCESSORY",
+                  "canPairTwoDevices": true,
+                  "isPairingDock": true,
+                  "showBothDevicesConnectedWarning": true,
+                  "showOriginalDongleConnectedWarning": true,
+                  "widgetTips": "MOUSE_DOCK_MULTI_DEVICE_DUALINK_PROPERTIES_TOOLTIP",
+                  "pairingDescription": "MOUSE_DOCK_DUALINK_PROPERTIES_TOOLTIP",
+                  "claimInterface": 3,
+                  "latestVersionInfo": [],
+                  "UseSVGForProductImage": true
+                }
+              },
+              "expressions": {},
+              "offset": 369298
+            }
+          ],
+          "render": [
+            {
+              "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+              "offset": 54435,
+              "end": 54530,
+              "source": "(){return(0,A.jsxs)(i.A,{children:[(0,A.jsx)(Us,{}),(0,A.jsx)(js,{deviceInfo:d.DeviceInfo})]})}"
+            }
+          ]
+        },
+        {
+          "path": ".ref/devices/241/static/js/11.219fb515.chunk.js",
+          "offset": 311178,
+          "end": 311202,
+          "source": "(0,C.jsx)(Oi.default,{})",
+          "jsx": [
+            {
+              "component": "Oi.default",
+              "props": {},
+              "expressions": {},
+              "offset": 311178
+            }
+          ],
+          "render": []
+        }
+      ],
+      "default_props": [
+        {
+          "values": {
+            "data": {},
+            "clickableData": false,
+            "onClick": null,
+            "underlineData": false,
+            "capitalizeFirst": false,
+            "allowHtml": false,
+            "onMouseEnter": null,
+            "onMouseLeave": null
+          },
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 3876,
+          "end": 4015,
+          "source": "c.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null}"
+        },
+        {
+          "values": {
+            "allowHtml": false
+          },
+          "path": ".ref/devices/241/static/js/main.899712fe.js",
+          "offset": 312474,
+          "end": 312503,
+          "source": "p.defaultProps={allowHtml:!1}"
+        },
+        {
+          "values": {
+            "position": "bottom-right",
+            "className": ""
+          },
+          "path": ".ref/devices/241/static/js/855.b3260189.chunk.js",
+          "offset": 15782,
+          "end": 15822,
+          "source": "u.defaultProps={position:l,className:\"\"}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1534 @@
+{
+  "method": "Acorn lexical resolution of mounted source components; no vendor execution",
+  "generator_sha256": "62a66f9141b7c923e0909bc012e46d83e07cbe7288de674dcf1252bdf8910de3",
+  "resolver_sha256": "fb74171c7186a5cb1b3db2b2dc64bf99c259e9cccc964cd9db7aa362c3d688f8",
+  "products": [
+    {
+      "product_id": 1392,
+      "name": "RAZER CLIO",
+      "source_files": [
+        {
+          "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+          "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489"
+        }
+      ],
+      "pages": [
+        {
+          "key": "TAB_DEMO",
+          "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+          "offset": 5758101,
+          "component": {
+            "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+            "offset": 5758134,
+            "end": 5758151,
+            "source": "(0,Be.jsx)(uG,{})"
+          },
+          "route": null,
+          "components": [
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 277673,
+              "end": 278934,
+              "source": "e=>{let t=e.text,a=e.data,n=e.lang,s=e.clickableData,T=e.onClick,O=e.underlineData,I=e.capitalizeFirst,A=e.allowHtml,l=e.onMouseEnter,S=e.onMouseLeave;\"string\"!==typeof t&&(t=\"\");const R=((e,t)=>{const a={};for(const E of Object.keys(e||{}))a[E]=r(e[E],t);return a})(a,n);if(O){let e=(0,_.JN)(t,(0,E.A)((0,E.A)({},R),{},{_lang:n}));e=o(e,I);const a=Object.keys(R).reduce((e,t)=>{const a=R[t],E=\"string\"===typeof a?a:String(null!==a&&void 0!==a?a:\"\");if(E.length>0&&e.includes(E)){const a=e.split(E),n=[];O&&n.push(\"translator-underline\"),s&&n.push(\"translator-clickable\");const _=n.join(\" \"),o=e=>(0,i.jsx)(\"span\",{className:_,onClick:s?()=>T&&T(E,t):void 0,onMouseEnter:l,onMouseLeave:S,role:s?\"button\":void 0,tabIndex:s?0:void 0,style:{opacity:!1===s?.3:1},children:E},\"\".concat(t,\"-\").concat(e)),r=[a[0]];for(let e=1;e<a.length;e++)r.push(o(e),a[e]);return r}return e},e);return(0,i.jsxs)(i.Fragment,{children:[(0,i.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),a]})}let c=(0,_.JN)(t,(0,E.A)((0,E.A)({},R),{},{_lang:n}));return c=o(c,I),A&&\"string\"===typeof c?(0,i.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:c}}):(0,i.jsx)(i.Fragment,{children:c})}",
+              "jsx": [
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "_",
+                    "onClick": "s?()=>T&&T(E,t):void 0",
+                    "onMouseEnter": "l",
+                    "onMouseLeave": "S",
+                    "role": "s?\"button\":void 0",
+                    "tabIndex": "s?0:void 0",
+                    "style": "{opacity:!1===s?.3:1}"
+                  },
+                  "offset": 278270
+                },
+                {
+                  "component": "i.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 278554
+                },
+                {
+                  "component": "\"style\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 278587
+                },
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "dangerouslySetInnerHTML": "{__html:c}"
+                  },
+                  "offset": 278844
+                },
+                {
+                  "component": "i.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 278899
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5712400,
+              "end": 5713386,
+              "source": "e=>{let t=e.showVideo,a=e.videoSrc,E=e.onTimeUpdate,n=e.playerRef,_=e.currentTime;const i=(0,H.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),o=(0,H.useDispatch)();(0,f.useLayoutEffect)(()=>{t&&n.current&&n.current.seek(null!==_&&void 0!==_?_:0)},[t,n,_]),(0,f.useEffect)(()=>{i.isPlaying||n.current.pause()},[i.isPlaying]);return(0,Be.jsxs)(SG.ai,{ref:n,src:a,preload:\"auto\",autoPlay:t,playsInline:t,onTimeUpdate:E,onEnded:()=>{if(n.current){o(RG({isPlaying:!0})),n.current.seek(0),n.current.play().catch(console.warn)}},className:\"custom-video-react \".concat(t?\"video-visible\":\"video-hidden\"),children:[(0,Be.jsx)(SG.Fn,{position:\"center\",className:\"custom-video-react-big-play-button\"}),(0,Be.jsx)(SG.kt,{}),(0,Be.jsxs)(SG.hf,{autoHide:!1,disableDefaultControls:!0,className:\"custom-control-bar\",children:[(0,Be.jsx)(SG.zA,{className:\"custom-play-toggle\"}),(0,Be.jsx)(SG.VB,{className:\"custom-progress-bar\"}),(0,Be.jsx)(SG.Wc,{className:\"custom-fullscreen-toggle\"})]})]})}",
+              "jsx": [
+                {
+                  "component": "SG.ai",
+                  "props": {
+                    "preload": "auto"
+                  },
+                  "expressions": {
+                    "ref": "n",
+                    "src": "a",
+                    "autoPlay": "t",
+                    "playsInline": "t",
+                    "onTimeUpdate": "E",
+                    "onEnded": "()=>{if(n.current){o(RG({isPlaying:!0})),n.current.seek(0),n.current.play().catch(console.warn)}}",
+                    "className": "\"custom-video-react \".concat(t?\"video-visible\":\"video-hidden\")"
+                  },
+                  "offset": 5712741
+                },
+                {
+                  "component": "SG.Fn",
+                  "props": {
+                    "position": "center",
+                    "className": "custom-video-react-big-play-button"
+                  },
+                  "expressions": {},
+                  "offset": 5713016
+                },
+                {
+                  "component": "SG.kt",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 5713101
+                },
+                {
+                  "component": "SG.hf",
+                  "props": {
+                    "autoHide": false,
+                    "disableDefaultControls": true,
+                    "className": "custom-control-bar"
+                  },
+                  "expressions": {},
+                  "offset": 5713122
+                },
+                {
+                  "component": "SG.zA",
+                  "props": {
+                    "className": "custom-play-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 5713220
+                },
+                {
+                  "component": "SG.VB",
+                  "props": {
+                    "className": "custom-progress-bar"
+                  },
+                  "expressions": {},
+                  "offset": 5713271
+                },
+                {
+                  "component": "SG.Wc",
+                  "props": {
+                    "className": "custom-fullscreen-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 5713323
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 280497,
+              "end": 280779,
+              "source": "function(e){return(0,n.jsx)(\"svg\",(0,E.A)((0,E.A)({xmlns:\"http://www.w3.org/2000/svg\",xmlnsXlink:\"http://www.w3.org/1999/xlink\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\"},e),{},{children:(0,n.jsx)(\"g\",{children:(0,n.jsx)(\"path\",{d:\"M0,16V0L12,8Z\",transform:\"translate(5 2)\"})})}))}",
+              "jsx": [
+                {
+                  "component": "\"svg\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 280515
+                },
+                {
+                  "component": "\"g\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 280685
+                },
+                {
+                  "component": "\"path\"",
+                  "props": {
+                    "d": "M0,16V0L12,8Z",
+                    "transform": "translate(5 2)"
+                  },
+                  "expressions": {},
+                  "offset": 280709
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5362916,
+              "end": 5362981,
+              "source": "e=>e.isMounted?(0,Be.jsx)(\"div\",{className:\"spinner-razer\"}):null",
+              "jsx": [
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "spinner-razer"
+                  },
+                  "expressions": {},
+                  "offset": 5362931
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5362982,
+              "end": 5364417,
+              "source": "class cP extends f.Component{constructor(e){super(e),this.checkMe=e=>{e.stopPropagation(),this.props.onCheck()};const t=this.props,a=t.active,E=t.disabled;this.state={active:a,disabled:E},this.id=(0,$e.gZ)()}componentDidUpdate(e){const t=this.props,a=t.active,E=t.disabled;a!==e.active&&this.setState({active:a}),E!==e.disabled&&this.setState({disabled:E})}render(){const e=this.props,t=e.name,a=e.extraClass,E=e.isSpinner,n=this.state,_=n.active,i=n.disabled,o=this.checkMe,r=this.id;var s=\"check-item \".concat(a||\"\",\" \").concat(i?\"disabled\":\"\");let T=E?(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsxs)(\"div\",{style:{display:\"inline-block\"},className:s,children:[(0,Be.jsx)(\"input\",{type:\"checkbox\",id:r,checked:_||!1,onChange:o}),(0,Be.jsx)(\"label\",{htmlFor:r,className:\"check-box\"})]}),(0,Be.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,Be.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,Be.jsx)(ve.A,{text:t}):t}),(0,Be.jsx)(RP,{isMounted:!0}),(0,Be.jsx)(\"div\",{className:\"checkingTip\",children:(0,Be.jsx)(ve.A,{text:He.TEXT_CHECKING})})]})]}):(0,Be.jsxs)(\"div\",{className:s,onMouseDown:e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},children:[(0,Be.jsx)(\"input\",{type:\"checkbox\",id:r,checked:_||!1,onChange:o}),(0,Be.jsx)(\"label\",{htmlFor:r,className:\"check-box\",children:(0,Be.jsx)(\"div\",{className:\"check-text \".concat(a),children:\"string\"===typeof t?(0,Be.jsx)(ve.A,{text:t}):t})})]});return T}}",
+              "jsx": [
+                {
+                  "component": "Be.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 5363537
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "display": "inline-block"
+                    }
+                  },
+                  "expressions": {
+                    "className": "s"
+                  },
+                  "offset": 5363572
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "r",
+                    "checked": "_||!1",
+                    "onChange": "o"
+                  },
+                  "offset": 5363644
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "r"
+                  },
+                  "offset": 5363712
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "lable-spinner"
+                  },
+                  "expressions": {},
+                  "offset": 5363769
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "check-text"
+                  },
+                  "expressions": {},
+                  "offset": 5363824
+                },
+                {
+                  "component": "ve.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 5363894
+                },
+                {
+                  "component": "RP",
+                  "props": {
+                    "isMounted": true
+                  },
+                  "expressions": {},
+                  "offset": 5363924
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "checkingTip"
+                  },
+                  "expressions": {},
+                  "offset": 5363954
+                },
+                {
+                  "component": "ve.A",
+                  "props": {
+                    "text": "TEXT_CHECKING"
+                  },
+                  "expressions": {},
+                  "offset": 5364005
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "s",
+                    "onMouseDown": "e=>{this.props.onMouseDown&&this.props.onMouseDown(e)}"
+                  },
+                  "offset": 5364054
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "r",
+                    "checked": "_||!1",
+                    "onChange": "o"
+                  },
+                  "offset": 5364162
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "r"
+                  },
+                  "offset": 5364230
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "\"check-text \".concat(a)"
+                  },
+                  "offset": 5364291
+                },
+                {
+                  "component": "ve.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 5364372
+                }
+              ],
+              "render": [
+                {
+                  "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+                  "offset": 5363345,
+                  "end": 5364416,
+                  "source": "(){const e=this.props,t=e.name,a=e.extraClass,E=e.isSpinner,n=this.state,_=n.active,i=n.disabled,o=this.checkMe,r=this.id;var s=\"check-item \".concat(a||\"\",\" \").concat(i?\"disabled\":\"\");let T=E?(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsxs)(\"div\",{style:{display:\"inline-block\"},className:s,children:[(0,Be.jsx)(\"input\",{type:\"checkbox\",id:r,checked:_||!1,onChange:o}),(0,Be.jsx)(\"label\",{htmlFor:r,className:\"check-box\"})]}),(0,Be.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,Be.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,Be.jsx)(ve.A,{text:t}):t}),(0,Be.jsx)(RP,{isMounted:!0}),(0,Be.jsx)(\"div\",{className:\"checkingTip\",children:(0,Be.jsx)(ve.A,{text:He.TEXT_CHECKING})})]})]}):(0,Be.jsxs)(\"div\",{className:s,onMouseDown:e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},children:[(0,Be.jsx)(\"input\",{type:\"checkbox\",id:r,checked:_||!1,onChange:o}),(0,Be.jsx)(\"label\",{htmlFor:r,className:\"check-box\",children:(0,Be.jsx)(\"div\",{className:\"check-text \".concat(a),children:\"string\"===typeof t?(0,Be.jsx)(ve.A,{text:t}):t})})]});return T}"
+                }
+              ]
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5713390,
+              "end": 5714936,
+              "source": "()=>{const e=(0,f.useState)(!1),t=(0,Ge.A)(e,2),E=t[0],n=t[1],_=(0,f.useState)(null),i=(0,Ge.A)(_,2),o=i[0],r=i[1],s=(0,H.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),T=(0,H.useDispatch)(),O=(0,f.useRef)(null),I=(0,f.useRef)(s.currentTime),A=(0,H.useSelector)(e=>e.floatingVideoReducer.demoFloatingVideoEnabled);(0,f.useEffect)(()=>{let e=!0;T(cG(!1));return(async()=>{const t=await(0,$e.j8)(\"/synapse/assets/videos/audio_mode.mov\");e&&r(t)})(),s.currentTime>0&&n(!0),()=>{e=!1}},[]);const l=(0,f.useCallback)(()=>{if(!O.current)return;const e={currentTime:O.current.getState().player.currentTime,isPlaying:!O.current.getState().player.paused};T(RG(e))},[T]);return(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsx)(\"div\",{style:{textAlign:\"center\",fontSize:14},children:(0,Be.jsx)(ve.A,{text:He.DEMO_TITLE_DESC})}),(0,Be.jsxs)(\"div\",{className:\"demo-body\",children:[o&&(0,Be.jsx)(dG,{showVideo:E,videoSrc:o,onTimeUpdate:l,playerRef:O,currentTime:I.current}),!E&&(0,Be.jsx)(\"div\",{className:\"demo-preview\",children:(0,Be.jsxs)(\"div\",{className:\"btn-image box\",onClick:()=>{O.current.play(),n(!0)},role:\"button\",tabIndex:0,\"aria-label\":\"Play demo video\",children:[(0,Be.jsx)(\"img\",{src:a(2222),className:\"image\",alt:\"Demo preview\"}),(0,Be.jsx)(\"div\",{className:\"icon\",children:(0,Be.jsx)(lG.default,{})})]})})]}),(0,Be.jsx)(\"div\",{className:\"floating-video-checkbox-wrapper\",children:(0,Be.jsx)(dP,{onCheck:()=>{var e;(e=!A,t=>{t({type:Ee.WQv,payload:e})})(T)},name:(0,Be.jsx)(ve.A,{text:He.FLOATING_VIDEO_CHECKBOX_LABEL}),active:A})})]})}",
+              "jsx": [
+                {
+                  "component": "Be.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 5714068
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "textAlign": "center",
+                      "fontSize": 14
+                    }
+                  },
+                  "expressions": {},
+                  "offset": 5714103
+                },
+                {
+                  "component": "ve.A",
+                  "props": {
+                    "text": "DEMO_TITLE_DESC"
+                  },
+                  "expressions": {},
+                  "offset": 5714169
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-body"
+                  },
+                  "expressions": {},
+                  "offset": 5714214
+                },
+                {
+                  "component": "dG",
+                  "props": {},
+                  "expressions": {
+                    "showVideo": "E",
+                    "videoSrc": "o",
+                    "onTimeUpdate": "l",
+                    "playerRef": "O",
+                    "currentTime": "I.current"
+                  },
+                  "offset": 5714268
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-preview"
+                  },
+                  "expressions": {},
+                  "offset": 5714361
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "btn-image box",
+                    "role": "button",
+                    "tabIndex": 0,
+                    "aria-label": "Play demo video"
+                  },
+                  "expressions": {
+                    "onClick": "()=>{O.current.play(),n(!0)}"
+                  },
+                  "offset": 5714413
+                },
+                {
+                  "component": "\"img\"",
+                  "props": {
+                    "className": "image",
+                    "alt": "Demo preview"
+                  },
+                  "expressions": {
+                    "src": "a(2222)"
+                  },
+                  "offset": 5714561
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "icon"
+                  },
+                  "expressions": {},
+                  "offset": 5714630
+                },
+                {
+                  "component": "lG.default",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 5714674
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "floating-video-checkbox-wrapper"
+                  },
+                  "expressions": {},
+                  "offset": 5714710
+                },
+                {
+                  "component": "dP",
+                  "props": {},
+                  "expressions": {
+                    "onCheck": "()=>{var e;(e=!A,t=>{t({type:Ee.WQv,payload:e})})(T)}",
+                    "name": "(0,Be.jsx)(ve.A,{text:He.FLOATING_VIDEO_CHECKBOX_LABEL})",
+                    "active": "A"
+                  },
+                  "offset": 5714781
+                },
+                {
+                  "component": "ve.A",
+                  "props": {
+                    "text": "FLOATING_VIDEO_CHECKBOX_LABEL"
+                  },
+                  "expressions": {},
+                  "offset": 5714863
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5758134,
+              "end": 5758151,
+              "source": "(0,Be.jsx)(uG,{})",
+              "jsx": [
+                {
+                  "component": "uG",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 5758134
+                }
+              ],
+              "render": []
+            }
+          ],
+          "default_props": [
+            {
+              "values": {
+                "data": {},
+                "clickableData": false,
+                "onClick": null,
+                "underlineData": false,
+                "capitalizeFirst": false,
+                "allowHtml": false,
+                "onMouseEnter": null,
+                "onMouseLeave": null
+              },
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 278935,
+              "end": 279074,
+              "source": "s.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 1442,
+      "name": "RAZER CLIO X",
+      "source_files": [
+        {
+          "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+          "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d"
+        },
+        {
+          "path": ".ref/devices/1442/static/js/main.f0649cc4.js",
+          "sha256": "8013923f0ad95a198d2791875c18543eacd709e56dc8cc0c6506be2fb68b760d"
+        },
+        {
+          "path": ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js",
+          "sha256": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b"
+        }
+      ],
+      "pages": [
+        {
+          "key": "TAB_DEMO",
+          "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+          "offset": 559182,
+          "component": {
+            "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+            "offset": 559214,
+            "end": 559230,
+            "source": "(0,R.jsx)(lm,{})"
+          },
+          "route": null,
+          "components": [
+            {
+              "path": ".ref/devices/1442/static/js/main.f0649cc4.js",
+              "offset": 108656,
+              "end": 109917,
+              "source": "e=>{let t=e.text,n=e.data,E=e.lang,s=e.clickableData,T=e.onClick,c=e.underlineData,A=e.capitalizeFirst,O=e.allowHtml,I=e.onMouseEnter,l=e.onMouseLeave;\"string\"!==typeof t&&(t=\"\");const u=((e,t)=>{const n={};for(const _ of Object.keys(e||{}))n[_]=i(e[_],t);return n})(n,E);if(c){let e=(0,r.JN)(t,(0,_.A)((0,_.A)({},u),{},{_lang:E}));e=o(e,A);const n=Object.keys(u).reduce((e,t)=>{const n=u[t],_=\"string\"===typeof n?n:String(null!==n&&void 0!==n?n:\"\");if(_.length>0&&e.includes(_)){const n=e.split(_),E=[];c&&E.push(\"translator-underline\"),s&&E.push(\"translator-clickable\");const r=E.join(\" \"),o=e=>(0,a.jsx)(\"span\",{className:r,onClick:s?()=>T&&T(_,t):void 0,onMouseEnter:I,onMouseLeave:l,role:s?\"button\":void 0,tabIndex:s?0:void 0,style:{opacity:!1===s?.3:1},children:_},\"\".concat(t,\"-\").concat(e)),i=[n[0]];for(let e=1;e<n.length;e++)i.push(o(e),n[e]);return i}return e},e);return(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),n]})}let S=(0,r.JN)(t,(0,_.A)((0,_.A)({},u),{},{_lang:E}));return S=o(S,A),O&&\"string\"===typeof S?(0,a.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:S}}):(0,a.jsx)(a.Fragment,{children:S})}",
+              "jsx": [
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "r",
+                    "onClick": "s?()=>T&&T(_,t):void 0",
+                    "onMouseEnter": "I",
+                    "onMouseLeave": "l",
+                    "role": "s?\"button\":void 0",
+                    "tabIndex": "s?0:void 0",
+                    "style": "{opacity:!1===s?.3:1}"
+                  },
+                  "offset": 688837
+                },
+                {
+                  "component": "a.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 689121
+                },
+                {
+                  "component": "\"style\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 689154
+                },
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "dangerouslySetInnerHTML": "{__html:S}"
+                  },
+                  "offset": 689411
+                },
+                {
+                  "component": "a.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 689466
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 512621,
+              "end": 513867,
+              "source": "e=>{let t=e.showVideo,s=e.videoSrc,i=e.onTimeUpdate,a=e.playerRef,o=e.currentTime;const n=(0,f.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),r=(0,f.useDispatch)(),l=(0,S.useRef)(n.isPlaying);(0,S.useEffect)(()=>{l.current=n.isPlaying},[n.isPlaying]),(0,S.useLayoutEffect)(()=>{if(!t||!s||!a.current)return;(o>0||l.current)&&(l.current?(a.current.seek(null!==o&&void 0!==o?o:0),a.current.play()):(a.current.seek(null!==o&&void 0!==o?o:0),a.current.pause()))},[t,s,a,o]);const c=e=>{a.current&&r(om({currentTime:a.current.getState().player.currentTime,isPlaying:e}))};return(0,R.jsxs)(am.ai,{ref:a,src:s,preload:\"auto\",autoPlay:t&&n.isPlaying,playsInline:t,onTimeUpdate:i,onPlay:()=>c(!0),onPause:()=>c(!1),onEnded:()=>{if(a.current){r(om({currentTime:0,isPlaying:!0})),a.current.play()}},className:\"custom-video-react \".concat(t?\"video-visible\":\"video-hidden\"),children:[(0,R.jsx)(am.Fn,{position:\"center\",className:\"custom-video-react-big-play-button\"}),(0,R.jsx)(am.kt,{}),(0,R.jsxs)(am.hf,{autoHide:!1,disableDefaultControls:!0,className:\"custom-control-bar\",children:[(0,R.jsx)(am.zA,{className:\"custom-play-toggle\"}),(0,R.jsx)(am.VB,{className:\"custom-progress-bar\"}),(0,R.jsx)(am.Wc,{className:\"custom-fullscreen-toggle\"})]})]})}",
+              "jsx": [
+                {
+                  "component": "am.ai",
+                  "props": {
+                    "preload": "auto"
+                  },
+                  "expressions": {
+                    "ref": "a",
+                    "src": "s",
+                    "autoPlay": "t&&n.isPlaying",
+                    "playsInline": "t",
+                    "onTimeUpdate": "i",
+                    "onPlay": "()=>c(!0)",
+                    "onPause": "()=>c(!1)",
+                    "onEnded": "()=>{if(a.current){r(om({currentTime:0,isPlaying:!0})),a.current.play()}}",
+                    "className": "\"custom-video-react \".concat(t?\"video-visible\":\"video-hidden\")"
+                  },
+                  "offset": 513205
+                },
+                {
+                  "component": "am.Fn",
+                  "props": {
+                    "position": "center",
+                    "className": "custom-video-react-big-play-button"
+                  },
+                  "expressions": {},
+                  "offset": 513503
+                },
+                {
+                  "component": "am.kt",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 513587
+                },
+                {
+                  "component": "am.hf",
+                  "props": {
+                    "autoHide": false,
+                    "disableDefaultControls": true,
+                    "className": "custom-control-bar"
+                  },
+                  "expressions": {},
+                  "offset": 513607
+                },
+                {
+                  "component": "am.zA",
+                  "props": {
+                    "className": "custom-play-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 513704
+                },
+                {
+                  "component": "am.VB",
+                  "props": {
+                    "className": "custom-progress-bar"
+                  },
+                  "expressions": {},
+                  "offset": 513754
+                },
+                {
+                  "component": "am.Wc",
+                  "props": {
+                    "className": "custom-fullscreen-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 513805
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 567268,
+              "end": 567550,
+              "source": "function(e){return(0,a.jsx)(\"svg\",(0,i.A)((0,i.A)({xmlns:\"http://www.w3.org/2000/svg\",xmlnsXlink:\"http://www.w3.org/1999/xlink\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\"},e),{},{children:(0,a.jsx)(\"g\",{children:(0,a.jsx)(\"path\",{d:\"M0,16V0L12,8Z\",transform:\"translate(5 2)\"})})}))}",
+              "jsx": [
+                {
+                  "component": "\"svg\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 567286
+                },
+                {
+                  "component": "\"g\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 567456
+                },
+                {
+                  "component": "\"path\"",
+                  "props": {
+                    "d": "M0,16V0L12,8Z",
+                    "transform": "translate(5 2)"
+                  },
+                  "expressions": {},
+                  "offset": 567480
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 170622,
+              "end": 170686,
+              "source": "e=>e.isMounted?(0,R.jsx)(\"div\",{className:\"spinner-razer\"}):null",
+              "jsx": [
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "spinner-razer"
+                  },
+                  "expressions": {},
+                  "offset": 170637
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 170687,
+              "end": 172096,
+              "source": "class _i extends S.Component{constructor(e){super(e),this.checkMe=e=>{e.stopPropagation(),this.props.onCheck()};const t=this.props,s=t.active,i=t.disabled;this.state={active:s,disabled:i},this.id=(0,N.gZ)()}componentDidUpdate(e){const t=this.props,s=t.active,i=t.disabled;s!==e.active&&this.setState({active:s}),i!==e.disabled&&this.setState({disabled:i})}render(){const e=this.props,t=e.name,s=e.extraClass,i=e.isSpinner,a=this.state,o=a.active,n=a.disabled,r=this.checkMe,l=this.id;var c=\"check-item \".concat(s||\"\",\" \").concat(n?\"disabled\":\"\");return i?(0,R.jsxs)(R.Fragment,{children:[(0,R.jsxs)(\"div\",{style:{display:\"inline-block\"},className:c,children:[(0,R.jsx)(\"input\",{type:\"checkbox\",id:l,checked:o||!1,onChange:r}),(0,R.jsx)(\"label\",{htmlFor:l,className:\"check-box\"})]}),(0,R.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,R.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,R.jsx)(te.A,{text:t}):t}),(0,R.jsx)(vi,{isMounted:!0}),(0,R.jsx)(\"div\",{className:\"checkingTip\",children:(0,R.jsx)(te.A,{text:V.TEXT_CHECKING})})]})]}):(0,R.jsxs)(\"div\",{className:c,onMouseDown:e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},children:[(0,R.jsx)(\"input\",{type:\"checkbox\",id:l,checked:o||!1,onChange:r}),(0,R.jsx)(\"label\",{htmlFor:l,className:\"check-box\",children:(0,R.jsx)(\"div\",{className:\"check-text \".concat(s),children:\"string\"===typeof t?(0,R.jsx)(te.A,{text:t}):t})})]})}}",
+              "jsx": [
+                {
+                  "component": "R.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 171242
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "display": "inline-block"
+                    }
+                  },
+                  "expressions": {
+                    "className": "c"
+                  },
+                  "offset": 171275
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "l",
+                    "checked": "o||!1",
+                    "onChange": "r"
+                  },
+                  "offset": 171346
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "l"
+                  },
+                  "offset": 171413
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "lable-spinner"
+                  },
+                  "expressions": {},
+                  "offset": 171469
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "check-text"
+                  },
+                  "expressions": {},
+                  "offset": 171523
+                },
+                {
+                  "component": "te.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 171592
+                },
+                {
+                  "component": "vi",
+                  "props": {
+                    "isMounted": true
+                  },
+                  "expressions": {},
+                  "offset": 171621
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "checkingTip"
+                  },
+                  "expressions": {},
+                  "offset": 171650
+                },
+                {
+                  "component": "te.A",
+                  "props": {
+                    "text": "TEXT_CHECKING"
+                  },
+                  "expressions": {},
+                  "offset": 171700
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "c",
+                    "onMouseDown": "e=>{this.props.onMouseDown&&this.props.onMouseDown(e)}"
+                  },
+                  "offset": 171747
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "l",
+                    "checked": "o||!1",
+                    "onChange": "r"
+                  },
+                  "offset": 171854
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "l"
+                  },
+                  "offset": 171921
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "\"check-text \".concat(s)"
+                  },
+                  "offset": 171981
+                },
+                {
+                  "component": "te.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 172061
+                }
+              ],
+              "render": [
+                {
+                  "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+                  "offset": 171049,
+                  "end": 172095,
+                  "source": "(){const e=this.props,t=e.name,s=e.extraClass,i=e.isSpinner,a=this.state,o=a.active,n=a.disabled,r=this.checkMe,l=this.id;var c=\"check-item \".concat(s||\"\",\" \").concat(n?\"disabled\":\"\");return i?(0,R.jsxs)(R.Fragment,{children:[(0,R.jsxs)(\"div\",{style:{display:\"inline-block\"},className:c,children:[(0,R.jsx)(\"input\",{type:\"checkbox\",id:l,checked:o||!1,onChange:r}),(0,R.jsx)(\"label\",{htmlFor:l,className:\"check-box\"})]}),(0,R.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,R.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,R.jsx)(te.A,{text:t}):t}),(0,R.jsx)(vi,{isMounted:!0}),(0,R.jsx)(\"div\",{className:\"checkingTip\",children:(0,R.jsx)(te.A,{text:V.TEXT_CHECKING})})]})]}):(0,R.jsxs)(\"div\",{className:c,onMouseDown:e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},children:[(0,R.jsx)(\"input\",{type:\"checkbox\",id:l,checked:o||!1,onChange:r}),(0,R.jsx)(\"label\",{htmlFor:l,className:\"check-box\",children:(0,R.jsx)(\"div\",{className:\"check-text \".concat(s),children:\"string\"===typeof t?(0,R.jsx)(te.A,{text:t}):t})})]})}"
+                }
+              ]
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 513871,
+              "end": 515471,
+              "source": "()=>{const e=(0,S.useState)(!1),t=(0,b.A)(e,2),i=t[0],a=t[1],o=(0,S.useState)(null),n=(0,b.A)(o,2),r=n[0],l=n[1],c=(0,f.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),d=(0,f.useDispatch)(),m=(0,S.useRef)(null),p=(0,S.useRef)(c.currentTime),h=(0,f.useSelector)(e=>e.floatingVideoReducer.demoFloatingVideoEnabled),u=(0,S.useRef)(h);u.current=h,(0,S.useEffect)(()=>{let e=!0;d(nm(!1));return(async()=>{const t=await(0,N.j8)(\"/synapse/assets/videos/audio_mode.mov\");e&&l(t)})(),c.isPlaying&&a(!0),()=>{u.current||d(om({isPlaying:!1,currentTime:0})),e=!1}},[]);const g=(0,S.useCallback)(()=>{if(!m.current)return;const e={currentTime:m.current.getState().player.currentTime,isPlaying:!m.current.getState().player.paused};d(om(e))},[d]);return(0,R.jsxs)(R.Fragment,{children:[(0,R.jsx)(\"div\",{style:{textAlign:\"center\",fontSize:14},children:(0,R.jsx)(te.A,{text:V.DEMO_TITLE_DESC})}),(0,R.jsxs)(\"div\",{className:\"demo-body\",children:[r&&(0,R.jsx)(rm,{showVideo:i,videoSrc:r,onTimeUpdate:g,playerRef:m,currentTime:p.current}),!i&&(0,R.jsx)(\"div\",{className:\"demo-preview\",children:(0,R.jsxs)(\"div\",{className:\"btn-image box\",onClick:()=>{m.current.play(),a(!0)},role:\"button\",tabIndex:0,\"aria-label\":\"Play demo video\",children:[(0,R.jsx)(\"img\",{src:s(2222),className:\"image\",alt:\"Demo preview\"}),(0,R.jsx)(\"div\",{className:\"icon\",children:(0,R.jsx)(im.default,{})})]})})]}),(0,R.jsx)(\"div\",{className:\"floating-video-checkbox-wrapper\",children:(0,R.jsx)(Si,{onCheck:()=>{var e;(e=!h,t=>{t({type:nt.WQv,payload:e})})(d)},name:(0,R.jsx)(te.A,{text:V.FLOATING_VIDEO_CHECKBOX_LABEL}),active:h})})]})}",
+              "jsx": [
+                {
+                  "component": "R.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 514619
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "textAlign": "center",
+                      "fontSize": 14
+                    }
+                  },
+                  "expressions": {},
+                  "offset": 514652
+                },
+                {
+                  "component": "te.A",
+                  "props": {
+                    "text": "DEMO_TITLE_DESC"
+                  },
+                  "expressions": {},
+                  "offset": 514717
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-body"
+                  },
+                  "expressions": {},
+                  "offset": 514760
+                },
+                {
+                  "component": "rm",
+                  "props": {},
+                  "expressions": {
+                    "showVideo": "i",
+                    "videoSrc": "r",
+                    "onTimeUpdate": "g",
+                    "playerRef": "m",
+                    "currentTime": "p.current"
+                  },
+                  "offset": 514813
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-preview"
+                  },
+                  "expressions": {},
+                  "offset": 514905
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "btn-image box",
+                    "role": "button",
+                    "tabIndex": 0,
+                    "aria-label": "Play demo video"
+                  },
+                  "expressions": {
+                    "onClick": "()=>{m.current.play(),a(!0)}"
+                  },
+                  "offset": 514956
+                },
+                {
+                  "component": "\"img\"",
+                  "props": {
+                    "className": "image",
+                    "alt": "Demo preview"
+                  },
+                  "expressions": {
+                    "src": "s(2222)"
+                  },
+                  "offset": 515103
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "icon"
+                  },
+                  "expressions": {},
+                  "offset": 515171
+                },
+                {
+                  "component": "im.default",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 515214
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "floating-video-checkbox-wrapper"
+                  },
+                  "expressions": {},
+                  "offset": 515249
+                },
+                {
+                  "component": "Si",
+                  "props": {},
+                  "expressions": {
+                    "onCheck": "()=>{var e;(e=!h,t=>{t({type:nt.WQv,payload:e})})(d)}",
+                    "name": "(0,R.jsx)(te.A,{text:V.FLOATING_VIDEO_CHECKBOX_LABEL})",
+                    "active": "h"
+                  },
+                  "offset": 515319
+                },
+                {
+                  "component": "te.A",
+                  "props": {
+                    "text": "FLOATING_VIDEO_CHECKBOX_LABEL"
+                  },
+                  "expressions": {},
+                  "offset": 515400
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 559214,
+              "end": 559230,
+              "source": "(0,R.jsx)(lm,{})",
+              "jsx": [
+                {
+                  "component": "lm",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 559214
+                }
+              ],
+              "render": []
+            }
+          ],
+          "default_props": [
+            {
+              "values": {
+                "data": {},
+                "clickableData": false,
+                "onClick": null,
+                "underlineData": false,
+                "capitalizeFirst": false,
+                "allowHtml": false,
+                "onMouseEnter": null,
+                "onMouseLeave": null
+              },
+              "path": ".ref/devices/1442/static/js/main.f0649cc4.js",
+              "offset": 109918,
+              "end": 110057,
+              "source": "s.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 3942,
+      "name": "Razer Marci",
+      "source_files": [
+        {
+          "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+          "sha256": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d"
+        },
+        {
+          "path": ".ref/devices/3942/static/js/main.07f59396.js",
+          "sha256": "84a7a45e640d45b5ccad85736c188a16e331437a67504e1df92d54da6e1be77d"
+        },
+        {
+          "path": ".ref/devices/3942/static/js/176.1fa03da8.chunk.js",
+          "sha256": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5"
+        },
+        {
+          "path": ".ref/devices/3942/static/js/994.db208acd.chunk.js",
+          "sha256": "728d2584490ec3222c54b5505e69723919e39b7c42bb12876654dc4e9ad9dc83"
+        }
+      ],
+      "pages": [
+        {
+          "key": "TAB_DEMO",
+          "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+          "offset": 537199,
+          "component": {
+            "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+            "offset": 537226,
+            "end": 537242,
+            "source": "(0,x.jsx)(kn,{})"
+          },
+          "route": null,
+          "components": [
+            {
+              "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+              "offset": 304917,
+              "end": 306150,
+              "source": "e=>{let{showVideo:t,videoSrc:s,onTimeUpdate:i,playerRef:a,currentTime:o}=e;const n=(0,f.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),r=(0,f.useDispatch)(),l=(0,C.useRef)(n.isPlaying);(0,C.useEffect)(()=>{l.current=n.isPlaying},[n.isPlaying]),(0,C.useLayoutEffect)(()=>{if(!t||!s||!a.current)return;(o>0||l.current)&&(l.current?(a.current.seek(null!==o&&void 0!==o?o:0),a.current.play()):(a.current.seek(null!==o&&void 0!==o?o:0),a.current.pause()))},[t,s,a,o]);const c=e=>{a.current&&r(On({currentTime:a.current.getState().player.currentTime,isPlaying:e}))};return(0,x.jsxs)(Pn.ai,{ref:a,src:s,preload:\"auto\",autoPlay:t&&n.isPlaying,playsInline:t,onTimeUpdate:i,onPlay:()=>c(!0),onPause:()=>c(!1),onEnded:()=>{if(a.current){r(On({currentTime:0,isPlaying:!0})),a.current.play()}},className:\"custom-video-react \"+(t?\"video-visible\":\"video-hidden\"),children:[(0,x.jsx)(Pn.Fn,{position:\"center\",className:\"custom-video-react-big-play-button\"}),(0,x.jsx)(Pn.kt,{}),(0,x.jsxs)(Pn.hf,{autoHide:!1,disableDefaultControls:!0,className:\"custom-control-bar\",children:[(0,x.jsx)(Pn.zA,{className:\"custom-play-toggle\"}),(0,x.jsx)(Pn.VB,{className:\"custom-progress-bar\"}),(0,x.jsx)(Pn.Wc,{className:\"custom-fullscreen-toggle\"})]})]})}",
+              "jsx": [
+                {
+                  "component": "Pn.ai",
+                  "props": {
+                    "preload": "auto"
+                  },
+                  "expressions": {
+                    "ref": "a",
+                    "src": "s",
+                    "autoPlay": "t&&n.isPlaying",
+                    "playsInline": "t",
+                    "onTimeUpdate": "i",
+                    "onPlay": "()=>c(!0)",
+                    "onPause": "()=>c(!1)",
+                    "onEnded": "()=>{if(a.current){r(On({currentTime:0,isPlaying:!0})),a.current.play()}}",
+                    "className": "\"custom-video-react \"+(t?\"video-visible\":\"video-hidden\")"
+                  },
+                  "offset": 305494
+                },
+                {
+                  "component": "Pn.Fn",
+                  "props": {
+                    "position": "center",
+                    "className": "custom-video-react-big-play-button"
+                  },
+                  "expressions": {},
+                  "offset": 305786
+                },
+                {
+                  "component": "Pn.kt",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 305870
+                },
+                {
+                  "component": "Pn.hf",
+                  "props": {
+                    "autoHide": false,
+                    "disableDefaultControls": true,
+                    "className": "custom-control-bar"
+                  },
+                  "expressions": {},
+                  "offset": 305890
+                },
+                {
+                  "component": "Pn.zA",
+                  "props": {
+                    "className": "custom-play-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 305987
+                },
+                {
+                  "component": "Pn.VB",
+                  "props": {
+                    "className": "custom-progress-bar"
+                  },
+                  "expressions": {},
+                  "offset": 306037
+                },
+                {
+                  "component": "Pn.Wc",
+                  "props": {
+                    "className": "custom-fullscreen-toggle"
+                  },
+                  "expressions": {},
+                  "offset": 306088
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/3942/static/js/main.07f59396.js",
+              "offset": 2927,
+              "end": 4114,
+              "source": "e=>{let{text:t,data:n,lang:i,clickableData:_,onClick:E,underlineData:c,capitalizeFirst:l,allowHtml:T,onMouseEnter:A,onMouseLeave:p}=e;\"string\"!==typeof t&&(t=\"\");const d=((e,t)=>{const n={};for(const i of Object.keys(e||{}))n[i]=s(e[i],t);return n})(n,i);if(c){let e=(0,o.JN)(t,{...d,_lang:i});e=r(e,l);const n=Object.keys(d).reduce((e,t)=>{const n=d[t],i=\"string\"===typeof n?n:String(null!==n&&void 0!==n?n:\"\");if(i.length>0&&e.includes(i)){const n=e.split(i),o=[];c&&o.push(\"translator-underline\"),_&&o.push(\"translator-clickable\");const r=o.join(\" \"),s=e=>(0,a.jsx)(\"span\",{className:r,onClick:_?()=>E&&E(i,t):void 0,onMouseEnter:A,onMouseLeave:p,role:_?\"button\":void 0,tabIndex:_?0:void 0,style:{opacity:!1===_?.3:1},children:i},`${t}-${e}`),l=[n[0]];for(let e=1;e<n.length;e++)l.push(s(e),n[e]);return l}return e},e);return(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),n]})}let O=(0,o.JN)(t,{...d,_lang:i});return O=r(O,l),T&&\"string\"===typeof O?(0,a.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:O}}):(0,a.jsx)(a.Fragment,{children:O})}",
+              "jsx": [
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "r",
+                    "onClick": "_?()=>E&&E(i,t):void 0",
+                    "onMouseEnter": "A",
+                    "onMouseLeave": "p",
+                    "role": "_?\"button\":void 0",
+                    "tabIndex": "_?0:void 0",
+                    "style": "{opacity:!1===_?.3:1}"
+                  },
+                  "offset": 558285
+                },
+                {
+                  "component": "a.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 558554
+                },
+                {
+                  "component": "\"style\"",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 558587
+                },
+                {
+                  "component": "\"span\"",
+                  "props": {},
+                  "expressions": {
+                    "dangerouslySetInnerHTML": "{__html:O}"
+                  },
+                  "offset": 558823
+                },
+                {
+                  "component": "a.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 558878
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/3942/static/js/994.db208acd.chunk.js",
+              "offset": 1328,
+              "end": 1410,
+              "source": "t=>{let{isMounted:e}=t;return e?(0,s.jsx)(\"div\",{className:\"spinner-razer\"}):null}",
+              "jsx": [
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "spinner-razer"
+                  },
+                  "expressions": {},
+                  "offset": 1411185
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/3942/static/js/994.db208acd.chunk.js",
+              "offset": 26274,
+              "end": 27625,
+              "source": "class h extends o.Component{constructor(t){super(t),this.checkMe=t=>{t.stopPropagation(),this.props.onCheck()};const{active:e,disabled:i}=this.props;this.state={active:e,disabled:i},this.id=(0,a.gZ)()}componentDidUpdate(t){const{active:e,disabled:i}=this.props;e!==t.active&&this.setState({active:e}),i!==t.disabled&&this.setState({disabled:i})}render(){const{name:t,extraClass:e,isSpinner:i}=this.props,{active:o,disabled:a}=this.state,{checkMe:h,id:d}=this;var c=`check-item ${e||\"\"} ${a?\"disabled\":\"\"}`;return i?(0,l.jsxs)(l.Fragment,{children:[(0,l.jsxs)(\"div\",{style:{display:\"inline-block\"},className:c,children:[(0,l.jsx)(\"input\",{type:\"checkbox\",id:d,checked:o||!1,onChange:h}),(0,l.jsx)(\"label\",{htmlFor:d,className:\"check-box\"})]}),(0,l.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,l.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,l.jsx)(r.A,{text:t}):t}),(0,l.jsx)(n.A,{isMounted:!0}),(0,l.jsx)(\"div\",{className:\"checkingTip\",children:(0,l.jsx)(r.A,{text:s.Vl5})})]})]}):(0,l.jsxs)(\"div\",{className:c,onMouseDown:t=>{this.props.onMouseDown&&this.props.onMouseDown(t)},children:[(0,l.jsx)(\"input\",{type:\"checkbox\",id:d,checked:o||!1,onChange:h}),(0,l.jsx)(\"label\",{htmlFor:d,className:\"check-box\",children:(0,l.jsx)(\"div\",{className:`check-text ${e}`,children:\"string\"===typeof t?(0,l.jsx)(r.A,{text:t}):t})})]})}}",
+              "jsx": [
+                {
+                  "component": "l.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 1436614
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "display": "inline-block"
+                    }
+                  },
+                  "expressions": {
+                    "className": "c"
+                  },
+                  "offset": 1436647
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "d",
+                    "checked": "o||!1",
+                    "onChange": "h"
+                  },
+                  "offset": 1436718
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "d"
+                  },
+                  "offset": 1436785
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "lable-spinner"
+                  },
+                  "expressions": {},
+                  "offset": 1436841
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "check-text"
+                  },
+                  "expressions": {},
+                  "offset": 1436895
+                },
+                {
+                  "component": "r.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 1436964
+                },
+                {
+                  "component": "n.A",
+                  "props": {
+                    "isMounted": true
+                  },
+                  "expressions": {},
+                  "offset": 1436992
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "checkingTip"
+                  },
+                  "expressions": {},
+                  "offset": 1437022
+                },
+                {
+                  "component": "r.A",
+                  "props": {
+                    "text": "TEXT_CHECKING"
+                  },
+                  "expressions": {},
+                  "offset": 1437072
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "c",
+                    "onMouseDown": "t=>{this.props.onMouseDown&&this.props.onMouseDown(t)}"
+                  },
+                  "offset": 1437108
+                },
+                {
+                  "component": "\"input\"",
+                  "props": {
+                    "type": "checkbox"
+                  },
+                  "expressions": {
+                    "id": "d",
+                    "checked": "o||!1",
+                    "onChange": "h"
+                  },
+                  "offset": 1437215
+                },
+                {
+                  "component": "\"label\"",
+                  "props": {
+                    "className": "check-box"
+                  },
+                  "expressions": {
+                    "htmlFor": "d"
+                  },
+                  "offset": 1437282
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {},
+                  "expressions": {
+                    "className": "`check-text ${e}`"
+                  },
+                  "offset": 1437342
+                },
+                {
+                  "component": "r.A",
+                  "props": {},
+                  "expressions": {
+                    "text": "t"
+                  },
+                  "offset": 1437416
+                }
+              ],
+              "render": [
+                {
+                  "path": ".ref/devices/3942/static/js/994.db208acd.chunk.js",
+                  "offset": 26625,
+                  "end": 27624,
+                  "source": "(){const{name:t,extraClass:e,isSpinner:i}=this.props,{active:o,disabled:a}=this.state,{checkMe:h,id:d}=this;var c=`check-item ${e||\"\"} ${a?\"disabled\":\"\"}`;return i?(0,l.jsxs)(l.Fragment,{children:[(0,l.jsxs)(\"div\",{style:{display:\"inline-block\"},className:c,children:[(0,l.jsx)(\"input\",{type:\"checkbox\",id:d,checked:o||!1,onChange:h}),(0,l.jsx)(\"label\",{htmlFor:d,className:\"check-box\"})]}),(0,l.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,l.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,l.jsx)(r.A,{text:t}):t}),(0,l.jsx)(n.A,{isMounted:!0}),(0,l.jsx)(\"div\",{className:\"checkingTip\",children:(0,l.jsx)(r.A,{text:s.Vl5})})]})]}):(0,l.jsxs)(\"div\",{className:c,onMouseDown:t=>{this.props.onMouseDown&&this.props.onMouseDown(t)},children:[(0,l.jsx)(\"input\",{type:\"checkbox\",id:d,checked:o||!1,onChange:h}),(0,l.jsx)(\"label\",{htmlFor:d,className:\"check-box\",children:(0,l.jsx)(\"div\",{className:`check-text ${e}`,children:\"string\"===typeof t?(0,l.jsx)(r.A,{text:t}):t})})]})}"
+                }
+              ]
+            },
+            {
+              "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+              "offset": 306154,
+              "end": 307781,
+              "source": "()=>{const[e,t]=(0,C.useState)(!1),[i,a]=(0,C.useState)(null),o=(0,f.useDispatch)(),n=(0,C.useRef)(null),r=(0,f.useSelector)(e=>e.floatingVideoReducer.floatingVideoTime),l=(0,f.useSelector)(e=>e.floatingVideoReducer.demoFloatingVideoEnabled),c=(0,C.useRef)(r.currentTime);(0,C.useEffect)(()=>{let e=!0;o(Tn(!1));return(async()=>{const t=await(0,T.j8)(\"/synapse/assets/videos/audio_mode.mov\");e&&a(t)})(),r.currentTime>0&&t(!0),()=>{e=!1}},[o]);return(0,x.jsxs)(x.Fragment,{children:[(0,x.jsx)(\"div\",{style:{textAlign:\"center\",fontSize:14},children:(0,x.jsx)(S.A,{text:y.rPu})}),(0,x.jsxs)(\"div\",{className:\"demo-body\",children:[i&&(0,x.jsx)(Ln,{showVideo:e,videoSrc:i,onTimeUpdate:()=>{var e,t;const s=null===(e=n.current)||void 0===e||null===(t=e.getState())||void 0===t?void 0:t.player;s&&o(On({currentTime:s.currentTime,isPlaying:!s.paused}))},playerRef:n,currentTime:c.current}),!e&&(0,x.jsx)(\"div\",{className:\"demo-preview\",children:(0,x.jsxs)(\"div\",{className:\"btn-image box\",onClick:()=>{var e;null===(e=n.current)||void 0===e||e.play(),t(!0)},role:\"button\",tabIndex:0,\"aria-label\":\"Play demo video\",children:[(0,x.jsx)(\"img\",{src:s(2222),className:\"image\",alt:\"Demo preview\"}),(0,x.jsx)(\"div\",{className:\"icon\",children:(0,x.jsx)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\",\"aria-hidden\":\"true\",children:(0,x.jsx)(\"path\",{d:\"M0,16V0L12,8Z\",transform:\"translate(5 2)\"})})})]})})]}),(0,x.jsx)(\"div\",{className:\"floating-video-checkbox-wrapper\",children:(0,x.jsx)(os.A,{onCheck:()=>{var e;(e=!l,t=>{t({type:fe.WQv,payload:e})})(o)},name:(0,x.jsx)(S.A,{text:y.YzX}),active:l})})]})}",
+              "jsx": [
+                {
+                  "component": "x.Fragment",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 306604
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "style": {
+                      "textAlign": "center",
+                      "fontSize": 14
+                    }
+                  },
+                  "expressions": {},
+                  "offset": 306637
+                },
+                {
+                  "component": "S.A",
+                  "props": {
+                    "text": "DEMO_TITLE_DESC"
+                  },
+                  "expressions": {},
+                  "offset": 306702
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-body"
+                  },
+                  "expressions": {},
+                  "offset": 306732
+                },
+                {
+                  "component": "Ln",
+                  "props": {},
+                  "expressions": {
+                    "showVideo": "e",
+                    "videoSrc": "i",
+                    "onTimeUpdate": "()=>{var e,t;const s=null===(e=n.current)||void 0===e||null===(t=e.getState())||void 0===t?void 0:t.player;s&&o(On({currentTime:s.currentTime,isPlaying:!s.paused}))}",
+                    "playerRef": "n",
+                    "currentTime": "c.current"
+                  },
+                  "offset": 306785
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "demo-preview"
+                  },
+                  "expressions": {},
+                  "offset": 307041
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "btn-image box",
+                    "role": "button",
+                    "tabIndex": 0,
+                    "aria-label": "Play demo video"
+                  },
+                  "expressions": {
+                    "onClick": "()=>{var e;null===(e=n.current)||void 0===e||e.play(),t(!0)}"
+                  },
+                  "offset": 307092
+                },
+                {
+                  "component": "\"img\"",
+                  "props": {
+                    "className": "image",
+                    "alt": "Demo preview"
+                  },
+                  "expressions": {
+                    "src": "s(2222)"
+                  },
+                  "offset": 307271
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "icon"
+                  },
+                  "expressions": {},
+                  "offset": 307339
+                },
+                {
+                  "component": "\"svg\"",
+                  "props": {
+                    "xmlns": "http://www.w3.org/2000/svg",
+                    "width": "20",
+                    "height": "20",
+                    "viewBox": "0 0 20 20",
+                    "aria-hidden": "true"
+                  },
+                  "expressions": {},
+                  "offset": 307382
+                },
+                {
+                  "component": "\"path\"",
+                  "props": {
+                    "d": "M0,16V0L12,8Z",
+                    "transform": "translate(5 2)"
+                  },
+                  "expressions": {},
+                  "offset": 307507
+                },
+                {
+                  "component": "\"div\"",
+                  "props": {
+                    "className": "floating-video-checkbox-wrapper"
+                  },
+                  "expressions": {},
+                  "offset": 307584
+                },
+                {
+                  "component": "os.A",
+                  "props": {},
+                  "expressions": {
+                    "onCheck": "()=>{var e;(e=!l,t=>{t({type:fe.WQv,payload:e})})(o)}",
+                    "name": "(0,x.jsx)(S.A,{text:y.YzX})",
+                    "active": "l"
+                  },
+                  "offset": 307654
+                },
+                {
+                  "component": "S.A",
+                  "props": {
+                    "text": "FLOATING_VIDEO_CHECKBOX_LABEL"
+                  },
+                  "expressions": {},
+                  "offset": 307737
+                }
+              ],
+              "render": []
+            },
+            {
+              "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+              "offset": 537226,
+              "end": 537242,
+              "source": "(0,x.jsx)(kn,{})",
+              "jsx": [
+                {
+                  "component": "kn",
+                  "props": {},
+                  "expressions": {},
+                  "offset": 537226
+                }
+              ],
+              "render": []
+            }
+          ],
+          "default_props": [
+            {
+              "values": {
+                "data": {},
+                "clickableData": false,
+                "onClick": null,
+                "underlineData": false,
+                "capitalizeFirst": false,
+                "allowHtml": false,
+                "onMouseEnter": null,
+                "onMouseLeave": null
+              },
+              "path": ".ref/devices/3942/static/js/main.07f59396.js",
+              "offset": 4115,
+              "end": 4254,
+              "source": "_.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

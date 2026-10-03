@@ -5427,4 +5427,159 @@
       {
         "key": "TAB_LIGHTING",
         "sections": [
- 
+          {
+            "title": "BRIGHTNESS_HEADER",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3946:brightness-on",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+                  "offset": 6397219,
+                  "end": 6399637
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3946:brightness",
+                "label": "BRIGHTNESS_HEADER",
+                "path": "/brightness/value",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "disabled_unless": "/brightness/isEnabled",
+                "enabled_from_value": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+                  "offset": 6397219,
+                  "end": 6399637
+                }
+              }
+            ]
+          },
+          {
+            "title": "SWITCH_OFF_LIGHTING_HEADER",
+            "controls": [
+              {
+                "kind": "toggle",
+                "key": "3946:display-off",
+                "label": "DISPLAY_TURNED_OFF",
+                "path": "/switchOffLighting/isDisplayOn",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+                  "offset": 6492997,
+                  "end": 6495326
+                }
+              },
+              {
+                "kind": "toggle",
+                "key": "3946:idle-off",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/isIdleEnabled",
+                "disabled_unless": "/brightness/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+                  "offset": 6492997,
+                  "end": 6495326
+                }
+              },
+              {
+                "kind": "slider",
+                "key": "3946:idle-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/switchOffLighting/idleMinutes",
+                "min": 1,
+                "max": 15,
+                "step": 1,
+                "disabled_unless_all": [
+                  "/brightness/isEnabled",
+                  "/switchOffLighting/isIdleEnabled"
+                ],
+                "source": {
+                  "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+                  "offset": 6492997,
+                  "end": 6495326
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20632"
+  },
+  {
+    "product_id": 3949,
+    "profile": {
+      "guid": "",
+      "name": "",
+      "runtime": {
+        "powerSaving": {
+          "isEnabled": true,
+          "value": 15
+        }
+      }
+    },
+    "pages": [
+      {
+        "key": "TAB_POWER",
+        "sections": [
+          {
+            "title": "POWER_SAVING",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3949:power-on",
+                "label": "POWER_SAVING",
+                "path": "/runtime/powerSaving/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3949/static/js/main.5f0af02d.js",
+                  "offset": 4713852,
+                  "end": 4715055
+                }
+              },
+              {
+                "kind": "options",
+                "key": "3949:power-minutes",
+                "label": "IDLE_FOR_MIN",
+                "path": "/runtime/powerSaving/value",
+                "disabled_unless": "/runtime/powerSaving/isEnabled",
+                "options": [
+                  {
+                    "label": "20",
+                    "value": 20
+                  },
+                  {
+                    "label": "30",
+                    "value": 30
+                  },
+                  {
+                    "label": "40",
+                    "value": 40
+                  },
+                  {
+                    "label": "50",
+                    "value": 50
+                  },
+                  {
+                    "label": "60",
+                    "value": 60
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3949/static/js/main.5f0af02d.js",
+                  "offset": 4713852,
+                  "end": 4715055
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/20597"
+  }
+]

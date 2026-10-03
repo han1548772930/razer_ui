@@ -1,0 +1,32 @@
+[
+  {
+    "source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
+    "source_sha256": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda",
+    "output": "assets/synapse/keyboard-calibration-success.svg",
+    "output_sha256": "14b31f9e7723a620860b0680c803ab8fdea050a6b2c6461bdc023c6e91b40487",
+    "offset": 272318,
+    "end": 273776,
+    "width": 32,
+    "height": 32
+  },
+  {
+    "source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
+    "source_sha256": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda",
+    "output": "assets/synapse/keyboard-calibration-failure.svg",
+    "output_sha256": "c1ca0107f56bfadb8a04aa13739989eac78374ab4f3f81d8fb6885cdb4ddb791",
+    "offset": 273897,
+    "end": 276203,
+    "width": 32,
+    "height": 32
+  },
+  {
+    "source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
+    "source_sha256": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda",
+    "output": "assets/synapse/keyboard-calibration-info.svg",
+    "output_sha256": "84921f88e3bdb815093fae701feaaae5a6a841433b3dd01d03ec140c1fad839c",
+    "offset": 278478,
+    "end": 279201,
+    "width": 24,
+    "height": 24
+  }
+]

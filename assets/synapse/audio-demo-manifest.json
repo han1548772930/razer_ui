@@ -1,0 +1,30 @@
+[
+  {
+    "source": ".ref/devices/1392/static/media/demo.ff6ba9d8.avif",
+    "url": "https://apps.razer.com/synapse/products/1392/ui/static/media/demo.ff6ba9d8.avif",
+    "module_file": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+    "module_sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+    "module_id": 2222,
+    "offset": 2088,
+    "end": 2135,
+    "source_sha256": "0d505b7cb310f14911ebc89e01f1f1179b198884995e8f7b0d2b528e70263977",
+    "output": "assets/synapse/audio-demo-poster.png",
+    "output_sha256": "d20b9ac3ea1b25599d073d7e48c718ad0a669c89cd2ad9de7b5685d3e8f78507",
+    "width": 521,
+    "height": 282,
+    "equivalent_sources": [
+      ".ref/devices/1392/static/media/demo.ff6ba9d8.avif",
+      ".ref/devices/1442/static/media/demo.ff6ba9d8.avif",
+      ".ref/devices/3942/static/media/demo.ff6ba9d8.avif"
+    ]
+  },
+  {
+    "source": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+    "source_sha256": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d",
+    "output": "assets/synapse/audio-demo-play.svg",
+    "output_sha256": "b022524c132cb9e3159fa00e2c235e0dbe7d05d79e60fc4ef7e440809a19892d",
+    "component_offset": 306154,
+    "width": 20,
+    "height": 20
+  }
+]

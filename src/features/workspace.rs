@@ -21,7 +21,6 @@ use std::collections::BTreeMap;
 
 pub enum WorkspaceEvent {
     Changed,
-    SaveRequested,
     IntroDismissed,
 }
 pub(super) struct MappingDraft {
@@ -111,7 +110,7 @@ impl DeviceWorkspace {
     ) -> Self {
         if device.profiles.is_empty() {
             device.profiles.push(Profile {
-                                source_settings: None,
+                source_settings: None,
                 id: "local-default".into(),
                 guid: "local-default".into(),
                 name: "Default".into(),
@@ -1065,41 +1064,5 @@ impl Render for DeviceWorkspace {
             .when_some(self.profile_dialog.clone(), |view, dialog| {
                 view.child(dialog)
             })
-            .children(self.dirty().then(|| {
-                h_flex()
-                    .flex_shrink_0()
-                    .px_5()
-                    .py_2()
-                    .gap_3()
-                    .border_t_1()
-                    .border_color(cx.theme().border)
-                    .child(surface::note(
-                        if self.dirty() {
-                            "有未保存的本地更改"
-                        } else {
-                            "本地配置 · 未连接设备服务"
-                        },
-                        cx,
-                    ))
-                    .child(div().flex_1())
-                    .child(
-                        Button::new("discard-profile")
-                            .label("丢弃更改")
-                            .outline()
-                            .disabled(!self.dirty())
-                            .on_click(cx.listener(|this, _, w, cx| this.discard(w, cx))),
-                    )
-                    .child(
-                        Button::new("save-profile")
-                            .label("保存到本机")
-                            .primary()
-                            .disabled(!self.dirty() || !self.mapping_valid())
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                if this.finish_mapping(window, cx) {
-                                    cx.emit(WorkspaceEvent::SaveRequested);
-                                }
-                            })),
-                    )
-            }))
     }
 }

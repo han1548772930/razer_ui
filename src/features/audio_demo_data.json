@@ -1,0 +1,164 @@
+[
+  {
+    "product_id": 1392,
+    "poster": {
+      "source": ".ref/devices/1392/static/media/demo.ff6ba9d8.avif",
+      "url": "https://apps.razer.com/synapse/products/1392/ui/static/media/demo.ff6ba9d8.avif",
+      "module_file": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+      "module_sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+      "module_id": 2222,
+      "offset": 2088,
+      "end": 2135
+    },
+    "asset": "synapse/audio-demo-poster.png",
+    "width": 800,
+    "height": 450,
+    "title": "DEMO_TITLE_DESC",
+    "floating_label": "FLOATING_VIDEO_CHECKBOX_LABEL",
+    "floating_default": true,
+    "video_url": "https://apps.razer.com/synapse/assets/videos/audio_mode.mov",
+    "manifest": {
+      "path": ".ref/devices/1392/asset-manifest.json",
+      "sha256": "7dd61361b56cbcf1eeee833b7e4bc4cdc53c2e4a8278a43e2aba41a9043d9ca1"
+    },
+    "defaults": {
+      "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+      "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+      "offset": 5170789,
+      "source": "demoFloatingVideoEnabled:!0,floatingVideoTime:{currentTime:0,isPlaying:!1},forceOpen:!1"
+    },
+    "css": [
+      {
+        "path": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+        "sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+        "rules": [
+          ".demo-body,.tabContainer{display:flex;justify-content:center}",
+          ".demo-body{align-items:center;box-sizing:initial;flex-direction:column;height:640px;height:450px;margin:20px auto auto;position:relative;width:800px;z-index:0}",
+          ".demo-body .spatial{color:#ccc;font-family:RazerF5;font-size:14px;line-height:32px;text-transform:uppercase}",
+          ".demo-body .switch{left:10px;top:3px}",
+          ".demo-body .no-internet-text{color:#ccc;display:none;font-size:14px;left:calc(50% - 152px);position:absolute;top:calc(50% - 40px);z-index:1}",
+          ".demo-body .no-internet-text.show{display:block}",
+          ".taa-flow.demo-body{height:162px;margin-bottom:50px;padding:0;width:240px}",
+          ".taa-flow.demo-body .video-react-control-bar .video-react-loading-spinner{display:none!important}",
+          ".demo-body .demo-preview{height:450px;position:absolute;width:800px;z-index:104}",
+          ".demo-body .demo-preview .btn-image{height:100%}",
+          ".demo-body .demo-preview .btn-image img{height:100%;width:800px}",
+          ".demo-body .demo-preview>.box>.icon{align-items:center;background-color:#000c;border:3px solid #fff;border-radius:50%;bottom:28px;display:flex;height:100px;justify-content:center;left:0;margin:auto;position:absolute;right:0;top:0;width:100px}",
+          ".demo-body .demo-preview>.box>.icon>svg{fill:#fff;height:48px;margin-right:-2px;width:48px}",
+          ".demo-body .video-react .video-react-control-bar{bottom:auto}",
+          ".demo-body .video-react-fullscreen .video-react-control-bar{bottom:0!important}",
+          ".floating-video-checkbox-wrapper{display:table;margin:20px auto;width:800px}"
+        ]
+      }
+    ],
+    "playback_status": "not_implemented"
+  },
+  {
+    "product_id": 1442,
+    "poster": {
+      "source": ".ref/devices/1442/static/media/demo.ff6ba9d8.avif",
+      "url": "https://apps.razer.com/synapse/products/1442/ui/static/media/demo.ff6ba9d8.avif",
+      "module_file": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+      "module_sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+      "module_id": 2222,
+      "offset": 577,
+      "end": 624
+    },
+    "asset": "synapse/audio-demo-poster.png",
+    "width": 800,
+    "height": 450,
+    "title": "DEMO_TITLE_DESC",
+    "floating_label": "FLOATING_VIDEO_CHECKBOX_LABEL",
+    "floating_default": true,
+    "video_url": "https://apps.razer.com/synapse/assets/videos/audio_mode.mov",
+    "manifest": {
+      "path": ".ref/devices/1442/asset-manifest.json",
+      "sha256": "b0bb54f5ec85967493b13b5d319e9c3887527606bc9f550a21a49b9c0af62712"
+    },
+    "defaults": {
+      "path": ".ref/devices/1442/static/js/main.f0649cc4.js",
+      "sha256": "8013923f0ad95a198d2791875c18543eacd709e56dc8cc0c6506be2fb68b760d",
+      "offset": 1154080,
+      "source": "demoFloatingVideoEnabled:!0,floatingVideoTime:{currentTime:0,isPlaying:!1},forceOpen:!1"
+    },
+    "css": [
+      {
+        "path": ".ref/devices/1442/static/css/main.bd5a7c95.css",
+        "sha256": "c38164acbdb804327caa8ec33a3c914e1cbc727df20835158ceafea18f3980fb",
+        "rules": [
+          ".demo-body,.tabContainer{display:flex;justify-content:center}",
+          ".demo-body{align-items:center;box-sizing:initial;flex-direction:column;height:640px;height:450px;margin:20px auto auto;position:relative;width:800px;z-index:0}",
+          ".demo-body .spatial{color:#ccc;font-family:RazerF5;font-size:14px;line-height:32px;text-transform:uppercase}",
+          ".demo-body .switch{left:10px;top:3px}",
+          ".demo-body .no-internet-text{color:#ccc;display:none;font-size:14px;left:calc(50% - 152px);position:absolute;top:calc(50% - 40px);z-index:1}",
+          ".demo-body .no-internet-text.show{display:block}",
+          ".taa-flow.demo-body{height:162px;margin-bottom:50px;padding:0;width:240px}",
+          ".taa-flow.demo-body .video-react-control-bar .video-react-loading-spinner{display:none!important}",
+          ".demo-body .demo-preview{height:450px;position:absolute;width:800px;z-index:104}",
+          ".demo-body .demo-preview .btn-image{height:100%}",
+          ".demo-body .demo-preview .btn-image img{height:100%;width:800px}",
+          ".demo-body .demo-preview>.box>.icon{align-items:center;background-color:#000c;border:3px solid #fff;border-radius:50%;bottom:28px;display:flex;height:100px;justify-content:center;left:0;margin:auto;position:absolute;right:0;top:0;width:100px}",
+          ".demo-body .demo-preview>.box>.icon>svg{fill:#fff;height:48px;margin-right:-2px;width:48px}",
+          ".demo-body .video-react .video-react-control-bar{bottom:auto}",
+          ".demo-body .video-react-fullscreen .video-react-control-bar{bottom:0!important}",
+          ".floating-video-checkbox-wrapper{display:table;margin:20px auto;width:800px}"
+        ]
+      }
+    ],
+    "playback_status": "not_implemented"
+  },
+  {
+    "product_id": 3942,
+    "poster": {
+      "source": ".ref/devices/3942/static/media/demo.ff6ba9d8.avif",
+      "url": "https://apps.razer.com/synapse/products/3942/ui/static/media/demo.ff6ba9d8.avif",
+      "module_file": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+      "module_sha256": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d",
+      "module_id": 2222,
+      "offset": 552265,
+      "end": 552312
+    },
+    "asset": "synapse/audio-demo-poster.png",
+    "width": 800,
+    "height": 450,
+    "title": "DEMO_TITLE_DESC",
+    "floating_label": "FLOATING_VIDEO_CHECKBOX_LABEL",
+    "floating_default": true,
+    "video_url": "https://apps.razer.com/synapse/assets/videos/audio_mode.mov",
+    "manifest": {
+      "path": ".ref/devices/3942/asset-manifest.json",
+      "sha256": "80690487fa66118ef296eb46737549b1fd8852d15427f11ee8e83269f6f5a3e9"
+    },
+    "defaults": {
+      "path": ".ref/devices/3942/static/js/main.07f59396.js",
+      "sha256": "84a7a45e640d45b5ccad85736c188a16e331437a67504e1df92d54da6e1be77d",
+      "offset": 423608,
+      "source": "demoFloatingVideoEnabled:!0,floatingVideoTime:{currentTime:0,isPlaying:!1},forceOpen:!1"
+    },
+    "css": [
+      {
+        "path": ".ref/devices/3942/static/css/main.e8c6de08.css",
+        "sha256": "a08de2935a47fc8e7f760b3f5d8965d5d328cd7c540787b257a99d4f04a2a6df",
+        "rules": [
+          ".demo-body,.tabContainer{display:flex;justify-content:center}",
+          ".demo-body{align-items:center;box-sizing:initial;flex-direction:column;height:450px;margin:20px auto 0;position:relative;width:800px;z-index:0}",
+          ".demo-body .spatial{color:#ccc;font-family:RazerF5;font-size:14px;line-height:32px;text-transform:uppercase}",
+          ".demo-body .switch{left:10px;top:3px}",
+          ".demo-body .no-internet-text{color:#ccc;display:none;font-size:14px;left:calc(50% - 152px);position:absolute;top:calc(50% - 40px);z-index:1}",
+          ".demo-body .no-internet-text.show{display:block}",
+          ".taa-flow.demo-body{height:162px;margin-bottom:50px;padding:0;width:240px}",
+          ".taa-flow.demo-body .video-react-control-bar .video-react-loading-spinner{display:none!important}",
+          ".demo-body .demo-preview{height:450px;position:absolute;width:800px;z-index:104}",
+          ".demo-body .demo-preview .btn-image{height:100%}",
+          ".demo-body .demo-preview .btn-image img{height:100%;object-fit:cover;width:800px}",
+          ".demo-body .demo-preview>.box>.icon{align-items:center;background-color:#000c;border:3px solid #fff;border-radius:50%;bottom:28px;display:flex;height:100px;justify-content:center;left:0;margin:auto;position:absolute;right:0;top:0;width:100px}",
+          ".demo-body .demo-preview>.box>.icon>svg{fill:#fff;height:48px;margin-right:-2px;width:48px}",
+          ".demo-body .video-react .video-react-control-bar{bottom:auto}",
+          ".demo-body .video-react-fullscreen .video-react-control-bar{bottom:0!important}",
+          ".floating-video-checkbox-wrapper{display:table;margin:20px auto;width:800px}"
+        ]
+      }
+    ],
+    "playback_status": "not_implemented"
+  }
+]

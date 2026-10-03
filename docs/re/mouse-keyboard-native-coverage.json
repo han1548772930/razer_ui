@@ -2,10 +2,10 @@
   "schema_version": 1,
   "verification": "Static JSON/source hash/resource validation; no application or tests executed.",
   "mouse": {
-    "specifications": 75,
-    "source_workspace_products": 74,
-    "source_inputs": 854,
-    "prepared_default_illustrations": 75,
+    "specifications": 76,
+    "source_workspace_products": 75,
+    "source_inputs": 862,
+    "prepared_default_illustrations": 76,
     "asymmetric_three_preset_products": [
       122,
       132,
@@ -115,9 +115,9 @@
     "Chroma service integration"
   ],
   "artifacts": {
-    "src/features/mouse_products.rs": "61e0c045767d213a8940848df7130f807226386c109c31f85209d89a67c42067",
-    "src/features/mouse_products_data.json": "d05941c470eb3c1f5b9dbe47338e3cab4924fa9c437058108ed3f5bf1e6af762",
-    "src/features/keyboard_products.rs": "f56a768cb95eb2c4d0b7afda5f6107a96d766175e98292ccd200623b326ef026",
+    "src/features/mouse_products.rs": "2a915a1e7d9f0527c0fd4b9e5a6354763b6d44a0415d21baab18b993e04f6266",
+    "src/features/mouse_products_data.json": "72748f38436c0e6ae8526a0350a942ceed3250e91966fdc769755b4a00fbe78a",
+    "src/features/keyboard_products.rs": "367459e317e040a67cc66a5f38334777bfa50bbdcb8b86b2c552699bfa19c414",
     "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d"
   }
 }

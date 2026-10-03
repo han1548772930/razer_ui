@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="30" viewBox="0 0 250 30">
+  <style>
+    #Animated_Line {
+      fill: none;
+      stroke: #44d62c;
+      stroke-width: 2;
+      stroke-dasharray: 2 20;
+      stroke-dashoffset: 22px;
+      animation: stroke 0.5s linear infinite;
+      vector-effect: non-scaling-stroke;
+    }
+    @keyframes stroke {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+  </style>
+    <rect id="bg" width="250" height="30" fill="#f0f" opacity="0"/>
+    <line id="Animated_Line" y2="30" transform="translate(125 0)" fill="none" stroke="#44d62c" stroke-width="2" stroke-dasharray="2 10"/>
+</svg>

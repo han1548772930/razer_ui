@@ -473,8 +473,9 @@ impl AppShell {
                 }),
             )
             .child(
-                window_button("window-close", "synapse/host-close.svg", "关闭窗口")
-                    .on_click(cx.listener(|this, _, window, cx| this.request_exit(window, cx))),
+                window_button("window-close", "synapse/host-close.svg", "关闭窗口").on_click(
+                    cx.listener(|this, _, window, cx| this.request_window_close(window, cx)),
+                ),
             )
             .into_any_element()
     }
