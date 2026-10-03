@@ -11,10 +11,11 @@ pub(super) struct DockDialog {
     return_focus: Option<FocusHandle>,
     open: bool,
     pub(super) preview: bool,
-    pub(super) inline: bool,
     pub(super) alert: Option<String>,
     pub(super) last_request: Option<(String, serde_json::Value)>,
 }
+pub(super) struct DockDialogClosed;
+impl EventEmitter<DockDialogClosed> for DockDialog {}
 impl DockDialog {
     pub(super) fn open(
         spec: &'static Spec,
@@ -37,7 +38,6 @@ impl DockDialog {
             return_focus,
             open: true,
             preview,
-            inline: false,
             alert: (!preview).then(|| "暂时无法读取配对信息。".into()),
             last_request: None,
         });
@@ -53,6 +53,13 @@ impl DockDialog {
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
+        cx.emit(DockDialogClosed);
+        cx.notify();
+    }
+    pub(super) fn reopen(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.return_focus = window.focused(cx);
+        self.open = true;
+        self.focus.focus(window, cx);
         cx.notify();
     }
     fn escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -80,7 +87,12 @@ impl DockDialog {
         true
     }
     fn scan(&mut self, lane: Lane, cx: &mut Context<Self>) {
-        if !self.state.modifiable(lane, self.spec.dual()) {
+        if !self.state.modifiable(lane, self.spec.dual())
+            || !matches!(
+                self.state.channel(lane).status,
+                Status::Ready | Status::Scanned | Status::PairFailed | Status::Unpaired
+            )
+        {
             return;
         }
         if self.request(
@@ -95,7 +107,9 @@ impl DockDialog {
         }
     }
     fn pair(&mut self, lane: Lane, cx: &mut Context<Self>) {
-        if !self.state.modifiable(lane, self.spec.dual()) {
+        if !self.state.modifiable(lane, self.spec.dual())
+            || self.state.channel(lane).status != Status::Scanned
+        {
             return;
         }
         let Some(peer) = self.state.selected(lane).cloned() else {
@@ -135,20 +149,24 @@ impl DockDialog {
             .w(surface::css(if dual { 250. } else { 510. }))
             .h(surface::css(210.))
             .flex_shrink_0()
-            .px(surface::css(if dual { 10. } else { 0. }))
+            .px(surface::css(if dual { 20. } else { 0. }))
             .rounded(surface::css(5.))
             .bg(Colors::card())
-            .border_2()
-            .border_color(if channel.peer.is_some() {
-                cx.theme().primary
-            } else {
-                Colors::card()
+            .when(channel.peer.is_some(), |view| {
+                view.shadow(vec![BoxShadow {
+                    color: cx.theme().primary,
+                    offset: point(Pixels::ZERO, Pixels::ZERO),
+                    blur_radius: Pixels::ZERO,
+                    spread_radius: cx.theme().font_size * (2. / 16.),
+                    inset: false,
+                }])
             })
             .child(
                 div()
                     .w_full()
                     .pt(surface::css(10.))
                     .h(surface::css(28.))
+                    .line_height(surface::css(18.))
                     .text_center()
                     .text_color(Colors::category())
                     .child(self.spec.text(lane.key())),
@@ -298,6 +316,7 @@ impl DockDialog {
                             !enabled,
                             cx,
                         )
+                        .kind(CommandKind::Unpair(dual))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if this.state.modifiable(lane, this.spec.dual()) {
                                 this.state.channel_mut(lane).status = Status::ConfirmUnpair;
@@ -319,9 +338,10 @@ impl DockDialog {
                     status,
                     Status::Scanning | Status::Pairing | Status::Unpairing
                 ) {
-                    image.child(
-                        img(self.spec.asset("icon-progress_spinner")).size(surface::css(26.)),
-                    )
+                    image.child(spinner(
+                        self.spec,
+                        (ElementId::from("dock-channel-spinner"), lane.key()),
+                    ))
                 } else {
                     image.child(
                         command(
@@ -335,6 +355,7 @@ impl DockDialog {
                             !enabled,
                             cx,
                         )
+                        .kind(CommandKind::Scan)
                         .on_click(cx.listener(move |this, _, _, cx| this.scan(lane, cx))),
                     )
                 };
@@ -444,6 +465,7 @@ impl DockDialog {
             .min_h(surface::css(if dual { 0. } else { 685. }))
             .items_center()
             .text_size(surface::css(14.))
+            .font_family("Roboto")
             .text_color(cx.theme().foreground)
             .child(
                 div()
@@ -508,6 +530,46 @@ impl DockDialog {
                                     )
                                 })
                             })),
+                    ),
+            );
+        } else {
+            let status = self.state.channel(Lane::Mouse).status;
+            body = body.child(
+                v_flex()
+                    .items_center()
+                    .child(
+                        img("synapse/dock-164-zia_pairing.png")
+                            .w(surface::css(77.))
+                            .h(surface::css(60.))
+                            .mb(surface::css(10.))
+                            .object_fit(ObjectFit::Contain),
+                    )
+                    .child(if i18n::locale().eq_ignore_ascii_case("zh-cn") {
+                        "Razer 鼠标底座专业版"
+                    } else {
+                        "Razer Mouse Dock Pro"
+                    })
+                    .child(
+                        img(self.spec.asset(
+                            if matches!(status, Status::Paired | Status::JustPaired) {
+                                "icon_marching_ants_master_line"
+                            } else if matches!(
+                                status,
+                                Status::Ready
+                                    | Status::Scanning
+                                    | Status::Scanned
+                                    | Status::Pairing
+                                    | Status::Unpairing
+                                    | Status::ConfirmUnpair
+                            ) {
+                                "icon_marching_ants_connecting_top_to_bottom"
+                            } else {
+                                "icon_marching_ants_not_connected_top_to_bottom"
+                            },
+                        ))
+                        .w(surface::css(6.))
+                        .h(surface::css(30.))
+                        .mt(surface::css(10.)),
                     ),
             );
         }
@@ -621,9 +683,6 @@ impl Render for DockDialog {
         if !self.open {
             return div().into_any_element();
         }
-        if self.inline {
-            return self.body(cx);
-        }
         let height = (window.viewport_size().height - window.rem_size() * (100. / 16.)).max(px(0.));
         let panel = v_flex()
             .id("dock-pairing-modal")
@@ -632,15 +691,26 @@ impl Render for DockDialog {
             .max_w_full()
             .h(height)
             .bg(Colors::panel())
+            .when(!self.spec.dual(), |view| {
+                view.bg(Colors::card())
+                    .border_1()
+                    .border_color(Colors::single_border())
+            })
             .rounded_t(surface::css(5.))
             .child(
                 h_flex()
                     .relative()
                     .justify_center()
                     .h(surface::css(36.))
+                    .line_height(surface::css(if self.spec.dual() { 19. } else { 36. }))
+                    .bg(Colors::panel())
                     .flex_shrink_0()
                     .border_b_1()
-                    .border_color(Colors::border())
+                    .border_color(if self.spec.dual() {
+                        Colors::border()
+                    } else {
+                        Colors::single_border()
+                    })
                     .font_family(if self.spec.dual() {
                         "RazerF5"
                     } else {
@@ -671,7 +741,11 @@ impl Render for DockDialog {
                     .flex_1()
                     .min_h_0()
                     .scrollable_both()
-                    .child(self.body(cx)),
+                    .child(
+                        div()
+                            .when(self.spec.dual(), |view| view.pb(surface::css(150.)))
+                            .child(self.body(cx)),
+                    ),
             );
         gpui_kit::base::Dialog::new(cx)
             .focus_handle(self.focus.clone())

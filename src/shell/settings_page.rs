@@ -575,6 +575,28 @@ impl SettingsPage {
             .gap_4()
             .child(self.runtime.clone())
             .child(
+                surface::panel("产品页面", cx)
+                    .child(surface::note("在产品标签页中查看导航、页面主体和页面内的弹层入口。以下入口仍在按原代码逐项完善。", cx))
+                    .child(h_flex().flex_wrap().gap_3().children([
+                        (740, "Huntsman V3 HE Magnetic Mini 65% 8KHz"),
+                        (746, "Huntsman V3 HE Magnetic Tenkeyless 8KHz"),
+                        (179, "HyperPolling 无线接收器"),
+                        (164, "Mouse Dock Pro"),
+                        (241, "Mouse Dock V2 Pro"),
+                        (769, "Philips Hue"),
+                        (784, "Aether 灯带"),
+                        (778, "ASRock B550 Taichi"),
+                        (3871, "Chroma ARGB 控制器"),
+                        (3884, "无线 ARGB 控制器（3884）"),
+                        (3886, "无线 ARGB 控制器（3886）"),
+                        (3946, "自动化（3946）"),
+                    ].map(|(pid, label)| {
+                        Button::new(SharedString::from(format!("preview-full-product-{pid}")))
+                            .label(label).outline()
+                            .on_click(cx.listener(move |_, _, _, cx| cx.emit(SettingsEvent::Preview(pid))))
+                    }))),
+            )
+            .child(
                 surface::panel("本地工作区", cx)
                     .child(h_flex().gap_3().child(
                         select::Select::new(&self.preview_product).placeholder("搜索产品名称或 ID").w(surface::css(400.))
@@ -626,7 +648,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-module-pages")
-                                    .label("预览模块界面")
+                                    .label("模块状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::PreviewModules)
@@ -656,7 +678,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-alexa")
-                                    .label("预览 Alexa…")
+                                    .label("Alexa 状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::PreviewAlexa)
@@ -672,7 +694,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-header-states")
-                                    .label("预览顶部状态")
+                                    .label("顶部状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::PreviewHeader)
@@ -680,13 +702,13 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-lighting-settings")
-                                    .label("预览灯光设置")
+                                    .label("灯光设置状态样例…")
                                     .outline()
                                     .on_click(|_, window, cx| lighting::open_preview(window, cx)),
                             )
                             .child(
                                 Button::new("preview-keyboard-calibration")
-                                    .label("预览磁轴键盘校准…")
+                                    .label("磁轴键盘校准状态样例…")
                                     .outline()
                                     .on_click(|_, window, cx| {
                                         crate::features::keyboard_products::open_calibration_preview(window, cx);
@@ -694,15 +716,47 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-hue")
-                                    .label("预览 Philips Hue…")
+                                    .label("Philips Hue 状态样例…")
                                     .outline()
                                     .on_click(|_, window, cx| {
                                         crate::features::hue::open_preview(window, cx);
                                     }),
                             )
                             .child(
+                                Button::new("preview-aether-strip")
+                                    .label("Aether 灯带状态样例…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::aether_strip::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("preview-wireless-argb")
+                                    .label("无线 ARGB 状态样例…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::wireless_argb::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("preview-wired-argb")
+                                    .label("主板与 ARGB 端口状态样例…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::wired_argb::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("preview-automation")
+                                    .label("自动化状态样例…")
+                                    .outline()
+                                    .on_click(|_, window, cx| {
+                                        crate::features::automation::open_preview(window, cx);
+                                    }),
+                            )
+                            .child(
                                 Button::new("open-pairing-page")
-                                    .label("预览鼠标底座配对…")
+                                    .label("鼠标底座配对状态样例…")
                                     .outline()
                                     .on_click(|_, window, cx| {
                                         crate::features::dock_pairing::open_preview(window, cx);

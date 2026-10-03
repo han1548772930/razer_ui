@@ -4,6 +4,15 @@ use gpui_kit::{Hsla, rgb, rgba};
 /// Current Dock Pro HyperPolling and Dock V2 Pro Duallink CSS modules.
 pub(crate) struct DockPairingColors;
 impl DockPairingColors {
+    pub(crate) fn single_border() -> Hsla {
+        rgb(0x515151).into()
+    }
+    pub(crate) fn unpair_hover() -> Hsla {
+        rgb(0x9b9b9b).into()
+    }
+    pub(crate) fn unpair_pressed() -> Hsla {
+        rgb(0x4e4e4e).into()
+    }
     pub(crate) fn panel() -> Hsla {
         rgb(0x222222).into()
     }
@@ -617,6 +626,35 @@ impl CameraProductColors {
     }
     pub(crate) fn pressed() -> gpui_kit::Hsla {
         gpui_kit::rgb(0xffffff).into()
+    }
+}
+
+/// Current product 784 layout controls and its offline message.
+pub(crate) struct AetherStripColors;
+impl AetherStripColors {
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn selected() -> Hsla {
+        rgb(0x292929).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn background() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn dialog() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn remove() -> Hsla {
+        rgb(0xfd4949).into()
+    }
+    pub(crate) fn control_border() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x0000004d).into()
     }
 }
 

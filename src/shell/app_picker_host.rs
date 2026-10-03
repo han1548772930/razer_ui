@@ -49,6 +49,11 @@ impl AppShell {
         // have been read, so those catalog fields deliberately remain Unknown.
         let catalog = AppPickerCatalog::new(PickerApp::Synapse)
             .devices(devices)
+            .bundled_modules([
+                PickerModule::Alexa,
+                PickerModule::AddWifi,
+                PickerModule::ProfileMigration,
+            ])
             .launchable_modules([
                 PickerModule::Alexa,
                 PickerModule::AddWifi,

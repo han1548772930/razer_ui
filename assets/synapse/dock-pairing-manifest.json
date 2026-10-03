@@ -84,6 +84,13 @@
     "output_sha256": "1c9d17a2dacfd718f230f3dafbeeae47496f3dbf33af6151d32b17e7ab2db07b"
   },
   {
+    "source": ".ref/devices/164/static/media/zia_pairing.8cf19beb.avif",
+    "url": "https://apps.razer.com/synapse/products/164/ui/static/media/zia_pairing.8cf19beb.avif",
+    "output": "assets/synapse/dock-164-zia_pairing.png",
+    "source_sha256": "38f5d5a6c2b1be6bd4e948f810b75d7dce5d61eda132011602c62f0426d7e7ee",
+    "output_sha256": "faffe9fc1ee0e2e1286c92960c635956ae64a6402bd402e4a399042b78a1e6e3"
+  },
+  {
     "source": ".ref/devices/241/static/media/icon-multidevicepairing2.af8657a6.svg",
     "url": "https://apps.razer.com/synapse/products/241/ui/static/media/icon-multidevicepairing2.af8657a6.svg",
     "output": "assets/synapse/dock-241-icon-multidevicepairing2.svg",

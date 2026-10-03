@@ -1,0 +1,1026 @@
+{
+  "method": "Acorn literal and mounted source extraction; vendor code never executed",
+  "generator_sha256": "3a06786fe14c1b46d8e83fc95375751d0efde8e081ecf9a6b101f0815816c325",
+  "products": [
+    {
+      "product_id": 3884,
+      "source_files": [
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e"
+        }
+      ],
+      "label_module": 4693,
+      "labels": {
+        "XjP": "TEXT_LED_STRIP",
+        "yAd": "TEXT_FAN",
+        "oSy": "TEXT_DEVICE_TYPE",
+        "vml": "GLITTER_DETECTED_LED_COUNT",
+        "uJp": "GLITTER_NO_OF_LED",
+        "Pie": "RENAME",
+        "isz": "GLITTER_MESSAGE_CHROMA_STUDIO",
+        "jP": "DASHBOARD_CHROMA_STUDIO",
+        "dH1": "DISMISS",
+        "TTS": "GLITTER_MESSAGE_EXCEEDED_WARNING_1",
+        "Y9x": "GLITTER_MESSAGE_EXCEEDED_WARNING_2",
+        "WqG": "LAUNCH_CHROMA_STUDIO",
+        "gt9": "GLITTER_TIP_HELP_PORT_MESSAGE",
+        "qir": "GLITTER_ADD_BEND",
+        "UPK": "GLITTER_ADD_FAN",
+        "rt0": "GLITTER_TOTAL_LED_COUNT",
+        "oxp": "GLITTER_MESSAGE_STOP_MOBILE_SYNC",
+        "FrN": "TEXT_CONNECT",
+        "d1R": "GLITTER_MESSAGE_BLUETOOTH_MODE",
+        "b17": "GLITTER_MESSAGE_BLUETOOTH_MODE_MSG",
+        "zO_": "GLITTER_NO_DEVICES_DETECTED",
+        "VK": "GLITTER_NO_DEVICES_DETECTED_MSG",
+        "qQf": "GLITTER_LED_LIMIT_EXCEEDED",
+        "Uoq": "GLITTER_LED_LIMIT_EXCEEDED_MSG",
+        "Y_b": "GLITTER_PROTECTION_ENABLED",
+        "lVB": "GLITTER_PROTECTION_ENABLED_MSG_0",
+        "sxP": "GLITTER_PROTECTION_ENABLED_MSG_1",
+        "lAp": "GLITTER_PROTECTION_ENABLED_MSG_2",
+        "eho": "GLITTER_PROTECTION_ENABLED_MSG_3",
+        "lPx": "GLITTER_PROTECTION_ENABLED_MSG_4",
+        "bgU": "GLITTER_MESSAGE_STAND_BY_MODE",
+        "pcC": "GLITTER_MESSAGE_STAND_BY_MODE_MSG",
+        "iyT": "GLITTER_MESSAGE_AUTO_DETECTION",
+        "Iu3": "GLITTER_MESSAGE_REFRESH_ICON"
+      },
+      "translation_receipts": [
+        {
+          "locale": "de",
+          "module": 5955,
+          "offset": 160015,
+          "end": 294072
+        },
+        {
+          "locale": "en",
+          "module": 5955,
+          "offset": 294096,
+          "end": 433300
+        },
+        {
+          "locale": "es",
+          "module": 5955,
+          "offset": 433324,
+          "end": 571040
+        },
+        {
+          "locale": "fr",
+          "module": 5955,
+          "offset": 571064,
+          "end": 708685
+        },
+        {
+          "locale": "ja",
+          "module": 5955,
+          "offset": 708709,
+          "end": 846232
+        },
+        {
+          "locale": "kr",
+          "module": 5955,
+          "offset": 846256,
+          "end": 983770
+        },
+        {
+          "locale": "pt-BR",
+          "module": 5955,
+          "offset": 983794,
+          "end": 1121391
+        },
+        {
+          "locale": "ru",
+          "module": 5955,
+          "offset": 1121415,
+          "end": 1259233
+        },
+        {
+          "locale": "zh-CN",
+          "module": 5955,
+          "offset": 1259257,
+          "end": 1397788
+        },
+        {
+          "locale": "zh-TW",
+          "module": 5955,
+          "offset": 1397812,
+          "end": 1534844
+        }
+      ],
+      "metadata": [
+        {
+          "value": {
+            "vendorId": 5426,
+            "productId": 3884,
+            "dongleId": 3884,
+            "bleId": 3885,
+            "ble": {
+              "useHardwareEffect": true,
+              "obmAvailable": false
+            },
+            "masterGuideURL": "https://dl.razerzone.com/master-guides/RazerSynapse3/CHROMAADDRESSABLERGBCONTROLLER-00003884-",
+            "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/5674/",
+            "category": "ACCESSORY",
+            "subCategory": "ARGB_CONTROLLER",
+            "WAVE_DIRECTION": [
+              {
+                "id": "dir-left",
+                "value": 1
+              },
+              {
+                "id": "dir-right",
+                "value": 2
+              },
+              {
+                "id": "dir-out",
+                "value": 5
+              },
+              {
+                "id": "dir-in",
+                "value": 6
+              }
+            ],
+            "useHardwareEffect": true,
+            "claimInterface": 0,
+            "minimumLedValue": 1
+          },
+          "offset": 3833149,
+          "end": 3833648
+        }
+      ],
+      "constants": [
+        {
+          "name": "AS",
+          "value": {
+            "NotApplicable": 0,
+            "2.4G": 1,
+            "BLE_PC": 2,
+            "BLE_MOBIL": 3
+          },
+          "offset": 4057768,
+          "end": 4057818
+        },
+        {
+          "name": "SS",
+          "value": [
+            6,
+            8,
+            9,
+            10,
+            12,
+            15,
+            16,
+            18,
+            20,
+            22,
+            24,
+            25,
+            32,
+            40
+          ],
+          "offset": 4057843,
+          "end": 4057886
+        },
+        {
+          "name": "yU",
+          "value": {
+            "NotApplicable": 0,
+            "2.4G": 1,
+            "BLE_PC": 2,
+            "BLE_MOBIL": 3
+          },
+          "offset": 4515014,
+          "end": 4515064
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3884/static/css/main.e2afc8b4.css",
+          "sha256": "14ab345a9cc9db718067c79a50ae1cd5de370e3661fa4169bd5bfc8be129f7b5",
+          "rules": [
+            ".warning-container{align-items:center;border:1px solid orange;border-radius:3px;display:flex;flex-direction:column;justify-content:center;margin:15px 0;padding:10px;width:210px}",
+            ".warning-container .warning-icon{background-image:url(../../static/media/icon_warning.6c0cd78b.svg);background-position:50%;background-repeat:no-repeat;height:20px;width:20px}",
+            ".warning-container .warning-text{font-size:14px;text-align:center}",
+            "#multipleBrightness .common-transition,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection,#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path,#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path,#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{transition:all .3s}",
+            "#multipleBrightness .common-font-styles,#multipleBrightness .message-container,#multipleBrightness .port-container .chroma-studio-message,#multipleBrightness .port-container .port-items-led-image .port-add-bend,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name,#multipleBrightness .port-container .port-items-led-image .total-LED-count,#multipleBrightness .port-warning,#multipleBrightness .warning-container{font-family:Roboto,sans-serif;font-size:14px}",
+            "#multipleBrightness .customize-container .customize-left,#multipleBrightness .customize-container .customize-right,#multipleBrightness .port-item-container{display:flex;flex-direction:column;min-width:480px;width:480px}",
+            "#multipleBrightness .customize-scroll{height:inherit;min-width:inherit;overflow-y:visible;overflow-y:initial;position:relative;width:inherit;z-index:1}",
+            "#multipleBrightness .customize-scroll .customize-center{display:flex;justify-content:center;left:50%;margin:10px;min-width:150px;position:fixed;transform:translateX(-59%);width:150px}",
+            "#multipleBrightness .customize-scroll .customize-center--wireless{left:auto!important;position:relative!important;transform:none!important;width:auto!important}",
+            "#multipleBrightness .customize-scroll .customize-center .product{height:275px;position:relative}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon{bottom:60px;display:flex;flex-direction:column;justify-content:space-between;left:0;position:absolute;right:0;width:100%}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon--wireless{bottom:127px;height:115px}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons{display:flex;gap:12px;justify-content:center}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons--wireless{gap:20px}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .power-icons{display:flex;justify-content:center}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-power,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-warning{height:20px;position:relative;width:20px;z-index:100}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection{fill:#0000;bottom:0;cursor:pointer;left:0;position:absolute}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-b{animation:zoomout 50ms ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-c{animation:zoomoutc .7s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-f{animation:zoomoutf .7s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:hover .detect-b{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:active .detect-b{fill:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-e{fill:none}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-b{fill:#111;animation:zoomin .1s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-c{fill:#fff;opacity:0}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-d{stroke:none}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:hover .detect-a{stroke:#96ef89}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:active .detect-a{stroke:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing{bottom:0;left:0;position:absolute;z-index:100}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:active path{fill:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power rect{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power path{fill:#111}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect{fill:#7de36c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off rect{fill:#c8323c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off:hover rect{fill:#d97077}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning{opacity:1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path{fill:#feab59}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:active path{fill:#b15e0c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning--hidden{opacity:0;pointer-events:none}",
+            "#multipleBrightness .customize-container{display:flex;flex-wrap:wrap;justify-content:space-between;margin:0 auto;max-width:1110px}",
+            "#multipleBrightness .customize-container--wireless{align-items:flex-start;display:flex;flex-wrap:wrap;max-width:1240px}",
+            "#multipleBrightness .customize-container--wireless .port-container{min-width:600px;width:600px}",
+            "#multipleBrightness .customize-container--listed{justify-content:center}",
+            "#multipleBrightness .customize-container{max-width:964px!important}",
+            "#multipleBrightness .port-container{background-color:#111;border-radius:5px;height:-webkit-fit-content;height:fit-content;margin:10px;min-height:199px;min-width:460px;padding:26px 40px 30px;position:relative;width:460px}",
+            "#multipleBrightness .port-container .port-items-led-image{display:flex;flex-direction:row;margin-top:11px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-infomation{flex:1 1}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend{align-items:center;color:#707070;cursor:pointer;display:inline-flex;height:27px;margin-bottom:5px;margin-top:5px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline{position:relative}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover{color:#44d62c}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover:after{background-color:#44d62c}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:after{background-color:#707070;bottom:.6px;content:\"\";height:1px;left:0;position:absolute;width:100%}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count{grid-column-gap:10px;align-items:center;display:grid;grid-template-columns:150px auto auto;height:27px;margin-top:5px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .label-total-led-count{align-self:center;margin-bottom:1px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .value-total-led-count{align-self:center;margin-bottom:1px;padding-left:10px;width:50px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .icon-led-detection{align-self:center!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item{align-items:center;display:inline-flex;margin-bottom:5px;margin-top:5px;width:100%}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .label-common{text-wrap:nowrap;color:#ccc;display:inline-block;font-family:Roboto,sans-serif;font-size:14px;margin-bottom:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container{margin-right:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown{height:27px;margin:0!important;width:150px;z-index:auto!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name{align-items:center;display:inline-flex;height:27px;width:150px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container{margin-left:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container--with-closed{width:80px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-wrapper{align-items:center;display:flex;gap:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown{height:27px;margin:0!important;width:62px;z-index:auto!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper{height:27px;margin:0!important;position:relative!important;width:62px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--stepper{border:1px solid #5d5d5d}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-decrease .icon.spinner.down,#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-increase .icon.spinner.up{opacity:.3;pointer-events:none}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper input{height:25px!important;padding-left:6px;text-align:left;width:60px!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter{display:inline-block}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{fill:#c8323c}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .icon-close-glitter{display:none;margin-left:-10px}",
+            "#multipleBrightness .port-container .port-name-container{height:27px}",
+            "#multipleBrightness .port-container .port-name-container:hover .port-name{text-decoration:underline}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon{align-items:center;display:inline-flex;margin-bottom:4px;margin-top:4px;padding-bottom:4px;position:relative}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-name{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;line-height:0px;margin-bottom:1px;margin-right:5px;text-transform:uppercase}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-edit-icon{margin-top:4px}",
+            "#multipleBrightness .port-container .port-name-container .port-input{background-color:#111;border:1px solid #44d62c;color:#ccc;font-family:RazerF5,sans-serif;font-size:16px;height:25px;line-height:0px;min-width:160px;padding:0 6px!important;text-transform:uppercase;width:160px}",
+            "#multipleBrightness .port-container .chroma-studio-message{border:1px solid #707070;border-radius:5px;font-size:13px;line-height:16px;margin-top:10px;padding:20px;transition:all .3s ease}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper{display:flex;justify-content:space-between;margin-top:10px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn{align-items:center;border:1px solid #737373;border-radius:3px;cursor:pointer;display:inline-flex;min-height:27px;min-width:150px;padding:4px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn .chroma-studio-icon{background-image:url(../../static/media/chroma_studio.55db6875.svg);background-repeat:no-repeat;background-size:18px;height:18px;margin-right:5px;min-width:18px;width:18px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .dismiss-btn{cursor:pointer;margin:auto 0;text-decoration:underline}",
+            "#multipleBrightness .message-container,#multipleBrightness .warning-container{background-color:#111;border-radius:5px;column-gap:10px;display:inline-block;font-size:14px;grid-template-columns:auto auto;margin:auto;padding:20px;width:600px;z-index:100}",
+            "#multipleBrightness .message-container--overlay,#multipleBrightness .warning-container--overlay{left:0;position:absolute;right:0;top:20px}",
+            "#multipleBrightness .message-container{border:1px solid #5a5a5a;padding:20px 40px}",
+            "#multipleBrightness .message-container .text-center{text-align:center}",
+            "#multipleBrightness .message-container .center{align-items:center;display:flex;flex-direction:column;justify-content:center}",
+            "#multipleBrightness .message-container__header{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;font-weight:400;margin:9px auto 20px;text-transform:uppercase}",
+            "#multipleBrightness .message-container__msg{color:#ccc;font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:400;margin-bottom:10px;margin-top:0;white-space:pre-wrap}",
+            "#multipleBrightness .message-container__button{background-color:#44d62c;color:#111;margin-top:10px;padding-top:2px}",
+            "#multipleBrightness .warning-container{border:1px solid #fd8611;text-align:center}",
+            "#multipleBrightness .warning-container__header{font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:600;margin:0 auto 10px;text-transform:uppercase}",
+            "#multipleBrightness .warning-container__msg{margin:0 40px}",
+            "#multipleBrightness .warning-container__dismiss{margin-top:10px;text-decoration:underline}",
+            "#multipleBrightness .warning-container__dismiss:hover{color:#44d62c}",
+            "#multipleBrightness .warning-container ul{list-style-type:decimal;margin:20px 40px 0;text-align:start}",
+            "#multipleBrightness .warning-container ul div{margin-left:5px}",
+            "#multipleBrightness .warning-container ul li{margin-top:20px}",
+            "#multipleBrightness .wireless-status-wrapper{align-items:center;display:flex}"
+          ]
+        }
+      ],
+      "profile_bar": [
+        {
+          "needle": "isEnableProfileBar",
+          "offset": 4483103,
+          "source": "inkedGameByProfile();return YS()(this.props.gameList)||YS()(e)?[]:hp()(this.props.gameList,e,\"id\")},this.renderProfileBarIcon=()=>{let e=null;return!this.props.isEnableProfileBar||this.props.activeDynamicMode?(e=(0,HT.getTextItem)(OT.Pov),(0,_T.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader disable\",\"aria-label\":e,tooltip:e})):(e=this.state.showLoader?(0,HT.getTextItem)(OT.pyi):(0,HT.getTextItem)(OT.jIM),(0,_T.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader \".concat(this.state.showLoader?\"show\":\"\")"
+        },
+        {
+          "needle": "isEnableProfileBar",
+          "offset": 4534572,
+          "source": "is.state.currentTabNavigation,renderProfileBar:()=>(0,_T.jsx)(sU,{battState:this.state.battState,hasTHXWarning:!1,hasBattery:!1,gameList:this.state.gamesLinked,isEnableProfileBar:this.state.active_view===OT.lgc}),showSettings:this.state.showSettings,hasTHXWarning:!1,hasBattery:!1}),(0,_T.jsxs)(iT,{activeView:this.state.active_view,extraClass:\"body-wrapper-custom\",children:[this.renderView(),this.props.selectedProfile&&(0,_T.jsx)(jU,{setShowLinkedGames:()=>this.props.setShowLinkedGames(!1),showLinkedGames:this.props.showLinkedGames,deviceData:{pid:ET.Devi"
+        },
+        {
+          "needle": "setProfileDropdownState",
+          "offset": 3918810,
+          "source": ")=>JS,importProfile:()=>$S,loadChromaProfiles:()=>ZS,loadMouseCalibrationInfo:()=>QS,renameProfile:()=>xS,resetProfile:()=>KS,setIsFactoryDefaultProfile:()=>El,setProfileDropdownState:()=>al,setSelectedChromaProfiles:()=>qS,setShowReshareBadgeState:()=>_l,updateListPresetProfile:()=>el,updateProfile:()=>jS});var d={};a.r(d),a.d(d,{setPortBrightnessesValue:()=>fl});var c={};a.r(c),a.d(c,{updateProductName:()=>wl});var u={};a.r(u),a.d(u,{addNewAudioApplication:()=>PR,addRemoveAudioApplication:()=>LR,addSpecificAudioApplication:()=>pR,deleteGame:()=>mR,init"
+        },
+        {
+          "needle": "setProfileDropdownState",
+          "offset": 4529892,
+          "source": ".active_view),this.view===this.state.active_view)return;const e=this.state,E=e.tabNavigations,a=e.currentTabNavigation;a+1!==E.length&&E.splice(a+1),this.props.setProfileDropdownState(this.state.active_view===OT.lgc),this.setState({active_view:this.view},()=>{this.addNavigationToStorage(),this.props.changeSelectedTab(this.view)})},this.navigateBack=()=>{if(this.view=this.state.tabNavigations[this.state.currentTabNavigation-1],this.currentTabNavigation=this.state.currentTabNavigation-1,this.props.isMappingChanged)return console.log(\"mapping changed\",this."
+        },
+        {
+          "needle": "setProfileDropdownState",
+          "offset": 4530794,
+          "source": "is.view,this.state.active_view),void this.setDisplaySaveAlert(this.updateNavigationView);this.updateNavigationView()},this.updateNavigationView=()=>{this.props.setProfileDropdownState(this.state.active_view===OT.lgc),this.setState({currentTabNavigation:this.currentTabNavigation,active_view:this.view},()=>{console.log(this.state.tabNavigations),console.log(this.state.currentTabNavigation),this.props.changeSelectedTab(this.state.active_view)})},this.refreshDevice=async()=>{console.log(\"show loader\"),this.setState({showLoader:!0}),this.setState({showLoader:"
+        },
+        {
+          "needle": "setProfileDropdownState",
+          "offset": 4532473,
+          "source": "rage.getItem(bS.XPM)||this.addNavigationToStorage(),this.props.changeSelectedTab(this.state.tabNavigations[this.state.currentTabNavigation]||OT.M9m),this.props.setProfileDropdownState(this.state.active_view===OT.lgc),this.loadDefaults(),Wl(\"staging\"===bS.M0L),window.addEventListener(\"dragstart\",e=>e.preventDefault()),document.addEventListener(\"keydown\",this.handleDisableRefresh),this.loadActiveProfileSettings()}componentWillUnmount(){document.removeEventListener(\"keydown\",this.handleDisableRefresh)}componentDidUpdate(e){e.remoteStorageConnected!==this.pr"
+        },
+        {
+          "needle": "setProfileDropdownState",
+          "offset": 4533643,
+          "source": "ET.DeviceInfo.productId);if(void 0!==E){let E=this.props.gameList.find(E=>E.id===e.gameID);this.setState(e=>({gamesLinked:[...e.gamesLinked,E]}))}}),this.props.setProfileDropdownState(this.state.active_view===OT.lgc)}render(){const e=this.props,E=e.warningType,a=e.isRefreshing,_=e.ports,t=e.externalPowerConnected,i=e.connectionStatus,o=!!_.length,n=(null===i||void 0===i?void 0:i.type)===AS.BLE_MOBILE,s=E===FU||a||!t||n||!o;return(0,_T.jsxs)(nT,{children:[(0,_T.jsx)(iD,(0,G.A)({tabNavigations:this.state.tabNavigations,title:qr.Ky.onLang(this.props.lang).p"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4495697,
+          "source": "educer.chargingStatus,profilesLikedGame:e.linkedGamesReducer?e.linkedGamesReducer.linkedGames:[],gameList:e.linkedGamesReducer?e.linkedGamesReducer.gameList:[],enableSwitchProfile:e.profileReducer.enableSwitchProfile,activeDynamicMode:!!e.dynamicReducer&&e.dynamicReducer.activeDynamicMode,lang:e.languageReducer.lang,obm:e.OBM,adjustmentModeRunning:e.customizeReducer.adjustmentModeRunning,loupedeckState:!!e.loupedeckReducer&&e.loupedeckReducer.loupedeckState,devicePid:null===(E=e.deviceReducer)||void 0===E?void 0:E.productId,displayMode:null===(a=e.custom"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4653594,
+          "source": "caleCompare(i[_]);_++}return t.length-i.length})},Lf=(0,G.A)({},ET).sanitizeImportedProfileMappings,Pf={profiles:[],selectedProfileGuid:\"\",hasUnsavedChanges:!1,enableSwitchProfile:!0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],cachedHyperShiftOn:[],analogPresetProfiles:[],isFactoryDefaultProfile:!1,armorySharedProfiles:[],showReshareBadge:!1};function pf(e,E){return(0,G.A)((0,G.A)({},e),{},{selectedProfileGuid:E.payload})}function Mf(e,E){const a=[...e.profiles,E];return ET.DeviceInfo.singleProfileDevice||Df(a),(0,G.A)((0,G.A)({},e),{},{p"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4660138,
+          "source": "I?I:[]});case MT.mkJ:{const a=E.payload.selectedProfileGuid;return(0,G.A)((0,G.A)({},e),{},{selectedProfileGuid:a})}case MT.fDb:return(0,G.A)((0,G.A)({},e),{},{enableSwitchProfile:E.payload});case MT.QrX:case MT._Ok:return(0,G.A)((0,G.A)({},e),{},{showReshareBadge:E.payload});case MT.Cu1:{const a=new Set((E.payload||[]).map(e=>e.guid));let _=e.profiles.map(e=>(0,G.A)((0,G.A)({},e),{},{macrosMapping:(e.macrosMapping||[]).filter(e=>{const E=e.mapping?e.mapping[0].macroGroup.guid:e.macroGroup.guid;return a.has(E)})}));return(0,G.A)((0,G.A)({},e),{},{profile"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4660758,
+          "source": "ctedProfileGuid?(0,G.A)((0,G.A)({},a),{},{macrosMapping:E.payload}):a);return(0,G.A)((0,G.A)({},e),{},{profiles:a})}case MT.oLB:return(0,G.A)((0,G.A)({},e),{},{enableSwitchProfile:!E.payload});case MT.ZUI:return(0,G.A)((0,G.A)({},e),{},{isFactoryDefaultProfile:E.payload});case MT.GKS:return Nh(e,E.payload);case MT.Vir:return dh(e,E);case MT.wSz:return ch(e,E);case MT.yqg:return uh(e,E);case MT.k6k:return Ch(e,E);case MT.q6u:return Dh(e,E);case MT.Sx4:return Lh(e,E);default:return e}},Uf={showSettings:!1};const hf=(e,E)=>fh(e,E,\"switchOffLightingReducer\")"
+        },
+        {
+          "needle": "enableSwitchProfile=",
+          "offset": 4486928,
+          "source": "ull===eU||void 0===eU||null===(e=eU.dynamicProfile)||void 0===e?void 0:e.ownedBy)},this.allowOneItem=()=>{let e=!0;return this.isDynamiceMode()&&(e=!1),e},this.enableSwitchProfile=()=>!!this.props.enableSwitchProfile&&(!this.props.activeDynamicMode||!this.isLoupedeckProfiles()),this.handleToggleDropdown=e=>{this.props.showReshareBadge&&e&&this.props.setShowReshareBadgeState(!1)},this.renderProfileBar=()=>{var e,E,a,_,t;const i=this.props.createDotTips;return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsxs)(\"div\",{role:\"region\",\"aria-label\":\"profile bar\",cla"
+        }
+      ],
+      "persistence": [
+        {
+          "needle": "this.loadActiveProfileSettings=()=>",
+          "offset": 4525179,
+          "source": "this.loadActiveProfileSettings=()=>{let e=JSON.parse(window.localStorage.getItem(Kl.wI.DEVICE_LOCALSTORAGE_KEY));if(void 0===e||null===e)return!1;if(void 0===e.profiles||0===e.profiles.length)return!1;e.deviceMetadatas&&Object.keys(e.deviceMetadatas).length>0&&this.props.serialNumber&&(e.activeProfile=this.getActiveProfile(e.deviceMetadatas,this.props.serialNumber),console.warn(\"set active profile to\",e.activeProfile),e.activeProfile||console.warn(\"no active profile found\"));let E=e.activeProfile?e.profiles.find(E=>E.guid===e.activeProfile):e.profiles[0];const a=Zr.A.get(bS.XG4);if(Array.isArray(a)){const e=Zr.A.get(Kl.wI.SYNAPSE_CURRENT_USER,!0),E=a.find(E=>E.userId===e);E&&(this.props.setChromaEnabled(E.enabled),this.props.loadChromaProfiles({profiles:E.profiles,selectedChromaProfileGuid:E.currentProfile}))}for(const N of Object.entries(e)){switch((0,Vr.A)(N,1)[0]){case\"profiles\":{var _;null===(_=Kl.jf.reduxStore)||void 0===_||_.dispatch({type:MT.Bj5,payload:{profiles:JSON.parse(JSON.stringify(e.profiles)),selectedProfileGuid:e.activeProfile}});const a=window.localStorage.getItem(bS.XG4);if(Array.isArray(a)){const e=Zr.A.get(Kl.wI.SYNAPSE_CURRENT_USER,!0),E=a.find(E=>E.userId===e);E&&(this.props.setChromaEnabled(E.enabled),this.props.loadChromaProfiles({profiles:E.profiles,selectedChromaProfileGuid:E.currentProfile}))}for(const e in E)switch(e){case\"isPowerOn\":{var t;const a=E[e];null===(t=Kl.jf.reduxStore)||void 0===t||t.dispatch({type:$t,payload:a});break}case\"isAutoDetectionEnable\":{var i;const a=E[e];null===(i=Kl.jf.reduxStore)||void 0===i||i.dispatch({type:oi,payload:{isAutoDetectionEnable:a}});break}case\"brightness\":{var o;const a=E[e];null===(o=Kl.jf.reduxStore)||void 0===o||o.dispatch({type:MT.Yyp,payload:{brightness:a}});break}case\"quickEffects\":{var n,s,r,T,I,O,A;const a=E[e];let _={selectedEffectId:3};a&&(_=structuredClone(a));let t=[];var S,l;if(null!==(n=_)&&void 0!==n&&n.selectedEffectSetting)t=[(0,G.A)((0,G.A)({},null===(S=_)||void 0===S?void 0:S.selectedEffectSetting),{},{effectId:null===(l=_)||void 0===l?void 0:l.selectedEffectId})];const i={isGlobalQuickEffect:null===(s=_)||void 0===s?void 0:s.isGlobalQuickEffect,selectedEffectId:null!==(r=null===(T=_)||void 0===T?void 0:T.selectedEffectId)&&void 0!==r?r:3,effectSettings:t};null===(I=Kl.jf.reduxStore)||void 0===I||I.dispatch({type:MT.w6T,payload:i}),null===(O=Kl.jf.reduxStore)||void 0===O||O.dispatch({type:MT.v5Y,payload:null!==(A=_.customColors)&&void 0!==A?A:[]});break}case\"switchOffLighting\":{var R;const a=E[e];null===(R=Kl.jf.reduxStore)||void 0===R||R.dispatch({type:MT.yyk,payload:{switchOffLighting:a,actionType:MT.yyk}});break}}break}}}},this.handleDisableRefresh=async e=>{116===e.keyCode&&(e.preventDefault(),this.handleCustomRefresh())},this.handleSystemIdleEvent=e=>{if(this.props.brightness.isEnabled){const E=6e4*this.props.switchOffLighting.idleMinutes;if(this.props.switchOffLighting.isIdleEnabled){if(e>=E&&!this.brightnessOffSent){const e={isEnabled:!0,value:0,updateStore:!1,isGlobalBrightness:this.props.brightness.isGlobalBrightness};this.props.setBrightness(e),th"
+        },
+        {
+          "needle": "const eH=(e,E)=>",
+          "offset": 4669480,
+          "source": "const eH=(e,E)=>{let a=E.ports;const _=window.currentTimerTick||Date.now(),t=new lh(\"ON_SET_PORT_VALUES\",_,{ports:a}),i=_H(e,{ports:a},t);return tH(i,_),i},EH=(e,E)=>{let a=E.isPortLinked;const _=window.currentTimerTick||Date.now(),t=new lh(\"ON_CHANGE_PORT_LINK_STATE\",_,{isPortLinked:a});return _H(e,{isPortLinked:a},t)},aH=(e,E)=>{const a=window.currentTimerTick||Date.now(),_=new lh(\"ON_SET_CURRENT_ACTIVE_PORT\",a,{currentActivePortId:E});return _H(e,{currentActivePortId:E},_)},_H=(e,E,a)=>{let _=(0,G.A)((0,G.A)({},e),E);return _=Nh(_,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload}),_},tH=(e,E)=>{const a=structuredClone(e),_=a.ports,t=a.isPortLinked,i=a.currentActivePortId;var o;_&&_.length>0?(\"FAN_CONTROLLER\"===ET.DeviceInfo.subCategory&&_.forEach(e=>{delete e.fanState,delete e.value}),console.warn(\"sanitizeportValues will send mw ports:\",_),null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:E,payload:{ports:_,portsConfig:{isPortLinked:t,currentActivePort:i}}})):console"
+        },
+        {
+          "needle": "portsReducer:",
+          "offset": 4676286,
+          "source": "return ch(e,E);case MT.Cnh:return Ch(e,E);case MT.cVx:return uh(e,E);case MT.Svh:return Lh(e,E);case MT.Jr8:return dh(e,E);case MT.aSQ:return ch(e,E);case MT.WQy:return Ch(e,E);case MT.ES8:return uh(e,E);case MT.Cio:return Lh(e,E);default:return e}},portsReducer:function(e,E){const a=structuredClone(e);if(void 0===e)return(0,G.A)({},Zf);let _=e;const t=$f.some(e=>{const a=e(_,E),t=a!==_;return _=a,t}),i=[MT.Kxj,MT.B8N,Bt,MT.l8R,MT.JUr].includes(E.type);return t?(console.warn(\"portsReducer before:\",a,structuredClone(E)),console.warn(\"portsReducer after:\",structuredClone(_)),i||eH(_,{ports:qf(_.ports)}),_):e}}),oH=[ah],nH=aT.Zz,sH=(0,aT.y$)(iH,{},nH((0,aT.Tw)(...oH)));window.reduxStore=sH;const rH=sH,TH=e=>{let E=e.editionId,a=e.layoutId;return e=>{e({type:Ot,payload:{editionId:E,layoutId:a}})}},IH=e=>E=>{E({type:At,payload:e})},OH=e=>E=>{E({type:St,payload:e})},AH=e=>async E=>{E({type:Mt,payload:e})},SH=e=>async E=>{E({type:\"SET_DUALLINK_WARNING\",payload:e})},lH=e=>async E=>{E({type:\"SET_CONTINUE_PAIRING\",payload:e})},RH=e=>async E=>{E({type:\"SET_CANCEL_PAIRING\",payload:e})};var NH,dH"
+        }
+      ],
+      "manifest": {
+        "path": ".ref/devices/3884/asset-manifest.json",
+        "sha256": "f960f7d469ebeb386f176c655a5b7da08d3dffad228d2eddbd97cdfde734b40f"
+      },
+      "components": [
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4503130,
+          "end": 4503996,
+          "source": "class DU extends g.PureComponent{constructor(){super(...arguments),this.selectOption=e=>E=>{this.props.changePortMode({id:e,isStripMode:!E})}}render(){const e=this.props,E=e.id,a=e.isStripMode,_=e.index,t=e.maxLedSupported,i=(t===dS?[OT.XjP,OT.yAd]:[OT.XjP]).map(e=>({name:(0,HT.getTextItem)(e),content:(0,HT.getTextItem)(e)}));return(0,_T.jsxs)(\"div\",{className:\"device-type-container\",children:[0===_&&(0,_T.jsxs)(g.Fragment,{children:[(0,_T.jsxs)(\"div\",{className:\"label-common\",children:[(0,_T.jsx)(ST.A,{text:OT.oSy}),\":\"]}),(0,_T.jsx)(NI,{extraClass:\"device-type-dropdown\",name:\"device-type\",dataSet:i,value:Number(!a),selectOption:this.selectOption(E),allowOneItem:!0})]}),0!==_&&(0,_T.jsx)(g.Fragment,{children:(0,_T.jsxs)(\"div\",{className:\"device-type-name\",children:[a?(0,_T.jsx)(ST.A,{text:OT.XjP}):(0,_T.jsx)(ST.A,{text:OT.yAd}),\" \".concat(_+1)]})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4498719,
+          "end": 4499637,
+          "source": "e=>{let E=e.active,a=e.className,_=e.value;const t=(0,te.useSelector)(e=>e.languageReducer.lang);return(0,g.useEffect)(()=>{},[E,t]),E?(0,_T.jsx)(\"div\",{style:{whiteSpace:\"pre-line\"},children:(0,_T.jsxs)(\"div\",{style:{position:\"relative\",display:\"flex\"},children:[(0,_T.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:a,children:(0,_T.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\",fill:\"#707070\"})}),(0,_T.jsx)(Gu,{position:\"bottom-right\",children:(0,_T.jsx)(\"div\",{dangerouslySetInnerHTML:{__html:(0,HT.getTextItem)(OT.vml,{ledCount:'<span style=\"color:#44d62c\">'.concat(_,\"</span>\")})}})})]})}):null}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4500738,
+          "end": 4502981,
+          "source": "class uU extends g.PureComponent{constructor(e){super(e),this.checkStripValues=e=>{let E=e.portId,a=e.stripId,_=e.ports,t=e.isStripMode,i=e.ledValue;if(t){var o,n,s;const e=(null===(o=_.find(e=>e.id===E))||void 0===o||null===(n=o.argb)||void 0===n||null===(s=n.numberOfLeds)||void 0===s?void 0:s.strip)||[];if(4===e.length&&e[3].id===a&&i>=e[1].value)return{value:e[1].value,disabled:!0}}return{value:null,disabled:!1}},this.handleChangeNumberOfLeds=e=>{let E=e;if(Date.now()-this.previousClickTime<300)return!1;this.previousClickTime=Date.now();const a=this.props,_=a.portId,t=a.stripId,i=a.changeNumberOfLeds,o=a.ports,n=a.isStripMode;if(n||(E=SS[e]),n){var s,r,T;const e=(null===(s=o.find(e=>e.id===_))||void 0===s||null===(r=s.argb)||void 0===r||null===(T=r.numberOfLeds)||void 0===T?void 0:T.strip)||[];4===e.length&&e[3].id&&e[1].id===t&&e[1].value>=E&&e[1].value===e[3].value&&i({portId:_,stripId:e[3].id,value:E})}i({portId:_,stripId:t,value:E})},this.renderStepperInput=()=>{const e=this.props,E=e.ledValue,a=e.isStripMode,_=e.maxLedSupported;if(!a){const e=SS.map(e=>({name:String(e),content:String(e)})),a=SS.findIndex(e=>e===E)||0;return(0,_T.jsx)(NI,{extraClass:\"number-led-stepper\",dataSet:e,value:a,selectOption:this.handleChangeNumberOfLeds})}const t=this.checkStripValues((0,G.A)({},this.props)),i=t.value;let o=\"number-led-stepper number-led-stepper--stepper \";(t.disabled||E===_)&&(o+=\"number-led-stepper--disabled-increase \"),E===lS&&(o+=\"number-led-stepper--disabled-decrease \");const n=_?Math.max(String(_).length,2):2;return(0,_T.jsx)(bO,{value:E,active:!0,maxValue:i||_,minValue:lS,stepValue:1,extraClass:o,setParentState:this.handleChangeNumberOfLeds,maxLength:n})},this.previousClickTime=0,this.previousPortValue=[]}render(){const e=this.props,E=e.index,a=e.detectedLedCount,_=e.numberOfBends;return(0,_T.jsxs)(\"div\",{className:\"number-led-container \".concat(0!==E?\"number-led-container--with-closed\":\"\"),children:[0===E&&(0,_T.jsxs)(\"div\",{className:\"label-common\",children:[(0,_T.jsx)(ST.A,{text:OT.uJp}),\":\"]}),(0,_T.jsxs)(\"div\",{className:\"number-led-wrapper\",children:[this.renderStepperInput(),\"MAINBOARD\"!==ET.DeviceInfo.subCategory&&(0,_T.jsx)(lU,{value:a,active:1===_,className:\"icon-led-detection\"})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4504118,
+          "end": 4504825,
+          "source": "class PU extends g.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.removeStripBend,t=e.isStripMode?NS:RS;return(0,_T.jsxs)(\"svg\",{className:\"icon-close-glitter\",width:20,height:20,viewBox:\"0 0 20 20\",onClick:()=>_({portId:E,stripId:a,type:t}),children:[(0,_T.jsx)(\"defs\",{children:(0,_T.jsx)(\"clipPath\",{id:\"a\",children:(0,_T.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,_T.jsx)(\"g\",{children:(0,_T.jsx)(\"path\",{d:\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\",fill:\"#ccc\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4504893,
+          "end": 4505321,
+          "source": "class MU extends g.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.isStripMode,t=e.ledValue,i=e.numberOfBends,o=e.detectedLedCount,n=e.index;return(0,_T.jsxs)(\"div\",{className:\"port-item\",children:[(0,_T.jsx)(LU,{id:E,isStripMode:_,index:n}),(0,_T.jsx)(CU,{portId:E,stripId:a,isStripMode:_,ledValue:t,numberOfBends:i,detectedLedCount:o,index:n}),0!==n&&(0,_T.jsx)(pU,{portId:E,stripId:a,isStripMode:_})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4505333,
+          "end": 4505838,
+          "source": "class UU extends g.PureComponent{render(){return(0,_T.jsxs)(\"svg\",(0,G.A)((0,G.A)({width:14,height:14,viewBox:\"0 0 14 14\"},this.props),{},{children:[(0,_T.jsx)(\"defs\",{children:(0,_T.jsx)(\"clipPath\",{id:\"a\",children:(0,_T.jsx)(\"path\",{fill:\"none\",d:\"M0 0H14V14H0z\"})})}),(0,_T.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,_T.jsx)(\"path\",{d:\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\",fill:\"#44d62c\"})})]}))}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4505850,
+          "end": 4507382,
+          "source": "class GU extends g.PureComponent{constructor(e){super(e),this.updateName=(e,E)=>{const a=this.props,_=a.changePortName,t=a.portName;this.setState({isEditing:!1}),E&&E!==t&&_({id:e,name:E})},this.handleClickOutside=e=>{var E;if(this.refInput&&(null===(E=gl()(this.refInput,\"current\",[]))||void 0===E||!E.contains(e.target))){const e=gl()(this.refInput,\"current.value\",\"\");this.updateName(this.props.portId,e)}},this.handleSwitchView=()=>{this.setState({isEditing:!0},()=>{this.refInput.current.focus(),this.refInput.current.select()})},this.onKeyDown=e=>E=>{if(13===E.keyCode){const a=E.target.value;this.updateName(e,a)}},this.state={isEditing:!1},this.refInput=f().createRef(),this.handleClickOutside=this.handleClickOutside.bind(this)}componentDidMount(){document.addEventListener(\"mousedown\",this.handleClickOutside)}componentWillUnmount(){document.removeEventListener(\"mousedown\",this.handleClickOutside)}render(){const e=this.state.isEditing,E=this.props,a=E.portName,_=E.portId;return(0,_T.jsxs)(\"div\",{className:\"port-name-container\",children:[e&&(0,_T.jsx)(\"input\",{ref:this.refInput,defaultValue:a,maxLength:32,onBlur:this.onKeyDown(_),onKeyDown:this.onKeyDown(_),className:\"port-input\"}),!e&&(0,_T.jsxs)(\"div\",{className:\"port-name-and-icon\",onClick:this.handleSwitchView,children:[(0,_T.jsx)(\"span\",{className:\"port-name\",children:a}),(0,_T.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,_T.jsx)(hU,{className:\"port-edit-icon\"}),(0,_T.jsx)(Gu,{position:\"bottom\",children:(0,_T.jsx)(ST.A,{text:OT.Pie})})]})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4499638,
+          "end": 4500309,
+          "source": "class RU extends g.PureComponent{constructor(){super(...arguments),this.onClick=e=>{e.preventDefault(),this.props.openChromaStudio&&this.props.openChromaStudio()}}render(){const e=this.props.handleDismiss;return(0,_T.jsxs)(\"div\",{className:\"chroma-studio-message\",children:[(0,_T.jsx)(\"div\",{children:(0,_T.jsx)(ST.A,{text:OT.isz})}),(0,_T.jsxs)(\"div\",{className:\"chroma-studio-wrapper\",children:[(0,_T.jsxs)(\"div\",{className:\"chroma-studio-message-btn\",onClick:this.onClick,children:[(0,_T.jsx)(\"span\",{className:\"chroma-studio-icon\"}),(0,_T.jsx)(ST.A,{text:OT.jP})]}),(0,_T.jsx)(\"div\",{className:\"dismiss-btn\",onClick:e,children:(0,_T.jsx)(ST.A,{text:OT.dH1})})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4498341,
+          "end": 4498704,
+          "source": "class AU extends g.PureComponent{render(){return(0,_T.jsx)(\"svg\",(0,G.A)((0,G.A)({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:(0,_T.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})}))}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4500321,
+          "end": 4500643,
+          "source": "class dU extends g.PureComponent{render(){return(0,_T.jsxs)(\"div\",{className:\"port-warning\",children:[(0,_T.jsx)(\"div\",{children:(0,_T.jsx)(SU,{})}),(0,_T.jsxs)(\"div\",{children:[(0,_T.jsx)(ST.A,{text:OT.TTS,data:{maxLed:this.props.maxLedSupported}}),(0,_T.jsx)(\"span\",{children:\" \"}),(0,_T.jsx)(ST.A,{text:OT.Y9x})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4507450,
+          "end": 4512461,
+          "source": "class fU extends g.PureComponent{constructor(e){super(e),this.handleDismissMessage=e=>{const E=this.props,a=E.value;(0,E.updatePortChromaMessage)({id:a.id,isActive:e})},this.handleAddBend=e=>()=>{const E=this.props.value.id;this.props.addStripBend({id:E,type:e})},this.checkChromaInstalled=()=>{const e=window.localStorage.getItem(bS.Vn6)||[];if(Array.isArray(e)&&e.length>0){const E=e.some(e=>e.name===bS.A8P);this.setState({isChromaStudioInstalled:E,isChromaAppInstalled:!0})}else this.setState({isChromaStudioInstalled:!1,isChromaAppInstalled:!1})},this.getTab=async function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";try{if(\"function\"===typeof dT.A.getWindowServiceClients){const E=await dT.A.getWindowServiceClients();return JSON.parse(E).find(E=>E.windowName===e||E.url.includes(e))}return null}catch(E){return null}},this.focusWindow=e=>{\"function\"===typeof dT.A.activateWindowServiceClient&&dT.A.activateWindowServiceClient(e)},this.openDevicesModules=async()=>{if(await this.getTab(bS.HqM))this.focusWindow(bS.HqM);else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,bS.HqM,bS.oj6)}},this.openChromaStudio=async()=>{const e=await this.getTab(bS.HqM),E=await this.getTab(bS.A8P);if(e){const e=await dT.A.callElectronAction({action:\"getWindowStatus\",windowName:bS.HqM});e.isVisible&&!e.isMinimized||this.focusWindow(bS.HqM),E?this.focusWindow(bS.A8P):dT.A.callElectronAction({action:\"activateWindowServiceClient\",windowName:bS.HqM,subTab:OT.WqG})}else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,bS.HqM,bS.oj6)}},this.renderLedImages=e=>{let E=e.isStripMode,_=e.ledValues;if(!E)return(0,_T.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(2966),alt:\" \"});switch(_.length){case 2:return(0,_T.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(941),alt:\" \"});case 3:return(0,_T.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(7408),alt:\" \"});case 4:return(0,_T.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(8519),alt:\" \"});default:return(0,_T.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(5766),alt:\" \"})}},this.renderPortItem=e=>{let E=e.id,a=e.numberOfLeds,_=e.isStripMode,t=e.ledValues;return a&&E&&t&&t.length?t.map((e,t)=>(0,_T.jsx)(mU,{portId:E,stripId:e.id,isStripMode:_,numberOfBends:_?a[NS].length:a[RS].length,ledValue:e.value,detectedLedCount:a.detectedLedCount,index:t},t.toString())):(0,_T.jsx)(_T.Fragment,{})},this.state={isChromaStudioInstalled:!1,isChromaAppInstalled:!1}}componentDidMount(){this.checkChromaInstalled(),window.addEventListener(\"storage\",this.checkStorageChanges)}componentDidUpdate(e){const E=this.props.value,a=e.value,_=(null===E||void 0===E?void 0:E.argb)||{},t=(null===a||void 0===a?void 0:a.argb)||{};_.chromaRequireDismiss&&_.isStripMode!==t.isStripMode&&this.handleDismissMessage(!1);const i=null===_||void 0===_?void 0:_.numberOfLeds,o=null===t||void 0===t?void 0:t.numberOfLeds;if(_.chromaRequireDismiss&&!dR()(i,o)){const e=_.isStripMode?NS:RS,E=(null===i||void 0===i?void 0:i[e])||[],a=(null===o||void 0===o?void 0:o[e])||[];E.reduce((e,E)=>e+E.value,0)!==a.reduce((e,E)=>e+E.value,0)&&this.handleDismissMessage(!1)}}componentWillUnmount(){window.removeEventListener(\"storage\",this.checkStorageChanges)}render(){const e=this.handleDismissMessage,E=this.renderLedImages,a=this.handleAddBend,_=this.openChromaStudio,t=this.props.maxLedSupported,i=this.props.value,o=i.name,n=i.id,s=i.argb,r=i.isActive,T=s.chromaRequireDismiss,I=s.numberOfLeds,O=s.isStripMode,A=this.state.isChromaAppInstalled,S=()=>{const e=O?NS:RS;return I[e]?I[e].reduce((e,E)=>e+E.value,0):0},l=O?I[NS]:I[RS];return r?(0,_T.jsxs)(\"div\",{className:\"port-container widget\",children:[(0,_T.jsx)(\"div\",{className:\"help\"}),(0,_T.jsx)(\"div\",{className:\"tip\",children:(0,_T.jsx)(ST.A,{text:OT.gt9})}),(0,_T.jsx)(gU,{portName:o,portId:n}),(0,_T.jsxs)(\"div\",{className:\"port-items-led-image\",children:[(0,_T.jsxs)(\"div\",{className:\"port-infomation\",children:[this.renderPortItem({id:n,numberOfLeds:I,isStripMode:O,ledValues:l}),O&&Array.isArray(l)&&l.length<4&&(0,_T.jsx)(\"div\",{className:\"port-add-bend\",onClick:a(NS),children:(0,_T.jsx)(\"span\",{className:\"underline\",children:(0,_T.jsx)(ST.A,{text:OT.qir})})}),!O&&(0,_T.jsx)(\"div\",{className:\"port-add-bend \".concat(S()>=t&&\"disabled\"),onClick:a(RS),children:(0,_T.jsx)(\"span\",{className:\"underline\",children:(0,_T.jsx)(ST.A,{text:OT.UPK})})}),Array.isArray(l)&&l.length>1&&(0,_T.jsxs)(\"div\",{className:\"total-LED-count\",children:[(0,_T.jsx)(\"div\",{className:\"label-total-led-count\",children:(0,_T.jsx)(ST.A,{text:OT.rt0})}),(0,_T.jsx)(\"div\",{className:\"value-total-led-count\",children:S()}),(0,_T.jsx)(lU,{value:I.detectedLedCount,active:!0,className:\"icon-led-detection\"})]})]}),(0,_T.jsx)(\"div\",{className:\"led-img-container\",children:E({isStripMode:O,ledValues:l})})]}),!T&&!A&&S()!==I.detectedLedCount&&(0,_T.jsx)(NU,{openChromaStudio:_,handleDismiss:()=>e(!0)}),t&&S()>t&&(0,_T.jsx)(cU,{})]}):null}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4517108,
+          "end": 4517285,
+          "source": "function(e){const E=e.name,a=e.onClick,_=e.extraClass;return(0,_T.jsx)(\"div\",{className:\"customize-setting-button \".concat(_||\"\"),onClick:a,children:(0,_T.jsx)(ST.A,{text:E})})}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4517300,
+          "end": 4518122,
+          "source": "e=>{let E=e.status,a=e.overlay,_=e.onClick;const t=E||{},i=t.type,o=t.isConnected,n=(0,g.useMemo)(()=>{switch(i){case AS.BLE_MOBIL:return(0,_T.jsxs)(\"div\",{className:\"center\",children:[(0,_T.jsx)(\"p\",{className:\"message-container__msg text-center\",children:(0,_T.jsx)(ST.A,{text:OT.oxp})}),(0,_T.jsx)(WU,{extraClass:\"message-container__button\",name:OT.FrN,onClick:()=>((e,E)=>{_&&_({type:e,value:E})})(E)})]});case AS.BLE_PC:return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"message-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.d1R})}),(0,_T.jsx)(\"div\",{className:\"message-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.b17})})]});default:return}},[i]);return o?(0,_T.jsx)(\"div\",{className:\"message-container \".concat(a?\"message-container--overlay\":\"\"),children:n}):(0,_T.jsx)(_T.Fragment,{})}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4517289,
+          "end": 4518123,
+          "source": "(0,g.memo)(e=>{let E=e.status,a=e.overlay,_=e.onClick;const t=E||{},i=t.type,o=t.isConnected,n=(0,g.useMemo)(()=>{switch(i){case AS.BLE_MOBIL:return(0,_T.jsxs)(\"div\",{className:\"center\",children:[(0,_T.jsx)(\"p\",{className:\"message-container__msg text-center\",children:(0,_T.jsx)(ST.A,{text:OT.oxp})}),(0,_T.jsx)(WU,{extraClass:\"message-container__button\",name:OT.FrN,onClick:()=>((e,E)=>{_&&_({type:e,value:E})})(E)})]});case AS.BLE_PC:return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"message-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.d1R})}),(0,_T.jsx)(\"div\",{className:\"message-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.b17})})]});default:return}},[i]);return o?(0,_T.jsx)(\"div\",{className:\"message-container \".concat(a?\"message-container--overlay\":\"\"),children:n}):(0,_T.jsx)(_T.Fragment,{})})"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4515450,
+          "end": 4517022,
+          "source": "e=>{let E=e.status,a=e.handleDismiss,_=e.overlay;const t=(0,g.useState)({dismissed:!1}),i=(0,Vr.A)(t,2),o=i[0],n=i[1],s=(0,g.useCallback)(()=>{a&&a(),n(e=>(0,G.A)((0,G.A)({},e),{},{dismissed:!0}))},[]),r=(0,g.useMemo)(()=>{switch(E){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.zO_})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.VK})})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.qQf})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.Uoq})}),(0,_T.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:s,children:(0,_T.jsx)(ST.A,{text:OT.dH1})})]});case FU:return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.Y_b})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.lVB})}),(0,_T.jsxs)(\"ul\",{children:[(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.sxP})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.lAp})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.eho})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.lPx})})]})]});default:return}},[E,a]);return!o.dismissed&&E?(0,_T.jsx)(\"div\",{className:\"warning-container \".concat(_?\"warning-container--overlay\":\"\"),children:r}):(0,_T.jsx)(_T.Fragment,{})}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4515439,
+          "end": 4517023,
+          "source": "(0,g.memo)(e=>{let E=e.status,a=e.handleDismiss,_=e.overlay;const t=(0,g.useState)({dismissed:!1}),i=(0,Vr.A)(t,2),o=i[0],n=i[1],s=(0,g.useCallback)(()=>{a&&a(),n(e=>(0,G.A)((0,G.A)({},e),{},{dismissed:!0}))},[]),r=(0,g.useMemo)(()=>{switch(E){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.zO_})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.VK})})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.qQf})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.Uoq})}),(0,_T.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:s,children:(0,_T.jsx)(ST.A,{text:OT.dH1})})]});case FU:return(0,_T.jsxs)(_T.Fragment,{children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.Y_b})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.lVB})}),(0,_T.jsxs)(\"ul\",{children:[(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.sxP})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.lAp})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.eho})}),(0,_T.jsx)(\"li\",{children:(0,_T.jsx)(ST.A,{text:OT.lPx})})]})]});default:return}},[E,a]);return!o.dismissed&&E?(0,_T.jsx)(\"div\",{className:\"warning-container \".concat(_?\"warning-container--overlay\":\"\"),children:r}):(0,_T.jsx)(_T.Fragment,{})})"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4497226,
+          "end": 4497885,
+          "source": "class TU extends g.PureComponent{render(){return(0,_T.jsxs)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\",className:\"icon-detection--active\",children:[(0,_T.jsxs)(\"g\",{className:\"detect-a\",children:[(0,_T.jsx)(\"rect\",{width:\"20\",height:\"20\",className:\"detect-d\",rx:\"2\"}),(0,_T.jsx)(\"rect\",{width:\"10\",height:\"10\",x:\"5\",y:\"5\",className:\"detect-e\"})]}),(0,_T.jsx)(\"path\",{d:\"M16 16h-2v2h4v-4h-2zM14 2v2h2v2h2V2zM4 14H2v4h4v-2H4zM2 6h2V4h2V2H2zM11.621 12.146H8.37L7.752 14H5.78l3.35-9h1.718l3.368 9h-1.971zm-2.751-1.5h2.25L9.99 7.275z\",className:\"detect-b\"}),(0,_T.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4496627,
+          "end": 4497226,
+          "source": "class rU extends g.PureComponent{render(){return(0,_T.jsxs)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:\"icon-detection \".concat(!this.props.isFirstRender&&\"icon-detection--animation\"),children:[(0,_T.jsx)(\"rect\",{width:\"20\",height:\"20\",rx:\"2\"}),(0,_T.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"}),(0,_T.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-f\"}),(0,_T.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zM11.983 12.734H8.009L7.254 15h-2.41l4.1-11h2.1l4.117 11h-2.41zM8.621 10.9h2.75L9.989 6.78z\",fill:\"#ccc\",className:\"detect-b\"})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4497885,
+          "end": 4498329,
+          "source": "class IU extends g.PureComponent{render(){return(0,_T.jsxs)(\"svg\",(0,G.A)((0,G.A)({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:[(0,_T.jsx)(\"defs\",{children:(0,_T.jsx)(\"clipPath\",{id:\"a\",children:(0,_T.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,_T.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,_T.jsx)(\"path\",{d:\"M15.649 4.351A7.994 7.994 0 1017.931 11H15.91a6.044 6.044 0 11-1.687-5.223L11 9h7V2z\",fill:\"#ccc\"})})]}))}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4512637,
+          "end": 4513000,
+          "source": "e=>(0,_T.jsxs)(\"svg\",(0,G.A)((0,G.A)({xmlns:\"http://www.w3.org/2000/svg\",width:18,height:18},e),{},{children:[(0,_T.jsx)(\"rect\",{width:20,height:20,rx:10}),(0,_T.jsx)(\"path\",{d:\"M11 7a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0Zm7 5a5.952 5.952 0 0 0-1.758-4.242 1 1 0 0 0-1.414 1.414 4 4 0 1 1-5.656 0 1 1 0 0 0-1.414-1.414A6 6 0 1 0 18 12Z\",transform:\"translate(-2 -2)\"})]}))"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4518199,
+          "end": 4523008,
+          "source": "class zU extends g.PureComponent{constructor(e){super(e),this.toggleTooltipDetection=e=>{this.setState({toggleTooltipDetection:e})},this.toggleAutoDetection=()=>{this.props.changeAutoDetectionStatus(!this.props.isAutoDetectionEnable),this.setState({triggerAnimation:!0})},this.toggleTogglePower=e=>{this.props.changePowerOnStatus(e)},this.toggleTooltipRefresh=e=>{this.setState({toggleTooltipRefresh:e})},this.handleRefresh=e=>{e.preventDefault(),this.setState({toggleTooltipRefresh:!1}),this.props.refreshPorts()},this.handleDismiss=()=>{this.props.warningType&&this.props.changeErrorStatus(null)},this.checkExceedPerPort=e=>{if(!e)return!1;const E=e.reduce((e,E)=>{let a=E.argb,_=E.isActive;if(!a||!_)return e;const t=a.isStripMode?\"strip\":\"fan\";return e+a.numberOfLeds[t].reduce((e,E)=>e+E.value,0)},0);return E>240},this.renderPorts=e=>{if(!e||!e.length)return(0,_T.jsx)(_T.Fragment,{});const E=1===e.filter(e=>e.isActive).length;return(0,_T.jsxs)(\"div\",{className:\"customize-container customize-container--wireless \".concat(E?\"customize-container--listed\":\"\"),children:[(0,_T.jsx)(HU,{value:e[0]}),(0,_T.jsx)(HU,{value:e[1]}),(0,_T.jsx)(HU,{value:e[2]})]})},this.handleReconnectDongle=e=>{\"GLITTER_MSG_STOP_MOBILE_SYNC\"!==!e.type&&this.props.changeConnectionMode({type:yU[\"2.4G\"],isConnected:!!bU.Connected})},this.renderMsgBox=e=>{let E=e.isPowerOn,a=e.connectionStatus,_=e.warningType,t=e.isExceedMaximumLedPerDevice;return E?a.type===yU.BLE_MOBIL||a.type===yU.BLE_PC?(0,_T.jsx)(KU,{status:a,onClick:this.handleReconnectDongle}):_?(0,_T.jsx)(YU,{status:_,handleDismiss:this.handleDismiss}):t?(0,_T.jsx)(YU,{status:\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\",handleDismiss:this.handleDismiss}):(0,_T.jsx)(_T.Fragment,{}):(0,_T.jsxs)(\"div\",{className:\"warning-container\",children:[(0,_T.jsx)(\"p\",{className:\"warning-container__header\",children:(0,_T.jsx)(ST.A,{text:OT.bgU})}),(0,_T.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,_T.jsx)(ST.A,{text:OT.pcC})})]})},this.state={autoDetection:!0,toggleTooltipDetection:!1,toggleTooltipRefresh:!1,triggerAnimation:!1}}render(){const e=this.props,E=e.isRefreshing,_=e.ports,t=e.isChromaAppRoot,i=e.warningType,o=e.externalPowerConnected,n=e.editionId,s=e.isAutoDetectionEnable,r=e.connectionStatus,T=e.isPowerOn,I=this.checkExceedPerPort(_);console.log(\"*** TopViewComponent props\",(0,G.A)({},this.props));const O=i===FU,A=(null===r||void 0===r?void 0:r.type)===yU.BLE_MOBILE,S=(null===r||void 0===r?void 0:r.type)===yU.BLE_PC,l=!E&&T&&!O&&!(A||S);return(0,_T.jsxs)(g.Fragment,{children:[(0,_T.jsxs)(\"div\",{className:\"customize-scroll\",id:\"pageContainer\",children:[(0,_T.jsx)(\"div\",{className:\"customize-center customize-center--wireless\",children:(0,_T.jsxs)(\"div\",{className:\"product\",children:[(0,_T.jsx)(\"div\",{className:\"product__image\",children:(0,_T.jsx)(\"img\",{width:260,height:260,loading:\"lazy\",src:a(8881)(\"./\".concat(ET.DeviceInfo.productId,\"_\").concat(n,\"/img_prods/prd-3x.png\")),alt:\"\"})}),E?(0,_T.jsx)(\"div\",{children:(0,_T.jsx)(\"span\",{className:\"detecting-device detecting-device--wireless\",style:{backgroundImage:\"url(\".concat(vU,\")\")}})}):(0,_T.jsxs)(\"div\",{className:\"product__icon product__icon--wireless\",children:[(0,_T.jsxs)(\"div\",{className:\"detection-icons \".concat(!T||O?\"invisible\":\"\",\" detection-icons--wireless\"),children:[(0,_T.jsx)(\"div\",{id:\"icon-detection-wrapper\",className:\"icon-detection-wrapper\",onMouseEnter:()=>this.toggleTooltipDetection(!0),onMouseLeave:()=>this.toggleTooltipDetection(!1),onClick:this.toggleAutoDetection,children:s?(0,_T.jsx)(TU,{}):(0,_T.jsx)(rU,{isFirstRender:!this.state.triggerAnimation})}),(0,_T.jsx)(Gu,{isMounted:this.state.toggleTooltipDetection,position:\"bottom-left\",target:\"icon-detection-wrapper\",children:HT.getTextItem(OT.iyT)}),(0,_T.jsxs)(\"div\",{id:\"icon-refreshing-wrapper\",className:\"icon-refreshing-wrapper\",onMouseEnter:()=>this.toggleTooltipRefresh(!0),onMouseLeave:()=>this.toggleTooltipRefresh(!1),children:[(0,_T.jsx)(OU,{onClick:this.handleRefresh,className:\"icon-refreshing\"}),(0,_T.jsx)(Gu,{isMounted:this.state.toggleTooltipRefresh,position:\"bottom-left\",target:\"icon-refreshing-wrapper\",children:HT.getTextItem(OT.Iu3)})]}),(0,_T.jsx)(SU,{className:\"icon-warning \".concat(!(I||i)&&\"icon-warning--hidden\")})]}),(0,_T.jsx)(\"div\",{className:\"power-icons\",children:(0,_T.jsx)(BU,{onClick:()=>this.toggleTogglePower(!T),className:\"icon-power \".concat(!T&&\"icon-power--power-off\")})})]})]})}),(0,_T.jsx)(\"div\",{className:\"wireless-status-wrapper\",children:!E&&this.renderMsgBox({isPowerOn:T,connectionStatus:r,warningType:i,externalPowerConnected:o,isExceedMaximumLedPerDevice:I})}),l&&this.renderPorts(_)]}),(0,_T.jsx)(\"div\",{style:t?kU.dotBackground:{},className:\"dot-background dot-background--wireless\",children:(0,_T.jsx)(\"div\",{className:\"custom-dim-corner\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+          "offset": 4531928,
+          "end": 4531945,
+          "source": "(0,_T.jsx)(xU,{})"
+        }
+      ],
+      "reducerSlices": [
+        {
+          "offset": 4666847,
+          "source": "case Yt:{const a=E.payload,_=a.id,t=a.type,i=Bf(e,_).argb,o=i.numberOfLeds;if(!(t in o))return(0,G.A)({},e);const n=o[t],s=n.reduce((e,E)=>e+E.value,0),r=Ff(s,n.length+1,[]),T=n.map((e,E)=>(0,G.A)((0,G.A)({},e),{},{value:t===RS?e.value:r[E]})),I={id:n.length,value:t===RS?20:r[n.length]};return vf(e,{argb:(0,G.A)((0,G.A)({},i),{},{numberOfLeds:(0,G.A)((0,G.A)({},o),{},{[t]:[...T,I]})})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.type,o=Bf(e,_).argb,n=o.numberOfLeds;if(!(i in n))return(0,G.A)({},e);const s=n[i].filter(e=>e.id!==t).map((e,E)=>(0,G.A)((0,G.A)({},e),{},{id:E}));return vf(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},n),{},{[i]:s})})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.value,o=Bf(e,_).argb,n=o.isStripMode,s=o.numberOfLeds,r=e=>e.map(e=>e.id===t?(0,G.A)((0,G.A)({},e),{},{value:i}):e),T=n?{strip:r(s.strip)}:{fan:r(s.fan)};return vf(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},s),T)})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Bt:return E.payload.map(E=>vf(e,E,E.id)),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()});default:return e}}),\"FAN_CONTROLLER\"===ET.DeviceInfo.subCategory&&Jf.add(function(e,E){if(\"undefined\"===typeof e)return bf;switch(E.type){case MT.B8N:{const a=E.payload.map(E=>vf(e,(0,G.A)({},E),E.id));return(0,G.A)((0,G.A)({},e),{},{ports:a})}case MT.Jhc:{const a=E.payload,_=a.id,t=a.isEnabled,i=a.modeSelected,o=a.isAllFans;if(Yf(e,_)&&!t)return e;const n=Vf(e,_).thermal;return o?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},E.thermal),{},{activeThermalIndicator:{isEnabled:t,modeSelected:i}})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},n),{},{activeThermalIndic"
+        },
+        {
+          "offset": 4667289,
+          "source": "case Wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.type,o=Bf(e,_).argb,n=o.numberOfLeds;if(!(i in n))return(0,G.A)({},e);const s=n[i].filter(e=>e.id!==t).map((e,E)=>(0,G.A)((0,G.A)({},e),{},{id:E}));return vf(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},n),{},{[i]:s})})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.value,o=Bf(e,_).argb,n=o.isStripMode,s=o.numberOfLeds,r=e=>e.map(e=>e.id===t?(0,G.A)((0,G.A)({},e),{},{value:i}):e),T=n?{strip:r(s.strip)}:{fan:r(s.fan)};return vf(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},s),T)})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Bt:return E.payload.map(E=>vf(e,E,E.id)),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()});default:return e}}),\"FAN_CONTROLLER\"===ET.DeviceInfo.subCategory&&Jf.add(function(e,E){if(\"undefined\"===typeof e)return bf;switch(E.type){case MT.B8N:{const a=E.payload.map(E=>vf(e,(0,G.A)({},E),E.id));return(0,G.A)((0,G.A)({},e),{},{ports:a})}case MT.Jhc:{const a=E.payload,_=a.id,t=a.isEnabled,i=a.modeSelected,o=a.isAllFans;if(Yf(e,_)&&!t)return e;const n=Vf(e,_).thermal;return o?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},E.thermal),{},{activeThermalIndicator:{isEnabled:t,modeSelected:i}})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},n),{},{activeThermalIndicator:{isEnabled:t,modeSelected:i}})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case MT.bm5:{const a=E.payload,_=a.id,t=a.advancedSetting,i=a.isAllFans;if(Yf(e,_))return e;const o=Vf(e,_).thermal;return i?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},E.thermal),{},{advancedSetting:t})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},o),{},{advancedSetting:t})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case MT.b_8:{const a=E"
+        },
+        {
+          "offset": 4667638,
+          "source": "case wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.value,o=Bf(e,_).argb,n=o.isStripMode,s=o.numberOfLeds,r=e=>e.map(e=>e.id===t?(0,G.A)((0,G.A)({},e),{},{value:i}):e),T=n?{strip:r(s.strip)}:{fan:r(s.fan)};return vf(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},s),T)})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Bt:return E.payload.map(E=>vf(e,E,E.id)),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()});default:return e}}),\"FAN_CONTROLLER\"===ET.DeviceInfo.subCategory&&Jf.add(function(e,E){if(\"undefined\"===typeof e)return bf;switch(E.type){case MT.B8N:{const a=E.payload.map(E=>vf(e,(0,G.A)({},E),E.id));return(0,G.A)((0,G.A)({},e),{},{ports:a})}case MT.Jhc:{const a=E.payload,_=a.id,t=a.isEnabled,i=a.modeSelected,o=a.isAllFans;if(Yf(e,_)&&!t)return e;const n=Vf(e,_).thermal;return o?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},E.thermal),{},{activeThermalIndicator:{isEnabled:t,modeSelected:i}})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},n),{},{activeThermalIndicator:{isEnabled:t,modeSelected:i}})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case MT.bm5:{const a=E.payload,_=a.id,t=a.advancedSetting,i=a.isAllFans;if(Yf(e,_))return e;const o=Vf(e,_).thermal;return i?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},E.thermal),{},{advancedSetting:t})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},o),{},{advancedSetting:t})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case MT.b_8:{const a=E.payload,_=a.id,t=a.fanSpeedValue,i=a.isAllFans;if(Yf(e,_))return e;const o=Vf(e,_).thermal;return i?e.ports.map(E=>vf(e,{thermal:(0,G.A)((0,G.A)({},o),{},{fanSpeedValue:t})},E.id)):vf(e,{thermal:(0,G.A)((0,G.A)({},o),{},{fanSpeedValue:t})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}default:return e}}),\"LIQUID_CONTROLLER\"===ET.DeviceInfo"
+        },
+        {
+          "offset": 4662447,
+          "source": "Ff=(e,E,a)=>{if(e<E)return Array.from({length:E},()=>lS);if(1===E)return a.push(e),a;const _=Math.ceil(e/E);return a.push(Math.max(_,lS)),Ff(e-_,E-1,a)},yf={NOT_DETECTED:0,ACTIVE:1,NOT_SUPPORTED:2},bf={ports:[{id:26,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:27,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:28,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:29,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:30,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:31,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:32,value:25,isActive:!1,fanState:yf.NON_ACTIVE},{id:33,value:25,isActive:!1,fanState:yf.NON_ACTIVE}]};Object.freeze(bf);const Vf=(e,E)=>{const a=e.ports,_=a.findIndex(e=>e.id===E);return a[_]},Yf=(e,E)=>{const a=e.ports,_=a.findIndex(e=>e.id===E);return!a[_].thermal.activeThermalIndicator.isEnabled};const Wf=1,wf=2;function Kf(e,E){return Object.hasOwnProperty.call(e,E)}const zf={};function kf(e,E,a){return e.ports.map(e=>e.id==a?function(e,E){Kf(e.payload,\"modeSelected\")&&(E.thermal.activeThermalIndicator.modeSelected=e.payload.modeSelected);Kf(e.payload,\"advancedSetting\")&&(E.thermal.advancedSetting=e.payload.advancedSetting);return E}(E,e):e)}const xf=(e,E)=>{switch(null!==e&&void 0!==e||(e=zf),E.type){case MT.ylr:case MT.bm5:return(0,G.A)((0,G.A)({},e),{},{ports:kf(e,E,Wf)});case MT.HNJ:case MT.O58:return(0,G.A)((0,G.A)({},e),{},{ports:kf(e,E,wf)});default:return e}},Xf=[\"isActive\",\"quickEffects\"],jf=[\"effectId\"],Zf={isPortLinked:!1,currentActivePortId:0,ports:[],actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]},qf=e=>{if(!e&&!e.length)return[];return structuredClone(e).map(e=>{let E=e.isActive,a=e.quickEffects,_=Xl(e,Xf);if(!a){const e=\"HUE\"===ET.DeviceInfo.category?{isActive:E}:{};return(0,G.A)((0,G.A)({},_),e)}const t=a.selectedEffectId,"
+        }
+      ]
+    },
+    {
+      "product_id": 3886,
+      "source_files": [
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763"
+        }
+      ],
+      "label_module": 8098,
+      "labels": {
+        "zH1": "TEXT_DEVICE_TYPE",
+        "TgX": "TEXT_LED_STRIP",
+        "iUZ": "GLITTER_DETECTED_LED_COUNT",
+        "$NT": "GLITTER_NO_OF_LED",
+        "bvx": "RENAME",
+        "VKI": "GLITTER_MESSAGE_CHROMA_STUDIO",
+        "YXL": "DASHBOARD_CHROMA_STUDIO",
+        "GPl": "DISMISS",
+        "t7v": "GLITTER_MESSAGE_EXCEEDED_WARNING",
+        "Zv4": "LAUNCH_CHROMA_STUDIO",
+        "mAK": "GLITTER_TIP_HELP_PORT_MESSAGE",
+        "CFf": "GLITTER_ADD_BEND",
+        "L8S": "GLITTER_TOTAL_LED_COUNT",
+        "Gdx": "GLITTER_MESSAGE_STOP_MOBILE_SYNC",
+        "KtW": "TEXT_CONNECT",
+        "tpe": "GLITTER_MESSAGE_BLUETOOTH_MODE",
+        "Q7W": "GLITTER_MESSAGE_BLUETOOTH_MODE_MSG",
+        "mUD": "GLITTER_NO_DEVICES_DETECT",
+        "YUv": "GLITTER_NO_DEVICES_DETECT_MSG",
+        "M8b": "GLITTER_CONNECTION_REQUIRED",
+        "GYc": "GLITTER_CONNECTION_REQUIRED_MSG",
+        "_RD": "GLITTER_LIMIT_EXCEEDED",
+        "$RU": "GLITTER_LIMIT_EXCEEDED_MSG",
+        "pMu": "GLITTER_PROTECTION_ENABLED",
+        "QtF": "GLITTER_PROTECTION_ENABLED_MSG_0",
+        "B5W": "GLITTER_PROTECTION_ENABLED_MSG_1",
+        "Cfe": "GLITTER_PROTECTION_ENABLED_MSG_2",
+        "hyg": "GLITTER_PROTECTION_ENABLED_MSG_3",
+        "cvF": "GLITTER_PROTECTION_ENABLED_MSG_4",
+        "auE": "GLITTER_MESSAGE_STAND_BY_MODE",
+        "RJr": "GLITTER_MESSAGE_STAND_BY_MODE_MSG",
+        "Tvw": "GLITTER_MESSAGE_AUTO_DETECTION",
+        "tRK": "GLITTER_MESSAGE_REFRESH_ICON"
+      },
+      "translation_receipts": [
+        {
+          "locale": "de",
+          "module": 3600,
+          "offset": 76357,
+          "end": 203550
+        },
+        {
+          "locale": "en",
+          "module": 3600,
+          "offset": 203554,
+          "end": 316271
+        },
+        {
+          "locale": "es",
+          "module": 3600,
+          "offset": 316275,
+          "end": 449243
+        },
+        {
+          "locale": "fr",
+          "module": 3600,
+          "offset": 449247,
+          "end": 589415
+        },
+        {
+          "locale": "ja",
+          "module": 3600,
+          "offset": 589419,
+          "end": 821471
+        },
+        {
+          "locale": "kr",
+          "module": 3600,
+          "offset": 821475,
+          "end": 1015398
+        },
+        {
+          "locale": "pt-BR",
+          "module": 3600,
+          "offset": 1015418,
+          "end": 1148438
+        },
+        {
+          "locale": "ru",
+          "module": 3600,
+          "offset": 1148455,
+          "end": 1598639
+        },
+        {
+          "locale": "zh-CN",
+          "module": 3600,
+          "offset": 1598659,
+          "end": 1767809
+        },
+        {
+          "locale": "zh-TW",
+          "module": 3600,
+          "offset": 1767829,
+          "end": 1931393
+        }
+      ],
+      "metadata": [
+        {
+          "value": {
+            "vendorId": 5426,
+            "productId": 3886,
+            "dongleId": 3884,
+            "bleId": 3885,
+            "ble": {
+              "useHardwareEffect": true,
+              "obmAvailable": false
+            },
+            "masterGuideURL": "https://dl.razerzone.com/master-guides/RazerSynapse3/CHROMAARGBCONTROLLER-00003886-",
+            "supportPage": "https://mysupport.razer.com/app/answers/detail/a_id/3898",
+            "category": "ACCESSORY",
+            "subCategory": "ARGB_CONTROLLER",
+            "WAVE_DIRECTION": [
+              {
+                "id": "dir-out"
+              },
+              {
+                "id": "dir-in"
+              },
+              {
+                "id": "dir-left"
+              },
+              {
+                "id": "dir-right"
+              }
+            ],
+            "useHardwareEffect": true,
+            "claimInterface": 0,
+            "allowedLedsPerPort": 120,
+            "allowedLedsPerDevice": 240
+          },
+          "offset": 1949076,
+          "end": 1949562
+        }
+      ],
+      "constants": [
+        {
+          "name": "x2",
+          "value": [
+            6,
+            8,
+            9,
+            10,
+            12,
+            15,
+            16,
+            18,
+            20,
+            22,
+            24,
+            25,
+            32,
+            40
+          ],
+          "offset": 3994582,
+          "end": 3994625
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3886/static/css/main.7e83a377.css",
+          "sha256": "0f73373ec0ff73d0f841265525c2362425bb337c1d6d6c8f25e097a8b11712b7",
+          "rules": [
+            "#multipleBrightness .common-transition,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection,#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path,#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path,#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{transition:all .3s}",
+            "#multipleBrightness .common-font-styles,#multipleBrightness .message-container,#multipleBrightness .port-container .chroma-studio-message,#multipleBrightness .port-container .port-items-led-image .port-add-bend,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name,#multipleBrightness .port-container .port-items-led-image .total-LED-count,#multipleBrightness .port-warning,#multipleBrightness .warning-container{font-family:Roboto;font-size:14px}",
+            "#multipleBrightness .customize-container .customize-left,#multipleBrightness .customize-container .customize-right,#multipleBrightness .port-item-container{display:flex;flex-direction:column;min-width:480px;width:480px}",
+            "#multipleBrightness .customize-scroll{height:inherit;min-width:inherit;overflow-y:hidden;position:relative;width:inherit;z-index:1}",
+            "#multipleBrightness .customize-scroll .customize-center{display:flex;justify-content:center;left:50%;margin:10px;min-width:150px;position:fixed;-webkit-transform:translateX(-59%);transform:translateX(-59%);width:150px}",
+            "#multipleBrightness .customize-scroll .customize-center--wireless{left:auto!important;position:relative!important;-webkit-transform:none!important;-webkit-transform:initial!important;transform:none!important;width:auto!important}",
+            "#multipleBrightness .customize-scroll .customize-center .product{height:275px;position:relative}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon{bottom:60px;display:flex;flex-direction:column;justify-content:space-between;left:0;position:absolute;right:0;width:100%}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon--wireless{bottom:127px;height:115px}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons{display:flex;gap:12px;justify-content:center}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons--wireless{gap:20px}",
+            "#multipleBrightness .customize-scroll .customize-center .product__icon .power-icons{display:flex;justify-content:center}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-power,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-warning{height:20px;position:relative;width:20px;z-index:100}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection{fill:transparent;bottom:0;cursor:pointer;left:0;position:absolute}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-b{-webkit-animation:zoomout 50ms ease-out 0s 1;animation:zoomout 50ms ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-c{-webkit-animation:zoomoutc .7s ease-out 0s 1;animation:zoomoutc .7s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-f{-webkit-animation:zoomoutf .7s ease-out 0s 1;animation:zoomoutf .7s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:hover .detect-b{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:active .detect-b{fill:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-e{fill:none}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-b{fill:#111;-webkit-animation:zoomin .1s ease-out 0s 1;animation:zoomin .1s ease-out 0s 1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-c{fill:#fff;opacity:0}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-d{stroke:none}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:hover .detect-a{stroke:#96ef89}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:active .detect-a{stroke:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing{bottom:0;left:0;position:absolute;z-index:100}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:active path{fill:#39a029}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power rect{fill:#44d62c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power path{fill:#111}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect{fill:#7de36c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off rect{fill:#c8323c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off:hover rect{fill:#d97077}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning{opacity:1}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path{fill:#feab59}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:active path{fill:#b15e0c}",
+            "#multipleBrightness .customize-scroll .customize-center .product .icon-warning--hidden{opacity:0;pointer-events:none}",
+            "#multipleBrightness .customize-container{display:flex;justify-content:space-between;margin:0 auto;max-width:1110px}",
+            "#multipleBrightness .customize-container--wireless{align-items:flex-start;display:flex;flex-wrap:wrap;justify-content:center;max-width:1240px}",
+            "#multipleBrightness .customize-container--wireless .port-container{min-width:600px;width:600px}",
+            "#multipleBrightness .customize-container--listed{justify-content:center}",
+            "#multipleBrightness .customize-container{max-width:964px!important}",
+            "#multipleBrightness .port-container{background-color:#111;border-radius:5px;height:-webkit-fit-content;height:-moz-fit-content;height:fit-content;margin:10px;min-height:199px;min-width:460px;padding:26px 40px 30px;position:relative;width:460px}",
+            "#multipleBrightness .port-container .port-items-led-image{display:flex;flex-direction:row;margin-top:11px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-infomation{flex:1 1}",
+            "#multipleBrightness .port-container .port-items-led-image .port-add-bend{align-items:center;color:#707070;cursor:pointer;display:inline-flex;height:27px;margin-bottom:5px;margin-top:5px;text-decoration:underline}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count{grid-column-gap:10px;align-items:center;display:grid;grid-template-columns:150px auto auto;height:27px;margin-top:5px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .label-total-led-count{align-self:center;margin-bottom:1px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .value-total-led-count{align-self:center;margin-bottom:1px;padding-left:10px;width:50px}",
+            "#multipleBrightness .port-container .port-items-led-image .total-LED-count .icon-led-detection{align-self:center!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item{align-items:center;display:inline-flex;margin-bottom:5px;margin-top:5px;width:100%}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .label-common{color:#ccc;display:inline-block;font-family:Roboto;font-size:14px;margin-bottom:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container{margin-right:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown{height:27px;margin:0!important;width:150px;z-index:auto!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name{align-items:center;display:inline-flex;height:27px;width:150px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container{margin-left:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container--with-closed{width:80px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-wrapper{align-items:center;display:flex;gap:10px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown{height:27px;margin:0!important;width:62px;z-index:auto!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper{height:27px;margin:0!important;position:relative!important;width:62px}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--stepper{border:1px solid #5d5d5d}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-decrease .icon.spinner.down,#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-increase .icon.spinner.up{opacity:.3;pointer-events:none}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper input{height:25px!important;padding-left:6px;text-align:left;width:60px!important}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter{display:inline-block}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{fill:#c8323c}",
+            "#multipleBrightness .port-container .port-items-led-image .port-item .icon-close-glitter{display:none;margin-left:-10px}",
+            "#multipleBrightness .port-container .port-name-container{height:27px}",
+            "#multipleBrightness .port-container .port-name-container:hover .port-name{text-decoration:underline}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon{align-items:center;display:inline-flex;margin-bottom:4px;margin-top:4px;padding-bottom:4px;position:relative}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-name{color:#44d62c;font-family:RazerF5;font-size:16px;line-height:0px;margin-bottom:1px;margin-right:5px;text-transform:uppercase}",
+            "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-edit-icon{margin-top:4px}",
+            "#multipleBrightness .port-container .port-name-container .port-input{background-color:#111;border:1px solid #44d62c;color:#ccc;font-family:RazerF5;font-size:16px;height:25px;line-height:0px;min-width:160px;padding:0 6px!important;text-transform:uppercase;width:160px}",
+            "#multipleBrightness .port-container .chroma-studio-message{border:1px solid #707070;border-radius:5px;font-size:13px;line-height:16px;margin-top:10px;padding:20px;transition:all .3s ease}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper{display:flex;justify-content:space-between;margin-top:10px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn{align-items:center;border:1px solid #737373;border-radius:3px;cursor:pointer;display:inline-flex;min-height:27px;min-width:150px;padding:4px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn .chroma-studio-icon{background-image:url(../../static/media/chroma-studio.a4fd759b942f164767d2.ico);background-repeat:no-repeat;background-size:18px;height:18px;margin-right:5px;min-width:18px;width:18px}",
+            "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .dismiss-btn{cursor:pointer;margin:auto 0;text-decoration:underline}",
+            "#multipleBrightness .message-container,#multipleBrightness .warning-container{background-color:#111;border-radius:5px;-webkit-column-gap:10px;column-gap:10px;display:inline-block;font-size:14px;grid-template-columns:auto auto;margin:auto;padding:20px;width:600px;z-index:100}",
+            "#multipleBrightness .message-container--overlay,#multipleBrightness .warning-container--overlay{left:0;position:absolute;right:0;top:20px}",
+            "#multipleBrightness .message-container{border:1px solid #5a5a5a;padding:20px 40px}",
+            "#multipleBrightness .message-container .text-center{text-align:center}",
+            "#multipleBrightness .message-container .center{align-items:center;display:flex;flex-direction:column;justify-content:center}",
+            "#multipleBrightness .message-container__header{color:#44d62c;font-family:RazerF5;font-size:16px;font-weight:400;margin:9px auto 20px;text-transform:uppercase}",
+            "#multipleBrightness .message-container__msg{color:#ccc;font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:400;margin-bottom:10px;margin-top:0;white-space:pre-wrap}",
+            "#multipleBrightness .message-container__button{background-color:#44d62c;color:#111;margin-top:10px;padding-top:2px}",
+            "#multipleBrightness .warning-container{border:1px solid #fd8611;text-align:center}",
+            "#multipleBrightness .warning-container__header{font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:600;margin:0 auto 10px;text-transform:uppercase}",
+            "#multipleBrightness .warning-container__msg{margin:0 40px}",
+            "#multipleBrightness .warning-container__dismiss{margin-top:10px;text-decoration:underline}",
+            "#multipleBrightness .warning-container__dismiss:hover{color:#44d62c}",
+            "#multipleBrightness .warning-container ul{list-style-type:decimal;margin:20px 40px 0;text-align:start}",
+            "#multipleBrightness .warning-container ul div{margin-left:5px}",
+            "#multipleBrightness .warning-container ul li{margin-top:20px}",
+            "#multipleBrightness .wireless-status-wrapper{align-items:center;display:flex}"
+          ]
+        }
+      ],
+      "profile_bar": [
+        {
+          "needle": "isEnableProfileBar",
+          "offset": 4165725,
+          "source": "ilterLinkedGameByProfile();return po()(a.props.gameList)||po()(e)?[]:m8()(a.props.gameList,e,\"id\")},a.renderProfileBarIcon=function(){var e=null;return a.props.isEnableProfileBar?(e=a.state.showLoader?Fo(Uo.wcB):Fo(Uo.Cmu),(0,Do.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader \".concat(a.state.showLoader?\"show\":\"\"),\"aria-label\":e,tooltip:e})):(e=Fo(Uo.UVV),(0,Do.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader disable\",\"aria-label\":e,tooltip:e}))},a.clear=function(){a.props.setActiveButton(\"\"),a.props"
+        },
+        {
+          "needle": "isEnableProfileBar",
+          "offset": 4180934,
+          "source": "e.currentTabNavigation,renderProfileBar:function(){return(0,Do.jsx)(T6,{battState:e.state.battState,hasTHXWarning:!1,hasBattery:!1,gameList:e.state.gamesLinked,isEnableProfileBar:e.state.active_view===Uo.UZu})},showSettings:this.state.showSettings,hasTHXWarning:!1,hasBattery:!1}),(0,Do.jsxs)(Lo,{activeView:this.state.active_view,extraClass:\"body-wrapper-custom\",children:[this.renderView(),this.props.selectedProfile&&(0,Do.jsx)(f6,{setShowLinkedGames:function(){return e.props.setShowLinkedGames(!1)},showLinkedGames:this.props.showLinkedGames,deviceData:{p"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4169731,
+          "source": "educer.chargingStatus,profilesLikedGame:e.linkedGamesReducer?e.linkedGamesReducer.linkedGames:[],gameList:e.linkedGamesReducer?e.linkedGamesReducer.gameList:[],enableSwitchProfile:e.profileReducer.enableSwitchProfile,lang:e.languageReducer.lang}}),(function(e){return qa(Y(Y(Y(Y({},l),S),O),A),e)}))(_6),I6=function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(e){var r;return(0,Z.Z)(this,n),(r=t.call(this,e)).sendData=function(){var e=document.getElementById(\"iframeLinkedGames\"),t=r.props.validDevices.find((function(e){return e.UIWindowName===window.name}))"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4201632,
+          "source": "[{guid:\"6633f08d-8467-4fad-b854-635acf9c2315\",name:\"Default\",macrosMapping:[]}],selectedProfileGuid:\"6633f08d-8467-4fad-b854-635acf9c2315\",hasUnsavedChanges:!1,enableSwitchProfile:!0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],cachedHyperShiftOn:[]};function m7(e){if(e.length<2)return e;e.sort((function(e,t){var n=e.name,r=t.name,a=n.toUpperCase(),o=r.toUpperCase();return a<o?-1:a>o?1:0}))}function S7(e,t){return Y(Y({},e),{},{selectedProfileGuid:t.payload})}function h7(e,t){var n=JSON.parse(JSON.stringify(e.profiles));return n.push(t),m7"
+        },
+        {
+          "needle": "enableSwitchProfile:",
+          "offset": 4207163,
+          "source": "turn k.find((function(t){return t.guid===e.selectedProfileGuid})).macrosMapping=t.payload,Y(Y({},e),{},{profiles:(0,ci.Z)(k)});case Ja.VVU:return Y(Y({},e),{},{enableSwitchProfile:!t.payload});case Ja.szH:return b6(e,t.payload);case Ja.aHp:return w6(e,t);case Ja.Rt5:return U6(e,t);case Ja.i7H:return G6(e,t);case Ja._rx:return x6(e,t);case Ja.ZmV:return k6(e,t);case Ja.lQ3:return Z6(e,t);default:return e}},N7={showSettings:!1};var C7={switchOffLighting:{isDisplayOn:!1,isIdleEnabled:!1,idleMinutes:0},actionsFromUI:[],actionsFromLocalStorage:[],errorActions"
+        }
+      ],
+      "persistence": [
+        {
+          "needle": "r.loadActiveProfileSettings=function()",
+          "offset": 4171946,
+          "source": "r.loadActiveProfileSettings=function(){var e=JSON.parse(window.localStorage.getItem(f3.DEVICE_LOCALSTORAGE_KEY));if(void 0===e||null===e)return!1;if(void 0===e.profiles||0===e.profiles.length)return!1;e.deviceMetadatas&&Object.keys(e.deviceMetadatas).length>0&&r.props.serialNumber&&(e.activeProfile=r.getActiveProfile(e.deviceMetadatas,r.props.serialNumber),console.warn(\"set active profile to\",e.activeProfile),e.activeProfile||console.warn(\"no active profile found\"));var t=e.activeProfile?e.profiles.find((function(t){return t.guid===e.activeProfile})):e.profiles[0],n=Pa.Z.get(Mo.RW$);if(Array.isArray(n)){var a=Pa.Z.get(f3.SYNAPSE_CURRENT_USER,!0),o=n.find((function(e){return e.userId===a}));o&&(r.props.setChromaEnabled(o.enabled),r.props.loadChromaProfiles({profiles:o.profiles,selectedChromaProfileGuid:o.currentProfile}))}for(var i=function(){if(\"profiles\"===(0,Sa.Z)(c[s],1)[0]){var n;null===(n=A3.reduxStore)||void 0===n||n.dispatch({type:Ja.Fqz,payload:{profiles:JSON.parse(JSON.stringify(e.profiles)),selectedProfileGuid:e.activeProfile}});var a=window.localStorage.getItem(Mo.RW$);if(Array.isArray(a)){var o=Pa.Z.get(f3.SYNAPSE_CURRENT_USER,!0),i=a.find((function(e){return e.userId===o}));i&&(r.props.setChromaEnabled(i.enabled),r.props.loadChromaProfiles({profiles:i.profiles,selectedChromaProfileGuid:i.currentProfile}))}for(var u in t)switch(u){case\"isPowerOn\":var l,E=t[u];null===(l=A3.reduxStore)||void 0===l||l.dispatch({type:la,payload:E});break;case\"isAutoDetectionEnable\":var d,p=t[u];null===(d=A3.reduxStore)||void 0===d||d.dispatch({type:fa,payload:{isAutoDetectionEnable:p}});break;case\"brightness\":var _,T=t[u];null===(_=A3.reduxStore)||void 0===_||_.dispatch({type:Ja.S3M,payload:{brightness:T}});break;case\"quickEffects\":var I,f,A,O,m,S,h,R=t[u],N={selectedEffectId:3};R&&(N=structuredClone(R));var C,v,D=[];if(null!==(I=N)&&void 0!==I&&I.selectedEffectSetting)D=[Y(Y({},null===(C=N)||void 0===C?void 0:C.selectedEffectSetting),{},{effectId:null===(v=N)||void 0===v?void 0:v.selectedEffectId})];var L={isGlobalQuickEffect:null===(f=N)||void 0===f?void 0:f.isGlobalQuickEffect,selectedEffectId:null!==(A=null===(O=N)||void 0===O?void 0:O.selectedEffectId)&&void 0!==A?A:3,effectSettings:D};null===(m=A3.reduxStore)||void 0===m||m.dispatch({type:Ja.hoG,payload:L}),null===(S=A3.reduxStore)||void 0===S||S.dispatch({type:Ja.GDu,payload:null!==(h=N.customColors)&&void 0!==h?h:[]});break;case\"switchOffLighting\":var g,P=t[u];null===(g=A3.reduxStore)||void 0===g||g.dispatch({type:Ja.LSA,payload:{switchOffLighting:P,actionType:Ja.LSA}})}}},s=0,c=Object.entries(e);s<c.length;s++)i()},r.handleDisableRefresh=function(){var e=(0,lo.Z)((0,uo.Z)().mark((function e(t){return(0,uo.Z)().wrap((function(e){for(;;)switch(e.prev=e.next){case 0:116===t.keyCode&&(t.preventDefault(),r.handleCustomRefresh());case 1:case\"end\":return e.stop()}}),e)})));return function(t){return e.apply(this,arguments)}}(),r.handleSystemIdleEvent=function(e){if(r.props.brightness.isEnabled){var t=6e4*r.props.switchOffLighting.idleMinutes;if(r.props.switchOffLighting.isIdleEnabled){if(e>=t&&!r.brigh"
+        },
+        {
+          "needle": "var k7=function(e,t)",
+          "offset": 4212519,
+          "source": "var k7=function(e,t){var n,r=window.currentTimerTick||Date.now(),a=new M6(\"ON_SET_PORT_VALUES\",r,Y({},t));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:r,payload:Y({},t)});var o=Y(Y({},e),t);return o=b6(o,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload})},Z7=function(e){for(var t=Object.keys(e),n={},r=0;r<t.length;r++){var a=t[r];0,\"function\"===typeof e[a]&&(n[a]=e[a])}var o,i=Object.keys(n);try{!function(e){Object.keys(e).forEach((function(t){var n=e[t];if(\"undefined\"===typeof n(void 0,{type:Ya.INIT}))throw new Error(Va(12));if(\"undefined\"===typeof n(void 0,{type:Ya.PROBE_UNKNOWN_ACTION()}))throw new Error(Va(13))}))}(n)}catch(s){o=s}return function(e,t){if(void 0===e&&(e={}),o)throw o;for(var r=!1,a={},s=0;s<i.length;s++){var c=i[s],u=n[c],l=e[c],E=u(l,t);if(\"undefined\"===typeof E){t&&t.type;throw new Error(Va(14))}a[c]=E,r=r||E!==l}return(r=r||i.length!==Object.keys(e).length)?a:e}}({commonReducer:V6,profileReducer:R7,batteryReducer:g6,deviceReducer:i7,lightingEf"
+        },
+        {
+          "needle": "portsReducer:",
+          "offset": 4217438,
+          "source": "return U6(e,t);case Ja.sDY:return x6(e,t);case Ja.y5$:return G6(e,t);case Ja.cnf:return Z6(e,t);case Ja.OHk:return w6(e,t);case Ja.$dt:return U6(e,t);case Ja.KBK:return x6(e,t);case Ja.AYs:return G6(e,t);case Ja.pSL:return Z6(e,t);default:return e}},portsReducer:function(e,t){var n=structuredClone(e);if(void 0===e)return Y({},b7);var r,a=e,o=x7.some((function(e){var n=e(a,t),r=n!==a;return a=n,r})),i=[Ja.GBi].includes(t.type);return o?(console.warn(\"portsReducer before:\",n,structuredClone(t)),console.warn(\"portsReducer after:\",structuredClone(a)),i||k7(a,{ports:(r=a.ports,r||r.length?structuredClone(r).map((function(e){e.isActive;var t=e.quickEffects,n=h3(e,M7);if(!t)return Y({},n);var r=t.selectedEffectId,a=t.effectSettings.find((function(e){return e.effectId===r})),o={selectedEffectId:r};if(a){a.effectId;var i=h3(a,y7);o.selectedEffectSetting=i}return Y(Y({},n),{},{quickEffects:o})})):[])}),a):e}}),H7=Ka(Z7,{},Qa(function(){for(var e=arguments.length,t=new Array(e),n=0;n<e;n++)t[n]=arguments[n];return function(e){return function(){var n=e.apply(void 0,arguments),r=function(){throw "
+        }
+      ],
+      "manifest": {
+        "path": ".ref/devices/3886/asset-manifest.json",
+        "sha256": "7d4c4d5f663895890c131e413edff61e4a62ed3d4d13c50b7f2fcd1ca41ff056"
+      },
+      "components": [
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3997073,
+          "end": 3997960,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){var e;(0,Z.Z)(this,n);for(var r=arguments.length,a=new Array(r),o=0;o<r;o++)a[o]=arguments[o];return(e=t.call.apply(t,[this].concat(a))).selectOption=function(t){return function(n){e.props.changePortMode({id:t,isStripMode:!n})}},e}return(0,H.Z)(n,[{key:\"render\",value:function(){var e=this.props,t=e.id,n=e.isStripMode,r=e.index;return(0,Do.jsxs)(\"div\",{className:\"device-type-container\",children:[0===r&&(0,Do.jsxs)(N.Fragment,{children:[(0,Do.jsxs)(\"div\",{className:\"label-common\",children:[(0,Do.jsx)(Wo,{text:Uo.zH1}),\":\"]}),(0,Do.jsx)(Y$,{extraClass:\"device-type-dropdown\",name:\"device-type\",dataSet:H0,value:n?0:1,selectOption:this.selectOption(t)})]}),0!==r&&(0,Do.jsx)(N.Fragment,{children:(0,Do.jsxs)(\"div\",{className:\"device-type-name\",children:[(0,Do.jsx)(Wo,{text:Uo.TgX}),\" \".concat(r+1)]})})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3989189,
+          "end": 3991395,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(e){var r;return(0,Z.Z)(this,n),(r=t.call(this,e)).showTooltip=function(){var e=(0,nf.Z)(r);clearTimeout(e._timeout),e.setState({shouldRender:!0},(function(){var t=e.props.position,n=e.props.target;console.log(n);var r={};if(n){var a=function(e,t){var n={x:0,y:0,width:0,height:0},r=document.getElementById(\"body-wrapper\");if(!r)return n;var a=\"string\"===typeof e?document.getElementById(e):e;if(!a)return n;var o=r.getBoundingClientRect(),i=a.getBoundingClientRect();return t===I2?{x:i.left-300+i.width,y:i.top,width:i.width,height:i.height}:t===f2?{x:i.left,y:i.top,width:i.width,height:i.height}:{x:i.left-o.left,y:i.top-o.top,width:i.width,height:i.height}}(n,t);r={position:\"fixed\",left:a.x,top:a.y,width:a.width,height:a.height}}e.setState({position:t,style:r}),e._timeout=setTimeout((function(){e._isMounted&&e.setState({showClassName:\"show\"})}))}))},r.hideTooltip=function(){var e=(0,nf.Z)(r);clearTimeout(e._timeout),e.setState({showClassName:\"\"},(function(){e._timeout=setTimeout((function(){e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})}))}))},r.state={shouldRender:!1,showClassName:\"\",position:e.position||f2,style:{}},r.tooltip=(0,N.createRef)(),r}return(0,H.Z)(n,[{key:\"componentDidMount\",value:function(){this._isMounted=!0,this.props.isMounted&&this.showTooltip()}},{key:\"componentDidUpdate\",value:function(e){var t=this.props.isMounted;e.isMounted!==t&&(t?this.showTooltip():this.hideTooltip())}},{key:\"componentWillUnmount\",value:function(){this._isMounted=!1}},{key:\"render\",value:function(){var e=this.tooltip,t=this.showTooltip,n=this.hideTooltip,r=this.state,a=r.shouldRender,o=r.showClassName,i=r.position,s=r.style,c=this.props,u=c.isMounted,l=c.className,E=c.children,d=c.target,p=(0,Do.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof u?t:function(){},onMouseLeave:\"boolean\"!==typeof u?n:function(){},className:\"tooltip-razer \".concat(i,\" \").concat(o,\" \").concat(l),style:Y(Y({},s),{},{pointerEvents:d?\"none\":\"inherit\"}),children:a?(0,Do.jsx)(\"div\",{ref:e,className:\"main\",children:(0,Do.jsx)(\"div\",{className:\"wrapper\",children:E})}):null});return d?(0,Do.jsx)(T2,{children:p}):p}}]),n}(N.Component)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3992346,
+          "end": 3993366,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return this.props.active?(0,Do.jsx)(\"div\",{style:{whiteSpace:\"pre-line\"},children:(0,Do.jsxs)(\"div\",{style:{position:\"relative\",display:\"flex\"},children:[(0,Do.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:this.props.className,children:(0,Do.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\",fill:\"#707070\"})}),(0,Do.jsx)(O2,{position:\"bottom-right\",children:(0,Do.jsx)(\"div\",{dangerouslySetInnerHTML:{__html:Fo(Uo.iUZ,{ledCount:'<span style=\"color:#44d62c\">'.concat(this.props.value,\"</span>\")})}})})]})}):(0,Do.jsx)(Do.Fragment,{})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3994629,
+          "end": 3996961,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(e){var r;return(0,Z.Z)(this,n),(r=t.call(this,e)).checkStripValues=function(e){var t=e.portId,n=e.stripId,r=e.ports,a=e.isStripMode,o=e.ledValue;if(a){var i,s,c,u=(null===(i=r.find((function(e){return e.id===t})))||void 0===i||null===(s=i.argb)||void 0===s||null===(c=s.numberOfLeds)||void 0===c?void 0:c.strip)||[];if(4===u.length&&u[3].id===n&&o>=u[1].value)return{value:u[1].value,disabled:!0}}return{value:null,disabled:!1}},r.handleChangeNumberOfLeds=function(e){var t=e;if(Date.now()-r.previousClickTime<300)return!1;r.previousClickTime=Date.now();var n=r.props,a=n.portId,o=n.stripId,i=n.changeNumberOfLeds,s=n.ports,c=n.isStripMode;if(c||(t=x2[e]),c){var u,l,E,d=(null===(u=s.find((function(e){return e.id===a})))||void 0===u||null===(l=u.argb)||void 0===l||null===(E=l.numberOfLeds)||void 0===E?void 0:E.strip)||[];4===d.length&&d[3].id&&d[1].id===o&&d[1].value>=t&&d[1].value===d[3].value&&i({portId:a,stripId:d[3].id,value:t})}i({portId:a,stripId:o,value:t})},r.renderStepperInput=function(){var e=r.props,t=e.ledValue,n=e.detectedLedCount;if(!e.isStripMode){var a=x2.map((function(e){return{name:e,content:e.toString()}})),o=x2.findIndex((function(e){return e===t}))||0;return(0,Do.jsx)(Y$,{extraClass:\"number-led-stepper\",dataSet:a,value:o,selectOption:r.handleChangeNumberOfLeds})}var i=Math.max(n,40),s=r.checkStripValues(Y({},r.props)),c=s.value,u=s.disabled,l=4===t,E=\"number-led-stepper number-led-stepper--stepper \".concat(u||t===i?\"number-led-stepper--disabled-increase\":\"\",\" \").concat(l?\"number-led-stepper--disabled-decrease\":\"\");return(0,Do.jsx)(D0,{value:t,active:!0,maxValue:c||i,minValue:4,stepValue:1,extraClass:E,setParentState:r.handleChangeNumberOfLeds,maxLength:2,allowDecimals:!0})},r.previousClickTime=0,r.previousPortValue=[],r}return(0,H.Z)(n,[{key:\"render\",value:function(){var e=this.props,t=e.index,n=e.detectedLedCount,r=e.numberOfBends;return(0,Do.jsxs)(\"div\",{className:\"number-led-container \".concat(0!==t?\"number-led-container--with-closed\":\"\"),children:[0===t&&(0,Do.jsxs)(\"div\",{className:\"label-common\",children:[(0,Do.jsx)(Wo,{text:Uo.$NT}),\":\"]}),(0,Do.jsxs)(\"div\",{className:\"number-led-wrapper\",children:[this.renderStepperInput(),(0,Do.jsx)(y2,{value:n,active:1===r,className:\"icon-led-detection\"})]})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3998045,
+          "end": 3998884,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){var e=this.props,t=e.portId,n=e.stripId,r=e.removeStripBend;return(0,Do.jsxs)(\"svg\",{className:\"icon-close-glitter\",width:20,height:20,viewBox:\"0 0 20 20\",onClick:function(){return r({portId:t,stripId:n})},children:[(0,Do.jsx)(\"defs\",{children:(0,Do.jsx)(\"clipPath\",{id:\"a\",children:(0,Do.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,Do.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,Do.jsx)(\"path\",{d:\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\",fill:\"#ccc\"})})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3998969,
+          "end": 3999510,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){var e=this.props,t=e.portId,n=e.stripId,r=e.isStripMode,a=e.ledValue,o=e.numberOfBends,i=e.detectedLedCount,s=e.index;return(0,Do.jsxs)(\"div\",{className:\"port-item\",children:[(0,Do.jsx)(B2,{id:t,isStripMode:r,index:s}),(0,Do.jsx)(Z2,{portId:t,stripId:n,isStripMode:r,ledValue:a,numberOfBends:o,detectedLedCount:i,index:s}),0!==s&&(0,Do.jsx)(V2,{portId:t,stripId:n})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3999520,
+          "end": 4000142,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsxs)(\"svg\",Y(Y({width:14,height:14,viewBox:\"0 0 14 14\"},this.props),{},{children:[(0,Do.jsx)(\"defs\",{children:(0,Do.jsx)(\"clipPath\",{id:\"a\",children:(0,Do.jsx)(\"path\",{fill:\"none\",d:\"M0 0H14V14H0z\"})})}),(0,Do.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,Do.jsx)(\"path\",{d:\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\",fill:\"#44d62c\"})})]}))}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4000152,
+          "end": 4001822,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(e){var r;return(0,Z.Z)(this,n),(r=t.call(this,e)).handleClickOutside=function(e){var t;if(r.refInput&&(null===(t=t2()(r.refInput,\"current\",[]))||void 0===t||!t.contains(e.target))){var n=r.props,a=n.portId,o=n.changePortName,i=t2()(r.refInput,\"current.value\",\"\");i&&r.setState({isEditing:!1},(function(){o({id:a,name:i})}))}},r.handleSwitchView=function(){r.setState({isEditing:!0},(function(){r.refInput.current.focus(),r.refInput.current.select()}))},r.onKeyDown=function(e){return function(t){if(13===t.keyCode){var n=t.target.value;r.setState({isEditing:!1},(function(){r.props.changePortName({id:e,name:n})}))}}},r.state={isEditing:!1},r.refInput=C().createRef(),r.handleClickOutside=r.handleClickOutside.bind((0,nf.Z)(r)),r}return(0,H.Z)(n,[{key:\"componentDidMount\",value:function(){document.addEventListener(\"mousedown\",this.handleClickOutside)}},{key:\"componentWillUnmount\",value:function(){document.removeEventListener(\"mousedown\",this.handleClickOutside)}},{key:\"render\",value:function(){var e=this.state.isEditing,t=this.props,n=t.portName,r=t.portId;return(0,Do.jsxs)(\"div\",{className:\"port-name-container\",children:[e&&(0,Do.jsx)(\"input\",{ref:this.refInput,defaultValue:n,onBlur:this.onKeyDown(r),onKeyDown:this.onKeyDown(r),className:\"port-input\"}),!e&&(0,Do.jsxs)(\"div\",{className:\"port-name-and-icon\",onClick:this.handleSwitchView,children:[(0,Do.jsx)(\"span\",{className:\"port-name\",children:n}),(0,Do.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,Do.jsx)(j2,{className:\"port-edit-icon\"}),(0,Do.jsx)(O2,{position:\"bottom\",children:(0,Do.jsx)(Wo,{text:Uo.bvx})})]})]})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3993376,
+          "end": 3994225,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){var e;(0,Z.Z)(this,n);for(var r=arguments.length,a=new Array(r),o=0;o<r;o++)a[o]=arguments[o];return(e=t.call.apply(t,[this].concat(a))).onClick=function(t){t.preventDefault(),e.props.openChromaStudio&&e.props.openChromaStudio()},e}return(0,H.Z)(n,[{key:\"render\",value:function(){var e=this.props.handleDismiss;return(0,Do.jsxs)(\"div\",{className:\"chroma-studio-message\",children:[(0,Do.jsx)(\"div\",{children:(0,Do.jsx)(Wo,{text:Uo.VKI})}),(0,Do.jsxs)(\"div\",{className:\"chroma-studio-wrapper\",children:[(0,Do.jsxs)(\"div\",{className:\"chroma-studio-message-btn\",onClick:this.onClick,children:[(0,Do.jsx)(\"span\",{className:\"chroma-studio-icon\"}),(0,Do.jsx)(Wo,{text:Uo.YXL})]}),(0,Do.jsx)(\"div\",{className:\"dismiss-btn\",onClick:e,children:(0,Do.jsx)(Wo,{text:Uo.GPl})})]})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3988141,
+          "end": 3988621,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsx)(\"svg\",Y(Y({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:(0,Do.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})}))}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3994235,
+          "end": 3994575,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsxs)(\"div\",{className:\"port-warning\",children:[(0,Do.jsx)(\"div\",{children:(0,Do.jsx)(_2,{})}),(0,Do.jsx)(\"div\",{children:(0,Do.jsx)(Wo,{text:Uo.t7v})})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4001907,
+          "end": 4007171,
+          "source": "function(e){(0,B.Z)(r,e);var t=(0,F.Z)(r);function r(e){var a;return(0,Z.Z)(this,r),(a=t.call(this,e)).handleDismissMessage=function(){var e=a.props,t=e.value;(0,e.dismissPortChromaMessage)(t.id)},a.handleAddBend=function(){var e=a.props.value.id;a.props.addStripBend({id:e})},a.checkChromaInstalled=function(){var e=window.localStorage.getItem(Mo.EYL)||[];if(Array.isArray(e)&&e.length>0){var t=e.some((function(e){return e.name===Mo.ohX}));a.setState({isChromaStudioInstalled:t,isChromaAppInstalled:!0})}else a.setState({isChromaStudioInstalled:!1,isChromaAppInstalled:!1})},a.getTab=(0,lo.Z)((0,uo.Z)().mark((function e(){var t,n,r=arguments;return(0,uo.Z)().wrap((function(e){for(;;)switch(e.prev=e.next){case 0:if(t=r.length>0&&void 0!==r[0]?r[0]:\"\",e.prev=1,\"function\"!==typeof bo.Z.getWindowServiceClients){e.next=9;break}return e.next=5,bo.Z.getWindowServiceClients();case 5:return n=e.sent,e.abrupt(\"return\",JSON.parse(n).find((function(e){return e.windowName===t||e.url.includes(t)})));case 9:return e.abrupt(\"return\",null);case 10:e.next=15;break;case 12:return e.prev=12,e.t0=e.catch(1),e.abrupt(\"return\",null);case 15:case\"end\":return e.stop()}}),e,null,[[1,12]])}))),a.focusWindow=function(e){\"function\"===typeof bo.Z.activateWindowServiceClient&&bo.Z.activateWindowServiceClient(e)},a.openDevicesModules=(0,lo.Z)((0,uo.Z)().mark((function e(){return(0,uo.Z)().wrap((function(e){for(;;)switch(e.prev=e.next){case 0:return e.next=2,a.getTab(Mo.CE8);case 2:e.sent?a.focusWindow(Mo.CE8):(\"focus-module-installer\",window.open(\"/chroma-app/dashboard/index.html?action=focus-module-installer\",Mo.CE8,Mo.cDX));case 4:case\"end\":return e.stop()}}),e)}))),a.openChromaStudio=(0,lo.Z)((0,uo.Z)().mark((function e(){var t,n,r;return(0,uo.Z)().wrap((function(e){for(;;)switch(e.prev=e.next){case 0:return e.next=2,a.getTab(Mo.CE8);case 2:return t=e.sent,e.next=5,a.getTab(Mo.ohX);case 5:if(n=e.sent,t){e.next=11;break}\"focus-module-installer\",window.open(\"/chroma-app/dashboard/index.html?action=focus-module-installer\",Mo.CE8,Mo.cDX),e.next=16;break;case 11:return e.next=13,bo.Z.callElectronAction({action:\"getWindowStatus\",windowName:Mo.CE8});case 13:(r=e.sent).isVisible&&!r.isMinimized||a.focusWindow(Mo.CE8),n?a.focusWindow(Mo.ohX):bo.Z.callElectronAction({action:\"activateWindowServiceClient\",windowName:Mo.CE8,subTab:Uo.Zv4});case 16:case\"end\":return e.stop()}}),e)}))),a.renderLedImages=function(e){var t=e.isStripMode,r=e.ledValues;if(!t)return(0,Do.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:n(239),alt:\" \"});switch(r.length){case 2:return(0,Do.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:n(2266),alt:\" \"});case 3:return(0,Do.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:n(3718),alt:\" \"});case 4:return(0,Do.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:n(5907),alt:\" \"});default:return(0,Do.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:n(9817),alt:\" \"})}},a.renderPortItem=function(e){var t=e.id,n=e.numberOfLeds,r=e.isStripMode,a=e.ledValues;return n&&t&&a&&a.length?a.map((function(e,a){return(0,Do.jsx)(z2,{portId:t,stripId:e.id,isStripMode:r,numberOfBends:r&&n.strip.length||1,ledValue:e.value,detectedLedCount:n.detectedLedCount,index:a},a.toString())})):(0,Do.jsx)(Do.Fragment,{})},a.state={isChromaStudioInstalled:!1,isChromaAppInstalled:!1},a}return(0,H.Z)(r,[{key:\"componentDidMount\",value:function(){this.checkChromaInstalled(),window.addEventListener(\"storage\",this.checkStorageChanges)}},{key:\"componentWillUnmount\",value:function(){window.removeEventListener(\"storage\",this.checkStorageChanges)}},{key:\"render\",value:function(){var e=this.handleDismissMessage,t=this.renderLedImages,n=this.handleAddBend,r=this.openChromaStudio,a=this.props.value,o=a.name,i=a.id,s=a.argb,c=a.isActive,u=s.chromaRequireDismiss,l=s.numberOfLeds,E=s.isStripMode,d=this.state.isChromaAppInstalled,p=function(){var e;return E?l.strip.reduce((function(e,t){return e+t.value}),0):null===(e=l.fan[0])||void 0===e?void 0:e.value},_=E?l.strip:l.fan;return c?(0,Do.jsxs)(\"div\",{className:\"port-container widget\",children:[(0,Do.jsx)(\"div\",{className:\"help\"}),(0,Do.jsx)(\"div\",{className:\"tip\",children:(0,Do.jsx)(Wo,{text:Uo.mAK})}),(0,Do.jsx)(X2,{portName:o,portId:i}),(0,Do.jsxs)(\"div\",{className:\"port-items-led-image\",children:[(0,Do.jsxs)(\"div\",{className:\"port-infomation\",children:[this.renderPortItem({id:i,numberOfLeds:l,isStripMode:E,ledValues:_}),E&&Array.isArray(_)&&_.length<4&&(0,Do.jsx)(\"div\",{className:\"port-add-bend\",onClick:n,children:(0,Do.jsx)(Wo,{text:Uo.CFf})}),Array.isArray(_)&&_.length>1&&(0,Do.jsxs)(\"div\",{className:\"total-LED-count\",children:[(0,Do.jsx)(\"div\",{className:\"label-total-led-count\",children:(0,Do.jsx)(Wo,{text:Uo.L8S})}),(0,Do.jsx)(\"div\",{className:\"value-total-led-count\",children:p()}),(0,Do.jsx)(y2,{value:l.detectedLedCount,active:!0,className:\"icon-led-detection\"})]})]}),(0,Do.jsx)(\"div\",{className:\"led-img-container\",children:t({isStripMode:E,ledValues:_})})]}),!u&&!d&&p()!==l.detectedLedCount&&(0,Do.jsx)(w2,{openChromaStudio:r,handleDismiss:e}),(null===xa.DeviceInfo||void 0===xa.DeviceInfo?void 0:xa.DeviceInfo.allowedLedsPerPort)&&p()>(null===xa.DeviceInfo||void 0===xa.DeviceInfo?void 0:xa.DeviceInfo.allowedLedsPerPort)&&(0,Do.jsx)(G2,{})]}):null}}]),r}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4009560,
+          "end": 4009733,
+          "source": "function(e){var t=e.name,n=e.onClick,r=e.extraClass;return(0,Do.jsx)(\"div\",{className:\"customize-setting-button \".concat(r||\"\"),onClick:n,children:(0,Do.jsx)(Wo,{text:t})})}"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4009749,
+          "end": 4010549,
+          "source": "function(e){var t=e.status,n=e.overlay,r=e.onClick,a=t||{},o=a.type,i=a.isConnected,s=function(e,t){r&&r({type:e,value:t})},c=(0,N.useMemo)((function(){switch(o){case k_.BLE_MOBIL:return(0,Do.jsxs)(\"div\",{className:\"center\",children:[(0,Do.jsx)(\"p\",{className:\"message-container__msg text-center\",children:Fo(Uo.Gdx)}),(0,Do.jsx)(n3,{extraClass:\"message-container__button\",name:Fo(Uo.KtW),onClick:function(e){return s(t)}})]});case k_.BLE_PC:return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"message-container__header\",children:Fo(Uo.tpe)}),(0,Do.jsx)(\"div\",{className:\"message-container__msg\",children:Fo(Uo.Q7W)})]});default:return}}),[o]);return i?(0,Do.jsx)(\"div\",{className:\"message-container \".concat(n?\"message-container--overlay\":\"\"),children:c}):(0,Do.jsx)(Do.Fragment,{})}"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4009737,
+          "end": 4010551,
+          "source": "(0,N.memo)((function(e){var t=e.status,n=e.overlay,r=e.onClick,a=t||{},o=a.type,i=a.isConnected,s=function(e,t){r&&r({type:e,value:t})},c=(0,N.useMemo)((function(){switch(o){case k_.BLE_MOBIL:return(0,Do.jsxs)(\"div\",{className:\"center\",children:[(0,Do.jsx)(\"p\",{className:\"message-container__msg text-center\",children:Fo(Uo.Gdx)}),(0,Do.jsx)(n3,{extraClass:\"message-container__button\",name:Fo(Uo.KtW),onClick:function(e){return s(t)}})]});case k_.BLE_PC:return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"message-container__header\",children:Fo(Uo.tpe)}),(0,Do.jsx)(\"div\",{className:\"message-container__msg\",children:Fo(Uo.Q7W)})]});default:return}}),[o]);return i?(0,Do.jsx)(\"div\",{className:\"message-container \".concat(n?\"message-container--overlay\":\"\"),children:c}):(0,Do.jsx)(Do.Fragment,{})}))"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4007712,
+          "end": 4009477,
+          "source": "function(e){var t=e.status,n=e.handleDismiss,r=e.overlay,a=(0,N.useState)({dismissed:!1}),o=(0,Sa.Z)(a,2),i=o[0],s=o[1],c=(0,N.useCallback)((function(){n&&n(),s((function(e){return Y(Y({},e),{},{dismissed:!0})}))}),[]),u=(0,N.useMemo)((function(){switch(t){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.mUD)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.YUv)})]});case\"GLITTER_ERROR_POWER_SUPPLY_REQUIRED\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.M8b)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.GYc)})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo._RD)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.$RU)}),(0,Do.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:c,children:\"Dismiss\"})]});case\"GLITTER_ERROR_PROTECTION_MODE_ACTIVE\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.pMu)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.QtF)}),(0,Do.jsxs)(\"ul\",{children:[(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.B5W)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.Cfe)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.hyg)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.cvF)})})]})]});default:return}}),[t,n]);return!i.dismissed&&t?(0,Do.jsx)(\"div\",{className:\"warning-container \".concat(r?\"warning-container--overlay\":\"\"),children:u}):(0,Do.jsx)(Do.Fragment,{})}"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4007700,
+          "end": 4009479,
+          "source": "(0,N.memo)((function(e){var t=e.status,n=e.handleDismiss,r=e.overlay,a=(0,N.useState)({dismissed:!1}),o=(0,Sa.Z)(a,2),i=o[0],s=o[1],c=(0,N.useCallback)((function(){n&&n(),s((function(e){return Y(Y({},e),{},{dismissed:!0})}))}),[]),u=(0,N.useMemo)((function(){switch(t){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.mUD)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.YUv)})]});case\"GLITTER_ERROR_POWER_SUPPLY_REQUIRED\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.M8b)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.GYc)})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo._RD)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.$RU)}),(0,Do.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:c,children:\"Dismiss\"})]});case\"GLITTER_ERROR_PROTECTION_MODE_ACTIVE\":return(0,Do.jsxs)(Do.Fragment,{children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.pMu)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.QtF)}),(0,Do.jsxs)(\"ul\",{children:[(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.B5W)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.Cfe)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.hyg)})}),(0,Do.jsx)(\"li\",{children:(0,Do.jsx)(\"div\",{children:Fo(Uo.cvF)})})]})]});default:return}}),[t,n]);return!i.dismissed&&t?(0,Do.jsx)(\"div\",{className:\"warning-container \".concat(r?\"warning-container--overlay\":\"\"),children:u}):(0,Do.jsx)(Do.Fragment,{})}))"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3986778,
+          "end": 3987566,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsxs)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\",className:\"icon-detection--active\",children:[(0,Do.jsxs)(\"g\",{className:\"detect-a\",children:[(0,Do.jsx)(\"rect\",{width:\"20\",height:\"20\",className:\"detect-d\",rx:\"2\"}),(0,Do.jsx)(\"rect\",{width:\"10\",height:\"10\",x:\"5\",y:\"5\",className:\"detect-e\"})]}),(0,Do.jsx)(\"path\",{d:\"M16 16h-2v2h4v-4h-2zM14 2v2h2v2h2V2zM4 14H2v4h4v-2H4zM2 6h2V4h2V2H2zM11.621 12.146H8.37L7.752 14H5.78l3.35-9h1.718l3.368 9h-1.971zm-2.751-1.5h2.25L9.99 7.275z\",className:\"detect-b\"}),(0,Do.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3986046,
+          "end": 3986774,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsxs)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:\"icon-detection \".concat(!this.props.isFirstRender&&\"icon-detection--animation\"),children:[(0,Do.jsx)(\"rect\",{width:\"20\",height:\"20\",rx:\"2\"}),(0,Do.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"}),(0,Do.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-f\"}),(0,Do.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zM11.983 12.734H8.009L7.254 15h-2.41l4.1-11h2.1l4.117 11h-2.41zM8.621 10.9h2.75L9.989 6.78z\",fill:\"#ccc\",className:\"detect-b\"})]})}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 3987570,
+          "end": 3988131,
+          "source": "function(e){(0,B.Z)(n,e);var t=(0,F.Z)(n);function n(){return(0,Z.Z)(this,n),t.apply(this,arguments)}return(0,H.Z)(n,[{key:\"render\",value:function(){return(0,Do.jsxs)(\"svg\",Y(Y({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:[(0,Do.jsx)(\"defs\",{children:(0,Do.jsx)(\"clipPath\",{id:\"a\",children:(0,Do.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,Do.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,Do.jsx)(\"path\",{d:\"M15.649 4.351A7.994 7.994 0 1017.931 11H15.91a6.044 6.044 0 11-1.687-5.223L11 9h7V2z\",fill:\"#ccc\"})})]}))}}]),n}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4007329,
+          "end": 4007696,
+          "source": "function(e){return(0,Do.jsxs)(\"svg\",Y(Y({xmlns:\"http://www.w3.org/2000/svg\",width:18,height:18},e),{},{children:[(0,Do.jsx)(\"rect\",{width:20,height:20,rx:10}),(0,Do.jsx)(\"path\",{d:\"M11 7a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0Zm7 5a5.952 5.952 0 0 0-1.758-4.242 1 1 0 0 0-1.414 1.414 4 4 0 1 1-5.656 0 1 1 0 0 0-1.414-1.414A6 6 0 1 0 18 12Z\",transform:\"translate(-2 -2)\"})]}))}"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4010634,
+          "end": 4015221,
+          "source": "function(e){(0,B.Z)(r,e);var t=(0,F.Z)(r);function r(e){var n;return(0,Z.Z)(this,r),(n=t.call(this,e)).toggleTooltipDetection=function(e){n.setState({toggleTooltipDetection:e})},n.toggleAutoDetection=function(){n.props.changeAutoDetectionStatus(!n.props.isAutoDetectionEnable),n.setState({triggerAnimation:!0})},n.toggleTogglePower=function(e){n.props.changePowerOnStatus(e)},n.toggleTooltipRefresh=function(e){n.setState({toggleTooltipRefresh:e})},n.handleRefresh=function(e){e.preventDefault(),n.setState({toggleTooltipRefresh:!1}),n.props.refreshPorts()},n.handleDismiss=function(){n.props.warningType&&n.props.changeErrorStatus(null)},n.checkExceedPerPort=function(e){if(!e)return!1;var t=e.map((function(e){var t,n=e.argb;return n?null===(t=n.numberOfLeds)||void 0===t?void 0:t.strip.reduce((function(e,t){return e+t.value}),0):{}}));return t.find((function(e){return e>80}))},n.renderPorts=function(e){if(!e||!e.length)return(0,Do.jsx)(Do.Fragment,{});var t=1===e.filter((function(e){return e.isActive})).length;return(0,Do.jsxs)(\"div\",{className:\"customize-container customize-container--wireless \".concat(t?\"customize-container--listed\":\"\"),children:[(0,Do.jsx)(Q2,{value:e[0]}),(0,Do.jsx)(Q2,{value:e[1]}),(0,Do.jsx)(Q2,{value:e[2]})]})},n.handleReconnectDongle=function(e){\"GLITTER_MSG_STOP_MOBILE_SYNC\"!==!e.type&&n.props.changeConnectionMode({type:k_[\"2.4G\"],isConnected:!!Z_.Connected})},n.renderMsgBox=function(e){var t=e.isPowerOn,r=e.connectionStatus,a=e.warningType;return t?r.type===k_.BLE_MOBIL||r.type===k_.BLE_PC?(0,Do.jsx)(i3,{status:r,onClick:n.handleReconnectDongle}):a?(0,Do.jsx)(t3,{status:a,handleDismiss:n.handleDismiss}):(0,Do.jsx)(Do.Fragment,{}):(0,Do.jsxs)(\"div\",{className:\"warning-container\",children:[(0,Do.jsx)(\"p\",{className:\"warning-container__header\",children:Fo(Uo.auE)}),(0,Do.jsx)(\"div\",{className:\"warning-container__msg\",children:Fo(Uo.RJr)})]})},n.state={autoDetection:!0,toggleTooltipDetection:!1,toggleTooltipRefresh:!1,triggerAnimation:!1},n}return(0,H.Z)(r,[{key:\"render\",value:function(){var e=this,t=this.props,r=t.isRefreshing,a=t.ports,o=t.isChromaAppRoot,i=t.isPowerOn,s=t.isAutoDetectionEnable,c=t.warningType,u=t.connectionStatus,l=this.checkExceedPerPort(a);return(0,Do.jsxs)(N.Fragment,{children:[(0,Do.jsxs)(\"div\",{style:o?c3.wrapper:{},className:\"customize-scroll\",id:\"pageContainer\",children:[(0,Do.jsx)(\"div\",{className:\"customize-center customize-center--wireless\",children:(0,Do.jsxs)(\"div\",{className:\"product\",children:[(0,Do.jsx)(\"div\",{className:\"product__image\",children:(0,Do.jsx)(\"img\",{width:260,height:260,loading:\"lazy\",src:n(3170)(\"./\".concat(xa.DeviceInfo.productId,\"_\").concat(this.props.editionId,\"/img_prods/prd-3x.png\")),alt:\"\"})}),r?(0,Do.jsx)(\"div\",{children:(0,Do.jsx)(\"span\",{className:\"detecting-device detecting-device--wireless\",style:{backgroundImage:\"url(\".concat(J2,\")\")}})}):(0,Do.jsxs)(\"div\",{className:\"product__icon product__icon--wireless\",children:[(0,Do.jsxs)(\"div\",{className:\"detection-icons \".concat(i?\"\":\"invisible\",\" detection-icons--wireless\"),children:[(0,Do.jsx)(\"div\",{id:\"icon-detection-wrapper\",className:\"icon-detection-wrapper\",onMouseEnter:function(){return e.toggleTooltipDetection(!0)},onMouseLeave:function(){return e.toggleTooltipDetection(!1)},onClick:this.toggleAutoDetection,children:s?(0,Do.jsx)(l2,{}):(0,Do.jsx)(u2,{isFirstRender:!this.state.triggerAnimation})}),(0,Do.jsx)(O2,{isMounted:this.state.toggleTooltipDetection,position:\"bottom-left\",target:\"icon-detection-wrapper\",children:Fo(Uo.Tvw)}),(0,Do.jsxs)(\"div\",{id:\"icon-refreshing-wrapper\",className:\"icon-refreshing-wrapper\",onMouseEnter:function(){return e.toggleTooltipRefresh(!0)},onMouseLeave:function(){return e.toggleTooltipRefresh(!1)},children:[(0,Do.jsx)(d2,{onClick:this.handleRefresh,className:\"icon-refreshing\"}),(0,Do.jsx)(O2,{isMounted:this.state.toggleTooltipRefresh,position:\"bottom-left\",target:\"icon-refreshing-wrapper\",children:Fo(Uo.tRK)})]}),(0,Do.jsx)(_2,{className:\"icon-warning \".concat(!(l||c)&&\"icon-warning--hidden\")})]}),(0,Do.jsx)(\"div\",{className:\"power-icons\",children:(0,Do.jsx)($2,{onClick:function(){return e.toggleTogglePower(!i)},className:\"icon-power \".concat(!i&&\"icon-power--power-off\")})})]})]})}),(0,Do.jsx)(\"div\",{className:\"wireless-status-wrapper\",children:this.renderMsgBox({isPowerOn:i,connectionStatus:u,warningType:c})}),!r&&i&&!u.type===k_.BLE_MOBIL&&this.renderPorts(a)]}),(0,Do.jsx)(\"div\",{style:o?c3.dotBackground:{},className:\"dot-background dot-background--wireless\",children:(0,Do.jsx)(\"div\",{className:\"custom-dim-corner\"})})]})}}]),r}(N.PureComponent)"
+        },
+        {
+          "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+          "offset": 4017842,
+          "end": 4017859,
+          "source": "(0,Do.jsx)(u3,{})"
+        }
+      ],
+      "reducerSlices": [
+        {
+          "offset": 4211382,
+          "source": "case Qr:var c=t.payload.id,u=L7(e,c).argb,l=u.numberOfLeds,E=l.strip,d=E.reduce((function(e,t){return e+t.value}),0),p=g7(d,E.length+1,[]),_=E.map((function(e,t){return e.value=p[t],e})),T={id:E.length,value:p[E.length]};return U7(e,{argb:Y(Y({},u),{},{numberOfLeds:Y(Y({},l),{},{strip:[].concat((0,ci.Z)(_),[T])})})},c),Y(Y({},e),{},{ports:e.ports.slice()});case Jr:var I=t.payload,f=I.portId,A=I.stripId,O=L7(e,f).argb,m=O.numberOfLeds,S=m.strip.filter((function(e){return e.id!==A})).map((function(e,t){return Y(Y({},e),{},{id:t})}));return U7(e,{argb:Y(Y({},O),{},{numberOfLeds:Y(Y({},m),{},{strip:S})})},f),Y(Y({},e),{},{ports:e.ports.slice()});case $r:var h=t.payload,R=h.portId,N=h.stripId,C=h.value,v=L7(e,R).argb,D=v.isStripMode,L=v.numberOfLeds,g=function(e){return e.map((function(e){return e.id===N?Y(Y({},e),{},{value:C}):e}))},P=D?{strip:g(L.strip)}:{fan:g(L.fan)};return U7(e,{argb:Y(Y({},v),{},{numberOfLeds:Y(Y({},L),P)})},R),Y(Y({},e),{},{ports:e.ports.slice()});case Yr:return P7(e.ports,t.payload).map((function(t){return U7(e,t,t.id)})),Y(Y({},e),{},{ports:e.ports.slice()});default:return e}}));var x7=(0,ci.Z)(G7);var k7=function(e,t){var n,r=window.currentTimerTick||Date.now(),a=new M6(\"ON_SET_PORT_VALUES\",r,Y({},t));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:r,payload:Y({},t)});var o=Y(Y({},e),t);return o=b6(o,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload})},Z7=function(e){for(var t=Object.keys(e),n={},r=0;r<t.length;r++){var a=t[r];0,\"function\"===typeof e[a]&&(n[a]=e[a])}var o,i=Object.keys(n);try{!function(e){Object.keys(e).forEach((function(t){var n=e[t];if(\"undefined\"===typeof n(void 0,{type:Ya.INIT}))throw new Error(Va(12));if(\"undefin"
+        },
+        {
+          "offset": 4211741,
+          "source": "case Jr:var I=t.payload,f=I.portId,A=I.stripId,O=L7(e,f).argb,m=O.numberOfLeds,S=m.strip.filter((function(e){return e.id!==A})).map((function(e,t){return Y(Y({},e),{},{id:t})}));return U7(e,{argb:Y(Y({},O),{},{numberOfLeds:Y(Y({},m),{},{strip:S})})},f),Y(Y({},e),{},{ports:e.ports.slice()});case $r:var h=t.payload,R=h.portId,N=h.stripId,C=h.value,v=L7(e,R).argb,D=v.isStripMode,L=v.numberOfLeds,g=function(e){return e.map((function(e){return e.id===N?Y(Y({},e),{},{value:C}):e}))},P=D?{strip:g(L.strip)}:{fan:g(L.fan)};return U7(e,{argb:Y(Y({},v),{},{numberOfLeds:Y(Y({},L),P)})},R),Y(Y({},e),{},{ports:e.ports.slice()});case Yr:return P7(e.ports,t.payload).map((function(t){return U7(e,t,t.id)})),Y(Y({},e),{},{ports:e.ports.slice()});default:return e}}));var x7=(0,ci.Z)(G7);var k7=function(e,t){var n,r=window.currentTimerTick||Date.now(),a=new M6(\"ON_SET_PORT_VALUES\",r,Y({},t));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:r,payload:Y({},t)});var o=Y(Y({},e),t);return o=b6(o,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload})},Z7=function(e){for(var t=Object.keys(e),n={},r=0;r<t.length;r++){var a=t[r];0,\"function\"===typeof e[a]&&(n[a]=e[a])}var o,i=Object.keys(n);try{!function(e){Object.keys(e).forEach((function(t){var n=e[t];if(\"undefined\"===typeof n(void 0,{type:Ya.INIT}))throw new Error(Va(12));if(\"undefined\"===typeof n(void 0,{type:Ya.PROBE_UNKNOWN_ACTION()}))throw new Error(Va(13))}))}(n)}catch(s){o=s}return function(e,t){if(void 0===e&&(e={}),o)throw o;for(var r=!1,a={},s=0;s<i.length;s++){var c=i[s],u=n[c],l=e[c],E=u(l,t);if(\"undefined\"===typeof E){t&&t.type;throw new Error(Va(14))}a[c]=E,r=r||E!==l}return(r=r||i.length!==Object.keys(e).length)?a:e}}({co"
+        },
+        {
+          "offset": 4212032,
+          "source": "case $r:var h=t.payload,R=h.portId,N=h.stripId,C=h.value,v=L7(e,R).argb,D=v.isStripMode,L=v.numberOfLeds,g=function(e){return e.map((function(e){return e.id===N?Y(Y({},e),{},{value:C}):e}))},P=D?{strip:g(L.strip)}:{fan:g(L.fan)};return U7(e,{argb:Y(Y({},v),{},{numberOfLeds:Y(Y({},L),P)})},R),Y(Y({},e),{},{ports:e.ports.slice()});case Yr:return P7(e.ports,t.payload).map((function(t){return U7(e,t,t.id)})),Y(Y({},e),{},{ports:e.ports.slice()});default:return e}}));var x7=(0,ci.Z)(G7);var k7=function(e,t){var n,r=window.currentTimerTick||Date.now(),a=new M6(\"ON_SET_PORT_VALUES\",r,Y({},t));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:r,payload:Y({},t)});var o=Y(Y({},e),t);return o=b6(o,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload})},Z7=function(e){for(var t=Object.keys(e),n={},r=0;r<t.length;r++){var a=t[r];0,\"function\"===typeof e[a]&&(n[a]=e[a])}var o,i=Object.keys(n);try{!function(e){Object.keys(e).forEach((function(t){var n=e[t];if(\"undefined\"===typeof n(void 0,{type:Ya.INIT}))throw new Error(Va(12));if(\"undefined\"===typeof n(void 0,{type:Ya.PROBE_UNKNOWN_ACTION()}))throw new Error(Va(13))}))}(n)}catch(s){o=s}return function(e,t){if(void 0===e&&(e={}),o)throw o;for(var r=!1,a={},s=0;s<i.length;s++){var c=i[s],u=n[c],l=e[c],E=u(l,t);if(\"undefined\"===typeof E){t&&t.type;throw new Error(Va(14))}a[c]=E,r=r||E!==l}return(r=r||i.length!==Object.keys(e).length)?a:e}}({commonReducer:V6,profileReducer:R7,batteryReducer:g6,deviceReducer:i7,lightingEffectsReducer:I7,switchOffLightingReducer:function(e,t){if(\"undefined\"===typeof e)return C7;switch(t.type){case Ja.Xhi:var n;console.log(\"switchOffSetting: \",t.payload);var r=window.currentTimerTick||Date.now(),a=n"
+        },
+        {
+          "offset": 4208431,
+          "source": "g7=function e(t,n,r){var a=t;return a>Math.ceil(t/n)?(a-=Math.ceil(t/n),Math.ceil(t/n)<4?r.push(4):r.push(Math.ceil(t/n)),e(a,n-1,r)):a<4?r.push(4):r.push(a),r},P7=function(e,t){var n=e.map((function(e){if(t&&Array.isArray(t)){var n=t.find((function(t){return t.regionId===e.id}));if(!po()(n))return n.enable&&n.enable!==e.isActive?Y(Y({},e),{},{isActive:!0,argb:Y(Y({},e.argb),{},{numberOfLeds:{detectedLedCount:n.ledPhysicalNumber,strip:[{id:0,value:n.ledNumber||n.ledPhysicalNumber}],fan:[{id:0,value:n.ledNumber||n.ledPhysicalNumber}]}})}):Y(Y({},e),{},{isActive:n.enable,argb:Y(Y({},e.argb),{},{numberOfLeds:Y(Y({},e.argb.numberOfLeds),{},{detectedLedCount:n.ledPhysicalNumber})})})}return Y({},e)}));return n},M7=[\"isActive\",\"quickEffects\"],y7=[\"effectId\"],b7={ports:[],actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]};Object.freeze(b7);var w7=function(e){var t,n,r,a={selectedEffectId:3};e&&(a=structuredClone(e));var o,i,s=[];null!==(t=a)&&void 0!==t&&t.selectedEffectSetting&&(s=[Y(Y({},null===(o=a)||void 0===o?void 0:o.selectedEffectSetting),{},{effectId:null===(i=a)||void 0===i?void 0:i.selectedEffectId})]);return{selectedEffectId:null!==(n=null===(r=a)||void 0===r?void 0:r.selectedEffectId)&&void 0!==n?n:3,effectSettings:s}},U7=function(e,t,n){console.assert(\"number\"===typeof n,structuredClone(n));var r=e.ports,a=r.findIndex((function(e){return e.id===n})),o=r[a];return void 0===o?(o={},r.push(t)):(o=Y({},o),r[a]=o),Object.assign(o,t),console.warn(\"mutatePort\",structuredClone(o),n),o},G7=new Set([function(e,t){switch(t.type){case Kr:var n=t.payload,r=n.id,a=n.name;return U7(e,{name:a},r),Y(Y({},e),{},{ports:e.ports.slice()});case Ja.GBi:var o=t.payload.map((function(t){var n=t.quickEffects?Y(Y({},t),{},{quickEffects:w7(t.quickEffects)}):Y({},t);return U7(e,n,t."
+        }
+      ]
+    }
+  ]
+}

@@ -79,6 +79,17 @@ def main():
     for file in ['src/features/hue.rs', 'src/features/hue/onboarding.rs', 'src/features/hue/bridge.rs',
                  'src/features/hue/brightness.rs', 'src/features/hue/effects.rs', 'src/features/hue/preview.rs']:
         read(file)
+    dedicated_pages = {}
+    for feature in ['dock_pairing', 'wired_argb', 'wireless_argb', 'aether_strip', 'automation']:
+        descriptor = load(f'src/features/{feature}_data.json')
+        rows = descriptor if isinstance(descriptor, list) else [descriptor]
+        read(f'src/features/{feature}.rs')
+        for path in sorted((ROOT / f'src/features/{feature}').glob('*.rs')):
+            read(path.relative_to(ROOT).as_posix())
+        for row in rows:
+            dedicated_pages[(row['product_id'], row['page'])] = feature
+    for path in sorted((ROOT / 'src/features/source_workspace').glob('*.rs')):
+        read(path.relative_to(ROOT).as_posix())
     actuation = index('src/features/keyboard_actuation_data.json')
     for pid, keyboard in specs['keyboard'].items():
         if 'ACTUATION' in keyboard['pages']:
@@ -106,6 +117,8 @@ def main():
                     route, status = 'source_help', 'partial_native'
             elif pid == 769 and key == 'HOME':
                 route, status = 'hue', 'partial_native'
+            elif (pid, key) in dedicated_pages:
+                route, status = dedicated_pages[(pid, key)], 'partial_native'
             elif family:
                 spec = specs[family][pid]
                 if family == 'audio':
@@ -129,6 +142,10 @@ def main():
                 if has_content(descriptor):
                     route, status = 'source_controls', 'partial_native'
             row = {'page_id': item['key'], 'key': key, 'offset': item['offset'], 'route': route, 'status': status}
+            if pid == 3886 and key == 'TAB_CUSTOMIZE':
+                row['limitation'] = 'Source ports branch is unreachable (!u.type===BLE_MOBIL); editor fixtures do not count as production content.'
+            if route == 'automation':
+                row['limitation'] = 'Main page and six action categories are partial; full macro/game/shortcut editors and hardware execution are incomplete.'
             if descriptor and has_content(descriptor):
                 row['controls'] = sum(len(s.get('controls', [])) for s in descriptor['sections'])
                 row['equalizers'] = sum(bool(s.get('equalizer')) for s in descriptor['sections'])
@@ -155,6 +172,7 @@ def main():
         'Camera preview, enumeration, framing presets, overlays and hardware commands remain incomplete.',
         'Audio demo pages and complex mappings remain incomplete; DSP and haptics are local drafts.',
         'Accessory port discovery, pairing workflows, lighting color parameters and Hue discovery remain incomplete.',
+        'Accessory source bodies and preview fixtures do not prove full navigation, profile-menu, animation or modal parity.',
         'System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.',
         'Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.',
         'Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.',

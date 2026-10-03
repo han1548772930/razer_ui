@@ -18,7 +18,7 @@ fn open(
     let mut page = None;
     let handle = cx.open_window(size(px(1100.), px(1000.)), |window, cx| {
         let view = cx.new(|cx| {
-            let mut view = AlexaPage::new(window, cx);
+            let mut view = AlexaPage::new_preview(window, cx);
             view.choose_scene(scene, window, cx);
             view
         });
@@ -29,10 +29,54 @@ fn open(
 }
 
 #[gpui_kit::test]
+fn production_opens_home_without_installer_and_rejects_preview_state(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+    });
+    let mut pages = None;
+    let handle = cx.open_window(size(px(1100.), px(1000.)), |window, cx| {
+        let production = cx.new(|cx| AlexaPage::new(window, cx));
+        let preview = cx.new(|cx| {
+            let mut page = AlexaPage::new_preview(window, cx);
+            page.choose_scene("ready", window, cx);
+            page
+        });
+        pages = Some((production.clone(), preview));
+        Root::new(production, window, cx)
+    });
+    let (production, preview) = pages.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("alexa-preview-scene").is_none());
+        assert!(window.try_find("alexa-home").is_some());
+        assert!(window.try_find("alexa-install-action").is_none());
+        assert!(window.try_find("alexa-skills").is_none());
+        assert_eq!(preview.read(cx).account, Account::Ready);
+        assert_eq!(production.read(cx).account, Account::Unknown);
+        assert_eq!(production.read(cx).installer, None);
+        production.update(cx, |page, cx| page.choose_scene("ready", window, cx));
+        window.click("alexa-help", cx);
+        assert_eq!(production.read(cx).page, Page::Help);
+        production.update(cx, |page, cx| page.refresh(window, cx));
+        assert_eq!(production.read(cx).account, Account::Unknown);
+        assert_eq!(production.read(cx).installer, None);
+        assert_eq!(production.read(cx).page, Page::Home);
+        assert_eq!(preview.read(cx).account, Account::Ready);
+        window.render_frame(cx);
+        assert!(window.try_find("alexa-preview-scene").is_none());
+        assert!(window.try_find("alexa-home").is_some());
+        assert!(window.try_find("alexa-install-action").is_none());
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 fn unknown_and_guest_scenes_do_not_grant_authenticated_navigation(cx: &mut TestAppContext) {
     let (page, handle) = open(cx, "unknown", true);
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
+        assert!(window.try_find("alexa-preview-scene").is_some());
         assert_eq!(page.read(cx).account, Account::Unknown);
         assert!(window.try_find("alexa-install-action").is_none());
         assert!(window.try_find("alexa-skills").is_none());

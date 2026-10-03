@@ -252,6 +252,7 @@ pub(super) struct AppPickerCatalog {
     read_features: BTreeSet<String>,
     unread_features: bool,
     launchable_modules: BTreeSet<PickerModule>,
+    bundled_modules: BTreeSet<PickerModule>,
     launchable_apps: BTreeSet<PickerApp>,
     installer_available: bool,
     recommendation_phase: RecommendationPhase,
@@ -273,6 +274,7 @@ impl AppPickerCatalog {
             read_features: BTreeSet::new(),
             unread_features: false,
             launchable_modules: BTreeSet::new(),
+            bundled_modules: BTreeSet::new(),
             launchable_apps: BTreeSet::new(),
             installer_available: false,
             recommendation_phase: RecommendationPhase::Idle,
@@ -351,6 +353,14 @@ impl AppPickerCatalog {
         self.launchable_modules = modules.into_iter().collect();
         self
     }
+    /// Compiled native pages open locally regardless of external installation.
+    pub(super) fn bundled_modules(
+        mut self,
+        modules: impl IntoIterator<Item = PickerModule>,
+    ) -> Self {
+        self.bundled_modules = modules.into_iter().collect();
+        self
+    }
     pub(super) fn launchable_apps(mut self, apps: impl IntoIterator<Item = PickerApp>) -> Self {
         self.launchable_apps = apps.into_iter().collect();
         self
@@ -378,14 +388,15 @@ impl AppPickerCatalog {
             .iter()
             .copied()
             .filter(|module| {
-                installed.is_some_and(|keys| keys.contains(module.key()))
-                    && (self.current_app != PickerApp::Synapse
-                        || !self.uninstalling_modules.contains(module.key()))
-                    && (*module != PickerModule::Armory
-                        || self
-                            .armory_version
-                            .as_ref()
-                            .is_some_and(|version| !version.is_empty()))
+                self.bundled_modules.contains(module)
+                    || (installed.is_some_and(|keys| keys.contains(module.key()))
+                        && (self.current_app != PickerApp::Synapse
+                            || !self.uninstalling_modules.contains(module.key()))
+                        && (*module != PickerModule::Armory
+                            || self
+                                .armory_version
+                                .as_ref()
+                                .is_some_and(|version| !version.is_empty())))
             })
             .collect();
         let ordered: Vec<_> = self
@@ -400,6 +411,11 @@ impl AppPickerCatalog {
             .collect();
         if !ordered.is_empty() {
             visible = unique(ordered);
+            for module in source {
+                if self.bundled_modules.contains(module) && !visible.contains(module) {
+                    visible.push(*module);
+                }
+            }
         }
         visible
     }
@@ -490,8 +506,9 @@ impl AppPickerCatalog {
                 reason: if module == PickerModule::Armory && self.armory_maintenance {
                     Some(i18n::t("ARMORY_MAINTENANCE_DESC"))
                 } else {
-                    (!self.launchable_modules.contains(&module))
-                        .then(|| "此模块的窗口服务尚未连接。".into())
+                    (!self.bundled_modules.contains(&module)
+                        && !self.launchable_modules.contains(&module))
+                    .then(|| "此模块的窗口服务尚未连接。".into())
                 },
                 is_new: module == PickerModule::Armory && !self.read_features.contains("armory"),
                 busy: false,
@@ -813,7 +830,7 @@ impl AppPicker {
             .font_weight(FontWeight::NORMAL)
             .text_size(css(16.))
             .child(div().px(css(15.)).children(groups))
-            .when(unknown, |view| {
+            .when(unknown && self.catalog.bundled_modules.is_empty(), |view| {
                 view.child(
                     div()
                         .id("app-picker-unknown")

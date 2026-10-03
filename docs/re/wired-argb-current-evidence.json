@@ -1,0 +1,962 @@
+{
+  "method": "Acorn static literals and source receipts; vendor code never executed",
+  "generator_sha256": "e07d65919bc24cf58d67a6f3ae6c814ef58d88294f326da8a3783cbdb0f9cf1b",
+  "products": [
+    {
+      "product_id": 778,
+      "profile_bar": {
+        "sync_icon_enabled_page": "TAB_LIGHTING",
+        "condition": {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 4548326,
+          "end": 4548376,
+          "source": "isEnableProfileBar:this.state.active_view===FO.lgc"
+        },
+        "label_export": {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 128129,
+          "end": 128138,
+          "source": "lgc:()=>G"
+        },
+        "consumers": [
+          {
+            "path": ".ref/devices/778/static/js/main.032287fa.js",
+            "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+            "offset": 4519799,
+            "end": 4520288,
+            "source": "this.renderProfileBarIcon=()=>{let e=null;return!this.props.isEnableProfileBar||this.props.activeDynamicMode?(e=(0,TI.getTextItem)(FO.Pov),(0,GI.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader disable\",\"aria-label\":e,tooltip:e})):(e=this.state.showLoader?(0,TI.getTextItem)(FO.pyi):(0,TI.getTextItem)(FO.jIM),(0,GI.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader \".concat(this.state.showLoader?\"show\":\"\"),\"aria-label\":e,tooltip:e}))}"
+          },
+          {
+            "path": ".ref/devices/778/static/js/main.032287fa.js",
+            "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+            "offset": 4523679,
+            "end": 4523802,
+            "source": "this.enableSwitchProfile=()=>!!this.props.enableSwitchProfile&&(!this.props.activeDynamicMode||!this.isLoupedeckProfiles())"
+          },
+          {
+            "path": ".ref/devices/778/static/js/main.032287fa.js",
+            "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+            "offset": 4523906,
+            "end": 4527425,
+            "source": "this.renderProfileBar=()=>{var e,E,a,_,t;const o=this.props.createDotTips;return(0,GI.jsxs)(GI.Fragment,{children:[(0,GI.jsxs)(\"div\",{role:\"region\",\"aria-label\":\"profile bar\",className:\"profile-bar flex \".concat(this.enableSwitchProfile()?\"\":\"disabled\"),style:this.props.style&&this.props.style,children:[this.renderProfileBarIcon(),(0,GI.jsxs)(\"div\",{className:\"rename-rect\",children:[this.state.renameActive?(0,GI.jsx)(GI.Fragment,{children:this.props.isControllerOBM?(0,GI.jsxs)(\"div\",{style:{fontFamily:'\"Roboto\", sans-serif',position:\"absolute\",border:\"1px solid #44d62c\",boxSizing:\"border-box\",backgroundColor:\"#111\",fontSize:\"14px\",lineHeight:\"17px\",color:\"#ccc\",height:\"27px\",width:\"230px\",margin:\"0 10px\",top:\"-14px\",overflow:\"hidden\",display:\"flex\",alignItems:\"center\",justifyContent:\"space-between\"},children:[(0,GI.jsx)(dS,{slotId:null!==(e=null===(E=this.state.profiles[this.state.selectedProfileIndex])||void 0===E?void 0:E.slotId)&&void 0!==e?e:1}),(0,GI.jsx)(ZP,{name:\"profile\",maxLength:25,value:this.state.profileName,active:this.state.renameActive,sendToParent:this.setProfileName,isControllerOBM:this.props.isControllerOBM})]}):(0,GI.jsx)(ZP,{name:\"profile\",maxLength:32,value:this.state.profileName,active:this.state.renameActive,sendToParent:this.setProfileName})}):0===this.props.profiles.length?(0,GI.jsx)(\"div\",{className:\"empty-profile\"}):(0,GI.jsx)(CS,{labelPrefix:null!==(a=this.props.obm)&&void 0!==a&&a.specs.profileSwap&&\"number\"===typeof(null===(_=this.state.profiles[this.state.selectedProfileIndex])||void 0===_?void 0:_.slotId)&&!this.props.isControllerOBM?(0,GI.jsx)(rp,{slotId:null===(t=this.state.profiles[this.state.selectedProfileIndex])||void 0===t?void 0:t.slotId}):null,notLocalize:!0,haveIcon:!this.props.isControllerOBM,allowOneItem:this.allowOneItem(),dataSet:this.state.profiles,name:\"caliDvDrop\",selectOption:this.changeProfile,value:this.state.selectedProfileIndex,onMouseDown:this.checkAdjustmentModeIsRunning,isControllerOBM:this.props.isControllerOBM}),(0,GI.jsx)(om,{className:\"profile-tips\",isEnabledDot:this.props.isEnabledDot,updateDot:()=>{this.props.updateDot()},createDotTips:o}),(0,GI.jsx)(\"div\",{className:\"reshare_wrapper\",children:(0,GI.jsx)(Cm,{onEditDetails:this.openArmoryEditView,onReshare:this.triggerArmoryReshare,isShow:q.includes(Sm.category)&&this.props.showReshareBadge,onClose:()=>{this.props.setShowReshareBadgeState(!1)}})})]}),(0,GI.jsxs)(\"div\",{style:{position:\"relative\"},onMouseDown:this.checkAdjustmentModeIsRunning,children:[this.props.hasDynamicMode&&this.props.activeDynamicMode?null:this.props.profiles.length>0?(0,GI.jsx)(NL,{menu:this.state.profileMenu,toggleClass:\"dots3 hover-border\",menuClass:\"profile-act\",menuClick:this.menuClick,disabledItems:this.getDisabledItems(),gameItems:this.getLinkedGameDetail(),toggleDropdown:this.handleToggleDropdown}):null,(0,GI.jsx)(fp,{show:this.state.showResetPopup,resetProfile:this.resetProfile,isShowResetKeybinds:!this.props.isCustomShowReset,onClose:()=>{this.setState({showResetPopup:!1})}}),(0,GI.jsx)(zP,{active:this.state.delActive,confirmDel:this.confirmDel,title:FO.rlv,deleteMsg:FO.Gfw})]}),this.renderOBM(),this.renderRefreshButton(),\"none\"!==this.state.IEMode?(0,GI.jsx)(YM,{IEMode:this.state.IEMode,close:this.closeImportExportModel,importProfiles:this.importProfiles}):null]}),this.props.hasGamerRoom?(0,GI.jsx)(\"div\",{className:\"profile-bar flex\",children:(0,GI.jsx)(\"div\",{className:\"gamer-room-icon\",tooltip:(0,TI.getTextItem)(FO.zgO),onClick:this.focusGamerRoom})}):null]})}"
+          }
+        ],
+        "initial": {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 4655516,
+          "end": 4655776,
+          "source": "vh={profiles:[],selectedProfileGuid:\"\",hasUnsavedChanges:!1,enableSwitchProfile:!0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],cachedHyperShiftOn:[],analogPresetProfiles:[],isFactoryDefaultProfile:!1,armorySharedProfiles:[],showReshareBadge:!1}"
+        }
+      },
+      "state_scope": {
+        "owner": "device/localstorage",
+        "default_profile": {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 3829373,
+          "end": 3829586,
+          "source": "I={guid:\"\",name:\" \",brightness:{isEnabled:!0,value:100,isGlobalBrightness:!0},quickEffects:{selectedEffectId:3,isGlobalQuickEffect:!0},switchOffLighting:{isDisplayOn:!1,isIdleEnabled:!1,idleMinutes:1},mappings:[]}"
+        },
+        "persistence": [
+          {
+            "path": ".ref/devices/778/static/js/main.032287fa.js",
+            "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+            "offset": 4673695,
+            "end": 4673844,
+            "source": "OG=(e,E)=>{let a=E.ports;const _=window.currentTimerTick||Date.now(),t=new eU(\"ON_SET_PORT_VALUES\",_,{ports:a}),o=RG(e,{ports:a},t);return lG(o,_),o}"
+          },
+          {
+            "path": ".ref/devices/778/static/js/main.032287fa.js",
+            "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+            "offset": 4674347,
+            "end": 4674832,
+            "source": "lG=(e,E)=>{const a=structuredClone(e),_=a.ports,t=a.isPortLinked,o=a.currentActivePortId;var i;_&&_.length>0?(\"FAN_CONTROLLER\"===ET.DeviceInfo.subCategory&&_.forEach(e=>{delete e.fanState,delete e.value}),console.warn(\"sanitizeportValues will send mw ports:\",_),null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:E,payload:{ports:_,portsConfig:{isPortLinked:t,currentActivePort:o}}})):console.warn(\"sanitizeportValues found ports:\",_)}"
+          }
+        ]
+      },
+      "source_files": [
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2"
+        }
+      ],
+      "config": {
+        "path": ".ref/devices/778/static/js/main.032287fa.js",
+        "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+        "offset": 3829688,
+        "end": 3830050,
+        "source": "A={vendorId:5426,productId:778,masterGuideURL:\"https://download.asrock.com/Manual/B550 Taichi Razer Edition\",supportPage:\"https://rzr.to/b550-taichi-razer-edition-manual\",category:\"ACCESSORY\",subCategory:\"MAINBOARD\",WAVE_DIRECTION:[{id:\"dir-out\",value:5},{id:\"dir-in\",value:6},{id:\"dir-left\",value:1},{id:\"dir-right\",value:2}],claimInterface:0,minimumLedValue:1}"
+      },
+      "fan_counts": {
+        "path": ".ref/devices/778/static/js/main.032287fa.js",
+        "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+        "offset": 4002415,
+        "end": 4002458,
+        "source": "pS=[6,8,9,10,12,15,16,18,20,22,24,25,32,40]"
+      },
+      "locale_map": {
+        "path": ".ref/devices/778/static/js/main.032287fa.js",
+        "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+        "offset": 3775708,
+        "end": 3775772,
+        "source": "$5O={de:_,en:t,es:o,fr:i,ja:n,kr:s,[q5O]:r,ru:T,[Q5O]:I,[J5O]:O}"
+      },
+      "css": {
+        "path": ".ref/devices/778/static/css/main.48d64bc8.css",
+        "sha256": "a715f1e006e86933309d8f1b46e197969fae24dc29768fd19256abb1406a3727",
+        "rules": [
+          ".widget .exclamation:before,.widget .help{background-repeat:no-repeat;border-radius:7px;height:14px;position:absolute;width:14px}",
+          ".widget .help{background-color:#4a4a4a;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);right:10px;top:10px;transition:background-color .3s;will-change:background-color}",
+          ".widget .help:hover{background-color:#ffffff4d}",
+          ".widget .help:hover+.tip{opacity:1;visibility:visible;z-index:100}",
+          ".widget .help:hover+.tip.mt-tip{background-color:#0000;border:none;padding:0}",
+          ".stepper .icon.spinner{width:18px}",
+          ".icon.spinner.down.disabled,.icon.spinner.up.disabled,.stepper.disabled,.turbo-label.disabled{opacity:.3;pointer-events:none}",
+          ".key-config .stepper.custom-keymapping-stepper .icon.spinner{opacity:1;visibility:visible;visibility:initial}",
+          ".block-input .icon.spinner{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:8px;height:12px;position:absolute;right:0;width:14px}",
+          ".block-input .icon.spinner.up{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}",
+          ".block-input .icon.spinner.down{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}",
+          ".block-input .icon.spinner.down,.block-input .icon.spinner.up{opacity:1;visibility:visible}",
+          ".block-input .icon.spinner.down.disabled,.block-input .icon.spinner.up.disabled{opacity:.3;pointer-events:none}",
+          ".stepper .icon.audio,.stepper .icon.spinner{background-repeat:no-repeat;position:absolute}",
+          ".stepper .icon.spinner{background-color:#0000;background-position:50%;background-size:8px;height:12px;right:0;width:14px;z-index:4}",
+          ".icon.spinner.up{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}",
+          ".icon.spinner.down,.icon.spinner.up{opacity:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;will-change:visibility,opacity}",
+          ".icon.spinner.down{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}",
+          ".stepper .icon.spinner:hover{background-color:#ffffff1a}",
+          ".stepper .icon.spinner:active{background-color:#0000001a}",
+          ".stepper:focus-within,.stepper:hover{background:#111;border:1px solid #44d62c}",
+          ".stepper:focus-within .icon.spinner.down,.stepper:focus-within .icon.spinner.up,.stepper:hover .icon.spinner.down,.stepper:hover .icon.spinner.up{opacity:1;visibility:visible}",
+          ".effect-wrapper .effects-area .stepper:hover{border:1px solid #44d62c}",
+          ".stage:hover .icon.spinner{opacity:1;visibility:visible}",
+          "#multipleBrightness .invisible{opacity:0;pointer-events:none;visibility:hidden}",
+          "#multipleBrightness .body-wrapper-custom{overflow-y:scroll!important;padding:10px 0 0!important}",
+          "#multipleBrightness .common-transition,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection,#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path,#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path,#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{transition:all .3s}",
+          "#multipleBrightness .common-font-styles,#multipleBrightness .message-container,#multipleBrightness .port-container .chroma-studio-message,#multipleBrightness .port-container .port-items-led-image .port-add-bend,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name,#multipleBrightness .port-container .port-items-led-image .total-LED-count,#multipleBrightness .port-warning,#multipleBrightness .warning-container{font-family:Roboto,sans-serif;font-size:14px}",
+          "#multipleBrightness .disabled-lighting-tab{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .customize-container .customize-left,#multipleBrightness .customize-container .customize-right,#multipleBrightness .port-item-container{display:flex;flex-direction:column;min-width:480px;width:480px}",
+          "#multipleBrightness .dot-background{background:linear-gradient(90deg,#222 20px,#0000 1%) 50%,linear-gradient(#222 20px,#0000 1%) 50%,#5d5d5d;background-size:22px 22px;bottom:0;height:400px;left:0;margin-left:auto;margin-right:auto;max-width:1210px;min-width:944px;position:absolute;right:0;top:20px;width:100%}",
+          "#multipleBrightness .dot-background--wireless{height:275px}",
+          "#multipleBrightness .custom-dim-corner{background:radial-gradient(#0000,#222);height:100%;width:100%}",
+          "#multipleBrightness .customize-scroll{height:inherit;min-width:inherit;overflow-y:visible;overflow-y:initial;position:relative;width:inherit;z-index:1}",
+          "#multipleBrightness .customize-scroll .customize-center{display:flex;justify-content:center;left:50%;margin:10px;min-width:150px;position:fixed;transform:translateX(-59%);width:150px}",
+          "#multipleBrightness .customize-scroll .customize-center--wireless{left:auto!important;position:relative!important;transform:none!important;width:auto!important}",
+          "#multipleBrightness .customize-scroll .customize-center .product{height:275px;position:relative}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon{bottom:60px;display:flex;flex-direction:column;justify-content:space-between;left:0;position:absolute;right:0;width:100%}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon--wireless{bottom:127px;height:115px}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons{display:flex;gap:12px;justify-content:center}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons--wireless{gap:20px}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .power-icons{display:flex;justify-content:center}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-power,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-warning{height:20px;position:relative;width:20px;z-index:100}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection{fill:#0000;bottom:0;cursor:pointer;left:0;position:absolute}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-b{animation:zoomout 50ms ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-c{animation:zoomoutc .7s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-f{animation:zoomoutf .7s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:hover .detect-b{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:active .detect-b{fill:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-e{fill:none}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-b{fill:#111;animation:zoomin .1s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-c{fill:#fff;opacity:0}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-d{stroke:none}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:hover .detect-a{stroke:#96ef89}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:active .detect-a{stroke:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing{bottom:0;left:0;position:absolute;z-index:100}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:active path{fill:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power rect{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power path{fill:#111}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect{fill:#7de36c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off rect{fill:#c8323c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off:hover rect{fill:#d97077}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning{opacity:1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path{fill:#feab59}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:active path{fill:#b15e0c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning--hidden{opacity:0;pointer-events:none}",
+          "#multipleBrightness .customize-container{display:flex;flex-wrap:wrap;justify-content:space-between;margin:0 auto;max-width:1110px}",
+          "@media(max-width:976px){#multipleBrightness .customize-container{justify-content:center}",
+          "#multipleBrightness .customize-container--wireless{align-items:flex-start;display:flex;flex-wrap:wrap;max-width:1240px}",
+          "@media(max-width:1200px){#multipleBrightness .customize-container--wireless{justify-content:center}",
+          "#multipleBrightness .customize-container--wireless .port-container{min-width:600px;width:600px}",
+          "#multipleBrightness .customize-container--listed{justify-content:center}",
+          "#multipleBrightness .detecting-device{background-repeat:no-repeat;display:inline-block;height:270px;left:50%;margin-left:auto;margin-right:auto;position:absolute;top:20px;transform:translateX(-51%);width:258px;z-index:1}",
+          "#multipleBrightness .detecting-device--wireless{top:60px;transform:translateX(-13%)}",
+          "@media(max-width:1024px){#multipleBrightness .customize-scroll .customize-center{left:auto!important;position:relative!important;transform:none!important;width:auto!important}",
+          "#multipleBrightness .customize-container{max-width:964px!important}",
+          "#multipleBrightness .port-container{background-color:#111;border-radius:5px;height:-webkit-fit-content;height:fit-content;margin:10px;min-height:199px;min-width:460px;padding:26px 40px 30px;position:relative;width:460px}",
+          "#multipleBrightness .port-container .port-items-led-image{display:flex;flex-direction:row;margin-top:11px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-infomation{flex:1 1}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend{align-items:center;color:#707070;cursor:pointer;display:inline-flex;height:27px;margin-bottom:5px;margin-top:5px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline{position:relative}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover{color:#44d62c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover:after{background-color:#44d62c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:after{background-color:#707070;bottom:.6px;content:\"\";height:1px;left:0;position:absolute;width:100%}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count{grid-column-gap:10px;align-items:center;display:grid;grid-template-columns:150px auto auto;height:27px;margin-top:5px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .label-total-led-count{align-self:center;margin-bottom:1px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .value-total-led-count{align-self:center;margin-bottom:1px;padding-left:10px;width:50px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .icon-led-detection{align-self:center!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item{align-items:center;display:inline-flex;margin-bottom:5px;margin-top:5px;width:100%}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .label-common{text-wrap:nowrap;color:#ccc;display:inline-block;font-family:Roboto,sans-serif;font-size:14px;margin-bottom:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container{margin-right:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown{height:27px;margin:0!important;width:150px;z-index:auto!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name{align-items:center;display:inline-flex;height:27px;width:150px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container{margin-left:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container--with-closed{width:80px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-wrapper{align-items:center;display:flex;gap:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown{height:27px;margin:0!important;width:62px;z-index:auto!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper{height:27px;margin:0!important;position:relative!important;width:62px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--stepper{border:1px solid #5d5d5d}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-decrease .icon.spinner.down,#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-increase .icon.spinner.up{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper input{height:25px!important;padding-left:6px;text-align:left;width:60px!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter{display:inline-block}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{fill:#c8323c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .icon-close-glitter{display:none;margin-left:-10px}",
+          "#multipleBrightness .port-container .port-name-container{height:27px}",
+          "#multipleBrightness .port-container .port-name-container:hover .port-name{text-decoration:underline}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon{align-items:center;display:inline-flex;margin-bottom:4px;margin-top:4px;padding-bottom:4px;position:relative}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-name{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;line-height:0px;margin-bottom:1px;margin-right:5px;text-transform:uppercase}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-edit-icon{margin-top:4px}",
+          "#multipleBrightness .port-container .port-name-container .port-input{background-color:#111;border:1px solid #44d62c;color:#ccc;font-family:RazerF5,sans-serif;font-size:16px;height:25px;line-height:0px;min-width:160px;padding:0 6px!important;text-transform:uppercase;width:160px}",
+          "#multipleBrightness .port-container .chroma-studio-message{border:1px solid #707070;border-radius:5px;font-size:13px;line-height:16px;margin-top:10px;padding:20px;transition:all .3s ease}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper{display:flex;justify-content:space-between;margin-top:10px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn{align-items:center;border:1px solid #737373;border-radius:3px;cursor:pointer;display:inline-flex;min-height:27px;min-width:150px;padding:4px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn .chroma-studio-icon{background-image:url(../../static/media/chroma_studio.55db6875.svg);background-repeat:no-repeat;background-size:18px;height:18px;margin-right:5px;min-width:18px;width:18px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .dismiss-btn{cursor:pointer;margin:auto 0;text-decoration:underline}",
+          "#multipleBrightness .brightness-container{margin-top:10px!important;padding:30px!important;width:600px!important}",
+          "#multipleBrightness .brightness-container .switching-brightness{align-items:center;display:inline-flex;margin:0 10px 10px}",
+          "#multipleBrightness .brightness-container .switching-brightness .label-brightness{color:#44d62c;font-size:16px;margin-right:10px}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness{display:flex;height:20px!important;margin:10px}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-left{align-items:center;display:inline-flex;margin-right:auto}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-left .check-item{align-items:center;display:inline-flex;margin-bottom:0!important}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-right{margin-left:auto;text-transform:lowercase}",
+          "#multipleBrightness .brightness-container .brightness-and-light .lights-container{margin-left:10px!important}",
+          "#multipleBrightness .z100{z-index:100}",
+          "#multipleBrightness .z99{z-index:99}",
+          "#multipleBrightness .lights-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,540px));margin-top:20px}",
+          "#multipleBrightness .custom-light-container{grid-column-gap:10px;grid-row-gap:10px;column-gap:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,265px));margin-top:20px;row-gap:10p}",
+          "#multipleBrightness .custom-light-container .light-container{border:1px solid #0000;border-radius:3px;height:108px;padding:10px;transition:all .3s ease;width:265px}",
+          "#multipleBrightness .custom-light-container .light-container--disabled{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .custom-light-container .light-container .foot.max,#multipleBrightness .custom-light-container .light-container .foot.min{display:none;transition:all .3s ease}",
+          "#multipleBrightness .custom-light-container .light-container:hover{border:1px solid #737373}",
+          "#multipleBrightness .custom-light-container .light-container:hover .foot.max,#multipleBrightness .custom-light-container .light-container:hover .foot.min{display:inline-block}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port{align-items:center;display:flex;text-transform:uppercase}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port img{margin-right:10px}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+          "#multipleBrightness .message-container,#multipleBrightness .warning-container{background-color:#111;border-radius:5px;column-gap:10px;display:inline-block;font-size:14px;grid-template-columns:auto auto;margin:auto;padding:20px;width:600px;z-index:100}",
+          "#multipleBrightness .message-container--overlay,#multipleBrightness .warning-container--overlay{left:0;position:absolute;right:0;top:20px}",
+          "#multipleBrightness .message-container{border:1px solid #5a5a5a;padding:20px 40px}",
+          "#multipleBrightness .message-container .text-center{text-align:center}",
+          "#multipleBrightness .message-container .center{align-items:center;display:flex;flex-direction:column;justify-content:center}",
+          "#multipleBrightness .message-container__header{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;font-weight:400;margin:9px auto 20px;text-transform:uppercase}",
+          "#multipleBrightness .message-container__msg{color:#ccc;font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:400;margin-bottom:10px;margin-top:0;white-space:pre-wrap}",
+          "#multipleBrightness .message-container__button{background-color:#44d62c;color:#111;margin-top:10px;padding-top:2px}",
+          "#multipleBrightness .warning-container{border:1px solid #fd8611;text-align:center}",
+          "#multipleBrightness .warning-container__header{font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:600;margin:0 auto 10px;text-transform:uppercase}",
+          "#multipleBrightness .warning-container__msg{margin:0 40px}",
+          "#multipleBrightness .warning-container__dismiss{margin-top:10px;text-decoration:underline}",
+          "#multipleBrightness .warning-container__dismiss:hover{color:#44d62c}",
+          "#multipleBrightness .warning-container ul{list-style-type:decimal;margin:20px 40px 0;text-align:start}",
+          "#multipleBrightness .warning-container ul div{margin-left:5px}",
+          "#multipleBrightness .warning-container ul li{margin-top:20px}",
+          "#multipleBrightness .port-warning{background-color:#111;border:1px solid #fd8611;border-radius:5px;display:flex;font-size:13px;gap:10px;line-height:16px;margin-top:10px;padding:20px;z-index:100}",
+          "#multipleBrightness .tooltip-razer{height:100%;left:0;position:absolute;top:0;width:100%;z-index:1060}",
+          "#multipleBrightness .tooltip-razer.bottom-left>.main,#multipleBrightness .tooltip-razer.bottom-right>.main,#multipleBrightness .tooltip-razer.bottom>.main{bottom:auto;margin-bottom:0;margin-top:5px;top:100%}",
+          "#multipleBrightness .tooltip-razer.bottom-right>.main,#multipleBrightness .tooltip-razer.top-right>.main{justify-content:flex-start;left:0;margin-left:0}",
+          "#multipleBrightness .tooltip-razer.bottom-left>.main,#multipleBrightness .tooltip-razer.top-left>.main{justify-content:flex-end;left:auto;margin-left:0;right:0}",
+          "#multipleBrightness .tooltip-razer>.main{bottom:100%;display:flex;justify-content:center;left:50%;margin-bottom:5px;margin-left:-150px;opacity:0;pointer-events:none;position:absolute;transition:opacity .1s linear;width:300px}",
+          "#multipleBrightness .tooltip-razer.show>.main{opacity:1}",
+          "#multipleBrightness .tooltip-razer>.main>.wrapper{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:inline-block;font-size:14px;line-height:1.22;padding:7px 8px;text-align:left;text-transform:none}",
+          "#multipleBrightness .tooltip-razer .title{text-transform:uppercase}",
+          "#multipleBrightness .tooltip-razer .title>span{color:#44d62c;margin-left:10px;text-transform:none}",
+          "#multipleBrightness .tooltip-razer .title+*{margin-top:10px}",
+          "#multipleBrightness .multiple-quickeffect{display:flex;flex-wrap:wrap;gap:21px 0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect{width:50%}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect--disabled{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect__header{align-items:center;display:flex;gap:10px;margin-bottom:5px;text-transform:uppercase}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect__dropdown{margin:0;width:200px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .effects-area .wrap-150,#multipleBrightness .multiple-quickeffect .quickeffect .effects-area--wireless .wrap-150{flex-wrap:wrap;width:150px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .random-color{margin-top:0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .check-item{margin-bottom:0;margin-top:20px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect #reactiveSlider,#multipleBrightness .multiple-quickeffect .quickeffect #starSlider,#multipleBrightness .multiple-quickeffect .quickeffect .ml10{margin-left:0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .modes-tabs{flex-wrap:nowrap}",
+          "#multipleBrightness .wireless-status-wrapper{align-items:center;display:flex}",
+          "#multipleBrightness .patterns{display:flex;list-style:none;margin:5px 0 11px;padding:0}",
+          "#multipleBrightness .patterns>li{border:1px solid #0000004d;border-radius:3px;height:16px;margin-right:10px;overflow:hidden;position:relative;transition:border-color .1s ease-in-out;width:25px}",
+          "#multipleBrightness .patterns>li.active{box-shadow:0 0 0 2px #fff}",
+          "#multipleBrightness .patterns>li:before{background-color:#000;content:\"\";height:100%;left:0;opacity:0;position:absolute;top:0;transition:opacity .1s linear;width:100%}",
+          "#multipleBrightness .patterns>li:active,#multipleBrightness .patterns>li:active:before,#multipleBrightness .patterns>li:hover{border-color:#000;box-shadow:0 0 0 2px #fff}",
+          "#multipleBrightness .patterns>li:active:before{opacity:.3}",
+          "#multipleBrightness .patterns>li:last-child{margin-right:0}",
+          "#multipleBrightness .patterns>li>.color-container,#multipleBrightness .patterns>li>.color-container>.color{height:100%;width:100%}",
+          "#multipleBrightness .patterns>li>.color-container{border-radius:3px}",
+          ".widget .help.indicator-led:hover .tip{opacity:1;visibility:visible;z-index:100}",
+          ".widget .help.indicator-led:before{background-color:#0000;bottom:-5px;content:\"\";height:10px;left:5px;position:absolute;width:50px}",
+          ".widget .help.indicator-led .tip{left:36%;top:19px}",
+          ".haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.down,.haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.up{opacity:1;visibility:inherit}",
+          ".haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.down.disabled,.haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.up.disabled{opacity:.3;pointer-events:none}"
+        ]
+      },
+      "manifest": {
+        "path": ".ref/devices/778/asset-manifest.json",
+        "sha256": "0e8a5e3649a3d8a5ef0e6138b564421b48c6704f8b9487ffcc4ac8dd9f6f77fa"
+      },
+      "components": [
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 13062,
+          "end": 14341,
+          "source": "e=>{let E=e.text,a=e.data,t=e.lang,r=e.clickableData,T=e.onClick,I=e.underlineData,O=e.capitalizeFirst,A=e.allowHtml,S=e.onMouseEnter,R=e.onMouseLeave;\"string\"!==typeof E&&(E=\"\");const l=((e,E)=>{const a={};for(const _ of Object.keys(e||{}))a[_]=s(e[_],E);return a})(a,t);if(I){let e=(0,o.getTextItem)(E,(0,_.A)((0,_.A)({},l),{},{_lang:t}));e=n(e,O);const a=Object.keys(l).reduce((e,E)=>{const a=l[E],_=\"string\"===typeof a?a:String(null!==a&&void 0!==a?a:\"\");if(_.length>0&&e.includes(_)){const a=e.split(_),t=[];I&&t.push(\"translator-underline\"),r&&t.push(\"translator-clickable\");const o=t.join(\" \"),n=e=>(0,i.jsx)(\"span\",{className:o,onClick:r?()=>T&&T(_,E):void 0,onMouseEnter:S,onMouseLeave:R,role:r?\"button\":void 0,tabIndex:r?0:void 0,style:{opacity:!1===r?.3:1},children:_},\"\".concat(E,\"-\").concat(e)),s=[a[0]];for(let e=1;e<a.length;e++)s.push(n(e),a[e]);return s}return e},e);return(0,i.jsxs)(i.Fragment,{children:[(0,i.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),a]})}let N=(0,o.getTextItem)(E,(0,_.A)((0,_.A)({},l),{},{_lang:t}));return N=n(N,O),A&&\"string\"===typeof N?(0,i.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:N}}):(0,i.jsx)(i.Fragment,{children:N})}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3992050,
+          "end": 3994790,
+          "source": "class rS extends G.Component{constructor(e){super(e),this.selectOpt=()=>{this.props.isOBMDropdown?this.props.selectOption(this.props.content):this.props.selectOption(this.props.optId)},this.mouseOver=e=>{if(this.state.tip){let E=this.optDom.current.getBoundingClientRect();this.props.mouseOver(E,this.props.tips,e)}},this.hideTips=()=>{this.state.tip&&this.props.hideTips()},this.state={tip:this.props.tips},this.optDom=g().createRef(),this.optTextDom=g().createRef()}componentDidMount(){var e;const E=null===(e=this.optTextDom)||void 0===e?void 0:e.current;(null===E||void 0===E?void 0:E.scrollWidth)>(null===E||void 0===E?void 0:E.clientWidth)||this.props.tipIcon||this.props.disabled||this.setState({tip:\"\"}),this.optDom.current&&this.optDom.current.scrollWidth<=this.optDom.current.getBoundingClientRect().width&&!this.props.tipIcon&&this.setState({tip:\"\"})}render(){const e=this.props.notLocalize;let E=e?this.props.content:(0,GI.jsx)(wA.A,{text:this.props.content});this.props.haveIcon||(E=e?this.props.content:(0,GI.jsx)(wA.A,{text:this.props.isShowTextActiveProfile?\"\".concat(this.props.content,\" (\").concat(FO.Lhu,\")\"):this.props.content}));const a=this.props.haveIcon?(0,GI.jsxs)(\"div\",{className:\"img-wrap\",children:[this.props.icon?(0,GI.jsx)(\"img\",{src:this.props.icon,alt:\"\",\"data-tip-on-hover\":this.props.tips||\"\"}):null,this.props.tipIcon&&(0,GI.jsx)(\"div\",{className:\"tipIcon\",onMouseEnter:this.mouseOver,onMouseLeave:this.hideTips}),(0,GI.jsx)(\"span\",{className:\"ellipsis-text\",ref:this.optTextDom,children:E})]}):this.props.haveShortcut?(0,GI.jsx)(GI.Fragment,{children:(0,GI.jsxs)(\"div\",{style:{display:\"inline-flex\",alignItems:\"center\"},children:[this.props.haveShortcut,(0,GI.jsx)(\"div\",{style:{position:\"absolute\",left:\"78px\"},children:E})]})}):(0,GI.jsx)(\"div\",{className:\"ellipsis-text\",ref:this.optTextDom,children:E});let _=\"raw-text \";if(this.props.haveIcon&&(_+=\"pt3 \"),this.props.prefix&&(_+=\"has-prefix \"),!this.props.isHidden){if(this.props.disabled)return(0,GI.jsxs)(\"div\",{className:_+\"option inactive hover-tip\",ref:this.optDom,onMouseEnter:this.mouseOver,onMouseLeave:this.hideTips,children:[a,this.props.prefix?(0,GI.jsx)(\"div\",{className:\"option-prefix\",children:this.props.prefix}):null]});var t=this.props.selected?\"option selected\":\"option\";t=_+t;var o=this.props.image;return(0,GI.jsxs)(\"div\",{className:\"\".concat(t,\" \").concat(o),onClick:this.selectOpt,ref:this.optDom,onMouseEnter:e=>{!this.props.tipIcon&&this.mouseOver(e)},onMouseLeave:()=>{!this.props.tipIcon&&this.hideTips()},style:this.props.haveShortcut?{padding:\"3px 0\",height:\"33px\",display:\"flex\",alignItems:\"center\"}:null,children:[a,this.props.prefix?(0,GI.jsx)(\"div\",{className:\"option-prefix\",children:this.props.prefix}):null]})}}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3995228,
+          "end": 3995559,
+          "source": "function dS(e){var E;let a=e.slotId;const _=null!==(E=lS[a])&&void 0!==E?E:null;return _?(0,GI.jsx)(GI.Fragment,{children:(0,GI.jsxs)(\"div\",{style:NS,children:[(0,GI.jsx)(\"img\",{src:OS,style:{display:\"bock\",margin:\"0 5px\",height:\"18px\"}}),\"+\",(0,GI.jsx)(\"img\",{src:_,style:{display:\"bock\",margin:\"0 5px\",height:\"22px\"}})]})}):null}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3995559,
+          "end": 4002034,
+          "source": "class cS extends G.Component{constructor(e){super(e),this.toggleDropdown=()=>{!this.props.allowOneItem&&this.state.disabled&&\"quickEffDrop\"!==this.props.name||this.setState({open:!this.state.open})},this.onMouseDown=e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},this.windowClick=e=>{null!==this.dropDom.current&&null!==this.optDom.current&&(this.dropDom.current.contains(e.target)||this.optDom.current.contains(e.target)||!this.state.open||this.setState({open:!1}))},this.onWindowBlur=()=>{var e;null!==(e=this.state)&&void 0!==e&&e.open&&this.setState({open:!1})},this.selectOption=e=>{this.setState({open:!1,showTip:!1}),this.props.selectOption(e)},this.hoverTips=(e,E,a)=>{let _=0,t=\"auto\",o=e.top+e.height;_=a.clientX+10,console.log(a.clientX,a.left),_+e.width>=window.outerWidth&&(_=\"auto\",t=window.outerWidth-a.clientX-10);let i={left:\"auto\"!==_?_+\"px\":_,right:\"auto\"!==t?t+\"px\":t,top:o+\"px\",position:\"fixed\",width:\"auto\",maxWidth:\"300px\",zIndex:\"150\",pointerEvents:\"none\"};this.setState({tips:E,showTip:!0,tipStyle:i})},this.hideTips=()=>{this.setState({showTip:!1})},this.dropDom=g().createRef(),this.optDom=g().createRef();this.state={dataSet:this.props.dataSet||[{name:\"\",content:\"\"}],open:!1,disabled:!1,value:this.props.value,openDirection:\"down\",showTip:!1,tips:\"\",tipStyle:{}}}componentDidMount(){window.addEventListener(\"click\",this.windowClick),window.addEventListener(\"blur\",this.onWindowBlur),this.state.dataSet.length<=1&&this.setState({disabled:!0})}componentWillUnmount(){window.removeEventListener(\"click\",this.windowClick,!1),window.removeEventListener(\"blur\",this.onWindowBlur)}componentDidUpdate(e,E){const a=this.state,_=a.open,t=a.openDirection;if(this.props.setDropdownOpen(this.state.open),_!==E.open)if(_){var o=this.dropDom.current.getBoundingClientRect().bottom+2,i=25*this.optDom.current.children.length+2;let e=Math.min(180,i),E=this.props.wrapperH>0?this.props.wrapperH:window.innerHeight;var n=\"dvDrop\"===this.props.name?22:0;o+e>E?this.setState({openDirection:\"up\"}):this.setState({openDirection:\"down\"}),this.dropDom.current.classList.add(\"expand\"),this.optDom.current.classList.add(\"expand\");let a=this.optDom.current.getElementsByClassName(\"selected\");a.length>0&&this.optDom.current.scrollTo(0,a[0].offsetTop)}else this.dropDom.current&&this.dropDom.current.classList.remove(\"expand\"),this.optDom.current&&this.optDom.current.classList.remove(\"expand\"),this.setState({showTip:!1});t!==E.openDirection&&(\"up\"===t?(this.optDom.current.style.top=\"unset\",this.optDom.current.style.bottom=\"28px\"):(this.optDom.current.style.bottom=\"unset\",this.optDom.current.style.top=n+27+\"px\"));const s=this.props,r=s.value,T=s.dataSet;r!==e.value&&this.setState({open:!1,disabeld:!1,value:r}),T!==e.dataSet&&(this.setState({dataSet:T}),this.setState({disabled:T.length<=1}))}hasKeys(e,E){return\"object\"===typeof e&&null!==e&&E.some(E=>E in e)}render(){var e,E,a,_,t,o,i;const n=this.state,s=n.dataSet,r=n.open,T=n.value,I=n.disabled,O=n.showTip,A=n.tips,S=n.tipStyle,R=this.selectOption,l=this.toggleDropdown,N=this.dropDom,d=this.optDom;if(0===s.length||-1===T||T>s.length-1)return null;var c=null;let C=null===(e=s[T])||void 0===e?void 0:e.icon;C&&C.includes(\"logo_armory\")&&C.endsWith(\"#hover\")&&(C=C.replace(\"#hover\",\"#link\")),r&&(c=s.map((e,E)=>{var a;return\"divider\"===e.name?(0,GI.jsx)(\"div\",{className:\"dropdown-divider\"},E):this.props.showNone||e.name!==FO.x3E||0!==E?(0,GI.jsx)(TS,{notLocalize:this.props.notLocalize,haveIcon:this.props.haveIcon,icon:e.icon,prefix:e.prefix,optId:E,content:this.hasKeys(e,[\"name\",\"content\"])?e.name?e.name:e.content:e,isHidden:e.isHidden,disabled:e.disabled,tips:e.tooltip?e.tooltip:e.disabled&&e.disabledTooltip?e.disabledTooltip:e.content,tipIcon:e.tipIcon,selected:T===E,selectOption:R,mouseOver:this.hoverTips,hideTips:this.hideTips,isOBMDropdown:this.props.isOBMDropdown,isShowTextActiveProfile:this.props.selectedProfileName&&e.name===this.props.selectedProfileName,haveShortcut:this.props.isControllerOBM?(0,GI.jsx)(dS,{slotId:null!==(a=e.slotId)&&void 0!==a?a:E+1}):null},E):null}));var u=(I||this.props.disable)&&\"quickEffDrop\"!==this.props.name?\"s3-dropdown disabled\":\"s3-dropdown\";this.props.allowOneItem&&(u=\"s3-dropdown\"),this.props.triggerHover&&(u+=\" surrounded-hover\");var D=null!==(E=null!==(a=null===(_=s[T])||void 0===_?void 0:_.name)&&void 0!==a?a:null===(t=s[T])||void 0===t?void 0:t.content)&&void 0!==E?E:s[T],L=\"GameModeDrop\"===this.props.name?\"gamemode\":\"\";this.props.haveIcon&&(u+=\" pt3\"),D===FO.x3E&&0===T&&this.props.placeholder&&(u+=\" placeholder\");let P=(0,GI.jsx)(wA.A,{text:D===FO.x3E&&0===T?this.props.placeholder:D});this.props.notLocalize&&(P=D);let p=this.props.haveIcon&&D!==FO.x3E?(0,GI.jsx)(GI.Fragment,{children:(0,GI.jsxs)(\"div\",{className:\"img-wrap\",children:[(0,GI.jsx)(\"img\",{src:C,alt:\"\"}),(0,GI.jsx)(\"span\",{children:P})]})}):this.props.isControllerOBM?(0,GI.jsx)(GI.Fragment,{children:(0,GI.jsxs)(\"div\",{style:{display:\"inline-flex\",alignItems:\"center\"},children:[(0,GI.jsx)(dS,{slotId:null!==(o=null===(i=s[T])||void 0===i?void 0:i.slotId)&&void 0!==o?o:1}),(0,GI.jsx)(\"div\",{style:{position:\"absolute\",left:\"78px\",width:\"134px\",overflow:\"hidden\",textOverflow:\"ellipsis\"},children:P})]})}):P,M=(0,h.A)({},this.props.extraStyle);this.state.open&&(M.zIndex||(M.zIndex=103));const m=this.props.isOBMDropdown?(0,GI.jsx)(\"div\",{className:\"loader show\",style:{backgroundImage:\"url(\".concat(IS,\")\")}}):(0,GI.jsx)(\"div\",{className:\"loader show\"});return(0,GI.jsxs)(\"div\",{className:\"dropdown-area \".concat(this.props.extraClass?\" \"+this.props.extraClass:\"\"),style:M,id:L,onMouseDown:this.onMouseDown,children:[this.props.syncing?m:null,(0,GI.jsxs)(\"div\",{className:u,ref:N,onClick:l,style:this.props.isControllerOBM?{padding:0}:null,children:[(0,GI.jsx)(\"div\",{className:\"selected raw-text \".concat(D===FO.x3E&&0===T?\"placeholder\":\"\",\" \").concat(this.props.labelPrefix?\"selected-has-prefix\":\"\"),style:this.props.isControllerOBM?{height:\"25px\",width:\"228px\",display:\"flex\",alignItems:\"center\"}:null,children:p}),this.props.labelPrefix?(0,GI.jsx)(\"div\",{className:\"label-prefix\",children:this.props.labelPrefix}):null,(0,GI.jsx)(\"div\",{className:\"icon expand\"})]}),(0,GI.jsx)(\"div\",{className:\"s3-options \".concat(void 0===this.props.unsetZ||this.props.unsetZ?\"unsetZ\":\"\",\"  flex\"),ref:d,children:c}),O&&A?(0,H.createPortal)((0,GI.jsx)(\"div\",{className:\"\".concat(O?\"drop-tips on\":\"drop-tips\"),style:S,children:(0,GI.jsx)(wA.A,{text:A})}),document.body):null]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4004940,
+          "end": 4005806,
+          "source": "class HS extends G.PureComponent{constructor(){super(...arguments),this.selectOption=e=>E=>{this.props.changePortMode({id:e,isStripMode:!E})}}render(){const e=this.props,E=e.id,a=e.isStripMode,_=e.index,t=e.maxLedSupported,o=(t===hS?[FO.XjP,FO.yAd]:[FO.XjP]).map(e=>({name:(0,TI.getTextItem)(e),content:(0,TI.getTextItem)(e)}));return(0,GI.jsxs)(\"div\",{className:\"device-type-container\",children:[0===_&&(0,GI.jsxs)(G.Fragment,{children:[(0,GI.jsxs)(\"div\",{className:\"label-common\",children:[(0,GI.jsx)(wA.A,{text:FO.oSy}),\":\"]}),(0,GI.jsx)(CS,{extraClass:\"device-type-dropdown\",name:\"device-type\",dataSet:o,value:Number(!a),selectOption:this.selectOption(E),allowOneItem:!0})]}),0!==_&&(0,GI.jsx)(G.Fragment,{children:(0,GI.jsxs)(\"div\",{className:\"device-type-name\",children:[a?(0,GI.jsx)(wA.A,{text:FO.XjP}):(0,GI.jsx)(wA.A,{text:FO.yAd}),\" \".concat(_+1)]})})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3986252,
+          "end": 3991998,
+          "source": "class nS extends G.Component{constructor(e){super(e),this.handleClick=()=>{this.isRegisterEvent||(this.inputDom.current.focus(),this.inputDom.current.select(),this.setState({isFocused:!0}),window.addEventListener(\"mousewheel\",this.sliderOnMouseWheel,{passive:!1}),this.isRegisterEvent=!0)},this.sliderOnMouseWheel=e=>{e.preventDefault();const E=this.props,a=E.value,_=E.minValue;a>=E.maxValue&&e.wheelDelta>0||a<=_&&e.wheelDelta<0||(e.wheelDelta>0?this.volumeUp():this.volumeDown())},this.roundValue=(e,E)=>{let a=e;for(let _=0;E[_]<e;_++)a=E[_+1];return a},this.handleChange=e=>{let E=this.props.allowDecimals?/^-?\\d+(\\.\\d{0,3})?$/:/^-?\\d+$/,a=e.target.value;this.props.valuePrefix&&(a=a.replace(new RegExp(\"^\"+this.props.valuePrefix.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")),\"\")),this.props.unit&&(a=a.replace(new RegExp(\"\\\\s*\"+this.props.unit.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")+\"$\"),\"\")),(\"-\"===a||\"\"===a||E.test(a))&&(this.props.dataset&&!this.props.dataset.includes(a)&&(a=this.roundValue(a,this.props.dataset)),this.setState({value:a},()=>{this.props.allowLiveUpdate&&this.sendToParent(a)}))},this.sendToParent=e=>{console.log(\"stepper sendToParent\",e),this.props.setParentState(e,this.isRegisterEvent)},this.parseInput=e=>(e=this.props.allowDecimals?parseFloat(e):parseInt(e),Number.isNaN(e)&&(e=0),this.props.allowDecimals||e%this.props.stepValue&&(e=Math.ceil(e/this.props.stepValue)*this.props.stepValue),e>this.props.maxValue&&(e=this.props.maxValue),e<this.props.minValue&&(e=this.props.minValue),e),this.handleBlur=e=>{this.isRegisterEvent=!1,this.setState({isFocused:!1}),window.removeEventListener(\"mousewheel\",this.sliderOnMouseWheel);let E=e.target.value;this.props.valuePrefix&&(E=E.replace(new RegExp(\"^\"+this.props.valuePrefix.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")),\"\")),this.props.unit&&(E=E.replace(new RegExp(\"\\\\s*\"+this.props.unit.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")+\"$\"),\"\"));var a=this.parseInput(E);if(this.props.allowDecimals){const e=1e-10,E=Math.round(a/this.props.stepValue)*this.props.stepValue;Math.abs(a-E)>e&&(a=Math.ceil(a/this.props.stepValue)*this.props.stepValue),this.props.roundUpDecimals||(a=parseFloat(a).toFixed(3))}this.setState({value:a},()=>{console.log(this.state.value),this.isKeyInput=!0,this.sendToParent(a)})},this.handleKeyDown=e=>{38===e.keyCode&&this.volumeUp(),40===e.keyCode&&this.volumeDown(),13!==e.keyCode&&27!==e.keyCode||this.inputDom.current.blur()},this.volumeUp=()=>{var e=this.state.value;if(this.props.dataset){let E=this.props.dataset?this.props.dataset.findIndex(e=>e===this.props.value):null;if(null===E)return;E<this.props.dataset.length&&E++,e=this.props.dataset[E]}else e=this.props.allowDecimals?(parseFloat(e)+this.props.stepValue).toFixed(3):e+this.props.stepValue;e=this.parseInput(e),this.sendToParent(e)},this.volumeDown=()=>{var e=this.state.value;if(this.props.dataset){let E=this.props.dataset?this.props.dataset.findIndex(e=>e===this.props.value):null;if(null===E)return;E>0&&E--,e=this.props.dataset[E]}else e=this.props.allowDecimals?(parseFloat(e)-this.props.stepValue).toFixed(3):e-this.props.stepValue;e=this.parseInput(e),this.sendToParent(e)},this._onMouseDown=e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},this.handleContinuous=e=>{this.intervalId=setInterval(()=>{e()},300)},this.handleStopContinuous=()=>clearInterval(this.intervalId),this.onMouseDown=e=>E=>{2!==E.button?(e(),this.handleStopContinuous(),this.handleContinuous(e)):E.preventDefault()},this.onMouseUp=()=>e=>{2!==e.button?this.handleStopContinuous():e.preventDefault()},this.onMouseEnter=()=>{this.setState({isHover:!0})},this.onMouseLeave=()=>{this.setState({isHover:!1})},this.state={active:this.props.active,value:this.props.value,isHover:!1,isFocused:!1},this.inputDom=g().createRef(),this.iconDom=g().createRef(),this.intervalId=null,this.isRegisterEvent=!1}componentWillUnmount(){clearInterval(this.intervalId)}componentDidMount(){if(this.props.allowDecimals&&!this.props.roundUpDecimals){let e=parseFloat(this.props.value).toFixed(3);this.setState({value:e})}}componentDidUpdate(e){const E=this.props,a=E.value,_=E.active,t=E.maxValue,o=E.minValue;if(_!==e.active&&this.setState({active:_}),a!==e.value||this.isKeyInput){this.isKeyInput=!1;let e=a;!this.props.allowDecimals||this.isRegisterEvent||this.props.roundUpDecimals||(e=parseFloat(e).toFixed(3)),this.setState({value:e}),a!==o&&a!==t||!this.intervalId||clearInterval(this.intervalId)}}render(){const e=this.state,E=e.active,a=e.value,_=e.isHover,t=e.isFocused,o=this.props,i=o.extraClass,n=o.maxLength,s=o.minValue,r=o.maxValue,T=a<0,I=this.props.hideUnitOnInteract&&(_||t),O=this.props.unit&&!I?this.props.unit:\"\";let A=T?n+1:n;this.props.valuePrefix&&(A+=this.props.valuePrefix.length),O&&(A+=O.length+1);let S=\"stepper \".concat(E?\"\":\"disabled\"),R=\"\".concat(this.props.valuePrefix||\"\").concat(a);return O&&(R+=\" \".concat(O)),S+=i?\" \"+i:\" \",(0,GI.jsxs)(\"div\",{className:S,style:{marginBottom:\"10px\"},onMouseEnter:this.onMouseEnter,onMouseLeave:this.onMouseLeave,children:[(0,GI.jsx)(\"input\",{type:\"text\",onDragStart:e=>e.preventDefault(),maxLength:A,value:\"\".concat(a).concat(_||t||!this.props.unit?\"\":\" \".concat(this.props.unit)),ref:this.inputDom,onKeyDown:this.handleKeyDown,onClick:this.handleClick,onChange:this.handleChange,onBlur:this.handleBlur,onMouseDown:this._onMouseDown,onFocus:this._onMouseDown}),(0,GI.jsx)(\"div\",{className:\"icon spinner up\".concat(a===r?\" disabled\":\"\"),onMouseDown:this.onMouseDown(this.volumeUp),onMouseUp:this.handleStopContinuous,onMouseLeave:this.handleStopContinuous}),(0,GI.jsx)(\"div\",{className:\"icon spinner down\".concat(a===s?\" disabled\":\"\"),onMouseDown:this.onMouseDown(this.volumeDown),onMouseUp:this.handleStopContinuous,onMouseLeave:this.handleStopContinuous})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3978513,
+          "end": 3979351,
+          "source": "class zA extends g().Component{constructor(e){super(e),this.handleMouseMove=e=>{this.raf&&cancelAnimationFrame(this.raf),this.raf=requestAnimationFrame(()=>{this.setState({x:e.clientX,y:e.clientY,visible:!0})})},this.handleMouseLeave=()=>{this.raf&&cancelAnimationFrame(this.raf),this.setState({visible:!1})},this.state={x:0,y:0,visible:!1},this.raf=null}componentDidMount(){window.addEventListener(\"mousemove\",this.handleMouseMove,{passive:!0}),window.addEventListener(\"mouseout\",this.handleMouseLeave,{passive:!0})}componentWillUnmount(){this.raf&&cancelAnimationFrame(this.raf),window.removeEventListener(\"mousemove\",this.handleMouseMove),window.removeEventListener(\"mouseout\",this.handleMouseLeave)}render(){const e=this.state,E=e.x,a=e.y,_=e.visible;return(0,GI.jsx)(GI.Fragment,{children:this.props.children({x:E,y:a,visible:_})})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3979363,
+          "end": 3979732,
+          "source": "class xA extends G.Component{constructor(e){super(e),this.el=document.createElement(\"div\")}componentDidMount(){const e=this.props.containerId;let E;e&&(E=document.getElementById(e)),E||(E=document.body),this.container=E,E&&E.appendChild(this.el)}componentWillUnmount(){this.container.removeChild(this.el)}render(){return(0,H.createPortal)(this.props.children,this.el)}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3980345,
+          "end": 3983800,
+          "source": "class JA extends G.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const E=null===(e=this.tooltip)||void 0===e?void 0:e.current,a=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(E){const e=E.getBoundingClientRect();if(this.state.position===ZA&&\"number\"===typeof this.state.style.left&&this.props.target){var _;const a=(null===(_=E.firstElementChild)||void 0===_?void 0:_.getBoundingClientRect().width)||e.width,t=QA(this.props.target,qA);let o=t.x;o+a>window.innerWidth-8?o=window.innerWidth-8-a:o<8&&(o=8),this.setState(e=>({style:(0,h.A)((0,h.A)({},e.style),{},{left:o+a-t.width})}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(E=>({style:(0,h.A)((0,h.A)({},E.style),{},{left:E.style.left+window.innerWidth-8-e.right})}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(E=>({style:(0,h.A)((0,h.A)({},E.style),{},{left:E.style.left+8-e.left})}));else if(e.right>window.innerWidth){const e=a.findIndex(e=>this.state.position===e);this.setState({position:a[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let E=e.props.position;const a=e.props.target;console.log(a);let _={};if(a){const e=QA(a,E);_={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:E,style:_},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,GI.jsx)(kA,{children:e=>{let E=e.x,a=e.y,_=e.visible;const t=window.innerWidth,o=window.innerHeight,i=Math.min(320,320),n=i/2,s=a+25+40<o?a+25:Math.max(8,a-40-8),r=Math.min(Math.max(E+50,8+n),t-8-n);return _&&(0,GI.jsx)(\"div\",{style:{position:\"fixed\",top:s,left:r,maxWidth:i,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||ZA,style:{}},this.tooltip=(0,G.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const E=this.props.isMounted;e.isMounted!==E&&(E?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const e=this.tooltip,E=this.showTooltip,a=this.hideTooltip,_=this.renderTooltipWithCursor,t=this.state,o=t.shouldRender,i=t.showClassName,n=t.position,s=t.style,r=this.props,T=r.isMounted,I=r.className,O=r.children,A=r.target,S=r.isFollowCursor;if(void 0!==S&&S&&T)return(0,GI.jsx)(XA,{children:_()});const R=(0,GI.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof T?E:()=>{},onMouseLeave:\"boolean\"!==typeof T?a:()=>{},className:\"tooltip-razer \".concat(n,\" \").concat(i,\" \").concat(I),style:(0,h.A)((0,h.A)({},s),{},{pointerEvents:A?\"none\":\"inherit\"}),children:o?(0,GI.jsx)(\"div\",{ref:e,className:\"main\",children:(0,GI.jsx)(\"div\",{className:\"wrapper\",children:O})}):null});return A?(0,GI.jsx)(XA,{children:R}):R}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3983858,
+          "end": 3984776,
+          "source": "e=>{let E=e.active,a=e.className,_=e.value;const t=(0,_e.useSelector)(e=>e.languageReducer.lang);return(0,G.useEffect)(()=>{},[E,t]),E?(0,GI.jsx)(\"div\",{style:{whiteSpace:\"pre-line\"},children:(0,GI.jsxs)(\"div\",{style:{position:\"relative\",display:\"flex\"},children:[(0,GI.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:a,children:(0,GI.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\",fill:\"#707070\"})}),(0,GI.jsx)($A,{position:\"bottom-right\",children:(0,GI.jsx)(\"div\",{dangerouslySetInnerHTML:{__html:(0,TI.getTextItem)(FO.vml,{ledCount:'<span style=\"color:#44d62c\">'.concat(_,\"</span>\")})}})})]})}):null}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4002548,
+          "end": 4004791,
+          "source": "class GS extends G.PureComponent{constructor(e){super(e),this.checkStripValues=e=>{let E=e.portId,a=e.stripId,_=e.ports,t=e.isStripMode,o=e.ledValue;if(t){var i,n,s;const e=(null===(i=_.find(e=>e.id===E))||void 0===i||null===(n=i.argb)||void 0===n||null===(s=n.numberOfLeds)||void 0===s?void 0:s.strip)||[];if(4===e.length&&e[3].id===a&&o>=e[1].value)return{value:e[1].value,disabled:!0}}return{value:null,disabled:!1}},this.handleChangeNumberOfLeds=e=>{let E=e;if(Date.now()-this.previousClickTime<300)return!1;this.previousClickTime=Date.now();const a=this.props,_=a.portId,t=a.stripId,o=a.changeNumberOfLeds,i=a.ports,n=a.isStripMode;if(n||(E=pS[e]),n){var s,r,T;const e=(null===(s=i.find(e=>e.id===_))||void 0===s||null===(r=s.argb)||void 0===r||null===(T=r.numberOfLeds)||void 0===T?void 0:T.strip)||[];4===e.length&&e[3].id&&e[1].id===t&&e[1].value>=E&&e[1].value===e[3].value&&o({portId:_,stripId:e[3].id,value:E})}o({portId:_,stripId:t,value:E})},this.renderStepperInput=()=>{const e=this.props,E=e.ledValue,a=e.isStripMode,_=e.maxLedSupported;if(!a){const e=pS.map(e=>({name:String(e),content:String(e)})),a=pS.findIndex(e=>e===E)||0;return(0,GI.jsx)(CS,{extraClass:\"number-led-stepper\",dataSet:e,value:a,selectOption:this.handleChangeNumberOfLeds})}const t=this.checkStripValues((0,h.A)({},this.props)),o=t.value;let i=\"number-led-stepper number-led-stepper--stepper \";(t.disabled||E===_)&&(i+=\"number-led-stepper--disabled-increase \"),E===MS&&(i+=\"number-led-stepper--disabled-decrease \");const n=_?Math.max(String(_).length,2):2;return(0,GI.jsx)(sS,{value:E,active:!0,maxValue:o||_,minValue:MS,stepValue:1,extraClass:i,setParentState:this.handleChangeNumberOfLeds,maxLength:n})},this.previousClickTime=0,this.previousPortValue=[]}render(){const e=this.props,E=e.index,a=e.detectedLedCount,_=e.numberOfBends;return(0,GI.jsxs)(\"div\",{className:\"number-led-container \".concat(0!==E?\"number-led-container--with-closed\":\"\"),children:[0===E&&(0,GI.jsxs)(\"div\",{className:\"label-common\",children:[(0,GI.jsx)(wA.A,{text:FO.uJp}),\":\"]}),(0,GI.jsxs)(\"div\",{className:\"number-led-wrapper\",children:[this.renderStepperInput(),\"MAINBOARD\"!==ET.DeviceInfo.subCategory&&(0,GI.jsx)(eS,{value:a,active:1===_,className:\"icon-led-detection\"})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4005928,
+          "end": 4006635,
+          "source": "class vS extends G.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.removeStripBend,t=e.isStripMode?US:mS;return(0,GI.jsxs)(\"svg\",{className:\"icon-close-glitter\",width:20,height:20,viewBox:\"0 0 20 20\",onClick:()=>_({portId:E,stripId:a,type:t}),children:[(0,GI.jsx)(\"defs\",{children:(0,GI.jsx)(\"clipPath\",{id:\"a\",children:(0,GI.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,GI.jsx)(\"g\",{children:(0,GI.jsx)(\"path\",{d:\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\",fill:\"#ccc\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4006703,
+          "end": 4007131,
+          "source": "class FS extends G.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.isStripMode,t=e.ledValue,o=e.numberOfBends,i=e.detectedLedCount,n=e.index;return(0,GI.jsxs)(\"div\",{className:\"port-item\",children:[(0,GI.jsx)(fS,{id:E,isStripMode:_,index:n}),(0,GI.jsx)(gS,{portId:E,stripId:a,isStripMode:_,ledValue:t,numberOfBends:o,detectedLedCount:i,index:n}),0!==n&&(0,GI.jsx)(BS,{portId:E,stripId:a,isStripMode:_})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4007143,
+          "end": 4007648,
+          "source": "class bS extends G.PureComponent{render(){return(0,GI.jsxs)(\"svg\",(0,h.A)((0,h.A)({width:14,height:14,viewBox:\"0 0 14 14\"},this.props),{},{children:[(0,GI.jsx)(\"defs\",{children:(0,GI.jsx)(\"clipPath\",{id:\"a\",children:(0,GI.jsx)(\"path\",{fill:\"none\",d:\"M0 0H14V14H0z\"})})}),(0,GI.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,GI.jsx)(\"path\",{d:\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\",fill:\"#44d62c\"})})]}))}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4007686,
+          "end": 4009218,
+          "source": "class KS extends G.PureComponent{constructor(e){super(e),this.updateName=(e,E)=>{const a=this.props,_=a.changePortName,t=a.portName;this.setState({isEditing:!1}),E&&E!==t&&_({id:e,name:E})},this.handleClickOutside=e=>{var E;if(this.refInput&&(null===(E=VS()(this.refInput,\"current\",[]))||void 0===E||!E.contains(e.target))){const e=VS()(this.refInput,\"current.value\",\"\");this.updateName(this.props.portId,e)}},this.handleSwitchView=()=>{this.setState({isEditing:!0},()=>{this.refInput.current.focus(),this.refInput.current.select()})},this.onKeyDown=e=>E=>{if(13===E.keyCode){const a=E.target.value;this.updateName(e,a)}},this.state={isEditing:!1},this.refInput=g().createRef(),this.handleClickOutside=this.handleClickOutside.bind(this)}componentDidMount(){document.addEventListener(\"mousedown\",this.handleClickOutside)}componentWillUnmount(){document.removeEventListener(\"mousedown\",this.handleClickOutside)}render(){const e=this.state.isEditing,E=this.props,a=E.portName,_=E.portId;return(0,GI.jsxs)(\"div\",{className:\"port-name-container\",children:[e&&(0,GI.jsx)(\"input\",{ref:this.refInput,defaultValue:a,maxLength:32,onBlur:this.onKeyDown(_),onKeyDown:this.onKeyDown(_),className:\"port-input\"}),!e&&(0,GI.jsxs)(\"div\",{className:\"port-name-and-icon\",onClick:this.handleSwitchView,children:[(0,GI.jsx)(\"span\",{className:\"port-name\",children:a}),(0,GI.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,GI.jsx)(YS,{className:\"port-edit-icon\"}),(0,GI.jsx)($A,{position:\"bottom\",children:(0,GI.jsx)(wA.A,{text:FO.Pie})})]})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3984777,
+          "end": 3985448,
+          "source": "class ES extends G.PureComponent{constructor(){super(...arguments),this.onClick=e=>{e.preventDefault(),this.props.openChromaStudio&&this.props.openChromaStudio()}}render(){const e=this.props.handleDismiss;return(0,GI.jsxs)(\"div\",{className:\"chroma-studio-message\",children:[(0,GI.jsx)(\"div\",{children:(0,GI.jsx)(wA.A,{text:FO.isz})}),(0,GI.jsxs)(\"div\",{className:\"chroma-studio-wrapper\",children:[(0,GI.jsxs)(\"div\",{className:\"chroma-studio-message-btn\",onClick:this.onClick,children:[(0,GI.jsx)(\"span\",{className:\"chroma-studio-icon\"}),(0,GI.jsx)(wA.A,{text:FO.jP})]}),(0,GI.jsx)(\"div\",{className:\"dismiss-btn\",onClick:e,children:(0,GI.jsx)(wA.A,{text:FO.dH1})})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3985460,
+          "end": 3985823,
+          "source": "class _S extends G.PureComponent{render(){return(0,GI.jsx)(\"svg\",(0,h.A)((0,h.A)({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:(0,GI.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})}))}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 3985835,
+          "end": 3986157,
+          "source": "class oS extends G.PureComponent{render(){return(0,GI.jsxs)(\"div\",{className:\"port-warning\",children:[(0,GI.jsx)(\"div\",{children:(0,GI.jsx)(tS,{})}),(0,GI.jsxs)(\"div\",{children:[(0,GI.jsx)(wA.A,{text:FO.TTS,data:{maxLed:this.props.maxLedSupported}}),(0,GI.jsx)(\"span\",{children:\" \"}),(0,GI.jsx)(wA.A,{text:FO.Y9x})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4009312,
+          "end": 4014323,
+          "source": "class xS extends G.PureComponent{constructor(e){super(e),this.handleDismissMessage=e=>{const E=this.props,a=E.value;(0,E.updatePortChromaMessage)({id:a.id,isActive:e})},this.handleAddBend=e=>()=>{const E=this.props.value.id;this.props.addStripBend({id:E,type:e})},this.checkChromaInstalled=()=>{const e=window.localStorage.getItem(BI.Vn6)||[];if(Array.isArray(e)&&e.length>0){const E=e.some(e=>e.name===BI.A8P);this.setState({isChromaStudioInstalled:E,isChromaAppInstalled:!0})}else this.setState({isChromaStudioInstalled:!1,isChromaAppInstalled:!1})},this.getTab=async function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";try{if(\"function\"===typeof FI.A.getWindowServiceClients){const E=await FI.A.getWindowServiceClients();return JSON.parse(E).find(E=>E.windowName===e||E.url.includes(e))}return null}catch(E){return null}},this.focusWindow=e=>{\"function\"===typeof FI.A.activateWindowServiceClient&&FI.A.activateWindowServiceClient(e)},this.openDevicesModules=async()=>{if(await this.getTab(BI.HqM))this.focusWindow(BI.HqM);else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,BI.HqM,BI.oj6)}},this.openChromaStudio=async()=>{const e=await this.getTab(BI.HqM),E=await this.getTab(BI.A8P);if(e){const e=await FI.A.callElectronAction({action:\"getWindowStatus\",windowName:BI.HqM});e.isVisible&&!e.isMinimized||this.focusWindow(BI.HqM),E?this.focusWindow(BI.A8P):FI.A.callElectronAction({action:\"activateWindowServiceClient\",windowName:BI.HqM,subTab:FO.WqG})}else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,BI.HqM,BI.oj6)}},this.renderLedImages=e=>{let E=e.isStripMode,_=e.ledValues;if(!E)return(0,GI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(2966),alt:\" \"});switch(_.length){case 2:return(0,GI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(941),alt:\" \"});case 3:return(0,GI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(7408),alt:\" \"});case 4:return(0,GI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(8519),alt:\" \"});default:return(0,GI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(5766),alt:\" \"})}},this.renderPortItem=e=>{let E=e.id,a=e.numberOfLeds,_=e.isStripMode,t=e.ledValues;return a&&E&&t&&t.length?t.map((e,t)=>(0,GI.jsx)(yS,{portId:E,stripId:e.id,isStripMode:_,numberOfBends:_?a[US].length:a[mS].length,ledValue:e.value,detectedLedCount:a.detectedLedCount,index:t},t.toString())):(0,GI.jsx)(GI.Fragment,{})},this.state={isChromaStudioInstalled:!1,isChromaAppInstalled:!1}}componentDidMount(){this.checkChromaInstalled(),window.addEventListener(\"storage\",this.checkStorageChanges)}componentDidUpdate(e){const E=this.props.value,a=e.value,_=(null===E||void 0===E?void 0:E.argb)||{},t=(null===a||void 0===a?void 0:a.argb)||{};_.chromaRequireDismiss&&_.isStripMode!==t.isStripMode&&this.handleDismissMessage(!1);const o=null===_||void 0===_?void 0:_.numberOfLeds,i=null===t||void 0===t?void 0:t.numberOfLeds;if(_.chromaRequireDismiss&&!kS()(o,i)){const e=_.isStripMode?US:mS,E=(null===o||void 0===o?void 0:o[e])||[],a=(null===i||void 0===i?void 0:i[e])||[];E.reduce((e,E)=>e+E.value,0)!==a.reduce((e,E)=>e+E.value,0)&&this.handleDismissMessage(!1)}}componentWillUnmount(){window.removeEventListener(\"storage\",this.checkStorageChanges)}render(){const e=this.handleDismissMessage,E=this.renderLedImages,a=this.handleAddBend,_=this.openChromaStudio,t=this.props.maxLedSupported,o=this.props.value,i=o.name,n=o.id,s=o.argb,r=o.isActive,T=s.chromaRequireDismiss,I=s.numberOfLeds,O=s.isStripMode,A=this.state.isChromaAppInstalled,S=()=>{const e=O?US:mS;return I[e]?I[e].reduce((e,E)=>e+E.value,0):0},R=O?I[US]:I[mS];return r?(0,GI.jsxs)(\"div\",{className:\"port-container widget\",children:[(0,GI.jsx)(\"div\",{className:\"help\"}),(0,GI.jsx)(\"div\",{className:\"tip\",children:(0,GI.jsx)(wA.A,{text:FO.gt9})}),(0,GI.jsx)(wS,{portName:i,portId:n}),(0,GI.jsxs)(\"div\",{className:\"port-items-led-image\",children:[(0,GI.jsxs)(\"div\",{className:\"port-infomation\",children:[this.renderPortItem({id:n,numberOfLeds:I,isStripMode:O,ledValues:R}),O&&Array.isArray(R)&&R.length<4&&(0,GI.jsx)(\"div\",{className:\"port-add-bend\",onClick:a(US),children:(0,GI.jsx)(\"span\",{className:\"underline\",children:(0,GI.jsx)(wA.A,{text:FO.qir})})}),!O&&(0,GI.jsx)(\"div\",{className:\"port-add-bend \".concat(S()>=t&&\"disabled\"),onClick:a(mS),children:(0,GI.jsx)(\"span\",{className:\"underline\",children:(0,GI.jsx)(wA.A,{text:FO.UPK})})}),Array.isArray(R)&&R.length>1&&(0,GI.jsxs)(\"div\",{className:\"total-LED-count\",children:[(0,GI.jsx)(\"div\",{className:\"label-total-led-count\",children:(0,GI.jsx)(wA.A,{text:FO.rt0})}),(0,GI.jsx)(\"div\",{className:\"value-total-led-count\",children:S()}),(0,GI.jsx)(eS,{value:I.detectedLedCount,active:!0,className:\"icon-led-detection\"})]})]}),(0,GI.jsx)(\"div\",{className:\"led-img-container\",children:E({isStripMode:O,ledValues:R})})]}),!T&&!A&&S()!==I.detectedLedCount&&(0,GI.jsx)(aS,{openChromaStudio:_,handleDismiss:()=>e(!0)}),t&&S()>t&&(0,GI.jsx)(iS,{})]}):null}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4014470,
+          "end": 4017606,
+          "source": "function(e){let E=e.pid,_=e.editionId,t=e.layoutId,o=e.renderIf,i=e.alt,n=e.category,s=e.cycleImgName,r=void 0!==s&&s,T=e.extraClass,I=void 0===T?\"\":T,O=(e.subCategory,e.isSvg),A=void 0!==O&&O;const S=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==\",R=g().useRef(null),l=g().useState({srcSet_1x:S,srcSet_3x:S}),N=(0,br.A)(l,2),d=N[0],c=N[1],C=g().useState({srcSet_1x:\"\",srcSet_3x:\"\"}),u=(0,br.A)(C,2),D=u[0],L=u[1],P=\"\".concat(E,\"-\").concat(_,\"-\").concat(t,\"-seq\"),p=g().useState(Number(sessionStorage.getItem(P)||0)),M=(0,br.A)(p,2),m=M[0],U=M[1],h=!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.KEYPAD&&n!==X.BROADCASTER&&n!==X.ACCESSORY&&n!==X.AUDIO?t:\"prd\";if(g().useEffect(()=>{var e;let t=!1;null===(e=R.current)||void 0===e||e.setAttribute(\"data-loading\",\"1\"),document.body.setAttribute(\"data-loading\",\"1\");const o={srcSet_1x:A?\"\".concat(h,\".svg\"):\"\".concat(r||h,\"-1x.png\"),srcSet_3x:A?\"\".concat(h,\".svg\"):\"\".concat(r||h,\"-3x.png\")};function i(e){return new Promise((E,a)=>{if(!e)return void a(\"invalid src[%s]\",e);const _=new Image;_.onload=E,_.onerror=a,_.src=e})}return async function(){const e=Object.keys(o),n={},s={};for(let t=0,T=e.length;t<T;t++){const T=e[t];let I={default:\"\"};try{if(I=await a(8388)(\"./\".concat(E,\"_\").concat(_,\"/\").concat(A?\"svg_prods\":\"img_prods\",\"/\").concat(o[T])),A){const e=await fetch(I.default);if(!e.ok)throw new Error(\"Failed to get SVG\");s[T]=await e.text()}}catch(r){if(console.warn(r),0!==_)try{I=await a(8388)(\"./\".concat(E,\"_\",0,\"/\").concat(A?\"svg_prods\":\"img_prods\",\"/\").concat(o[T]))}catch(r){console.warn(r),I={default:\"\"}}}console.debug(\"[ProductImage] loadImg\",I.default),await i(I.default).catch(()=>{}),n[T]=I.default}t||(c(n),(s.srcSet_1x||s.srcSet_3x)&&L(s),requestAnimationFrame(()=>{var e;null===(e=R.current)||void 0===e||e.removeAttribute(\"data-loading\"),document.body.removeAttribute(\"data-loading\")}))}(),()=>{var e;t=!0,null===(e=R.current)||void 0===e||e.removeAttribute(\"data-loading\"),document.body.removeAttribute(\"data-loading\")}},[E,_,t]),g().useEffect(()=>{let e;if(d.srcSet_1x!==S&&d.srcSet_3x!==S)return 0===m&&(e=setTimeout(()=>{U(e=>{const E=e+1;return sessionStorage.setItem(P,E),E})},100)),()=>{clearTimeout(e)}},[d,m]),o&&!o())return null;!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.BROADCASTER?(\"box-img img-nodrag \".concat(I,\" \").concat(A?\"svg-image\":\"\"),d.srcSet_1x,\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\")):(d.srcSet_1x,\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"));const G=A?\"svg-image\":\"\";return A&&jS.includes(n)&&(D.srcSet_1x||D.srcSet_3x)?(0,GI.jsx)(\"div\",{ref:R,className:\"config-img \".concat(G),dangerouslySetInnerHTML:{__html:D.srcSet_1x||D.srcSet_3x}}):!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.BROADCASTER?(0,GI.jsx)(\"img\",{ref:R,className:\"box-img img-nodrag \".concat(I,\" \").concat(G),src:d.srcSet_1x,srcSet:\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"),alt:i},m):(0,GI.jsx)(\"div\",{className:\"config-img\",children:(0,GI.jsx)(\"img\",{ref:R,className:\"img-nodrag \".concat(G),src:d.srcSet_1x,srcSet:\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"),alt:i},m)})}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4014461,
+          "end": 4017607,
+          "source": "g().memo(function(e){let E=e.pid,_=e.editionId,t=e.layoutId,o=e.renderIf,i=e.alt,n=e.category,s=e.cycleImgName,r=void 0!==s&&s,T=e.extraClass,I=void 0===T?\"\":T,O=(e.subCategory,e.isSvg),A=void 0!==O&&O;const S=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==\",R=g().useRef(null),l=g().useState({srcSet_1x:S,srcSet_3x:S}),N=(0,br.A)(l,2),d=N[0],c=N[1],C=g().useState({srcSet_1x:\"\",srcSet_3x:\"\"}),u=(0,br.A)(C,2),D=u[0],L=u[1],P=\"\".concat(E,\"-\").concat(_,\"-\").concat(t,\"-seq\"),p=g().useState(Number(sessionStorage.getItem(P)||0)),M=(0,br.A)(p,2),m=M[0],U=M[1],h=!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.KEYPAD&&n!==X.BROADCASTER&&n!==X.ACCESSORY&&n!==X.AUDIO?t:\"prd\";if(g().useEffect(()=>{var e;let t=!1;null===(e=R.current)||void 0===e||e.setAttribute(\"data-loading\",\"1\"),document.body.setAttribute(\"data-loading\",\"1\");const o={srcSet_1x:A?\"\".concat(h,\".svg\"):\"\".concat(r||h,\"-1x.png\"),srcSet_3x:A?\"\".concat(h,\".svg\"):\"\".concat(r||h,\"-3x.png\")};function i(e){return new Promise((E,a)=>{if(!e)return void a(\"invalid src[%s]\",e);const _=new Image;_.onload=E,_.onerror=a,_.src=e})}return async function(){const e=Object.keys(o),n={},s={};for(let t=0,T=e.length;t<T;t++){const T=e[t];let I={default:\"\"};try{if(I=await a(8388)(\"./\".concat(E,\"_\").concat(_,\"/\").concat(A?\"svg_prods\":\"img_prods\",\"/\").concat(o[T])),A){const e=await fetch(I.default);if(!e.ok)throw new Error(\"Failed to get SVG\");s[T]=await e.text()}}catch(r){if(console.warn(r),0!==_)try{I=await a(8388)(\"./\".concat(E,\"_\",0,\"/\").concat(A?\"svg_prods\":\"img_prods\",\"/\").concat(o[T]))}catch(r){console.warn(r),I={default:\"\"}}}console.debug(\"[ProductImage] loadImg\",I.default),await i(I.default).catch(()=>{}),n[T]=I.default}t||(c(n),(s.srcSet_1x||s.srcSet_3x)&&L(s),requestAnimationFrame(()=>{var e;null===(e=R.current)||void 0===e||e.removeAttribute(\"data-loading\"),document.body.removeAttribute(\"data-loading\")}))}(),()=>{var e;t=!0,null===(e=R.current)||void 0===e||e.removeAttribute(\"data-loading\"),document.body.removeAttribute(\"data-loading\")}},[E,_,t]),g().useEffect(()=>{let e;if(d.srcSet_1x!==S&&d.srcSet_3x!==S)return 0===m&&(e=setTimeout(()=>{U(e=>{const E=e+1;return sessionStorage.setItem(P,E),E})},100)),()=>{clearTimeout(e)}},[d,m]),o&&!o())return null;!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.BROADCASTER?(\"box-img img-nodrag \".concat(I,\" \").concat(A?\"svg-image\":\"\"),d.srcSet_1x,\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\")):(d.srcSet_1x,\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"));const G=A?\"svg-image\":\"\";return A&&jS.includes(n)&&(D.srcSet_1x||D.srcSet_3x)?(0,GI.jsx)(\"div\",{ref:R,className:\"config-img \".concat(G),dangerouslySetInnerHTML:{__html:D.srcSet_1x||D.srcSet_3x}}):!n||n!==X.MOUSE&&n!==X.MOUSEPLUSMAT&&n!==X.BROADCASTER?(0,GI.jsx)(\"img\",{ref:R,className:\"box-img img-nodrag \".concat(I,\" \").concat(G),src:d.srcSet_1x,srcSet:\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"),alt:i},m):(0,GI.jsx)(\"div\",{className:\"config-img\",children:(0,GI.jsx)(\"img\",{ref:R,className:\"img-nodrag \".concat(G),src:d.srcSet_1x,srcSet:\"\".concat(d.srcSet_1x,\" 1x, \").concat(d.srcSet_3x,\" 3x\"),alt:i},m)})})"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4017676,
+          "end": 4018790,
+          "source": "class tR extends G.PureComponent{constructor(e){super(e),this.renderPorts=(e,E)=>{if(!e||!e.length||E)return null;const a=e.filter(e=>{let E=e.argb,a=e.id;return E&&[JS,$S,eR].includes(a)}).sort((e,E)=>e.id-E.id),_=1===a.filter(e=>e.isActive).length?\"customize-container--listed\":\"\";return(0,GI.jsx)(\"div\",{className:\"customize-container customize-container--wireless \".concat(_),children:a.map(e=>(0,GI.jsx)(XS,{value:e},e.id))})},this.state={}}componentDidMount(){}render(){const e=this.props,E=e.ports,a=e.isChromaAppRoot,_=e.editionId,t=e.layoutId,o=e.lang;return(0,GI.jsxs)(\"div\",{children:[(0,GI.jsxs)(\"div\",{style:a?oR.wrapper:{},className:\"customize-scroll\",id:\"pageContainer\",children:[(0,GI.jsx)(\"div\",{className:\"customize-center customize-center--wireless\",children:(0,GI.jsx)(\"div\",{className:\"product__image\",children:(0,GI.jsx)(qS,{pid:ET.DeviceInfo.productId,editionId:_,layoutId:t,category:\"MOUSE\",alt:Zr.Ky.onLang(o).productName})})}),this.renderPorts(E)]}),(0,GI.jsx)(\"div\",{style:a?oR.dotBackground:{},className:\"dot-background\",children:(0,GI.jsx)(\"div\",{className:\"custom-dim-corner\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "offset": 4545821,
+          "end": 4545838,
+          "source": "(0,GI.jsx)(iR,{})"
+        }
+      ],
+      "reducers": [
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 4665706,
+          "end": 4665912,
+          "source": "zh={isAutoDetectionEnable:!1,isRefreshing:!1,warningType:null,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],isPowerOn:!0,connectionStatus:{type:Kh.NotApplicable,isConnected:!!wh.Disconnected}}"
+        },
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 4666656,
+          "end": 4666808,
+          "source": "jh=(e,E,a)=>{if(e<E)return Array.from({length:E},()=>MS);if(1===E)return a.push(e),a;const _=Math.ceil(e/E);return a.push(Math.max(_,MS)),jh(e-_,E-1,a)}"
+        }
+      ],
+      "editReducers": [
+        {
+          "path": ".ref/devices/778/static/js/main.032287fa.js",
+          "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+          "offset": 4670663,
+          "end": 4672307,
+          "source": "function(e,E){switch(E.type){case yt:{const a=E.payload,_=a.id,t=a.isActive,o=Xh(e,_).argb;return xh(e,{argb:(0,h.A)((0,h.A)({},o),{},{chromaRequireDismiss:t})},_),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()})}case bt:{const a=E.payload,_=a.id,t=a.isStripMode,o=Xh(e,_).argb;return xh(e,{argb:(0,h.A)((0,h.A)({},o),{},{isStripMode:t})},_),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()})}case Yt:{const a=E.payload,_=a.id,t=a.type,o=Xh(e,_).argb,i=o.numberOfLeds;if(!(t in i))return(0,h.A)({},e);const n=i[t],s=n.reduce((e,E)=>e+E.value,0),r=jh(s,n.length+1,[]),T=n.map((e,E)=>(0,h.A)((0,h.A)({},e),{},{value:t===mS?e.value:r[E]})),I={id:n.length,value:t===mS?20:r[n.length]};return xh(e,{argb:(0,h.A)((0,h.A)({},o),{},{numberOfLeds:(0,h.A)((0,h.A)({},i),{},{[t]:[...T,I]})})},_),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()})}case Wt:{const a=E.payload,_=a.portId,t=a.stripId,o=a.type,i=Xh(e,_).argb,n=i.numberOfLeds;if(!(o in n))return(0,h.A)({},e);const s=n[o].filter(e=>e.id!==t).map((e,E)=>(0,h.A)((0,h.A)({},e),{},{id:E}));return xh(e,{argb:(0,h.A)((0,h.A)({},i),{},{numberOfLeds:(0,h.A)((0,h.A)({},n),{},{[o]:s})})},_),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()})}case Vt:{const a=E.payload,_=a.portId,t=a.stripId,o=a.value,i=Xh(e,_).argb,n=i.isStripMode,s=i.numberOfLeds,r=e=>e.map(e=>e.id===t?(0,h.A)((0,h.A)({},e),{},{value:o}):e),T=n?{strip:r(s.strip)}:{fan:r(s.fan)};return xh(e,{argb:(0,h.A)((0,h.A)({},i),{},{numberOfLeds:(0,h.A)((0,h.A)({},s),T)})},_),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()})}case vt:return E.payload.map(E=>xh(e,E,E.id)),(0,h.A)((0,h.A)({},e),{},{ports:e.ports.slice()});default:return e}}"
+        }
+      ]
+    },
+    {
+      "product_id": 3871,
+      "profile_bar": {
+        "sync_icon_enabled_page": "TAB_LIGHTING",
+        "condition": {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 4617245,
+          "end": 4617295,
+          "source": "isEnableProfileBar:this.state.active_view===bO.lgc"
+        },
+        "label_export": {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 117080,
+          "end": 117089,
+          "source": "lgc:()=>g"
+        },
+        "consumers": [
+          {
+            "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+            "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+            "offset": 4592847,
+            "end": 4593336,
+            "source": "this.renderProfileBarIcon=()=>{let e=null;return!this.props.isEnableProfileBar||this.props.activeDynamicMode?(e=(0,OI.getTextItem)(bO.Pov),(0,fI.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader disable\",\"aria-label\":e,tooltip:e})):(e=this.state.showLoader?(0,OI.getTextItem)(bO.pyi):(0,OI.getTextItem)(bO.jIM),(0,fI.jsx)(\"div\",{role:\"img\",\"aria-roledescription\":\"sync icon\",className:\"loader \".concat(this.state.showLoader?\"show\":\"\"),\"aria-label\":e,tooltip:e}))}"
+          },
+          {
+            "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+            "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+            "offset": 4596727,
+            "end": 4596850,
+            "source": "this.enableSwitchProfile=()=>!!this.props.enableSwitchProfile&&(!this.props.activeDynamicMode||!this.isLoupedeckProfiles())"
+          },
+          {
+            "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+            "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+            "offset": 4596954,
+            "end": 4600473,
+            "source": "this.renderProfileBar=()=>{var e,E,a,_,t;const i=this.props.createDotTips;return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsxs)(\"div\",{role:\"region\",\"aria-label\":\"profile bar\",className:\"profile-bar flex \".concat(this.enableSwitchProfile()?\"\":\"disabled\"),style:this.props.style&&this.props.style,children:[this.renderProfileBarIcon(),(0,fI.jsxs)(\"div\",{className:\"rename-rect\",children:[this.state.renameActive?(0,fI.jsx)(fI.Fragment,{children:this.props.isControllerOBM?(0,fI.jsxs)(\"div\",{style:{fontFamily:'\"Roboto\", sans-serif',position:\"absolute\",border:\"1px solid #44d62c\",boxSizing:\"border-box\",backgroundColor:\"#111\",fontSize:\"14px\",lineHeight:\"17px\",color:\"#ccc\",height:\"27px\",width:\"230px\",margin:\"0 10px\",top:\"-14px\",overflow:\"hidden\",display:\"flex\",alignItems:\"center\",justifyContent:\"space-between\"},children:[(0,fI.jsx)(PS,{slotId:null!==(e=null===(E=this.state.profiles[this.state.selectedProfileIndex])||void 0===E?void 0:E.slotId)&&void 0!==e?e:1}),(0,fI.jsx)(RU,{name:\"profile\",maxLength:25,value:this.state.profileName,active:this.state.renameActive,sendToParent:this.setProfileName,isControllerOBM:this.props.isControllerOBM})]}):(0,fI.jsx)(RU,{name:\"profile\",maxLength:32,value:this.state.profileName,active:this.state.renameActive,sendToParent:this.setProfileName})}):0===this.props.profiles.length?(0,fI.jsx)(\"div\",{className:\"empty-profile\"}):(0,fI.jsx)(MS,{labelPrefix:null!==(a=this.props.obm)&&void 0!==a&&a.specs.profileSwap&&\"number\"===typeof(null===(_=this.state.profiles[this.state.selectedProfileIndex])||void 0===_?void 0:_.slotId)&&!this.props.isControllerOBM?(0,fI.jsx)(GU,{slotId:null===(t=this.state.profiles[this.state.selectedProfileIndex])||void 0===t?void 0:t.slotId}):null,notLocalize:!0,haveIcon:!this.props.isControllerOBM,allowOneItem:this.allowOneItem(),dataSet:this.state.profiles,name:\"caliDvDrop\",selectOption:this.changeProfile,value:this.state.selectedProfileIndex,onMouseDown:this.checkAdjustmentModeIsRunning,isControllerOBM:this.props.isControllerOBM}),(0,fI.jsx)(MG,{className:\"profile-tips\",isEnabledDot:this.props.isEnabledDot,updateDot:()=>{this.props.updateDot()},createDotTips:i}),(0,fI.jsx)(\"div\",{className:\"reshare_wrapper\",children:(0,fI.jsx)(WG,{onEditDetails:this.openArmoryEditView,onReshare:this.triggerArmoryReshare,isShow:Q.includes(BG.category)&&this.props.showReshareBadge,onClose:()=>{this.props.setShowReshareBadgeState(!1)}})})]}),(0,fI.jsxs)(\"div\",{style:{position:\"relative\"},onMouseDown:this.checkAdjustmentModeIsRunning,children:[this.props.hasDynamicMode&&this.props.activeDynamicMode?null:this.props.profiles.length>0?(0,fI.jsx)(dL,{menu:this.state.profileMenu,toggleClass:\"dots3 hover-border\",menuClass:\"profile-act\",menuClick:this.menuClick,disabledItems:this.getDisabledItems(),gameItems:this.getLinkedGameDetail(),toggleDropdown:this.handleToggleDropdown}):null,(0,fI.jsx)(eh,{show:this.state.showResetPopup,resetProfile:this.resetProfile,isShowResetKeybinds:!this.props.isCustomShowReset,onClose:()=>{this.setState({showResetPopup:!1})}}),(0,fI.jsx)(KP,{active:this.state.delActive,confirmDel:this.confirmDel,title:bO.rlv,deleteMsg:bO.Gfw})]}),this.renderOBM(),this.renderRefreshButton(),\"none\"!==this.state.IEMode?(0,fI.jsx)(oG,{IEMode:this.state.IEMode,close:this.closeImportExportModel,importProfiles:this.importProfiles}):null]}),this.props.hasGamerRoom?(0,fI.jsx)(\"div\",{className:\"profile-bar flex\",children:(0,fI.jsx)(\"div\",{className:\"gamer-room-icon\",tooltip:(0,OI.getTextItem)(bO.zgO),onClick:this.focusGamerRoom})}):null]})}"
+          }
+        ],
+        "initial": {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 4724501,
+          "end": 4724761,
+          "source": "Xf={profiles:[],selectedProfileGuid:\"\",hasUnsavedChanges:!1,enableSwitchProfile:!0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],cachedHyperShiftOn:[],analogPresetProfiles:[],isFactoryDefaultProfile:!1,armorySharedProfiles:[],showReshareBadge:!1}"
+        }
+      },
+      "state_scope": {
+        "owner": "device/localstorage",
+        "default_profile": {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 3816570,
+          "end": 3816783,
+          "source": "s={guid:\"\",name:\" \",brightness:{isEnabled:!0,value:100,isGlobalBrightness:!0},quickEffects:{selectedEffectId:3,isGlobalQuickEffect:!0},switchOffLighting:{isDisplayOn:!1,isIdleEnabled:!1,idleMinutes:1},mappings:[]}"
+        },
+        "persistence": [
+          {
+            "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+            "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+            "offset": 4742680,
+            "end": 4742829,
+            "source": "pH=(e,E)=>{let a=E.ports;const _=window.currentTimerTick||Date.now(),t=new Og(\"ON_SET_PORT_VALUES\",_,{ports:a}),i=UH(e,{ports:a},t);return hH(i,_),i}"
+          },
+          {
+            "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+            "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+            "offset": 4743332,
+            "end": 4743817,
+            "source": "hH=(e,E)=>{const a=structuredClone(e),_=a.ports,t=a.isPortLinked,i=a.currentActivePortId;var o;_&&_.length>0?(\"FAN_CONTROLLER\"===_T.DeviceInfo.subCategory&&_.forEach(e=>{delete e.fanState,delete e.value}),console.warn(\"sanitizeportValues will send mw ports:\",_),null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_SET_PORT_VALUES\",timerTick:E,payload:{ports:_,portsConfig:{isPortLinked:t,currentActivePort:i}}})):console.warn(\"sanitizeportValues found ports:\",_)}"
+          }
+        ]
+      },
+      "source_files": [
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f"
+        }
+      ],
+      "config": {
+        "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+        "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+        "offset": 3816885,
+        "end": 3817339,
+        "source": "T={vendorId:5426,productId:3871,deviceName:\"Razer Chroma Addressable RGB Controller\",masterGuideURL:\"https://dl.razerzone.com/master-guides/RazerSynapse3/CHROMAARGBCONTROLLER-00003871-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/3898\",category:\"ACCESSORY\",subCategory:\"ARGB_CONTROLLER\",WAVE_DIRECTION:[{id:\"dir-left\",value:1},{id:\"dir-right\",value:2},{id:\"dir-out\",value:5},{id:\"dir-in\",value:6}],claimInterface:0,minimumLedValue:1}"
+      },
+      "fan_counts": {
+        "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+        "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+        "offset": 3982925,
+        "end": 3982968,
+        "source": "gS=[6,8,9,10,12,15,16,18,20,22,24,25,32,40]"
+      },
+      "locale_map": {
+        "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+        "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+        "offset": 3756901,
+        "end": 3756965,
+        "source": "$4O={de:_,en:t,es:i,fr:o,ja:n,kr:s,[q4O]:r,ru:T,[Q4O]:I,[J4O]:O}"
+      },
+      "css": {
+        "path": ".ref/devices/3871/static/css/main.e2afc8b4.css",
+        "sha256": "14ab345a9cc9db718067c79a50ae1cd5de370e3661fa4169bd5bfc8be129f7b5",
+        "rules": [
+          ".widget .exclamation:before,.widget .help{background-repeat:no-repeat;border-radius:7px;height:14px;position:absolute;width:14px}",
+          ".widget .help{background-color:#4a4a4a;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);right:10px;top:10px;transition:background-color .3s;will-change:background-color}",
+          ".widget .help:hover{background-color:#ffffff4d}",
+          ".widget .help:hover+.tip{opacity:1;visibility:visible;z-index:100}",
+          ".widget .help:hover+.tip.mt-tip{background-color:#0000;border:none;padding:0}",
+          ".stepper .icon.spinner{width:18px}",
+          ".icon.spinner.down.disabled,.icon.spinner.up.disabled,.stepper.disabled,.turbo-label.disabled{opacity:.3;pointer-events:none}",
+          ".key-config .stepper.custom-keymapping-stepper .icon.spinner{opacity:1;visibility:visible;visibility:initial}",
+          ".block-input .icon.spinner{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:8px;height:12px;position:absolute;right:0;width:14px}",
+          ".block-input .icon.spinner.up{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}",
+          ".block-input .icon.spinner.down{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}",
+          ".block-input .icon.spinner.down,.block-input .icon.spinner.up{opacity:1;visibility:visible}",
+          ".block-input .icon.spinner.down.disabled,.block-input .icon.spinner.up.disabled{opacity:.3;pointer-events:none}",
+          ".stepper .icon.audio,.stepper .icon.spinner{background-repeat:no-repeat;position:absolute}",
+          ".stepper .icon.spinner{background-color:#0000;background-position:50%;background-size:8px;height:12px;right:0;width:14px;z-index:4}",
+          ".icon.spinner.up{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}",
+          ".icon.spinner.down,.icon.spinner.up{opacity:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;will-change:visibility,opacity}",
+          ".icon.spinner.down{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}",
+          ".stepper .icon.spinner:hover{background-color:#ffffff1a}",
+          ".stepper .icon.spinner:active{background-color:#0000001a}",
+          ".stepper:focus-within,.stepper:hover{background:#111;border:1px solid #44d62c}",
+          ".stepper:focus-within .icon.spinner.down,.stepper:focus-within .icon.spinner.up,.stepper:hover .icon.spinner.down,.stepper:hover .icon.spinner.up{opacity:1;visibility:visible}",
+          ".effect-wrapper .effects-area .stepper:hover{border:1px solid #44d62c}",
+          ".stage:hover .icon.spinner{opacity:1;visibility:visible}",
+          "#multipleBrightness .invisible{opacity:0;pointer-events:none;visibility:hidden}",
+          "#multipleBrightness .body-wrapper-custom{overflow-y:scroll!important;padding:10px 0 0!important}",
+          "#multipleBrightness .common-transition,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection,#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path,#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path,#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{transition:all .3s}",
+          "#multipleBrightness .common-font-styles,#multipleBrightness .message-container,#multipleBrightness .port-container .chroma-studio-message,#multipleBrightness .port-container .port-items-led-image .port-add-bend,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown,#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name,#multipleBrightness .port-container .port-items-led-image .total-LED-count,#multipleBrightness .port-warning,#multipleBrightness .warning-container{font-family:Roboto,sans-serif;font-size:14px}",
+          "#multipleBrightness .disabled-lighting-tab{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .customize-container .customize-left,#multipleBrightness .customize-container .customize-right,#multipleBrightness .port-item-container{display:flex;flex-direction:column;min-width:480px;width:480px}",
+          "#multipleBrightness .dot-background{background:linear-gradient(90deg,#222 20px,#0000 1%) 50%,linear-gradient(#222 20px,#0000 1%) 50%,#5d5d5d;background-size:22px 22px;bottom:0;height:400px;left:0;margin-left:auto;margin-right:auto;max-width:1210px;min-width:944px;position:absolute;right:0;top:20px;width:100%}",
+          "#multipleBrightness .dot-background--wireless{height:275px}",
+          "#multipleBrightness .custom-dim-corner{background:radial-gradient(#0000,#222);height:100%;width:100%}",
+          "#multipleBrightness .customize-scroll{height:inherit;min-width:inherit;overflow-y:visible;overflow-y:initial;position:relative;width:inherit;z-index:1}",
+          "#multipleBrightness .customize-scroll .customize-center{display:flex;justify-content:center;left:50%;margin:10px;min-width:150px;position:fixed;transform:translateX(-59%);width:150px}",
+          "#multipleBrightness .customize-scroll .customize-center--wireless{left:auto!important;position:relative!important;transform:none!important;width:auto!important}",
+          "#multipleBrightness .customize-scroll .customize-center .product{height:275px;position:relative}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon{bottom:60px;display:flex;flex-direction:column;justify-content:space-between;left:0;position:absolute;right:0;width:100%}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon--wireless{bottom:127px;height:115px}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons{display:flex;gap:12px;justify-content:center}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .detection-icons--wireless{gap:20px}",
+          "#multipleBrightness .customize-scroll .customize-center .product__icon .power-icons{display:flex;justify-content:center}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-power,#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper,#multipleBrightness .customize-scroll .customize-center .product .icon-warning{height:20px;position:relative;width:20px;z-index:100}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection{fill:#0000;bottom:0;cursor:pointer;left:0;position:absolute}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-b{animation:zoomout 50ms ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-c{animation:zoomoutc .7s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--animation .detect-f{animation:zoomoutf .7s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:hover .detect-b{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection:active .detect-b{fill:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a,#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-e{fill:none}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-b{fill:#111;animation:zoomin .1s ease-out 0s 1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-c{fill:#fff;opacity:0}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active .detect-d{stroke:none}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:hover .detect-a{stroke:#96ef89}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-detection-wrapper .icon-detection--active:active .detect-a{stroke:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing{bottom:0;left:0;position:absolute;z-index:100}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:hover path{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-refreshing-wrapper .icon-refreshing:active path{fill:#39a029}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power rect{fill:#44d62c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power path{fill:#111}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power:hover rect{fill:#7de36c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off rect{fill:#c8323c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-power--power-off:hover rect{fill:#d97077}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning{opacity:1}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:hover path{fill:#feab59}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning:active path{fill:#b15e0c}",
+          "#multipleBrightness .customize-scroll .customize-center .product .icon-warning--hidden{opacity:0;pointer-events:none}",
+          "#multipleBrightness .customize-container{display:flex;flex-wrap:wrap;justify-content:space-between;margin:0 auto;max-width:1110px}",
+          "@media(max-width:976px){#multipleBrightness .customize-container{justify-content:center}",
+          "#multipleBrightness .customize-container--wireless{align-items:flex-start;display:flex;flex-wrap:wrap;max-width:1240px}",
+          "@media(max-width:1200px){#multipleBrightness .customize-container--wireless{justify-content:center}",
+          "#multipleBrightness .customize-container--wireless .port-container{min-width:600px;width:600px}",
+          "#multipleBrightness .customize-container--listed{justify-content:center}",
+          "#multipleBrightness .detecting-device{background-repeat:no-repeat;display:inline-block;height:270px;left:50%;margin-left:auto;margin-right:auto;position:absolute;top:20px;transform:translateX(-51%);width:258px;z-index:1}",
+          "#multipleBrightness .detecting-device--wireless{top:60px;transform:translateX(-13%)}",
+          "@media(max-width:1024px){#multipleBrightness .customize-scroll .customize-center{left:auto!important;position:relative!important;transform:none!important;width:auto!important}",
+          "#multipleBrightness .customize-container{max-width:964px!important}",
+          "#multipleBrightness .port-container{background-color:#111;border-radius:5px;height:-webkit-fit-content;height:fit-content;margin:10px;min-height:199px;min-width:460px;padding:26px 40px 30px;position:relative;width:460px}",
+          "#multipleBrightness .port-container .port-items-led-image{display:flex;flex-direction:row;margin-top:11px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-infomation{flex:1 1}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend{align-items:center;color:#707070;cursor:pointer;display:inline-flex;height:27px;margin-bottom:5px;margin-top:5px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline{position:relative}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover{color:#44d62c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:hover:after{background-color:#44d62c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-add-bend .underline:after{background-color:#707070;bottom:.6px;content:\"\";height:1px;left:0;position:absolute;width:100%}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count{grid-column-gap:10px;align-items:center;display:grid;grid-template-columns:150px auto auto;height:27px;margin-top:5px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .label-total-led-count{align-self:center;margin-bottom:1px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .value-total-led-count{align-self:center;margin-bottom:1px;padding-left:10px;width:50px}",
+          "#multipleBrightness .port-container .port-items-led-image .total-LED-count .icon-led-detection{align-self:center!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item{align-items:center;display:inline-flex;margin-bottom:5px;margin-top:5px;width:100%}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .label-common{text-wrap:nowrap;color:#ccc;display:inline-block;font-family:Roboto,sans-serif;font-size:14px;margin-bottom:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container{margin-right:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown{height:27px;margin:0!important;width:150px;z-index:auto!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .device-type-container .device-type-name{align-items:center;display:inline-flex;height:27px;width:150px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container{margin-left:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container--with-closed{width:80px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-wrapper{align-items:center;display:flex;gap:10px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown{height:27px;margin:0!important;width:62px;z-index:auto!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .no-of-led-dropdown .s3-options .option{align-items:center!important;display:inline-flex!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper{height:27px;margin:0!important;position:relative!important;width:62px}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--stepper{border:1px solid #5d5d5d}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-decrease .icon.spinner.down,#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper--disabled-increase .icon.spinner.up{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .number-led-container .number-led-stepper input{height:25px!important;padding-left:6px;text-align:left;width:60px!important}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter{display:inline-block}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item:hover .icon-close-glitter:hover path{fill:#c8323c}",
+          "#multipleBrightness .port-container .port-items-led-image .port-item .icon-close-glitter{display:none;margin-left:-10px}",
+          "#multipleBrightness .port-container .port-name-container{height:27px}",
+          "#multipleBrightness .port-container .port-name-container:hover .port-name{text-decoration:underline}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon{align-items:center;display:inline-flex;margin-bottom:4px;margin-top:4px;padding-bottom:4px;position:relative}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-name{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;line-height:0px;margin-bottom:1px;margin-right:5px;text-transform:uppercase}",
+          "#multipleBrightness .port-container .port-name-container .port-name-and-icon .port-edit-icon{margin-top:4px}",
+          "#multipleBrightness .port-container .port-name-container .port-input{background-color:#111;border:1px solid #44d62c;color:#ccc;font-family:RazerF5,sans-serif;font-size:16px;height:25px;line-height:0px;min-width:160px;padding:0 6px!important;text-transform:uppercase;width:160px}",
+          "#multipleBrightness .port-container .chroma-studio-message{border:1px solid #707070;border-radius:5px;font-size:13px;line-height:16px;margin-top:10px;padding:20px;transition:all .3s ease}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper{display:flex;justify-content:space-between;margin-top:10px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn{align-items:center;border:1px solid #737373;border-radius:3px;cursor:pointer;display:inline-flex;min-height:27px;min-width:150px;padding:4px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .chroma-studio-message-btn .chroma-studio-icon{background-image:url(../../static/media/chroma_studio.55db6875.svg);background-repeat:no-repeat;background-size:18px;height:18px;margin-right:5px;min-width:18px;width:18px}",
+          "#multipleBrightness .port-container .chroma-studio-message .chroma-studio-wrapper .dismiss-btn{cursor:pointer;margin:auto 0;text-decoration:underline}",
+          "#multipleBrightness .brightness-container{margin-top:10px!important;padding:30px!important;width:600px!important}",
+          "#multipleBrightness .brightness-container .switching-brightness{align-items:center;display:inline-flex;margin:0 10px 10px}",
+          "#multipleBrightness .brightness-container .switching-brightness .label-brightness{color:#44d62c;font-size:16px;margin-right:10px}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness{display:flex;height:20px!important;margin:10px}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-left{align-items:center;display:inline-flex;margin-right:auto}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-left .check-item{align-items:center;display:inline-flex;margin-bottom:0!important}",
+          "#multipleBrightness .brightness-container .brightness-and-light .global-brightness .global-brightness-right{margin-left:auto;text-transform:lowercase}",
+          "#multipleBrightness .brightness-container .brightness-and-light .lights-container{margin-left:10px!important}",
+          "#multipleBrightness .z100{z-index:100}",
+          "#multipleBrightness .z99{z-index:99}",
+          "#multipleBrightness .lights-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,540px));margin-top:20px}",
+          "#multipleBrightness .custom-light-container{grid-column-gap:10px;grid-row-gap:10px;column-gap:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,265px));margin-top:20px;row-gap:10p}",
+          "#multipleBrightness .custom-light-container .light-container{border:1px solid #0000;border-radius:3px;height:108px;padding:10px;transition:all .3s ease;width:265px}",
+          "#multipleBrightness .custom-light-container .light-container--disabled{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .custom-light-container .light-container .foot.max,#multipleBrightness .custom-light-container .light-container .foot.min{display:none;transition:all .3s ease}",
+          "#multipleBrightness .custom-light-container .light-container:hover{border:1px solid #737373}",
+          "#multipleBrightness .custom-light-container .light-container:hover .foot.max,#multipleBrightness .custom-light-container .light-container:hover .foot.min{display:inline-block}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port{align-items:center;display:flex;text-transform:uppercase}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port img{margin-right:10px}",
+          "#multipleBrightness .custom-light-container .light-container .light-image-name-port span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+          "#multipleBrightness .message-container,#multipleBrightness .warning-container{background-color:#111;border-radius:5px;column-gap:10px;display:inline-block;font-size:14px;grid-template-columns:auto auto;margin:auto;padding:20px;width:600px;z-index:100}",
+          "#multipleBrightness .message-container--overlay,#multipleBrightness .warning-container--overlay{left:0;position:absolute;right:0;top:20px}",
+          "#multipleBrightness .message-container{border:1px solid #5a5a5a;padding:20px 40px}",
+          "#multipleBrightness .message-container .text-center{text-align:center}",
+          "#multipleBrightness .message-container .center{align-items:center;display:flex;flex-direction:column;justify-content:center}",
+          "#multipleBrightness .message-container__header{color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;font-weight:400;margin:9px auto 20px;text-transform:uppercase}",
+          "#multipleBrightness .message-container__msg{color:#ccc;font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:400;margin-bottom:10px;margin-top:0;white-space:pre-wrap}",
+          "#multipleBrightness .message-container__button{background-color:#44d62c;color:#111;margin-top:10px;padding-top:2px}",
+          "#multipleBrightness .warning-container{border:1px solid #fd8611;text-align:center}",
+          "#multipleBrightness .warning-container__header{font-family:Roboto,Oxygen,Ubuntu,Cantarell,Open Sans,Helvetica Neue,sans-serif;font-size:14px;font-weight:600;margin:0 auto 10px;text-transform:uppercase}",
+          "#multipleBrightness .warning-container__msg{margin:0 40px}",
+          "#multipleBrightness .warning-container__dismiss{margin-top:10px;text-decoration:underline}",
+          "#multipleBrightness .warning-container__dismiss:hover{color:#44d62c}",
+          "#multipleBrightness .warning-container ul{list-style-type:decimal;margin:20px 40px 0;text-align:start}",
+          "#multipleBrightness .warning-container ul div{margin-left:5px}",
+          "#multipleBrightness .warning-container ul li{margin-top:20px}",
+          "#multipleBrightness .port-warning{background-color:#111;border:1px solid #fd8611;border-radius:5px;display:flex;font-size:13px;gap:10px;line-height:16px;margin-top:10px;padding:20px;z-index:100}",
+          "#multipleBrightness .tooltip-razer{height:100%;left:0;position:absolute;top:0;width:100%;z-index:1060}",
+          "#multipleBrightness .tooltip-razer.bottom-left>.main,#multipleBrightness .tooltip-razer.bottom-right>.main,#multipleBrightness .tooltip-razer.bottom>.main{bottom:auto;margin-bottom:0;margin-top:5px;top:100%}",
+          "#multipleBrightness .tooltip-razer.bottom-right>.main,#multipleBrightness .tooltip-razer.top-right>.main{justify-content:flex-start;left:0;margin-left:0}",
+          "#multipleBrightness .tooltip-razer.bottom-left>.main,#multipleBrightness .tooltip-razer.top-left>.main{justify-content:flex-end;left:auto;margin-left:0;right:0}",
+          "#multipleBrightness .tooltip-razer>.main{bottom:100%;display:flex;justify-content:center;left:50%;margin-bottom:5px;margin-left:-150px;opacity:0;pointer-events:none;position:absolute;transition:opacity .1s linear;width:300px}",
+          "#multipleBrightness .tooltip-razer.show>.main{opacity:1}",
+          "#multipleBrightness .tooltip-razer>.main>.wrapper{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:inline-block;font-size:14px;line-height:1.22;padding:7px 8px;text-align:left;text-transform:none}",
+          "#multipleBrightness .tooltip-razer .title{text-transform:uppercase}",
+          "#multipleBrightness .tooltip-razer .title>span{color:#44d62c;margin-left:10px;text-transform:none}",
+          "#multipleBrightness .tooltip-razer .title+*{margin-top:10px}",
+          "#multipleBrightness .multiple-quickeffect{display:flex;flex-wrap:wrap;gap:21px 0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect{width:50%}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect--disabled{opacity:.3;pointer-events:none}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect__header{align-items:center;display:flex;gap:10px;margin-bottom:5px;text-transform:uppercase}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect__dropdown{margin:0;width:200px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .effects-area .wrap-150,#multipleBrightness .multiple-quickeffect .quickeffect .effects-area--wireless .wrap-150{flex-wrap:wrap;width:150px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .random-color{margin-top:0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .check-item{margin-bottom:0;margin-top:20px}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect #reactiveSlider,#multipleBrightness .multiple-quickeffect .quickeffect #starSlider,#multipleBrightness .multiple-quickeffect .quickeffect .ml10{margin-left:0}",
+          "#multipleBrightness .multiple-quickeffect .quickeffect .modes-tabs{flex-wrap:nowrap}",
+          "#multipleBrightness .wireless-status-wrapper{align-items:center;display:flex}",
+          "#multipleBrightness .patterns{display:flex;list-style:none;margin:5px 0 11px;padding:0}",
+          "#multipleBrightness .patterns>li{border:1px solid #0000004d;border-radius:3px;height:16px;margin-right:10px;overflow:hidden;position:relative;transition:border-color .1s ease-in-out;width:25px}",
+          "#multipleBrightness .patterns>li.active{box-shadow:0 0 0 2px #fff}",
+          "#multipleBrightness .patterns>li:before{background-color:#000;content:\"\";height:100%;left:0;opacity:0;position:absolute;top:0;transition:opacity .1s linear;width:100%}",
+          "#multipleBrightness .patterns>li:active,#multipleBrightness .patterns>li:active:before,#multipleBrightness .patterns>li:hover{border-color:#000;box-shadow:0 0 0 2px #fff}",
+          "#multipleBrightness .patterns>li:active:before{opacity:.3}",
+          "#multipleBrightness .patterns>li:last-child{margin-right:0}",
+          "#multipleBrightness .patterns>li>.color-container,#multipleBrightness .patterns>li>.color-container>.color{height:100%;width:100%}",
+          "#multipleBrightness .patterns>li>.color-container{border-radius:3px}",
+          ".widget .help.indicator-led:hover .tip{opacity:1;visibility:visible;z-index:100}",
+          ".widget .help.indicator-led:before{background-color:#0000;bottom:-5px;content:\"\";height:10px;left:5px;position:absolute;width:50px}",
+          ".widget .help.indicator-led .tip{left:36%;top:19px}",
+          ".haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.down,.haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.up{opacity:1;visibility:inherit}",
+          ".haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.down.disabled,.haptic-content .scroll-slide .scroll-item .stepper .icon.spinner.up.disabled{opacity:.3;pointer-events:none}"
+        ]
+      },
+      "manifest": {
+        "path": ".ref/devices/3871/asset-manifest.json",
+        "sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7"
+      },
+      "components": [
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 2709,
+          "end": 3988,
+          "source": "e=>{let E=e.text,a=e.data,t=e.lang,r=e.clickableData,T=e.onClick,I=e.underlineData,O=e.capitalizeFirst,A=e.allowHtml,S=e.onMouseEnter,l=e.onMouseLeave;\"string\"!==typeof E&&(E=\"\");const R=((e,E)=>{const a={};for(const _ of Object.keys(e||{}))a[_]=s(e[_],E);return a})(a,t);if(I){let e=(0,i.getTextItem)(E,(0,_.A)((0,_.A)({},R),{},{_lang:t}));e=n(e,O);const a=Object.keys(R).reduce((e,E)=>{const a=R[E],_=\"string\"===typeof a?a:String(null!==a&&void 0!==a?a:\"\");if(_.length>0&&e.includes(_)){const a=e.split(_),t=[];I&&t.push(\"translator-underline\"),r&&t.push(\"translator-clickable\");const i=t.join(\" \"),n=e=>(0,o.jsx)(\"span\",{className:i,onClick:r?()=>T&&T(_,E):void 0,onMouseEnter:S,onMouseLeave:l,role:r?\"button\":void 0,tabIndex:r?0:void 0,style:{opacity:!1===r?.3:1},children:_},\"\".concat(E,\"-\").concat(e)),s=[a[0]];for(let e=1;e<a.length;e++)s.push(n(e),a[e]);return s}return e},e);return(0,o.jsxs)(o.Fragment,{children:[(0,o.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),a]})}let N=(0,i.getTextItem)(E,(0,_.A)((0,_.A)({},R),{},{_lang:t}));return N=n(N,O),A&&\"string\"===typeof N?(0,o.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:N}}):(0,o.jsx)(o.Fragment,{children:N})}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3972560,
+          "end": 3975300,
+          "source": "class lS extends g.Component{constructor(e){super(e),this.selectOpt=()=>{this.props.isOBMDropdown?this.props.selectOption(this.props.content):this.props.selectOption(this.props.optId)},this.mouseOver=e=>{if(this.state.tip){let E=this.optDom.current.getBoundingClientRect();this.props.mouseOver(E,this.props.tips,e)}},this.hideTips=()=>{this.state.tip&&this.props.hideTips()},this.state={tip:this.props.tips},this.optDom=f().createRef(),this.optTextDom=f().createRef()}componentDidMount(){var e;const E=null===(e=this.optTextDom)||void 0===e?void 0:e.current;(null===E||void 0===E?void 0:E.scrollWidth)>(null===E||void 0===E?void 0:E.clientWidth)||this.props.tipIcon||this.props.disabled||this.setState({tip:\"\"}),this.optDom.current&&this.optDom.current.scrollWidth<=this.optDom.current.getBoundingClientRect().width&&!this.props.tipIcon&&this.setState({tip:\"\"})}render(){const e=this.props.notLocalize;let E=e?this.props.content:(0,fI.jsx)(nS.A,{text:this.props.content});this.props.haveIcon||(E=e?this.props.content:(0,fI.jsx)(nS.A,{text:this.props.isShowTextActiveProfile?\"\".concat(this.props.content,\" (\").concat(bO.Lhu,\")\"):this.props.content}));const a=this.props.haveIcon?(0,fI.jsxs)(\"div\",{className:\"img-wrap\",children:[this.props.icon?(0,fI.jsx)(\"img\",{src:this.props.icon,alt:\"\",\"data-tip-on-hover\":this.props.tips||\"\"}):null,this.props.tipIcon&&(0,fI.jsx)(\"div\",{className:\"tipIcon\",onMouseEnter:this.mouseOver,onMouseLeave:this.hideTips}),(0,fI.jsx)(\"span\",{className:\"ellipsis-text\",ref:this.optTextDom,children:E})]}):this.props.haveShortcut?(0,fI.jsx)(fI.Fragment,{children:(0,fI.jsxs)(\"div\",{style:{display:\"inline-flex\",alignItems:\"center\"},children:[this.props.haveShortcut,(0,fI.jsx)(\"div\",{style:{position:\"absolute\",left:\"78px\"},children:E})]})}):(0,fI.jsx)(\"div\",{className:\"ellipsis-text\",ref:this.optTextDom,children:E});let _=\"raw-text \";if(this.props.haveIcon&&(_+=\"pt3 \"),this.props.prefix&&(_+=\"has-prefix \"),!this.props.isHidden){if(this.props.disabled)return(0,fI.jsxs)(\"div\",{className:_+\"option inactive hover-tip\",ref:this.optDom,onMouseEnter:this.mouseOver,onMouseLeave:this.hideTips,children:[a,this.props.prefix?(0,fI.jsx)(\"div\",{className:\"option-prefix\",children:this.props.prefix}):null]});var t=this.props.selected?\"option selected\":\"option\";t=_+t;var i=this.props.image;return(0,fI.jsxs)(\"div\",{className:\"\".concat(t,\" \").concat(i),onClick:this.selectOpt,ref:this.optDom,onMouseEnter:e=>{!this.props.tipIcon&&this.mouseOver(e)},onMouseLeave:()=>{!this.props.tipIcon&&this.hideTips()},style:this.props.haveShortcut?{padding:\"3px 0\",height:\"33px\",display:\"flex\",alignItems:\"center\"}:null,children:[a,this.props.prefix?(0,fI.jsx)(\"div\",{className:\"option-prefix\",children:this.props.prefix}):null]})}}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3975738,
+          "end": 3976069,
+          "source": "function PS(e){var E;let a=e.slotId;const _=null!==(E=DS[a])&&void 0!==E?E:null;return _?(0,fI.jsx)(fI.Fragment,{children:(0,fI.jsxs)(\"div\",{style:LS,children:[(0,fI.jsx)(\"img\",{src:dS,style:{display:\"bock\",margin:\"0 5px\",height:\"18px\"}}),\"+\",(0,fI.jsx)(\"img\",{src:_,style:{display:\"bock\",margin:\"0 5px\",height:\"22px\"}})]})}):null}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3976069,
+          "end": 3982544,
+          "source": "class pS extends g.Component{constructor(e){super(e),this.toggleDropdown=()=>{!this.props.allowOneItem&&this.state.disabled&&\"quickEffDrop\"!==this.props.name||this.setState({open:!this.state.open})},this.onMouseDown=e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},this.windowClick=e=>{null!==this.dropDom.current&&null!==this.optDom.current&&(this.dropDom.current.contains(e.target)||this.optDom.current.contains(e.target)||!this.state.open||this.setState({open:!1}))},this.onWindowBlur=()=>{var e;null!==(e=this.state)&&void 0!==e&&e.open&&this.setState({open:!1})},this.selectOption=e=>{this.setState({open:!1,showTip:!1}),this.props.selectOption(e)},this.hoverTips=(e,E,a)=>{let _=0,t=\"auto\",i=e.top+e.height;_=a.clientX+10,console.log(a.clientX,a.left),_+e.width>=window.outerWidth&&(_=\"auto\",t=window.outerWidth-a.clientX-10);let o={left:\"auto\"!==_?_+\"px\":_,right:\"auto\"!==t?t+\"px\":t,top:i+\"px\",position:\"fixed\",width:\"auto\",maxWidth:\"300px\",zIndex:\"150\",pointerEvents:\"none\"};this.setState({tips:E,showTip:!0,tipStyle:o})},this.hideTips=()=>{this.setState({showTip:!1})},this.dropDom=f().createRef(),this.optDom=f().createRef();this.state={dataSet:this.props.dataSet||[{name:\"\",content:\"\"}],open:!1,disabled:!1,value:this.props.value,openDirection:\"down\",showTip:!1,tips:\"\",tipStyle:{}}}componentDidMount(){window.addEventListener(\"click\",this.windowClick),window.addEventListener(\"blur\",this.onWindowBlur),this.state.dataSet.length<=1&&this.setState({disabled:!0})}componentWillUnmount(){window.removeEventListener(\"click\",this.windowClick,!1),window.removeEventListener(\"blur\",this.onWindowBlur)}componentDidUpdate(e,E){const a=this.state,_=a.open,t=a.openDirection;if(this.props.setDropdownOpen(this.state.open),_!==E.open)if(_){var i=this.dropDom.current.getBoundingClientRect().bottom+2,o=25*this.optDom.current.children.length+2;let e=Math.min(180,o),E=this.props.wrapperH>0?this.props.wrapperH:window.innerHeight;var n=\"dvDrop\"===this.props.name?22:0;i+e>E?this.setState({openDirection:\"up\"}):this.setState({openDirection:\"down\"}),this.dropDom.current.classList.add(\"expand\"),this.optDom.current.classList.add(\"expand\");let a=this.optDom.current.getElementsByClassName(\"selected\");a.length>0&&this.optDom.current.scrollTo(0,a[0].offsetTop)}else this.dropDom.current&&this.dropDom.current.classList.remove(\"expand\"),this.optDom.current&&this.optDom.current.classList.remove(\"expand\"),this.setState({showTip:!1});t!==E.openDirection&&(\"up\"===t?(this.optDom.current.style.top=\"unset\",this.optDom.current.style.bottom=\"28px\"):(this.optDom.current.style.bottom=\"unset\",this.optDom.current.style.top=n+27+\"px\"));const s=this.props,r=s.value,T=s.dataSet;r!==e.value&&this.setState({open:!1,disabeld:!1,value:r}),T!==e.dataSet&&(this.setState({dataSet:T}),this.setState({disabled:T.length<=1}))}hasKeys(e,E){return\"object\"===typeof e&&null!==e&&E.some(E=>E in e)}render(){var e,E,a,_,t,i,o;const n=this.state,s=n.dataSet,r=n.open,T=n.value,I=n.disabled,O=n.showTip,A=n.tips,S=n.tipStyle,l=this.selectOption,R=this.toggleDropdown,N=this.dropDom,d=this.optDom;if(0===s.length||-1===T||T>s.length-1)return null;var c=null;let u=null===(e=s[T])||void 0===e?void 0:e.icon;u&&u.includes(\"logo_armory\")&&u.endsWith(\"#hover\")&&(u=u.replace(\"#hover\",\"#link\")),r&&(c=s.map((e,E)=>{var a;return\"divider\"===e.name?(0,fI.jsx)(\"div\",{className:\"dropdown-divider\"},E):this.props.showNone||e.name!==bO.x3E||0!==E?(0,fI.jsx)(RS,{notLocalize:this.props.notLocalize,haveIcon:this.props.haveIcon,icon:e.icon,prefix:e.prefix,optId:E,content:this.hasKeys(e,[\"name\",\"content\"])?e.name?e.name:e.content:e,isHidden:e.isHidden,disabled:e.disabled,tips:e.tooltip?e.tooltip:e.disabled&&e.disabledTooltip?e.disabledTooltip:e.content,tipIcon:e.tipIcon,selected:T===E,selectOption:l,mouseOver:this.hoverTips,hideTips:this.hideTips,isOBMDropdown:this.props.isOBMDropdown,isShowTextActiveProfile:this.props.selectedProfileName&&e.name===this.props.selectedProfileName,haveShortcut:this.props.isControllerOBM?(0,fI.jsx)(PS,{slotId:null!==(a=e.slotId)&&void 0!==a?a:E+1}):null},E):null}));var C=(I||this.props.disable)&&\"quickEffDrop\"!==this.props.name?\"s3-dropdown disabled\":\"s3-dropdown\";this.props.allowOneItem&&(C=\"s3-dropdown\"),this.props.triggerHover&&(C+=\" surrounded-hover\");var D=null!==(E=null!==(a=null===(_=s[T])||void 0===_?void 0:_.name)&&void 0!==a?a:null===(t=s[T])||void 0===t?void 0:t.content)&&void 0!==E?E:s[T],L=\"GameModeDrop\"===this.props.name?\"gamemode\":\"\";this.props.haveIcon&&(C+=\" pt3\"),D===bO.x3E&&0===T&&this.props.placeholder&&(C+=\" placeholder\");let P=(0,fI.jsx)(nS.A,{text:D===bO.x3E&&0===T?this.props.placeholder:D});this.props.notLocalize&&(P=D);let p=this.props.haveIcon&&D!==bO.x3E?(0,fI.jsx)(fI.Fragment,{children:(0,fI.jsxs)(\"div\",{className:\"img-wrap\",children:[(0,fI.jsx)(\"img\",{src:u,alt:\"\"}),(0,fI.jsx)(\"span\",{children:P})]})}):this.props.isControllerOBM?(0,fI.jsx)(fI.Fragment,{children:(0,fI.jsxs)(\"div\",{style:{display:\"inline-flex\",alignItems:\"center\"},children:[(0,fI.jsx)(PS,{slotId:null!==(i=null===(o=s[T])||void 0===o?void 0:o.slotId)&&void 0!==i?i:1}),(0,fI.jsx)(\"div\",{style:{position:\"absolute\",left:\"78px\",width:\"134px\",overflow:\"hidden\",textOverflow:\"ellipsis\"},children:P})]})}):P,M=(0,G.A)({},this.props.extraStyle);this.state.open&&(M.zIndex||(M.zIndex=103));const m=this.props.isOBMDropdown?(0,fI.jsx)(\"div\",{className:\"loader show\",style:{backgroundImage:\"url(\".concat(NS,\")\")}}):(0,fI.jsx)(\"div\",{className:\"loader show\"});return(0,fI.jsxs)(\"div\",{className:\"dropdown-area \".concat(this.props.extraClass?\" \"+this.props.extraClass:\"\"),style:M,id:L,onMouseDown:this.onMouseDown,children:[this.props.syncing?m:null,(0,fI.jsxs)(\"div\",{className:C,ref:N,onClick:R,style:this.props.isControllerOBM?{padding:0}:null,children:[(0,fI.jsx)(\"div\",{className:\"selected raw-text \".concat(D===bO.x3E&&0===T?\"placeholder\":\"\",\" \").concat(this.props.labelPrefix?\"selected-has-prefix\":\"\"),style:this.props.isControllerOBM?{height:\"25px\",width:\"228px\",display:\"flex\",alignItems:\"center\"}:null,children:p}),this.props.labelPrefix?(0,fI.jsx)(\"div\",{className:\"label-prefix\",children:this.props.labelPrefix}):null,(0,fI.jsx)(\"div\",{className:\"icon expand\"})]}),(0,fI.jsx)(\"div\",{className:\"s3-options \".concat(void 0===this.props.unsetZ||this.props.unsetZ?\"unsetZ\":\"\",\"  flex\"),ref:d,children:c}),O&&A?(0,H.createPortal)((0,fI.jsx)(\"div\",{className:\"\".concat(O?\"drop-tips on\":\"drop-tips\"),style:S,children:(0,fI.jsx)(nS.A,{text:A})}),document.body):null]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3985450,
+          "end": 3986316,
+          "source": "class bS extends g.PureComponent{constructor(){super(...arguments),this.selectOption=e=>E=>{this.props.changePortMode({id:e,isStripMode:!E})}}render(){const e=this.props,E=e.id,a=e.isStripMode,_=e.index,t=e.maxLedSupported,i=(t===BS?[bO.XjP,bO.yAd]:[bO.XjP]).map(e=>({name:(0,OI.getTextItem)(e),content:(0,OI.getTextItem)(e)}));return(0,fI.jsxs)(\"div\",{className:\"device-type-container\",children:[0===_&&(0,fI.jsxs)(g.Fragment,{children:[(0,fI.jsxs)(\"div\",{className:\"label-common\",children:[(0,fI.jsx)(nS.A,{text:bO.oSy}),\":\"]}),(0,fI.jsx)(MS,{extraClass:\"device-type-dropdown\",name:\"device-type\",dataSet:i,value:Number(!a),selectOption:this.selectOption(E),allowOneItem:!0})]}),0!==_&&(0,fI.jsx)(g.Fragment,{children:(0,fI.jsxs)(\"div\",{className:\"device-type-name\",children:[a?(0,fI.jsx)(nS.A,{text:bO.XjP}):(0,fI.jsx)(nS.A,{text:bO.yAd}),\" \".concat(_+1)]})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3966762,
+          "end": 3972508,
+          "source": "class AS extends g.Component{constructor(e){super(e),this.handleClick=()=>{this.isRegisterEvent||(this.inputDom.current.focus(),this.inputDom.current.select(),this.setState({isFocused:!0}),window.addEventListener(\"mousewheel\",this.sliderOnMouseWheel,{passive:!1}),this.isRegisterEvent=!0)},this.sliderOnMouseWheel=e=>{e.preventDefault();const E=this.props,a=E.value,_=E.minValue;a>=E.maxValue&&e.wheelDelta>0||a<=_&&e.wheelDelta<0||(e.wheelDelta>0?this.volumeUp():this.volumeDown())},this.roundValue=(e,E)=>{let a=e;for(let _=0;E[_]<e;_++)a=E[_+1];return a},this.handleChange=e=>{let E=this.props.allowDecimals?/^-?\\d+(\\.\\d{0,3})?$/:/^-?\\d+$/,a=e.target.value;this.props.valuePrefix&&(a=a.replace(new RegExp(\"^\"+this.props.valuePrefix.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")),\"\")),this.props.unit&&(a=a.replace(new RegExp(\"\\\\s*\"+this.props.unit.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")+\"$\"),\"\")),(\"-\"===a||\"\"===a||E.test(a))&&(this.props.dataset&&!this.props.dataset.includes(a)&&(a=this.roundValue(a,this.props.dataset)),this.setState({value:a},()=>{this.props.allowLiveUpdate&&this.sendToParent(a)}))},this.sendToParent=e=>{console.log(\"stepper sendToParent\",e),this.props.setParentState(e,this.isRegisterEvent)},this.parseInput=e=>(e=this.props.allowDecimals?parseFloat(e):parseInt(e),Number.isNaN(e)&&(e=0),this.props.allowDecimals||e%this.props.stepValue&&(e=Math.ceil(e/this.props.stepValue)*this.props.stepValue),e>this.props.maxValue&&(e=this.props.maxValue),e<this.props.minValue&&(e=this.props.minValue),e),this.handleBlur=e=>{this.isRegisterEvent=!1,this.setState({isFocused:!1}),window.removeEventListener(\"mousewheel\",this.sliderOnMouseWheel);let E=e.target.value;this.props.valuePrefix&&(E=E.replace(new RegExp(\"^\"+this.props.valuePrefix.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")),\"\")),this.props.unit&&(E=E.replace(new RegExp(\"\\\\s*\"+this.props.unit.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\")+\"$\"),\"\"));var a=this.parseInput(E);if(this.props.allowDecimals){const e=1e-10,E=Math.round(a/this.props.stepValue)*this.props.stepValue;Math.abs(a-E)>e&&(a=Math.ceil(a/this.props.stepValue)*this.props.stepValue),this.props.roundUpDecimals||(a=parseFloat(a).toFixed(3))}this.setState({value:a},()=>{console.log(this.state.value),this.isKeyInput=!0,this.sendToParent(a)})},this.handleKeyDown=e=>{38===e.keyCode&&this.volumeUp(),40===e.keyCode&&this.volumeDown(),13!==e.keyCode&&27!==e.keyCode||this.inputDom.current.blur()},this.volumeUp=()=>{var e=this.state.value;if(this.props.dataset){let E=this.props.dataset?this.props.dataset.findIndex(e=>e===this.props.value):null;if(null===E)return;E<this.props.dataset.length&&E++,e=this.props.dataset[E]}else e=this.props.allowDecimals?(parseFloat(e)+this.props.stepValue).toFixed(3):e+this.props.stepValue;e=this.parseInput(e),this.sendToParent(e)},this.volumeDown=()=>{var e=this.state.value;if(this.props.dataset){let E=this.props.dataset?this.props.dataset.findIndex(e=>e===this.props.value):null;if(null===E)return;E>0&&E--,e=this.props.dataset[E]}else e=this.props.allowDecimals?(parseFloat(e)-this.props.stepValue).toFixed(3):e-this.props.stepValue;e=this.parseInput(e),this.sendToParent(e)},this._onMouseDown=e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},this.handleContinuous=e=>{this.intervalId=setInterval(()=>{e()},300)},this.handleStopContinuous=()=>clearInterval(this.intervalId),this.onMouseDown=e=>E=>{2!==E.button?(e(),this.handleStopContinuous(),this.handleContinuous(e)):E.preventDefault()},this.onMouseUp=()=>e=>{2!==e.button?this.handleStopContinuous():e.preventDefault()},this.onMouseEnter=()=>{this.setState({isHover:!0})},this.onMouseLeave=()=>{this.setState({isHover:!1})},this.state={active:this.props.active,value:this.props.value,isHover:!1,isFocused:!1},this.inputDom=f().createRef(),this.iconDom=f().createRef(),this.intervalId=null,this.isRegisterEvent=!1}componentWillUnmount(){clearInterval(this.intervalId)}componentDidMount(){if(this.props.allowDecimals&&!this.props.roundUpDecimals){let e=parseFloat(this.props.value).toFixed(3);this.setState({value:e})}}componentDidUpdate(e){const E=this.props,a=E.value,_=E.active,t=E.maxValue,i=E.minValue;if(_!==e.active&&this.setState({active:_}),a!==e.value||this.isKeyInput){this.isKeyInput=!1;let e=a;!this.props.allowDecimals||this.isRegisterEvent||this.props.roundUpDecimals||(e=parseFloat(e).toFixed(3)),this.setState({value:e}),a!==i&&a!==t||!this.intervalId||clearInterval(this.intervalId)}}render(){const e=this.state,E=e.active,a=e.value,_=e.isHover,t=e.isFocused,i=this.props,o=i.extraClass,n=i.maxLength,s=i.minValue,r=i.maxValue,T=a<0,I=this.props.hideUnitOnInteract&&(_||t),O=this.props.unit&&!I?this.props.unit:\"\";let A=T?n+1:n;this.props.valuePrefix&&(A+=this.props.valuePrefix.length),O&&(A+=O.length+1);let S=\"stepper \".concat(E?\"\":\"disabled\"),l=\"\".concat(this.props.valuePrefix||\"\").concat(a);return O&&(l+=\" \".concat(O)),S+=o?\" \"+o:\" \",(0,fI.jsxs)(\"div\",{className:S,style:{marginBottom:\"10px\"},onMouseEnter:this.onMouseEnter,onMouseLeave:this.onMouseLeave,children:[(0,fI.jsx)(\"input\",{type:\"text\",onDragStart:e=>e.preventDefault(),maxLength:A,value:\"\".concat(a).concat(_||t||!this.props.unit?\"\":\" \".concat(this.props.unit)),ref:this.inputDom,onKeyDown:this.handleKeyDown,onClick:this.handleClick,onChange:this.handleChange,onBlur:this.handleBlur,onMouseDown:this._onMouseDown,onFocus:this._onMouseDown}),(0,fI.jsx)(\"div\",{className:\"icon spinner up\".concat(a===r?\" disabled\":\"\"),onMouseDown:this.onMouseDown(this.volumeUp),onMouseUp:this.handleStopContinuous,onMouseLeave:this.handleStopContinuous}),(0,fI.jsx)(\"div\",{className:\"icon spinner down\".concat(a===s?\" disabled\":\"\"),onMouseDown:this.onMouseDown(this.volumeDown),onMouseUp:this.handleStopContinuous,onMouseLeave:this.handleStopContinuous})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3958622,
+          "end": 3959460,
+          "source": "class YA extends f().Component{constructor(e){super(e),this.handleMouseMove=e=>{this.raf&&cancelAnimationFrame(this.raf),this.raf=requestAnimationFrame(()=>{this.setState({x:e.clientX,y:e.clientY,visible:!0})})},this.handleMouseLeave=()=>{this.raf&&cancelAnimationFrame(this.raf),this.setState({visible:!1})},this.state={x:0,y:0,visible:!1},this.raf=null}componentDidMount(){window.addEventListener(\"mousemove\",this.handleMouseMove,{passive:!0}),window.addEventListener(\"mouseout\",this.handleMouseLeave,{passive:!0})}componentWillUnmount(){this.raf&&cancelAnimationFrame(this.raf),window.removeEventListener(\"mousemove\",this.handleMouseMove),window.removeEventListener(\"mouseout\",this.handleMouseLeave)}render(){const e=this.state,E=e.x,a=e.y,_=e.visible;return(0,fI.jsx)(fI.Fragment,{children:this.props.children({x:E,y:a,visible:_})})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3959472,
+          "end": 3959841,
+          "source": "class wA extends g.Component{constructor(e){super(e),this.el=document.createElement(\"div\")}componentDidMount(){const e=this.props.containerId;let E;e&&(E=document.getElementById(e)),E||(E=document.body),this.container=E,E&&E.appendChild(this.el)}componentWillUnmount(){this.container.removeChild(this.el)}render(){return(0,H.createPortal)(this.props.children,this.el)}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3960454,
+          "end": 3963909,
+          "source": "class jA extends g.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const E=null===(e=this.tooltip)||void 0===e?void 0:e.current,a=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(E){const e=E.getBoundingClientRect();if(this.state.position===kA&&\"number\"===typeof this.state.style.left&&this.props.target){var _;const a=(null===(_=E.firstElementChild)||void 0===_?void 0:_.getBoundingClientRect().width)||e.width,t=XA(this.props.target,xA);let i=t.x;i+a>window.innerWidth-8?i=window.innerWidth-8-a:i<8&&(i=8),this.setState(e=>({style:(0,G.A)((0,G.A)({},e.style),{},{left:i+a-t.width})}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(E=>({style:(0,G.A)((0,G.A)({},E.style),{},{left:E.style.left+window.innerWidth-8-e.right})}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(E=>({style:(0,G.A)((0,G.A)({},E.style),{},{left:E.style.left+8-e.left})}));else if(e.right>window.innerWidth){const e=a.findIndex(e=>this.state.position===e);this.setState({position:a[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let E=e.props.position;const a=e.props.target;console.log(a);let _={};if(a){const e=XA(a,E);_={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:E,style:_},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,fI.jsx)(WA,{children:e=>{let E=e.x,a=e.y,_=e.visible;const t=window.innerWidth,i=window.innerHeight,o=Math.min(320,320),n=o/2,s=a+25+40<i?a+25:Math.max(8,a-40-8),r=Math.min(Math.max(E+50,8+n),t-8-n);return _&&(0,fI.jsx)(\"div\",{style:{position:\"fixed\",top:s,left:r,maxWidth:o,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||kA,style:{}},this.tooltip=(0,g.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const E=this.props.isMounted;e.isMounted!==E&&(E?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const e=this.tooltip,E=this.showTooltip,a=this.hideTooltip,_=this.renderTooltipWithCursor,t=this.state,i=t.shouldRender,o=t.showClassName,n=t.position,s=t.style,r=this.props,T=r.isMounted,I=r.className,O=r.children,A=r.target,S=r.isFollowCursor;if(void 0!==S&&S&&T)return(0,fI.jsx)(KA,{children:_()});const l=(0,fI.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof T?E:()=>{},onMouseLeave:\"boolean\"!==typeof T?a:()=>{},className:\"tooltip-razer \".concat(n,\" \").concat(o,\" \").concat(I),style:(0,G.A)((0,G.A)({},s),{},{pointerEvents:A?\"none\":\"inherit\"}),children:i?(0,fI.jsx)(\"div\",{ref:e,className:\"main\",children:(0,fI.jsx)(\"div\",{className:\"wrapper\",children:O})}):null});return A?(0,fI.jsx)(KA,{children:l}):l}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3964743,
+          "end": 3965661,
+          "source": "e=>{let E=e.active,a=e.className,_=e.value;const t=(0,te.useSelector)(e=>e.languageReducer.lang);return(0,g.useEffect)(()=>{},[E,t]),E?(0,fI.jsx)(\"div\",{style:{whiteSpace:\"pre-line\"},children:(0,fI.jsxs)(\"div\",{style:{position:\"relative\",display:\"flex\"},children:[(0,fI.jsx)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:a,children:(0,fI.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\",fill:\"#707070\"})}),(0,fI.jsx)(ZA,{position:\"bottom-right\",children:(0,fI.jsx)(\"div\",{dangerouslySetInnerHTML:{__html:(0,OI.getTextItem)(bO.vml,{ledCount:'<span style=\"color:#44d62c\">'.concat(_,\"</span>\")})}})})]})}):null}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3983058,
+          "end": 3985301,
+          "source": "class FS extends g.PureComponent{constructor(e){super(e),this.checkStripValues=e=>{let E=e.portId,a=e.stripId,_=e.ports,t=e.isStripMode,i=e.ledValue;if(t){var o,n,s;const e=(null===(o=_.find(e=>e.id===E))||void 0===o||null===(n=o.argb)||void 0===n||null===(s=n.numberOfLeds)||void 0===s?void 0:s.strip)||[];if(4===e.length&&e[3].id===a&&i>=e[1].value)return{value:e[1].value,disabled:!0}}return{value:null,disabled:!1}},this.handleChangeNumberOfLeds=e=>{let E=e;if(Date.now()-this.previousClickTime<300)return!1;this.previousClickTime=Date.now();const a=this.props,_=a.portId,t=a.stripId,i=a.changeNumberOfLeds,o=a.ports,n=a.isStripMode;if(n||(E=gS[e]),n){var s,r,T;const e=(null===(s=o.find(e=>e.id===_))||void 0===s||null===(r=s.argb)||void 0===r||null===(T=r.numberOfLeds)||void 0===T?void 0:T.strip)||[];4===e.length&&e[3].id&&e[1].id===t&&e[1].value>=E&&e[1].value===e[3].value&&i({portId:_,stripId:e[3].id,value:E})}i({portId:_,stripId:t,value:E})},this.renderStepperInput=()=>{const e=this.props,E=e.ledValue,a=e.isStripMode,_=e.maxLedSupported;if(!a){const e=gS.map(e=>({name:String(e),content:String(e)})),a=gS.findIndex(e=>e===E)||0;return(0,fI.jsx)(MS,{extraClass:\"number-led-stepper\",dataSet:e,value:a,selectOption:this.handleChangeNumberOfLeds})}const t=this.checkStripValues((0,G.A)({},this.props)),i=t.value;let o=\"number-led-stepper number-led-stepper--stepper \";(t.disabled||E===_)&&(o+=\"number-led-stepper--disabled-increase \"),E===fS&&(o+=\"number-led-stepper--disabled-decrease \");const n=_?Math.max(String(_).length,2):2;return(0,fI.jsx)(SS,{value:E,active:!0,maxValue:i||_,minValue:fS,stepValue:1,extraClass:o,setParentState:this.handleChangeNumberOfLeds,maxLength:n})},this.previousClickTime=0,this.previousPortValue=[]}render(){const e=this.props,E=e.index,a=e.detectedLedCount,_=e.numberOfBends;return(0,fI.jsxs)(\"div\",{className:\"number-led-container \".concat(0!==E?\"number-led-container--with-closed\":\"\"),children:[0===E&&(0,fI.jsxs)(\"div\",{className:\"label-common\",children:[(0,fI.jsx)(nS.A,{text:bO.uJp}),\":\"]}),(0,fI.jsxs)(\"div\",{className:\"number-led-wrapper\",children:[this.renderStepperInput(),\"MAINBOARD\"!==_T.DeviceInfo.subCategory&&(0,fI.jsx)(sS,{value:a,active:1===_,className:\"icon-led-detection\"})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3986438,
+          "end": 3987145,
+          "source": "class YS extends g.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.removeStripBend,t=e.isStripMode?vS:HS;return(0,fI.jsxs)(\"svg\",{className:\"icon-close-glitter\",width:20,height:20,viewBox:\"0 0 20 20\",onClick:()=>_({portId:E,stripId:a,type:t}),children:[(0,fI.jsx)(\"defs\",{children:(0,fI.jsx)(\"clipPath\",{id:\"a\",children:(0,fI.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,fI.jsx)(\"g\",{children:(0,fI.jsx)(\"path\",{d:\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\",fill:\"#ccc\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3987213,
+          "end": 3987641,
+          "source": "class wS extends g.PureComponent{render(){const e=this.props,E=e.portId,a=e.stripId,_=e.isStripMode,t=e.ledValue,i=e.numberOfBends,o=e.detectedLedCount,n=e.index;return(0,fI.jsxs)(\"div\",{className:\"port-item\",children:[(0,fI.jsx)(VS,{id:E,isStripMode:_,index:n}),(0,fI.jsx)(yS,{portId:E,stripId:a,isStripMode:_,ledValue:t,numberOfBends:i,detectedLedCount:o,index:n}),0!==n&&(0,fI.jsx)(WS,{portId:E,stripId:a,isStripMode:_})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3987653,
+          "end": 3988158,
+          "source": "class zS extends g.PureComponent{render(){return(0,fI.jsxs)(\"svg\",(0,G.A)((0,G.A)({width:14,height:14,viewBox:\"0 0 14 14\"},this.props),{},{children:[(0,fI.jsx)(\"defs\",{children:(0,fI.jsx)(\"clipPath\",{id:\"a\",children:(0,fI.jsx)(\"path\",{fill:\"none\",d:\"M0 0H14V14H0z\"})})}),(0,fI.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,fI.jsx)(\"path\",{d:\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\",fill:\"#44d62c\"})})]}))}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3988196,
+          "end": 3989728,
+          "source": "class jS extends g.PureComponent{constructor(e){super(e),this.updateName=(e,E)=>{const a=this.props,_=a.changePortName,t=a.portName;this.setState({isEditing:!1}),E&&E!==t&&_({id:e,name:E})},this.handleClickOutside=e=>{var E;if(this.refInput&&(null===(E=XS()(this.refInput,\"current\",[]))||void 0===E||!E.contains(e.target))){const e=XS()(this.refInput,\"current.value\",\"\");this.updateName(this.props.portId,e)}},this.handleSwitchView=()=>{this.setState({isEditing:!0},()=>{this.refInput.current.focus(),this.refInput.current.select()})},this.onKeyDown=e=>E=>{if(13===E.keyCode){const a=E.target.value;this.updateName(e,a)}},this.state={isEditing:!1},this.refInput=f().createRef(),this.handleClickOutside=this.handleClickOutside.bind(this)}componentDidMount(){document.addEventListener(\"mousedown\",this.handleClickOutside)}componentWillUnmount(){document.removeEventListener(\"mousedown\",this.handleClickOutside)}render(){const e=this.state.isEditing,E=this.props,a=E.portName,_=E.portId;return(0,fI.jsxs)(\"div\",{className:\"port-name-container\",children:[e&&(0,fI.jsx)(\"input\",{ref:this.refInput,defaultValue:a,maxLength:32,onBlur:this.onKeyDown(_),onKeyDown:this.onKeyDown(_),className:\"port-input\"}),!e&&(0,fI.jsxs)(\"div\",{className:\"port-name-and-icon\",onClick:this.handleSwitchView,children:[(0,fI.jsx)(\"span\",{className:\"port-name\",children:a}),(0,fI.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,fI.jsx)(kS,{className:\"port-edit-icon\"}),(0,fI.jsx)(ZA,{position:\"bottom\",children:(0,fI.jsx)(nS.A,{text:bO.Pie})})]})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3965662,
+          "end": 3966333,
+          "source": "class rS extends g.PureComponent{constructor(){super(...arguments),this.onClick=e=>{e.preventDefault(),this.props.openChromaStudio&&this.props.openChromaStudio()}}render(){const e=this.props.handleDismiss;return(0,fI.jsxs)(\"div\",{className:\"chroma-studio-message\",children:[(0,fI.jsx)(\"div\",{children:(0,fI.jsx)(nS.A,{text:bO.isz})}),(0,fI.jsxs)(\"div\",{className:\"chroma-studio-wrapper\",children:[(0,fI.jsxs)(\"div\",{className:\"chroma-studio-message-btn\",onClick:this.onClick,children:[(0,fI.jsx)(\"span\",{className:\"chroma-studio-icon\"}),(0,fI.jsx)(nS.A,{text:bO.jP})]}),(0,fI.jsx)(\"div\",{className:\"dismiss-btn\",onClick:e,children:(0,fI.jsx)(nS.A,{text:bO.dH1})})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3958247,
+          "end": 3958610,
+          "source": "class bA extends g.PureComponent{render(){return(0,fI.jsx)(\"svg\",(0,G.A)((0,G.A)({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:(0,fI.jsx)(\"path\",{d:\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\",fill:\"#fd8611\"})}))}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3966345,
+          "end": 3966667,
+          "source": "class IS extends g.PureComponent{render(){return(0,fI.jsxs)(\"div\",{className:\"port-warning\",children:[(0,fI.jsx)(\"div\",{children:(0,fI.jsx)(VA,{})}),(0,fI.jsxs)(\"div\",{children:[(0,fI.jsx)(nS.A,{text:bO.TTS,data:{maxLed:this.props.maxLedSupported}}),(0,fI.jsx)(\"span\",{children:\" \"}),(0,fI.jsx)(nS.A,{text:bO.Y9x})]})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3989822,
+          "end": 3994833,
+          "source": "class JS extends g.PureComponent{constructor(e){super(e),this.handleDismissMessage=e=>{const E=this.props,a=E.value;(0,E.updatePortChromaMessage)({id:a.id,isActive:e})},this.handleAddBend=e=>()=>{const E=this.props.value.id;this.props.addStripBend({id:E,type:e})},this.checkChromaInstalled=()=>{const e=window.localStorage.getItem(yI.Vn6)||[];if(Array.isArray(e)&&e.length>0){const E=e.some(e=>e.name===yI.A8P);this.setState({isChromaStudioInstalled:E,isChromaAppInstalled:!0})}else this.setState({isChromaStudioInstalled:!1,isChromaAppInstalled:!1})},this.getTab=async function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";try{if(\"function\"===typeof bI.A.getWindowServiceClients){const E=await bI.A.getWindowServiceClients();return JSON.parse(E).find(E=>E.windowName===e||E.url.includes(e))}return null}catch(E){return null}},this.focusWindow=e=>{\"function\"===typeof bI.A.activateWindowServiceClient&&bI.A.activateWindowServiceClient(e)},this.openDevicesModules=async()=>{if(await this.getTab(yI.HqM))this.focusWindow(yI.HqM);else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,yI.HqM,yI.oj6)}},this.openChromaStudio=async()=>{const e=await this.getTab(yI.HqM),E=await this.getTab(yI.A8P);if(e){const e=await bI.A.callElectronAction({action:\"getWindowStatus\",windowName:yI.HqM});e.isVisible&&!e.isMinimized||this.focusWindow(yI.HqM),E?this.focusWindow(yI.A8P):bI.A.callElectronAction({action:\"activateWindowServiceClient\",windowName:yI.HqM,subTab:bO.WqG})}else{const e=\"focus-module-installer\";window.open(\"/chroma-app/dashboard/index.html?action=\"+e,yI.HqM,yI.oj6)}},this.renderLedImages=e=>{let E=e.isStripMode,_=e.ledValues;if(!E)return(0,fI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(2966),alt:\" \"});switch(_.length){case 2:return(0,fI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(941),alt:\" \"});case 3:return(0,fI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(7408),alt:\" \"});case 4:return(0,fI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(8519),alt:\" \"});default:return(0,fI.jsx)(\"img\",{width:100,height:100,loading:\"lazy\",src:a(5766),alt:\" \"})}},this.renderPortItem=e=>{let E=e.id,a=e.numberOfLeds,_=e.isStripMode,t=e.ledValues;return a&&E&&t&&t.length?t.map((e,t)=>(0,fI.jsx)(KS,{portId:E,stripId:e.id,isStripMode:_,numberOfBends:_?a[vS].length:a[HS].length,ledValue:e.value,detectedLedCount:a.detectedLedCount,index:t},t.toString())):(0,fI.jsx)(fI.Fragment,{})},this.state={isChromaStudioInstalled:!1,isChromaAppInstalled:!1}}componentDidMount(){this.checkChromaInstalled(),window.addEventListener(\"storage\",this.checkStorageChanges)}componentDidUpdate(e){const E=this.props.value,a=e.value,_=(null===E||void 0===E?void 0:E.argb)||{},t=(null===a||void 0===a?void 0:a.argb)||{};_.chromaRequireDismiss&&_.isStripMode!==t.isStripMode&&this.handleDismissMessage(!1);const i=null===_||void 0===_?void 0:_.numberOfLeds,o=null===t||void 0===t?void 0:t.numberOfLeds;if(_.chromaRequireDismiss&&!QS()(i,o)){const e=_.isStripMode?vS:HS,E=(null===i||void 0===i?void 0:i[e])||[],a=(null===o||void 0===o?void 0:o[e])||[];E.reduce((e,E)=>e+E.value,0)!==a.reduce((e,E)=>e+E.value,0)&&this.handleDismissMessage(!1)}}componentWillUnmount(){window.removeEventListener(\"storage\",this.checkStorageChanges)}render(){const e=this.handleDismissMessage,E=this.renderLedImages,a=this.handleAddBend,_=this.openChromaStudio,t=this.props.maxLedSupported,i=this.props.value,o=i.name,n=i.id,s=i.argb,r=i.isActive,T=s.chromaRequireDismiss,I=s.numberOfLeds,O=s.isStripMode,A=this.state.isChromaAppInstalled,S=()=>{const e=O?vS:HS;return I[e]?I[e].reduce((e,E)=>e+E.value,0):0},l=O?I[vS]:I[HS];return r?(0,fI.jsxs)(\"div\",{className:\"port-container widget\",children:[(0,fI.jsx)(\"div\",{className:\"help\"}),(0,fI.jsx)(\"div\",{className:\"tip\",children:(0,fI.jsx)(nS.A,{text:bO.gt9})}),(0,fI.jsx)(ZS,{portName:o,portId:n}),(0,fI.jsxs)(\"div\",{className:\"port-items-led-image\",children:[(0,fI.jsxs)(\"div\",{className:\"port-infomation\",children:[this.renderPortItem({id:n,numberOfLeds:I,isStripMode:O,ledValues:l}),O&&Array.isArray(l)&&l.length<4&&(0,fI.jsx)(\"div\",{className:\"port-add-bend\",onClick:a(vS),children:(0,fI.jsx)(\"span\",{className:\"underline\",children:(0,fI.jsx)(nS.A,{text:bO.qir})})}),!O&&(0,fI.jsx)(\"div\",{className:\"port-add-bend \".concat(S()>=t&&\"disabled\"),onClick:a(HS),children:(0,fI.jsx)(\"span\",{className:\"underline\",children:(0,fI.jsx)(nS.A,{text:bO.UPK})})}),Array.isArray(l)&&l.length>1&&(0,fI.jsxs)(\"div\",{className:\"total-LED-count\",children:[(0,fI.jsx)(\"div\",{className:\"label-total-led-count\",children:(0,fI.jsx)(nS.A,{text:bO.rt0})}),(0,fI.jsx)(\"div\",{className:\"value-total-led-count\",children:S()}),(0,fI.jsx)(sS,{value:I.detectedLedCount,active:!0,className:\"icon-led-detection\"})]})]}),(0,fI.jsx)(\"div\",{className:\"led-img-container\",children:E({isStripMode:O,ledValues:l})})]}),!T&&!A&&S()!==I.detectedLedCount&&(0,fI.jsx)(TS,{openChromaStudio:_,handleDismiss:()=>e(!0)}),t&&S()>t&&(0,fI.jsx)(OS,{})]}):null}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3995011,
+          "end": 3996583,
+          "source": "e=>{let E=e.status,a=e.handleDismiss,_=e.overlay;const t=(0,g.useState)({dismissed:!1}),i=(0,Vr.A)(t,2),o=i[0],n=i[1],s=(0,g.useCallback)(()=>{a&&a(),n(e=>(0,G.A)((0,G.A)({},e),{},{dismissed:!0}))},[]),r=(0,g.useMemo)(()=>{switch(E){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.zO_})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.VK})})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.qQf})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.Uoq})}),(0,fI.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:s,children:(0,fI.jsx)(nS.A,{text:bO.dH1})})]});case el:return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.Y_b})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.lVB})}),(0,fI.jsxs)(\"ul\",{children:[(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.sxP})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.lAp})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.eho})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.lPx})})]})]});default:return}},[E,a]);return!o.dismissed&&E?(0,fI.jsx)(\"div\",{className:\"warning-container \".concat(_?\"warning-container--overlay\":\"\"),children:r}):(0,fI.jsx)(fI.Fragment,{})}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3995000,
+          "end": 3996584,
+          "source": "(0,g.memo)(e=>{let E=e.status,a=e.handleDismiss,_=e.overlay;const t=(0,g.useState)({dismissed:!1}),i=(0,Vr.A)(t,2),o=i[0],n=i[1],s=(0,g.useCallback)(()=>{a&&a(),n(e=>(0,G.A)((0,G.A)({},e),{},{dismissed:!0}))},[]),r=(0,g.useMemo)(()=>{switch(E){case\"GLITTER_ERROR_NO_PORT_ACTIVE\":return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.zO_})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.VK})})]});case\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\":return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.qQf})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.Uoq})}),(0,fI.jsx)(\"div\",{className:\"warning-container__dismiss\",onClick:s,children:(0,fI.jsx)(nS.A,{text:bO.dH1})})]});case el:return(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:(0,fI.jsx)(nS.A,{text:bO.Y_b})}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:(0,fI.jsx)(nS.A,{text:bO.lVB})}),(0,fI.jsxs)(\"ul\",{children:[(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.sxP})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.lAp})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.eho})}),(0,fI.jsx)(\"li\",{children:(0,fI.jsx)(nS.A,{text:bO.lPx})})]})]});default:return}},[E,a]);return!o.dismissed&&E?(0,fI.jsx)(\"div\",{className:\"warning-container \".concat(_?\"warning-container--overlay\":\"\"),children:r}):(0,fI.jsx)(fI.Fragment,{})})"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3957132,
+          "end": 3957791,
+          "source": "class BA extends g.PureComponent{render(){return(0,fI.jsxs)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"20\",height:\"20\",viewBox:\"0 0 20 20\",className:\"icon-detection--active\",children:[(0,fI.jsxs)(\"g\",{className:\"detect-a\",children:[(0,fI.jsx)(\"rect\",{width:\"20\",height:\"20\",className:\"detect-d\",rx:\"2\"}),(0,fI.jsx)(\"rect\",{width:\"10\",height:\"10\",x:\"5\",y:\"5\",className:\"detect-e\"})]}),(0,fI.jsx)(\"path\",{d:\"M16 16h-2v2h4v-4h-2zM14 2v2h2v2h2V2zM4 14H2v4h4v-2H4zM2 6h2V4h2V2H2zM11.621 12.146H8.37L7.752 14H5.78l3.35-9h1.718l3.368 9h-1.971zm-2.751-1.5h2.25L9.99 7.275z\",className:\"detect-b\"}),(0,fI.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3956533,
+          "end": 3957132,
+          "source": "class vA extends g.PureComponent{render(){return(0,fI.jsxs)(\"svg\",{width:20,height:20,viewBox:\"0 0 20 20\",className:\"icon-detection \".concat(!this.props.isFirstRender&&\"icon-detection--animation\"),children:[(0,fI.jsx)(\"rect\",{width:\"20\",height:\"20\",rx:\"2\"}),(0,fI.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-c\"}),(0,fI.jsx)(\"path\",{d:\"M0 0H20V20H0z\",className:\"detect-f\"}),(0,fI.jsx)(\"path\",{d:\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zM11.983 12.734H8.009L7.254 15h-2.41l4.1-11h2.1l4.117 11h-2.41zM8.621 10.9h2.75L9.989 6.78z\",fill:\"#ccc\",className:\"detect-b\"})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3957791,
+          "end": 3958235,
+          "source": "class FA extends g.PureComponent{render(){return(0,fI.jsxs)(\"svg\",(0,G.A)((0,G.A)({width:20,height:20,viewBox:\"0 0 20 20\"},this.props),{},{children:[(0,fI.jsx)(\"defs\",{children:(0,fI.jsx)(\"clipPath\",{id:\"a\",children:(0,fI.jsx)(\"path\",{fill:\"none\",d:\"M0 0H20V20H0z\"})})}),(0,fI.jsx)(\"g\",{clipPath:\"url(#a)\",children:(0,fI.jsx)(\"path\",{d:\"M15.649 4.351A7.994 7.994 0 1017.931 11H15.91a6.044 6.044 0 11-1.687-5.223L11 9h7V2z\",fill:\"#ccc\"})})]}))}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 3996711,
+          "end": 4000819,
+          "source": "class tl extends g.PureComponent{constructor(e){super(e),this.toggleTooltipDetection=e=>{this.setState({toggleTooltipDetection:e})},this.toggleAutoDetection=()=>{this.props.externalPowerConnected&&(this.props.changeAutoDetectionStatus(!this.props.isAutoDetectionEnable),this.setState({triggerAnimation:!0}))},this.toggleTooltipRefresh=e=>{this.setState({toggleTooltipRefresh:e})},this.handleRefresh=e=>{this.props.externalPowerConnected&&(e.preventDefault(),this.setState({toggleTooltipRefresh:!1}),this.props.refreshPorts())},this.handleDismiss=()=>{this.props.warningType&&this.props.changeErrorStatus(null)},this.checkExceedPerPort=e=>{if(!e)return!1;const E=e.reduce((e,E)=>{let a=E.argb,_=E.isActive;if(!a||!_)return e;const t=a.isStripMode?\"strip\":\"fan\";return e+a.numberOfLeds[t].reduce((e,E)=>e+E.value,0)},0);return E>240},this.renderPorts=(e,E)=>e&&e.length&&!E?(0,fI.jsxs)(\"div\",{className:\"customize-container\",children:[(0,fI.jsxs)(\"div\",{className:\"customize-left\",children:[(0,fI.jsx)($S,{value:e[3]}),(0,fI.jsx)($S,{value:e[4]}),(0,fI.jsx)($S,{value:e[5]})]}),(0,fI.jsxs)(\"div\",{className:\"customize-right\",children:[(0,fI.jsx)($S,{value:e[0]}),(0,fI.jsx)($S,{value:e[1]}),(0,fI.jsx)($S,{value:e[2]})]})]}):(0,fI.jsx)(fI.Fragment,{}),this.renderMsgBox=e=>{let E=e.externalPowerConnected,a=e.warningType,_=e.isExceedMaximumLedPerDevice;return E?a?(0,fI.jsx)(al,{status:a,handleDismiss:this.handleDismiss,overlay:!0}):_?(0,fI.jsx)(al,{status:\"GLITTER_ERROR_LED_LIMIT_EXCEEDED\",handleDismiss:this.handleDismiss,overlay:!0}):(0,fI.jsx)(fI.Fragment,{}):(0,fI.jsxs)(\"div\",{className:\"warning-container warning-container--overlay\",children:[(0,fI.jsx)(\"p\",{className:\"warning-container__header\",children:OI.getTextItem(bO.D7H)}),(0,fI.jsx)(\"div\",{className:\"warning-container__msg\",children:OI.getTextItem(bO.rW1)})]})},this.state={autoDetection:!0,toggleTooltipDetection:!1,toggleTooltipRefresh:!1,triggerAnimation:!1}}render(){const e=this.props,E=e.isRefreshing,_=e.ports,t=e.isChromaAppRoot,i=e.warningType,o=e.externalPowerConnected,n=e.editionId,s=e.isAutoDetectionEnable,r=this.checkExceedPerPort(_),T=i===el||!o;return(0,fI.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,fI.jsx)(\"div\",{style:t?il.wrapper:{},className:\"customize-scroll\",id:\"pageContainer\",children:E?(0,fI.jsx)(\"div\",{style:{minHeight:600},children:(0,fI.jsx)(\"span\",{className:\"detecting-device\",style:{backgroundImage:\"url(\".concat(_l,\")\")}})}):(0,fI.jsxs)(fI.Fragment,{children:[(0,fI.jsx)(\"div\",{className:\"customize-center\",children:(0,fI.jsxs)(\"div\",{className:\"product\",children:[(0,fI.jsx)(\"div\",{className:\"product__image\",children:(0,fI.jsx)(\"img\",{width:130,height:270,loading:\"lazy\",src:a(8881)(\"./\".concat(_T.DeviceInfo.productId,\"_\").concat(n,\"/img_prods/prd-3x.png\")),alt:\"\"})}),(0,fI.jsx)(\"div\",{className:\"product__icon\",children:(0,fI.jsxs)(\"div\",{className:\"detection-icons\",children:[(0,fI.jsx)(\"div\",{id:\"icon-detection-wrapper\",className:\"icon-detection-wrapper\",onMouseEnter:()=>this.toggleTooltipDetection(!0),onMouseLeave:()=>this.toggleTooltipDetection(!1),onClick:this.toggleAutoDetection,children:s?(0,fI.jsx)(BA,{}):(0,fI.jsx)(vA,{isFirstRender:!this.state.triggerAnimation})}),(0,fI.jsx)(ZA,{isMounted:this.state.toggleTooltipDetection,position:\"bottom-left\",target:\"icon-detection-wrapper\",children:OI.getTextItem(bO.iyT)}),(0,fI.jsxs)(\"div\",{id:\"icon-refreshing-wrapper\",className:\"icon-refreshing-wrapper\",onMouseEnter:()=>this.toggleTooltipRefresh(!0),onMouseLeave:()=>this.toggleTooltipRefresh(!1),children:[(0,fI.jsx)(yA,{onClick:this.handleRefresh,className:\"icon-refreshing\"}),(0,fI.jsx)(ZA,{isMounted:this.state.toggleTooltipRefresh,position:\"bottom-left\",target:\"icon-refreshing-wrapper\",children:OI.getTextItem(bO.Iu3)})]}),(0,fI.jsx)(VA,{className:\"icon-warning \".concat(!(r||i)&&\"icon-warning--hidden\")})]})})]})}),this.renderPorts(_,T)]})}),!E&&this.renderMsgBox({warningType:i,externalPowerConnected:o,isExceedMaximumLedPerDevice:r}),(0,fI.jsx)(\"div\",{style:t?il.dotBackground:{},className:\"dot-background\",children:(0,fI.jsx)(\"div\",{className:\"custom-dim-corner\"})})]})}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "offset": 4614670,
+          "end": 4614687,
+          "source": "(0,fI.jsx)(ol,{})"
+        }
+      ],
+      "reducers": [
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 4734691,
+          "end": 4734897,
+          "source": "_H={isAutoDetectionEnable:!1,isRefreshing:!1,warningType:null,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],isPowerOn:!0,connectionStatus:{type:EH.NotApplicable,isConnected:!!aH.Disconnected}}"
+        },
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 4735641,
+          "end": 4735793,
+          "source": "nH=(e,E,a)=>{if(e<E)return Array.from({length:E},()=>fS);if(1===E)return a.push(e),a;const _=Math.ceil(e/E);return a.push(Math.max(_,fS)),nH(e-_,E-1,a)}"
+        }
+      ],
+      "editReducers": [
+        {
+          "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+          "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+          "offset": 4739648,
+          "end": 4741292,
+          "source": "function(e,E){switch(E.type){case bt:{const a=E.payload,_=a.id,t=a.isActive,i=oH(e,_).argb;return iH(e,{argb:(0,G.A)((0,G.A)({},i),{},{chromaRequireDismiss:t})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Vt:{const a=E.payload,_=a.id,t=a.isStripMode,i=oH(e,_).argb;return iH(e,{argb:(0,G.A)((0,G.A)({},i),{},{isStripMode:t})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Yt:{const a=E.payload,_=a.id,t=a.type,i=oH(e,_).argb,o=i.numberOfLeds;if(!(t in o))return(0,G.A)({},e);const n=o[t],s=n.reduce((e,E)=>e+E.value,0),r=nH(s,n.length+1,[]),T=n.map((e,E)=>(0,G.A)((0,G.A)({},e),{},{value:t===HS?e.value:r[E]})),I={id:n.length,value:t===HS?20:r[n.length]};return iH(e,{argb:(0,G.A)((0,G.A)({},i),{},{numberOfLeds:(0,G.A)((0,G.A)({},o),{},{[t]:[...T,I]})})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.type,o=oH(e,_).argb,n=o.numberOfLeds;if(!(i in n))return(0,G.A)({},e);const s=n[i].filter(e=>e.id!==t).map((e,E)=>(0,G.A)((0,G.A)({},e),{},{id:E}));return iH(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},n),{},{[i]:s})})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case wt:{const a=E.payload,_=a.portId,t=a.stripId,i=a.value,o=oH(e,_).argb,n=o.isStripMode,s=o.numberOfLeds,r=e=>e.map(e=>e.id===t?(0,G.A)((0,G.A)({},e),{},{value:i}):e),T=n?{strip:r(s.strip)}:{fan:r(s.fan)};return iH(e,{argb:(0,G.A)((0,G.A)({},o),{},{numberOfLeds:(0,G.A)((0,G.A)({},s),T)})},_),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()})}case Bt:return E.payload.map(E=>iH(e,E,E.id)),(0,G.A)((0,G.A)({},e),{},{ports:e.ports.slice()});default:return e}}"
+        }
+      ]
+    }
+  ]
+}

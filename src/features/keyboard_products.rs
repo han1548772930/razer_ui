@@ -71,6 +71,8 @@ pub(crate) struct KeyboardProductWorkspace {
     scroll: ScrollHandle,
     actuation: Option<actuation::State>,
     calibration_intro_visible: bool,
+    /// Explicit development workspace only; live calibration never fabricates events.
+    calibration_preview: bool,
     calibration_modal: Option<Entity<calibration::CalibrationModal>>,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
@@ -90,6 +92,7 @@ impl KeyboardProductWorkspace {
             scroll: ScrollHandle::new(),
             actuation: None,
             calibration_intro_visible: true,
+            calibration_preview: false,
             calibration_modal: None,
         };
         if this.draft.pointer("/brightness/value").is_some() {

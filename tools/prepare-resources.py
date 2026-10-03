@@ -623,6 +623,7 @@ vectors = {
     "history-forward.svg": (182, "icon_arrow_right_thin.bef8ca32.svg"),
     "settings.svg": (182, "icon_settings-2.07e96d4c.svg"),
     "profile.svg": (182, "profile-default.f608d82c.svg"),
+    "profile-unsupported.svg": (182, "profile-unsupported.671bbbc6.svg"),
     "profile-obm.svg": (653, "icon_obm.888208d6.svg"),
     "synapse.svg": (182, "logo_synapse.bc241e5e.svg"),
     "drawer.svg": (182, "icon_sidepanel.e53fef93.svg"),
@@ -768,7 +769,7 @@ for entry in json.loads((OUT / "tutorial-media-manifest.json").read_text(encodin
 # Each product artwork preparer records the exact current JS import and raster
 # source. Include these files using their relative paths, preserving SVGs and
 # the mouse-products namespace instead of flattening equal basenames.
-for manifest_path in [OUT / "keyboard-product-manifest.json", ROOT / "docs/re/mouse-product-assets.json", OUT / "oled-assets-manifest.json", OUT / "oled-home-assets-manifest.json", OUT / "keyboard-calibration-manifest.json", OUT / "audio-demo-manifest.json", OUT / "hue-manifest.json", OUT / "dock-pairing-manifest.json"]:
+for manifest_path in [OUT / "keyboard-product-manifest.json", ROOT / "docs/re/mouse-product-assets.json", OUT / "oled-assets-manifest.json", OUT / "oled-home-assets-manifest.json", OUT / "keyboard-calibration-manifest.json", OUT / "audio-demo-manifest.json", OUT / "hue-manifest.json", OUT / "dock-pairing-manifest.json", OUT / "wired-argb-manifest.json", OUT / "wireless-argb-manifest.json", OUT / "aether-strip-manifest.json", OUT / "automation-manifest.json"]:
     if not manifest_path.exists():
         continue
     for entry in json.loads(manifest_path.read_text(encoding="utf-8")):

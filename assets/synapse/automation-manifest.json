@@ -1,0 +1,86 @@
+[
+  {
+    "source": ".ref/devices/3946/static/media/icon_chroma_studio_dark_inside.9f7cca8e.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_chroma_studio_dark_inside.9f7cca8e.svg",
+    "output": "assets/synapse/automation-0.svg",
+    "source_sha256": "753f8935d8e73f19eaefcb5dce5371d16c4df985ef70e404aabdac9b5f5d76ce",
+    "output_sha256": "753f8935d8e73f19eaefcb5dce5371d16c4df985ef70e404aabdac9b5f5d76ce"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/audio_device_mini.473f6726.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/audio_device_mini.473f6726.svg",
+    "output": "assets/synapse/automation-1.svg",
+    "source_sha256": "9c3bc217a7bf157630af8d85c0f7adae78ec7ada43e9c21491a65dd1554d2bc9",
+    "output_sha256": "9c3bc217a7bf157630af8d85c0f7adae78ec7ada43e9c21491a65dd1554d2bc9"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_microphone.38f05cc6.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_microphone.38f05cc6.svg",
+    "output": "assets/synapse/automation-2.svg",
+    "source_sha256": "9342bbc528796789a3f1988e10cf7a10f37b94b5ad211b857ec91fe64c7fc951",
+    "output_sha256": "9342bbc528796789a3f1988e10cf7a10f37b94b5ad211b857ec91fe64c7fc951"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/arrow-top-right-icon.3df88154.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/arrow-top-right-icon.3df88154.svg",
+    "output": "assets/synapse/automation-3.svg",
+    "source_sha256": "0acb4f38040bdb9b7455ff86ded0c6cec00b79abd20d084462007bf476a79b9e",
+    "output_sha256": "0acb4f38040bdb9b7455ff86ded0c6cec00b79abd20d084462007bf476a79b9e"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/game-more.423a334f.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/game-more.423a334f.svg",
+    "output": "assets/synapse/automation-4.svg",
+    "source_sha256": "c8136d2fce0f49a31f4f7b5bf2e78ab311d757f1c06524f544c313cfab6f0df0",
+    "output_sha256": "c8136d2fce0f49a31f4f7b5bf2e78ab311d757f1c06524f544c313cfab6f0df0"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/logo_macro_grey.9702f3f7.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/logo_macro_grey.9702f3f7.svg",
+    "output": "assets/synapse/automation-5.svg",
+    "source_sha256": "df95d7d78808f5d7a2d41a14d8a66c1708427596177a8028132bc95df1d71ba7",
+    "output_sha256": "df95d7d78808f5d7a2d41a14d8a66c1708427596177a8028132bc95df1d71ba7"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_add_light_grey.1d6669e3.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_add_light_grey.1d6669e3.svg",
+    "output": "assets/synapse/automation-icon_add_light_grey.svg",
+    "source_sha256": "fa10f8b6f26b3651fd4415d286c885f74b09b9b437cc0b03c68fe5391f05c38a",
+    "output_sha256": "fa10f8b6f26b3651fd4415d286c885f74b09b9b437cc0b03c68fe5391f05c38a"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_delete.de9b7746.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_delete.de9b7746.svg",
+    "output": "assets/synapse/automation-icon_delete.svg",
+    "source_sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43",
+    "output_sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/tooltip_questionmark.96138d2f.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/tooltip_questionmark.96138d2f.svg",
+    "output": "assets/synapse/automation-tooltip_questionmark.svg",
+    "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "output_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_warning.6c0cd78b.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_warning.6c0cd78b.svg",
+    "output": "assets/synapse/automation-icon_warning.svg",
+    "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+    "output_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/thx_spatial_audio_logo.96d279ba.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/thx_spatial_audio_logo.96d279ba.svg",
+    "output": "assets/synapse/automation-thx_spatial_audio_logo.svg",
+    "source_sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f",
+    "output_sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/logo-7.1.5c511eea.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/logo-7.1.5c511eea.svg",
+    "output": "assets/synapse/automation-logo-7.1.svg",
+    "source_sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa",
+    "output_sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa"
+  }
+]

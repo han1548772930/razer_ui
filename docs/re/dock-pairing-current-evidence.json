@@ -1,6 +1,6 @@
 {
   "method": "Acorn literal extraction and current mounted component receipts; vendor JavaScript never executed",
-  "generator_sha256": "d5e15131ea2e35c8fe05a7a9aeb8baad5476b51a488cd827f5b2d51f16f7fd00",
+  "generator_sha256": "2ac2cc9ca16c67f01a860fb3a06104ca3b38643ff4094771d5065d93e406bb64",
   "products": [
     {
       "product_id": 164,
@@ -26,7 +26,12 @@
         "A4y": "MULTI__DUALINK_PROPERTIES_TOOLTIP",
         "JWw": "ENABLE_LAUNCH_PAIRING_UTILITY_INFO"
       },
-      "locale_receipts": [],
+      "locale_receipts": [
+        {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "sha256": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40"
+        }
+      ],
       "css": [
         {
           "path": ".ref/devices/164/static/css/main.a72b64b9.css",
@@ -336,7 +341,9 @@
         "Lps": "MOUSE_DOCK_PAIRING_POLLING_RATE_INFO",
         "M9m": "TAB_CUSTOMIZE",
         "hIF": "TAB_PERFORMANCE",
-        "yWF": "SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION"
+        "yWF": "SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION",
+        "kTs": "UNPAIRING_COMPLETE",
+        "T8n": "PAIRING_COMPLETE"
       },
       "locale_receipts": [
         {

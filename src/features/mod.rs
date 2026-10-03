@@ -36,5 +36,9 @@ mod audio_products;
 mod system_products;
 
 mod accessory_system_products;
+pub(crate) mod aether_strip;
+pub(crate) mod automation;
 pub(crate) mod dock_pairing;
 pub(crate) mod hue;
+pub(crate) mod wired_argb;
+pub(crate) mod wireless_argb;

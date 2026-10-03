@@ -34,7 +34,7 @@ pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
         window,
         cx,
     );
-    dialog.update(cx, |view, _| view.inline = true);
+    dialog.update(cx, |view, cx| view.close(window, cx));
     let page = cx.new(|_| DockPairing {
         spec,
         edition: 0,
@@ -50,10 +50,19 @@ pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
     });
     let preview = cx.new(|cx| {
         let observed = cx.observe(&dialog, |_, _, cx| cx.notify());
-        let opened = cx.subscribe(
+        let opened = cx.subscribe_in(
             &page,
-            |this: &mut DockPreview, _, _: &PreviewDialogRequested, cx| {
+            window,
+            |this: &mut DockPreview, _, _: &PreviewDialogRequested, window, cx| {
                 this.show_page = false;
+                this.dialog.update(cx, |view, cx| view.reopen(window, cx));
+                cx.notify();
+            },
+        );
+        let closed = cx.subscribe(
+            &dialog,
+            |this: &mut DockPreview, _, _: &dialog::DockDialogClosed, cx| {
+                this.show_page = true;
                 cx.notify();
             },
         );
@@ -62,8 +71,8 @@ pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
             page,
             pid: 241,
             sample: "ready",
-            show_page: false,
-            _subscriptions: vec![observed, opened],
+            show_page: true,
+            _subscriptions: vec![observed, opened, closed],
         }
     });
     window.open_dialog(cx, move |dialog, window, _| {
@@ -132,8 +141,15 @@ impl Render for DockPreview {
                                 .label(label)
                                 .outline()
                                 .selected(self.show_page == page)
-                                .on_click(cx.listener(move |this, _, _, cx| {
+                                .on_click(cx.listener(move |this, _, window, cx| {
                                     this.show_page = page;
+                                    this.dialog.update(cx, |view, cx| {
+                                        if page {
+                                            view.close(window, cx);
+                                        } else {
+                                            view.reopen(window, cx);
+                                        }
+                                    });
                                     cx.notify();
                                 }))
                         }),
@@ -172,14 +188,14 @@ impl Render for DockPreview {
                     .id("dock-preview-content")
                     .h(surface::css(500.))
                     .scrollable_both()
-                    .child(div().min_w(surface::css(850.)).bg(Colors::panel()).child(
-                        if self.show_page {
-                            self.page.clone().into_any_element()
-                        } else {
-                            self.dialog.clone().into_any_element()
-                        },
-                    )),
+                    .child(
+                        div()
+                            .min_w(surface::css(850.))
+                            .bg(Colors::panel())
+                            .child(self.page.clone()),
+                    ),
             )
+            .when(!self.show_page, |view| view.child(self.dialog.clone()))
             .when_some(
                 self.dialog.read(cx).last_request.clone(),
                 |v, (kind, payload)| {

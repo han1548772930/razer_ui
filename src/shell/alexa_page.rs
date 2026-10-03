@@ -1,4 +1,4 @@
-//! Alexa's standalone frontend (Bp / Yp / yE / OE), with explicit local scenes.
+//! Alexa's standalone frontend (Bp / Yp / yE / OE), with isolated preview scenes.
 //! Installation, authentication and device state are never inferred from a preview.
 use crate::{
     features::Choice,
@@ -161,6 +161,7 @@ const SKILLS: &[Skill] = &[
 ];
 
 pub(super) struct AlexaPage {
+    preview: bool,
     focus: FocusHandle,
     shortcut_focus: FocusHandle,
     page: Page,
@@ -195,6 +196,12 @@ pub(super) struct AlexaPage {
 
 impl AlexaPage {
     pub(super) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        Self::create(false, window, cx)
+    }
+    pub(super) fn new_preview(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        Self::create(true, window, cx)
+    }
+    fn create(preview: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let scenes =
             cx.new(|cx| SelectState::new(scene_choices(), Some(IndexPath::new(0)), window, cx));
         let inputs =
@@ -204,6 +211,9 @@ impl AlexaPage {
         let subscriptions = vec![
             cx.subscribe_in(&scenes, window, |this: &mut Self, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(scene)) = event {
+                    if !this.preview {
+                        return;
+                    }
                     this.choose_scene(scene, window, cx);
                 }
             }),
@@ -225,6 +235,7 @@ impl AlexaPage {
             }),
         ];
         Self {
+            preview,
             focus: cx.focus_handle(),
             shortcut_focus: cx.focus_handle(),
             page: Page::Home,
@@ -247,7 +258,9 @@ impl AlexaPage {
             shortcut_enabled: true,
             shortcut: "Ctrl + Shift + A".into(),
             recording: false,
-            installer: Some(InstallState::Unknown),
+            // The native page is already available; this is an installer view,
+            // not an observation that the external Alexa module is installed.
+            installer: preview.then_some(InstallState::Unknown),
             modal: None,
             modal_focus: cx.focus_handle(),
             return_focus: None,
@@ -310,6 +323,9 @@ impl AlexaPage {
         cx.notify();
     }
     fn choose_scene(&mut self, scene: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.preview && scene != "unknown" {
+            return;
+        }
         self.lifecycle_task = None;
         self.modal = None;
         self.return_focus = None;
@@ -333,7 +349,7 @@ impl AlexaPage {
             _ => Account::Unknown,
         };
         self.installer = match scene {
-            "unknown" => Some(InstallState::Unknown),
+            "unknown" if self.preview => Some(InstallState::Unknown),
             "detecting" => Some(InstallState::Detecting),
             "available" => Some(InstallState::Available),
             "waiting" => Some(InstallState::Waiting),
@@ -694,37 +710,39 @@ impl Render for AlexaPage {
             .text_color(cx.theme().foreground)
             .text_size(css(14.))
             .line_height(relative(1.22))
-            .child(
-                h_flex()
-                    .w_full()
-                    .flex_shrink_0()
-                    .px(css(20.))
-                    .py(css(7.))
-                    .gap(css(15.))
-                    .flex_wrap()
-                    .child(
-                        surface::select(&self.scenes)
-                            .id("alexa-preview-scene")
-                            .items(scene_choices())
-                            .w(css(285.))
-                            .accessibility_label("Alexa 本地预览场景"),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .text_size(css(12.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child(
-                                if self.account == Account::Unknown
-                                    && self.installer == Some(InstallState::Unknown)
-                                {
-                                    "安装、账户及服务状态未知；登录与安装未连接。"
-                                } else {
-                                    "本地界面预览：账户、验证码、设备及安装进度均为示例。"
-                                },
-                            ),
-                    ),
-            )
+            .when(self.preview, |view| {
+                view.child(
+                    h_flex()
+                        .w_full()
+                        .flex_shrink_0()
+                        .px(css(20.))
+                        .py(css(7.))
+                        .gap(css(15.))
+                        .flex_wrap()
+                        .child(
+                            surface::select(&self.scenes)
+                                .id("alexa-preview-scene")
+                                .items(scene_choices())
+                                .w(css(285.))
+                                .accessibility_label("Alexa 本地预览场景"),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .text_size(css(12.))
+                                .text_color(cx.theme().muted_foreground)
+                                .child(
+                                    if self.account == Account::Unknown
+                                        && self.installer == Some(InstallState::Unknown)
+                                    {
+                                        "安装、账户及服务状态未知；登录与安装未连接。"
+                                    } else {
+                                        "本地界面预览：账户、验证码、设备及安装进度均为示例。"
+                                    },
+                                ),
+                        ),
+                )
+            })
             .when(self.installer.is_none(), |view| {
                 view.child(self.navigation(cx))
             })
@@ -757,4 +775,21 @@ impl Render for AlexaPage {
                 view.child(self.modal_view(window, cx))
             })
     }
+}
+
+/// A separate page entity reuses the production body without changing its account state.
+pub(super) fn open_preview(window: &mut Window, cx: &mut App) {
+    let page = cx.new(|cx| AlexaPage::new_preview(window, cx));
+    window.open_dialog(cx, move |dialog, window, _| {
+        dialog
+            .title("Alexa · 界面预览")
+            .w((window.rem_size() * 80.)
+                .min((window.viewport_size().width - window.rem_size() * 2.).max(px(0.))))
+            .child(
+                div()
+                    .w_full()
+                    .h((window.viewport_size().height - window.rem_size() * 8.).max(px(0.)))
+                    .child(page.clone()),
+            )
+    });
 }

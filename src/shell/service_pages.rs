@@ -1,7 +1,7 @@
 //! Main frontend 9388/19388, IotPopupRoot/28256 and 6505/44442.
 //! Browsing and navigation are local. Native discovery/install results are never
 //! synthesized from clicks, timers, or the catalogue of supported products.
-use super::iot_popup;
+use super::{app_picker::PickerModule, iot_popup};
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
     i18n,
@@ -957,6 +957,8 @@ struct Module {
     image: Option<&'static str>,
     description: &'static str,
     url: Option<&'static str>,
+    /// A compiled page is available independently of an external module install.
+    native_page: Option<PickerModule>,
 }
 // 6505/44442 ne + te are a static catalogue. No installed/available state is
 // inferred from these records; that state belongs to the installer service.
@@ -968,6 +970,7 @@ const MODULES: &[Module] = &[
         image: Some("synapse/module-alexa.png"),
         description: "对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云中。需要有效的麦克风和 Amazon Alexa 账户。",
         url: Some("https://www.razer.com/chroma/alexa"),
+        native_page: Some(PickerModule::Alexa),
     },
     Module {
         id: "macro",
@@ -976,6 +979,7 @@ const MODULES: &[Module] = &[
         image: Some("synapse/module-macro.png"),
         description: "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的按键敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合。",
         url: None,
+        native_page: None,
     },
     Module {
         id: "linked-games",
@@ -984,6 +988,7 @@ const MODULES: &[Module] = &[
         image: None,
         description: "原生游戏关联模块的安装状态尚未读取。设备 Profile 中的本地关联程序可在对应配置菜单中管理。",
         url: None,
+        native_page: None,
     },
     Module {
         id: "feedback",
@@ -992,6 +997,7 @@ const MODULES: &[Module] = &[
         image: None,
         description: "原生反馈应用的安装状态尚未读取。",
         url: None,
+        native_page: None,
     },
     Module {
         id: "armory",
@@ -1000,6 +1006,7 @@ const MODULES: &[Module] = &[
         image: None,
         description: "原生 Armory 的安装和服务状态尚未读取。",
         url: None,
+        native_page: None,
     },
 ];
 pub(super) struct ModuleCatalog {
@@ -1007,6 +1014,7 @@ pub(super) struct ModuleCatalog {
     details: Option<Entity<DeviceDetails>>,
 }
 pub(super) enum ModuleCatalogEvent {
+    OpenModule(PickerModule),
     FirmwareUpdate {
         device: Option<Device>,
         preview: bool,
@@ -1092,25 +1100,44 @@ impl ModuleCatalog {
                             )
                         },
                     ))
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child("安装状态未读取"),
-                    )
-                    .child(
-                        module_action(
-                            SharedString::from(format!("module-install-{}", item.id)),
-                            "安装",
-                            true,
-                            true,
-                            cx,
+                    .when_some(item.native_page, |view, module| {
+                        view.child(
+                            module_action(
+                                SharedString::from(format!("module-open-{}", item.id)),
+                                "打开",
+                                false,
+                                false,
+                                cx,
+                            )
+                            .ml(surface::css(30.))
+                            .on_click(cx.listener(
+                                move |_, _, _, cx| {
+                                    cx.emit(ModuleCatalogEvent::OpenModule(module));
+                                },
+                            )),
                         )
-                        .ml(surface::css(30.))
-                        .tooltip(|window, cx| {
-                            Tooltip::new("此版本尚未接入模块安装服务").build(window, cx)
-                        }),
-                    ),
+                    })
+                    .when(item.native_page.is_none(), |view| {
+                        view.child(
+                            div()
+                                .text_size(surface::css(14.))
+                                .text_color(cx.theme().muted_foreground)
+                                .child("安装状态未读取"),
+                        )
+                        .child(
+                            module_action(
+                                SharedString::from(format!("module-install-{}", item.id)),
+                                "安装",
+                                true,
+                                true,
+                                cx,
+                            )
+                            .ml(surface::css(30.))
+                            .tooltip(|window, cx| {
+                                Tooltip::new("此版本尚未接入模块安装服务").build(window, cx)
+                            }),
+                        )
+                    }),
             )
             .when(expanded && item.image.is_some(), |view| {
                 view.child(
@@ -1142,7 +1169,12 @@ impl ModuleCatalog {
                                         cx,
                                     ))
                                 })
-                                .child(surface::note("安装包大小、版本和更新状态尚未读取。", cx)),
+                                .when(item.native_page.is_none(), |view| {
+                                    view.child(surface::note(
+                                        "安装包大小、版本和更新状态尚未读取。",
+                                        cx,
+                                    ))
+                                }),
                         ),
                 )
             })
@@ -1164,10 +1196,11 @@ impl Render for ModuleCatalog {
                     .mb(surface::css(10.))
                     .child("模块目录"),
             )
-            .child(div().mb(surface::css(10.)).child(surface::note(
-                "此版本尚未接入模块安装服务，无法检查已安装模块、可用更新或安装包大小。",
-                cx,
-            )))
+            .child(
+                div()
+                    .mb(surface::css(10.))
+                    .child(surface::note("外部模块的安装与更新状态尚未读取。", cx)),
+            )
             .children(MODULES.iter().map(|item| self.module_row(item, cx)))
             .when_some(self.details.clone(), |view, details| view.child(details))
     }

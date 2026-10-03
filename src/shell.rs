@@ -269,7 +269,7 @@ impl AppShell {
                     this.navigate(Location::Tour(TourKind::Chroma), window, cx);
                 }
                 settings_page::SettingsEvent::PreviewAlexa => {
-                    this.navigate(Location::Alexa, window, cx);
+                    alexa_page::open_preview(window, cx);
                 }
                 settings_page::SettingsEvent::PreviewAppPicker => {
                     app_picker::open_preview(window, cx);
@@ -338,6 +338,15 @@ impl AppShell {
             &this.module_catalog,
             window,
             |this, _, event: &service_pages::ModuleCatalogEvent, window, cx| match event {
+                service_pages::ModuleCatalogEvent::OpenModule(module) => {
+                    this.handle_app_picker(
+                        &app_picker::AppPickerEvent::Open(app_picker::PickerTarget::Module(
+                            *module,
+                        )),
+                        window,
+                        cx,
+                    );
+                }
                 service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
                     this.open_firmware_update(device.clone(), *preview, window, cx);
                 }

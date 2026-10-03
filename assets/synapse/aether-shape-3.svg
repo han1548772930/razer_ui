@@ -1,0 +1,13 @@
+<svg id="final_3_sides" data-name="final 3 sides" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><defs><style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #44d62c;
+      }
+
+      .cls-3 {
+        fill: #707070;
+      }
+    </style></defs><path id="fill" class="cls-2" d="m39.5.5v39h-5V5.5H6.5v30H1.5V.5h38Z"></path><path id="outline" d="m1,0v33.38c-.61.7-1,1.61-1,2.62,0,2.21,1.79,4,4,4s4-1.79,4-4c0-1.01-.39-1.91-1-2.62V6h27v34h6V0H1Zm1,33.78c.53-.48,1.23-.78,2-.78s1.47.3,2,.78v1.22H2v-1.22Zm2,5.22c-1.65,0-3-1.35-3-3h6c0,1.65-1.35,3-3,3Zm35,0h-4V5H6v27.56c-.59-.34-1.27-.56-2-.56s-1.41.21-2,.56V1h37v38Z"></path><circle id="circle_fill" data-name="circle fill" class="cls-1" cx="4" cy="36" r="2.5"></circle><path id="circle_inner" data-name="circle inner" class="cls-3" d="m4,39c-1.65,0-3-1.35-3-3s1.35-3,3-3,3,1.35,3,3-1.35,3-3,3Zm0-5c-1.1,0-2,.9-2,2s.9,2,2,2,2-.9,2-2-.9-2-2-2Z"></path></svg>

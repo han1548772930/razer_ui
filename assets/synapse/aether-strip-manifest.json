@@ -1,0 +1,232 @@
+[
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-shape-1.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "dcc487b70e50fb1d19d427803ec459a5f6c4d1b588f156e1d5898a686305fa79",
+    "fragment_sha256": "438fbd35a76c24ca6e6edfbde5edf15d2f182bdb3d291d865703d2ebac37f864",
+    "offset": 4580925,
+    "end": 4581993,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-shape-2.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "4242db825f2154a34d63f2e9f982ffa97bb9d59f860b51ec18c1eff82a3fbb2c",
+    "fragment_sha256": "586d1af777ea9740b760820cc5cb247606a7c2562d4d9c2dba22b243682a49dd",
+    "offset": 4581994,
+    "end": 4583082,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-shape-3.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "ce55424d965603062d4da982e484a15b212dbac5a3862735187bb19a3aec72de",
+    "fragment_sha256": "f351d3ae4d0b9e0b963fd667c5203d494223399d70ff35628cf94af5768b96ba",
+    "offset": 4583083,
+    "end": 4584177,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-shape-4.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "c20bb2f7167e75246c8ee136b802543a81b958848cdc61fe61dba2a54c356e48",
+    "fragment_sha256": "07bdb68f9dd370052953f50fb645384ddb51471e146c6c1cace3a809e728cf91",
+    "offset": 4584178,
+    "end": 4585313,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-side-1.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "f1b07072228a1fe9cb51849ac4ed5be0ad296e140989f946101fae93dbc51a51",
+    "fragment_sha256": "d23d54dcd9877564b4a36e6cb4aea649498e2cc537dfbefa9e748f8718bb0dfd",
+    "offset": 4585314,
+    "end": 4585747,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-side-2.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "20d511a5f48f9700adcc125e9bbdd1756732eccc5c7cef4e12e9f9af18b5d32c",
+    "fragment_sha256": "8066e80c4810ae8d7ca4de22677e0826a87d4dcacdbee61544a5536883ff3b13",
+    "offset": 4591834,
+    "end": 4592267,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-side-3.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "48c354c6e77b5e2d35e39a0c03484fca37dc6a737e5b53b76a2e30a5a6b2232a",
+    "fragment_sha256": "fcb313c4128a76e264dcf4aec6131918af5b1f3b33acc2f56620276ced4e3c18",
+    "offset": 4592268,
+    "end": 4592701,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-side-4.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "b6c142dfbe1c36376f8542831efa24873339b759a55ec4ab8a09e5348bc9a7ad",
+    "fragment_sha256": "4587a41846058af59b9ac3c933abb9a88b96004bccc59c3c8cc8f5a4461d9b98",
+    "offset": 4592702,
+    "end": 4593135,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-identify.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "270a6d1a5be4573355b32f4cedf5c01fa622b3e6d9888a75ce43004d3933ec51",
+    "fragment_sha256": "b8f59c74410b4146a1e845b628a7f49a31dffa74348ab13a86a2206062064e73",
+    "offset": 4585748,
+    "end": 4591833,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-identify-hover.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "70521cc7af2cba462e4d9051585917b4cf62d0908b16d0d885fbf226eda09cdb",
+    "fragment_sha256": "b8f59c74410b4146a1e845b628a7f49a31dffa74348ab13a86a2206062064e73",
+    "offset": 4585748,
+    "end": 4591833,
+    "method": "Current CSS hover fill applied to extracted SVG"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-refresh.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "779f830329cb3b6d22e023e338f84b30d0b4d90dc29b3c072aa479eb927212e6",
+    "fragment_sha256": "2dd3918a066ec1beacab107d60c9ba87f2ea27d065703db155ea1ed8740cbb04",
+    "offset": 4593136,
+    "end": 4594107,
+    "method": "Static JSX SVG reconstruction; action path fill comes from current CSS"
+  },
+  {
+    "source": ".ref/devices/784/static/js/main.3094caa4.js",
+    "output": "assets/synapse/aether-refresh-hover.svg",
+    "source_sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+    "output_sha256": "218da8ca2f24bdcb012bbe06ca8eca21a718815a8f5d29a909a0c5c4e6a6e58d",
+    "fragment_sha256": "2dd3918a066ec1beacab107d60c9ba87f2ea27d065703db155ea1ed8740cbb04",
+    "offset": 4593136,
+    "end": 4594107,
+    "method": "Current CSS hover fill applied to extracted SVG"
+  },
+  {
+    "name": "indentify-btn",
+    "source": ".ref/devices/784/static/media/indentify-btn.49c26dae.svg",
+    "output": "assets/synapse/aether-indentify-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/indentify-btn.49c26dae.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "e37ef5be0be1d84579640b1f4e50bfe53460d2ef762e6668d263181f1b74a7e1",
+    "output_sha256": "e37ef5be0be1d84579640b1f4e50bfe53460d2ef762e6668d263181f1b74a7e1"
+  },
+  {
+    "name": "power-on-btn",
+    "source": ".ref/devices/784/static/media/power-on-btn.aaab82c7.svg",
+    "output": "assets/synapse/aether-power-on-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/power-on-btn.aaab82c7.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "dac8409fe56fea055be379b1fad0e55dc4384c97212a82ae9bf88a81f5087267",
+    "output_sha256": "dac8409fe56fea055be379b1fad0e55dc4384c97212a82ae9bf88a81f5087267"
+  },
+  {
+    "name": "power-off-btn",
+    "source": ".ref/devices/784/static/media/power-off-btn.32ef0657.svg",
+    "output": "assets/synapse/aether-power-off-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/power-off-btn.32ef0657.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "c7b3abf9bf0162e29d41604391e9e4ed32bc7d57b47142e4eacca5ba197ab95c",
+    "output_sha256": "c7b3abf9bf0162e29d41604391e9e4ed32bc7d57b47142e4eacca5ba197ab95c"
+  },
+  {
+    "name": "close-btn",
+    "source": ".ref/devices/784/static/media/close-btn.e5e7631c.svg",
+    "output": "assets/synapse/aether-close-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/close-btn.e5e7631c.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "2c85b5b14625084c28215524c002fd6fe5a81d5929f4676eeba8b7c16efcacb3",
+    "output_sha256": "2c85b5b14625084c28215524c002fd6fe5a81d5929f4676eeba8b7c16efcacb3"
+  },
+  {
+    "name": "close-hovered-btn",
+    "source": ".ref/devices/784/static/media/close-hovered-btn.e0060b37.svg",
+    "output": "assets/synapse/aether-close-hovered-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/close-hovered-btn.e0060b37.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "ba456628694ae23762164ef550f68487dff933c09606c0145195f900aae39fd4",
+    "output_sha256": "ba456628694ae23762164ef550f68487dff933c09606c0145195f900aae39fd4"
+  },
+  {
+    "name": "offline-badge",
+    "source": ".ref/devices/784/static/media/offline-badge.830dc864.svg",
+    "output": "assets/synapse/aether-offline-badge.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/offline-badge.830dc864.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "394b248a150d59031f9a4cfc2827a4a7c21c5ef2e27a55ecad21557694a7c335",
+    "output_sha256": "394b248a150d59031f9a4cfc2827a4a7c21c5ef2e27a55ecad21557694a7c335"
+  },
+  {
+    "name": "busy-btn",
+    "source": ".ref/devices/784/static/media/busy-btn.55268688.svg",
+    "output": "assets/synapse/aether-busy-btn.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/busy-btn.55268688.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "ba25ba2d9345408e19aceb692ce16d8eeabdc0ea66eafae10ac4bc60fbf41e16",
+    "output_sha256": "ba25ba2d9345408e19aceb692ce16d8eeabdc0ea66eafae10ac4bc60fbf41e16"
+  },
+  {
+    "name": "busy-btn-white",
+    "source": ".ref/devices/784/static/media/busy-btn-white.453a134e.svg",
+    "output": "assets/synapse/aether-busy-btn-white.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/busy-btn-white.453a134e.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "794edf26129196ece898a3c3498d32712d686f10c82aaf2d8c2b9bb78cb95a67",
+    "output_sha256": "794edf26129196ece898a3c3498d32712d686f10c82aaf2d8c2b9bb78cb95a67"
+  },
+  {
+    "name": "prd-3x",
+    "source": ".ref/devices/784/static/media/prd-3x.9ba3275e.avif",
+    "output": "assets/synapse/aether-prd-3x.png",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/prd-3x.9ba3275e.avif",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "1000f9f6aaa418c83d4ae2982afa0fbcdfeb98c161bc6dbf26cd83a34e11bcdb",
+    "output_sha256": "8b2ec9a2e454641dd133659fc7f21c3f3003d7134e8c78e18be0c870cb32f600"
+  },
+  {
+    "name": "spinner",
+    "source": ".ref/devices/784/static/media/spinner.ef2d0235.svg",
+    "output": "assets/synapse/aether-spinner.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/spinner.ef2d0235.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+    "output_sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83"
+  },
+  {
+    "name": "tooltip_questionmark",
+    "source": ".ref/devices/784/static/media/tooltip_questionmark.96138d2f.svg",
+    "output": "assets/synapse/aether-tooltip_questionmark.svg",
+    "url": "https://apps.razer.com/synapse/products/784/ui/static/media/tooltip_questionmark.96138d2f.svg",
+    "context": ".ref/devices/784/asset-manifest.json",
+    "context_sha256": "58175300b7163e8aace8656fbc0452d1a9953dff7b5c2cd3717d3a24a9ecd8c0",
+    "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "output_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+  }
+]

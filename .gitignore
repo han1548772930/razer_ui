@@ -74,3 +74,17 @@
 !/tools/extract-dock-pairing.cjs
 !/tools/prepare-dock-pairing.py
 !/tools/validate-dock-pairing.py
+!/tools/extract-wired-argb.cjs
+!/tools/prepare-wired-argb.py
+!/tools/validate-wired-argb.py
+!/tools/extract-wireless-argb.cjs
+!/tools/prepare-wireless-argb.py
+!/tools/validate-wireless-argb.py
+!/tools/extract-aether-strip.cjs
+!/tools/prepare-aether-strip.py
+!/tools/validate-aether-strip.py
+!/tools/extract-automation.cjs
+!/tools/prepare-automation.py
+!/tools/validate-automation.py
+!/tools/audit-receiver-header.cjs
+!/tools/audit-product-profile-bars.cjs

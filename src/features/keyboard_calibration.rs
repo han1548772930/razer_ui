@@ -2,6 +2,7 @@
 //! Calibration is transient device state, never a profile setting. The live
 //! entry cannot advance without a transport; development samples are isolated.
 use super::*;
+use crate::features::source_workspace::SourceProductWorkspace;
 use crate::ui::{scroll::SourceScrollable as _, theme::KeyboardCalibrationColors as Colors};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::prelude::FluentBuilder as _;
@@ -100,8 +101,12 @@ impl KeyboardProductWorkspace {
                                 .on_click(cx.listener(
                                     move |this, _, window, cx| {
                                         this.dismiss_calibration(window, cx);
-                                        this.calibration_modal =
-                                            Some(CalibrationModal::open(spec, window, cx));
+                                        this.calibration_modal = Some(CalibrationModal::open(
+                                            spec,
+                                            this.calibration_preview.then_some(Sample::SelectKey),
+                                            window,
+                                            cx,
+                                        ));
                                         cx.notify();
                                     },
                                 )),
@@ -180,15 +185,23 @@ pub(super) struct CalibrationModal {
     focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     open: bool,
+    /// None is the real device path. Only the isolated preview supplies a fixture.
+    sample: Option<Sample>,
 }
 impl CalibrationModal {
-    fn open(spec: &'static Spec, window: &mut Window, cx: &mut App) -> Entity<Self> {
+    fn open(
+        spec: &'static Spec,
+        sample: Option<Sample>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Entity<Self> {
         let return_focus = window.focused(cx);
         let modal = cx.new(|cx| Self {
             spec,
             focus: cx.focus_handle(),
             return_focus,
             open: true,
+            sample,
         });
         modal.read(cx).focus.clone().focus(window, cx);
         modal
@@ -198,10 +211,25 @@ impl CalibrationModal {
             return;
         }
         self.open = false;
+        self.sample = self.sample.map(|_| Sample::SelectKey);
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
         cx.notify();
+    }
+    fn advance_sample(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(sample) = self.sample else {
+            return;
+        };
+        if sample == Sample::SelectKey || sample.pending() {
+            return;
+        }
+        if sample == Sample::Success {
+            self.close(window, cx);
+        } else {
+            self.sample = Some(sample.next());
+            cx.notify();
+        }
     }
 }
 impl Render for CalibrationModal {
@@ -230,13 +258,17 @@ impl Render for CalibrationModal {
                         .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
                 ),
             )
-            .child(modal_content(self.spec, Sample::SelectKey, cx))
+            .child(modal_content(
+                self.spec,
+                self.sample.unwrap_or(Sample::SelectKey),
+                cx,
+            ))
             .child(modal_footer(
                 self.spec,
-                Sample::SelectKey,
-                false,
+                self.sample.unwrap_or(Sample::SelectKey),
+                self.sample.is_some(),
                 cx.listener(|this, _, window, cx| this.close(window, cx)),
-                |_, _, _| {},
+                cx.listener(|this, _, window, cx| this.advance_sample(window, cx)),
                 cx,
             ));
         gpui_kit::base::Dialog::new(cx)
@@ -538,28 +570,95 @@ fn modal_footer(
 }
 
 struct CalibrationPreview {
-    sample: Sample,
+    product_id: u32,
+    workspace: Entity<SourceProductWorkspace>,
+    keyboard: Entity<KeyboardProductWorkspace>,
+    _keyboard_subscription: Subscription,
+    _modal_subscription: Option<Subscription>,
+}
+impl CalibrationPreview {
+    fn new(product_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let device =
+            crate::demo::registered_preview(product_id).expect("registered calibration keyboard");
+        let workspace = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
+        workspace.update(cx, |workspace, cx| {
+            workspace.set_page_key("TAB_CALIBRATION", window, cx)
+        });
+        let keyboard = workspace
+            .read(cx)
+            .keyboard_preview_page()
+            .expect("calibration keyboard page attached");
+        keyboard.update(cx, |keyboard, _| keyboard.calibration_preview = true);
+        let subscription = cx.observe(&keyboard, |this, keyboard, cx| {
+            let modal = keyboard.read(cx).calibration_modal.clone();
+            this._modal_subscription =
+                modal.map(|modal| cx.observe(&modal, |_, _, cx| cx.notify()));
+            cx.notify();
+        });
+        Self {
+            product_id,
+            workspace,
+            keyboard,
+            _keyboard_subscription: subscription,
+            _modal_subscription: None,
+        }
+    }
+
+    fn select_sample(&mut self, sample: Sample, window: &mut Window, cx: &mut Context<Self>) {
+        self.workspace.update(cx, |workspace, cx| {
+            workspace.set_page_key("TAB_CALIBRATION", window, cx)
+        });
+        let spec = specification(self.product_id).expect("audited calibration preview");
+        self.keyboard.update(cx, |keyboard, cx| {
+            keyboard.dismiss_calibration(window, cx);
+            keyboard.calibration_modal =
+                Some(CalibrationModal::open(spec, Some(sample), window, cx));
+            cx.notify();
+        });
+        cx.notify();
+    }
 }
 pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
-    let preview = cx.new(|_| CalibrationPreview {
-        sample: Sample::SelectKey,
-    });
+    let preview = cx.new(|cx| CalibrationPreview::new(740, window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
             .title("磁轴键盘校准 · 界面预览")
-            .w(window.rem_size() * (900. / 16.))
+            .w(window.rem_size() * (1100. / 16.))
             .child(preview.clone())
     });
 }
 impl Render for CalibrationPreview {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let spec = specification(740).expect("audited calibration preview");
+        let active_sample = self
+            .keyboard
+            .read(cx)
+            .calibration_modal
+            .as_ref()
+            .and_then(|modal| {
+                let modal = modal.read(cx);
+                modal.open.then_some(modal.sample).flatten()
+            });
         v_flex()
             .gap_3()
             .child(surface::note(
-                "以下为静态状态示例，不执行键盘校准。等待设备回应的步骤可通过上方状态选项查看。",
+                "独立的产品界面预览，不执行键盘校准。可从校准页面开始，或选择下方状态查看对应弹窗；等待状态不会自动完成。",
                 cx,
             ))
+            .child(
+                h_flex().gap_2().children([(740, "740"), (746, "746")].map(|(pid, id)| {
+                    Button::new((ElementId::from("calibration-product"), id))
+                        .label(source_product(pid).expect("registered keyboard").name.clone())
+                        .outline()
+                        .selected(self.product_id == pid)
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            if this.product_id != pid {
+                                this.keyboard.update(cx, |keyboard, cx| keyboard.dismiss_calibration(window, cx));
+                                *this = Self::new(pid, window, cx);
+                                cx.notify();
+                            }
+                        }))
+                })),
+            )
             .child(
                 h_flex()
                     .gap_2()
@@ -568,33 +667,18 @@ impl Render for CalibrationPreview {
                         Button::new((ElementId::from("calibration-sample"), id))
                             .label(label)
                             .outline()
-                            .selected(self.sample == sample)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.sample = sample;
-                                cx.notify();
+                            .selected(active_sample == Some(sample))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.select_sample(sample, window, cx);
                             }))
                     })),
             )
             .child(
-                v_flex()
-                    .h(surface::css(420.))
-                    .bg(cx.theme().popover)
-                    .child(modal_header(spec, cx))
-                    .child(modal_content(spec, self.sample, cx))
-                    .child(modal_footer(
-                        spec,
-                        self.sample,
-                        true,
-                        cx.listener(|this, _, _, cx| {
-                            this.sample = Sample::SelectKey;
-                            cx.notify();
-                        }),
-                        cx.listener(|this, _, _, cx| {
-                            this.sample = this.sample.next();
-                            cx.notify();
-                        }),
-                        cx,
-                    )),
+                div()
+                    .id("calibration-preview-workspace")
+                    .h(surface::css(650.))
+                    .min_h_0()
+                    .child(self.workspace.clone()),
             )
     }
 }

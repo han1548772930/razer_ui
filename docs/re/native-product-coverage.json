@@ -6,14 +6,13 @@
     "products_without_main_content": [],
     "primary_pages": 1419,
     "page_status_counts": {
-      "partial_native": 1384,
-      "pending": 8,
+      "partial_native": 1392,
       "existing_partial_not_reaudited_here": 27
     },
     "fully_reproduced_products_claimed": 0
   },
   "inputs_sha256": {
-    "tools/audit-native-product-coverage.py": "86a0186b7fec739e14ad19a1a58830663a6494bf877061b9a7aab689d3b38f7b",
+    "tools/audit-native-product-coverage.py": "0ab8182c6bdb9c63247a82219b60513cb04ed6521b0e525327d1211c71aad18b",
     "docs/re/product-registration-audit.json": "8f9975d00624bdd0f09e6f9e02299fc78baf7081cc086c0f9df06f8c62a77bec",
     "src/features/mouse_products_data.json": "72748f38436c0e6ae8526a0350a942ceed3250e91966fdc769755b4a00fbe78a",
     "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d",
@@ -31,7 +30,7 @@
     "src/features/audio_products.rs": "f9b3a6d8529f32fd9ff2bda346aaf05be81c957c0cc9e1c83a5f558158d6d645",
     "src/features/system_products.rs": "33c9b17cff559cc96eb8207e860d074782f4a83e2512fbf0b63805bfc63ce07d",
     "src/features/accessory_system_products.rs": "10561d064137abf322ce50c68d42a5c1af85463454db79d24fe3181cc31bd5f2",
-    "src/features/source_workspace.rs": "e40605969f7aa94293950e54f89e5eca59306c6546e2d04b9f2dd33346c6f158",
+    "src/features/source_workspace.rs": "c3c766dafcca3ebb3e4362edeb44c2d4c37217b68f603656c360a4ad4b64c01a",
     "src/features/product_workspace.rs": "5cdce87f498af331c4b7c92f82e4ebe1091a6b90c34eb0738b1417e1dd0d73fc",
     "src/features/source_help.rs": "2f03ab34c6d8a7711f7e99afde15513a8c14072021eb7c5478f775fcb64a5a54",
     "src/features/source_controls.rs": "fdfd82b7822df54dc4c29c9b2f6600e62e6d5a8fb2cdfe4f1628612211d05c98",
@@ -50,6 +49,40 @@
     "src/features/hue/brightness.rs": "a6c4ae3480fd23ee0584f7f49a2f74eaf1a599e1b58ec5e46a67e8ddfba53536",
     "src/features/hue/effects.rs": "0a72788ef2293c41142e5258f9f21fbf6168b8e15f23d4cd5bb135b7b580fb95",
     "src/features/hue/preview.rs": "8890dd9063e95546808e60c0360c9e720de18216f74b659aa756d05baeb09960",
+    "src/features/dock_pairing_data.json": "f311fc82e8616db742516de1de18df7bbf18bc3da266a506fe7016b15fbd108d",
+    "src/features/dock_pairing.rs": "92259047f3e6f2078db18b386136aa3beb1017500fa4f36086d754e2a465c500",
+    "src/features/dock_pairing/dialog.rs": "97737d611d4cc27bce84d7210f8d5a4f9712987b7db965475082d5380f0ae586",
+    "src/features/dock_pairing/preview.rs": "2546a145d54f578a0eb1892b692b991b07596593a586e3035fc015b942ae7c34",
+    "src/features/dock_pairing/state.rs": "709cde3d01d06371953a9d33ba2f2b959069b62266e1150868e83fe448faa936",
+    "src/features/wired_argb_data.json": "15394d187eb4b8eef3571937c5ba798a25e64b8401e170e15c1e2d6b6bec999c",
+    "src/features/wired_argb.rs": "264626a1cd74fad1cdb816a5f91cf72721edc6c9e2d09600bca7f3e59d025ea7",
+    "src/features/wired_argb/loading.rs": "ccb9d21190ac95365438373d78391f33a04f94f9dab1aae6f003e21128d74389",
+    "src/features/wired_argb/port.rs": "d755ec33f35722d35971f008ae66f5fc844a1b37757beb020c15e87d6cce8529",
+    "src/features/wired_argb/preview.rs": "8514ae561ba5ceec1b79665b988d3d356b60e20011dc255d1507d0a1d011ddbd",
+    "src/features/wired_argb/state.rs": "99ca319c822ef636068528051f95e6957e23da0089f264b450b2512e907f60fb",
+    "src/features/wired_argb/theme.rs": "0bfc34a6e6e72eef20c140d948635c458bd181165a3863b15a55fb539dac89fe",
+    "src/features/wireless_argb_data.json": "e1f5e588e5346f7da292ac891e2ca97dd9ca2e22da045992187fd76ae44351cc",
+    "src/features/wireless_argb.rs": "91db0977eeba2c186156b8c743bf945dd22ad180fbeaf8b58f488306027d13c8",
+    "src/features/wireless_argb/preview.rs": "c627c6c212c1e9e9c21041ee2f7fc86a36d399df125f10201344517dfdffeb72",
+    "src/features/wireless_argb/state.rs": "1ada76b59b3b67413eb204fd8f1e1faee369682dfeac783b4e0b7d94bceefbcd",
+    "src/features/wireless_argb/theme.rs": "54c26a22f9b527bf43ec7d2e9342291eb8feed8b37a0266e96789fec77ab3fa9",
+    "src/features/aether_strip_data.json": "7f5b4db9a32554849e026bb178345e8fc85e8c3dce82f429a84f3a8d35f1eff2",
+    "src/features/aether_strip.rs": "b55b2d25b58ce3483e16dc528517264d3db3038a478c4cf2e72cd48f0e51fd38",
+    "src/features/aether_strip/device.rs": "4fd8b9dfd8d910d5a29bed8871546e19a9c5597855a489f514303e8339e41e3b",
+    "src/features/aether_strip/editor.rs": "f79b8840cb45e208e2255835da0d95a24d0e8158e28954ebd85d76d7a45f5bb4",
+    "src/features/aether_strip/presentation.rs": "b81ce7964331d2d90035e31f11248a9ed8bd0bbf900be3356de7507c792fd50c",
+    "src/features/aether_strip/preview.rs": "423ea204b90ad1d5803e908946df8eec4e62ca5c3d82cb1de4d9d02d07a720d8",
+    "src/features/aether_strip/source_tip.rs": "0a68b0760845d5215370b64ad7ddb84be5db9d38198d15ece73c613067987417",
+    "src/features/aether_strip/state.rs": "87426634e9da1abe0ebdfc9dc593610406c0ad57ea9408899672365fae39d3db",
+    "src/features/automation_data.json": "3b4fbe04afbfd89db091d6d48013fffd1fc980430e8f9a789359c0ffa9b7243d",
+    "src/features/automation.rs": "716d2e8264737c34ee7c42c77189abb51288245706e1bf13808e0f4a9e400edd",
+    "src/features/automation/editor.rs": "0c73867af4810172c618e5c675c1b7b420a1e6a3137c75e8ada325538849aab9",
+    "src/features/automation/launch_sound.rs": "13eec3ca596a1f08519fe320c19a03b834fbff8e8c5f5598bc59879c84788bbb",
+    "src/features/automation/preview.rs": "af00577035626b9d6c93c43c3b14472eca8bc6c7c7782dc4704c9b02f10eb4c2",
+    "src/features/automation/theme.rs": "2d7181928fb894821d74b3ae4fad6c0423c51578f95f7789c3e63731edb4c77a",
+    "src/features/source_workspace/accessory.rs": "071aa279f8eb8e57e3cb0684e5674e975b37dd025660e1424908c022345a57e1",
+    "src/features/source_workspace/profile_bar.rs": "e010865f75e6d697dd993bbeb3829cdc8099003ada60c94527604370fcf31e8e",
+    "src/features/source_workspace/tests.rs": "fb628aed2e934a9264c40dab25c633917962f748c64594fbb24d9d5319f1c2c3",
     "src/features/keyboard_actuation_data.json": "21d4c7192023d5fca40de3314d25b4ba5a876bb059b426135d050a899f6eec23"
   },
   "limitations": [
@@ -58,6 +91,7 @@
     "Camera preview, enumeration, framing presets, overlays and hardware commands remain incomplete.",
     "Audio demo pages and complex mappings remain incomplete; DSP and haptics are local drafts.",
     "Accessory port discovery, pairing workflows, lighting color parameters and Hue discovery remain incomplete.",
+    "Accessory source bodies and preview fixtures do not prove full navigation, profile-menu, animation or modal parity.",
     "System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.",
     "Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.",
     "Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.",
@@ -2152,8 +2186,8 @@
           "page_id": "product-164-main.458d4103-4575203",
           "key": "TAB_CUSTOMIZE",
           "offset": 4575203,
-          "route": null,
-          "status": "pending"
+          "route": "dock_pairing",
+          "status": "partial_native"
         },
         {
           "page_id": "product-164-main.458d4103-4575256",
@@ -3698,8 +3732,8 @@
           "page_id": "product-241-11.219fb515.chunk-311151",
           "key": "TAB_PAIRING",
           "offset": 311151,
-          "route": null,
-          "status": "pending"
+          "route": "dock_pairing",
+          "status": "partial_native"
         },
         {
           "page_id": "product-241-11.219fb515.chunk-311204",
@@ -7966,8 +8000,8 @@
           "page_id": "product-778-main.032287fa-4545793",
           "key": "TAB_CUSTOMIZE",
           "offset": 4545793,
-          "route": null,
-          "status": "pending"
+          "route": "wired_argb",
+          "status": "partial_native"
         },
         {
           "page_id": "product-778-main.032287fa-4545840",
@@ -8098,8 +8132,8 @@
           "page_id": "product-784-main.3094caa4-4601150",
           "key": "CUSTOMIZED",
           "offset": 4601150,
-          "route": null,
-          "status": "pending"
+          "route": "aether_strip",
+          "status": "partial_native"
         },
         {
           "page_id": "product-784-main.3094caa4-4601197",
@@ -12927,8 +12961,8 @@
           "page_id": "product-3871-main.7e64d4d0-4614642",
           "key": "TAB_CUSTOMIZE",
           "offset": 4614642,
-          "route": null,
-          "status": "pending"
+          "route": "wired_argb",
+          "status": "partial_native"
         },
         {
           "page_id": "product-3871-main.7e64d4d0-4614689",
@@ -13148,8 +13182,8 @@
           "page_id": "product-3884-main.607cfa0c-4531900",
           "key": "TAB_CUSTOMIZE",
           "offset": 4531900,
-          "route": null,
-          "status": "pending"
+          "route": "wireless_argb",
+          "status": "partial_native"
         },
         {
           "page_id": "product-3884-main.607cfa0c-4531947",
@@ -13180,8 +13214,9 @@
           "page_id": "product-3886-main.44393ea2-4178500",
           "key": "TAB_CUSTOMIZE",
           "offset": 4178500,
-          "route": null,
-          "status": "pending"
+          "route": "wireless_argb",
+          "status": "partial_native",
+          "limitation": "Source ports branch is unreachable (!u.type===BLE_MOBIL); editor fixtures do not count as production content."
         },
         {
           "page_id": "product-3886-main.44393ea2-4178547",
@@ -13577,8 +13612,9 @@
           "page_id": "product-3946-main.46ad416c-6990848",
           "key": "TAB_CUSTOMIZE",
           "offset": 6990848,
-          "route": null,
-          "status": "pending"
+          "route": "automation",
+          "status": "partial_native",
+          "limitation": "Main page and six action categories are partial; full macro/game/shortcut editors and hardware execution are incomplete."
         },
         {
           "page_id": "product-3946-main.46ad416c-6990945",

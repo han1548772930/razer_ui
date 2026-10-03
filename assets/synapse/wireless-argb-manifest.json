@@ -1,0 +1,272 @@
+[
+  {
+    "module": 2966,
+    "source": ".ref/devices/3884/static/media/icons-fan.85c6cf64.avif",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/icons-fan.85c6cf64.avif",
+    "output": "assets/synapse/wireless-argb-3884-fan.png",
+    "source_sha256": "029ca6aceb7f9102f1e0423e8db848a9a069d1a843c9aff52dcfb582328ae212",
+    "output_sha256": "ecd7f6af52d4446c7d738b3dc975de1ec377f93909c599a0a808d954abd61e1e"
+  },
+  {
+    "module": 941,
+    "source": ".ref/devices/3884/static/media/led-2-sides.f16c6c18.avif",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/led-2-sides.f16c6c18.avif",
+    "output": "assets/synapse/wireless-argb-3884-strip-2.png",
+    "source_sha256": "c5d30b449dbd00a152cdff985d5732d2032c1befdccf7105deb44e600702a26b",
+    "output_sha256": "c7b32a5d402fdd0eff354786558164547fa0f8de9e36ffeea5001aff546e46c8"
+  },
+  {
+    "module": 7408,
+    "source": ".ref/devices/3884/static/media/led-3-sides.b430d625.avif",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/led-3-sides.b430d625.avif",
+    "output": "assets/synapse/wireless-argb-3884-strip-3.png",
+    "source_sha256": "a9e0d151f48ec71bddab7a5eeba0c74d2dd6aef32b4624f16865947d8570202a",
+    "output_sha256": "aca95b65de667f119555b206b5559bb8656fdea088b07135fcfd9f989ef0798c"
+  },
+  {
+    "module": 8519,
+    "source": ".ref/devices/3884/static/media/led-4-sides.19154508.avif",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/led-4-sides.19154508.avif",
+    "output": "assets/synapse/wireless-argb-3884-strip-4.png",
+    "source_sha256": "e418eb2128641a408b23fec4e579400ed26cdee495a8363c539ef60fdd551100",
+    "output_sha256": "79fb06ed34f7a08cb58b9122f6520c5519b52db2587072799f328368a298d4fb"
+  },
+  {
+    "module": 5766,
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "output": "assets/synapse/wireless-argb-3884-strip-1.png",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "6ee84094b2cdb7697927759be1350206145f7ed72dde0b54629d50e282ea802d",
+    "embedded_sha256": "95b0e8dc9baea21ad113d3f76f64e9234164be3d732921c811c619b3b019c1cc"
+  },
+  {
+    "source": ".ref/devices/3884/static/media/prd-3x.d321d526.avif",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/prd-3x.d321d526.avif",
+    "output": "assets/synapse/wireless-argb-3884-prd-3x.png",
+    "source_sha256": "f02050f827e5ef2c8dbe097cedd0a5bf96f38cdcd8a88b7ce492018cf569fb4b",
+    "output_sha256": "84a7afa7f4bda882d71f7564b9af56bbc8c7cee3631dc4bb87c0012b40c3db1d"
+  },
+  {
+    "source": ".ref/devices/3884/static/media/detecting.e10c4d79.svg",
+    "url": "https://apps.razer.com/synapse/products/3884/ui/static/media/detecting.e10c4d79.svg",
+    "output": "assets/synapse/wireless-argb-3884-detecting.svg",
+    "source_sha256": "ff7aadb95db59592e6507c851a449fbe55e63bd2af875432f9f9a97e922c6ed4",
+    "output_sha256": "ff7aadb95db59592e6507c851a449fbe55e63bd2af875432f9f9a97e922c6ed4"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4497226,
+    "end": 4497885,
+    "output": "assets/synapse/wireless-argb-3884-auto_on.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "a8e9464ce37ffed508eb0cc1775a10918ac0ff8112bea9e3bee94b5e45c56b75",
+    "embedded_sha256": "a8e9464ce37ffed508eb0cc1775a10918ac0ff8112bea9e3bee94b5e45c56b75"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4496627,
+    "end": 4497226,
+    "output": "assets/synapse/wireless-argb-3884-auto_off.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "baf105c5ff462fd07b81c0028cb93399f925466ae6c1a1171165e2c63224aec4",
+    "embedded_sha256": "baf105c5ff462fd07b81c0028cb93399f925466ae6c1a1171165e2c63224aec4"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4497885,
+    "end": 4498329,
+    "output": "assets/synapse/wireless-argb-3884-refresh.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "3bd33f141626cdb6f1606400cc85d82059147d707399567ce3d41f1d354fbd1d",
+    "embedded_sha256": "3bd33f141626cdb6f1606400cc85d82059147d707399567ce3d41f1d354fbd1d"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4498341,
+    "end": 4498704,
+    "output": "assets/synapse/wireless-argb-3884-warning.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "efcae006d62839363819707e096af3a3187d32203bc9791da6a0a03fc47ab20f",
+    "embedded_sha256": "efcae006d62839363819707e096af3a3187d32203bc9791da6a0a03fc47ab20f"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4512637,
+    "end": 4513000,
+    "output": "assets/synapse/wireless-argb-3884-power.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "f354a5b379762cbef83ef95c8cc8b3be349e4427d28a971837202d150938eadd",
+    "embedded_sha256": "f354a5b379762cbef83ef95c8cc8b3be349e4427d28a971837202d150938eadd"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4512637,
+    "end": 4513000,
+    "output": "assets/synapse/wireless-argb-3884-power_off.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "a178ff7e84b535db33198a36d6fd628383741301f69c90180cea5552afb2b898",
+    "embedded_sha256": "a178ff7e84b535db33198a36d6fd628383741301f69c90180cea5552afb2b898"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4505333,
+    "end": 4505838,
+    "output": "assets/synapse/wireless-argb-3884-rename.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "0223882e2b22040436e06cce6b6a806602fd98d3084acd17d9de57be3a06fcb0",
+    "embedded_sha256": "0223882e2b22040436e06cce6b6a806602fd98d3084acd17d9de57be3a06fcb0"
+  },
+  {
+    "bundle": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "offset": 4504118,
+    "end": 4504825,
+    "output": "assets/synapse/wireless-argb-3884-remove.svg",
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output_sha256": "021478e0c2a0035d52ca84d3b9cf29ea25fb695a5bd51d1588ec9a6e305e8646",
+    "embedded_sha256": "021478e0c2a0035d52ca84d3b9cf29ea25fb695a5bd51d1588ec9a6e305e8646"
+  },
+  {
+    "module": 239,
+    "source": ".ref/devices/3886/static/media/icons-fan.85c6cf648ae7bca667d7.avif",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/icons-fan.85c6cf648ae7bca667d7.avif",
+    "output": "assets/synapse/wireless-argb-3886-fan.png",
+    "source_sha256": "10883f208955e7b0fba96354e624460d4ff06c09af5d01fad26e19a87f241e77",
+    "output_sha256": "a4ae8db7a2ecfc85e8910145013e4ae209fe356c6faa9093edc58123712ad3fe"
+  },
+  {
+    "module": 2266,
+    "source": ".ref/devices/3886/static/media/led-2-sides.f16c6c1842431ace505f.avif",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/led-2-sides.f16c6c1842431ace505f.avif",
+    "output": "assets/synapse/wireless-argb-3886-strip-2.png",
+    "source_sha256": "c2fe88db3137c74d1f4480ca60903b8d6b1c36a464f3f91a1053d3de074185da",
+    "output_sha256": "1920342e96a31a3f0321883fb7c1cea071cb30afc7e2e7fc202885a471aaed7b"
+  },
+  {
+    "module": 3718,
+    "source": ".ref/devices/3886/static/media/led-3-sides.b430d625ee31d4afcf11.avif",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/led-3-sides.b430d625ee31d4afcf11.avif",
+    "output": "assets/synapse/wireless-argb-3886-strip-3.png",
+    "source_sha256": "246e2d9677b259c09c8821af9e2de91514f87d6fd4be1974ace934ea952b6bce",
+    "output_sha256": "05580266667c35c814d3f71f7292d07ed63091ed8b25fbde82aa2b90902f1815"
+  },
+  {
+    "module": 5907,
+    "source": ".ref/devices/3886/static/media/led-4-sides.19154508020412f5ab8d.avif",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/led-4-sides.19154508020412f5ab8d.avif",
+    "output": "assets/synapse/wireless-argb-3886-strip-4.png",
+    "source_sha256": "ff78edc3afc4ba00dd30603db4f267599e943dd717a6cd9e9d73d45e5635276c",
+    "output_sha256": "6239e8bd13ed12e7d784a268694894726b4dbf7681dd6c5a000a5e648221aabb"
+  },
+  {
+    "module": 9817,
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "output": "assets/synapse/wireless-argb-3886-strip-1.png",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "6ee84094b2cdb7697927759be1350206145f7ed72dde0b54629d50e282ea802d",
+    "embedded_sha256": "95b0e8dc9baea21ad113d3f76f64e9234164be3d732921c811c619b3b019c1cc"
+  },
+  {
+    "source": ".ref/devices/3886/static/media/prd-3x.d321d526708a09165636.avif",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/prd-3x.d321d526708a09165636.avif",
+    "output": "assets/synapse/wireless-argb-3886-prd-3x.png",
+    "source_sha256": "6aa539c81c2bc43e0276673672642641766959833e52dd9445e72953b16fb639",
+    "output_sha256": "c4b17f7e3dc55c9084df72d753cab1b5e1431b80c98eb91ff67ba225260da224"
+  },
+  {
+    "source": ".ref/devices/3886/static/media/detecting.e10c4d797fbe8bb80db5f5c42e4ca60d.svg",
+    "url": "https://apps.razer.com/synapse/products/3886/ui/static/media/detecting.e10c4d797fbe8bb80db5f5c42e4ca60d.svg",
+    "output": "assets/synapse/wireless-argb-3886-detecting.svg",
+    "source_sha256": "ff7aadb95db59592e6507c851a449fbe55e63bd2af875432f9f9a97e922c6ed4",
+    "output_sha256": "ff7aadb95db59592e6507c851a449fbe55e63bd2af875432f9f9a97e922c6ed4"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3986778,
+    "end": 3987566,
+    "output": "assets/synapse/wireless-argb-3886-auto_on.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "e039a9e38e659023b540f9f3d58feadb7cba31b951841c8badd95139739069f0",
+    "embedded_sha256": "e039a9e38e659023b540f9f3d58feadb7cba31b951841c8badd95139739069f0"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3986046,
+    "end": 3986774,
+    "output": "assets/synapse/wireless-argb-3886-auto_off.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "9d6cc9c3549f2cd7428244daad2f6954f5faa18c824c6a3fd251a82117249036",
+    "embedded_sha256": "9d6cc9c3549f2cd7428244daad2f6954f5faa18c824c6a3fd251a82117249036"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3987570,
+    "end": 3988131,
+    "output": "assets/synapse/wireless-argb-3886-refresh.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "afd9debee92310eba59719a847859acd017397abaa2b674ef6764808dbda433e",
+    "embedded_sha256": "afd9debee92310eba59719a847859acd017397abaa2b674ef6764808dbda433e"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3988141,
+    "end": 3988621,
+    "output": "assets/synapse/wireless-argb-3886-warning.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "8ec7534facc2525f3d9bd97a8a7af270ae10e7584d45405bb567b2de1f7f4af3",
+    "embedded_sha256": "8ec7534facc2525f3d9bd97a8a7af270ae10e7584d45405bb567b2de1f7f4af3"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 4007329,
+    "end": 4007696,
+    "output": "assets/synapse/wireless-argb-3886-power.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "d2f9247a2e04aebaff0b6e8b907ad821f89edc87e97fbe976ab5f81c0f6757cc",
+    "embedded_sha256": "d2f9247a2e04aebaff0b6e8b907ad821f89edc87e97fbe976ab5f81c0f6757cc"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 4007329,
+    "end": 4007696,
+    "output": "assets/synapse/wireless-argb-3886-power_off.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "6d4fc180776155e4f3f0a5497ce8ed11125f5effee076a9fc845a6206cdedce3",
+    "embedded_sha256": "6d4fc180776155e4f3f0a5497ce8ed11125f5effee076a9fc845a6206cdedce3"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3999520,
+    "end": 4000142,
+    "output": "assets/synapse/wireless-argb-3886-rename.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "22b84bd9e7600cc9e4308c21919bede1e06b563d636d759536f8fed50c350427",
+    "embedded_sha256": "22b84bd9e7600cc9e4308c21919bede1e06b563d636d759536f8fed50c350427"
+  },
+  {
+    "bundle": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "offset": 3998045,
+    "end": 3998884,
+    "output": "assets/synapse/wireless-argb-3886-remove.svg",
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output_sha256": "71571b303cfac5c6bcc2f653ce644b31fea849acdf84c996d3ebfd0b097155fb",
+    "embedded_sha256": "71571b303cfac5c6bcc2f653ce644b31fea849acdf84c996d3ebfd0b097155fb"
+  }
+]

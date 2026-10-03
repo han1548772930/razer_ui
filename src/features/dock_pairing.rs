@@ -209,6 +209,7 @@ impl DockPairing {
                         false,
                         cx,
                     )
+                    .kind(CommandKind::PageUnpair(dual))
                     .mt(surface::css(if dual { 9. } else { 0. }))
                     .on_click(cx.listener(|this, _, window, cx| this.open(window, cx))),
                 );
@@ -277,8 +278,9 @@ fn command(
     primary: bool,
     disabled: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+) -> SourceCommand {
+    let id = id.into();
+    let base = gpui_kit::base::Button::new(id.clone())
         .accessibility_label(label.clone())
         .disabled(disabled)
         .h(surface::css(28.))
@@ -289,6 +291,7 @@ fn command(
         .items_center()
         .justify_center()
         .text_size(surface::css(12.))
+        .font_family("Roboto")
         .line_height(surface::css(14.))
         .bg(if primary {
             cx.theme().primary
@@ -300,11 +303,123 @@ fn command(
         } else {
             Colors::secondary_text()
         })
-        .when(disabled, |s| s.opacity(0.6))
-        .hover(|s| s.opacity(0.7))
-        .active(|s| s.opacity(0.5))
         .focus_visible(|s| s.border_1().border_color(cx.theme().foreground))
-        .child(label.to_uppercase())
+        .child(label.to_uppercase());
+    SourceCommand {
+        id,
+        base,
+        primary,
+        disabled,
+        kind: CommandKind::Choice,
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CommandKind {
+    Choice,
+    Scan,
+    Unpair(bool),
+    PageUnpair(bool),
+}
+#[derive(IntoElement)]
+struct SourceCommand {
+    id: ElementId,
+    base: gpui_kit::base::Button,
+    primary: bool,
+    disabled: bool,
+    kind: CommandKind,
+}
+impl SourceCommand {
+    fn kind(mut self, kind: CommandKind) -> Self {
+        self.kind = kind;
+        self
+    }
+    fn on_click(mut self, handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
+        self.base = self.base.on_click(handler);
+        self
+    }
+}
+impl Styled for SourceCommand {
+    fn style(&mut self) -> &mut StyleRefinement {
+        self.base.style()
+    }
+}
+impl RenderOnce for SourceCommand {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        use gpui_kit::base::motion::{self, Easing, Transition};
+        let hovered = window.use_keyed_state((self.id.clone(), "hover"), cx, |_, _| false);
+        let active = !self.disabled && *hovered.read(cx);
+        let opacity = match self.kind {
+            CommandKind::Choice if self.primary => {
+                if active {
+                    0.7
+                } else {
+                    1.
+                }
+            }
+            CommandKind::Choice => {
+                if active {
+                    1.
+                } else {
+                    0.7
+                }
+            }
+            CommandKind::PageUnpair(_) => {
+                if active {
+                    1.
+                } else {
+                    0.8
+                }
+            }
+            _ => 1.,
+        };
+        let opacity = if matches!(self.kind, CommandKind::Choice) {
+            motion::transition(
+                (self.id, "opacity"),
+                opacity,
+                Transition::new(std::time::Duration::from_millis(300)).easing(Easing::Ease),
+                window,
+                cx,
+            )
+        } else {
+            opacity
+        };
+        self.base
+            .opacity(if self.disabled { 0.5 } else { opacity })
+            .when(matches!(self.kind, CommandKind::Choice), |b| {
+                b.border_1()
+                    .border_color(cx.theme().title_bar)
+                    .rounded(surface::css(3.))
+            })
+            .when(matches!(self.kind, CommandKind::Unpair(_)), |b| {
+                b.bg(if active {
+                    Colors::unpair_hover()
+                } else {
+                    Colors::secondary()
+                })
+            })
+            .when(
+                matches!(self.kind, CommandKind::Unpair(false)) && !self.disabled,
+                |b| b.active(|s| s.bg(Colors::unpair_pressed())),
+            )
+            .when(matches!(self.kind, CommandKind::PageUnpair(false)), |b| {
+                b.min_w(surface::css(0.))
+                    .bg(Colors::card())
+                    .border_1()
+                    .border_color(Colors::border())
+                    .text_color(cx.theme().foreground)
+                    .rounded(surface::css(3.))
+            })
+            .when(matches!(self.kind, CommandKind::PageUnpair(true)), |b| {
+                b.px(surface::css(16.))
+                    .py(surface::css(6.))
+                    .line_height(surface::css(14.))
+            })
+            .on_hover(window.listener_for(&hovered, |hovered, value, _, cx| {
+                *hovered = *value;
+                cx.notify();
+            }))
+    }
 }
 fn warning(spec: &Spec, key: &str, name: &str, size: f32, cx: &App) -> Div {
     h_flex()
@@ -322,4 +437,38 @@ fn warning(spec: &Spec, key: &str, name: &str, size: f32, cx: &App) -> Div {
                 .text_color(cx.theme().muted_foreground)
                 .child(spec.text(key).replace("{{deviceName}}", name)),
         )
+}
+
+#[derive(IntoElement)]
+struct PairingSpinner {
+    id: ElementId,
+    asset: SharedString,
+}
+fn spinner(spec: &Spec, id: impl Into<ElementId>) -> PairingSpinner {
+    PairingSpinner {
+        id: id.into(),
+        asset: spec.asset("icon-progress_spinner"),
+    }
+}
+impl RenderOnce for PairingSpinner {
+    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        // HyperPollingWireless / Duallink ::before: 24px SVG in a 26px
+        // container, rotation 0..360deg, 1s linear infinite, no state mutation.
+        let icon = svg()
+            .path(self.asset)
+            .size(surface::css(24.))
+            .text_color(cx.theme().primary);
+        div().size(surface::css(26.)).child(if cx.reduce_motion() {
+            icon.into_any_element()
+        } else {
+            icon.with_animation(
+                self.id,
+                Animation::new(std::time::Duration::from_secs(1))
+                    .repeat()
+                    .with_easing(linear),
+                |icon, phase| icon.with_transformation(Transformation::rotate(percentage(phase))),
+            )
+            .into_any_element()
+        })
+    }
 }

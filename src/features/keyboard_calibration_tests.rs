@@ -1,7 +1,7 @@
 use super::{CalibrationPreview, KeyboardProductWorkspace, Sample};
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt;
-use gpui_kit::{AppContext, ElementId, TestAppContext, px, size};
+use gpui_kit::{App, AppContext, ElementId, TestAppContext, px, size};
 
 // Compiled by cargo check --all-targets. Repository policy forbids executing
 // these integration tests during the source-only reconstruction task.
@@ -46,31 +46,93 @@ fn calibration_open_cancel_and_keyboard_never_modify_profile(cx: &mut TestAppCon
 }
 
 #[gpui_kit::test]
-fn preview_waits_for_explicit_sample_selection_and_resets_on_cancel(cx: &mut TestAppContext) {
+fn preview_shows_full_product_page_and_waits_for_explicit_samples(cx: &mut TestAppContext) {
     cx.update(gpui_kit::init);
     let mut entity = None;
-    let handle = cx.open_window(size(px(1100.), px(850.)), |window, cx| {
-        let view = cx.new(|_| CalibrationPreview {
-            sample: Sample::SelectKey,
-        });
+    let handle = cx.open_window(size(px(1280.), px(1100.)), |window, cx| {
+        let view = cx.new(|cx| CalibrationPreview::new(740, window, cx));
         entity = Some(view.clone());
         Root::new(view, window, cx)
     });
     let entity = entity.unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert!(
+            window
+                .try_find("keyboard-calibration-intro-close")
+                .is_some()
+        );
+        assert!(window.try_find("keyboard-calibration-start").is_some());
+        assert!(window.try_find("source-profile-select").is_some());
+        assert!(window.try_find("source-product-navigation").is_some());
+
+        window.click((ElementId::from("calibration-product"), "746"), cx);
+        assert_eq!(entity.read(cx).product_id, 746);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert!(
+            window
+                .try_find("keyboard-calibration-intro-close")
+                .is_some()
+        );
+        let keyboard = entity.read(cx).keyboard.clone();
+        let before = keyboard.read(cx).snapshot();
+        window.click("keyboard-calibration-start", cx);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::SelectKey));
+        window.press("escape", cx);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert!(window.try_find("keyboard-calibration-start").is_some());
+
         window.click((ElementId::from("calibration-sample"), "selected"), cx);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::KeySelected));
         window.click("keyboard-calibration-next", cx);
-        assert!(entity.read(cx).sample == Sample::PressKey);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::PressKey));
         window.click("keyboard-calibration-next", cx);
-        assert!(entity.read(cx).sample == Sample::VerifyBottom);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::VerifyBottom));
         window.click("keyboard-calibration-next", cx);
-        assert!(entity.read(cx).sample == Sample::VerifyBottom);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::VerifyBottom));
+        window.click("keyboard-calibration-cancel", cx);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+
         window.click((ElementId::from("calibration-sample"), "release"), cx);
         window.click("keyboard-calibration-next", cx);
-        assert!(entity.read(cx).sample == Sample::CalibrateTop);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::CalibrateTop));
+        window.click("keyboard-calibration-next", cx);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::CalibrateTop));
         window.click("keyboard-calibration-cancel", cx);
-        assert!(entity.read(cx).sample == Sample::SelectKey);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert!(window.try_find("keyboard-calibration-start").is_some());
+
+        for (expected, id, _) in Sample::ALL {
+            window.click((ElementId::from("calibration-sample"), id), cx);
+            assert!(sample(entity.read(cx), cx) == Some(expected));
+            window.click("keyboard-calibration-cancel", cx);
+        }
+        window.click((ElementId::from("calibration-sample"), "failure"), cx);
+        window.click("keyboard-calibration-next", cx);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::SelectKey));
+        window.click("keyboard-calibration-cancel", cx);
+        window.click((ElementId::from("calibration-sample"), "success"), cx);
+        window.click("keyboard-calibration-next", cx);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert_eq!(keyboard.read(cx).snapshot(), before);
+
+        window.click((ElementId::from("calibration-product"), "740"), cx);
+        assert_eq!(entity.read(cx).product_id, 740);
+        assert!(window.try_find("keyboard-calibration-modal").is_none());
+        assert!(window.try_find("keyboard-calibration-start").is_some());
     })
     .unwrap();
+}
+
+fn sample(preview: &CalibrationPreview, cx: &App) -> Option<Sample> {
+    preview
+        .keyboard
+        .read(cx)
+        .calibration_modal
+        .as_ref()
+        .and_then(|modal| {
+            let modal = modal.read(cx);
+            modal.open.then_some(modal.sample).flatten()
+        })
 }

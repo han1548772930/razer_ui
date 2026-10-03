@@ -10,6 +10,34 @@ use gpui_kit::{
 };
 
 #[test]
+fn bundled_pages_open_without_external_installation_or_download_state() {
+    let catalog = AppPickerCatalog::new(PickerApp::Synapse)
+        .bundled_modules([PickerModule::Alexa, PickerModule::ProfileMigration])
+        .uninstalling_modules(["alexa"])
+        .module_order(["profile-migration"]);
+    assert!(catalog.status_unknown());
+    assert!(catalog.installed_modules.is_none());
+    assert!(catalog.native_apps.is_none());
+    let sections = catalog.sections();
+    let modules = sections
+        .iter()
+        .find(|section| section.id == "modules")
+        .unwrap();
+    assert_eq!(modules.items.len(), 2);
+    assert!(
+        modules
+            .items
+            .iter()
+            .all(|item| item.reason.is_none() && !item.busy)
+    );
+    assert!(modules.items.iter().any(|item| matches!(
+        &item.target,
+        super::PickerRequest::Open(PickerTarget::Module(PickerModule::Alexa))
+    )));
+    assert!(!sections.iter().any(|section| section.id == "recommended"));
+}
+
+#[test]
 fn local_page_capabilities_never_become_installation_evidence() {
     let unknown = AppPickerCatalog::new(PickerApp::Synapse)
         .launchable_modules([PickerModule::Alexa])

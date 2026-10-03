@@ -6,8 +6,7 @@
 
 | 页面状态 | 数量 |
 | --- | ---: |
-| partial_native | 1384 |
-| pending | 8 |
+| partial_native | 1392 |
 | existing_partial_not_reaudited_here | 27 |
 
 原有十个适配器单独记为 `existing_partial_not_reaudited_here`，本次统计不替代它们各自的当前源码审计。独立模式另列，未计作主页面实现。
@@ -20,14 +19,6 @@
 
 | 产品 ID | 产品 | 页面 |
 | --- | --- | --- |
-| 164 | Razer Mouse Dock Pro | TAB_CUSTOMIZE |
-| 241 | Razer Mouse Dock V2 Pro | TAB_PAIRING |
-| 778 | ASRock B550 Taichi Razer Edition | TAB_CUSTOMIZE |
-| 784 | Razer Aether Light Strip | CUSTOMIZED |
-| 3871 | Razer Chroma Addressable RGB Controller | TAB_CUSTOMIZE |
-| 3884 | Razer Chroma Wireless ARGB Controller | TAB_CUSTOMIZE |
-| 3886 | Razer Chroma Wireless ARGB Controller | TAB_CUSTOMIZE |
-| 3946 | August T2 | TAB_CUSTOMIZE |
 
 ## 仍需完成
 
@@ -36,6 +27,7 @@
 - Camera preview, enumeration, framing presets, overlays and hardware commands remain incomplete.
 - Audio demo pages and complex mappings remain incomplete; DSP and haptics are local drafts.
 - Accessory port discovery, pairing workflows, lighting color parameters and Hue discovery remain incomplete.
+- Accessory source bodies and preview fixtures do not prove full navigation, profile-menu, animation or modal parity.
 - System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.
 - Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.
 - Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.

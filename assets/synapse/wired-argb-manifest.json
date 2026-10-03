@@ -1,0 +1,1628 @@
+[
+  {
+    "name": "fan",
+    "source": ".ref/devices/778/static/media/icons-fan.85c6cf64.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/icons-fan.85c6cf64.avif",
+    "output": "assets/synapse/wired-argb-778-fan.png",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "029ca6aceb7f9102f1e0423e8db848a9a069d1a843c9aff52dcfb582328ae212",
+    "output_sha256": "ecd7f6af52d4446c7d738b3dc975de1ec377f93909c599a0a808d954abd61e1e"
+  },
+  {
+    "name": "strip2",
+    "source": ".ref/devices/778/static/media/led-2-sides.f16c6c18.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/led-2-sides.f16c6c18.avif",
+    "output": "assets/synapse/wired-argb-778-strip2.png",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "c5d30b449dbd00a152cdff985d5732d2032c1befdccf7105deb44e600702a26b",
+    "output_sha256": "c7b32a5d402fdd0eff354786558164547fa0f8de9e36ffeea5001aff546e46c8"
+  },
+  {
+    "name": "strip3",
+    "source": ".ref/devices/778/static/media/led-3-sides.b430d625.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/led-3-sides.b430d625.avif",
+    "output": "assets/synapse/wired-argb-778-strip3.png",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "a9e0d151f48ec71bddab7a5eeba0c74d2dd6aef32b4624f16865947d8570202a",
+    "output_sha256": "aca95b65de667f119555b206b5559bb8656fdea088b07135fcfd9f989ef0798c"
+  },
+  {
+    "name": "strip4",
+    "source": ".ref/devices/778/static/media/led-4-sides.19154508.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/led-4-sides.19154508.avif",
+    "output": "assets/synapse/wired-argb-778-strip4.png",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "e418eb2128641a408b23fec4e579400ed26cdee495a8363c539ef60fdd551100",
+    "output_sha256": "79fb06ed34f7a08cb58b9122f6520c5519b52db2587072799f328368a298d4fb"
+  },
+  {
+    "name": "strip1",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "source_offset": 161323,
+    "source_end": 164483,
+    "embedded": true,
+    "output": "assets/synapse/wired-argb-778-strip1.png",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "output_sha256": "6ee84094b2cdb7697927759be1350206145f7ed72dde0b54629d50e282ea802d"
+  },
+  {
+    "name": "chroma_studio",
+    "source": ".ref/devices/778/static/media/chroma_studio.55db6875.svg",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/chroma_studio.55db6875.svg",
+    "output": "assets/synapse/wired-argb-778-chroma_studio.svg",
+    "context": ".ref/devices/778/asset-manifest.json",
+    "context_sha256": "0e8a5e3649a3d8a5ef0e6138b564421b48c6704f8b9487ffcc4ac8dd9f6f77fa",
+    "source_sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414",
+    "output_sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414"
+  },
+  {
+    "name": "tooltip_questionmark",
+    "source": ".ref/devices/778/static/media/tooltip_questionmark.96138d2f.svg",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/tooltip_questionmark.96138d2f.svg",
+    "output": "assets/synapse/wired-argb-778-tooltip_questionmark.svg",
+    "context": ".ref/devices/778/asset-manifest.json",
+    "context_sha256": "0e8a5e3649a3d8a5ef0e6138b564421b48c6704f8b9487ffcc4ac8dd9f6f77fa",
+    "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "output_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+  },
+  {
+    "name": "stepper_up",
+    "source": ".ref/devices/778/static/media/stepper_up.dcb04520.svg",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/stepper_up.dcb04520.svg",
+    "output": "assets/synapse/wired-argb-778-stepper_up.svg",
+    "context": ".ref/devices/778/asset-manifest.json",
+    "context_sha256": "0e8a5e3649a3d8a5ef0e6138b564421b48c6704f8b9487ffcc4ac8dd9f6f77fa",
+    "source_sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c",
+    "output_sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c"
+  },
+  {
+    "name": "stepper_down",
+    "source": ".ref/devices/778/static/media/stepper_down.349f755c.svg",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/stepper_down.349f755c.svg",
+    "output": "assets/synapse/wired-argb-778-stepper_down.svg",
+    "context": ".ref/devices/778/asset-manifest.json",
+    "context_sha256": "0e8a5e3649a3d8a5ef0e6138b564421b48c6704f8b9487ffcc4ac8dd9f6f77fa",
+    "source_sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa",
+    "output_sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa"
+  },
+  {
+    "name": "product-0",
+    "source": ".ref/devices/778/static/media/prd-3x.dccaebe7.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/prd-3x.dccaebe7.avif",
+    "output": "assets/synapse/wired-argb-778-product-0.png",
+    "context": ".ref/devices/778/static/js/3009.ab3f87ea.chunk.js",
+    "context_sha256": "4dc134117703c80417fc7c3619335ba9b7700525bcbc587c8ef1a6a98c60fd00",
+    "source_sha256": "417636c6b4631a1de0a195ae19e3b56c8d363de0b2d1a1b0a2be71e5d033795e",
+    "output_sha256": "5efc2d864920206e011082af7831885024a26bdcb04e1f11c02c44e162bb6544"
+  },
+  {
+    "name": "product-128",
+    "source": ".ref/devices/778/static/media/prd-3x.236e6803.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/prd-3x.236e6803.avif",
+    "output": "assets/synapse/wired-argb-778-product-128.png",
+    "context": ".ref/devices/778/static/js/4688.060bcf3d.chunk.js",
+    "context_sha256": "b1c734adfa0c61bac9a548f8c26cc42064ed53e14ad4dfab5f9f16588f5b60ec",
+    "source_sha256": "f53088c02fb51c18f33561cc996f59a2d86bb4329da85d786b3f7332e41cba65",
+    "output_sha256": "0064def5d1fc8276626268ee28d317e20717fa2c401ea8f41f1f831673a98215"
+  },
+  {
+    "name": "product-129",
+    "source": ".ref/devices/778/static/media/prd-3x.b8dc25c4.avif",
+    "url": "https://apps.razer.com/synapse/products/778/ui/static/media/prd-3x.b8dc25c4.avif",
+    "output": "assets/synapse/wired-argb-778-product-129.png",
+    "context": ".ref/devices/778/static/js/7339.0fd4700c.chunk.js",
+    "context_sha256": "dc46760954b4b2a78e7fbc86ff5f984b9b39e7ce6277120206fa18e2d8154b90",
+    "source_sha256": "393aa6d31be7c4017da755defdcd8e3b3396a83959653887dcef8b4295f57ba5",
+    "output_sha256": "e15c987e80b31008326da7c9f8a9ab7914472a12254e6b8fa90a411e172287f9"
+  },
+  {
+    "name": "rename",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "source_offset": 4007143,
+    "source_end": 4007648,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\"><defs><clipPath id=\"a\"><path fill=\"none\" d=\"M0 0H14V14H0z\"></path></clipPath></defs><g clip-path=\"url(#a)\"><path d=\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\" fill=\"#44d62c\"></path></g></svg>",
+    "output": "assets/synapse/wired-argb-778-rename.svg",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "output_sha256": "2a75b635befef28953cdc99455dea1c29b968023820ffd8f3490b4bd31a46a93"
+  },
+  {
+    "name": "remove",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "source_offset": 4005928,
+    "source_end": 4006635,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"icon-close-glitter\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><defs><clipPath id=\"a\"><path fill=\"none\" d=\"M0 0H20V20H0z\"></path></clipPath></defs><g><path d=\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\" fill=\"#ccc\"></path></g></svg>",
+    "output": "assets/synapse/wired-argb-778-remove.svg",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "output_sha256": "a0124819b3a3281c94478069b7b58912a20b1942c4162ae034e9ed450913bcd1"
+  },
+  {
+    "name": "warning",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "source_offset": 3985460,
+    "source_end": 3985823,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\" fill=\"#fd8611\"></path></svg>",
+    "output": "assets/synapse/wired-argb-778-warning.svg",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "output_sha256": "cd2310e042f4cec22cb11b4a644eb8c331b5bc7ede14e233f5ecee43d1b02720"
+  },
+  {
+    "name": "detected",
+    "source": ".ref/devices/778/static/js/main.032287fa.js",
+    "source_offset": 3983858,
+    "source_end": 3984776,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\" fill=\"#707070\"></path></svg>",
+    "output": "assets/synapse/wired-argb-778-detected.svg",
+    "context": ".ref/devices/778/static/js/main.032287fa.js",
+    "context_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "source_sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+    "output_sha256": "0880f2202a521719841a537b791d6bd42da65fb9d8ff6f1eed135e81dd165413"
+  },
+  {
+    "name": "fan",
+    "source": ".ref/devices/3871/static/media/icons-fan.85c6cf64.avif",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/icons-fan.85c6cf64.avif",
+    "output": "assets/synapse/wired-argb-3871-fan.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "029ca6aceb7f9102f1e0423e8db848a9a069d1a843c9aff52dcfb582328ae212",
+    "output_sha256": "ecd7f6af52d4446c7d738b3dc975de1ec377f93909c599a0a808d954abd61e1e"
+  },
+  {
+    "name": "strip1",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 142761,
+    "source_end": 145921,
+    "embedded": true,
+    "output": "assets/synapse/wired-argb-3871-strip1.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "6ee84094b2cdb7697927759be1350206145f7ed72dde0b54629d50e282ea802d"
+  },
+  {
+    "name": "strip2",
+    "source": ".ref/devices/3871/static/media/led-2-sides.f16c6c18.avif",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/led-2-sides.f16c6c18.avif",
+    "output": "assets/synapse/wired-argb-3871-strip2.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "c5d30b449dbd00a152cdff985d5732d2032c1befdccf7105deb44e600702a26b",
+    "output_sha256": "c7b32a5d402fdd0eff354786558164547fa0f8de9e36ffeea5001aff546e46c8"
+  },
+  {
+    "name": "strip3",
+    "source": ".ref/devices/3871/static/media/led-3-sides.b430d625.avif",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/led-3-sides.b430d625.avif",
+    "output": "assets/synapse/wired-argb-3871-strip3.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "a9e0d151f48ec71bddab7a5eeba0c74d2dd6aef32b4624f16865947d8570202a",
+    "output_sha256": "aca95b65de667f119555b206b5559bb8656fdea088b07135fcfd9f989ef0798c"
+  },
+  {
+    "name": "strip4",
+    "source": ".ref/devices/3871/static/media/led-4-sides.19154508.avif",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/led-4-sides.19154508.avif",
+    "output": "assets/synapse/wired-argb-3871-strip4.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "e418eb2128641a408b23fec4e579400ed26cdee495a8363c539ef60fdd551100",
+    "output_sha256": "79fb06ed34f7a08cb58b9122f6520c5519b52db2587072799f328368a298d4fb"
+  },
+  {
+    "name": "detecting",
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/detecting.f2110e0d.svg",
+    "output": "assets/synapse/wired-argb-3871-detecting.svg",
+    "context": ".ref/devices/3871/asset-manifest.json",
+    "context_sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150"
+  },
+  {
+    "name": "chroma_studio",
+    "source": ".ref/devices/3871/static/media/chroma_studio.55db6875.svg",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/chroma_studio.55db6875.svg",
+    "output": "assets/synapse/wired-argb-3871-chroma_studio.svg",
+    "context": ".ref/devices/3871/asset-manifest.json",
+    "context_sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7",
+    "source_sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414",
+    "output_sha256": "b69531a08fea6cf12a2a2224395e076b7a1747fc3f6c36b5dcf9caef122d9414"
+  },
+  {
+    "name": "tooltip_questionmark",
+    "source": ".ref/devices/3871/static/media/tooltip_questionmark.96138d2f.svg",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/tooltip_questionmark.96138d2f.svg",
+    "output": "assets/synapse/wired-argb-3871-tooltip_questionmark.svg",
+    "context": ".ref/devices/3871/asset-manifest.json",
+    "context_sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7",
+    "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "output_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+  },
+  {
+    "name": "stepper_up",
+    "source": ".ref/devices/3871/static/media/stepper_up.dcb04520.svg",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/stepper_up.dcb04520.svg",
+    "output": "assets/synapse/wired-argb-3871-stepper_up.svg",
+    "context": ".ref/devices/3871/asset-manifest.json",
+    "context_sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7",
+    "source_sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c",
+    "output_sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c"
+  },
+  {
+    "name": "stepper_down",
+    "source": ".ref/devices/3871/static/media/stepper_down.349f755c.svg",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/stepper_down.349f755c.svg",
+    "output": "assets/synapse/wired-argb-3871-stepper_down.svg",
+    "context": ".ref/devices/3871/asset-manifest.json",
+    "context_sha256": "4a834c07a35497a684ee03369378a89ada6b29a2053370357ece9066e6586fd7",
+    "source_sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa",
+    "output_sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa"
+  },
+  {
+    "name": "product-0",
+    "source": ".ref/devices/3871/static/media/prd-3x.e7127427.avif",
+    "url": "https://apps.razer.com/synapse/products/3871/ui/static/media/prd-3x.e7127427.avif",
+    "output": "assets/synapse/wired-argb-3871-product-0.png",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "a58c3397e24583fb6d671e8104f948f9dccaa5e4fd851357507ae45e20a77d07",
+    "output_sha256": "71a7951d6a69a4f156076120fcd3239ea0c930b3f58c55ca928033cc7227954e"
+  },
+  {
+    "name": "rename",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3987653,
+    "source_end": 3988158,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\"><defs><clipPath id=\"a\"><path fill=\"none\" d=\"M0 0H14V14H0z\"></path></clipPath></defs><g clip-path=\"url(#a)\"><path d=\"M10.755 5.748L3.5 13.003H1v-2.5l7.255-7.255zm2.052-2.992l-1.56-1.56a.664.664 0 00-.94 0L9.2 2.303l2.5 2.5 1.109-1.109a.664.664 0 00-.002-.938z\" fill=\"#44d62c\"></path></g></svg>",
+    "output": "assets/synapse/wired-argb-3871-rename.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "2a75b635befef28953cdc99455dea1c29b968023820ffd8f3490b4bd31a46a93"
+  },
+  {
+    "name": "remove",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3986438,
+    "source_end": 3987145,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"icon-close-glitter\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><defs><clipPath id=\"a\"><path fill=\"none\" d=\"M0 0H20V20H0z\"></path></clipPath></defs><g><path d=\"M10 2a8 8 0 108 8 8.024 8.024 0 00-8-8zm2.96 9.84a.773.773 0 010 1.12.773.773 0 01-1.12 0L10 11.12l-1.84 1.84a.792.792 0 11-1.12-1.12L8.88 10 7.04 8.16a.792.792 0 111.12-1.12L10 8.88l1.84-1.84a.773.773 0 011.12 0 .773.773 0 010 1.12L11.12 10z\" fill=\"#ccc\"></path></g></svg>",
+    "output": "assets/synapse/wired-argb-3871-remove.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "a0124819b3a3281c94478069b7b58912a20b1942c4162ae034e9ed450913bcd1"
+  },
+  {
+    "name": "warning",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3958247,
+    "source_end": 3958610,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"M9.156 2.48L.146 17.49A.992.992 0 00.976 19h18.04a1 1 0 00.84-1.51l-9.02-15.01a.975.975 0 00-1.68 0zm1.82 13.53h-1.96v-1.99h1.96v1.99zm0-3.98h-1.96V8.05a.98.98 0 111.96 0z\" fill=\"#fd8611\"></path></svg>",
+    "output": "assets/synapse/wired-argb-3871-warning.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "cd2310e042f4cec22cb11b4a644eb8c331b5bc7ede14e233f5ecee43d1b02720"
+  },
+  {
+    "name": "refresh",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3957791,
+    "source_end": 3958235,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><defs><clipPath id=\"a\"><path fill=\"none\" d=\"M0 0H20V20H0z\"></path></clipPath></defs><g clip-path=\"url(#a)\"><path d=\"M15.649 4.351A7.994 7.994 0 1017.931 11H15.91a6.044 6.044 0 11-1.687-5.223L11 9h7V2z\" fill=\"#ccc\"></path></g></svg>",
+    "output": "assets/synapse/wired-argb-3871-refresh.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "6fff921dd9d96696880989919a0975dfcc8b1f8245d812ea1772e30ad5fbea36"
+  },
+  {
+    "name": "auto",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3956533,
+    "source_end": 3957132,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><style>svg{fill:none}.icon-detection--active .detect-a{fill:none}.icon-detection--active .detect-e{fill:none}.icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}.icon-detection--active .detect-b{fill:#111;animation:zoomin .1s ease-out 0s 1}.icon-detection--active .detect-c{fill:#fff;opacity:0}.icon-detection--active .detect-d{stroke:none}</style><rect width=\"20\" height=\"20\" rx=\"2\"></rect><path d=\"M0 0H20V20H0z\" class=\"detect-c\"></path><path d=\"M0 0H20V20H0z\" class=\"detect-f\"></path><path d=\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zM11.983 12.734H8.009L7.254 15h-2.41l4.1-11h2.1l4.117 11h-2.41zM8.621 10.9h2.75L9.989 6.78z\" fill=\"#ccc\" class=\"detect-b\"></path></svg>",
+    "output": "assets/synapse/wired-argb-3871-auto.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "c57dae33af7e241ce43d3e906831ac47efef8432a45b029c70ba7e17ba7ac7fd"
+  },
+  {
+    "name": "auto-active",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3957132,
+    "source_end": 3957791,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" class=\"icon-detection--active\"><style>svg{fill:none}.icon-detection--active .detect-a{fill:none}.icon-detection--active .detect-e{fill:none}.icon-detection--active .detect-a{stroke:#44d62c;stroke-width:10px}.icon-detection--active .detect-b{fill:#111;animation:zoomin .1s ease-out 0s 1}.icon-detection--active .detect-c{fill:#fff;opacity:0}.icon-detection--active .detect-d{stroke:none}</style><g class=\"detect-a\"><rect width=\"20\" height=\"20\" class=\"detect-d\" rx=\"2\"></rect><rect width=\"10\" height=\"10\" x=\"5\" y=\"5\" class=\"detect-e\"></rect></g><path d=\"M16 16h-2v2h4v-4h-2zM14 2v2h2v2h2V2zM4 14H2v4h4v-2H4zM2 6h2V4h2V2H2zM11.621 12.146H8.37L7.752 14H5.78l3.35-9h1.718l3.368 9h-1.971zm-2.751-1.5h2.25L9.99 7.275z\" class=\"detect-b\"></path><path d=\"M0 0H20V20H0z\" class=\"detect-c\"></path></svg>",
+    "output": "assets/synapse/wired-argb-3871-auto-active.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "82b2442196b81cc8174ec6a23af7c9f0a08677616456452900b27f85efb000b3"
+  },
+  {
+    "name": "detected",
+    "source": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "source_offset": 3964743,
+    "source_end": 3965661,
+    "inline_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"M18 18h-2v2h4v-4h-2zM16 0v2h2v2h2V0zM2 16H0v4h4v-2H2zM0 4h2V2h2V0H0zm13.193 2.426l.75-1.854a1 1 0 111.854.749l-.749 1.855a1 1 0 01-1.855-.75zM10 7a1 1 0 001-1V4a1 1 0 00-2 0v2a1 1 0 001 1zm-5.048.176a1 1 0 001.855-.75l-.75-1.854a1.001 1.001 0 10-1.857.749zM10 10a2 2 0 012 2v2H8v-2a2 2 0 012-2m0-2a4 4 0 00-4 4v4h8v-4a4 4 0 00-4-4z\" fill=\"#707070\"></path></svg>",
+    "output": "assets/synapse/wired-argb-3871-detected.svg",
+    "context": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+    "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "source_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+    "output_sha256": "0880f2202a521719841a537b791d6bd42da65fb9d8ff6f1eed135e81dd165413"
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-base.svg",
+    "output_sha256": "399fb0a5589f7c3d6ea326664ef5a59915ef08e30fb826c1964a5ebe43bb41ed"
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right1.svg",
+    "output_sha256": "a314fbf0fd46368ea2bcfdb4e3a1b66a9b6dbf3fa316467ba3e13b6a03667ecb",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 0
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right2.svg",
+    "output_sha256": "4ef062e235fb4e7ce694f4d1f931e4e3c96ded977b85f0eaa329100ea97eff84",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 100
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right3.svg",
+    "output_sha256": "8ccd62831b72e256bc6529f7136ae675f9ce01983b1f2e934cd14b49f8d49f0a",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 200
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right4.svg",
+    "output_sha256": "f1a2692f292b37a25053e902bdd51c25b5211720b90bd6bbe01c16e4c8be2545",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 300
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right5.svg",
+    "output_sha256": "b28f8ef2657cd218b550145b0f8a108e8b62685b075df73a3c9f7eea01afa1a6",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 400
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right6.svg",
+    "output_sha256": "044b51ffefffec267a5def225514fd15fc5356d846d708cbb703d019a882746e",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 500
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right7.svg",
+    "output_sha256": "21dc7d853a187f77bd0e75484bf4fec3e0e5ba5d17ec4c99231651310cca0b88",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 600
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right8.svg",
+    "output_sha256": "587db80345d5f5549ad451105584ee2ce049025cd1680f60c98f8a7f9762e85b",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 700
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-right9.svg",
+    "output_sha256": "9e934bfa98418d8f1c2576e3c2faca11c94f308c88313a2900f7486634c9982f",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 800
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left1.svg",
+    "output_sha256": "f899792e732474545f19d69520b2b2580848b3e23d3405e3a2de1d2f4b21d83e",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 0
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left2.svg",
+    "output_sha256": "bedf343ba466378157ccd7c52fb7ef25d73765be0bfc411e841739a9151d28af",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 100
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left3.svg",
+    "output_sha256": "d20254470b42a87de2dde25c0757345acc370d962c87b58631b82927363296c2",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 200
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left4.svg",
+    "output_sha256": "53fa65ec71bfe2d6dabfc2c52df6eee0e335d5e63d534c0768cb3dfa51172ebe",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 300
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left5.svg",
+    "output_sha256": "411afc260bfe8a6bf4f2d03e24f4359362005fc4cc8c59d8bbc92702207f08d6",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 400
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left6.svg",
+    "output_sha256": "fbd750a6df8262d4b1f2829061679a1e370d029f7085b21e625114f1553b51ac",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 500
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left7.svg",
+    "output_sha256": "6e512f07ad596a1dd20c6a637fb39b4cd70722e71562b34cca01039b0ac4bf66",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 600
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left8.svg",
+    "output_sha256": "90a751f5eceaaf489883a5e61363861e6b7ca27e6ce88b5cf802dfe1516995f8",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 700
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-led-left9.svg",
+    "output_sha256": "06c7d52c768f7f8ee1851e87ab9dbd87d678d6cba2021d2944c3db724e99fa33",
+    "cycle_ms": 1800,
+    "fade_ms": 500,
+    "delay_ms": 800
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-000.svg",
+    "output_sha256": "d6a877a491721303b93f3b7653ee7c4d065fd51dbd03766d1de806ac5b130353",
+    "cycle_ms": 2000,
+    "frame": 0,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-001.svg",
+    "output_sha256": "167ddd14c6ad5dbad09c5eea43cd9be4b87c10c20073805ce2c4bfb724d47fc3",
+    "cycle_ms": 2000,
+    "frame": 1,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-002.svg",
+    "output_sha256": "caf8b06021d9779d66e1a175053e5bc84fe36ece4fd7b952e15ad6c9464cc40f",
+    "cycle_ms": 2000,
+    "frame": 2,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-003.svg",
+    "output_sha256": "db262d1a18180dc5407c9c64a79ee0107caa32a5c884e9f12d60a0605afb9e82",
+    "cycle_ms": 2000,
+    "frame": 3,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-004.svg",
+    "output_sha256": "ea1272accdd1dd26c820dfe5e678300edcd461935db4475ae79ed62f79b896a3",
+    "cycle_ms": 2000,
+    "frame": 4,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-005.svg",
+    "output_sha256": "70e220d5c0e3892af3f234c4525e9e9f2778f3c85a75596c18ff85a592755e29",
+    "cycle_ms": 2000,
+    "frame": 5,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-006.svg",
+    "output_sha256": "d8e1e944e7630b147fe9995495eab8f103802147d430f8cba2646229058e99bd",
+    "cycle_ms": 2000,
+    "frame": 6,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-007.svg",
+    "output_sha256": "3c34d3d51cc5d4891c98f73b8b57c27633ee7d1d98551dbac545ecc3cabd9572",
+    "cycle_ms": 2000,
+    "frame": 7,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-008.svg",
+    "output_sha256": "4b1c85e2542c3b0ef6b976c8c9d165dfd46a42e94d322be99b0e9cebdf52383d",
+    "cycle_ms": 2000,
+    "frame": 8,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-009.svg",
+    "output_sha256": "af8a6d72b638218495ee75c6ff4159175f4d3ed22d16d491ff604778c9c26ae0",
+    "cycle_ms": 2000,
+    "frame": 9,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-010.svg",
+    "output_sha256": "acae427bf66f09e4ec043957b12b0f5ccc12e7860878e19d18cc81502f1de813",
+    "cycle_ms": 2000,
+    "frame": 10,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-011.svg",
+    "output_sha256": "bd3471802d375968b02de072016df886b6810148baf39fb67c4af651a2a5cece",
+    "cycle_ms": 2000,
+    "frame": 11,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-012.svg",
+    "output_sha256": "1570d70be67aecd0c065886e6fbe21ec8ab0b326816cee88a5a218f14cbadbb8",
+    "cycle_ms": 2000,
+    "frame": 12,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-013.svg",
+    "output_sha256": "55d15e832b4299e83da5e64f759dbe6d181ce07a14e7eb4a2cb6e3c44d8ca272",
+    "cycle_ms": 2000,
+    "frame": 13,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-014.svg",
+    "output_sha256": "c31d1f73e323d95da8a95140b02748c9e732f2271f90e32ad7aea112c0880855",
+    "cycle_ms": 2000,
+    "frame": 14,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-015.svg",
+    "output_sha256": "10d40e9ac016e5d24f31921a6eaa426a3c1d2950849de557fccee22d8ea5603d",
+    "cycle_ms": 2000,
+    "frame": 15,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-016.svg",
+    "output_sha256": "abbab6dab79224014b6a389ffee64fe2374ca10b4ef3bec089bc154357196812",
+    "cycle_ms": 2000,
+    "frame": 16,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-017.svg",
+    "output_sha256": "1a085a3044c4346e2a0d332b423a806f7bb913a9567183b601df76cd3b009b4c",
+    "cycle_ms": 2000,
+    "frame": 17,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-018.svg",
+    "output_sha256": "a24dd45e6a3428d7f0a556ae7f706d141a2570cc1033b3bf3c7567f0ae1f1b84",
+    "cycle_ms": 2000,
+    "frame": 18,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-019.svg",
+    "output_sha256": "007a54fd318590357d9c9271b540587dc35f7f623299a17d28931feaf26c6757",
+    "cycle_ms": 2000,
+    "frame": 19,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-020.svg",
+    "output_sha256": "d9b4e1cd4223382ef087fca6664b15f3c906898cfefdc947ba4d6a457d9be289",
+    "cycle_ms": 2000,
+    "frame": 20,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-021.svg",
+    "output_sha256": "1938fdba4025dd2ce2dbdf88fe5eed27c2f0fc2499e09154765886037d3a6cdf",
+    "cycle_ms": 2000,
+    "frame": 21,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-022.svg",
+    "output_sha256": "52fd649f502dce5c09313d82057613e9a50f1c1ef45e5a2769e2d5dc889c0dca",
+    "cycle_ms": 2000,
+    "frame": 22,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-023.svg",
+    "output_sha256": "1ec12e3818fa1e9ba5557b54c6317f674111054f43d011130c11b101ddebae89",
+    "cycle_ms": 2000,
+    "frame": 23,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-024.svg",
+    "output_sha256": "58ff008a1815758d90ef810697eb7854118d4708035c7ea9c60f659c9e1414b6",
+    "cycle_ms": 2000,
+    "frame": 24,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-025.svg",
+    "output_sha256": "fd615bca6964c5d5af7f7aa59cad8848f84e78eead7c7fc1e0bc51dd7f8ba145",
+    "cycle_ms": 2000,
+    "frame": 25,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-026.svg",
+    "output_sha256": "7a99a9b5744bf359258f521f615bf5291c29ac395a88668df6905fd1703f4f45",
+    "cycle_ms": 2000,
+    "frame": 26,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-027.svg",
+    "output_sha256": "13300453945a78247f6097dd9573874be3ac1286254d9adf8553259c9b760325",
+    "cycle_ms": 2000,
+    "frame": 27,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-028.svg",
+    "output_sha256": "e1e46cc4ed5d9a1fe416e00d1e5d4b603148d81c9ba59026b354f35bd32424d4",
+    "cycle_ms": 2000,
+    "frame": 28,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-029.svg",
+    "output_sha256": "1534927e41e7032874ae02cd0e57f349cc51058982527635b14bf47d392534a0",
+    "cycle_ms": 2000,
+    "frame": 29,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-030.svg",
+    "output_sha256": "bc812087f51f024f9b83c1d7468e02e82109fe59b6362421a4dd4a816879fe93",
+    "cycle_ms": 2000,
+    "frame": 30,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-031.svg",
+    "output_sha256": "269a40c0c200026246b686d6c4b87f0c5d56d7c48416bbbee81da0730cc51b15",
+    "cycle_ms": 2000,
+    "frame": 31,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-032.svg",
+    "output_sha256": "c07417ea2a61d898ec8906d5117f1a53ad73b5e89ef50a361957f6bfee2f5745",
+    "cycle_ms": 2000,
+    "frame": 32,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-033.svg",
+    "output_sha256": "1e405979dbb676c4eb1da149a39bc26134130e8d240a69ef2bc8535e8037343e",
+    "cycle_ms": 2000,
+    "frame": 33,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-034.svg",
+    "output_sha256": "d34fdf37493610c454d04e1c802b8fc8e2d14d5bcd8a165b2e1555f9c43d301b",
+    "cycle_ms": 2000,
+    "frame": 34,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-035.svg",
+    "output_sha256": "0b359891b328500a2e478257d1c2407182313bf18e0a7cbe43f5af8be74aee5d",
+    "cycle_ms": 2000,
+    "frame": 35,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-036.svg",
+    "output_sha256": "ffec75fec779798d257c1da122b6b7c1e475b4f101ffc578e9fd78f6fdf9d7f6",
+    "cycle_ms": 2000,
+    "frame": 36,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-037.svg",
+    "output_sha256": "5afdab2efb0c7cc27a34e680973b35e4cb7830b1b0cff3172d103df8d87f3423",
+    "cycle_ms": 2000,
+    "frame": 37,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-038.svg",
+    "output_sha256": "40909e746ced2859a954017785a6c96574e4181463416759764f53ad49385710",
+    "cycle_ms": 2000,
+    "frame": 38,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-039.svg",
+    "output_sha256": "f51e00a9a757376de37ce064f5f67ef8eae3586e6caba945d2b80864c8ddeaf2",
+    "cycle_ms": 2000,
+    "frame": 39,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-040.svg",
+    "output_sha256": "133618b4f82c061dc73e6de65a057708ecccb4bbf8f3cf4f1c0b9b97b9b6ae20",
+    "cycle_ms": 2000,
+    "frame": 40,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-041.svg",
+    "output_sha256": "fd453876417469d3122f47f7c8e2725a9d715677c0b850203afba99f4763c3d5",
+    "cycle_ms": 2000,
+    "frame": 41,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-042.svg",
+    "output_sha256": "126b0efeb8fb7a98f0c0ea7a4cda81f97aab5d1cca825e9f5f884f3ec7db4c4c",
+    "cycle_ms": 2000,
+    "frame": 42,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-043.svg",
+    "output_sha256": "197d31b087b51160b9a8bf52b02089ba0d35f341c7144113b670daeb215314b8",
+    "cycle_ms": 2000,
+    "frame": 43,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-044.svg",
+    "output_sha256": "dfc382a76b22f6f76e874604a14aae730490857211937a8235010df3ce6b9b05",
+    "cycle_ms": 2000,
+    "frame": 44,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-045.svg",
+    "output_sha256": "ba601edec96dabe3d58018ea905fe2c496d7b92e38709594ba57559e8f3295e0",
+    "cycle_ms": 2000,
+    "frame": 45,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-046.svg",
+    "output_sha256": "b0974295c17fd9d3039dd42f2575da351b1384c848eddf5824c3948b6a2beff8",
+    "cycle_ms": 2000,
+    "frame": 46,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-047.svg",
+    "output_sha256": "354f97c0c87ad5479cfd3a3f9024cd01d7456814621ccce3b81b3513d5a43895",
+    "cycle_ms": 2000,
+    "frame": 47,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-048.svg",
+    "output_sha256": "08d55a57a6d1103d89ae3cb3b815b144ce3c55151dc16fdfbea08a3ebb34a8e6",
+    "cycle_ms": 2000,
+    "frame": 48,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-049.svg",
+    "output_sha256": "262e2db3e5e721db1af58e4c39d6c79da9b218b232a640be587003fd82b4932a",
+    "cycle_ms": 2000,
+    "frame": 49,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-050.svg",
+    "output_sha256": "b93a9eb296781f237036751950af2d6f446981b3fa4a71d4b32024c50a18479a",
+    "cycle_ms": 2000,
+    "frame": 50,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-051.svg",
+    "output_sha256": "2daf1c1a2d990134ea00394ec33f783d190c0b0755d194ffbd739a5a6d1416e3",
+    "cycle_ms": 2000,
+    "frame": 51,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-052.svg",
+    "output_sha256": "a1285f3389d084a1ae08840a1ffbdf7f210e22cbba87c5ab84c111d407ec07f9",
+    "cycle_ms": 2000,
+    "frame": 52,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-053.svg",
+    "output_sha256": "40187b1d42c50581428d0a1be838e8653362c6dc876520a43b5987b633b9026e",
+    "cycle_ms": 2000,
+    "frame": 53,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-054.svg",
+    "output_sha256": "16b67683139f00df8eeca57c7e1b70885549c0c2ebcfccbb3de16f18fb1cb5cb",
+    "cycle_ms": 2000,
+    "frame": 54,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-055.svg",
+    "output_sha256": "5ddff5579674afda33cc7322c2635205a79e03638f4fc7affa1451d1f3fbd2d5",
+    "cycle_ms": 2000,
+    "frame": 55,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-056.svg",
+    "output_sha256": "d5f70a55885b3adcf8887eb9806e1597f6204225b42c21ca5f21c124e9ff3822",
+    "cycle_ms": 2000,
+    "frame": 56,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-057.svg",
+    "output_sha256": "c486e31afdc157f87ced1913fe3acb75eed61f8362b0ac1f96fc2b7e13e73711",
+    "cycle_ms": 2000,
+    "frame": 57,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-058.svg",
+    "output_sha256": "4f100d34905a10dd3f0d9970c903c8cf3c7eb412d2abbe982d18419947737c54",
+    "cycle_ms": 2000,
+    "frame": 58,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-059.svg",
+    "output_sha256": "cd1d7b8f6ca2c07675f5b09db910246856e3bac3e27d0c9703f7cc54912f7a25",
+    "cycle_ms": 2000,
+    "frame": 59,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-060.svg",
+    "output_sha256": "26776946e21133af7f54924706065ff86ffa5129e556d0edee5fdf5ac3c7d990",
+    "cycle_ms": 2000,
+    "frame": 60,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-061.svg",
+    "output_sha256": "aa1b7eb830b015706371dac6646ec8e779badb3b564523d24ac45f81820734bf",
+    "cycle_ms": 2000,
+    "frame": 61,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-062.svg",
+    "output_sha256": "28b7c04746f53ab98aca53b4525e000b7a343436f0ae6eab3ffedd5ea7f8abef",
+    "cycle_ms": 2000,
+    "frame": 62,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-063.svg",
+    "output_sha256": "e1f30cabd0e3a6657a0d42dd9f3ff613586fdb70b22785dbf96828c4eca5a653",
+    "cycle_ms": 2000,
+    "frame": 63,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-064.svg",
+    "output_sha256": "9442ff17b647afe437fae490f2512664b6989ba20c26e28bb145dd77196dacdd",
+    "cycle_ms": 2000,
+    "frame": 64,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-065.svg",
+    "output_sha256": "146effa1cb20c8df33516ced00fdeea2dae2099639099ea986c3f538c1af1256",
+    "cycle_ms": 2000,
+    "frame": 65,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-066.svg",
+    "output_sha256": "0472f2ae87b8b1c3fe849964b10410458cb3e9eff83a143144a4a43da6bf6bed",
+    "cycle_ms": 2000,
+    "frame": 66,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-067.svg",
+    "output_sha256": "55792467860c8fac775a6e771247a27a5d414154cbd79a6ff1ecaceaba0535b9",
+    "cycle_ms": 2000,
+    "frame": 67,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-068.svg",
+    "output_sha256": "22d012d3c47954e2aeb04fac7d412402cd29b7172b090b798c08fc60bdfecfa6",
+    "cycle_ms": 2000,
+    "frame": 68,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-069.svg",
+    "output_sha256": "cf4d8c6e3fe9bd801400c0657e4015deddd71ae22c61bb91638802012ad3f8c0",
+    "cycle_ms": 2000,
+    "frame": 69,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-070.svg",
+    "output_sha256": "2b38d2e9b1878d30fac82ba09f9426cc9f465e3ebf674bc01f66ee35e7cd76e1",
+    "cycle_ms": 2000,
+    "frame": 70,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-071.svg",
+    "output_sha256": "aba515a652200e58ffd33ecd85344715df433e690b7dee380cb15e8a2868de59",
+    "cycle_ms": 2000,
+    "frame": 71,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-072.svg",
+    "output_sha256": "5faca1a769338e73483709ed40772cd4bee262495343a874f8a7e04c123a1a99",
+    "cycle_ms": 2000,
+    "frame": 72,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-073.svg",
+    "output_sha256": "55390400db3c688e2952eff2230993ce3894d7e2ca460339a0f40a60d29fb904",
+    "cycle_ms": 2000,
+    "frame": 73,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-074.svg",
+    "output_sha256": "106b4f0c5e75fd899de6e093da5be5d763f85cf3b3560695da96bf5703d5acc9",
+    "cycle_ms": 2000,
+    "frame": 74,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-075.svg",
+    "output_sha256": "29ddda2be6ec481a4e3fd4ddc5fa892eadfbc3270354d7442b57fc84c1555d29",
+    "cycle_ms": 2000,
+    "frame": 75,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-076.svg",
+    "output_sha256": "8351ce19944422ab87bba182a98a89dcf072c7e657e19aa30399c96fb773316c",
+    "cycle_ms": 2000,
+    "frame": 76,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-077.svg",
+    "output_sha256": "a991710afffce4e7e45e3a988f2f0735a91c9835ddb335e8b98350391238cbac",
+    "cycle_ms": 2000,
+    "frame": 77,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-078.svg",
+    "output_sha256": "35eada9dd9f8c174894e7d8f803fc04e08361182348d761803f36e19a85be637",
+    "cycle_ms": 2000,
+    "frame": 78,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-079.svg",
+    "output_sha256": "09a0528f7c7a8a4147887c196f462e891ca7db2bb3714ff58dbd9181d274348e",
+    "cycle_ms": 2000,
+    "frame": 79,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-080.svg",
+    "output_sha256": "64f2fc92daf659b0e62058480d15e406d40f41bc38a2c6756723255874197597",
+    "cycle_ms": 2000,
+    "frame": 80,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-081.svg",
+    "output_sha256": "9b57ed3d491bf5256aca2c7662492f1aa095cbc6985f42387d109629894a5cb5",
+    "cycle_ms": 2000,
+    "frame": 81,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-082.svg",
+    "output_sha256": "0790a61be8d9b0408242bc154a57bec6279992605b25acd8245bc9178a2f7548",
+    "cycle_ms": 2000,
+    "frame": 82,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-083.svg",
+    "output_sha256": "ad3ff6aeb8aa8eea37e8dcc3fbb861f8373b237572a11ba9df4f36705235fd6c",
+    "cycle_ms": 2000,
+    "frame": 83,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-084.svg",
+    "output_sha256": "e0e8f2fdf88b80f6fb54cee423506d3c31117d6b06cfaa88275d0b76931bdea9",
+    "cycle_ms": 2000,
+    "frame": 84,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-085.svg",
+    "output_sha256": "203308e179637771881fe619e6ddacd90cfe9fb5d20bc87b38f1ef61365b43dd",
+    "cycle_ms": 2000,
+    "frame": 85,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-086.svg",
+    "output_sha256": "50f2e123441dc42257bc25026690e25a2751b657d227bee818161d3e80d6a5d4",
+    "cycle_ms": 2000,
+    "frame": 86,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-087.svg",
+    "output_sha256": "290cc6dc2708b5d98b4f7ffd8a511990b20a6dbc0cddfadbdf7805e62b9c13a5",
+    "cycle_ms": 2000,
+    "frame": 87,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-088.svg",
+    "output_sha256": "0f3b2daf6af7b9062b3b4e8771a3ea55160e9ffe9e67a79a97d9959f7c18295c",
+    "cycle_ms": 2000,
+    "frame": 88,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-089.svg",
+    "output_sha256": "aa22180b93006aa7cb0c6c65ca2cedbe804bf31bcd3e42fc2745844542da7446",
+    "cycle_ms": 2000,
+    "frame": 89,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-090.svg",
+    "output_sha256": "e29a8138bf421580fb18b6e8dbcc0d00cdf59bb7d07ba74c90db103b83e2b3ea",
+    "cycle_ms": 2000,
+    "frame": 90,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-091.svg",
+    "output_sha256": "3174557a6fdf2ece8596b1b45c12acf08be6bd0c51774cedbf2345d3d216b569",
+    "cycle_ms": 2000,
+    "frame": 91,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-092.svg",
+    "output_sha256": "7a6d1fec9a19b105160a4e7f682bd7ef39077108b5e7d0ceb78f271cdd121833",
+    "cycle_ms": 2000,
+    "frame": 92,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-093.svg",
+    "output_sha256": "6a71799987f7b0aa239d30f5ee7b8c50e2692b69505bdcbe5ee5ff54de37a7f4",
+    "cycle_ms": 2000,
+    "frame": 93,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-094.svg",
+    "output_sha256": "f83904d3045ba16713d8268572a943157aedb1fdad16ad81d2522dd039f7e15d",
+    "cycle_ms": 2000,
+    "frame": 94,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-095.svg",
+    "output_sha256": "33b359ee76bda0f41f017928a66647dac849b39886499ffb3272d7077020d380",
+    "cycle_ms": 2000,
+    "frame": 95,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-096.svg",
+    "output_sha256": "454cd1bdc01bbf5f81db99188e4fbe7dcc4f318c33bbba1c9a30841fd4e1e1a3",
+    "cycle_ms": 2000,
+    "frame": 96,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-097.svg",
+    "output_sha256": "d4ec3c499db654576ab07ac2c4b37d48cb3b536e86f82a1659e594bf0c795074",
+    "cycle_ms": 2000,
+    "frame": 97,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-098.svg",
+    "output_sha256": "26e93a554b3a7594fe56c63670fc464169530d77ab55c31784e2c42ae17acfc1",
+    "cycle_ms": 2000,
+    "frame": 98,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-099.svg",
+    "output_sha256": "77f95a8b6f2965718ee76f9dd7bc0191da493af3d1acecbaa6e399a7c24caa15",
+    "cycle_ms": 2000,
+    "frame": 99,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-100.svg",
+    "output_sha256": "17cae771ae15ec231ac412e26a9233b3a44fcada45aae4921b468f7aa91b00cf",
+    "cycle_ms": 2000,
+    "frame": 100,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-101.svg",
+    "output_sha256": "c54b4bce1bd93a676bf7470b6d1dc009365f4e5dabfaf93d0a0fe8650f72204c",
+    "cycle_ms": 2000,
+    "frame": 101,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-102.svg",
+    "output_sha256": "7ef108db15ded8f69f286a8a8d427c394f3ce793c798ee4372ea9e56943e718a",
+    "cycle_ms": 2000,
+    "frame": 102,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-103.svg",
+    "output_sha256": "09211cb9f83658348171cc22d325406dc11278cebfa14493c409fae7600b6f1d",
+    "cycle_ms": 2000,
+    "frame": 103,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-104.svg",
+    "output_sha256": "0a0d0b16eb0127ea6854b14f2cc4ba97fd706671df0e52030d04e13c70225a01",
+    "cycle_ms": 2000,
+    "frame": 104,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-105.svg",
+    "output_sha256": "abe1d395e02b0c7b172a9b1e7999e37fb7dba2bc91923b4204d3e6292264d8e1",
+    "cycle_ms": 2000,
+    "frame": 105,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-106.svg",
+    "output_sha256": "e554b5ae9cb77ec3b664423797770b8a41d6960aaec6b7cefe5de2ccc6617d1a",
+    "cycle_ms": 2000,
+    "frame": 106,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-107.svg",
+    "output_sha256": "6027f1610ae1c0553f1f407fd4910a4682eab09e7f13f564864a635ed3d02291",
+    "cycle_ms": 2000,
+    "frame": 107,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-108.svg",
+    "output_sha256": "27a8e4f41c33afb4cccbd481899fcbd79acf6c58611781fe7563c11a225cbe20",
+    "cycle_ms": 2000,
+    "frame": 108,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-109.svg",
+    "output_sha256": "9a461f73e698556690f79e56b07a16cc1b88de779689df651f625d03374c49f3",
+    "cycle_ms": 2000,
+    "frame": 109,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-110.svg",
+    "output_sha256": "728e9285886ef1bfab2d526600621acddb6a912e45dd54cd8e0bb7541d7ac5fc",
+    "cycle_ms": 2000,
+    "frame": 110,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-111.svg",
+    "output_sha256": "e81c609583312d111fc875e336c42c7c43035b624d9059e79fb7c1bc1c5a4186",
+    "cycle_ms": 2000,
+    "frame": 111,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-112.svg",
+    "output_sha256": "592d468c9d6cd7dc15f727d33345d7754c3bba3410fb3fd80a00934810a0ee29",
+    "cycle_ms": 2000,
+    "frame": 112,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-113.svg",
+    "output_sha256": "6fd9c9e10063de3e49250c84af36ffcb8206eaed5e05af1ee8502879d4c0de4d",
+    "cycle_ms": 2000,
+    "frame": 113,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-114.svg",
+    "output_sha256": "52b6b7f5695512c1fc1df4eb8faafcbae8b1a21cc7479c6583d28d8e8146eec9",
+    "cycle_ms": 2000,
+    "frame": 114,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-115.svg",
+    "output_sha256": "f522f22393cf4ca2c1d69f14c22100b987b1aff3e74755b128b55d75e33e1348",
+    "cycle_ms": 2000,
+    "frame": 115,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-116.svg",
+    "output_sha256": "1b9f9e068271af69d665a508a2dadaf2d0ee82b6cdc8341693d09b04c67d7c4d",
+    "cycle_ms": 2000,
+    "frame": 116,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-117.svg",
+    "output_sha256": "31d35e9940ecbfeda4e28219c8dddabd641a889aae4b66b382497cd9bb61c1af",
+    "cycle_ms": 2000,
+    "frame": 117,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-118.svg",
+    "output_sha256": "ffa09cc00deb931dd66581c4596d6d7139cd5dddcf745381f43172ad148b36b3",
+    "cycle_ms": 2000,
+    "frame": 118,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/3871/static/media/detecting.f2110e0d.svg",
+    "source_sha256": "dab0e732814a7d04d73a0999bcb779ea94bf0b73a551a49466731c7418f07150",
+    "output": "assets/synapse/wired-argb-3871-detecting-ring-119.svg",
+    "output_sha256": "f1c2c5403d0ffff6c9ec0e1efda852ecb3f1bacb3cc3004eefda43a24d1061e4",
+    "cycle_ms": 2000,
+    "frame": 119,
+    "frames": 120
+  },
+  {
+    "source": ".ref/devices/778/static/css/main.48d64bc8.css",
+    "source_sha256": "a715f1e006e86933309d8f1b46e197969fae24dc29768fd19256abb1406a3727",
+    "output": "assets/synapse/wired-argb-778-dots.svg",
+    "output_sha256": "2aa68e07555c9a7dce2c4a7516548a54f6bd98a2f49a384c2f7fd57127a542e4"
+  },
+  {
+    "source": ".ref/devices/3871/static/css/main.e2afc8b4.css",
+    "source_sha256": "14ab345a9cc9db718067c79a50ae1cd5de370e3661fa4169bd5bfc8be129f7b5",
+    "output": "assets/synapse/wired-argb-3871-dots.svg",
+    "output_sha256": "2aa68e07555c9a7dce2c4a7516548a54f6bd98a2f49a384c2f7fd57127a542e4"
+  }
+]

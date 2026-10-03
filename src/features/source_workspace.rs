@@ -7,11 +7,17 @@ use crate::{
     ui::{scroll::SourceScrollable as _, surface},
 };
 use gpui_kit::component::{
-    select::{Select, SelectEvent, SelectState},
+    select::{SelectEvent, SelectState},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde_json::Value;
+
+mod accessory;
+mod profile_bar;
+#[cfg(test)]
+mod tests;
+use accessory::AccessoryPage;
 
 enum FamilyBody {
     Mouse(Entity<super::mouse_products::MouseProductWorkspace>),
@@ -32,12 +38,29 @@ pub(crate) struct SourceProductWorkspace {
     help: Entity<super::source_help::SourceHelp>,
     supplement: Option<Entity<super::source_controls::SourceControls>>,
     dock_pairing: Option<Entity<super::dock_pairing::DockPairing>>,
+    accessory: Option<AccessoryPage>,
     profile: Entity<SelectState<Vec<Choice>>>,
     _subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(crate) fn keyboard_preview_page(
+        &self,
+    ) -> Option<Entity<crate::features::keyboard_products::KeyboardProductWorkspace>> {
+        match &self.body {
+            FamilyBody::Keyboard(view) => Some(view.clone()),
+            _ => None,
+        }
+    }
+    pub(crate) fn aether_preview_page(
+        &self,
+    ) -> Option<Entity<crate::features::aether_strip::AetherStrip>> {
+        match &self.accessory {
+            Some(accessory::AccessoryPage::Aether(view)) => Some(view.clone()),
+            _ => None,
+        }
+    }
     pub(crate) fn new(mut device: Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
         if device.profiles.is_empty() {
             device.profiles.push(Profile {
@@ -217,6 +240,7 @@ impl SourceProductWorkspace {
         let help = cx.new(|cx| super::source_help::SourceHelp::new(device.clone(), cx));
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));
+        let accessory = AccessoryPage::new(&device, window, cx, &mut subscriptions);
         let mut this = Self {
             saved: device.clone(),
             device,
@@ -225,6 +249,7 @@ impl SourceProductWorkspace {
             help,
             supplement,
             dock_pairing,
+            accessory,
             profile,
             _subscriptions: subscriptions,
         };
@@ -273,13 +298,10 @@ impl SourceProductWorkspace {
             .iter_mut()
             .find(|p| p.id == self.device.active_profile)
         {
-            if let Some(supplement) = p
-                .source_settings
-                .as_ref()
-                .and_then(|s| s.get("_supplement"))
-                .cloned()
-            {
-                value["_supplement"] = supplement;
+            for key in ["_supplement", "_accessory"] {
+                if let Some(nested) = p.source_settings.as_ref().and_then(|s| s.get(key)).cloned() {
+                    value[key] = nested;
+                }
             }
             p.source_settings = Some(value);
         }
@@ -302,9 +324,31 @@ impl SourceProductWorkspace {
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
     }
+    fn capture_accessory(&mut self, value: Value, cx: &mut Context<Self>) {
+        if accessory::device_layout(self.device.product_id) {
+            self.device
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["_accessory"] = value;
+        } else if let Some(profile) = self
+            .device
+            .profiles
+            .iter_mut()
+            .find(|p| p.id == self.device.active_profile)
+        {
+            let settings = profile
+                .source_settings
+                .get_or_insert_with(|| serde_json::json!({}));
+            settings["_accessory"] = value;
+        }
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+    }
     fn restore_active(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(view) = &self.dock_pairing {
             view.update(cx, |view, cx| view.dismiss(window, cx));
+        }
+        if let Some(view) = &self.accessory {
+            view.dismiss(window, cx);
         }
         let mut value = self
             .device
@@ -334,6 +378,14 @@ impl SourceProductWorkspace {
                 target.extend(fields.clone());
             }
         }
+        let accessory = self.accessory.as_ref().map(|view| {
+            let settings = if accessory::device_layout(self.device.product_id) {
+                self.device.source_device_settings.as_ref()
+            } else {
+                value.as_ref()
+            };
+            view.restore(settings.and_then(|v| v.get("_accessory")), window, cx)
+        });
         let snapshot = match &self.body {
             FamilyBody::Mouse(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
@@ -393,6 +445,18 @@ impl SourceProductWorkspace {
             if let Some(supplement) = supplement {
                 snapshot["_supplement"] = supplement;
             }
+            if let Some(accessory) = accessory {
+                if accessory::device_layout(self.device.product_id) {
+                    self.device
+                        .source_device_settings
+                        .get_or_insert_with(|| serde_json::json!({}))["_accessory"] = accessory;
+                    if let Some(object) = snapshot.as_object_mut() {
+                        object.remove("_accessory");
+                    }
+                } else {
+                    snapshot["_accessory"] = accessory;
+                }
+            }
             if let Some(p) = self
                 .device
                 .profiles
@@ -404,6 +468,11 @@ impl SourceProductWorkspace {
         }
     }
     fn capture_device_settings(&mut self, value: &mut Value) {
+        if accessory::device_layout(self.device.product_id) {
+            if let Some(object) = value.as_object_mut() {
+                object.remove("_accessory");
+            }
+        }
         for field in super::source_controls::device_fields(self.device.product_id) {
             if let Some(value) = value.as_object_mut().and_then(|v| v.remove(field)) {
                 let settings = self
@@ -422,6 +491,20 @@ impl SourceProductWorkspace {
         order.sort_by_key(|&i| device.profiles[i].id != device.active_profile);
         for i in order {
             if let Some(profile) = device.profiles[i].source_settings.as_mut() {
+                if accessory::device_layout(device.product_id) {
+                    if let Some(layout) =
+                        profile.as_object_mut().and_then(|p| p.remove("_accessory"))
+                    {
+                        let settings = device
+                            .source_device_settings
+                            .get_or_insert_with(|| serde_json::json!({}));
+                        settings
+                            .as_object_mut()
+                            .expect("device settings object")
+                            .entry("_accessory")
+                            .or_insert(layout);
+                    }
+                }
                 for field in fields {
                     let direct = profile.as_object_mut().and_then(|p| p.remove(field));
                     let nested = profile
@@ -473,6 +556,9 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(view) = &self.accessory {
+            view.dismiss(window, cx);
+        }
         if let Some(view) = &self.dock_pairing {
             view.update(cx, |view, cx| view.dismiss(window, cx));
         }
@@ -545,6 +631,11 @@ impl Render for SourceProductWorkspace {
             })
         }) {
             view.clone().into_any_element()
+        } else if let Some(view) = self.accessory.as_ref().filter(|view| {
+            self.current_page()
+                .is_some_and(|page| view.supports_page(self.device.product_id, page.kind().key()))
+        }) {
+            view.element()
         } else if let Some(controls) = self.supplement.as_ref().filter(|_| {
             self.current_page()
                 .is_some_and(|page| self.use_supplement_for(page.kind().key()))
@@ -574,12 +665,7 @@ impl Render for SourceProductWorkspace {
                     .flex_shrink_0()
                     .border_b_2()
                     .border_color(cx.theme().title_bar)
-                    // 769's Xo receives no renderProfileBar; its brightness and
-                    // quick effects use the service-selected configuration.
-                    .child(h_flex().flex_1().min_w_0().px_3().when(
-                        !is_help && !matches!(self.body, FamilyBody::Hue(_)),
-                        |view| view.child(Select::new(&self.profile).w(surface::css(180.))),
-                    ))
+                    .child(h_flex().flex_1().min_w_0().child(self.profile_bar(cx)))
                     .child(
                         gpui_kit::base::Tabs::new("source-product-navigation")
                             .flex()
