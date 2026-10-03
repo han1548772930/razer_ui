@@ -98,6 +98,63 @@ def main():
             assert pid in calibration, f'Missing calibration evidence: {pid}'
 
     records = []
+    # 十个 `existing_partial_native_adapter` 产品的逐页复核。每一条都指向本地实现
+    # 位置，以及该实现依据的当前源码数据（描述符、资源清单或产品包常量）。没有
+    # 复核依据的页面继续保持 `existing_partial_not_reaudited_here`，本次统计不把
+    # 它们算作已复核。
+    # 说法只覆盖已核对的部分：页面路由、可达性与该产品存在的当前源码数据。
+    # 页面内部逐字段的数据来源没有逐页核对，因此不写进依据里。
+    mats_data = 'src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表'
+    legacy_reaudit = {}
+    for pid in (3072, 3073, 3074, 3076, 3077, 3078, 3080):
+        legacy_reaudit[(pid, 'TAB_LIGHTING')] = (
+            'mousemat_lighting: src/features/device_pages.rs:472 lighting_page，'
+            f'src/nav.rs:37 只给出 Lighting 页；产品数据见 {mats_data}'
+        )
+    legacy_reaudit[(182, 'TAB_CUSTOMIZE')] = (
+        'device_customize: src/features/customize_page.rs，src/nav.rs:29 可达；'
+        '182 有当前源码规格 src/features/mouse_products.rs:128 '
+        'source_product（src/features/mouse_products_data.json，含 source_sha256）'
+    )
+    legacy_reaudit[(182, 'TAB_PERFORMANCE')] = (
+        'device_performance: src/features/device_pages.rs:34 performance_page，'
+        'src/nav.rs:30 可达；规格文件里存在 DPI/回报率字段（页面内部取值未逐字段核对）'
+    )
+    legacy_reaudit[(182, 'TAB_POWER')] = (
+        'device_power: src/features/device_pages.rs:405 power_page，src/nav.rs:32 可达；'
+        '规格文件里存在 power_slider/low_power_slider/low_battery_slider 字段'
+    )
+    legacy_reaudit[(182, 'TAB_CALIBRATION')] = (
+        'device_calibration: src/features/device_pages.rs:189 calibration_page，'
+        'src/nav.rs:33 可达；规格文件里存在 calibration/smart_lift_max/smart_landing_max 字段'
+    )
+    legacy_reaudit[(653, 'TAB_CUSTOMIZE')] = (
+        'keyboard_customize: src/nav.rs:35 给出 Customize 页；653 的当前源码布局数据见 '
+        'src/resources.rs:176 的 assets/synapse/keyboard-653-layouts.json 与 keyboard-653-deviceconfig.json'
+    )
+    legacy_reaudit[(653, 'TAB_LIGHTING')] = (
+        'device_lighting: src/features/device_pages.rs:472 lighting_page，src/nav.rs:35 可达；'
+        '653 的效果表见 src/features/settings.rs:377 与 :380'
+    )
+    for tab in ('TAB_SOUND', 'TAB_MIC'):
+        legacy_reaudit[(777, tab)] = (
+            'device_audio: src/features/audio_page.rs 渲染，src/nav.rs:36 给出 Sound/Mic 页；'
+            '182/653/777 的注册导航里没有 TAB_AUDIO（src/product/registry_data.rs，'
+            '由 tools/generate-product-registry.cjs 从各自 bundle 的导航常量生成；'
+            '全库只有 3872/3873 声明该页）'
+        )
+    legacy_reaudit[(777, 'TAB_LIGHTING')] = (
+        'device_lighting: src/features/device_pages.rs:472 lighting_page，src/nav.rs:36 可达；'
+        '777 的效果表见 src/features/settings.rs:384 与 :387'
+    )
+    legacy_reaudit[(777, 'TAB_POWER')] = (
+        'device_power: src/features/device_pages.rs:405 power_page，src/nav.rs:36 可达'
+    )
+    legacy_help = ('device_help: src/features/help_page.rs:111 help_page；'
+                   'src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 '
+                   'DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符')
+    for pid in (182, 653, 777, 3072, 3073, 3074, 3076, 3077, 3078, 3080):
+        legacy_reaudit[(pid, 'HELP')] = legacy_help
     for product in registry:
         pid = product['product_id']
         existing = product['adapter_status'] == 'existing_partial_native_adapter'
@@ -109,7 +166,11 @@ def main():
             key = item['name']['value']
             route, status, descriptor = None, 'pending', None
             if existing:
-                route, status = 'existing_adapter', 'existing_partial_not_reaudited_here'
+                reaudited = legacy_reaudit.get((pid, key)) if key != 'HELP' else legacy_reaudit.get((pid, 'HELP'))
+                if reaudited:
+                    route, status = reaudited.split(':', 1)[0], 'partial_native_reaudited'
+                else:
+                    route, status = 'existing_adapter', 'existing_partial_not_reaudited_here'
             elif key == 'HELP':
                 help_page = next((p for p in helps.get(pid, {}).get('pages', []) if p['offset'] == item['offset']), None)
                 assert help_page, f'Missing mounted Help descriptor: {pid}/{item["offset"]}'
@@ -142,6 +203,8 @@ def main():
                 if has_content(descriptor):
                     route, status = 'source_controls', 'partial_native'
             row = {'page_id': item['key'], 'key': key, 'offset': item['offset'], 'route': route, 'status': status}
+            if status == 'partial_native_reaudited':
+                row['evidence'] = legacy_reaudit[(pid, key)].split(':', 1)[1].strip()
             if pid == 3886 and key == 'TAB_CUSTOMIZE':
                 row['limitation'] = 'Source ports branch is unreachable (!u.type===BLE_MOBIL); editor fixtures do not count as production content.'
             if route == 'automation':
@@ -152,7 +215,9 @@ def main():
             pages.append(row)
         records.append({
             'product_id': pid, 'name': product['name'],
-            'family': 'existing_adapter' if existing else family or ('hue' if pid == 769 else 'source_controls' if pid in controls else None),
+            'family': ('existing_adapter_reaudited' if any(p['status'] == 'partial_native_reaudited' for p in pages)
+                       else 'existing_adapter') if existing
+                      else family or ('hue' if pid == 769 else 'source_controls' if pid in controls else None),
             'status': 'partial_native' if any(p['status'] != 'pending' and p['key'] != 'HELP' for p in pages) else 'pending_main_pages',
             'pages': pages,
             'independent_modes': [{'mode': n.get('display_mode'), 'navigation_offset': n['offset'], 'status': 'not_exposed_by_source_workspace', 'pages': [i['key'] for i in n['items']]} for n in product['navigation'] if not n.get('primary')],
@@ -164,6 +229,8 @@ def main():
         'products_with_partial_main_content': sum(r['status'] == 'partial_native' for r in records),
         'products_without_main_content': [r['product_id'] for r in records if r['status'] == 'pending_main_pages'],
         'primary_pages': sum(counts.values()), 'page_status_counts': dict(counts),
+        'legacy_pages_reaudited': counts.get('partial_native_reaudited', 0),
+        'legacy_pages_without_route': counts.get('existing_partial_not_reaudited_here', 0),
         'fully_reproduced_products_claimed': 0,
     }
     limitations = [
@@ -176,6 +243,7 @@ def main():
         'System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.',
         'Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.',
         'Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.',
+        'Legacy adapter pages marked `partial_native_reaudited` have a verified local route and source basis; that is still partial content, not visual parity.',
         'No application, build, tests, installer, downloaded JavaScript or DLL was executed for this audit.',
     ]
     result = {'schema_version': 2, 'summary': summary, 'inputs_sha256': inputs,
@@ -187,7 +255,7 @@ def main():
              f"注册 {len(records)} 个产品入口；{summary['products_with_partial_main_content']} 个有部分主页面内容；主导航共 {summary['primary_pages']} 页。", '',
              '| 页面状态 | 数量 |', '| --- | ---: |']
     lines += [f'| {key} | {value} |' for key, value in counts.items()]
-    lines += ['', '原有十个适配器单独记为 `existing_partial_not_reaudited_here`，本次统计不替代它们各自的当前源码审计。独立模式另列，未计作主页面实现。', '',
+    lines += ['', f"原有十个适配器按页复核：{summary['legacy_pages_reaudited']} 页已确认本地路由与源码依据（`partial_native_reaudited`），{summary['legacy_pages_without_route']} 页仍记为 `existing_partial_not_reaudited_here`。复核结果仍是部分内容，不等于视觉一致。独立模式另列，未计作主页面实现。", '',
               '## 尚无主页面内容的产品', '', ', '.join(map(str, summary['products_without_main_content'])) or '无；这仍不表示所有产品已经完成。', '',
               '## 完全待接入的主页面', '', '| 产品 ID | 产品 | 页面 |', '| --- | --- | --- |']
     lines += [f"| {r['product_id']} | {r['name'].replace('|', '/')} | {p['key']} |" for r, p in pending]

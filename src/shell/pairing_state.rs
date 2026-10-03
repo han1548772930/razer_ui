@@ -132,6 +132,18 @@ impl PairingDevice {
             .map(str::trim)
             .filter(|value| !value.trim().is_empty())
     }
+    /// Dashboard 7861 `hi` 的 guard：`productId` 与 `deviceContainerId` 同时存在
+    /// 才打开该产品的配对窗口。返回窗口层需要的身份字段，缺一即为 `None`。
+    pub(super) fn open_window_payload(&self) -> Option<Value> {
+        let container =
+            string(self.raw.get("deviceContainerId")).filter(|value| !value.is_empty())?;
+        let product = number(self.raw.get("productId")).filter(|value| *value > 0)?;
+        Some(json!({
+            "productId": product,
+            "deviceContainerId": container,
+            "serialNumber": self.serial(),
+        }))
+    }
     pub(super) fn connected(&self) -> bool {
         self.connection() == Some(true) && !self.sleeping()
     }

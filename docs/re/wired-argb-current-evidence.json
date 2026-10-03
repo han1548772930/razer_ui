@@ -1,6 +1,6 @@
 {
   "method": "Acorn static literals and source receipts; vendor code never executed",
-  "generator_sha256": "e07d65919bc24cf58d67a6f3ae6c814ef58d88294f326da8a3783cbdb0f9cf1b",
+  "generator_sha256": "61427e350ca6305eec861065790cce8e06461a88b5da49af923699daf0948021",
   "products": [
     {
       "product_id": 778,

@@ -7,6 +7,7 @@
 ## 可复核的统计入口
 
 - `python -B tools/validate-resources.py`：核对源/输出哈希、格式、嵌入键、原 Webpack request、Dashboard 下载映射和键盘几何。
+- `python -X utf8 tools/validate-embedded-json.py`：核对每个 `include_str!("*.json")` 内嵌数据是否满足同文件（或唯一同名结构）里 `#[derive(Deserialize)]` 的必需字段，含 `Option`／`#[serde(default)]`／`rename`／`rename_all` 与嵌套 `Vec<T>`。内嵌 JSON 缺字段是启动时 panic，不是编译错误，因此必须有这条检查。
 - `python -B tools/audit-resource-usage.py`：沿 `src/main.rs` 生产模块声明排除旧页面及测试，汇总直接引用及已审计的动态资源族。它是本仓库的静态清单，不是通用 Rust 调用图分析器。
 - `.work/resource-env/Scripts/python.exe tools/prepare-resources.py`：使用现有资源环境离线再生成；不联网、不执行原 JavaScript、不修改 `.ref`。依赖版本见 `tools/requirements-resources.txt`。
 
@@ -86,7 +87,7 @@
 
 ### 模块状态与配置迁移
 
-- 模块目录保留安装状态未读取及禁用安装按钮；`module_preview.rs` 从设置本地工作区打开17种显式样例，覆盖6505的安装器、维护、已安装/断开设备、移除和固件连接限制。下载完成进入保存分支，不等于安装完成。卸载确认的Alexa清除设置复选框与宏保留说明分别按源分支呈现。
+- 模块目录保留安装状态未读取及禁用安装按钮；每一行现在带原版的盒名、窗口名与地址（`docs/re/display-window-contract.md` 的 `named_windows` 与模块盒去向表），本地已实现对应窗口的行（Alexa、配置文件迁移、介绍导览）直接显示“打开”并进入本地页面——原版点击模块盒本来就是 `focusTab(windowName)`，只有未安装时才先打开安装器。`module_preview.rs` 从设置本地工作区打开17种显式样例，覆盖6505的安装器、维护、已安装/断开设备、移除和固件连接限制。下载完成进入保存分支，不等于安装完成。卸载确认的Alexa清除设置复选框与宏保留说明分别按源分支呈现。
 - `category-keyboard.svg`、`category-mouse.svg` 来自App模块96689的路径及最终变换表，显示为40×40、viewBox为20×20；不是同名映射分类图标。模块图标、宏/Alexa详情图由目录和预览共用，预览安装/移除/固件按钮不调用原生服务。
 - `profile_migration.rs` 已从Settings迁移按钮可达。日期、损坏文件、游戏关联、缺失宏、未使用和成功状态图标来自独立profile-migration media；宏卡来自原AVIF，Chroma卡来自 `main.512f18b6.js` 的Dg内嵌PNG。设备示例卡复用已追溯的Dashboard图片。
 - 迁移视图初始显示扫描状态未读取；11种明确标注的样例覆盖备份分组、扫描、准备/执行、成功警告及失败列表。原生备份扫描、导入队列和迁移结果读取未接入，不能把示例记录计作实际已迁移配置。

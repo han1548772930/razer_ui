@@ -58,7 +58,7 @@ def validate_controls(filename):
                     assert key not in keys, (pid, key)
                     keys.add(key)
                     counts[kind] += 1
-                    assert kind in ('slider', 'switch', 'toggle', 'select', 'options', 'image_options', 'reset', 'oled_presets'), key
+                    assert kind in ('slider', 'switch', 'toggle', 'select', 'options', 'image_options', 'reset', 'oled_presets', 'preset', 'pan_tilt', 'keys', 'direction'), key
                     if kind == 'oled_presets':
                         assert pid == 691 and control['path'] == '/oled/homeScreenDisplay/selected', key
                     assert isinstance(control['label'], str) and control['label'], key
@@ -76,7 +76,7 @@ def validate_controls(filename):
                             # Option-level gating is rendered by the native button group.
                             assert kind == 'options', key
                     assert len({json.dumps(v, sort_keys=True) for v in options}) == len(options), key
-                    if kind in ('select', 'options', 'image_options'):
+                    if kind in ('select', 'options', 'image_options', 'preset', 'direction'):
                         assert options, key
                         for path in targets:
                             value = pointer(root, path)
@@ -92,6 +92,41 @@ def validate_controls(filename):
                                    else isinstance(pointer(root, p), bool) for p in targets), key
                     if kind == 'reset':
                         assert 'reset_value' in control, key
+                    if kind == 'pan_tilt':
+                        assert control['tilt_path'].startswith('@view/'), key
+                        assert control['max_pan_tilt'] > 0 and control['box_width'] > 0, key
+                        for path in paths(root, control['tilt_path']):
+                            assert pointer(root, path) is not MISSING, key
+                    if kind == 'direction':
+                        assert control['description'], key
+                        assert control['disabled_unless'] == '/camera/watermark/isEnabled', key
+                        for path in targets:
+                            value = pointer(root, path)
+                            assert value in ('left-bottom', 'right-bottom', 'left-top',
+                                             'right-top', 'center-bottom', 'center-top'), (key, value)
+                    if kind == 'keys':
+                        assert control['placeholder'], key
+                        for path in targets:
+                            value = pointer(root, path)
+                            assert isinstance(value, list), key
+                            assert all(isinstance(item, str) for item in value), key
+                    # 取景块的复合禁用条件：`ldc && (4K 30FPS | 1440p 30FPS)`。
+                    # 每组必须是 ldc 开关加一个真实存在的分辨率记录。
+                    if 'disabled_when_any' in control:
+                        groups = control['disabled_when_any']
+                        assert groups, key
+                        resolution = pointer(root, '/camera/resolution')
+                        for group in groups:
+                            assert len(group) == 2, key
+                            fans = {condition['path']: condition['value'] for condition in group}
+                            assert fans.get('/camera/ldc') is True, key
+                            gated = fans.get('/camera/resolution')
+                            assert gated is not None, key
+                            if resolution is not None:
+                                assert gated in (
+                                    {'width': 3840, 'height': 2160, 'fps': 30},
+                                    {'width': 2560, 'height': 1440, 'fps': 30},
+                                ), (key, gated)
                     if kind == 'slider':
                         low, high, step = (control[k] for k in ('min', 'max', 'step'))
                         assert all(math.isfinite(v) for v in (low, high, step)), key

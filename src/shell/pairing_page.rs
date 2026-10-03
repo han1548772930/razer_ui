@@ -33,6 +33,9 @@ pub(super) trait PairingTransport: Send + Sync {
 
 pub(super) enum PairingPageEvent {
     Back,
+    /// Dashboard 7861 `hi`：设备盒被按下时要打开该产品的
+    /// `displayMode=multiDevicePairing` 窗口，负载是该设备记录本身。
+    OpenProductWindow(Value),
 }
 
 #[derive(Clone)]
@@ -150,6 +153,21 @@ impl PairingPage {
         }
         cx.notify();
         Ok(())
+    }
+
+    /// 产品配对窗口传入的 `allMasters`（180 `BG` 的 `multiDevicePairingInit`
+    /// 负载）。只有真实的 DUALLINK 记录才应传入；解析失败时沿用页面原有错误提示，
+    /// 不会把非法负载当成已配对设备。
+    pub(super) fn apply_all_masters(
+        &mut self,
+        masters: Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Err(error) = self.set_external_devices(masters, window, cx) {
+            self.state.set_error(error);
+            cx.notify();
+        }
     }
 
     #[allow(dead_code)] // No verified DUALLINK service adapter exists in this application yet.
@@ -555,6 +573,9 @@ impl PairingPage {
         let hovered = self.hovered_badge.as_deref() == Some(key.as_str());
         let action_device = device.clone();
         let hover_key = key.clone();
+        // Dashboard 7861 `hi` 的 `box box-multi-paring`：整卡按下即打开该产品的
+        // 配对窗口，guard 是 `productId` 与 `deviceContainerId` 同时存在。
+        let open_device = device.open_window_payload();
         let mut content = v_flex()
             .id(SharedString::from(format!("pairing-card-{key}")))
             .test_support()
@@ -563,7 +584,13 @@ impl PairingPage {
             .min_h(surface::css(220.))
             .p(surface::css(10.))
             .rounded(surface::css(5.))
-            .bg(cx.theme().button_primary_foreground.opacity(0.3));
+            .bg(cx.theme().button_primary_foreground.opacity(0.3))
+            .when_some(open_device, |card, device| {
+                card.cursor_pointer()
+                    .on_click(cx.listener(move |_, _, _, cx| {
+                        cx.emit(PairingPageEvent::OpenProductWindow(device.clone()))
+                    }))
+            });
         if !busy && actionable {
             let foreground = if paired {
                 if hovered {
@@ -628,6 +655,8 @@ impl PairingPage {
                         page.hovered_badge = (actionable && *hovered).then(|| hover_key.clone());
                         cx.notify();
                     }))
+                    // 卡片的配对/解绑按钮不触发整卡的打开窗口动作。
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_click(cx.listener(move |page, _, window, cx| {
                         page.show_confirmation(
                             if paired {

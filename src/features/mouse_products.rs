@@ -20,10 +20,6 @@ use crate::ui::surface;
 #[derive(Deserialize)]
 pub(crate) struct MouseProductSpec {
     product_id: u32,
-    name: String,
-    source: String,
-    source_sha256: String,
-    info: Value,
     profile: Value,
     min_dpi: u32,
     max_dpi: u32,
@@ -55,21 +51,6 @@ struct MouseEffect {
 }
 
 impl MouseProductSpec {
-    pub(crate) fn product_id(&self) -> u32 {
-        self.product_id
-    }
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-    pub(crate) fn source(&self) -> &str {
-        &self.source
-    }
-    pub(crate) fn source_sha256(&self) -> &str {
-        &self.source_sha256
-    }
-    pub(crate) fn dpi_bounds(&self) -> (u32, u32, u32) {
-        (self.min_dpi, self.max_dpi, self.dpi_step)
-    }
     fn has_page(&self, key: &str) -> bool {
         self.pages.iter().any(|p| p == key)
     }

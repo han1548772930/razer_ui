@@ -1,0 +1,374 @@
+{
+  "generated_from": "current source",
+  "application": ".ref/applications/synapse/macro",
+  "window": {
+    "name": "macro",
+    "url": "/synapse/macro/",
+    "open_param": "policy=3,tab_visible=1",
+    "source": "docs/re/display-window-contract.json#named_windows"
+  },
+  "chrome": {
+    "container_class": "MacroContainer_my_macro__jCmj8",
+    "setup_svgs_class": "MacroContainer_setup_svgs__92r2C",
+    "markup": "(0,Ne.jsxs)(\"div\",{className:Br,children:[(0,Ne.jsx)(\"div\",{className:Vr}),(0,Ne.jsx)(kr,{})]})",
+    "receipt": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "offset": 1402956,
+      "end": 1403029,
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "excerpt": "Br=\"MacroContainer_my_macro__jCmj8\",Vr=\"MacroContainer_setup_svgs__92r2C\""
+    },
+    "markup_receipt": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "offset": 1403037,
+      "end": 1403132,
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "excerpt": "(0,Ne.jsxs)(\"div\",{className:Br,children:[(0,Ne.jsx)(\"div\",{className:Vr}),(0,Ne.jsx)(kr,{})]})"
+    },
+    "container_css": [
+      {
+        "file": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+        "offset": 39589,
+        "rule": ".MacroContainer_my_macro__jCmj8{position:static}",
+        "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911"
+      }
+    ],
+    "setup_css": [
+      {
+        "file": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+        "offset": 39637,
+        "rule": ".MacroContainer_setup_svgs__92r2C{background-image:url(../../static/media/icon_undo_hover.e7a454de.svg),url(../../static/media/icon_undo_enable.dc068f5b.svg),url(../../static/media/icon_redo_hover.d651f41e.svg),url(../../static/media/icon_redo_enable.9fb6a098.svg),url(../../static/media/icon_delete_r.033c20fb.svg);display:none}",
+        "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911"
+      }
+    ]
+  },
+  "tabs": {
+    "keys": [
+      {
+        "symbol": "TEXT_NAV_TAB_MY_MACROS",
+        "receipt": {
+          "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+          "offset": 255000,
+          "end": 255059,
+          "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+          "excerpt": "const o=\"TEXT_NAV_TAB_MY_MACROS\",r=\"TEXT_NAV_TAB_KEY_BINDS\""
+        }
+      },
+      {
+        "symbol": "TEXT_NAV_TAB_KEY_BINDS",
+        "receipt": {
+          "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+          "offset": 255000,
+          "end": 255059,
+          "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+          "excerpt": "const o=\"TEXT_NAV_TAB_MY_MACROS\",r=\"TEXT_NAV_TAB_KEY_BINDS\""
+        }
+      }
+    ],
+    "strings": [
+      {
+        "key": "TEXT_NAV_TAB_MY_MACROS",
+        "value": "我的宏",
+        "receipt": {
+          "path": ".ref/applications/synapse/macro/static/js/trans-zh-CN.dbde5ecc.chunk.js",
+          "offset": 187583,
+          "end": 187591,
+          "sha256": "cdfb8bfd531f100cd6b5a97018b9e82043bc4561cef5b1700aa776259dcca0ca",
+          "excerpt": "Fg=\"我的宏\""
+        }
+      },
+      {
+        "key": "TEXT_NAV_TAB_KEY_BINDS",
+        "value": "按键绑定",
+        "receipt": {
+          "path": ".ref/applications/synapse/macro/static/js/trans-zh-CN.dbde5ecc.chunk.js",
+          "offset": 187592,
+          "end": 187601,
+          "sha256": "cdfb8bfd531f100cd6b5a97018b9e82043bc4561cef5b1700aa776259dcca0ca",
+          "excerpt": "ng=\"按键绑定\""
+        }
+      }
+    ],
+    "unresolved_keys": [
+      "TEXT_PROFILE_BAR_MACRO",
+      "TEXT_PROFILE_BAR_NEW_MACRO",
+      "TEXT_PROFILE_BAR_DROPDOWN",
+      "TEXT_PROFILE_BAR_DROPDOWN_ADD_MACRO",
+      "TEXT_ADD_MENU",
+      "TEXT_ADD_FOLDER",
+      "TEXT_MACRO_SEARCH",
+      "TEXT_MULTI_FUNCTION"
+    ],
+    "searched_locales": [
+      {
+        "path": ".ref/applications/synapse/macro/static/js/trans-zh-CN.dbde5ecc.chunk.js",
+        "sha256": "cdfb8bfd531f100cd6b5a97018b9e82043bc4561cef5b1700aa776259dcca0ca",
+        "missing": [
+          "TEXT_PROFILE_BAR_MACRO",
+          "TEXT_PROFILE_BAR_NEW_MACRO",
+          "TEXT_PROFILE_BAR_DROPDOWN",
+          "TEXT_PROFILE_BAR_DROPDOWN_ADD_MACRO",
+          "TEXT_ADD_MENU",
+          "TEXT_ADD_FOLDER",
+          "TEXT_MACRO_SEARCH",
+          "TEXT_MULTI_FUNCTION"
+        ]
+      },
+      {
+        "path": ".ref/applications/synapse/dashboard/static/js/trans-zh-CN.9295e59f.chunk.js",
+        "sha256": "d2459718f6d38d8bb6a663ad3bd6e4fe69396c2a16294b217e8c885f0be6ee33",
+        "missing": [
+          "TEXT_PROFILE_BAR_MACRO",
+          "TEXT_PROFILE_BAR_NEW_MACRO",
+          "TEXT_PROFILE_BAR_DROPDOWN",
+          "TEXT_PROFILE_BAR_DROPDOWN_ADD_MACRO",
+          "TEXT_ADD_MENU",
+          "TEXT_ADD_FOLDER",
+          "TEXT_MACRO_SEARCH",
+          "TEXT_MULTI_FUNCTION"
+        ]
+      }
+    ],
+    "locale_chunk": ".ref/applications/synapse/macro/static/js/trans-zh-CN.dbde5ecc.chunk.js"
+  },
+  "palette": {
+    "types": {
+      "DELAY": "delay",
+      "KEYBOARD": "keyboard",
+      "MOUSE": "mouse",
+      "MACRO": "macro",
+      "LAUNCH": "launch",
+      "COMMAND": "command",
+      "TEXT": "text",
+      "LOOP": "loop",
+      "AI_REPHRASE": "ai_rephrase",
+      "AI_SUMMARIZE": "ai_summarize",
+      "AI_EMAIL_COMPOSER": "ai_email_composer"
+    },
+    "groups": [
+      {
+        "symbol": "i",
+        "items": [
+          {
+            "type": "ai_rephrase",
+            "icon_symbol": "p",
+            "name_symbol": "CPw",
+            "icon_module": "36024",
+            "media": "static/media/ai_rephrase.ce435691.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 206322,
+              "end": 206382,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "36024:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "ai_summarize",
+            "icon_symbol": "d",
+            "name_symbol": "hDN",
+            "icon_module": "12799",
+            "media": "static/media/ai_summarize.953171a6.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 68631,
+              "end": 68691,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "12799:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "ai_email_composer",
+            "icon_symbol": "y",
+            "name_symbol": "rVW",
+            "icon_module": "15893",
+            "media": "static/media/ai_compose_email.9888530a.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 100011,
+              "end": 100071,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "15893:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "JB",
+        "items": [
+          {
+            "type": "delay",
+            "icon_symbol": "i",
+            "name_symbol": "gnv",
+            "icon_module": "66526",
+            "media": "static/media/icon_delay_g.5050a3f7.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 454271,
+              "end": 454331,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "66526:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "keyboard",
+            "icon_symbol": "o",
+            "name_symbol": "Cg9",
+            "icon_module": "10739",
+            "media": "static/media/icon_config_keyboard_a.7051c99b.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 55718,
+              "end": 55778,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "10739:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "mouse",
+            "icon_symbol": "r",
+            "name_symbol": "DHG",
+            "icon_module": "34095",
+            "media": "static/media/icon_config_mouse_o.8a44fbe7.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 204741,
+              "end": 204801,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "34095:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "macro",
+            "icon_symbol": "a",
+            "name_symbol": "BBD",
+            "icon_module": "37609",
+            "media": "static/media/icon_macro_a.7e1bc94f.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 252785,
+              "end": 252845,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "37609:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "launch",
+            "icon_symbol": "s",
+            "name_symbol": "oeC",
+            "icon_module": "4944",
+            "media": "static/media/icon_config_launch_p.482fbff5.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 38093,
+              "end": 38153,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "4944:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const "
+            }
+          },
+          {
+            "type": "command",
+            "icon_symbol": "c",
+            "name_symbol": "CAI",
+            "icon_module": "30753",
+            "media": "static/media/icon_runcmd_b.10c00024.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 188377,
+              "end": 188437,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "30753:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "text",
+            "icon_symbol": "u",
+            "name_symbol": "$C_",
+            "icon_module": "45790",
+            "media": "static/media/icon_config_text_b.bc93ac89.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 382282,
+              "end": 382342,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "45790:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          },
+          {
+            "type": "loop",
+            "icon_symbol": "l",
+            "name_symbol": "fGT",
+            "icon_module": "77661",
+            "media": "static/media/icon_refresh-1_r.ff48f955.svg",
+            "media_receipt": {
+              "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+              "offset": 475051,
+              "end": 475111,
+              "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+              "excerpt": "77661:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const"
+            }
+          }
+        ]
+      }
+    ],
+    "group_titles": {
+      "first": "TEXT_ADD_MENU",
+      "second": "TEXT_MULTI_FUNCTION"
+    },
+    "receipt": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "offset": 513014,
+      "end": 513048,
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "excerpt": "n.d(t,{JB:()=>m,i:()=>f,vB:()=>h})"
+    },
+    "icons_present": [],
+    "icons_missing": [
+      {
+        "type": "ai_rephrase",
+        "media": "static/media/ai_rephrase.ce435691.svg"
+      },
+      {
+        "type": "ai_summarize",
+        "media": "static/media/ai_summarize.953171a6.svg"
+      },
+      {
+        "type": "ai_email_composer",
+        "media": "static/media/ai_compose_email.9888530a.svg"
+      },
+      {
+        "type": "delay",
+        "media": "static/media/icon_delay_g.5050a3f7.svg"
+      },
+      {
+        "type": "keyboard",
+        "media": "static/media/icon_config_keyboard_a.7051c99b.svg"
+      },
+      {
+        "type": "mouse",
+        "media": "static/media/icon_config_mouse_o.8a44fbe7.svg"
+      },
+      {
+        "type": "macro",
+        "media": "static/media/icon_macro_a.7e1bc94f.svg"
+      },
+      {
+        "type": "launch",
+        "media": "static/media/icon_config_launch_p.482fbff5.svg"
+      },
+      {
+        "type": "command",
+        "media": "static/media/icon_runcmd_b.10c00024.svg"
+      },
+      {
+        "type": "text",
+        "media": "static/media/icon_config_text_b.bc93ac89.svg"
+      },
+      {
+        "type": "loop",
+        "media": "static/media/icon_refresh-1_r.ff48f955.svg"
+      }
+    ],
+    "note": "The reference package contains this application's JS/CSS only; static/media was not fetched, so the palette icons are absent and no substitute is used."
+  }
+}

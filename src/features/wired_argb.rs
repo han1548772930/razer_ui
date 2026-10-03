@@ -23,6 +23,11 @@ use theme::Colors;
 struct Spec {
     product_id: u32,
     page: String,
+    /// 3871 的配置里有 `deviceName`，778 没有：它的名称来自运行时的型号表
+    /// （0 = "B550 Taichi Razer Edition"、128 = X570、129 = Z690），因此不能把
+    /// 某个固定名称当成该产品的名字。这个字段目前不参与渲染，缺失时按空串处理，
+    /// 不必让整份审计数据在启动时崩掉。
+    #[serde(default)]
     name: String,
     minimum_leds: u32,
     fan_counts: Vec<u32>,

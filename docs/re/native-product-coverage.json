@@ -7,12 +7,14 @@
     "primary_pages": 1419,
     "page_status_counts": {
       "partial_native": 1392,
-      "existing_partial_not_reaudited_here": 27
+      "partial_native_reaudited": 27
     },
+    "legacy_pages_reaudited": 27,
+    "legacy_pages_without_route": 0,
     "fully_reproduced_products_claimed": 0
   },
   "inputs_sha256": {
-    "tools/audit-native-product-coverage.py": "0ab8182c6bdb9c63247a82219b60513cb04ed6521b0e525327d1211c71aad18b",
+    "tools/audit-native-product-coverage.py": "e3e7df8ecb9b85f7336c6297677844bcc1c8b888a12e7eb442c7b47a59428813",
     "docs/re/product-registration-audit.json": "8f9975d00624bdd0f09e6f9e02299fc78baf7081cc086c0f9df06f8c62a77bec",
     "src/features/mouse_products_data.json": "72748f38436c0e6ae8526a0350a942ceed3250e91966fdc769755b4a00fbe78a",
     "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d",
@@ -20,25 +22,25 @@
     "src/features/audio_products_data.json": "71bf9a07b912501fd012aa31f9e355687c4466013194baf551b0e95faf7e52ed",
     "src/features/system_products_data.json": "9cf4f4c0ee5571679abbfae250441623ab354c2a9d0d5252643ac1f62762b6c2",
     "src/features/accessory_system_products_data.json": "be795550239ba518007eb0251e4217678d1d2ffbb3292f8ad34a37abcdad02b9",
-    "src/features/source_controls_data.json": "ae03616e8a37556c17c6e448b7790333fe0f14e7e30bb8d81d1e336e413c0ebe",
+    "src/features/source_controls_data.json": "78c33a235ebc28906a926a26227b53a77eff0a059ce586d72f09f9a52e501db4",
     "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
     "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
     "src/features/source_help_data.json": "d6cd92a5b11b01b8161d6195aeeee4d1ea505c872ad94baf18f550ed6a6b3cff",
-    "src/features/mouse_products.rs": "2a915a1e7d9f0527c0fd4b9e5a6354763b6d44a0415d21baab18b993e04f6266",
-    "src/features/keyboard_products.rs": "7fd24b4c832bdb1d62ff1f0ef7152dad4410bcdfe6ece6d53ab928da9c393491",
+    "src/features/mouse_products.rs": "f52605e379a68d11c62e8d4f0197cd71b4df20ecb5b603986f959264b130ba23",
+    "src/features/keyboard_products.rs": "5a91413c36761685855de471a6c3a7f9193daf3014e47b98629fbb3a9855716a",
     "src/features/gamepad_products.rs": "95b56e105dff21c5db29715cbfe9223923e52f6062b5bcef5e84891ec1bc6678",
     "src/features/audio_products.rs": "f9b3a6d8529f32fd9ff2bda346aaf05be81c957c0cc9e1c83a5f558158d6d645",
     "src/features/system_products.rs": "33c9b17cff559cc96eb8207e860d074782f4a83e2512fbf0b63805bfc63ce07d",
     "src/features/accessory_system_products.rs": "10561d064137abf322ce50c68d42a5c1af85463454db79d24fe3181cc31bd5f2",
-    "src/features/source_workspace.rs": "c3c766dafcca3ebb3e4362edeb44c2d4c37217b68f603656c360a4ad4b64c01a",
+    "src/features/source_workspace.rs": "4f4f2f6d278e686252854624e9708aedd547b39d0aeaf8952acb988bd5563e7d",
     "src/features/product_workspace.rs": "5cdce87f498af331c4b7c92f82e4ebe1091a6b90c34eb0738b1417e1dd0d73fc",
     "src/features/source_help.rs": "2f03ab34c6d8a7711f7e99afde15513a8c14072021eb7c5478f775fcb64a5a54",
-    "src/features/source_controls.rs": "fdfd82b7822df54dc4c29c9b2f6600e62e6d5a8fb2cdfe4f1628612211d05c98",
+    "src/features/source_controls.rs": "2f5aa1787fce2041645b68a5ea1f1509ee4451c1db24d8db48deb168cabd7b14",
     "src/features/source_controls/oled_presets.rs": "305bc3f521ca689d647f28dfddcdf4ac7efb1a85b09c07cc3de2a2c29d717c90",
     "src/features/accessory_system_products/corex_fan.rs": "86f1876e21aad7b0731f184d444db563389080aba8e6d0379d7b4984329c9897",
     "src/features/corex_fan_data.json": "96a7ce3c23776b78b728a3a17220ec4d43dc526a61fd5199d0da29a7416e3766",
     "src/features/keyboard_actuation.rs": "6dfa155644e7e6c5a6d0b7d111c3790dc12d80bffe3fb68c6b6238d72cc9cd17",
-    "src/features/keyboard_calibration.rs": "dd1069f60246974cdcbc1b57e398e937350aed46dc8d333363501b7cfe15c1b3",
+    "src/features/keyboard_calibration.rs": "1825bb72e89edddfa19f7a76e251180423d6f7b898297ae7ff31b5eedfafa065",
     "src/features/keyboard_calibration_data.json": "e2dd9f9118ce66218eda19fc9681d5d09eda673de3d359b198b1b9d351c9832b",
     "src/features/audio_demo.rs": "fffea3817f4c9089a5d9522180962c1d60303ca0d621992d36f5e320f92a06f4",
     "src/features/audio_demo_data.json": "9b0916959a321e6d63920a47c0767e821f09712e8862e899decfc2e5c6e7d249",
@@ -51,11 +53,11 @@
     "src/features/hue/preview.rs": "8890dd9063e95546808e60c0360c9e720de18216f74b659aa756d05baeb09960",
     "src/features/dock_pairing_data.json": "f311fc82e8616db742516de1de18df7bbf18bc3da266a506fe7016b15fbd108d",
     "src/features/dock_pairing.rs": "92259047f3e6f2078db18b386136aa3beb1017500fa4f36086d754e2a465c500",
-    "src/features/dock_pairing/dialog.rs": "97737d611d4cc27bce84d7210f8d5a4f9712987b7db965475082d5380f0ae586",
+    "src/features/dock_pairing/dialog.rs": "5b478e8097d0a1652da5ad79487ada004cf6dd9ab0dfc292399aa51e61c3acae",
     "src/features/dock_pairing/preview.rs": "2546a145d54f578a0eb1892b692b991b07596593a586e3035fc015b942ae7c34",
     "src/features/dock_pairing/state.rs": "709cde3d01d06371953a9d33ba2f2b959069b62266e1150868e83fe448faa936",
-    "src/features/wired_argb_data.json": "15394d187eb4b8eef3571937c5ba798a25e64b8401e170e15c1e2d6b6bec999c",
-    "src/features/wired_argb.rs": "264626a1cd74fad1cdb816a5f91cf72721edc6c9e2d09600bca7f3e59d025ea7",
+    "src/features/wired_argb_data.json": "8f52c7187f8cff49bb8ff36a21e0d13305711407b512f1cb4122c94050197469",
+    "src/features/wired_argb.rs": "3a10e01323a7a388f9aef31b1fa10e9cc5c0cf8c53b28b060f0cee6f8d88f98c",
     "src/features/wired_argb/loading.rs": "ccb9d21190ac95365438373d78391f33a04f94f9dab1aae6f003e21128d74389",
     "src/features/wired_argb/port.rs": "d755ec33f35722d35971f008ae66f5fc844a1b37757beb020c15e87d6cce8529",
     "src/features/wired_argb/preview.rs": "8514ae561ba5ceec1b79665b988d3d356b60e20011dc255d1507d0a1d011ddbd",
@@ -75,11 +77,11 @@
     "src/features/aether_strip/source_tip.rs": "0a68b0760845d5215370b64ad7ddb84be5db9d38198d15ece73c613067987417",
     "src/features/aether_strip/state.rs": "87426634e9da1abe0ebdfc9dc593610406c0ad57ea9408899672365fae39d3db",
     "src/features/automation_data.json": "3b4fbe04afbfd89db091d6d48013fffd1fc980430e8f9a789359c0ffa9b7243d",
-    "src/features/automation.rs": "716d2e8264737c34ee7c42c77189abb51288245706e1bf13808e0f4a9e400edd",
+    "src/features/automation.rs": "64389fbdd167c0ed29264609f1ac40c39483f02be4c64660298ddfbba6337026",
     "src/features/automation/editor.rs": "0c73867af4810172c618e5c675c1b7b420a1e6a3137c75e8ada325538849aab9",
     "src/features/automation/launch_sound.rs": "13eec3ca596a1f08519fe320c19a03b834fbff8e8c5f5598bc59879c84788bbb",
     "src/features/automation/preview.rs": "af00577035626b9d6c93c43c3b14472eca8bc6c7c7782dc4704c9b02f10eb4c2",
-    "src/features/automation/theme.rs": "2d7181928fb894821d74b3ae4fad6c0423c51578f95f7789c3e63731edb4c77a",
+    "src/features/automation/theme.rs": "1a21b3a813855d6e4f4686cbdf31774a575f99679da98413188ffcceca800a83",
     "src/features/source_workspace/accessory.rs": "071aa279f8eb8e57e3cb0684e5674e975b37dd025660e1424908c022345a57e1",
     "src/features/source_workspace/profile_bar.rs": "e010865f75e6d697dd993bbeb3829cdc8099003ada60c94527604370fcf31e8e",
     "src/features/source_workspace/tests.rs": "fb628aed2e934a9264c40dab25c633917962f748c64594fbb24d9d5319f1c2c3",
@@ -95,6 +97,7 @@
     "System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.",
     "Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.",
     "Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.",
+    "Legacy adapter pages marked `partial_native_reaudited` have a verified local route and source basis; that is still partial content, not visual parity.",
     "No application, build, tests, installer, downloaded JavaScript or DLL was executed for this audit."
   ],
   "products": [
@@ -2545,43 +2548,48 @@
     {
       "product_id": 182,
       "name": "Razer DeathAdder V3 Pro",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-182-main.db20a7c4-4856796",
           "key": "TAB_CUSTOMIZE",
           "offset": 4856796,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_customize",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/customize_page.rs，src/nav.rs:29 可达；182 有当前源码规格 src/features/mouse_products.rs:128 source_product（src/features/mouse_products_data.json，含 source_sha256）"
         },
         {
           "page_id": "product-182-main.db20a7c4-4856893",
           "key": "TAB_PERFORMANCE",
           "offset": 4856893,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_performance",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:34 performance_page，src/nav.rs:30 可达；规格文件里存在 DPI/回报率字段（页面内部取值未逐字段核对）"
         },
         {
           "page_id": "product-182-main.db20a7c4-4856940",
           "key": "TAB_POWER",
           "offset": 4856940,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_power",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:405 power_page，src/nav.rs:32 可达；规格文件里存在 power_slider/low_power_slider/low_battery_slider 字段"
         },
         {
           "page_id": "product-182-main.db20a7c4-4856987",
           "key": "TAB_CALIBRATION",
           "offset": 4856987,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_calibration",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:189 calibration_page，src/nav.rs:33 可达；规格文件里存在 calibration/smart_lift_max/smart_landing_max 字段"
         },
         {
           "page_id": "product-182-main.db20a7c4-4857034",
           "key": "HELP",
           "offset": 4857034,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": [
@@ -6005,29 +6013,32 @@
     {
       "product_id": 653,
       "name": "Blackwidow V4 Pro",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-653-main.7b71cce5-7990798",
           "key": "TAB_CUSTOMIZE",
           "offset": 7990798,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "keyboard_customize",
+          "status": "partial_native_reaudited",
+          "evidence": "src/nav.rs:35 给出 Customize 页；653 的当前源码布局数据见 src/resources.rs:176 的 assets/synapse/keyboard-653-layouts.json 与 keyboard-653-deviceconfig.json"
         },
         {
           "page_id": "product-653-main.7b71cce5-7990895",
           "key": "TAB_LIGHTING",
           "offset": 7990895,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:35 可达；653 的效果表见 src/features/settings.rs:377 与 :380"
         },
         {
           "page_id": "product-653-main.7b71cce5-7990942",
           "key": "HELP",
           "offset": 7990942,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -7949,43 +7960,48 @@
     {
       "product_id": 777,
       "name": "RAZER KRAKEN BT SANRIO LIMITED EDITION",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-777-main.eb70ce38-4673350",
           "key": "TAB_SOUND",
           "offset": 4673350,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_audio",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/audio_page.rs 渲染，src/nav.rs:36 给出 Sound/Mic 页；182/653/777 的注册导航里没有 TAB_AUDIO（src/product/registry_data.rs，由 tools/generate-product-registry.cjs 从各自 bundle 的导航常量生成；全库只有 3872/3873 声明该页）"
         },
         {
           "page_id": "product-777-main.eb70ce38-4673397",
           "key": "TAB_MIC",
           "offset": 4673397,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_audio",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/audio_page.rs 渲染，src/nav.rs:36 给出 Sound/Mic 页；182/653/777 的注册导航里没有 TAB_AUDIO（src/product/registry_data.rs，由 tools/generate-product-registry.cjs 从各自 bundle 的导航常量生成；全库只有 3872/3873 声明该页）"
         },
         {
           "page_id": "product-777-main.eb70ce38-4673444",
           "key": "TAB_LIGHTING",
           "offset": 4673444,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:36 可达；777 的效果表见 src/features/settings.rs:384 与 :387"
         },
         {
           "page_id": "product-777-main.eb70ce38-4673491",
           "key": "TAB_POWER",
           "offset": 4673491,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_power",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:405 power_page，src/nav.rs:36 可达"
         },
         {
           "page_id": "product-777-main.eb70ce38-4673538",
           "key": "HELP",
           "offset": 4673538,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12189,22 +12205,24 @@
     {
       "product_id": 3072,
       "name": "Razer Firefly Hard Edition",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3072-main.22fdc9c0-4555278",
           "key": "TAB_LIGHTING",
           "offset": 4555278,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3072-main.22fdc9c0-4555333",
           "key": "HELP",
           "offset": 4555333,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12212,22 +12230,24 @@
     {
       "product_id": 3073,
       "name": "Razer Goliathus Chroma",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3073-main.c88f5161-4554629",
           "key": "TAB_LIGHTING",
           "offset": 4554629,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3073-main.c88f5161-4554676",
           "key": "HELP",
           "offset": 4554676,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12235,22 +12255,24 @@
     {
       "product_id": 3074,
       "name": "Razer Goliathus Extended Chroma",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3074-main.85c88c49-4548568",
           "key": "TAB_LIGHTING",
           "offset": 4548568,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3074-main.85c88c49-4548623",
           "key": "HELP",
           "offset": 4548623,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12258,22 +12280,24 @@
     {
       "product_id": 3076,
       "name": "Razer Firefly V2",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3076-main.5acaa9f5-4544684",
           "key": "TAB_LIGHTING",
           "offset": 4544684,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3076-main.5acaa9f5-4544739",
           "key": "HELP",
           "offset": 4544739,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12281,22 +12305,24 @@
     {
       "product_id": 3077,
       "name": "Razer Strider Chroma",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3077-main.fd1964d4-4565063",
           "key": "TAB_LIGHTING",
           "offset": 4565063,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3077-main.fd1964d4-4565118",
           "key": "HELP",
           "offset": 4565118,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12304,22 +12330,24 @@
     {
       "product_id": 3078,
       "name": "Razer Goliathus Chroma 3XL",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3078-main.7f259c76-4543815",
           "key": "TAB_LIGHTING",
           "offset": 4543815,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3078-main.7f259c76-4543870",
           "key": "HELP",
           "offset": 4543870,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12327,22 +12355,24 @@
     {
       "product_id": 3080,
       "name": "Razer Firefly V2 Pro",
-      "family": "existing_adapter",
+      "family": "existing_adapter_reaudited",
       "status": "partial_native",
       "pages": [
         {
           "page_id": "product-3080-main.961e0950-4574735",
           "key": "TAB_LIGHTING",
           "offset": 4574735,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "mousemat_lighting",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/device_pages.rs:472 lighting_page，src/nav.rs:37 只给出 Lighting 页；产品数据见 src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表"
         },
         {
           "page_id": "product-3080-main.961e0950-4574790",
           "key": "HELP",
           "offset": 4574790,
-          "route": "existing_adapter",
-          "status": "existing_partial_not_reaudited_here"
+          "route": "device_help",
+          "status": "partial_native_reaudited",
+          "evidence": "src/features/help_page.rs:111 help_page；src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符"
         }
       ],
       "independent_modes": []
@@ -12527,7 +12557,7 @@
           "offset": 4586394,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 11,
+          "controls": 15,
           "equalizers": 0
         },
         {
@@ -12545,7 +12575,7 @@
           "offset": 4586488,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 9,
+          "controls": 10,
           "equalizers": 0
         },
         {
@@ -12570,7 +12600,7 @@
           "offset": 7036548,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 9,
+          "controls": 14,
           "equalizers": 0
         },
         {
@@ -12613,7 +12643,7 @@
           "offset": 4617946,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 9,
+          "controls": 14,
           "equalizers": 0
         },
         {
@@ -12665,7 +12695,7 @@
           "offset": 4599337,
           "route": "source_controls",
           "status": "partial_native",
-          "controls": 4,
+          "controls": 9,
           "equalizers": 0
         },
         {

@@ -24,13 +24,16 @@ mod account_menu;
 mod alexa_page;
 mod app_picker;
 mod app_picker_host;
+mod display_window;
 mod firmware_update;
 mod header_status;
 mod host_tabs;
 mod introduction_tour;
 mod iot_popup;
+mod macro_page;
 mod main_pages;
 mod pairing_page;
+mod pairing_window;
 mod profile_migration;
 mod release_notes;
 mod runtime_page;
@@ -48,6 +51,7 @@ enum Location {
     Alexa,
     FirmwareUpdate,
     ProfileMigration,
+    Macro,
 }
 struct PreparedSave {
     window: AnyWindowHandle,
@@ -115,6 +119,7 @@ pub struct AppShell {
     alexa_subscription: Option<Subscription>,
     firmware_update: Option<(Entity<firmware_update::FirmwareUpdate>, Subscription)>,
     profile_migration: Option<Entity<profile_migration::MigrationPage>>,
+    macro_page: Option<Entity<macro_page::MacroPage>>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -198,6 +203,7 @@ impl AppShell {
             alexa_subscription: None,
             firmware_update: None,
             profile_migration: None,
+            macro_page: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -330,23 +336,40 @@ impl AppShell {
         this.subscriptions.push(cx.subscribe_in(
             &this.pairing,
             window,
-            |this, _, _: &pairing_page::PairingPageEvent, window, cx| {
-                this.navigate(Location::Main(Tab::Home), window, cx);
+            |this, _, event: &pairing_page::PairingPageEvent, window, cx| match event {
+                pairing_page::PairingPageEvent::Back => {
+                    this.navigate(Location::Main(Tab::Home), window, cx)
+                }
+                // Dashboard 7861 `hi`：设备盒按下时用 `productId` 与
+                // `deviceContainerId` 打开该产品的配对窗口；两者缺一就不动作。
+                pairing_page::PairingPageEvent::OpenProductWindow(device) => {
+                    this.open_product_pairing_window(device, cx)
+                }
             },
         ));
         this.subscriptions.push(cx.subscribe_in(
             &this.module_catalog,
             window,
             |this, _, event: &service_pages::ModuleCatalogEvent, window, cx| match event {
-                service_pages::ModuleCatalogEvent::OpenModule(module) => {
-                    this.handle_app_picker(
-                        &app_picker::AppPickerEvent::Open(app_picker::PickerTarget::Module(
-                            *module,
-                        )),
-                        window,
-                        cx,
-                    );
-                }
+                service_pages::ModuleCatalogEvent::OpenModule(module) => match *module {
+                    service_pages::ModulePage::Picker(module) => {
+                        this.handle_app_picker(
+                            &app_picker::AppPickerEvent::Open(app_picker::PickerTarget::Module(
+                                module,
+                            )),
+                            window,
+                            cx,
+                        );
+                    }
+                    // 原版此盒聚焦 `synapse-introduction` 窗口。
+                    service_pages::ModulePage::IntroductionTour => {
+                        this.navigate(Location::Tour(TourKind::Synapse), window, cx);
+                    }
+                    // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）。
+                    service_pages::ModulePage::Macro => {
+                        this.navigate(Location::Macro, window, cx);
+                    }
+                },
                 service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
                     this.open_firmware_update(device.clone(), *preview, window, cx);
                 }
@@ -481,6 +504,53 @@ impl AppShell {
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
+    }
+    /// 打开产品的 `displayMode=multiDevicePairing` 窗口（Dashboard 7861 `hi`）。
+    ///
+    /// 原版把 `/synapse/products/<pid>/ui/index.html` 连同 `containerId`、
+    /// `displayMode` 与（非空时）`allMasters` 交给宿主的具名窗口，窗口名与策略见
+    /// [窗口契约](../docs/re/display-window-contract.md)。窗口几何由宿主决定、契约
+    /// 里没有给出，这里沿用主窗口的尺寸。
+    fn open_product_pairing_window(&mut self, device: &serde_json::Value, cx: &mut App) {
+        let product_id = device
+            .get("productId")
+            .and_then(serde_json::Value::as_u64)
+            .and_then(|value| u32::try_from(value).ok());
+        let container_id = device
+            .get("deviceContainerId")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+            .filter(|value| !value.trim().is_empty());
+        let (Some(product_id), Some(container_id)) = (product_id, container_id) else {
+            return;
+        };
+        let identity = display_window::WindowIdentity {
+            container_id: Some(container_id),
+            product_id: Some(product_id),
+            serial_number: device
+                .get("serialNumber")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string),
+        };
+        let name = display_window::multi_device_pairing_name(&identity);
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::centered(size(px(1280.), px(820.)), cx)),
+            window_min_size: Some(size(px(1080.), px(720.))),
+            ..TitleBar::window_options()
+        };
+        // 原版对这个窗口传 `ZP.sameWindow`（`policy=3`）与 `ZP.autoFocus`
+        // （`shouldFocus=1`）：命中同名窗口就复用并聚焦。
+        let policy = display_window::WindowPolicy::Same;
+        // `allMasters` 来自宿主写入的 connectedDeviceInfo 投影（Dashboard `jt`/`Et`），
+        // 该投影尚未审计；没有真实记录时传 None，窗口显示 4130 页面原有的空态。
+        let payload = pairing_window::PairingWindowPayload { all_masters: None };
+        if let Err(error) =
+            display_window::open_or_focus(cx, name, policy, options, move |window, cx| {
+                cx.new(|cx| pairing_window::PairingWindow::new(window, cx, payload))
+            })
+        {
+            eprintln!("无法打开配对窗口：{error}");
+        }
     }
     fn request_navigation(
         &mut self,
@@ -627,6 +697,15 @@ impl AppShell {
             }
             if next == Location::ProfileMigration && self.profile_migration.is_none() {
                 self.profile_migration = Some(cx.new(profile_migration::MigrationPage::new));
+            }
+            if next == Location::Macro {
+                if self.macro_page.is_none() {
+                    self.macro_page = Some(cx.new(macro_page::MacroPage::new));
+                }
+                self.macro_page
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |page, cx| page.focus(window, cx));
             }
             if let Some(index) = history_index {
                 self.history_index = index;
@@ -1004,6 +1083,8 @@ impl AppShell {
             Location::Alexa => "Alexa".into(),
             Location::FirmwareUpdate => "固件更新".into(),
             Location::ProfileMigration => crate::i18n::t("PROFILE_MIGRATION").into(),
+            // 原版窗口名就是 `macro`（Dashboard 模块 69937 的 `O="macro"`）。
+            Location::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
         };
         let (has_previous, has_next) = if self.location == Location::Alexa {
             self.alexa.as_ref().map_or((false, false), |page| {
@@ -1312,6 +1393,11 @@ impl Render for AppShell {
                 .unwrap_or_else(|| div().into_any_element()),
             Location::ProfileMigration => self
                 .profile_migration
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::Macro => self
+                .macro_page
                 .as_ref()
                 .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),

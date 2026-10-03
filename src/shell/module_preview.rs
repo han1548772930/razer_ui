@@ -442,7 +442,7 @@ impl ModulePreview {
                     )
                     .child(
                         h_flex()
-                            .when_some(item.url, |d, url| {
+                            .when_some(item.link, |d, url| {
                                 d.child(source_link(
                                     "preview-learn-more",
                                     i18n::t("LEARN_MORE"),

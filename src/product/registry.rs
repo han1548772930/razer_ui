@@ -159,12 +159,6 @@ impl RegisteredProduct {
     pub(crate) fn primary_navigation(&self) -> Option<&'static ProductNavigation> {
         self.navigations.iter().find(|nav| nav.primary)
     }
-    /// Multiple owners can share a display mode; preserve their order/identity.
-    pub(crate) fn navigation(&self, display_mode: &str) -> Option<&'static ProductNavigation> {
-        self.navigations
-            .iter()
-            .find(|nav| nav.display_mode == display_mode)
-    }
     pub(crate) fn page(&self, id: ProductPageId) -> Option<&'static ProductPage> {
         self.navigations.iter().find_map(|nav| nav.page(id))
     }

@@ -15,7 +15,7 @@
 | 服务连接 | [runtime_page.rs](../../src/shell/runtime_page.rs) 的设置面板通过后台线程持有 [ServiceClient](../../src/backend/runtime.rs)，点击连接后才启动独立 worker | 分别读取 HID 接口元数据、服务版本和音频列表；各项失败独立显示；断开在后台关闭 worker，保留最近结果；未实际启动验证 |
 | 资源 | [resources.rs](../../src/resources.rs)、[打包清单](../../assets/synapse/manifest.json) | include_bytes 打包 PNG / SVG / 动画 WebP / TTF；不在运行时读取 .ref |
 
-旧的 free-function feature 页面和 ui/widgets.rs 不再列入模块声明；文件保留以免删除已有工作区改动。它们不能作为当前运行 UI 的入口依据。domain.rs 中旧的 DeviceFeatures 暂用于旧配置反序列化和 CLI 探测，不能据其字段给新页面增加控件。
+旧的 free-function feature 页面和 ui/widgets.rs 已按用户要求在 2026-10-03 **删除**（22 个文件：features/ 下的 audio、calibration、customize、dashboard、display、engines、enhancement、eq、haptics、keyboard、lighting、macros、mic、mixer、oled、pairing、performance、power、scrolling、setting、sound 与 ui/widgets.rs）；它们此前就不在模块编译树里。它们不能作为当前运行 UI 的入口依据。domain.rs 中旧的 DeviceFeatures 暂用于旧配置反序列化和 CLI 探测，不能据其字段给新页面增加控件。
 
 ## 2. 产品页面完成情况
 

@@ -627,6 +627,23 @@ impl CameraProductColors {
     pub(crate) fn pressed() -> gpui_kit::Hsla {
         gpui_kit::rgb(0xffffff).into()
     }
+    /// `.advanced-camera-container .camera-container` background and the
+    /// `.keyboard_listen` shortcut field share `#111`.
+    pub(crate) fn background() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x111111).into()
+    }
+    /// `.advanced-camera-container .camera-divider` border.
+    pub(crate) fn divider() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x222222).into()
+    }
+    /// The shortcut field's inline `color:"#707070"` placeholder.
+    pub(crate) fn placeholder() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x707070).into()
+    }
+    /// `.direction-container .direction-item` background `#222`.
+    pub(crate) fn swatch() -> gpui_kit::Hsla {
+        gpui_kit::rgb(0x222222).into()
+    }
 }
 
 /// Current product 784 layout controls and its offline message.

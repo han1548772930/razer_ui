@@ -280,11 +280,22 @@ impl DeviceWorkspace {
     pub fn device(&self) -> &Device {
         &self.device
     }
+    /// 测试用快照/脏标记/保存前处理：只有 `#[path]` 引入的测试模块调用，
+    /// 因此只在测试目标里编译，避免发布二进制里留下未使用的 API。
+    #[cfg(test)]
     pub fn snapshot(&self) -> Device {
         self.device.clone()
     }
     pub fn saved_snapshot(&self) -> Device {
         self.saved.clone()
+    }
+    #[cfg(test)]
+    pub fn dirty(&self) -> bool {
+        self.committed_pending() || self.mapping_dirty()
+    }
+    #[cfg(test)]
+    pub fn prepare_save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        self.finish_mapping(window, cx)
     }
     pub fn set_intro_seen(&mut self, seen: bool, cx: &mut Context<Self>) {
         self.intro_seen = seen;
@@ -295,9 +306,6 @@ impl DeviceWorkspace {
             "{}:{}:{}",
             self.device.product_id, self.device.serial_number, self.device.device_container_id
         )
-    }
-    pub fn dirty(&self) -> bool {
-        self.committed_pending() || self.mapping_dirty()
     }
     pub(crate) fn committed_pending(&self) -> bool {
         self.device.active_profile != self.saved.active_profile
@@ -725,9 +733,6 @@ impl DeviceWorkspace {
         }
         true
     }
-    pub fn prepare_save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        self.finish_mapping(window, cx)
-    }
     pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_controls(window, cx);
         cx.notify();
@@ -970,6 +975,13 @@ impl DeviceWorkspace {
                         .role(Role::Tab)
                         .on_click(cx.listener(move |this, _, w, cx| this.set_page(page, w, cx)))
                     })),
+            )
+            .child(
+                // 顶栏右侧电量：原版 `.right` 把 `.battery` 放在帮助图标之前
+                // （依据见 src/ui/battery.rs 顶部）。没有 `powerStatus` 时不渲染。
+                h_flex()
+                    .items_center()
+                    .children(crate::ui::battery::element(&self.device, cx)),
             )
             .child(
                 h_flex().flex_1().min_w_0().justify_end().child(

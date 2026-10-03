@@ -119,7 +119,12 @@ for(const pid of [778,3871]){
   const editReducers=[];walk(ast,n=>{if(n.type==='FunctionExpression'&&n.end-n.start<10000&&source.slice(n.start,n.end).includes('numberOfLeds')&&source.slice(n.start,n.end).includes('ports.slice()'))editReducers.push(receipt(n));});
   let mainboardPorts=[];
   if(pid===778){const main=page.components.find(c=>c.source.includes('e.filter(e=>{let E=e.argb'));walk(ast,n=>{if(n.start>=main.offset&&n.end<=main.end&&n.type==='CallExpression'&&n.callee.property?.name==='includes'&&n.callee.object?.type==='ArrayExpression')mainboardPorts=decode(n.callee.object);});if(JSON.stringify(mainboardPorts)!=='[2147483651,2147483652,2147483656]')throw Error('Changed motherboard port IDs');}
-  const spec={product_id:pid,page:page.key,name:configValues.deviceName,minimum_leds:configValues.minimumLedValue,fan_counts:decode(fans.init),translations,assets,mainboard_ports:mainboardPorts};
+  // 778 的配置没有 `deviceName`：名称来自运行时型号表（0=B550、128=X570、
+  // 129=Z690 Taichi Razer Edition），所以该产品没有可静态断言的单一名称。
+  // 这里显式省略该字段，并让缺失的字段立刻报错，而不是被 JSON.stringify 静默丢掉。
+  const spec={product_id:pid,page:page.key,minimum_leds:configValues.minimumLedValue,fan_counts:decode(fans.init),translations,assets,mainboard_ports:mainboardPorts};
+  if(configValues.deviceName!==undefined)spec.name=configValues.deviceName;
+  for(const [key,value] of Object.entries(spec))if(value===undefined)throw Error(`Undefined ${key} in ARGB spec ${pid}`);
   specs.push(spec);
   evidence.push({product_id:pid,profile_bar:{sync_icon_enabled_page:profileEnabledPage,condition:profileConditions[0],label_export:receipt(profileLabel),consumers:profileConsumers,initial:receipt(profileDefault)},state_scope:{owner:'device/localstorage',default_profile:receipt(defaultProfile),persistence},source_files:pending.source_files,config:receipt(config),fan_counts:receipt(fans),locale_map:receipt(localeMap),css:{path:cssPath,sha256:hash(css),rules},manifest:{path:manifestPath,sha256:hash(read(manifestPath))},components:page.components.map(({path,offset,end,source})=>({path,offset,end,source})),reducers,editReducers});
 }

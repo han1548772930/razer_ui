@@ -24,7 +24,6 @@ use theme::Colors;
 
 #[derive(Deserialize)]
 struct ActionSpec {
-    id: u32,
     content: String,
 }
 #[derive(Deserialize)]

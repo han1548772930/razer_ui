@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "4fec01fe02756eb1e5aecfb1f34d4dc7213e2c1c4427d5f1bdbfe806335c3c67",
+  "state_machine": {
+    "source": ".ref/devices/104/static/js/main.9b94769e.js",
+    "offset": 4275658,
+    "sha256": "5235266920c3639c93c2ff94e0ec278b562ed3de0b4c710592c172be703e87e0",
+    "cases": {
+      "off": "batt batt-off",
+      "charging": "batt charging",
+      "charging_full": "batt charging100 (level >= 99)",
+      "no_charge_battery_full": "bucket(level)",
+      "warning": "batt batt-warning",
+      "paused": "bucket(level, paused)  // ReachChargingLimit",
+      "default": "bucket(100)"
+    },
+    "bucket": "10 === level ? 10 : (level > 10 && level < 20) ? 20 : 10 * floor(level / 10)",
+    "disconnected": "level <= 0 → batt batt-disconnected"
+  },
+  "css": {
+    "source": ".ref/devices/100/static/css/main.dd229426.css",
+    "container": ".right .battery{align-items:center;color:#ccc;display:flex;font-size:14px;height:46px;justify-content:center}",
+    "lowBatt": ".battery .low-batt{color:#c8323c}",
+    "iconBox": ".nav-tabs .batt,.nav-tabs .warn,.nav-tabs .warnRestart{background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;margin:0 10px;width:26px}",
+    "iconDefault": ".nav-tabs .batt{background-image:url(../../static/media/icon_battery_100.b00b88f9.svg);margin:0 5px}",
+    "warningTooltip": ".nav-tabs .batt.batt-warning[tooltip]:before{color:#ccc;font:normal normal normal 14px/16px Roboto,sans-serif;height:auto;letter-spacing:0;margin-right:16px;opacity:1;text-align:left;white-space:inherit;width:352px}",
+    "icons": {
+      "0": [
+        "icon_battery_0.d600fc0a.svg",
+        "icon_battery_paused.087ee1a5.svg#0"
+      ],
+      "10": [
+        "icon_battery_10.5a0a21e9.svg",
+        "icon_battery_paused.087ee1a5.svg#10"
+      ],
+      "20": [
+        "icon_battery_20.5573858b.svg",
+        "icon_battery_paused.087ee1a5.svg#20"
+      ],
+      "30": [
+        "icon_battery_30.2ea266e0.svg",
+        "icon_battery_paused.087ee1a5.svg#30"
+      ],
+      "40": [
+        "icon_battery_40.425e62c7.svg",
+        "icon_battery_paused.087ee1a5.svg#40"
+      ],
+      "50": [
+        "icon_battery_50.b36451e7.svg",
+        "icon_battery_paused.087ee1a5.svg#50"
+      ],
+      "60": [
+        "icon_battery_60.ca9e0c58.svg",
+        "icon_battery_paused.087ee1a5.svg#60"
+      ],
+      "70": [
+        "icon_battery_70.73ff3b3b.svg",
+        "icon_battery_paused.087ee1a5.svg#70"
+      ],
+      "80": [
+        "icon_battery_80.cabac91c.svg",
+        "icon_battery_paused.087ee1a5.svg#80"
+      ],
+      "90": [
+        "icon_battery_90.f59d2a3d.svg",
+        "icon_battery_paused.087ee1a5.svg#90"
+      ],
+      "100": [
+        "icon_battery_100.b00b88f9.svg",
+        "icon_battery_paused.087ee1a5.svg#100"
+      ],
+      "batt-warning": "icon_battery_error.44052666.svg",
+      "charging": "icon_battery_charging.99e70522.svg",
+      "charging100": "icon_battery_charging_100.d01170a4.svg",
+      "batt-disconnected": "icon_battery_disconnected.e5f74ae3.svg",
+      "batt-off": "icon_device_off.0a0b5f8a.svg"
+    }
+  },
+  "strings": {
+    "off": {
+      "key": "BATTERY_OFF",
+      "zh": "关闭",
+      "en": "off"
+    },
+    "chargedFull": {
+      "key": "BATTERY_CHARGED_FULL",
+      "zh": "100% 已充满电",
+      "en": "100% charged"
+    },
+    "charging": {
+      "key": "BATTERY_CHARGING",
+      "zh": "电池正在充电",
+      "en": "Battery Charging"
+    },
+    "percentNoCharge": {
+      "key": "BATTERY_PERCENT",
+      "zh": "{{level}}% 电池",
+      "en": "{{level}}% Battery"
+    },
+    "percentPaused": {
+      "key": "BATTERY_PERCENT",
+      "zh": "{{level}}% 电池",
+      "en": "{{level}}% Battery"
+    },
+    "percentDefault": {
+      "key": "BATTERY_PERCENT",
+      "zh": "{{level}}% 电池",
+      "en": "{{level}}% Battery"
+    }
+  },
+  "icons": {
+    "referenced_by_css": {
+      "0": [
+        "icon_battery_0.d600fc0a.svg",
+        "icon_battery_paused.087ee1a5.svg#0"
+      ],
+      "10": [
+        "icon_battery_10.5a0a21e9.svg",
+        "icon_battery_paused.087ee1a5.svg#10"
+      ],
+      "20": [
+        "icon_battery_20.5573858b.svg",
+        "icon_battery_paused.087ee1a5.svg#20"
+      ],
+      "30": [
+        "icon_battery_30.2ea266e0.svg",
+        "icon_battery_paused.087ee1a5.svg#30"
+      ],
+      "40": [
+        "icon_battery_40.425e62c7.svg",
+        "icon_battery_paused.087ee1a5.svg#40"
+      ],
+      "50": [
+        "icon_battery_50.b36451e7.svg",
+        "icon_battery_paused.087ee1a5.svg#50"
+      ],
+      "60": [
+        "icon_battery_60.ca9e0c58.svg",
+        "icon_battery_paused.087ee1a5.svg#60"
+      ],
+      "70": [
+        "icon_battery_70.73ff3b3b.svg",
+        "icon_battery_paused.087ee1a5.svg#70"
+      ],
+      "80": [
+        "icon_battery_80.cabac91c.svg",
+        "icon_battery_paused.087ee1a5.svg#80"
+      ],
+      "90": [
+        "icon_battery_90.f59d2a3d.svg",
+        "icon_battery_paused.087ee1a5.svg#90"
+      ],
+      "100": [
+        "icon_battery_100.b00b88f9.svg",
+        "icon_battery_paused.087ee1a5.svg#100"
+      ],
+      "batt-warning": "icon_battery_error.44052666.svg",
+      "charging": "icon_battery_charging.99e70522.svg",
+      "charging100": "icon_battery_charging_100.d01170a4.svg",
+      "batt-disconnected": "icon_battery_disconnected.e5f74ae3.svg",
+      "batt-off": "icon_device_off.0a0b5f8a.svg"
+    },
+    "packaged_by_rust": [
+      "synapse/battery-0.svg",
+      "synapse/battery-10.svg",
+      "synapse/battery-100.svg",
+      "synapse/battery-20.svg",
+      "synapse/battery-30.svg",
+      "synapse/battery-40.svg",
+      "synapse/battery-50.svg",
+      "synapse/battery-60.svg",
+      "synapse/battery-70.svg",
+      "synapse/battery-80.svg",
+      "synapse/battery-90.svg",
+      "synapse/battery-charging-100.svg",
+      "synapse/battery-charging.svg",
+      "synapse/battery-disconnected.svg",
+      "synapse/battery-error.svg",
+      "synapse/battery-off.svg",
+      "synapse/battery-paused-0.svg",
+      "synapse/battery-paused-10.svg",
+      "synapse/battery-paused-100.svg",
+      "synapse/battery-paused-20.svg",
+      "synapse/battery-paused-30.svg",
+      "synapse/battery-paused-40.svg",
+      "synapse/battery-paused-50.svg",
+      "synapse/battery-paused-60.svg",
+      "synapse/battery-paused-70.svg",
+      "synapse/battery-paused-80.svg",
+      "synapse/battery-paused-90.svg"
+    ],
+    "missing": [],
+    "paused_crops": [
+      "assets/synapse/battery-paused-0.svg",
+      "assets/synapse/battery-paused-10.svg",
+      "assets/synapse/battery-paused-20.svg",
+      "assets/synapse/battery-paused-30.svg",
+      "assets/synapse/battery-paused-40.svg",
+      "assets/synapse/battery-paused-50.svg",
+      "assets/synapse/battery-paused-60.svg",
+      "assets/synapse/battery-paused-70.svg",
+      "assets/synapse/battery-paused-80.svg",
+      "assets/synapse/battery-paused-90.svg",
+      "assets/synapse/battery-paused-100.svg"
+    ]
+  },
+  "rust_table": {
+    "source": "src/ui/battery.rs",
+    "sha256": "a2db26705b3a37e711c86d0ad71323414dae6a1f8e082b2eb86cd4e2e91b5054"
+  },
+  "problems": []
+}

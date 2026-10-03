@@ -119,6 +119,13 @@ for name, original in frontend_media.items():
 
 prepare_gamer_room_devices(ROOT, OUT, record)
 
+# Armory（`/synapse/armory/`）窗口自己的图标：`logo_armory_exchange.svg` 在
+# 仪表盘的 shared-apps 目录里，`logo_armory_workshop` 已作为 module-armory.svg 打包。
+armory_icon = ROOT / ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg"
+armory_dst = OUT / "logo-armory-exchange.svg"
+shutil.copyfile(armory_icon, armory_dst)
+record(armory_icon, armory_dst)
+
 # The picker is an independent iframe. Its app icons are shared host assets;
 # the empty-state picture and trigger are from its own manifest.
 picker_media = ROOT / ".ref/applications/rz-app-menu/static/media"
@@ -660,12 +667,52 @@ vectors = {
     "direction-in.svg": (653, "icon_direction_inward_999.29221403.svg"),
     "direction-in-active.svg": (653, "icon_direction_inward.29c0ed8a.svg"),
     "palette-none.svg": (653, "disable_palette.03c60895.svg"),
+    # 设备页右上角电量（`.nav-tabs .batt`）：182/653/777 三个包里的同名文件哈希一致。
+    "battery-0.svg": (182, "icon_battery_0.d600fc0a.svg"),
+    "battery-10.svg": (182, "icon_battery_10.5a0a21e9.svg"),
+    "battery-20.svg": (182, "icon_battery_20.5573858b.svg"),
+    "battery-30.svg": (182, "icon_battery_30.2ea266e0.svg"),
+    "battery-40.svg": (182, "icon_battery_40.425e62c7.svg"),
+    "battery-50.svg": (182, "icon_battery_50.b36451e7.svg"),
+    "battery-60.svg": (182, "icon_battery_60.ca9e0c58.svg"),
+    "battery-70.svg": (182, "icon_battery_70.73ff3b3b.svg"),
+    "battery-80.svg": (182, "icon_battery_80.cabac91c.svg"),
+    "battery-90.svg": (182, "icon_battery_90.f59d2a3d.svg"),
+    "battery-100.svg": (182, "icon_battery_100.b00b88f9.svg"),
+    "battery-charging.svg": (182, "icon_battery_charging.99e70522.svg"),
+    "battery-charging-100.svg": (182, "icon_battery_charging_100.d01170a4.svg"),
+    "battery-disconnected.svg": (182, "icon_battery_disconnected.e5f74ae3.svg"),
+    "battery-error.svg": (182, "icon_battery_error.44052666.svg"),
+    "battery-off.svg": (182, "icon_device_off.0a0b5f8a.svg"),
 }
 for name, (pid, original) in vectors.items():
     src = ROOT / ".ref/devices" / str(pid) / "static/media" / original
     dst = OUT / name
     shutil.copyfile(src, dst)
     record(src, dst)
+# 暂停充电的电量图标：原文件是 20x220 的图标条，CSS 用 SVG **view 片段**
+# （`url(icon_battery_paused.087ee1a5.svg#80)` → `<view id="80" viewBox="0 80 20 20">`）
+# 取其中一格。gpui 不支持片段选择，因此按原文件的 view 定义裁成独立文件。
+paused_src = ROOT / ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg"
+paused_text = paused_src.read_text(encoding="utf-8")
+paused_views = re.findall(r'<view id="(\d+)" viewBox="([^"]+)"/>', paused_text)
+assert len(paused_views) == 11, paused_views
+for level, view_box in paused_views:
+    x, y, w, h = view_box.split()
+    assert (w, h) == ("20", "20") and x == "0", view_box
+    cropped = re.sub(
+        r'<svg version="1\.1" id="Layer_1"[^>]*viewBox="0 0 20 220"[^>]*>',
+        f'<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" '
+        f'xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" '
+        f'viewBox="{view_box}" width="20" height="20" style="enable-background:new {view_box};">',
+        paused_text,
+        count=1,
+    )
+    assert cropped != paused_text, "paused sheet root not rewritten"
+    dst = OUT / f"battery-paused-{level}.svg"
+    dst.write_text(cropped, encoding="utf-8")
+    record(paused_src, dst, view_box=view_box, crop=f"# {level}")
+
 # Original Chroma category icon is a CSS data URL, not a separate SVG.
 src = ROOT / ".ref/devices/182/static/css/main.48c20423.css"
 css_text = src.read_text(encoding="utf-8")

@@ -952,61 +952,120 @@ impl Render for GamerRoomPage {
 
 struct Module {
     id: &'static str,
+    /// 原版模块盒的盒名（Dashboard 模块 54693 的常量，`showModules` 的 switch 用它分派）。
+    box_name: &'static str,
+    /// 点击该盒聚焦的窗口名与地址（Dashboard 模块 54420 的窗口登记表）。
+    window: &'static str,
+    url: &'static str,
     title: &'static str,
     icon: &'static str,
     image: Option<&'static str>,
     description: &'static str,
-    url: Option<&'static str>,
+    link: Option<&'static str>,
     /// A compiled page is available independently of an external module install.
-    native_page: Option<PickerModule>,
+    native_page: Option<ModulePage>,
 }
-// 6505/44442 ne + te are a static catalogue. No installed/available state is
+/// 已在本仓库实现的对应窗口；原版点击模块盒只是聚焦同名窗口。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ModulePage {
+    Picker(PickerModule),
+    IntroductionTour,
+    Macro,
+}
+// 6505/44442 ne te are a static catalogue. No installed/available state is
 // inferred from these records; that state belongs to the installer service.
+// 盒名、窗口名与地址来自当前 Dashboard：模块 54420 登记具名窗口，7861 的
+// `showModules` 把盒名映射到窗口名（`focusTab(windowName)`），未安装时先打开
+// `/installer/#type=module&id=<id>&location=<path>` 再聚焦窗口。运行时盒子的顺序
+// 由宿主的 group items 决定，本地不臆造顺序。收据见 docs/re/display-window-contract.md
+// 与 docs/re/macro-app-current-audit.md。
 const MODULES: &[Module] = &[
     Module {
         id: "alexa",
+        box_name: "DASHBOARD_ALEXA",
+        window: "alexa",
+        url: "/synapse/alexa/",
         title: "Alexa",
         icon: "synapse/module-alexa.svg",
         image: Some("synapse/module-alexa.png"),
         description: "对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云中。需要有效的麦克风和 Amazon Alexa 账户。",
-        url: Some("https://www.razer.com/chroma/alexa"),
-        native_page: Some(PickerModule::Alexa),
+        link: Some("https://www.razer.com/chroma/alexa"),
+        native_page: Some(ModulePage::Picker(PickerModule::Alexa)),
     },
     Module {
         id: "macro",
+        box_name: "MACRO",
+        window: "macro",
+        url: "/synapse/macro/",
         title: "宏",
         icon: "synapse/module-macro.svg",
         image: Some("synapse/module-macro.png"),
-        description: "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的按键敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合。",
-        url: None,
-        native_page: None,
+        description: "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的键盘敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合。",
+        link: None,
+        // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）；本地已实现该窗口的
+        // 外框与两个导航标签，宏服务与功能面板仍未接入。
+        native_page: Some(ModulePage::Macro),
     },
     Module {
         id: "linked-games",
+        box_name: "LINKED_GAMES",
+        window: "profiles",
+        url: "/synapse/profiles/",
         title: "已关联的游戏",
         icon: "synapse/module-linked-games.svg",
         image: None,
-        description: "原生游戏关联模块的安装状态尚未读取。设备 Profile 中的本地关联程序可在对应配置菜单中管理。",
-        url: None,
+        description: "原版此模块盒打开 profiles 窗口（/synapse/profiles/），用于按程序切换配置文件和灯光效果；本地尚未实现该窗口，设备 Profile 内的关联程序可在对应配置菜单中管理。",
+        link: None,
         native_page: None,
     },
     Module {
         id: "feedback",
+        box_name: "FEEDBACK",
+        window: "feedback-synapse",
+        url: "/feedback/?app=synapse&path=<当前路径>",
         title: "反馈",
         icon: "synapse/module-feedback.svg",
         image: None,
-        description: "原生反馈应用的安装状态尚未读取。",
-        url: None,
+        description: "原版此模块盒打开 feedback-synapse 窗口；本地尚未实现该窗口。",
+        link: None,
         native_page: None,
     },
     Module {
         id: "armory",
+        box_name: "DASHBOARD_WORKSHOP",
+        window: "armory",
+        url: "/synapse/armory/",
         title: "工坊",
         icon: "synapse/module-armory.svg",
         image: None,
-        description: "原生 Armory 的安装和服务状态尚未读取。",
-        url: None,
+        description: "原版此模块盒打开 armory 窗口；本地尚未实现该窗口。",
+        link: None,
         native_page: None,
+    },
+    Module {
+        id: "profile-migration",
+        box_name: "PROFILE_MIGRATION",
+        window: "syn3-profile-migration",
+        url: "/profile-migration/",
+        title: "配置文件迁移",
+        icon: "synapse/module-profile-migration.svg",
+        image: None,
+        description: "把 Synapse 3 的配置文件迁移到当前版本。原版点击此盒聚焦 syn3-profile-migration 窗口，本地已实现该页面。",
+        link: None,
+        native_page: Some(ModulePage::Picker(PickerModule::ProfileMigration)),
+    },
+    Module {
+        id: "tour",
+        box_name: "TOUR",
+        window: "synapse-introduction",
+        url: "/synapse/introduction-tour/",
+        title: "介绍导览",
+        // 导览应用自己的图标（与 host_tabs.rs 里 Tour 标签页同一份资源）。
+        icon: "synapse/tour-app-icon.svg",
+        image: None,
+        description: "原版点击此盒聚焦 synapse-introduction 窗口，本地已实现 Synapse 介绍导览。",
+        link: None,
+        native_page: Some(ModulePage::IntroductionTour),
     },
 ];
 pub(super) struct ModuleCatalog {
@@ -1014,7 +1073,7 @@ pub(super) struct ModuleCatalog {
     details: Option<Entity<DeviceDetails>>,
 }
 pub(super) enum ModuleCatalogEvent {
-    OpenModule(PickerModule),
+    OpenModule(ModulePage),
     FirmwareUpdate {
         device: Option<Device>,
         preview: bool,
@@ -1120,9 +1179,18 @@ impl ModuleCatalog {
                     .when(item.native_page.is_none(), |view| {
                         view.child(
                             div()
+                                .id(SharedString::from(format!(
+                                    "module-source-{}",
+                                    item.id
+                                )))
                                 .text_size(surface::css(14.))
                                 .text_color(cx.theme().muted_foreground)
-                                .child("安装状态未读取"),
+                                // 原版此盒的盒名与它聚焦的窗口来自当前 Dashboard；
+                                // 本地没有该窗口时只显示事实，不假装已安装。
+                                .child(format!(
+                                    "安装状态未读取；原版盒 {} 打开 {}（{}）",
+                                    item.box_name, item.window, item.url
+                                )),
                         )
                         .child(
                             module_action(
@@ -1133,8 +1201,13 @@ impl ModuleCatalog {
                                 cx,
                             )
                             .ml(surface::css(30.))
-                            .tooltip(|window, cx| {
-                                Tooltip::new("此版本尚未接入模块安装服务").build(window, cx)
+                            .tooltip(move |window, cx| {
+                                Tooltip::new(format!(
+                                    "此版本尚未接入模块安装服务；原版未安装时先打开 /installer/#type=module&id={}&location={}",
+                                    item.id,
+                                    item.url.trim_start_matches('/')
+                                ))
+                                .build(window, cx)
                             }),
                         )
                     }),
@@ -1161,7 +1234,7 @@ impl ModuleCatalog {
                                 .w(surface::css(592.))
                                 .gap(surface::css(20.))
                                 .child(div().whitespace_normal().child(item.description))
-                                .when_some(item.url, |view, url| {
+                                .when_some(item.link, |view, url| {
                                     view.child(source_link(
                                         "module-alexa-learn",
                                         "了解更多",

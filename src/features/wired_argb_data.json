@@ -621,7 +621,6 @@
   {
     "product_id": 3871,
     "page": "TAB_CUSTOMIZE",
-    "name": "Razer Chroma Addressable RGB Controller",
     "minimum_leds": 1,
     "fan_counts": [
       6,
@@ -1254,6 +1253,7 @@
         "context_sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f"
       }
     ],
-    "mainboard_ports": []
+    "mainboard_ports": [],
+    "name": "Razer Chroma Addressable RGB Controller"
   }
 ]

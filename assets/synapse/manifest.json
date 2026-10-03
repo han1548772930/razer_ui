@@ -704,6 +704,12 @@
       "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
     },
     {
+      "source": ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg",
+      "output": "assets/synapse/logo-armory-exchange.svg",
+      "source_sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2",
+      "sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2"
+    },
+    {
       "source": ".ref/applications/rz-app-menu/static/media/icon_app.b648a5e5.svg",
       "output": "assets/synapse/app-picker.svg",
       "source_sha256": "324a93f773de181a1205213dfa8c41a12c0963be73eac2bd6a49e33b26e446a8",
@@ -4434,6 +4440,190 @@
       "output": "assets/synapse/palette-none.svg",
       "source_sha256": "793ea7df657ff93a46d2c48f977934c308a647ff5958d0de19f5b14cb1d77482",
       "sha256": "793ea7df657ff93a46d2c48f977934c308a647ff5958d0de19f5b14cb1d77482"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_0.d600fc0a.svg",
+      "output": "assets/synapse/battery-0.svg",
+      "source_sha256": "f056324bebefe3b17936660549bf348e877b09a934e12e70ea47b7d7e1a79d9e",
+      "sha256": "f056324bebefe3b17936660549bf348e877b09a934e12e70ea47b7d7e1a79d9e"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_10.5a0a21e9.svg",
+      "output": "assets/synapse/battery-10.svg",
+      "source_sha256": "323e34779794a043437c8ddd8fd34fed20a6c551df73af496a0a4e5d114b63ce",
+      "sha256": "323e34779794a043437c8ddd8fd34fed20a6c551df73af496a0a4e5d114b63ce"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_20.5573858b.svg",
+      "output": "assets/synapse/battery-20.svg",
+      "source_sha256": "c7a70c307288eb712142a89cadf4458cd065cd26e3fdf2eb4ab71d92ea682663",
+      "sha256": "c7a70c307288eb712142a89cadf4458cd065cd26e3fdf2eb4ab71d92ea682663"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_30.2ea266e0.svg",
+      "output": "assets/synapse/battery-30.svg",
+      "source_sha256": "5bc6b55295e220c601ecbc0796f70ee77211a27144a2e0aa90ac6b8c844b9edb",
+      "sha256": "5bc6b55295e220c601ecbc0796f70ee77211a27144a2e0aa90ac6b8c844b9edb"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_40.425e62c7.svg",
+      "output": "assets/synapse/battery-40.svg",
+      "source_sha256": "2e0ba4086a07daf744bd4c257e75a53cd6f1b34b1386ee5a0a13373a6fb7bdba",
+      "sha256": "2e0ba4086a07daf744bd4c257e75a53cd6f1b34b1386ee5a0a13373a6fb7bdba"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_50.b36451e7.svg",
+      "output": "assets/synapse/battery-50.svg",
+      "source_sha256": "e396356e253d2b4007de498ad443213f24baa947fbbb170e873f0e10c13210b1",
+      "sha256": "e396356e253d2b4007de498ad443213f24baa947fbbb170e873f0e10c13210b1"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_60.ca9e0c58.svg",
+      "output": "assets/synapse/battery-60.svg",
+      "source_sha256": "22369efff319c768977855528a24dd8093ca34e6c3e30658ef2ea18b6b25ac4a",
+      "sha256": "22369efff319c768977855528a24dd8093ca34e6c3e30658ef2ea18b6b25ac4a"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_70.73ff3b3b.svg",
+      "output": "assets/synapse/battery-70.svg",
+      "source_sha256": "d724292e46eb8bef9ddedc708c91531bcfbd630708537d2f682e405d1e71399c",
+      "sha256": "d724292e46eb8bef9ddedc708c91531bcfbd630708537d2f682e405d1e71399c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_80.cabac91c.svg",
+      "output": "assets/synapse/battery-80.svg",
+      "source_sha256": "8d49be60e9121ba0f510055360d09560b684b1566fda37a1a199cd9449e3a020",
+      "sha256": "8d49be60e9121ba0f510055360d09560b684b1566fda37a1a199cd9449e3a020"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_90.f59d2a3d.svg",
+      "output": "assets/synapse/battery-90.svg",
+      "source_sha256": "c1c4851badcb6ebeac90fc9ecc12ce25cff58886abdf2a8a481a0593345acfb0",
+      "sha256": "c1c4851badcb6ebeac90fc9ecc12ce25cff58886abdf2a8a481a0593345acfb0"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_100.b00b88f9.svg",
+      "output": "assets/synapse/battery-100.svg",
+      "source_sha256": "4fabe127b4387fbc9433a13729d8d7d78a400faff61795889b0f6c070ca4940a",
+      "sha256": "4fabe127b4387fbc9433a13729d8d7d78a400faff61795889b0f6c070ca4940a"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_charging.99e70522.svg",
+      "output": "assets/synapse/battery-charging.svg",
+      "source_sha256": "ad95c5a3a474ba4aa3102c35e459f05a0f9ef966e7da627cc394b41a6ec55bc7",
+      "sha256": "ad95c5a3a474ba4aa3102c35e459f05a0f9ef966e7da627cc394b41a6ec55bc7"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_charging_100.d01170a4.svg",
+      "output": "assets/synapse/battery-charging-100.svg",
+      "source_sha256": "a40a6a4fb260d58ce86f61c00f238bdcc867a7520df2eb1c318134d53453af3c",
+      "sha256": "a40a6a4fb260d58ce86f61c00f238bdcc867a7520df2eb1c318134d53453af3c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_disconnected.e5f74ae3.svg",
+      "output": "assets/synapse/battery-disconnected.svg",
+      "source_sha256": "bdf16708f4e636497ce048ab809a6c3a4b5d1831838f3a01ab0b7bad29a85dca",
+      "sha256": "bdf16708f4e636497ce048ab809a6c3a4b5d1831838f3a01ab0b7bad29a85dca"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_error.44052666.svg",
+      "output": "assets/synapse/battery-error.svg",
+      "source_sha256": "72532b06f29bffd3c1e04539908a525d8ba03364498f9c15c574139d3a8eae03",
+      "sha256": "72532b06f29bffd3c1e04539908a525d8ba03364498f9c15c574139d3a8eae03"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_device_off.0a0b5f8a.svg",
+      "output": "assets/synapse/battery-off.svg",
+      "source_sha256": "777468c616c92fb4b8c9189b3476f2b0b98b50a5ce573951e87a9ad57ffaf685",
+      "sha256": "777468c616c92fb4b8c9189b3476f2b0b98b50a5ce573951e87a9ad57ffaf685"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-100.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "1bcf45558a138d2390496f3c02ca8377d4ca2c893a1225bdecbcda0e59391690",
+      "view_box": "0 0 20 20",
+      "crop": "# 100"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-90.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "64f9b1166f513dac13d1c86a6974624a7896d79b6b3f122f608dbaed74379683",
+      "view_box": "0 40 20 20",
+      "crop": "# 90"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-80.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "786e69926918b20edc00d1b21de1232bb040bd538b2ccdc45cfddefda6ff9bee",
+      "view_box": "0 80 20 20",
+      "crop": "# 80"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-70.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "f8d39718d2674a8b5273c777d4664bbc4bade108f34b7471a0111f226708325a",
+      "view_box": "0 120 20 20",
+      "crop": "# 70"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-60.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "ee0f947dea6dda4aba8da46ef51f1e1ddd5f0f7704119fd302d485bfe0761eef",
+      "view_box": "0 160 20 20",
+      "crop": "# 60"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-50.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "50841578be7f548bcae23ca3780c638900f7c6d3fe2cffa8f143abe13e8fb469",
+      "view_box": "0 200 20 20",
+      "crop": "# 50"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-40.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "db8c66af5d0fdffb14f9cad9c7c8c7b77210d02d4dfecb2e3b205e4ef8973ee0",
+      "view_box": "0 240 20 20",
+      "crop": "# 40"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-30.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "6bec4f490dea0880462dc05f1b452abb40013aa04968463b957c2518734e8491",
+      "view_box": "0 280 20 20",
+      "crop": "# 30"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-20.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "07bdaa108e9eaef352c476ae3d65bc970a7743ebc5234aceaabe9be70b4b2ab7",
+      "view_box": "0 320 20 20",
+      "crop": "# 20"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-10.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "f663515855d6d1709da51643f7c43d42a708dadda4b2cc6c98e68bfb7104ff55",
+      "view_box": "0 360 20 20",
+      "crop": "# 10"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_battery_paused.087ee1a5.svg",
+      "output": "assets/synapse/battery-paused-0.svg",
+      "source_sha256": "5cb95ae40a17ac915b2ed6864b6f224b4e6c23e56a9df160e7eb612bcd973e66",
+      "sha256": "5675d141a5a2333fbdfe0a6bc567fad8be9ce3236bf0d24515e25b84340cf4fa",
+      "view_box": "0 400 20 20",
+      "crop": "# 0"
     },
     {
       "source": ".ref/devices/182/static/css/main.48c20423.css",

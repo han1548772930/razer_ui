@@ -7,9 +7,9 @@
 | 页面状态 | 数量 |
 | --- | ---: |
 | partial_native | 1392 |
-| existing_partial_not_reaudited_here | 27 |
+| partial_native_reaudited | 27 |
 
-原有十个适配器单独记为 `existing_partial_not_reaudited_here`，本次统计不替代它们各自的当前源码审计。独立模式另列，未计作主页面实现。
+原有十个适配器按页复核：27 页已确认本地路由与源码依据（`partial_native_reaudited`），0 页仍记为 `existing_partial_not_reaudited_here`。复核结果仍是部分内容，不等于视觉一致。独立模式另列，未计作主页面实现。
 
 ## 尚无主页面内容的产品
 
@@ -31,6 +31,7 @@
 - System controls do not apply hardware settings or fabricate temperature, fan RPM, SKU or display modes.
 - Help retains per-page source conditions; unavailable firmware/reset/system services stay unavailable.
 - Independent displayMode branches are registered as evidence but not automatically exposed by the primary workspace.
+- Legacy adapter pages marked `partial_native_reaudited` have a verified local route and source basis; that is still partial content, not visual parity.
 - No application, build, tests, installer, downloaded JavaScript or DLL was executed for this audit.
 
 ## 不包含在设备页计数中的界面缺口

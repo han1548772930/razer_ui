@@ -697,6 +697,12 @@ impl Render for SourceProductWorkspace {
                             ),
                     )
                     .child(
+                        // 原版把电量放在 `.right` 里、帮助图标之前（见 ui/battery.rs 顶部依据）。
+                        h_flex()
+                            .items_center()
+                            .children(crate::ui::battery::element(&self.device, cx)),
+                    )
+                    .child(
                         h_flex().flex_1().min_w_0().justify_end().children(
                             navigation
                                 .into_iter()

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "e83982735c746ec3598bdc7194bdcf6148c27efa41b32cea698e8d12c0fbd5ea",
+  "package": {
+    "entrypoints": [
+      "static/css/main.c0e644c4.css",
+      "static/js/main.3d0e8bd0.js"
+    ],
+    "main_js": {
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "bytes": 882625,
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f"
+    },
+    "main_css": {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "bytes": 492328,
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df"
+    },
+    "chunks": {
+      "js": 19,
+      "css": 4,
+      "media": 0
+    }
+  },
+  "window": {
+    "name_constant": {
+      "macro": "u",
+      "armory": "d"
+    },
+    "policy": "policy=5,tab_visible=0,app_name=synapse,width=1280,height=720,minimum_width=600,minimum_height=500,app_icon_path=Synapse\\\\window.ico",
+    "url_templates": [
+      "/synapse/armory/?view=my-upload&sharePopup=true&pid=",
+      "/synapse/armory/?source="
+    ],
+    "url_template_source": "device",
+    "query_params": [
+      "action",
+      "displayMode",
+      "guid",
+      "pid",
+      "sharePopup",
+      "source",
+      "type",
+      "view"
+    ],
+    "display_mode_branch": "displayMode === \"armory\" → body-wrapper 追加 \" custom-scrollable\"",
+    "title_keys": [
+      "DASHBOARD_EXCHANGE",
+      "DASHBOARD_WORKSHOP"
+    ],
+    "title_zh": [
+      "互换"
+    ]
+  },
+  "feature_flags": {
+    "phase1": "hook.isPhase1FeaturesEnabled",
+    "exchange": "hook.isExchangeEnabled（决定标题 EXCHANGE/WORKSHOP）",
+    "my_uploads_state": "本地 state，初值 true → 默认隐藏「我的上传」"
+  },
+  "navigation": {
+    "order": [
+      {
+        "id": "ftd",
+        "key": "SPOTLIGHT_HEADER",
+        "zh": "精选推荐"
+      },
+      {
+        "id": "Hzf",
+        "key": "BROWSE_HEADER",
+        "zh": "浏览"
+      },
+      {
+        "id": "Vb_",
+        "key": "MY_DOWNLOADS_HEADER",
+        "zh": "我的下载"
+      },
+      {
+        "id": "C9E",
+        "key": "MY_UPLOADS_HEADER",
+        "zh": "我的上传"
+      }
+    ],
+    "filter": {
+      "my_uploads_hidden_unless": "re",
+      "spotlight_hidden_unless": "Te"
+    }
+  },
+  "icons": {
+    "referenced": [
+      "logo_armory_exchange.svg",
+      "logo_armory_workshop.svg"
+    ],
+    "resolved": {
+      "logo_armory_exchange.svg": [
+        ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg",
+        ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg.http.json"
+      ],
+      "logo_armory_workshop.svg": [
+        ".ref/applications/synapse/dashboard/static/media/logo_armory_workshop.9cfc256a.svg"
+      ]
+    }
+  },
+  "problems": []
+}

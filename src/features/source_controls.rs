@@ -1,6 +1,7 @@
 //! Retained native controls whose labels, bounds, options and bindings are
 //! supplied by statically audited per-product descriptors.
 use super::Choice;
+use crate::ui::stepper::{Stepper, StepperEvent};
 use crate::ui::surface;
 use gpui_kit::component::{
     button::Button,
@@ -12,7 +13,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 mod oled_presets;
 
@@ -64,6 +65,11 @@ struct ControlSpec {
     disabled_unless: Option<String>,
     #[serde(default)]
     disabled_unless_all: Vec<String>,
+    /// 任一条件组全部成立即禁用。原版摄像头的取景块用它表达
+    /// `ldc && (4K 30FPS | 1440p 30FPS)`：屏幕上的变焦、平移/倾斜、预设与
+    /// 快捷键同时进入原版的 `disabled` 状态并显示 LDC 说明。
+    #[serde(default)]
+    disabled_when_any: Vec<Vec<ConditionSpec>>,
     #[serde(default)]
     visible_when: Option<ConditionSpec>,
     #[serde(default)]
@@ -72,6 +78,37 @@ struct ControlSpec {
     minimum_when: Option<MinimumSpec>,
     #[serde(default)]
     enabled_from_value: Option<String>,
+    /// Source setting-row tooltip text key.
+    #[serde(default)]
+    tooltip: Option<String>,
+    /// Row description shown by the source inside its disabled branch.
+    #[serde(default)]
+    description: Option<String>,
+    /// Idle text of a shortcut capture field.
+    #[serde(default)]
+    placeholder: Option<String>,
+    /// Second bound field of a two-axis control (pan and tilt).
+    #[serde(default)]
+    tilt_path: Option<String>,
+    /// 原版共享设置行的 `hasStepper` 标志，真值表示这一行带数字步进器。
+    ///（校验脚本按 `名字：值` 的 ASCII 冒号形式识别字段，注释里不要那样写。）
+    #[serde(default)]
+    has_stepper: bool,
+    /// `allowDecimal` 与 `roundUpDecimals` 为真时步进器显示小数。
+    #[serde(default)]
+    allow_decimal: bool,
+    #[serde(default)]
+    round_up_decimals: bool,
+    #[serde(default = "default_max_pan_tilt")]
+    max_pan_tilt: f32,
+    /// Mounted pan/tilt pad content box, in the product's own pixels.
+    #[serde(default)]
+    box_width: f32,
+    #[serde(default)]
+    box_height: f32,
+}
+fn default_max_pan_tilt() -> f32 {
+    10.
 }
 #[derive(Deserialize)]
 struct SectionSpec {
@@ -98,6 +135,9 @@ struct ProductSpec {
     pages: Vec<PageSpec>,
     #[serde(default)]
     support: Option<String>,
+    /// Current camera roots mount one 400px `.camera-container` column.
+    #[serde(default)]
+    layout: Option<String>,
 }
 fn specs() -> &'static [ProductSpec] {
     static SPECS: OnceLock<Vec<ProductSpec>> = OnceLock::new();
@@ -141,11 +181,29 @@ pub(crate) struct SourceControls {
     page: String,
     draft: Value,
     sliders: BTreeMap<String, Entity<SliderState>>,
+    steppers: BTreeMap<String, Entity<crate::ui::stepper::Stepper>>,
     selects: BTreeMap<String, Entity<SelectState<Vec<Choice>>>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
     staged: BTreeMap<String, Value>,
     is_ble: bool,
+    focus: FocusHandle,
+    /// Key of the shortcut capture field currently listening for input.
+    listening: Option<String>,
+    /// 原版黑框的 `getBoundingClientRect()`：由子元素 prepaint 写入内容盒坐标，
+    /// 拖拽时用来把窗口坐标换成框内坐标。
+    pan_tilt_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    /// 原版白框按下后记录的抓取偏移（`left/top/bottom/right`）。
+    pan_tilt_drag: Option<PanTiltDrag>,
+}
+/// 原版 `white box` 的 onMouseDown 状态：光标相对白框四条边的距离。
+#[derive(Clone)]
+struct PanTiltDrag {
+    key: String,
+    left: f32,
+    top: f32,
+    bottom: f32,
+    right: f32,
 }
 impl EventEmitter<SourceControlsChanged> for SourceControls {}
 impl SourceControls {
@@ -159,11 +217,16 @@ impl SourceControls {
             page: spec.pages.first().map_or(String::new(), |p| p.key.clone()),
             draft: spec.profile.clone(),
             sliders: BTreeMap::new(),
+            steppers: BTreeMap::new(),
             selects: BTreeMap::new(),
             subscriptions: vec![],
             syncing: false,
             staged: BTreeMap::new(),
             is_ble: false,
+            focus: cx.focus_handle(),
+            listening: None,
+            pan_tilt_bounds: Rc::new(Cell::new(None)),
+            pan_tilt_drag: None,
         };
         for control in spec
             .pages
@@ -200,6 +263,36 @@ impl SourceControls {
                     },
                 ));
                 this.sliders.insert(key, state);
+            } else if control.has_stepper && !this.steppers.contains_key(&key) {
+                // 原版这一行的步进器与滑块写同一个字段，步进器只是 ±step。
+                let initial = this.value(control).and_then(Value::as_f64).unwrap_or(0.);
+                let (min, max, step) =
+                    (control.min as f64, control.max as f64, control.step as f64);
+                // `allowDecimal`/`roundUpDecimals`：相机这四行的两个标志同时为真，
+                // 显示位数由步长决定（原版是 `toFixed(3)`）。
+                let decimals = if control.allow_decimal || control.round_up_decimals {
+                    decimals_for_step(step)
+                } else {
+                    0
+                };
+                let state = cx.new(|_| {
+                    Stepper::new(SharedString::from(format!("{key}:stepper")), initial)
+                        .range(min, max, step)
+                        .decimals(decimals)
+                });
+                let target = key.clone();
+                // 步进器写的是同一个字段，走和滑块一样的 `edit` 路径（含禁用判断）。
+                this.subscriptions.push(cx.subscribe_in(
+                    &state,
+                    window,
+                    move |this, _, event: &StepperEvent, window, cx| {
+                        if this.syncing {
+                            return;
+                        }
+                        this.edit(&target, serde_json::json!(event.value), window, cx);
+                    },
+                ));
+                this.steppers.insert(key, state);
             } else if control.kind == "select" && !this.selects.contains_key(&key) {
                 let choices = control
                     .options
@@ -344,7 +437,82 @@ impl SourceControls {
                     .and_then(Value::as_bool)
                     != Some(true)
             })
+            || control.disabled_when_any.iter().any(|group| {
+                group.iter().all(|condition| {
+                    self.draft.pointer(&self.resolve_path(&condition.path))
+                        == Some(&condition.value)
+                })
+            })
     }
+    /// 原版黑框的 `onMouseMove`：按住白框后在黑框上拖动，按抓取偏移移动白框，
+    /// 依次套用左右/上下边界钳制，再把像素位置换算回 pan/tilt。
+    fn drag_pan_tilt(
+        &mut self,
+        key: &str,
+        box_size: &PanTiltBox,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(drag) = self.pan_tilt_drag.clone() else {
+            return;
+        };
+        if drag.key != key {
+            return;
+        }
+        let Some(bounds) = self.pan_tilt_bounds.get() else {
+            return;
+        };
+        let Some(control) = self.control(key) else {
+            return;
+        };
+        let pan_path = control.path.clone();
+        let tilt_path = control.tilt_path.clone().unwrap_or_default();
+        let box_size = PanTiltBox {
+            width: box_size.width,
+            height: box_size.height,
+            zoom: box_size.zoom,
+            max: box_size.max,
+        };
+        let white_w = box_size.width / box_size.zoom;
+        let white_h = box_size.height / box_size.zoom;
+        let outer_w = box_size.width + 2.;
+        let outer_h = box_size.height + 2.;
+        // 白框已经和黑框一样大时不再响应（原版的提前返回）。
+        if (outer_w - white_w).abs() < f32::EPSILON && (outer_h - white_h).abs() < f32::EPSILON {
+            return;
+        }
+        let (current_left, current_top) =
+            box_size.white_origin(self.axis_value(&pan_path), self.axis_value(&tilt_path));
+        let x = f32::from(position.x - bounds.origin.x);
+        let y = f32::from(position.y - bounds.origin.y);
+        let mut left = x - drag.left;
+        let mut top = y - drag.top;
+        let bottom = y + drag.bottom;
+        let right = x + drag.right;
+        if left < 0. {
+            left = 0.;
+        }
+        if top < 0. {
+            top = 0.;
+        }
+        if bottom >= outer_h {
+            top = outer_h - white_h - 2.;
+        }
+        if right >= outer_w {
+            left = outer_w - white_w - 2.;
+        }
+        if left == current_left && top == current_top {
+            return;
+        }
+        let pan = box_size.pan_from_left(left, white_w);
+        let tilt = box_size.tilt_from_top(top, white_h);
+        // 原版在这里还把像素位置钳进内容盒，但那只写进本地 state，pan/tilt 用的是
+        // 钳制之前的值；本地白框位置每次都由 `white_origin` 重算，因此只写值。
+        self.write_path(&pan_path, serde_json::json!(pan), window, cx);
+        self.write_path(&tilt_path, serde_json::json!(tilt), window, cx);
+    }
+
     fn edit(&mut self, key: &str, mut value: Value, window: &mut Window, cx: &mut Context<Self>) {
         let Some(control) = self.control(key) else {
             return;
@@ -386,7 +554,7 @@ impl SourceControls {
         }
         if matches!(
             control.kind.as_str(),
-            "select" | "options" | "image_options"
+            "select" | "options" | "image_options" | "preset"
         ) && !control
             .options
             .iter()
@@ -440,6 +608,88 @@ impl SourceControls {
         cx.emit(SourceControlsChanged);
         cx.notify();
     }
+    /// Writes one resolved path directly. Multi-field controls (pan and tilt,
+    /// the preset shortcut chord) own more than one bound field.
+    fn write_path(
+        &mut self,
+        path: &str,
+        value: Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let path = self.resolve_path(path);
+        let Some(target) = self.draft.pointer_mut(&path) else {
+            return;
+        };
+        if *target == value {
+            return;
+        }
+        *target = value;
+        self.sync(window, cx);
+        cx.emit(SourceControlsChanged);
+        cx.notify();
+    }
+    fn axis_value(&self, path: &str) -> f32 {
+        self.draft
+            .pointer(&self.resolve_path(path))
+            .and_then(Value::as_f64)
+            .unwrap_or(0.) as f32
+    }
+    /// Nudges one pan/tilt axis by the pad's own single step, bounded by the
+    /// mounted `maxPanTilt`. The centre button re-centres both axes.
+    fn nudge_axis(
+        &mut self,
+        control: &ControlSpec,
+        path: &str,
+        delta: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let current = self.axis_value(path);
+        let next = (current + delta).clamp(-control.max_pan_tilt, control.max_pan_tilt);
+        if next == current {
+            return;
+        }
+        self.write_path(path, serde_json::json!(next), window, cx);
+    }
+    /// Source listener: a chord is retained only when it carries both a
+    /// modifier and a key; a lone key is presented as Ctrl + Shift + key.
+    fn capture_shortcut(
+        &mut self,
+        control: &ControlSpec,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let mut ids: Vec<String> = Vec::new();
+        for (pressed, id) in [
+            (event.keystroke.modifiers.control, "KEY_LEFT_CTRL"),
+            (event.keystroke.modifiers.shift, "KEY_LEFT_SHIFT"),
+            (event.keystroke.modifiers.alt, "KEY_LEFT_ALT"),
+            (event.keystroke.modifiers.platform, "KEY_LEFT_GUI"),
+        ] {
+            if pressed {
+                ids.push(id.into());
+            }
+        }
+        let Some(key) = keystroke_input_id(&event.keystroke.key) else {
+            return;
+        };
+        if !ids.iter().any(|id| id == key) {
+            ids.push(key.into());
+        }
+        if ids.len() == 1 {
+            ids.insert(0, "KEY_LEFT_SHIFT".into());
+            ids.insert(0, "KEY_LEFT_CTRL".into());
+        }
+        let keeps = ids.iter().any(|id| is_modifier(id)) && ids.iter().any(|id| !is_modifier(id));
+        let value = if keeps {
+            Value::Array(ids.into_iter().map(Value::from).collect())
+        } else {
+            Value::Array(Vec::new())
+        };
+        self.write_path(&control.path.clone(), value, window, cx);
+    }
     fn normalize(&mut self) {
         for control in self
             .spec
@@ -487,6 +737,13 @@ impl SourceControls {
                 }
             }
         }
+        for (key, state) in &self.steppers {
+            if let Some(control) = self.control(key) {
+                let value = self.value(control).and_then(Value::as_f64).unwrap_or(0.);
+                let disabled = self.disabled(control);
+                state.update(cx, |stepper, cx| stepper.sync_value(value, disabled, cx));
+            }
+        }
         for (key, state) in &self.selects {
             if let Some(control) = self.control(key) {
                 let value = self.selection_value(control);
@@ -528,6 +785,371 @@ impl SourceControls {
         self.page = page.into();
         cx.notify();
     }
+    /// `.pan-and-tilt-container`: a 220x132 content box with a 1px border, the
+    /// white framing box scaled by zoom, and the five pad buttons.
+    fn render_pan_tilt(
+        &self,
+        control: &ControlSpec,
+        disabled: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        use crate::ui::theme::CameraProductColors as Colors;
+        let key = control.key.clone();
+        let tilt_path = control.tilt_path.clone().unwrap_or_default();
+        let pan = self.axis_value(&control.path);
+        let tilt = self.axis_value(&tilt_path);
+        let zoom = self.axis_value("@view/zoom").max(1.);
+        let lines = PanTiltBox {
+            width: control.box_width,
+            height: control.box_height,
+            zoom,
+            max: control.max_pan_tilt,
+        };
+        let (left, top) = lines.white_origin(pan, tilt);
+        let outer_w = control.box_width + 2.;
+        let outer_h = control.box_height + 2.;
+        let white_w = control.box_width / zoom;
+        let white_h = control.box_height / zoom;
+        let pad_button = |id: &str,
+                          delta: f32,
+                          axis_tilt: bool,
+                          x: f32,
+                          y: f32,
+                          size: f32,
+                          hidden: u8,
+                          icon: Option<&'static str>|
+         -> AnyElement {
+            let control_key = key.clone();
+            let path = if axis_tilt {
+                tilt_path.clone()
+            } else {
+                control.path.clone()
+            };
+            let mut button = div()
+                .id(SharedString::from(format!("{}:{id}", control.key)))
+                .absolute()
+                .left(surface::css(x))
+                .top(surface::css(y))
+                .w(surface::css(size))
+                .h(surface::css(size))
+                .rounded(surface::css(2.))
+                .border_1()
+                .border_color(Colors::border());
+            // The pad hides the border facing the black box (CSS per side).
+            button = match hidden {
+                0 => button.border_b_0(),
+                1 => button.border_l_0(),
+                2 => button.border_t_0(),
+                3 => button.border_r_0(),
+                _ => button,
+            };
+            // 原版只给左右键准备了图：`icon_arrow_left_thin.e6d37c55.svg` 与
+            // `icon_arrow_right_thin.bef8ca32.svg`，两者与本地已打包的
+            // `history-back/forward.svg` 是同一份文件（同名同哈希）。上下与中心
+            // 用的是 `icon_pan_top/bottom/center`，当前源码包里不存在，保持只有边框。
+            if let Some(icon) = icon {
+                button = button.overflow_hidden().child(
+                    img(icon)
+                        .absolute()
+                        .left(surface::css(1.))
+                        .top(surface::css(1.))
+                        .w(surface::css(size))
+                        .h(surface::css(size)),
+                );
+            }
+            button
+                .when(!disabled, |button| {
+                    button
+                        .cursor_pointer()
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            if let Some(control) = this.control(&control_key) {
+                                this.nudge_axis(control, &path, delta, window, cx);
+                            }
+                        }))
+                })
+                .into_any_element()
+        };
+        let mut pad = div()
+            .relative()
+            .w(surface::css(outer_w))
+            .h(surface::css(outer_h))
+            .mx_auto()
+            .my(surface::css(20.))
+            // 原版白框是黑框的子元素，因此先画黑框、再画白框。
+            .child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_0()
+                    // 原版 `.black-box` 是 `box-sizing: content-box` 的 220x132 加
+                    // 1px 边框，因此边框盒是 222x134，白框坐标相对内容盒。
+                    .w(surface::css(outer_w))
+                    .h(surface::css(outer_h))
+                    .border_1()
+                    .border_color(Colors::border())
+                    .when(!disabled, |black_box| {
+                        let move_key = key.clone();
+                        let drag = PanTiltBox {
+                            width: control.box_width,
+                            height: control.box_height,
+                            zoom,
+                            max: control.max_pan_tilt,
+                        };
+                        black_box.on_mouse_move(cx.listener(
+                            move |this, event: &MouseMoveEvent, window, cx| {
+                                this.drag_pan_tilt(&move_key, &drag, event.position, window, cx);
+                            },
+                        ))
+                    })
+                    // 内容盒（220x132）的窗口坐标：布局阶段写入，供拖拽换算指针位置。
+                    .child({
+                        let slot = self.pan_tilt_bounds.clone();
+                        canvas(
+                            move |bounds, _, _| {
+                                slot.set(Some(bounds));
+                                bounds
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .size_full()
+                    }),
+            )
+            .child(
+                div()
+                    .id(SharedString::from(format!("{}:white-box", control.key)))
+                    .absolute()
+                    // 原版白框是黑框的子元素，坐标相对黑框的 padding 盒；本地把两者
+                    // 都绝对定位在同一个容器里，因此补上黑框 1px 边框的偏移。
+                    .left(surface::css(left + 1.))
+                    .top(surface::css(top + 1.))
+                    .w(surface::css(white_w))
+                    .h(surface::css(white_h))
+                    .bg(Colors::text())
+                    // 原版：按下白框记录抓取偏移，抬起时清零。
+                    .when(!disabled, |white_box| {
+                        let down_key = key.clone();
+                        let up_key = key.clone();
+                        let drag = PanTiltBox {
+                            width: control.box_width,
+                            height: control.box_height,
+                            zoom,
+                            max: control.max_pan_tilt,
+                        };
+                        white_box
+                            .cursor_pointer()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                                    let Some(bounds) = this.pan_tilt_bounds.get() else {
+                                        return;
+                                    };
+                                    let (left, top) = drag.white_origin(pan, tilt);
+                                    let x = f32::from(event.position.x - bounds.origin.x);
+                                    let y = f32::from(event.position.y - bounds.origin.y);
+                                    this.pan_tilt_drag = Some(PanTiltDrag {
+                                        key: down_key.clone(),
+                                        left: x - left,
+                                        top: y - top,
+                                        bottom: white_h - (y - top),
+                                        right: white_w - (x - left),
+                                    });
+                                    cx.stop_propagation();
+                                }),
+                            )
+                            .on_mouse_up(
+                                MouseButton::Left,
+                                cx.listener(move |this, _, _, cx| {
+                                    if this
+                                        .pan_tilt_drag
+                                        .as_ref()
+                                        .is_some_and(|drag| drag.key == up_key)
+                                    {
+                                        this.pan_tilt_drag = None;
+                                        cx.notify();
+                                    }
+                                    cx.stop_propagation();
+                                }),
+                            )
+                    }),
+            );
+        pad = pad
+            .child(pad_button(
+                "up",
+                1.,
+                true,
+                outer_w / 2. - 5.,
+                -10.,
+                10.,
+                0,
+                None,
+            ))
+            .child(pad_button(
+                "right",
+                1.,
+                false,
+                outer_w,
+                outer_h / 2. - 5.,
+                10.,
+                1,
+                Some("synapse/history-forward.svg"),
+            ))
+            .child(pad_button(
+                "down",
+                -1.,
+                true,
+                outer_w / 2. - 5.,
+                outer_h,
+                10.,
+                2,
+                None,
+            ))
+            .child(pad_button(
+                "left",
+                -1.,
+                false,
+                -10.,
+                outer_h / 2. - 5.,
+                10.,
+                3,
+                Some("synapse/history-back.svg"),
+            ))
+            .child(
+                div()
+                    .id(SharedString::from(format!("{}:center", control.key)))
+                    .absolute()
+                    .left(surface::css(outer_w / 2. - 7.5))
+                    .top(surface::css(outer_h / 2. - 7.5))
+                    .w(surface::css(15.))
+                    .h(surface::css(15.))
+                    .rounded(surface::css(2.))
+                    .border_1()
+                    .border_color(Colors::border())
+                    .when(!disabled, |center| {
+                        center
+                            .cursor_pointer()
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.write_path("@view/pan", serde_json::json!(0), window, cx);
+                                this.write_path("@view/tilt", serde_json::json!(0), window, cx);
+                            }))
+                    })
+                    .when_some(control.tooltip.as_ref(), |center, tooltip| {
+                        let tooltip = crate::i18n::t(tooltip);
+                        center.tooltip(move |window, cx| {
+                            gpui_kit::component::tooltip::Tooltip::new(tooltip.clone())
+                                .build(window, cx)
+                        })
+                    }),
+            );
+        v_flex()
+            .gap(surface::css(4.))
+            .child(
+                div()
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(16.))
+                    .child(crate::i18n::t(&control.label)),
+            )
+            .child(pad)
+            .into_any_element()
+    }
+    /// `.display-name.keyboard_listen`: the preset shortcut capture field.
+    fn render_shortcut_key(&self, control: &ControlSpec, cx: &mut Context<Self>) -> AnyElement {
+        use crate::ui::theme::CameraProductColors as Colors;
+        let key = control.key.clone();
+        let listening = self.listening.as_deref() == Some(control.key.as_str());
+        let captured = self
+            .value(control)
+            .and_then(Value::as_array)
+            .map(|keys| {
+                keys.iter()
+                    .filter_map(Value::as_str)
+                    .map(input_label)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let mut field = div()
+            .id(SharedString::from(format!("{}:capture", control.key)))
+            .track_focus(&self.focus)
+            .w(surface::css(210.))
+            .px(surface::css(5.))
+            .py(surface::css(5.))
+            .bg(Colors::background())
+            .border_1()
+            .border_color(if listening {
+                cx.theme().primary
+            } else {
+                Colors::border()
+            })
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .text_color(Colors::text())
+            .cursor_pointer()
+            // `.display-name.keyboard-listen:hover/.active` turns the border
+            // green; the listening state keeps it there.
+            .hover(|field| field.border_color(cx.theme().primary))
+            .on_click(cx.listener({
+                let listen_key = key.clone();
+                move |this, _, window, cx| {
+                    this.listening = Some(listen_key.clone());
+                    this.focus.focus(window, cx);
+                    cx.notify();
+                }
+            }))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                let Some(key) = this.listening.clone() else {
+                    return;
+                };
+                if let Some(control) = this.control(&key) {
+                    this.capture_shortcut(control, event, window, cx);
+                }
+            }))
+            .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                if this.listening.take().is_some() {
+                    cx.notify();
+                }
+            }));
+        if captured.is_empty() {
+            field = field.child(
+                div()
+                    .text_color(Colors::placeholder())
+                    .child(crate::i18n::t(
+                        control.placeholder.as_deref().unwrap_or_default(),
+                    )),
+            );
+        } else {
+            let clear_key = key.clone();
+            field = field
+                .child(div().child(captured.join(" + ")))
+                .child(
+                    div()
+                        .id(SharedString::from(format!("{}:clear", control.key)))
+                        .absolute()
+                        .right_0()
+                        .top_0()
+                        .px(surface::css(4.))
+                        .text_color(Colors::text())
+                        .child("×")
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            let path = this
+                                .control(&clear_key)
+                                .map(|control| control.path.clone())
+                                .unwrap_or_default();
+                            this.write_path(&path, Value::Array(Vec::new()), window, cx);
+                            this.listening = None;
+                        })),
+                )
+                .relative();
+        }
+        v_flex()
+            .gap_2()
+            .child(
+                div()
+                    .text_size(surface::css(12.))
+                    .line_height(surface::css(14.))
+                    .child(crate::i18n::t(&control.label)),
+            )
+            .child(field)
+            .into_any_element()
+    }
     fn render_control(&self, control: &ControlSpec, cx: &mut Context<Self>) -> AnyElement {
         if control.visible_when.as_ref().is_some_and(|condition| {
             self.draft.pointer(&self.resolve_path(&condition.path)) != Some(&condition.value)
@@ -539,6 +1161,140 @@ impl SourceControls {
         let disabled = self.disabled(control);
         match control.kind.as_str() {
             "oled_presets" => self.render_oled_presets(disabled, cx),
+            // `.preset-container .preset-item`: 50px grid columns, 27px tall
+            // numbered squares, selected = #292929 on a #44d62c border.
+            "preset" => {
+                use crate::ui::theme::CameraProductColors as Colors;
+                v_flex()
+                    .gap_2()
+                    .when(!control.hide_label, |view| view.child(label))
+                    .when(disabled, |view| {
+                        view.when_some(control.description.as_ref(), |view, description| {
+                            view.child(
+                                div()
+                                    .text_size(surface::css(14.))
+                                    .line_height(surface::css(17.))
+                                    .text_color(Colors::text())
+                                    // `.mode-description{margin-top:10px}`；外层是 8px 的
+                                    // flex 间距，因此这里补 2px 才是原版的 10px。
+                                    .mt(surface::css(2.))
+                                    .child(crate::i18n::t(description)),
+                            )
+                        })
+                    })
+                    .child(h_flex().flex_wrap().gap(surface::css(10.)).children(
+                        control.options.iter().map(|option| {
+                            let selected = self.value(control) == Some(&option.value);
+                            let value = option.value.clone();
+                            let key = key.clone();
+                            gpui_kit::base::Button::new(SharedString::from(format!(
+                                "{}:{}",
+                                key, value
+                            )))
+                            .accessibility_label(crate::i18n::t(&option.label))
+                            .disabled(disabled)
+                            .w(surface::css(50.))
+                            .h(surface::css(27.))
+                            .px(surface::css(16.))
+                            .pt(surface::css(6.))
+                            .pb(surface::css(6.))
+                            .text_size(surface::css(12.))
+                            .line_height(surface::css(14.))
+                            .text_center()
+                            .text_color(Colors::text())
+                            .rounded(surface::css(3.))
+                            .border_1()
+                            .border_color(if selected {
+                                cx.theme().primary
+                            } else {
+                                Colors::border()
+                            })
+                            .when(selected, |b| b.bg(Colors::selected()))
+                            .styles(|s| s.disabled(|s| s.opacity(0.3)))
+                            .focus_visible(|b| b.border_color(cx.theme().primary))
+                            .child(crate::i18n::t(&option.label))
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    this.edit(&key, value.clone(), window, cx)
+                                },
+                            ))
+                        }),
+                    ))
+                    .into_any_element()
+            }
+            "pan_tilt" => self.render_pan_tilt(control, disabled, cx),
+            // `.direction-container .direction-item`: 48x27 swatches with a
+            // 20x3 placement line that turns green for the current position.
+            "direction" => {
+                use crate::ui::theme::CameraProductColors as Colors;
+                v_flex()
+                    .gap_2()
+                    .when_some(control.description.as_ref(), |view, description| {
+                        view.child(
+                            div()
+                                .text_size(surface::css(14.))
+                                .line_height(surface::css(17.))
+                                .text_color(Colors::text())
+                                .child(crate::i18n::t(description)),
+                        )
+                    })
+                    .child(
+                        h_flex()
+                            .flex_wrap()
+                            .gap(surface::css(6.))
+                            .mt(surface::css(9.))
+                            .children(control.options.iter().map(|option| {
+                                let selected = self.value(control) == Some(&option.value);
+                                let value = option.value.clone();
+                                let key = key.clone();
+                                let name = option.value.as_str().unwrap_or_default().to_string();
+                                let accent = cx.theme().primary;
+                                // `.direction-line.<position>` offsets, from the
+                                // per-placement CSS rules (48x27 item, 20x3 line).
+                                let (left, right, top, bottom) = match name.as_str() {
+                                    "left-bottom" => (Some(0.), None, None, Some(0.)),
+                                    "right-bottom" => (None, Some(0.), None, Some(0.)),
+                                    "center-bottom" => (Some(14.), None, None, Some(0.)),
+                                    "left-top" => (Some(0.), None, Some(0.), None),
+                                    "right-top" => (None, Some(0.), Some(0.), None),
+                                    _ => (Some(14.), None, Some(0.), None),
+                                };
+                                div()
+                                    .id(SharedString::from(format!("{key}:{name}")))
+                                    .relative()
+                                    .w(surface::css(48.))
+                                    .h(surface::css(27.))
+                                    .bg(Colors::swatch())
+                                    .when(!disabled, |swatch| {
+                                        swatch.cursor_pointer().on_click(cx.listener(
+                                            move |this, _, window, cx| {
+                                                this.edit(&key, value.clone(), window, cx)
+                                            },
+                                        ))
+                                    })
+                                    .child(
+                                        div()
+                                            .absolute()
+                                            .w(surface::css(20.))
+                                            .h(surface::css(3.))
+                                            .bg(if selected { accent } else { Colors::text() })
+                                            .when_some(left, |line, left| {
+                                                line.left(surface::css(left))
+                                            })
+                                            .when_some(right, |line, right| {
+                                                line.right(surface::css(right))
+                                            })
+                                            .when_some(top, |line, top| line.top(surface::css(top)))
+                                            .when_some(bottom, |line, bottom| {
+                                                line.bottom(surface::css(bottom))
+                                            }),
+                                    )
+                            })),
+                    )
+                    .when(disabled, |view| view.opacity(0.3))
+                    .into_any_element()
+            }
+            "keys" => self.render_shortcut_key(control, cx),
             "image_options" => {
                 use crate::ui::theme::OledColors;
                 h_flex()
@@ -673,17 +1429,20 @@ impl SourceControls {
                     this.edit(&key, Value::Bool(*value), window, cx)
                 }))
                 .into_any_element(),
-            "slider" => v_flex()
-                .gap_2()
-                .child(
-                    h_flex().child(label).child(div().flex_1()).child(
-                        self.value(control)
-                            .map(|v| v.to_string())
-                            .unwrap_or_else(|| "—".into()),
-                    ),
-                )
-                .child(Slider::new(&self.sliders[&key]).disabled(disabled))
-                .into_any_element(),
+            "slider" => {
+                // 原版设置行把步进器放在标题行右侧，内容区才是滑块。
+                let stepper = control.has_stepper.then(|| self.steppers[&key].clone());
+                v_flex()
+                    .gap_2()
+                    .child(
+                        h_flex()
+                            .child(label)
+                            .child(div().flex_1())
+                            .when_some(stepper, |row, stepper| row.child(stepper)),
+                    )
+                    .child(Slider::new(&self.sliders[&key]).disabled(disabled))
+                    .into_any_element()
+            }
             "select" => v_flex()
                 .gap_2()
                 .when(!control.hide_label, |view| view.child(label))
@@ -713,10 +1472,139 @@ impl SourceControls {
             _ => div().into_any_element(),
         }
     }
+    /// `.advanced-camera-container .camera-container`: one 400px `#111` column
+    /// with 27px/20px padding and a `.camera-divider` between mounted rows.
+    fn render_camera_column(&self, page: &'static PageSpec, cx: &mut Context<Self>) -> AnyElement {
+        use crate::ui::theme::CameraProductColors as Colors;
+        let mut column = v_flex()
+            .w(surface::css(400.))
+            .flex_shrink_0()
+            .bg(Colors::background())
+            .px(surface::css(20.))
+            .py(surface::css(27.));
+        for (index, section) in page.sections.iter().enumerate() {
+            if index > 0 {
+                column = column.child(
+                    div()
+                        .w_full()
+                        .my(surface::css(20.))
+                        .border_1()
+                        .border_color(Colors::divider())
+                        .rounded(surface::css(2.)),
+                );
+            }
+            column = column.child(
+                v_flex()
+                    .gap(surface::css(10.))
+                    .when(!section.title.is_empty(), |view| {
+                        view.child(
+                            div()
+                                .text_size(surface::css(14.))
+                                .line_height(surface::css(16.))
+                                .child(crate::i18n::t(&section.title)),
+                        )
+                    })
+                    .children(
+                        section
+                            .controls
+                            .iter()
+                            .map(|control| self.render_control(control, cx)),
+                    ),
+            );
+        }
+        column.into_any_element()
+    }
 }
 
 // Keep new source defaults when restoring an older local profile. An unrelated
 // product's object or a changed JSON type cannot replace the current schema.
+/// Port of the mounted pad's `uU`/`CU` helpers. `width`/`height` are the black
+/// box content size; the rendered box adds its inline 1px border.
+struct PanTiltBox {
+    width: f32,
+    height: f32,
+    zoom: f32,
+    max: f32,
+}
+impl PanTiltBox {
+    /// White framing box origin inside the black box, in product pixels.
+    fn white_origin(&self, pan: f32, tilt: f32) -> (f32, f32) {
+        let outer_w = self.width + 2.;
+        let outer_h = self.height + 2.;
+        let white_w = self.width / self.zoom;
+        let white_h = self.height / self.zoom;
+        let mut left = (pan * ((outer_w - 1.) / 2. - white_w / 2.) / self.max - white_w / 2.
+            + (outer_w - 1.) / 2.)
+            .floor();
+        if white_w + left > self.width {
+            left = self.width - white_w;
+        }
+        let mut top = (-tilt * ((outer_h - 1.) / 2. - white_h / 2.) / self.max - white_h / 2.
+            + (outer_h - 1.) / 2.)
+            .floor();
+        if top + white_h > self.height {
+            top = (self.height - white_h).round();
+        }
+        (left.max(0.), top.max(0.))
+    }
+    /// `Tm`：白框左边距 → 平移值。界限是 `ceil(0.5 * max / -0.5) = -max`。
+    fn pan_from_left(&self, left: f32, white_w: f32) -> f32 {
+        let outer_w = self.width + 2.;
+        let bound = (0.5 * self.max / -0.5).ceil();
+        let mut pan = ((left + white_w / 2. - (outer_w - 1.) / 2.) * self.max
+            / ((outer_w - 1.) / 2. - white_w / 2.))
+            .ceil();
+        if pan > -bound {
+            pan = -bound;
+        }
+        if pan < bound {
+            pan = bound;
+        }
+        pan
+    }
+    /// `Im`：白框上边距 → 倾斜值。
+    fn tilt_from_top(&self, top: f32, white_h: f32) -> f32 {
+        let outer_h = self.height + 2.;
+        -((top + white_h / 2. - (outer_h - 1.) / 2.) * self.max
+            / ((outer_h - 1.) / 2. - white_h / 2.))
+            .ceil()
+    }
+}
+/// Product input IDs and their source display names, module 6114.
+const KEYS: &[(&str, &str, &str)] = include!("mapping_keys.rs");
+/// 原版把 `parseFloat(value).toFixed(3)` 交给输入框，显示位数由步长决定。
+fn decimals_for_step(step: f64) -> usize {
+    if step >= 1. {
+        0
+    } else if step >= 0.1 {
+        1
+    } else if step >= 0.01 {
+        2
+    } else {
+        3
+    }
+}
+fn is_modifier(id: &str) -> bool {
+    KEYS.iter()
+        .any(|(group, key, _)| *group == "modifiers" && *key == id)
+}
+fn input_label(id: &str) -> String {
+    KEYS.iter()
+        .find(|(_, key, _)| *key == id)
+        .map_or_else(|| id.to_string(), |(_, _, label)| (*label).to_string())
+}
+/// Maps a keystroke key name onto the product's own input ID.
+fn keystroke_input_id(key: &str) -> Option<&'static str> {
+    let label = match key {
+        "escape" => "Esc",
+        "pageup" => "Page Up",
+        "pagedown" => "Page Down",
+        other => other,
+    };
+    KEYS.iter()
+        .find(|(_, _, name)| name.eq_ignore_ascii_case(label))
+        .map(|(_, id, _)| *id)
+}
 fn merge_known(target: &mut Value, saved: &Value) {
     match (target, saved) {
         (Value::Object(target), Value::Object(saved)) => {
@@ -739,6 +1627,21 @@ fn merge_known(target: &mut Value, saved: &Value) {
 }
 impl Render for SourceControls {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.spec.layout.as_deref() == Some("camera") && self.page != "HELP" {
+            if let Some(page) = self
+                .spec
+                .pages
+                .iter()
+                .find(|p| p.key == self.page && !p.sections.is_empty())
+            {
+                return v_flex()
+                    .w_full()
+                    .min_w(surface::css(440.))
+                    .p(surface::css(20.))
+                    .child(self.render_camera_column(page, cx))
+                    .into_any_element();
+            }
+        }
         let mut view = v_flex()
             .min_w(surface::css(600.))
             .w_full()
@@ -802,6 +1705,6 @@ impl Render for SourceControls {
         } else {
             view = view.child(surface::note("此页面的原生控件仍在接入。", cx));
         }
-        view
+        view.into_any_element()
     }
 }

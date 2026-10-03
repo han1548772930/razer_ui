@@ -5,10 +5,14 @@
     "products": 7,
     "controls": {
       "switch": 37,
-      "slider": 42,
+      "slider": 46,
       "options": 29,
       "toggle": 7,
-      "select": 3,
+      "direction": 1,
+      "pan_tilt": 4,
+      "preset": 4,
+      "keys": 4,
+      "select": 6,
       "reset": 3
     },
     "inactive_sentinels": []
@@ -65,7 +69,7 @@
     "mounted_pages": 322
   },
   "inputs_sha256": {
-    "src/features/source_controls_data.json": "ae03616e8a37556c17c6e448b7790333fe0f14e7e30bb8d81d1e336e413c0ebe",
+    "src/features/source_controls_data.json": "78c33a235ebc28906a926a26227b53a77eff0a059ce586d72f09f9a52e501db4",
     "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
     "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
     "src/features/keyboard_oled_editor_data.json": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",

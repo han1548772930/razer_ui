@@ -38,6 +38,7 @@ pub(super) enum HostTab {
     Alexa,
     FirmwareUpdate,
     ProfileMigration,
+    Macro,
 }
 impl HostTab {
     fn location(&self) -> Location {
@@ -47,6 +48,7 @@ impl HostTab {
             Self::Alexa => Location::Alexa,
             Self::FirmwareUpdate => Location::FirmwareUpdate,
             Self::ProfileMigration => Location::ProfileMigration,
+            Self::Macro => Location::Macro,
         }
     }
     fn id(&self) -> SharedString {
@@ -56,6 +58,8 @@ impl HostTab {
             Self::Alexa => "host-alexa".into(),
             Self::FirmwareUpdate => "host-firmware-update".into(),
             Self::ProfileMigration => "syn3-profile-migration".into(),
+            // 原版这个窗口的名字就是 `macro`。
+            Self::Macro => "macro".into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
@@ -65,6 +69,7 @@ impl HostTab {
             Location::Alexa => Some(Self::Alexa),
             Location::FirmwareUpdate => Some(Self::FirmwareUpdate),
             Location::ProfileMigration => Some(Self::ProfileMigration),
+            Location::Macro => Some(Self::Macro),
             _ => None,
         }
     }
@@ -372,6 +377,8 @@ impl AppShell {
                     HostTab::Alexa => "Alexa".into(),
                     HostTab::FirmwareUpdate => "固件更新".into(),
                     HostTab::ProfileMigration => "PROFILE MIGRATION".into(),
+                    // 原版这个窗口名是 `macro`，模块盒名是 `MACRO`。
+                    HostTab::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -508,6 +515,7 @@ impl AppShell {
             Some(HostTab::Alexa) => "synapse/module-alexa.svg",
             Some(HostTab::FirmwareUpdate) => "synapse/synapse.svg",
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
+            Some(HostTab::Macro) => "synapse/module-macro.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()

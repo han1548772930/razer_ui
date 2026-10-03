@@ -1,8 +1,13 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "2a7e38be834e5b66ff64e124225431af62fc6d42684b914f0f4ce9023ff2a498",
+  "scanner_sha256": "e8b6869d189a531f9f0c875ccf4360f0627b84746fe01057194a3f23e34a1804",
   "products": [
     {
+      "sharpness_gain_rows": {
+        "rendered": null,
+        "note": "legacy shared Customize layout",
+        "source": ".ref/devices/3587/static/js/main.459c3161.js"
+      },
       "product_id": 3587,
       "source": ".ref/devices/3587/static/js/main.459c3161.js",
       "sha256": "7ab8838be739051b525cb0d9601d84c7ff1567b23fdf8644f190ad05a338488b",
@@ -31,6 +36,11 @@
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": null,
+        "note": "legacy shared Customize layout",
+        "source": ".ref/devices/3589/static/js/main.b9251f30.js"
+      },
       "product_id": 3589,
       "source": ".ref/devices/3589/static/js/main.b9251f30.js",
       "sha256": "b06358e5b2ea82fc75f26c0f4abe326245a0a9e27a0c21b9f7815d7f3ab73d5e",
@@ -61,6 +71,11 @@
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": null,
+        "note": "legacy shared Customize layout",
+        "source": ".ref/devices/3590/static/js/main.28ecadf2.js"
+      },
       "product_id": 3590,
       "source": ".ref/devices/3590/static/js/main.28ecadf2.js",
       "sha256": "86d91a14941217438753bfca29ec180f63813a2621dd4c428effca091a07e92e",
@@ -89,6 +104,13 @@
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": false,
+        "props": "(no props)",
+        "source": ".ref/devices/3592/static/js/main.323f0a8a.js",
+        "offset": 4586489,
+        "end": 4586533
+      },
       "product_id": 3592,
       "source": ".ref/devices/3592/static/js/main.323f0a8a.js",
       "sha256": "e2752209d1aa227aca1dbaee32f7ef1ef261ac9b8ccb906636976174dc4e464b",
@@ -108,6 +130,7 @@
             "3592:white-balance",
             "3592:mirror",
             "3592:watermark",
+            "3592:watermark-position",
             "3592:anti-flicker"
           ],
           "source_navigation_offset": 4586488
@@ -115,6 +138,10 @@
         {
           "key": "CAMERA",
           "control_keys": [
+            "3592:zoom",
+            "3592:pan-tilt",
+            "3592:view-preset",
+            "3592:shortcut-key",
             "3592:autofocus",
             "3592:focus",
             "3592:focus-mode",
@@ -146,10 +173,17 @@
         }
       ],
       "limitations": [
-        "Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": false,
+        "props": "supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0",
+        "source": ".ref/devices/3594/static/js/main.bb246bb0.js",
+        "offset": 7036643,
+        "end": 7036805
+      },
       "product_id": 3594,
       "source": ".ref/devices/3594/static/js/main.bb246bb0.js",
       "sha256": "3ac856b9d24a80432ee50a8d785a1fc230568b9231ce760c95e059e110415170",
@@ -175,6 +209,11 @@
         {
           "key": "CAMERA",
           "control_keys": [
+            "3594:resolution",
+            "3594:zoom",
+            "3594:pan-tilt",
+            "3594:view-preset",
+            "3594:shortcut-key",
             "3594:autofocus",
             "3594:focus",
             "3594:focus-tracking",
@@ -202,10 +241,17 @@
         }
       ],
       "limitations": [
-        "Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": false,
+        "props": "supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0",
+        "source": ".ref/devices/3595/static/js/main.19c1ceba.js",
+        "offset": 4618041,
+        "end": 4618203
+      },
       "product_id": 3595,
       "source": ".ref/devices/3595/static/js/main.19c1ceba.js",
       "sha256": "a6dcff393dd84d2b8cfeae2a31c5a457201609f6f3ddef68877c87ef85414377",
@@ -231,6 +277,11 @@
         {
           "key": "CAMERA",
           "control_keys": [
+            "3595:resolution",
+            "3595:zoom",
+            "3595:pan-tilt",
+            "3595:view-preset",
+            "3595:shortcut-key",
             "3595:autofocus",
             "3595:focus",
             "3595:focus-tracking",
@@ -267,10 +318,17 @@
         }
       ],
       "limitations": [
-        "Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
       ]
     },
     {
+      "sharpness_gain_rows": {
+        "rendered": false,
+        "props": "supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0",
+        "source": ".ref/devices/3596/static/js/main.0e57873f.js",
+        "offset": 4599432,
+        "end": 4599594
+      },
       "product_id": 3596,
       "source": ".ref/devices/3596/static/js/main.0e57873f.js",
       "sha256": "d5c7ad36f9f5b145578d8849b5132535617f36d2fc740a246b643663fc370f2e",
@@ -296,6 +354,11 @@
         {
           "key": "CAMERA",
           "control_keys": [
+            "3596:resolution",
+            "3596:zoom",
+            "3596:pan-tilt",
+            "3596:view-preset",
+            "3596:shortcut-key",
             "3596:autofocus",
             "3596:focus",
             "3596:auto-exposure",
@@ -314,7 +377,7 @@
         }
       ],
       "limitations": [
-        "Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
       ]
     }
   ]

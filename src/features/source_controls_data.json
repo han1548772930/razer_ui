@@ -854,7 +854,10 @@
                 "path": "@image/brightness",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -863,7 +866,10 @@
                 "path": "@image/contrast",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -872,7 +878,10 @@
                 "path": "@image/saturation",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "toggle",
@@ -888,7 +897,10 @@
                 "min": 2800,
                 "max": 7500,
                 "step": 10,
-                "disabled_when": "@image/whiteBalance/isAuto"
+                "disabled_when": "@image/whiteBalance/isAuto",
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               }
             ]
           },
@@ -911,6 +923,45 @@
                 "key": "3592:watermark",
                 "label": "WATERMARK",
                 "path": "/camera/watermark/isEnabled"
+              },
+              {
+                "kind": "direction",
+                "key": "3592:watermark-position",
+                "label": "WATERMARK",
+                "path": "/camera/watermark/position",
+                "options": [
+                  {
+                    "label": "left-bottom",
+                    "value": "left-bottom"
+                  },
+                  {
+                    "label": "center-bottom",
+                    "value": "center-bottom"
+                  },
+                  {
+                    "label": "right-bottom",
+                    "value": "right-bottom"
+                  },
+                  {
+                    "label": "left-top",
+                    "value": "left-top"
+                  },
+                  {
+                    "label": "center-top",
+                    "value": "center-top"
+                  },
+                  {
+                    "label": "right-top",
+                    "value": "right-top"
+                  }
+                ],
+                "description": "WATERMARK_DESCRIPTION",
+                "disabled_unless": "/camera/watermark/isEnabled",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4562420,
+                  "end": 4566369
+                }
               }
             ]
           },
@@ -945,6 +996,216 @@
       {
         "key": "CAMERA",
         "sections": [
+          {
+            "title": "ZOOM",
+            "controls": [
+              {
+                "kind": "slider",
+                "key": "3592:zoom",
+                "label": "ZOOM",
+                "path": "@view/zoom",
+                "min": 1,
+                "max": 4,
+                "step": 0.1,
+                "tooltip": "ZOOM_TOOLTIP_CONTENT",
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4539026,
+                  "end": 4540839
+                },
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "has_stepper": true,
+                "allow_decimal": true,
+                "round_up_decimals": true,
+                "stepper_receipt": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4539910,
+                  "end": 4540057
+                }
+              },
+              {
+                "kind": "pan_tilt",
+                "key": "3592:pan-tilt",
+                "label": "PAN_AND_TILT",
+                "path": "@view/pan",
+                "tilt_path": "@view/tilt",
+                "max_pan_tilt": 10,
+                "box_width": 220,
+                "box_height": 132,
+                "tooltip": "RECENTER_THE_VIEW",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4452816,
+                  "end": 4456787
+                }
+              },
+              {
+                "kind": "preset",
+                "key": "3592:view-preset",
+                "label": "PRESET",
+                "path": "/camera/viewPresets/viewMode",
+                "options": [
+                  {
+                    "label": "1",
+                    "value": 1
+                  },
+                  {
+                    "label": "2",
+                    "value": 2
+                  },
+                  {
+                    "label": "3",
+                    "value": 3
+                  },
+                  {
+                    "label": "4",
+                    "value": 4
+                  },
+                  {
+                    "label": "5",
+                    "value": 5
+                  }
+                ],
+                "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4539026,
+                  "end": 4540839
+                }
+              },
+              {
+                "kind": "keys",
+                "key": "3592:shortcut-key",
+                "label": "SHORTCUT_KEY",
+                "path": "@view/shortcutKey",
+                "placeholder": "SHORTCUT_KEY_INPUT",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4534812,
+                  "end": 4539011
+                }
+              }
+            ]
+          },
           {
             "title": "AUTO_FOCUS",
             "controls": [
@@ -1462,7 +1723,8 @@
         ]
       }
     ],
-    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6430/~/razer-kiyo-pro-ultra-%7C-rz19-04420-support-%26-faqs"
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6430/~/razer-kiyo-pro-ultra-%7C-rz19-04420-support-%26-faqs",
+    "layout": "camera"
   },
   {
     "product_id": 3594,
@@ -1711,7 +1973,10 @@
                 "path": "@image/brightness",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -1720,7 +1985,10 @@
                 "path": "@image/contrast",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -1729,7 +1997,10 @@
                 "path": "@image/saturation",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "toggle",
@@ -1745,7 +2016,10 @@
                 "min": 2800,
                 "max": 7500,
                 "step": 10,
-                "disabled_when": "@image/whiteBalance/isAuto"
+                "disabled_when": "@image/whiteBalance/isAuto",
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               }
             ]
           },
@@ -1791,6 +2065,314 @@
       {
         "key": "CAMERA",
         "sections": [
+          {
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3594:resolution",
+                "label": "PREVIEW_RESOLUTION_2",
+                "path": "/camera/resolution",
+                "options": [
+                  {
+                    "label": "4K 30FPS",
+                    "value": {
+                      "width": 3840,
+                      "height": 2160,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1440p 30FPS",
+                    "value": {
+                      "width": 2560,
+                      "height": 1440,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1080p 60FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "1080p 30FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "720p 60FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "720p 30FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "480p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "480p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "360p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "360p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 30
+                    }
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6979883,
+                  "end": 6986798
+                }
+              }
+            ]
+          },
+          {
+            "title": "ZOOM",
+            "controls": [
+              {
+                "kind": "slider",
+                "key": "3594:zoom",
+                "label": "ZOOM",
+                "path": "@view/zoom",
+                "min": 1,
+                "max": 4,
+                "step": 0.1,
+                "tooltip": "ZOOM_TOOLTIP_CONTENT",
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6975397,
+                  "end": 6979698
+                },
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "has_stepper": true,
+                "allow_decimal": true,
+                "round_up_decimals": true,
+                "stepper_receipt": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6976630,
+                  "end": 6976776
+                }
+              },
+              {
+                "kind": "pan_tilt",
+                "key": "3594:pan-tilt",
+                "label": "PAN_AND_TILT",
+                "path": "@view/pan",
+                "tilt_path": "@view/tilt",
+                "max_pan_tilt": 10,
+                "box_width": 220,
+                "box_height": 132,
+                "tooltip": "RECENTER_THE_VIEW",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6888281,
+                  "end": 6892330
+                }
+              },
+              {
+                "kind": "preset",
+                "key": "3594:view-preset",
+                "label": "PRESET",
+                "path": "/camera/viewPresets/viewMode",
+                "options": [
+                  {
+                    "label": "1",
+                    "value": 1
+                  },
+                  {
+                    "label": "2",
+                    "value": 2
+                  },
+                  {
+                    "label": "3",
+                    "value": 3
+                  },
+                  {
+                    "label": "4",
+                    "value": 4
+                  },
+                  {
+                    "label": "5",
+                    "value": 5
+                  }
+                ],
+                "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6975397,
+                  "end": 6979698
+                }
+              },
+              {
+                "kind": "keys",
+                "key": "3594:shortcut-key",
+                "label": "SHORTCUT_KEY",
+                "path": "@view/shortcutKey",
+                "placeholder": "SHORTCUT_KEY_INPUT",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+                  "offset": 6970909,
+                  "end": 6975128
+                }
+              }
+            ]
+          },
           {
             "title": "AUTO_FOCUS",
             "controls": [
@@ -2245,7 +2827,8 @@
         ]
       }
     ],
-    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19779"
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19779",
+    "layout": "camera"
   },
   {
     "product_id": 3595,
@@ -2496,7 +3079,10 @@
                 "path": "@image/brightness",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -2505,7 +3091,10 @@
                 "path": "@image/contrast",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -2514,7 +3103,10 @@
                 "path": "@image/saturation",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "toggle",
@@ -2530,7 +3122,10 @@
                 "min": 2800,
                 "max": 7500,
                 "step": 10,
-                "disabled_when": "@image/whiteBalance/isAuto"
+                "disabled_when": "@image/whiteBalance/isAuto",
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               }
             ]
           },
@@ -2576,6 +3171,314 @@
       {
         "key": "CAMERA",
         "sections": [
+          {
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3595:resolution",
+                "label": "PREVIEW_RESOLUTION_2",
+                "path": "/camera/resolution",
+                "options": [
+                  {
+                    "label": "4K 30FPS",
+                    "value": {
+                      "width": 3840,
+                      "height": 2160,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1440p 30FPS",
+                    "value": {
+                      "width": 2560,
+                      "height": 1440,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1080p 60FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "1080p 30FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "720p 60FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "720p 30FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "480p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "480p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "360p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "360p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 30
+                    }
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4557196,
+                  "end": 4564111
+                }
+              }
+            ]
+          },
+          {
+            "title": "ZOOM",
+            "controls": [
+              {
+                "kind": "slider",
+                "key": "3595:zoom",
+                "label": "ZOOM",
+                "path": "@view/zoom",
+                "min": 1,
+                "max": 4,
+                "step": 0.1,
+                "tooltip": "ZOOM_TOOLTIP_CONTENT",
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4552736,
+                  "end": 4557011
+                },
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "has_stepper": true,
+                "allow_decimal": true,
+                "round_up_decimals": true,
+                "stepper_receipt": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4553969,
+                  "end": 4554115
+                }
+              },
+              {
+                "kind": "pan_tilt",
+                "key": "3595:pan-tilt",
+                "label": "PAN_AND_TILT",
+                "path": "@view/pan",
+                "tilt_path": "@view/tilt",
+                "max_pan_tilt": 20,
+                "box_width": 220,
+                "box_height": 132,
+                "tooltip": "RECENTER_THE_VIEW",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4466231,
+                  "end": 4470223
+                }
+              },
+              {
+                "kind": "preset",
+                "key": "3595:view-preset",
+                "label": "PRESET",
+                "path": "/camera/viewPresets/viewMode",
+                "options": [
+                  {
+                    "label": "1",
+                    "value": 1
+                  },
+                  {
+                    "label": "2",
+                    "value": 2
+                  },
+                  {
+                    "label": "3",
+                    "value": 3
+                  },
+                  {
+                    "label": "4",
+                    "value": 4
+                  },
+                  {
+                    "label": "5",
+                    "value": 5
+                  }
+                ],
+                "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4552736,
+                  "end": 4557011
+                }
+              },
+              {
+                "kind": "keys",
+                "key": "3595:shortcut-key",
+                "label": "SHORTCUT_KEY",
+                "path": "@view/shortcutKey",
+                "placeholder": "SHORTCUT_KEY_INPUT",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+                  "offset": 4548248,
+                  "end": 4552467
+                }
+              }
+            ]
+          },
           {
             "title": "AUTO_FOCUS",
             "controls": [
@@ -3075,6 +3978,7 @@
       }
     ],
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/19780",
+    "layout": "camera",
     "device_fields": [
       "deviceMic"
     ]
@@ -3325,7 +4229,10 @@
                 "path": "@image/brightness",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -3334,7 +4241,10 @@
                 "path": "@image/contrast",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "slider",
@@ -3343,7 +4253,10 @@
                 "path": "@image/saturation",
                 "min": 0,
                 "max": 255,
-                "step": 1
+                "step": 1,
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               },
               {
                 "kind": "toggle",
@@ -3359,7 +4272,10 @@
                 "min": 2800,
                 "max": 6500,
                 "step": 10,
-                "disabled_when": "@image/whiteBalance/isAuto"
+                "disabled_when": "@image/whiteBalance/isAuto",
+                "has_stepper": true,
+                "allow_decimal": false,
+                "round_up_decimals": false
               }
             ]
           },
@@ -3405,6 +4321,314 @@
       {
         "key": "CAMERA",
         "sections": [
+          {
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              {
+                "kind": "select",
+                "key": "3596:resolution",
+                "label": "PREVIEW_RESOLUTION_2",
+                "path": "/camera/resolution",
+                "options": [
+                  {
+                    "label": "4K 30FPS",
+                    "value": {
+                      "width": 3840,
+                      "height": 2160,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1440p 30FPS",
+                    "value": {
+                      "width": 2560,
+                      "height": 1440,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1080p 60FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "1080p 30FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "720p 60FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "720p 30FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "480p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "480p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "360p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "360p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 30
+                    }
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4547455,
+                  "end": 4554373
+                }
+              }
+            ]
+          },
+          {
+            "title": "ZOOM",
+            "controls": [
+              {
+                "kind": "slider",
+                "key": "3596:zoom",
+                "label": "ZOOM",
+                "path": "@view/zoom",
+                "min": 1,
+                "max": 1.4,
+                "step": 0.01,
+                "tooltip": "ZOOM_TOOLTIP_CONTENT",
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4542983,
+                  "end": 4547270
+                },
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "has_stepper": true,
+                "allow_decimal": true,
+                "round_up_decimals": true,
+                "stepper_receipt": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4544219,
+                  "end": 4544365
+                }
+              },
+              {
+                "kind": "pan_tilt",
+                "key": "3596:pan-tilt",
+                "label": "PAN_AND_TILT",
+                "path": "@view/pan",
+                "tilt_path": "@view/tilt",
+                "max_pan_tilt": 20,
+                "box_width": 220,
+                "box_height": 132,
+                "tooltip": "RECENTER_THE_VIEW",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4456337,
+                  "end": 4460329
+                }
+              },
+              {
+                "kind": "preset",
+                "key": "3596:view-preset",
+                "label": "PRESET",
+                "path": "/camera/viewPresets/viewMode",
+                "options": [
+                  {
+                    "label": "1",
+                    "value": 1
+                  },
+                  {
+                    "label": "2",
+                    "value": 2
+                  },
+                  {
+                    "label": "3",
+                    "value": 3
+                  },
+                  {
+                    "label": "4",
+                    "value": 4
+                  },
+                  {
+                    "label": "5",
+                    "value": 5
+                  }
+                ],
+                "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4542983,
+                  "end": 4547270
+                }
+              },
+              {
+                "kind": "keys",
+                "key": "3596:shortcut-key",
+                "label": "SHORTCUT_KEY",
+                "path": "@view/shortcutKey",
+                "placeholder": "SHORTCUT_KEY_INPUT",
+                "disabled_when_any": [
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 3840,
+                        "height": 2160,
+                        "fps": 30
+                      }
+                    }
+                  ],
+                  [
+                    {
+                      "path": "/camera/ldc",
+                      "value": true
+                    },
+                    {
+                      "path": "/camera/resolution",
+                      "value": {
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 30
+                      }
+                    }
+                  ]
+                ],
+                "source": {
+                  "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+                  "offset": 4538495,
+                  "end": 4542714
+                }
+              }
+            ]
+          },
           {
             "title": "AUTO_FOCUS",
             "controls": [
@@ -3504,6 +4728,7 @@
         ]
       }
     ],
-    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19781"
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/19781",
+    "layout": "camera"
   }
 ]
