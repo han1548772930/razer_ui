@@ -41,7 +41,16 @@ impl DeviceWorkspace {
                         this.child(self.polling_panel(cx))
                     })
                     .child(
-                        surface::panel("鼠标属性", cx).child(
+                        // 原版 `Cm`（= `Dm`）：`.img-text .windows-11` 44px 图标 +
+                        // `.external{color:#ccc;font-size:14px;line-height:44px;
+                        //  text-decoration:underline;text-transform:capitalize}`
+                        // 与 `.external:hover{color:#44d62c}`，文字 key 为
+                        // `MOUSE_PROPERTIES_HEADER` / `MOUSE_PROPERTIES_DESC`。
+                        surface::panel(
+                            crate::i18n::t_or("MOUSE_PROPERTIES_HEADER", "鼠标属性"),
+                            cx,
+                        )
+                        .child(
                             h_flex()
                                 .items_center()
                                 .gap(surface::css(20.))
@@ -52,16 +61,19 @@ impl DeviceWorkspace {
                                 )
                                 .child(
                                     BaseButton::new("mouse-properties")
-                                        .accessibility_label("打开 Windows 鼠标属性")
-                                        .gap(surface::css(4.))
-                                        .child(
-                                            Icon::new(gpui_kit::assets::IconName::ExternalLink)
-                                                .size(surface::css(16.)),
-                                        )
-                                        .child("打开 Windows 鼠标属性")
+                                        .accessibility_label(crate::i18n::t_or(
+                                            "MOUSE_PROPERTIES_TOOLTIP",
+                                            "打开 Windows 鼠标属性窗口。",
+                                        ))
+                                        .child(crate::i18n::t_or(
+                                            "MOUSE_PROPERTIES_DESC",
+                                            "打开 Windows 鼠标属性",
+                                        ))
                                         .border_0()
                                         .px_0()
                                         .h(surface::css(44.))
+                                        .text_size(surface::css(14.))
+                                        .text_color(cx.theme().group_box_foreground)
                                         .underline()
                                         .hover(|s| s.text_color(cx.theme().primary))
                                         .focus_visible(|s| s.text_color(cx.theme().primary))
@@ -83,14 +95,19 @@ impl DeviceWorkspace {
     }
 
     pub(super) fn polling_panel(&self, cx: &mut Context<Self>) -> AnyElement {
-        surface::panel("回报率", cx)
-            .gap(surface::css(10.))
-            .child(
-                div()
-                    .mt(surface::css(6.))
-                    .child("每秒向电脑报告设备状态的次数。"),
-            )
-            .child(h_flex().gap(surface::css(10.)).flex_wrap().children(
+        // 原版标题：`isDongle||isBle ? POLLING_RATE_WIRELESS : POLLING_RATE`
+        // （`Rm.render` 的 `title` 取自 `aE.FGZ`/`aE.lGq`，本地语言包里就是
+        // `HYPERPOLLING_WIRELESS` / `HYPERPOLLING`）。
+        let wireless = self.device().use_ble || self.device().real_product_id != self.pid();
+        let title = if wireless {
+            crate::i18n::t_or("HYPERPOLLING_WIRELESS", "HYPERPOLLING WIRELESS")
+        } else {
+            crate::i18n::t_or("HYPERPOLLING", "HYPERPOLLING")
+        };
+        surface::panel(title, cx)
+            // `.polling-rate{padding-top:10px}` 与 `.h1-body{margin-bottom:10px}`
+            .child(surface::h1_body("每秒向电脑报告设备状态的次数。", cx))
+            .child(div().pt(surface::css(10.)).child(h_flex().gap(surface::css(10.)).flex_wrap().children(
                 self.poll_rates().iter().map(|rate| {
                     let rate = *rate;
                     BaseButton::new(SharedString::from(format!("polling-{rate}")))
@@ -121,9 +138,38 @@ impl DeviceWorkspace {
                             }),
                         )
                 }),
-            ))
+            )))
             .when(self.settings().polling > 1000, |this| {
-                this.child(surface::note("较高的回报率会增加性能和功耗需求。", cx))
+                // `.polling-warn{margin-top:10px;opacity:.7}`；链接
+                // `.polling-learn-more{align-items:center;display:inline-flex;
+                //  padding-left:5px;text-decoration:underline}` + `.external-link-icon`，
+                // href 取自 `Rm.render` 里的 `razer-hyperpolling#best-practices-tips`。
+                this.child(
+                    div()
+                        .mt(surface::css(10.))
+                        .opacity(0.7)
+                        .child("较高的回报率会增加性能和功耗需求。")
+                        .child(
+                            h_flex()
+                                .id("polling-learn-more")
+                                .items_center()
+                                .pl(surface::css(5.))
+                                .underline()
+                                .cursor_pointer()
+                                .hover(|s| s.text_color(cx.theme().primary))
+                                .child(crate::i18n::t_or("LEARN_MORE", "了解详情"))
+                                .child(
+                                    img("synapse/external-link.svg")
+                                        .size(surface::css(14.))
+                                        .ml(surface::css(4.)),
+                                )
+                                .on_click(|_, _, cx| {
+                                    cx.open_url(
+                                        "https://www.razer.com/technology/razer-hyperpolling#best-practices-tips",
+                                    )
+                                }),
+                        ),
+                )
             })
             .into_any_element()
     }
@@ -183,6 +229,8 @@ impl DeviceWorkspace {
                     .when_some(middle, |s, value| s.child(value.to_owned()))
                     .child(maximum.to_owned()),
             )
+            // `.widget .content{margin-bottom:15px}`：滑杆块与下一个控件之间的间距。
+            .mb(surface::css(15.))
             .into_any_element()
     }
 
@@ -423,14 +471,20 @@ impl DeviceWorkspace {
             .child(surface::page_column(
                 power_panel
                     .gap(surface::css(10.))
-                    .child(div().mt(surface::css(6.)).child(if headset {
-                        crate::i18n::t_or(
-                            "AUDIO_POWER_SAVING_DESC",
-                            "以电池供电时，在无活动（分钟）后，设备将会关闭。",
-                        )
-                    } else {
-                        crate::i18n::t_or("POWER_SAVING_DESC", "闲置以下时间（分钟）后进入睡眠模式")
-                    }))
+                    .child(surface::h1_body(
+                        if headset {
+                            crate::i18n::t_or(
+                                "AUDIO_POWER_SAVING_DESC",
+                                "以电池供电时，在无活动（分钟）后，设备将会关闭。",
+                            )
+                        } else {
+                            crate::i18n::t_or(
+                                "POWER_SAVING_DESC",
+                                "闲置以下时间（分钟）后进入睡眠模式",
+                            )
+                        },
+                        cx,
+                    ))
                     .child(self.source_range(
                         Control::Idle,
                         if headset { "5" } else { "1" },
@@ -444,10 +498,13 @@ impl DeviceWorkspace {
                 this.child(surface::page_column(
                     surface::panel(crate::i18n::t_or("LOW_POWER_MODE_HEADER", "低能耗模式"), cx)
                         .gap(surface::css(10.))
-                        .child(div().mt(surface::css(6.)).child(crate::i18n::t_or(
-                            "LOW_POWER_MODE_DESC",
-                            "当电池电量低于以下百分比时，进入低能耗模式。",
-                        )))
+                        .child(surface::h1_body(
+                            crate::i18n::t_or(
+                                "LOW_POWER_MODE_DESC",
+                                "当电池电量低于以下百分比时，进入低能耗模式。",
+                            ),
+                            cx,
+                        ))
                         .child(self.source_range(
                             Control::LowPower,
                             "5%",

@@ -428,6 +428,7 @@ impl Render for ImportDialog {
                     } else {
                         "选择文件…"
                     },
+                    ThxKind::Primary,
                     cx,
                 )
                 .disabled(self.busy)
@@ -467,17 +468,20 @@ impl Render for ImportDialog {
             .child(
                 profile_dialog_footer(cx)
                     .child(
-                        profile_dialog_button("profile-import-cancel", "取消", cx).on_click(
-                            cx.listener(|this, _, window, cx| {
+                        profile_dialog_button("profile-import-cancel", "取消", ThxKind::Test, cx)
+                            .on_click(cx.listener(|this, _, window, cx| {
                                 dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            }),
-                        ),
+                            })),
                     )
                     .child(
-                        profile_dialog_button("profile-import-confirm", "导入到本地草稿", cx)
-                            .primary()
-                            .disabled(self.loaded.is_none() || self.busy)
-                            .on_click(cx.listener(|this, _, window, cx| this.import(window, cx))),
+                        profile_dialog_button(
+                            "profile-import-confirm",
+                            "导入到本地草稿",
+                            ThxKind::Primary,
+                            cx,
+                        )
+                        .disabled(self.loaded.is_none() || self.busy)
+                        .on_click(cx.listener(|this, _, window, cx| this.import(window, cx))),
                     ),
             )
     }
@@ -563,12 +567,26 @@ impl Render for ExportDialog {
             .child(body)
             .child(
                 profile_dialog_footer(cx)
+                    // 源码在非导入（即导出）模式的底栏左侧渲染 `.willNotImport`：
+                    // `IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT`
+                    // = "Linked Games and Chroma Effects will not be exported."
                     .child(
-                        profile_dialog_button("profile-export-close", "关闭", cx).on_click(
-                            cx.listener(|this, _, window, cx| {
+                        div()
+                            .id("profile-export-note")
+                            .test_support()
+                            .text_size(surface::css(12.))
+                            .line_height(surface::css(16.))
+                            .text_color(cx.theme().muted_foreground)
+                            .child(crate::i18n::t_or(
+                                "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+                                "不会导出已关联的游戏和 Chroma 幻彩效果.",
+                            )),
+                    )
+                    .child(
+                        profile_dialog_button("profile-export-close", "关闭", ThxKind::Test, cx)
+                            .on_click(cx.listener(|this, _, window, cx| {
                                 dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            }),
-                        ),
+                            })),
                     )
                     .child(
                         profile_dialog_button(
@@ -578,9 +596,9 @@ impl Render for ExportDialog {
                             } else {
                                 "选择导出位置…"
                             },
+                            ThxKind::Primary,
                             cx,
                         )
-                        .primary()
                         .disabled(self.busy)
                         .on_click(cx.listener(|this, _, window, cx| this.export(window, cx))),
                     ),

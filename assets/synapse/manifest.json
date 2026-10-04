@@ -704,6 +704,36 @@
       "transform": "Static extraction of original SVG attributes; no JavaScript evaluation"
     },
     {
+      "source": ".ref/devices/182/static/media/icon_more_default.eb7284c1.svg",
+      "output": "assets/synapse/nav-more-default.svg",
+      "source_sha256": "f768300a12a3a6b5782a84f587a787b16a7a687b9e84d3e647227d529564d8a4",
+      "sha256": "f768300a12a3a6b5782a84f587a787b16a7a687b9e84d3e647227d529564d8a4"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_more.fb688d78.svg",
+      "output": "assets/synapse/nav-more-hover.svg",
+      "source_sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c",
+      "sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_more_active.8e04906f.svg",
+      "output": "assets/synapse/nav-more-active.svg",
+      "source_sha256": "4635870f129e16f52b25f7c73cd730b8eea387ee3983d03f4375da714b5dcd66",
+      "sha256": "4635870f129e16f52b25f7c73cd730b8eea387ee3983d03f4375da714b5dcd66"
+    },
+    {
+      "source": ".ref/devices/182/static/media/nav_back_arrow.0203563a.svg",
+      "output": "assets/synapse/nav-back-arrow.svg",
+      "source_sha256": "4b10a080ac7af91af4b456848da86b1a944b4ff675cdc90c8a86c1389e748cc1",
+      "sha256": "4b10a080ac7af91af4b456848da86b1a944b4ff675cdc90c8a86c1389e748cc1"
+    },
+    {
+      "source": ".ref/devices/182/static/media/nav_fwd_arrow.8ceda865.svg",
+      "output": "assets/synapse/nav-fwd-arrow.svg",
+      "source_sha256": "98652d07ad31f01b2832a92d34868cbb4fd633557c7fc27b5740caffcab20cf9",
+      "sha256": "98652d07ad31f01b2832a92d34868cbb4fd633557c7fc27b5740caffcab20cf9"
+    },
+    {
       "source": ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg",
       "output": "assets/synapse/logo-armory-exchange.svg",
       "source_sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2",

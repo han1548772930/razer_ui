@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "78278370377736dd0ab4d9ecd65c97e0d241fcfe3b1d28d5e422098f3d8c889c",
+  "source": {
+    "path": ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
+    "sha256": "421b5d6900421a99c0520e1fe63d4a83072799ac4bb45d848fa0e8170bf70716"
+  },
+  "open_params": {
+    "sameWindow": "policy=3",
+    "diffWindow": "policy=5",
+    "diffWindowSingleProcess": "policy=7",
+    "tabVisible": "tab_visible=1",
+    "tabInvisible": "tab_visible=0",
+    "windowVisible": "browser_visible=1",
+    "windowInvisible": "browser_visible=0",
+    "autoFocus": "shouldFocus=1"
+  },
+  "synapse_window_policy": "policy=5,tab_visible=0,app_name=synapse,width=1280,height=720,minimum_width=600,minimum_height=500,app_icon_path=Synapse\\\\window.ico",
+  "modules": [
+    {
+      "module": "linkedGames",
+      "window": "profiles",
+      "url": "/synapse/profiles/",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    },
+    {
+      "module": "add-wifi-device",
+      "window": "add-wifi-device",
+      "url": null,
+      "open_param": []
+    },
+    {
+      "module": "macro",
+      "window": "macro",
+      "url": "/synapse/macro/",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    },
+    {
+      "module": "alexa",
+      "window": "alexa",
+      "url": "/synapse/alexa/",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    },
+    {
+      "module": "feedback",
+      "window": "feedback-synapse",
+      "url": "/feedback/?app=synapse&path=%2Fsynapse%2Fdashboard",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    },
+    {
+      "module": "syn3-profile-migration",
+      "window": "syn3-profile-migration",
+      "url": "/profile-migration/",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    },
+    {
+      "module": "armory",
+      "window": "armory",
+      "url": "/synapse/armory/",
+      "open_param": [
+        "sameWindow",
+        "autoFocus",
+        "tabVisible"
+      ]
+    }
+  ],
+  "local_module_rows": {
+    "alexa": "Picker",
+    "macro": "Macro",
+    "linked-games": "Profiles",
+    "feedback": "None",
+    "armory": "Armory",
+    "profile-migration": "Picker",
+    "tour": "IntroductionTour"
+  },
+  "problems": []
+}

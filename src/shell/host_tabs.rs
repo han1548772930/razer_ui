@@ -39,6 +39,8 @@ pub(super) enum HostTab {
     FirmwareUpdate,
     ProfileMigration,
     Macro,
+    Armory,
+    Profiles,
 }
 impl HostTab {
     fn location(&self) -> Location {
@@ -49,6 +51,8 @@ impl HostTab {
             Self::FirmwareUpdate => Location::FirmwareUpdate,
             Self::ProfileMigration => Location::ProfileMigration,
             Self::Macro => Location::Macro,
+            Self::Armory => Location::Armory,
+            Self::Profiles => Location::Profiles,
         }
     }
     fn id(&self) -> SharedString {
@@ -60,6 +64,10 @@ impl HostTab {
             Self::ProfileMigration => "syn3-profile-migration".into(),
             // 原版这个窗口的名字就是 `macro`。
             Self::Macro => "macro".into(),
+            // 原版窗口名常量就是 `armory`。
+            Self::Armory => "armory".into(),
+            // 模块表里这个窗口就叫 `profiles`。
+            Self::Profiles => "profiles".into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
@@ -70,6 +78,8 @@ impl HostTab {
             Location::FirmwareUpdate => Some(Self::FirmwareUpdate),
             Location::ProfileMigration => Some(Self::ProfileMigration),
             Location::Macro => Some(Self::Macro),
+            Location::Armory => Some(Self::Armory),
+            Location::Profiles => Some(Self::Profiles),
             _ => None,
         }
     }
@@ -379,6 +389,9 @@ impl AppShell {
                     HostTab::ProfileMigration => "PROFILE MIGRATION".into(),
                     // 原版这个窗口名是 `macro`，模块盒名是 `MACRO`。
                     HostTab::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
+                    // 原版标题 key 为 DASHBOARD_WORKSHOP / DASHBOARD_EXCHANGE，中文都是「互换」。
+                    HostTab::Armory => crate::i18n::t_or("DASHBOARD_WORKSHOP", "互换"),
+                    HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -516,6 +529,9 @@ impl AppShell {
             Some(HostTab::FirmwareUpdate) => "synapse/synapse.svg",
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
             Some(HostTab::Macro) => "synapse/module-macro.svg",
+            Some(HostTab::Armory) => "synapse/module-armory.svg",
+            // 模块目录里 linkedGames 与 armory 共用同一套模块图标资源目录。
+            Some(HostTab::Profiles) => "synapse/module-linked-games.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()

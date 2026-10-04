@@ -410,7 +410,9 @@ impl crate::shell::AppShell {
                         .await;
                     let _ = this.update(cx, |this, cx| {
                         if let Some(tray) = &mut this.tray {
-                            if let Err(error) = tray.show_popup(true, cx) {
+                            // 原版左键：不可见时先对齐，再转发 `{action:"click"}` 并聚焦，
+                            // 不会因为再次点击而隐藏（隐藏由失焦 300ms 负责）。
+                            if let Err(error) = tray.show_popup(false, cx) {
                                 this.status = error.to_string();
                             }
                         }

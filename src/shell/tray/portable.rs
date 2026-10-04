@@ -23,7 +23,7 @@ impl DesktopTray {
         // using GPUI display geometry instead of assuming a Windows taskbar.
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(size(px(360.), px(200.)), cx)),
-            window_min_size: Some(size(px(300.), px(200.))),
+            window_min_size: Some(size(px(360.), px(200.))),
             window_background: WindowBackgroundAppearance::Transparent,
             titlebar: None,
             show: true,

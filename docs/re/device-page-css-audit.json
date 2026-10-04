@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "b4eff78fd26954a8f15f3a31d643b067585bb74a87e85e573a5e2e2576041a0b",
+  "source": {
+    "path": ".ref/devices/182/static/css/main.48c20423.css",
+    "sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e"
+  },
+  "widget": {
+    "background-color": "#111",
+    "border-radius": "5px",
+    "flex": "0 0 auto",
+    "font-size": "14px",
+    "height": "auto",
+    "margin": "10px auto",
+    "max-width": "600px",
+    "min-width": "600px",
+    "padding": "30px 40px",
+    "position": "relative",
+    "transition": "height .2s",
+    "will-change": "height"
+  },
+  "title_row": {
+    "display": "flex",
+    "justify-content": "space-between"
+  },
+  "title": {
+    "color": "#44d62c",
+    "display": "flex",
+    "font-family": "RazerF5,sans-serif",
+    "font-size": "16px",
+    "margin-bottom": "20px",
+    "text-transform": "uppercase"
+  },
+  "h1_body": {
+    "color": "#ccc",
+    "margin-bottom": "10px"
+  },
+  "check_item": {
+    "margin-bottom": "9px",
+    "transition": "opacity .3s",
+    "will-change": "opacity"
+  },
+  "performance": {
+    "polling_rate": {
+      "padding-top": "10px",
+      "position": "relative",
+      "z-index": "1"
+    },
+    "polling_btn_set": {
+      "display": "flex",
+      "flex-wrap": "wrap",
+      "gap": "10px 10px"
+    },
+    "polling_button": {
+      "align-items": "center",
+      "background-color": "#222",
+      "border": "1px solid #5d5d5d",
+      "border-radius": "3px",
+      "color": "#ccc",
+      "display": "flex",
+      "font-size": "14px",
+      "height": "27px",
+      "justify-content": "center",
+      "text-transform": "uppercase",
+      "width": "72px"
+    },
+    "polling_warn": {
+      "margin-top": "10px",
+      "opacity": ".7"
+    },
+    "polling_learn_more": {
+      "align-items": "center",
+      "cursor": "pointer",
+      "display": "inline-flex",
+      "padding-left": "5px",
+      "text-decoration": "underline"
+    },
+    "external": {
+      "color": "#ccc",
+      "font-size": "14px",
+      "line-height": "44px",
+      "text-decoration": "underline",
+      "text-transform": "capitalize"
+    },
+    "ingame_polling_rate": {
+      "margin-top": "20px"
+    },
+    "ingame_polling_rate_title": {
+      "font-family": "RazerF5",
+      "font-size": "14px",
+      "margin-top": "20px"
+    }
+  },
+  "widget_content": {
+    "margin-bottom": "15px"
+  },
+  "power_saving_button_branch": {
+    "value": {
+      "align-items": "center",
+      "background": "#111",
+      "border": "1px solid #5d5d5d",
+      "border-radius": "3px",
+      "color": "#fff",
+      "display": "flex",
+      "font-size": "12px",
+      "justify-content": "center",
+      "line-height": "12px",
+      "min-width": "90px",
+      "padding": "7px 30px"
+    },
+    "active": {
+      "background": "#292929",
+      "border-color": "#44d62c"
+    },
+    "select": {
+      "display": "flex",
+      "gap": "10px",
+      "margin-top": "20px"
+    },
+    "disabled_wrap": {
+      "opacity": "30%",
+      "pointer-events": "none",
+      "-webkit-user-select": "none",
+      "user-select": "none"
+    },
+    "implemented": false
+  },
+  "local": {
+    "surface_constants": {
+      "WIDGET_WIDTH": 600,
+      "WIDGET_PADDING_X": 40,
+      "WIDGET_PADDING_Y": 30,
+      "WIDGET_RADIUS": 5
+    }
+  },
+  "problems": []
+}

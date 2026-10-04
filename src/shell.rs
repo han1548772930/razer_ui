@@ -24,6 +24,7 @@ mod account_menu;
 mod alexa_page;
 mod app_picker;
 mod app_picker_host;
+mod armory_page;
 mod display_window;
 mod firmware_update;
 mod header_status;
@@ -35,6 +36,7 @@ mod main_pages;
 mod pairing_page;
 mod pairing_window;
 mod profile_migration;
+mod profiles_page;
 mod release_notes;
 mod runtime_page;
 mod service_pages;
@@ -52,6 +54,8 @@ enum Location {
     FirmwareUpdate,
     ProfileMigration,
     Macro,
+    Armory,
+    Profiles,
 }
 struct PreparedSave {
     window: AnyWindowHandle,
@@ -120,6 +124,8 @@ pub struct AppShell {
     firmware_update: Option<(Entity<firmware_update::FirmwareUpdate>, Subscription)>,
     profile_migration: Option<Entity<profile_migration::MigrationPage>>,
     macro_page: Option<Entity<macro_page::MacroPage>>,
+    armory_page: Option<Entity<armory_page::ArmoryPage>>,
+    profiles_page: Option<Entity<profiles_page::ProfilesPage>>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -204,6 +210,8 @@ impl AppShell {
             firmware_update: None,
             profile_migration: None,
             macro_page: None,
+            armory_page: None,
+            profiles_page: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -368,6 +376,14 @@ impl AppShell {
                     // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）。
                     service_pages::ModulePage::Macro => {
                         this.navigate(Location::Macro, window, cx);
+                    }
+                    // 原版此盒打开 `armory` 窗口（`/synapse/armory/`）。
+                    service_pages::ModulePage::Armory => {
+                        this.navigate(Location::Armory, window, cx);
+                    }
+                    // 原版此盒打开 `profiles` 窗口（`/synapse/profiles/`）。
+                    service_pages::ModulePage::Profiles => {
+                        this.navigate(Location::Profiles, window, cx);
                     }
                 },
                 service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
@@ -697,6 +713,24 @@ impl AppShell {
             }
             if next == Location::ProfileMigration && self.profile_migration.is_none() {
                 self.profile_migration = Some(cx.new(profile_migration::MigrationPage::new));
+            }
+            if next == Location::Profiles {
+                if self.profiles_page.is_none() {
+                    self.profiles_page = Some(cx.new(profiles_page::ProfilesPage::new));
+                }
+                self.profiles_page
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |page, cx| page.focus(window, cx));
+            }
+            if next == Location::Armory {
+                if self.armory_page.is_none() {
+                    self.armory_page = Some(cx.new(armory_page::ArmoryPage::new));
+                }
+                self.armory_page
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |page, cx| page.focus(window, cx));
             }
             if next == Location::Macro {
                 if self.macro_page.is_none() {
@@ -1085,6 +1119,11 @@ impl AppShell {
             Location::ProfileMigration => crate::i18n::t("PROFILE_MIGRATION").into(),
             // 原版窗口名就是 `macro`（Dashboard 模块 69937 的 `O="macro"`）。
             Location::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
+            // 原版标题取 `isExchangeEnabled ? DASHBOARD_EXCHANGE : DASHBOARD_WORKSHOP`，
+            // 两个 key 在 zh-CN 语言包里都是「互换」。
+            Location::Armory => crate::i18n::t_or("DASHBOARD_WORKSHOP", "互换"),
+            // 模块表把 `linkedGames` 指向 profiles 窗口，标题用它的文案 key。
+            Location::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
         };
         let (has_previous, has_next) = if self.location == Location::Alexa {
             self.alexa.as_ref().map_or((false, false), |page| {
@@ -1398,6 +1437,16 @@ impl Render for AppShell {
                 .unwrap_or_else(|| div().into_any_element()),
             Location::Macro => self
                 .macro_page
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::Armory => self
+                .armory_page
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
+            Location::Profiles => self
+                .profiles_page
                 .as_ref()
                 .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),

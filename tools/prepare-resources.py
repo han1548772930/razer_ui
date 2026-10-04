@@ -119,6 +119,29 @@ for name, original in frontend_media.items():
 
 prepare_gamer_room_devices(ROOT, OUT, record)
 
+# 设备页标签栏溢出菜单 `.navs-wrapper .dots3` 的三张图标（默认 / 悬停 / 有隐藏的
+# 当前页时）。源码规则见 docs/re/device-tabs-audit.md。
+for name, dst in (
+    ("icon_more_default.eb7284c1.svg", "nav-more-default.svg"),
+    ("icon_more.fb688d78.svg", "nav-more-hover.svg"),
+    ("icon_more_active.8e04906f.svg", "nav-more-active.svg"),
+):
+    src = ROOT / ".ref/devices/182/static/media" / name
+    out = OUT / dst
+    shutil.copyfile(src, out)
+    record(src, out)
+
+# 设备页标签栏最左边的返回/前进箭头（源码 `.nav.back` / `.nav.forward` 的
+# `background-image:url(nav_back_arrow…/nav_fwd_arrow…)`，取自 182 设备包）。
+for name, dst in (
+    ("nav_back_arrow.0203563a.svg", "nav-back-arrow.svg"),
+    ("nav_fwd_arrow.8ceda865.svg", "nav-fwd-arrow.svg"),
+):
+    src = ROOT / ".ref/devices/182/static/media" / name
+    out = OUT / dst
+    shutil.copyfile(src, out)
+    record(src, out)
+
 # Armory（`/synapse/armory/`）窗口自己的图标：`logo_armory_exchange.svg` 在
 # 仪表盘的 shared-apps 目录里，`logo_armory_workshop` 已作为 module-armory.svg 打包。
 armory_icon = ROOT / ".ref/applications/synapse/dashboard/shared-apps/logo_armory_exchange.svg"

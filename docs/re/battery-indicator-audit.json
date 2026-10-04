@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "4fec01fe02756eb1e5aecfb1f34d4dc7213e2c1c4427d5f1bdbfe806335c3c67",
+  "scanner_sha256": "3be429ef83d91940c99c2da8464aff2219ac89010c24f8f1564117698180185c",
   "state_machine": {
     "source": ".ref/devices/104/static/js/main.9b94769e.js",
     "offset": 4275658,

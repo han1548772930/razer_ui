@@ -486,6 +486,8 @@ impl MouseProductWorkspace {
         v_flex()
             .gap_3()
             .w_full()
+            // 182 `.widget .content{margin-bottom:15px}`
+            .mb(surface::css(15.))
             .child(
                 h_flex()
                     .justify_between()
@@ -512,25 +514,30 @@ impl MouseProductWorkspace {
 
     fn toggle(&self, path: &str, label: &str, cx: &Context<Self>) -> AnyElement {
         let path = path.to_owned();
-        Checkbox::new(SharedString::from(format!(
-            "mouse-{}-{path}",
-            self.spec.product_id
-        )))
-        .label(label.to_owned())
-        .checked(self.boolean(&path))
-        .on_click(cx.listener(move |this, checked, window, cx| {
-            this.write(&path, json!(*checked), cx);
-            if !checked
-                && path.starts_with(this.spec.stages_path())
-                && path.ends_with(this.spec.independent_key())
-            {
-                if let Some((stage, _)) = path.rsplit_once('/') {
-                    let x_path = format!("{stage}/{}", this.spec.dpi_axis(0));
-                    this.write_number(&x_path, this.number(&x_path), window, cx);
-                }
-            }
-        }))
-        .into_any_element()
+        // 182 `.check-item{margin-bottom:9px}`：勾选项之间靠这条外边距分行。
+        div()
+            .mb(surface::css(9.))
+            .child(
+                Checkbox::new(SharedString::from(format!(
+                    "mouse-{}-{path}",
+                    self.spec.product_id
+                )))
+                .label(label.to_owned())
+                .checked(self.boolean(&path))
+                .on_click(cx.listener(move |this, checked, window, cx| {
+                    this.write(&path, json!(*checked), cx);
+                    if !checked
+                        && path.starts_with(this.spec.stages_path())
+                        && path.ends_with(this.spec.independent_key())
+                    {
+                        if let Some((stage, _)) = path.rsplit_once('/') {
+                            let x_path = format!("{stage}/{}", this.spec.dpi_axis(0));
+                            this.write_number(&x_path, this.number(&x_path), window, cx);
+                        }
+                    }
+                })),
+            )
+            .into_any_element()
     }
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {

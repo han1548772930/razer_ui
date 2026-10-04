@@ -41,6 +41,16 @@ pub(crate) fn navigation_button(
     selected: bool,
     cx: &App,
 ) -> Button {
+    // 依据 182 `.nav-tabs .nav`：
+    // `border-radius:14px;color:#999;line-height:14px;margin-right:20px;padding:7px 10px;
+    //  text-align:center;text-transform:uppercase`；
+    // `:hover{background-color:#2d2d2d;color:#ccc}`；
+    // `:active{background-color:#3cbf27;color:#111}`；
+    // `.nav.active{background-color:#44d62c;color:#111}`。
+    // 选中态背景 `#44d62c` = `primary`，文字 `#111` = `primary_foreground`；
+    // 悬停底色 `#2d2d2d` = `secondary_hover`，悬停文字 `#ccc` = `foreground`；
+    // 按下底色是比选中态更深的 `#3cbf27`。
+    let label = label.into().to_uppercase();
     Button::new(id)
         .xsmall()
         .label(label)
@@ -62,14 +72,222 @@ pub(crate) fn navigation_button(
                 } else {
                     cx.theme().secondary_hover
                 })
-                .active(cx.theme().primary),
+                .active(gpui_kit::rgb(0x3cbf27).into()),
         )
+        .hover(|style| {
+            style
+                .bg(if selected {
+                    cx.theme().primary
+                } else {
+                    cx.theme().secondary_hover
+                })
+                .text_color(cx.theme().foreground)
+        })
+        // 按下时的文字色源码是 `#111`；`Button` 只暴露 `.hover`，按下态文字色要像
+        // `keymap_close_button` 那样自持状态才能插值，这里先用变体的按下底色。
         .h(css(28.))
         .px(css(10.))
         .py_0()
         .text_size(css(12.))
         .rounded(cx.theme().font_size * (14. / 16.))
         .border_0()
+}
+
+/// `.profile-bar` 的宽度：源码 `.nav-tabs .profile-bar{width:auto}`，实测布局里
+/// profile 入口 26 + 下拉 230 + 两侧 10 边距 + 更多按钮 26 + 右边距 10 + OBM 26。
+/// （`has_obm` 时才多出 OBM 的 32px：26 + 10 外边距 − 4px 重叠。）
+pub(crate) const PROFILE_BAR_WIDTH: f32 = 322.;
+pub(crate) const PROFILE_BAR_WIDTH_OBM: f32 = 354.;
+/// 顶栏右侧区：电量 `icon box 26 + 左右各 10` + 帮助按钮 24 + 右边距 10。
+pub(crate) const DEVICE_RIGHT_WIDTH: f32 = 46. + 24. + 10.;
+
+/// `.hover-border` 方框（26×26、`border:1px solid #222`、圆角 13、20px 图标、
+/// `margin-right:10px`）的悬停/按下状态：源码带
+/// `transition:border-color .2s;will-change:border-color`，
+/// `:hover{border-color:#5d5d5d}`、`.active,:active{border-color:#44d62c}`。
+/// 悬停态同时用于 `.dots3` 的换图（`icon_more_default` → `icon_more`）。
+#[derive(Default)]
+pub(crate) struct HoverBorderState {
+    pub(crate) hovered: bool,
+    pub(crate) pressed: bool,
+    /// `.show` / `.active`：弹层打开时边框转绿。
+    pub(crate) open: bool,
+}
+
+/// `.nav-tabs .navs-wrapper .dots3` 的方框：`.hover-border{height:26px;width:26px;
+/// border:1px solid #222;border-radius:13px;background-size:20px;margin-right:10px}`。
+pub(crate) const NAV_MORE_WIDTH: f32 = 26.;
+pub(crate) const NAV_MORE_MARGIN: f32 = 10.;
+
+/// 设备页标签溢出：源码 `renderNavs()` 用「窗口宽 − profile 栏宽 − 右侧区宽 −
+/// `.dots3` 宽 − 10」得到可用宽度，再按每个标签「文字宽（Roboto 12px）+ 20 内边距
+/// + 20 间距（最后一个不加）」贪心放进可见列表，放不下的进 `.dots3` 下拉。
+/// 返回 `(可见标签, 溢出标签)`。
+pub(crate) fn split_navs<T: Copy>(
+    navs: &[T],
+    label: impl Fn(T) -> String,
+    available: f32,
+    window: &Window,
+) -> (Vec<T>, Vec<T>) {
+    let mut visible = Vec::new();
+    let mut hidden = Vec::new();
+    let mut used = 0.;
+    for (index, nav) in navs.iter().enumerate() {
+        let text = label(*nav);
+        let width =
+            nav_label_width(&text, window) + 20. + if index + 1 != navs.len() { 20. } else { 0. };
+        if hidden.is_empty() && used + width < available {
+            used += width;
+            visible.push(*nav);
+        } else {
+            hidden.push(*nav);
+        }
+    }
+    (visible, hidden)
+}
+
+/// `getTextWidth(i18n(name), "normal 12px Roboto")`：12px = 0.75rem。
+fn nav_label_width(label: &str, window: &Window) -> f32 {
+    let mut font = window.text_style().font();
+    font.weight = gpui_kit::gpui::FontWeight::NORMAL;
+    let run = gpui_kit::gpui::TextRun {
+        len: label.len(),
+        font,
+        color: gpui_kit::gpui::black(),
+        background_color: None,
+        underline: None,
+        strikethrough: None,
+    };
+    f32::from(
+        window
+            .text_system()
+            .shape_line(
+                label.to_owned().into(),
+                window.rem_size() * 0.75,
+                &[run],
+                None,
+            )
+            .width,
+    )
+}
+
+/// 设备页标签栏最左边的返回/前进按钮：源码里的 `.nav.back` / `.nav.forward`
+/// （`.nav-tabs .nav` 的 28px 高、14px 圆角、`padding:7px 10px`，
+/// `background-image` 分别是 `nav_back_arrow` / `nav_fwd_arrow`，没有文字标签），
+/// 不可用时套 `.nav.disabled{opacity:.3;pointer-events:none}`。
+pub(crate) fn nav_arrow_button(id: &'static str, forward: bool, enabled: bool, cx: &App) -> Button {
+    let (asset, label) = if forward {
+        ("synapse/nav-fwd-arrow.svg", "前进")
+    } else {
+        ("synapse/nav-back-arrow.svg", "后退")
+    };
+    Button::new(id)
+        .accessibility_label(label)
+        .disabled(!enabled)
+        .flex()
+        .items_center()
+        .justify_center()
+        .h(css(28.))
+        .px(css(10.))
+        .py_0()
+        .rounded(cx.theme().font_size * (14. / 16.))
+        .border_0()
+        .bg(cx.theme().transparent)
+        .when(enabled, |button| {
+            button.hover(|style| style.bg(cx.theme().secondary_hover))
+        })
+        .when(!enabled, |button| button.opacity(0.3))
+        .child(img(asset).size(css(9.)))
+}
+
+/// `.hover-border.dots3` 的边框色：常态 `#222`（`theme.background`）、悬停
+/// `#5d5d5d`（`theme.border`）、`.show`/`.active`/按下 `#44d62c`（`theme.primary`），
+/// 按源码 `transition:border-color .2s` 插值。要在 `Popover::trigger_with`
+/// 之外采样（那里的 `window`/`cx` 是只读的），所以与按钮本身拆开。
+pub(crate) fn hover_border_color(
+    id: &'static str,
+    state: &Entity<HoverBorderState>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Hsla {
+    let current = state.read(cx);
+    let target = if current.open || current.pressed {
+        cx.theme().primary
+    } else if current.hovered {
+        cx.theme().border
+    } else {
+        cx.theme().background
+    };
+    // `.hover-border{transition:border-color .2s}`（CSS 默认 `ease`）。
+    gpui_kit::base::motion::transition(
+        (id, "hover-border"),
+        target,
+        gpui_kit::base::motion::Transition::new(std::time::Duration::from_millis(200))
+            .easing(gpui_kit::base::motion::Easing::Ease),
+        window,
+        cx,
+    )
+}
+
+/// `.hover-border.dots3`：profile 栏的「更多」与标签栏溢出菜单共用同一个方框
+/// （26×26、圆角 13、20px 图标、`margin-right:10px`）。边框色由
+/// [`hover_border_color`] 采样后传入；`filled` 对应 `.has-actived-option`
+/// 的整块绿底。
+pub(crate) fn hover_border_button(
+    id: &'static str,
+    asset: SharedString,
+    label: &'static str,
+    border: Hsla,
+    filled: bool,
+    size: f32,
+    state: Entity<HoverBorderState>,
+) -> gpui_kit::base::Button {
+    gpui_kit::base::Button::new(id)
+        .accessibility_label(label)
+        .size(css(size))
+        .p_0()
+        .rounded(css(13.))
+        .border_1()
+        .border_color(border)
+        // `.has-actived-option{background-color:#44d62c}`；其余态透明。
+        .when(filled, |button| button.bg(Hsla::transparent_black()))
+        .child(img(asset).size(css(20.)))
+        .on_hover({
+            let state = state.clone();
+            move |hovered, _, cx| {
+                state.update(cx, |state, cx| {
+                    state.hovered = *hovered;
+                    if !hovered {
+                        state.pressed = false;
+                    }
+                    cx.notify();
+                });
+            }
+        })
+        .on_mouse_down(MouseButton::Left, {
+            let state = state.clone();
+            move |_, _, cx| {
+                state.update(cx, |state, cx| {
+                    state.pressed = true;
+                    cx.notify();
+                });
+            }
+        })
+        .on_mouse_up(MouseButton::Left, {
+            let state = state.clone();
+            move |_, _, cx| {
+                state.update(cx, |state, cx| {
+                    state.pressed = false;
+                    cx.notify();
+                });
+            }
+        })
+        .on_mouse_up_out(MouseButton::Left, move |_, _, cx| {
+            state.update(cx, |state, cx| {
+                state.pressed = false;
+                cx.notify();
+            });
+        })
 }
 
 pub(crate) fn asset_button(
@@ -471,11 +689,17 @@ pub(crate) fn panel_with_control(
     control: impl IntoElement,
     cx: &App,
 ) -> Div {
-    // Original .widget .titleRow .title applies text-transform: uppercase.
+    // 依据 182 的 `.body-widgets .widget`：
+    // `background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;
+    //  height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px`
+    // 与 `.widget .titleRow{display:flex;justify-content:space-between}`、
+    // `.widget .titleRow .title{color:#44d62c;display:flex;font-family:RazerF5,sans-serif;
+    //  font-size:16px;margin-bottom:20px;text-transform:uppercase}`。
     let title = title.into().to_uppercase();
     v_flex()
         .w_full()
-        .gap_4()
+        .flex_shrink_0()
+        .my(css(10.))
         .py(css(WIDGET_PADDING_Y))
         .px(css(WIDGET_PADDING_X))
         .bg(cx.theme().group_box)
@@ -483,16 +707,24 @@ pub(crate) fn panel_with_control(
         .text_size(css(14.))
         .child(
             h_flex()
-                .gap(css(20.))
+                .justify_between()
                 .child(
                     div()
                         .font_family("RazerF5")
                         .text_size(css(16.))
                         .text_color(cx.theme().primary)
+                        .mb(css(20.))
                         .child(title),
                 )
                 .child(control),
         )
+}
+/// `.h1-body{color:#ccc;margin-bottom:10px}`：控件标题下方那段说明文字。
+pub(crate) fn h1_body(text: impl Into<SharedString>, cx: &App) -> Div {
+    div()
+        .text_color(cx.theme().group_box_foreground)
+        .mb(css(10.))
+        .child(text.into())
 }
 pub(crate) fn note(text: impl Into<SharedString>, cx: &App) -> Div {
     div()

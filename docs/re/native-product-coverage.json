@@ -26,7 +26,7 @@
     "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
     "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
     "src/features/source_help_data.json": "d6cd92a5b11b01b8161d6195aeeee4d1ea505c872ad94baf18f550ed6a6b3cff",
-    "src/features/mouse_products.rs": "f52605e379a68d11c62e8d4f0197cd71b4df20ecb5b603986f959264b130ba23",
+    "src/features/mouse_products.rs": "f39d366c05bcfc34d5b6dcc690bcd57d33e225d598cd9d4916ee3112559fc693",
     "src/features/keyboard_products.rs": "5a91413c36761685855de471a6c3a7f9193daf3014e47b98629fbb3a9855716a",
     "src/features/gamepad_products.rs": "95b56e105dff21c5db29715cbfe9223923e52f6062b5bcef5e84891ec1bc6678",
     "src/features/audio_products.rs": "f9b3a6d8529f32fd9ff2bda346aaf05be81c957c0cc9e1c83a5f558158d6d645",

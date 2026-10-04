@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "6166313a7fced1a7c578d90d1ff646c7bc731b80dd113dfdfbabbc7528b70340",
+  "sources": {
+    "css": {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1"
+    },
+    "device_css": {
+      "path": ".ref/devices/182/static/css/main.48c20423.css",
+      "sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e"
+    },
+    "jsx": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3"
+    }
+  },
+  "rules": {
+    "group": {
+      "display": "inline-flex",
+      "flex-shrink": "0",
+      "height": "27px"
+    },
+    "group_button": {
+      "border": "1px solid #0000004d",
+      "font-family": "Roboto",
+      "font-size": "12px",
+      "height": "100%",
+      "line-height": "0px",
+      "text-align": "center",
+      "width": "fit-content"
+    },
+    "warning": {
+      "padding-left": "30px",
+      "position": "relative",
+      "word-break": "break-word"
+    },
+    "warning_before": {
+      "background-image": "url(../../static/media/warning.ad3f47f8.svg)",
+      "background-position": "50%",
+      "background-repeat": "no-repeat",
+      "content": "\"\"",
+      "display": "inline-block",
+      "height": "20px",
+      "left": "0",
+      "position": "absolute",
+      "width": "20px"
+    },
+    "warning_hidden": {
+      "visibility": "collapse"
+    },
+    "group_warning": {
+      "align-items": "center",
+      "display": "flex",
+      "margin-left": "10px",
+      "position": "relative"
+    },
+    "tip": {
+      "background-color": "#000",
+      "border": "1px solid #5d5d5d",
+      "color": "#ccc",
+      "font-family": "Roboto",
+      "font-size": "14px",
+      "left": "-113px",
+      "line-height": "16px",
+      "opacity": "0",
+      "padding": "8px 10px 10px",
+      "position": "absolute",
+      "text-transform": "none",
+      "top": "-200%",
+      "transition": "visibility 0s,opacity .3s linear",
+      "visibility": "hidden",
+      "width": "300px",
+      "will-change": "visibility,opacity"
+    },
+    "tip_hover": {
+      "opacity": "1",
+      "visibility": "visible",
+      "z-index": "100"
+    },
+    "nav_tabs_disabled": {
+      "opacity": ".5"
+    }
+  },
+  "locale_keys": {
+    "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT": "不会导出已关联的游戏和 Chroma 幻彩效果.",
+    "IMPORT_EXPORT_MODAL_TIP": "Not all mappings from this profile can be carried over to this device.",
+    "TEXT_IMPORT_PROFILES": "导入配置文件",
+    "TEXT_EXPORT_PROFILES": "导出配置文件"
+  },
+  "gaps": {
+    "warning_tip": "需要 hasWarning（部分映射无法迁移）这一真实状态；本地导入是整体成功/失败",
+    "outer_footer_layout": "底栏外壳是 CSS module 的哈希类名，样式表里取不到，沿用本仓库既有底栏"
+  },
+  "problems": []
+}

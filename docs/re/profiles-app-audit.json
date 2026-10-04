@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "9ca24055ed7dc40b6608e43dc0e5d6a25ea97b797de188e4859508f23b7495dc",
+  "source": {
+    "path": ".ref/applications/synapse/profiles/static/js/main.776df2b1.js",
+    "sha256": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2"
+  },
+  "nav_chunk": {
+    "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+    "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3"
+  },
+  "view_container": "overflow:hidden!important;padding:0!important",
+  "window": {
+    "name": "profiles",
+    "url": "/synapse/profiles/",
+    "open_param": "policy=3,shouldFocus=1,tab_visible=1"
+  },
+  "state_keys": {
+    "tabNavigations": true,
+    "currentTabNavigation": true
+  },
+  "routes": [
+    {
+      "view": "Devices",
+      "symbol": "H",
+      "regex": "/\\/devices\\/\\d+\\//"
+    },
+    {
+      "view": "GlobalShortcuts",
+      "symbol": "b",
+      "regex": "/\\/globalShortcuts\\//"
+    },
+    {
+      "view": "ChromaStudio",
+      "symbol": "F",
+      "regex": "/\\/chromaStudio\\//"
+    },
+    {
+      "view": "Macro",
+      "symbol": "B",
+      "regex": "/\\/macro\\//"
+    },
+    {
+      "view": "LinkedGames",
+      "symbol": "k",
+      "regex": "/\\/linkedGames\\//"
+    }
+  ],
+  "labels": [
+    "PROFILES",
+    "GLOBAL_SHORTCUT_HEADER",
+    "CHROMA_STUDIO",
+    "MACRO",
+    "LINKED_GAMES"
+  ],
+  "local_view_ids": [
+    "devices",
+    "global-shortcuts",
+    "chroma-studio",
+    "macro",
+    "linked-games"
+  ],
+  "problems": []
+}

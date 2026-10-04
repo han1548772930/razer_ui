@@ -971,6 +971,8 @@ pub(super) enum ModulePage {
     Picker(PickerModule),
     IntroductionTour,
     Macro,
+    Armory,
+    Profiles,
 }
 // 6505/44442 ne te are a static catalogue. No installed/available state is
 // inferred from these records; that state belongs to the installer service.
@@ -1016,17 +1018,20 @@ const MODULES: &[Module] = &[
         image: None,
         description: "原版此模块盒打开 profiles 窗口（/synapse/profiles/），用于按程序切换配置文件和灯光效果；本地尚未实现该窗口，设备 Profile 内的关联程序可在对应配置菜单中管理。",
         link: None,
-        native_page: None,
+        // 模块表：`linkedGames → windowName:"profiles", url:"/synapse/profiles/"`，
+        // 打开参数 `policy=3,shouldFocus=1,tab_visible=1`（同窗口 + 聚焦 + 标签可见）。
+        native_page: Some(ModulePage::Profiles),
     },
     Module {
         id: "feedback",
         box_name: "FEEDBACK",
         window: "feedback-synapse",
-        url: "/feedback/?app=synapse&path=<当前路径>",
+        // 模块表原文：`/feedback/?app=synapse&path=${encodeURIComponent("/synapse/dashboard")}`。
+        url: "/feedback/?app=synapse&path=%2Fsynapse%2Fdashboard",
         title: "反馈",
         icon: "synapse/module-feedback.svg",
         image: None,
-        description: "原版此模块盒打开 feedback-synapse 窗口；本地尚未实现该窗口。",
+        description: "原版此模块盒打开 feedback-synapse 窗口（同一窗口 + 聚焦 + 标签可见）；                      该应用的源码不在当前提取范围内，故本地未实现其界面。",
         link: None,
         native_page: None,
     },
@@ -1038,9 +1043,11 @@ const MODULES: &[Module] = &[
         title: "工坊",
         icon: "synapse/module-armory.svg",
         image: None,
-        description: "原版此模块盒打开 armory 窗口；本地尚未实现该窗口。",
+        description: "原版此模块盒打开 armory 窗口；本地已实现窗口外框与四个导航标签（资料分享服务未接入）。",
         link: None,
-        native_page: None,
+        // 原版此盒打开 `armory` 窗口（`/synapse/armory/`）；本地已实现该窗口的
+        // 外框与四个导航标签，资料分享服务仍未接入。
+        native_page: Some(ModulePage::Armory),
     },
     Module {
         id: "profile-migration",

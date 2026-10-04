@@ -130,15 +130,20 @@ impl Render for MacroPage {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(
+                // 原版宏窗口顶部是 `.nav-wrapper{background:#222;width:100vw}` +
+                // `.nav-wrapper.over-border{border-bottom:2px solid #000}`，里面
+                // `.module-nav{align-items:center;display:flex;flex:1 0 max-content;
+                //  height:46px;justify-content:center}`（模块导航居中）。
                 h_flex()
                     .id("macro-nav-tabs")
                     .flex_shrink_0()
-                    .h(surface::css(48.))
+                    .h(surface::css(46.))
                     .items_center()
+                    .justify_center()
                     .gap(surface::css(20.))
-                    .px(surface::css(20.))
-                    .border_b_1()
-                    .border_color(cx.theme().border)
+                    .bg(cx.theme().sidebar)
+                    .border_b_2()
+                    .border_color(cx.theme().title_bar)
                     .children(MacroTab::ALL.into_iter().map(|entry| {
                         surface::navigation_button(
                             SharedString::from(entry.id()),

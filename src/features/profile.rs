@@ -471,7 +471,11 @@ impl DeviceWorkspace {
         }
     }
 
-    pub(super) fn profile_toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn profile_toolbar(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         // 653 zh.renderProfileBar enables OBM outside BLE. The other audited
         // product roots explicitly disable it; no slot contents are inferred.
         let has_obm = self.pid() == 653 && !self.device.use_ble;
@@ -496,13 +500,28 @@ impl DeviceWorkspace {
             .map(|section| section.len() as f32 * 27. + 9.)
             .sum::<f32>();
         let opened_list = list.clone();
+        // `.profile-bar .dots3` 也带 `.hover-border`：边框 `#222` → 悬停 `#5d5d5d`
+        // → 打开 `#44d62c`，并且 `transition:border-color .2s`。
+        let more_state = window.use_keyed_state(
+            (ElementId::from("profile-more"), "hover-border-state"),
+            cx,
+            |_, _| surface::HoverBorderState::default(),
+        );
+        let more_border = surface::hover_border_color("profile-more", &more_state, window, cx);
+        let trigger_state = more_state.clone();
         h_flex()
             .id("profile-bar")
             .test_support()
-            .h(surface::css(27.))
+            // 源码 `.profile-bar{height:26px}`（`.nav-tabs .profile-bar` 只覆盖
+            // color/justify-content/margin/width，高度仍是 26）。
+            .h(surface::css(26.))
             .w_full()
             .min_w_0()
-            .max_w(surface::css(if has_obm { 354. } else { 322. }))
+            .max_w(surface::css(if has_obm {
+                surface::PROFILE_BAR_WIDTH_OBM
+            } else {
+                surface::PROFILE_BAR_WIDTH
+            }))
             .child(
                 div()
                     .size(surface::css(26.))
@@ -577,38 +596,38 @@ impl DeviceWorkspace {
                     } else {
                         Pixels::ZERO
                     })
-                    .trigger_with(|open, _, cx| {
-                        BaseButton::new("profile-more")
-                            .accessibility_label("配置文件选项")
-                            .tooltip(|window, cx| Tooltip::new("配置文件选项").build(window, cx))
-                            .size(surface::css(26.))
-                            .p_0()
-                            .rounded_none()
-                            .border_1()
-                            .border_color(if open {
-                                cx.theme().primary
-                            } else {
-                                cx.theme().background
-                            })
-                            .bg(cx.theme().transparent)
-                            .when(!open, |button| {
-                                button.hover(|button| button.border_color(cx.theme().border))
-                            })
-                            .active(|button| button.border_color(cx.theme().primary))
-                            .child(img("synapse/profile-more.svg").size(surface::css(20.)))
-                            .into_any_element()
+                    .trigger_with(move |_open, _, _| {
+                        surface::hover_border_button(
+                            "profile-more",
+                            "synapse/profile-more.svg".into(),
+                            "配置文件选项",
+                            more_border,
+                            false,
+                            surface::NAV_MORE_WIDTH,
+                            trigger_state.clone(),
+                        )
+                        .tooltip(|window, cx| Tooltip::new("配置文件选项").build(window, cx))
+                        .mr(surface::css(10.))
+                        .into_any_element()
                     })
-                    .on_open_change(move |open, window, cx| {
-                        if *open {
-                            opened_list.update(cx, |list, cx| {
-                                list.set_selected_index(Some(IndexPath::new(0)), window, cx)
-                            });
-                        }
-                        if !open {
-                            _ = open_workspace.update(cx, |workspace, cx| {
-                                workspace.profile_confirmation = None;
+                    .on_open_change({
+                        let more_state = more_state.clone();
+                        move |open, window, cx| {
+                            more_state.update(cx, |state, cx| {
+                                state.open = *open;
                                 cx.notify();
                             });
+                            if *open {
+                                opened_list.update(cx, |list, cx| {
+                                    list.set_selected_index(Some(IndexPath::new(0)), window, cx)
+                                });
+                            }
+                            if !*open {
+                                _ = open_workspace.update(cx, |workspace, cx| {
+                                    workspace.profile_confirmation = None;
+                                    cx.notify();
+                                });
+                            }
                         }
                     })
                     .content(move |_, window, cx| {
@@ -771,6 +790,8 @@ fn dismiss_profile_dialog(owner: &WeakEntity<DeviceWorkspace>, window: &mut Wind
     let dialog = owner
         .update(cx, |workspace, cx| {
             let dialog = workspace.profile_dialog.take();
+            // 弹层关闭后导航行恢复常态（源码 `showLinkedGames` 复位）。
+            workspace.linked_games_open = false;
             cx.notify();
             dialog
         })
@@ -797,17 +818,54 @@ fn profile_dialog_footer(cx: &App) -> Div {
         .bg(cx.theme().sidebar)
 }
 
-fn profile_dialog_button(id: &'static str, label: impl Into<SharedString>, cx: &App) -> Button {
+/// 原版对话框按钮就是 `.thx-btn`（profiles 主样式）：
+/// `background-color:#44d62c;border-radius:3px;color:#000;padding:.5rem 1.5rem;
+///  text-align:center;text-transform:uppercase;transition:opacity .3s`，
+/// `:hover{opacity:.8}`、`:active{opacity:.6}`、
+/// `.disabled,.disabled:hover{cursor:default;opacity:.3}`；
+/// `.test{background-color:#707070;border:1px solid #0000004d;color:#fff}`；
+/// 删除确认里的 `div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;
+///  color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;
+///  padding:4px 5px}`。
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ThxKind {
+    /// `.thx-btn`：绿底黑字。
+    Primary,
+    /// `.thx-btn.test`：灰底白字。
+    Test,
+}
+
+/// 删除/重置确认弹层里的红按钮不走这里：它由 `ProfileAlertColors` 提供
+/// `.profile-del div.thx-btn{background-color:#fd4949;color:#111}` 的底色，
+/// 并且 777 还有自己的覆盖（见 `profile_confirmation`）。
+
+fn profile_dialog_button(
+    id: &'static str,
+    label: impl Into<SharedString>,
+    kind: ThxKind,
+    cx: &App,
+) -> Button {
+    let (background, foreground) = match kind {
+        ThxKind::Primary => (gpui_kit::rgb(0x44d62c), gpui_kit::rgb(0x000000)),
+        ThxKind::Test => (gpui_kit::rgb(0x707070), gpui_kit::rgb(0xffffff)),
+    };
     Button::new(id)
-        .label(label)
+        .label(label.into().to_uppercase())
         .xsmall()
         .h(surface::css(27.))
         .min_w(surface::css(90.))
-        .px(surface::css(10.))
-        .py_0()
+        .px(surface::css(5.))
+        .py(surface::css(4.))
         .text_size(surface::css(12.))
         .line_height(surface::css(14.))
         .rounded(cx.theme().font_size * (3. / 16.))
+        .border_1()
+        // `border:1px solid #0000004d`
+        .border_color(gpui_kit::rgba(0x0000004d))
+        .bg(background)
+        .text_color(foreground)
+        // `.thx-btn:hover{opacity:.8}`
+        .hover(|button| button.opacity(0.8))
 }
 
 impl DeviceWorkspace {

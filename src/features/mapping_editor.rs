@@ -2051,8 +2051,11 @@ impl DeviceWorkspace {
                 } else {
                     cx.theme().foreground
                 })
+                // 182 `.action-wrapper.open,:active{background-color:#111}`（= popover）
+                // 与 `.action-wrapper:hover{background-color:#393939}`；注意主题里的
+                // `list_hover` 是 #383838（出自滑块拇指的 `:active`），这里不能借用。
                 .when(active, |button| button.bg(cx.theme().popover))
-                .hover(|style| style.bg(cx.theme().list_hover))
+                .hover(|style| style.bg(gpui_kit::rgb(0x393939)))
                 .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.select_mapping_category(category, window, cx)

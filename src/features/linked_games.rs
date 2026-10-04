@@ -136,7 +136,7 @@ impl LinkedGamesDialog {
 
 impl Render for LinkedGamesDialog {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut body = v_flex()
+        let body = v_flex()
             .id("linked-games-content")
             .w_full()
             .flex_1()
@@ -148,68 +148,48 @@ impl Render for LinkedGamesDialog {
                 "在本地配置中记录关联程序。保存后不会自动启动游戏或切换配置文件。",
                 cx,
             ));
-        if self.games.is_empty() {
-            body = body.child(
-                div()
-                    .id("linked-games-empty")
-                    .test_support()
-                    .child("尚未关联游戏。"),
-            );
-        } else {
-            body =
-                body.child(
-                    v_flex()
-                        .id("linked-games-list")
-                        .max_h(surface::css(300.))
-                        .overflow_y_scroll()
-                        .children(self.games.iter().map(|game| {
-                            let path = game.executable.clone();
-                            h_flex()
-                                .gap_3()
-                                .items_center()
-                                .py_2()
-                                .border_b_1()
-                                .border_color(cx.theme().border)
-                                .child(
-                                    v_flex().flex_1().min_w_0().child(game.name.clone()).child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(cx.theme().muted_foreground)
-                                            .child(path.clone()),
-                                    ),
-                                )
-                                .child(
-                                    Button::new(SharedString::from(format!(
-                                        "linked-game-remove-{}",
-                                        path
-                                    )))
-                                    .label("移除")
-                                    .ghost()
-                                    .disabled(self.busy)
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.games.retain(|game| game.executable != path);
-                                        this.error = None;
-                                        cx.notify();
-                                    })),
-                                )
-                        })),
-                );
-        }
-        let body = body
-            .child(
-                profile_dialog_button("linked-games-add", "添加程序…", cx)
-                    .disabled(self.busy)
-                    .on_click(cx.listener(|this, _, window, cx| this.add(window, cx))),
-            )
-            .when_some(self.error.clone(), |body, error| {
-                body.child(
-                    div()
-                        .id("linked-games-error")
-                        .test_support()
-                        .text_color(cx.theme().danger)
-                        .child(error),
+        // 原版这个弹层是「磁贴墙」：`.list-box` 里每个已关联游戏一张
+        // `.linked-game-tile`，末尾固定跟一张 `.add-new` 虚线磁贴用来添加
+        // （样式依据见 docs/re/linked-game-tile-audit.md）。
+        let mut tiles: Vec<AnyElement> = self
+            .games
+            .iter()
+            .map(|game| {
+                let path = game.executable.clone();
+                crate::ui::game_tile::linked_game_tile(
+                    SharedString::from(format!("linked-game-{path}")),
+                    game.name.clone(),
+                    cx.listener(move |this, _, _, cx| {
+                        this.games.retain(|game| game.executable != path);
+                        this.error = None;
+                        cx.notify();
+                    }),
+                    cx,
                 )
-            });
+            })
+            .collect();
+        tiles.push(crate::ui::game_tile::add_new_tile(
+            "linked-games-add-new",
+            crate::i18n::t_or("ADD_GAME_AND_PROGRAM", "游戏与程序"),
+            cx.listener(|this, _, window, cx| this.add(window, cx)),
+            cx,
+        ));
+        let body = body.child(
+            div()
+                .id("linked-games-list")
+                .max_h(surface::css(300.))
+                .overflow_y_scroll()
+                .child(crate::ui::game_tile::list_box(tiles)),
+        );
+        let body = body.when_some(self.error.clone(), |body, error| {
+            body.child(
+                div()
+                    .id("linked-games-error")
+                    .test_support()
+                    .text_color(cx.theme().danger)
+                    .child(error),
+            )
+        });
         v_flex()
             .id("linked-games-dialog")
             .test_support()
@@ -219,17 +199,20 @@ impl Render for LinkedGamesDialog {
             .child(
                 profile_dialog_footer(cx)
                     .child(
-                        profile_dialog_button("linked-games-cancel", "取消", cx).on_click(
-                            cx.listener(|this, _, window, cx| {
+                        profile_dialog_button("linked-games-cancel", "取消", ThxKind::Test, cx)
+                            .on_click(cx.listener(|this, _, window, cx| {
                                 dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            }),
-                        ),
+                            })),
                     )
                     .child(
-                        profile_dialog_button("linked-games-save", "保存到本地草稿", cx)
-                            .primary()
-                            .disabled(self.busy)
-                            .on_click(cx.listener(|this, _, window, cx| this.save(window, cx))),
+                        profile_dialog_button(
+                            "linked-games-save",
+                            "保存到本地草稿",
+                            ThxKind::Primary,
+                            cx,
+                        )
+                        .disabled(self.busy)
+                        .on_click(cx.listener(|this, _, window, cx| this.save(window, cx))),
                     ),
             )
     }
@@ -251,6 +234,8 @@ impl DeviceWorkspace {
             error: None,
         });
         self.show_profile_dialog(format!("关联游戏 — {name}"), view.into(), window, cx);
+        // 源码 `showLinkedGames` 为真时导航行带 `disabled` 类（`opacity:.5`）。
+        self.linked_games_open = true;
     }
 }
 

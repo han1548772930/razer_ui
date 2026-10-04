@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "8422029c1e67a38c2d168e059c5b34f3b9f8cada0419bb4cb317e94b7784f7e8",
+  "source": {
+    "path": ".ref/devices/182/static/css/main.48c20423.css",
+    "sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e"
+  },
+  "rules": {
+    "nav": {
+      "background-repeat": "no-repeat",
+      "border-radius": "14px",
+      "color": "#999",
+      "line-height": "14px",
+      "margin-right": "20px",
+      "padding": "7px 10px",
+      "text-align": "center",
+      "text-transform": "uppercase",
+      "transition": "background-color .3s,color,.1s",
+      "white-space": "nowrap",
+      "will-change": "background-color,color"
+    },
+    "hover": {
+      "background-color": "#2d2d2d",
+      "color": "#ccc"
+    },
+    "active": {
+      "background-color": "#3cbf27",
+      "color": "#111"
+    },
+    "selected": {
+      "background-color": "#44d62c",
+      "color": "#111"
+    },
+    "disabled": {
+      "opacity": ".3",
+      "pointer-events": "none"
+    }
+  },
+  "theme_tokens": {
+    "muted_foreground": "#999999",
+    "foreground": "#CCCCCC",
+    "secondary_hover": "#2D2D2D",
+    "primary": "#44D62C",
+    "primary_foreground": "#111111"
+  },
+  "metrics": {
+    "radius": 14,
+    "pad_x": 10,
+    "pad_y": 7,
+    "line_height": 14,
+    "height": 28
+  },
+  "overflow": {
+    "wrapper": {
+      "flex": "1 0 max-content"
+    },
+    "dots": {
+      "background-image": "url(../../static/media/icon_more_default.eb7284c1.svg)",
+      "border": "none",
+      "border-radius": "13px"
+    },
+    "dots_hover": {
+      "background-color": "#2d2d2d",
+      "background-image": "url(../../static/media/icon_more.fb688d78.svg)"
+    },
+    "dots_active": {
+      "background-color": "#44d62c",
+      "background-image": "url(../../static/media/icon_more_active.8e04906f.svg)"
+    },
+    "act": {
+      "color": "#ccc",
+      "font-size": "14px"
+    },
+    "act_hover": {
+      "background-color": "#1a1a1a"
+    },
+    "act_active": {
+      "background-color": "#000",
+      "color": "#44d62c"
+    },
+    "act_active_hover": {
+      "background-color": "#1a1a1a",
+      "color": "#44d62c"
+    },
+    "hover_border": {
+      "background-position": "50%",
+      "background-repeat": "no-repeat",
+      "background-size": "20px",
+      "border": "1px solid #222",
+      "height": "26px",
+      "margin-right": "10px",
+      "transition": "border-color .2s",
+      "width": "26px",
+      "will-change": "border-color"
+    },
+    "hover_border_transition": "border-color .2s",
+    "profile_act": {
+      "background": "#000",
+      "border": "1px solid #5d5d5d",
+      "height": "0",
+      "left": "-1px",
+      "max-width": "280px",
+      "min-width": "155px",
+      "position": "absolute",
+      "top": "26px",
+      "transition": "height 0s,visibility 0s,opacity .1s linear",
+      "visibility": "hidden",
+      "width": "max-content",
+      "will-change": "height,visibility,opacity",
+      "z-index": "3"
+    },
+    "profile_act_show": {
+      "height": "auto",
+      "opacity": "1",
+      "visibility": "visible",
+      "z-index": "11"
+    },
+    "profile_act_row": {
+      "align-items": "center",
+      "background-color": "#0000",
+      "display": "flex",
+      "height": "auto",
+      "line-height": "17px",
+      "padding": "5px 6px",
+      "text-transform": "capitalize",
+      "transition": "background-color .3s",
+      "will-change": "background-color"
+    }
+  },
+  "arrows": {
+    "back": {
+      "background-image": "url(../../static/media/nav_back_arrow.0203563a.svg)"
+    },
+    "forward": {
+      "background-image": "url(../../static/media/nav_fwd_arrow.8ceda865.svg)"
+    },
+    "packaged": [
+      {
+        "output": "assets/synapse/nav-back-arrow.svg",
+        "source": ".ref/devices/182/static/media/nav_back_arrow.0203563a.svg"
+      },
+      {
+        "output": "assets/synapse/nav-fwd-arrow.svg",
+        "source": ".ref/devices/182/static/media/nav_fwd_arrow.8ceda865.svg"
+      }
+    ]
+  },
+  "gaps": {
+    "hover_foreground": "#ccc",
+    "pressed_foreground": "#111",
+    "transitions": "background-color .3s,color,.1s"
+  },
+  "problems": []
+}

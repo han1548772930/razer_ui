@@ -7,7 +7,7 @@
 | 产品或范围 | 尚未完成的 UI |
 | --- | --- |
 | 鼠标、键盘共享页面 | 完整自定义映射、高级动作、替代布局和条件分支；源产品工作区的配置更多菜单、部分右侧图标 |
-| displayMode 独立窗口 | 四种根级分支的**打开者**都已从当前源码查清：`multiDevicePairing`（30 包）已按原版做成真正的第二个 gpui 窗口（具名单例、存在即聚焦，配对页设备卡为入口，见 [配对窗口审计](multi-pairing-window-current-audit.md)）；`macro`（174 包）不是第二个产品窗口，而是宏应用窗口（`macro`／`/synapse/macro/`／`policy=3,tab_visible=1`）在「绑定到设备」弹层里的 iframe，宏窗口本地已实现外框与两个导航标签（见 [宏应用审计](macro-app-current-audit.md)、[界面审计](macro-app-ui-audit.md)）；`chromaApp`（212 包）在 Dashboard 里出现 0 次，属于独立 Chroma 应用窗口；`armory`（226 包）属于 `armory` 应用窗口，本地未实现。具名窗口清单、标志与模块盒去向见 [窗口契约](display-window-contract.md)。窗口图标（`app_icon_path`）在 gpui 里没有对应字段 |
+| displayMode 独立窗口 | 四种根级分支的**打开者**都已从当前源码查清：`multiDevicePairing`（30 包）已按原版做成真正的第二个 gpui 窗口（具名单例、存在即聚焦，配对页设备卡为入口，见 [配对窗口审计](multi-pairing-window-current-audit.md)）；`macro`（174 包）不是第二个产品窗口，而是宏应用窗口（`macro`／`/synapse/macro/`／`policy=3,tab_visible=1`）在「绑定到设备」弹层里的 iframe，宏窗口本地已实现外框与两个导航标签（见 [宏应用审计](macro-app-current-audit.md)、[界面审计](macro-app-ui-audit.md)）；`chromaApp`（212 包）在 Dashboard 里出现 0 次，属于独立 Chroma 应用窗口；`armory`（226 包）属于 `armory` 应用窗口，本地已实现窗口外框与四个导航标签（精选推荐／浏览／我的下载／我的上传），并在模块目录里改为直接打开，见 [Armory 依据](armory-app-current-audit.md)；资料分享服务与内容未接入。模块目录七个盒子现在有六个直接打开（Alexa、宏、已关联的游戏→profiles 窗口、Armory、配置文件迁移、介绍导览），只有 `feedback` 仍是门控：它的窗口名 `feedback-synapse` 与 URL 都取自模块表，但该应用源码不在当前提取范围内，无法复刻界面。表与打开参数见 [模块注册表依据](module-registry-audit.md)。具名窗口清单、标志与模块盒去向见 [窗口契约](display-window-contract.md)。窗口图标（`app_icon_path`）在 gpui 里没有对应字段 |
 | 740 / 746 磁轴键盘 | 完整页与配套校准弹层已接入；载入/光标动画、错误后关闭时序、出厂配置禁用分支及介绍状态持久化仍有缺口 |
 | 691 BlackWidow V4 Pro 75% | OLED 内容编辑器、主页预览卡片、语言选择/下载相关 UI 与传输状态 |
 | 3592 / 3594 / 3595 / 3596 Kiyo | 取景行（变焦、平移／倾斜、五个预设、预设快捷键）、分辨率行、水印放置盘、LDC×分辨率复合禁用、白框拖动与黑框跟随、左右方向键图标、变焦步进器（含 300ms 长按重复与 hover 显隐）均已接入；实时画面与设备枚举、第三方（Camo／NVIDIA／XSplit）分支、上下/中心方向键图标（资源缺失）、亮度/对比度/饱和度/锐度/增益/白平衡六行的步进器仍缺，见 [取景审计](camera-framing-current-audit.md) |
@@ -33,3 +33,26 @@
 真实配对、校准、相机流、音频处理、自动化执行、设备遥测、账户和安装服务也仍有独立缺口。它们与 UI 还原分开记录，不用示例状态冒充设备事实。
 
 本清单是已知缺口，不是声称未列出的细节已经完成。逐产品、逐页面路由见 [原生覆盖表](native-product-coverage.md) / [机器可读清单](native-product-coverage.json)，总体状态见 [当前 UI 完成状态](21-ui-completion-status.md)。
+
+## 第 13–30 轮新增或修正（均带审计脚本与依据文档）
+
+| 内容 | 依据文档 | 机检脚本 |
+| --- | --- | --- |
+| 设备页顶栏电量补到 182 型产品的 `DeviceWorkspace::toolbar`（原先只加在源工作区） | [battery-indicator-audit.md](battery-indicator-audit.md) | `audit-battery-indicator.cjs` |
+| 托盘：弹窗 360×200、左键不再切换、位置 `x = 托盘x − w/2`、`y = 托盘y − h` 并夹在 `rcWork` | [host-tray-audit.md](host-tray-audit.md) | `audit-host-tray.cjs` |
+| 设备页共享控件：`.widget` 600×`padding:30px 40px`、标题 `#44d62c/RazerF5/16px/mb 20px`、`.h1-body`、`.check-item`、`.widget .content`、轮询率面板与警告块 | [device-page-css-audit.md](device-page-css-audit.md) | `audit-device-page-css.cjs` |
+| 动作分类栏图标与悬停底色 `#393939` | [action-category-icons-audit.md](action-category-icons-audit.md) | `audit-action-category-icons.cjs` |
+| 模块目录七个盒子六个直接打开（含 maco/armory/profiles） | [module-registry-audit.md](module-registry-audit.md) | `audit-module-registry.cjs` |
+| 关联游戏磁贴：`.list-box` + 每游戏一张 `.linked-game-tile` + 固定 `.add-new`（40px `icon_add` 资产），接进关联游戏对话框 | [linked-game-tile-audit.md](linked-game-tile-audit.md) | `audit-linked-game-tile.cjs` |
+| profiles 窗口：应用自己的五条路由视图 + 返回/前进历史 + `.razer-profiles` 视图容器 | [profiles-app-audit.md](profiles-app-audit.md) | `audit-profiles-app.cjs` |
+| 设备页标签栏：悬停文字 `#ccc`、按下底色 `#3cbf27`、大写、`.nav.back/.nav.forward` 箭头与页历史、溢出 `.dots3` 菜单（`.profile-act` 面板 + `.act` 行） | [device-tabs-audit.md](device-tabs-audit.md) | `audit-device-tabs.cjs` |
+| `.hover-border` 的 `transition:border-color .2s`（profile 栏「更多」与标签溢出共用） | 同上 | 同上 |
+| 对话框按钮 `.thx-btn`（绿/灰两态、大写、`1px #0000004d`、悬停 `opacity .8`） | [thx-button-audit.md](thx-button-audit.md) | `audit-thx-button.cjs` |
+| 导入/导出底栏：`.import-profile-btn-group`、导出模式的 `willNotImport` 文案、关联游戏弹层打开时导航行 `opacity .5`（`div.nav-tabs.disabled`） | [import-export-footer-audit.md](import-export-footer-audit.md) | `audit-import-export.cjs` |
+| 宏窗口顶栏：46px / `#222` / 2px `#000` / 居中（`.nav-wrapper` + `.module-nav`） | [macro-app-chrome-audit.md](macro-app-chrome-audit.md) | `audit-macro-app-chrome.cjs` |
+
+## 缺失资源（挡住后续复刻）
+
+- **宏应用**：`.ref/applications/synapse/macro/static/media/` 本次抽取中不存在；其 CSS 引用的 164 个媒体文件里 **39 个在整个 `.ref` 树中按哈希找不到**（`icon_new_marco*`、`icon_addfolder*`、`icon_layer` 等），因此左栏「新建宏 / 新建文件夹」按钮与功能面板图标无法绘制。
+- **profiles 应用**：`static/media/` 同样为空（`icon_add.c95a8d74.svg` 一类因为设备包里有同哈希副本才拿到）。
+- 这些缺口都以「记录规则 + 不绘制」的方式处理，没有用替代图形顶替。

@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "77f64319768be82d260d20e694c21387f001fd154521a2ab0f99bf944e0d2f92",
+  "sources": {
+    "css": {
+      "path": ".ref/applications/synapse/macro/static/css/main.9ea5d7e7.css",
+      "sha256": "570aa52da8c8d56ed6ee0a607d2e00b48d720f8b34df07f84666d629f10506ce"
+    },
+    "js": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d"
+    }
+  },
+  "rules": {
+    "nav_wrapper": {
+      "background": "#222",
+      "width": "100vw"
+    },
+    "over_border": {
+      "border-bottom": "2px solid #000"
+    },
+    "module_nav": {
+      "align-items": "center",
+      "display": "flex",
+      "flex": "1 0 max-content",
+      "height": "46px",
+      "justify-content": "center"
+    },
+    "nav_folder": {
+      "border-top": "1px solid #515151",
+      "margin": "10px 0",
+      "padding": "10px 0"
+    },
+    "macro_tooltip": {
+      "background": "#000",
+      "border": "1px solid #515151",
+      "color": "#ccc",
+      "display": "none",
+      "left": "50%",
+      "min-width": "100px",
+      "padding": "5px",
+      "position": "absolute",
+      "text-align": "center",
+      "text-transform": "capitalize",
+      "top": "25px",
+      "transition": "all 1s ease",
+      "z-index": "1"
+    },
+    "add_macro_file": {
+      "background-image": "url(../../static/media/icon_new_marco.6edec51b.svg)"
+    },
+    "add_macro_folder": {
+      "background-image": "url(../../static/media/icon_addfolder-1.3c65591c.svg)"
+    }
+  },
+  "local": {
+    "nav_row": "46px / theme.sidebar(#222) / border-b 2px theme.title_bar(#000) / justify_center",
+    "gaps": [
+      "宏功能面板（delay/keyboard/mouse/macro/launch/command/text/loop + 3 个 AI 项）图标缺失",
+      "左右栏图标 icon_new_marco* / icon_addfolder* / icon_layer 在当前抽取中不存在",
+      "navFolder 的「新建宏 / 新建文件夹」两个按钮因此尚未绘制（.macro_tooltip 悬停提示规则已记录）",
+      "navbar 的 profile 栏（Mn, hasOBM=false/hasBattery=false）与教程图标未接入"
+    ]
+  },
+  "referenced_media": {
+    "total": 164,
+    "missing": [
+      "chroma_studio.eb1dafb4.svg",
+      "chroma_sync.af68ffe5.svg",
+      "windows_logo.e334c8f1.svg",
+      "icon_close.4f578909.svg",
+      "icon_help_active.59a3a2e2.svg",
+      "icon_help_hover.64282a2f.svg",
+      "icon_obm.2a120b52.svg",
+      "icon_obm_red.9afbbfa0.svg",
+      "icon_obm_green.e8d21bac.svg",
+      "icon_obm_blue.f68986bb.svg",
+      "icon_obm_cyan.d0281737.svg",
+      "icon_direction_cw_999.fb252011.svg",
+      "icon_direction_cw.dcb6ed6c.svg",
+      "icon_direction_ccw_999.011051c8.svg",
+      "icon_direction_ccw.9ea4d74f.svg",
+      "icon_config_switch_lighting.40a460a6.svg",
+      "icon_config_switch_lighting_a.10af6d2f.svg",
+      "icon_config_volume_down.8440b286.svg",
+      "icon_config_volume_up.eb182a42.svg",
+      "icon_config_volume_down_a.94a7ba42.svg",
+      "icon_config_volume_up_a.e0a9120c.svg",
+      "icon_record.9183ffe6.svg",
+      "icon_delete.d1a6a9ad.svg",
+      "icon_delete_r.033c20fb.svg",
+      "icon_chevron.6a725e60.svg",
+      "icon_chevron_r.0ba840e4.svg",
+      "icon_textfield_clear_icon.f384744b.svg",
+      "icon_more-pressed.f7f8588b.svg",
+      "icon_more-hover.aa4fe640.svg",
+      "icon_folder_close-2.523e657a.svg",
+      "icon_folder_open.076142a3.svg",
+      "icon_macro-file.2f24e5a0.svg",
+      "icon_marco-file-hover.0e086ddd.svg",
+      "icon_addfolder-hover.a804c680.svg",
+      "icon_addfolder-pressed.aa5ec3ce.svg",
+      "icon_addfolder-1.3c65591c.svg",
+      "icon_new_marco-hover.47953e67.svg",
+      "icon_new_marco-pressed.0faeaad4.svg",
+      "icon_new_marco.6edec51b.svg"
+    ]
+  },
+  "problems": []
+}
