@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "d0ec53bebfa41c9aa317ad77468e95ac32033d5dbdc3b66c4c1c9fc79a6deb50",
+  "generator_sha256": "c889a5432fbf8da44192e90549e61e680b27c45fcf933068f96095d9ae7f8dac",
   "method": "Acorn receipts for Dashboard module 84058 (flags, window name, open function) and a text receipt for the multi-device pairing URL construction. No downloaded JavaScript is executed.",
   "window_flags": {
     "sameWindow": "policy=3",

@@ -906,7 +906,7 @@
     {
       "file": "src/features/source_workspace.rs",
       "marker": "impl Render for SourceProductWorkspace",
-      "sha256": "7bc22e14a174760512546df3cb5c8efe374a514b9ae292182dfda7ca09672eac"
+      "sha256": "ce49e4bbcc6c6d1d621fe9eed998bbc5855e22c2f8bcf39b5df97bf3c903bad6"
     }
   ],
   "limitations": [

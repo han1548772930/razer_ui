@@ -1,5 +1,7 @@
 # 宏应用与 `displayMode=macro` 当前源码审计
 
+2026-10-04 实现状态补充：下文“尚未实现”属于初次审计时的历史状态。当前已接通本地宏编辑器和部分产品的会话内绑定流程，见[当前复核](macro-current-source-review.md)与[绑定专项](macro-bindings-current-audit.md)。后者另行重审了当前 21700 与 182 产品根，不能仅凭本旧文档的链接判断符号或行为已经复核。
+
 > 来源：当前 Synapse 包 `.ref/applications/synapse/macro/`（manifest `gitMetadata.branch = master-21sep2026`、`commit = c100ac67…`）与当前 Dashboard 包。所有结论由 [audit-macro-app.cjs](../../tools/audit-macro-app.cjs) 静态提取，逐条带文件、偏移与 SHA-256 收据；没有执行任何下载的 JavaScript。
 
 ## 结论先说

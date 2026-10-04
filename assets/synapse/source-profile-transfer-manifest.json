@@ -1,0 +1,16 @@
+[
+  {
+    "source": ".ref/devices/3946/static/media/icon_folder_grey.220b24b0.svg",
+    "output": "assets/synapse/source-transfer-folder.svg",
+    "source_sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+    "output_sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_folder_grey.220b24b0.svg"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_cone.7bf8041f.svg",
+    "output": "assets/synapse/source-transfer-cone.svg",
+    "source_sha256": "63a494b66617e37e640171cf63ccbe43d578be35d0ca75dcc7d0f49e1eb2b6e7",
+    "output_sha256": "63a494b66617e37e640171cf63ccbe43d578be35d0ca75dcc7d0f49e1eb2b6e7",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_cone.7bf8041f.svg"
+  }
+]

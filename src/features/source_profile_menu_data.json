@@ -1,0 +1,1697 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 164,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/164/static/js/main.458d4103.js",
+        "sha256": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40",
+        "offset": 4303778
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 241,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/241/static/js/11.219fb515.chunk.js",
+        "sha256": "d39889eed8d9c2443c0a57b075018604c8e4283a70ef98dc554ac712f667dc61",
+        "offset": 216533
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 778,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "MAINBOARD",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/778/static/js/main.032287fa.js",
+        "sha256": "7d43accf4ac45160498dfcf0a128e7e22e30a210550a69bafbe203174cb703a2",
+        "offset": 4523906
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 784,
+      "category": "IOT",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "IOT",
+          "STRIP",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/784/static/js/main.3094caa4.js",
+        "sha256": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2",
+        "offset": 4274096
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 3871,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "ARGB_CONTROLLER",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/3871/static/js/main.7e64d4d0.js",
+        "sha256": "6928bb0a0009ae44287fa4175ac8287f0307e40abc76bdf98b52fe6fc500eb8f",
+        "offset": 4596954
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 3884,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "ARGB_CONTROLLER",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/3884/static/js/main.607cfa0c.js",
+        "sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+        "offset": 4487310
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 3886,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 150,
+      "menu_width_mode": "150px",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #c8323c",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #c8323c",
+          "border_radius": 3,
+          "button_keys": [],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": null
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/3886/static/js/main.44393ea2.js",
+        "sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+        "offset": 4166343
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 3946,
+      "category": "ACCESSORY",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": [
+            "share_category_unsupported"
+          ]
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": [
+            "reset_unsupported"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": false,
+        "share_profile": false
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "ACCESSORY",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+        "sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+        "offset": 6382996
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    }
+  ],
+  "uncovered": []
+}

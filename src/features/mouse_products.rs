@@ -51,6 +51,12 @@ struct MouseEffect {
 }
 
 impl MouseProductSpec {
+    pub(crate) fn macro_groups(&self) -> &[Value] {
+        &self.groups
+    }
+    pub(crate) fn macro_image(&self) -> Option<&str> {
+        self.image.as_deref()
+    }
     fn has_page(&self, key: &str) -> bool {
         self.pages.iter().any(|p| p == key)
     }

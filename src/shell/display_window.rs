@@ -1,7 +1,7 @@
-//! 产品包的 `displayMode` 根以**具名窗口**打开，而不是应用内路由。
+//! Named OS windows. Named policy=3 pages use the shell's host tabs instead.
 //!
 //! Dashboard 打开这些根时传的是「窗口名 + 标志 + URL 参数」：宿主先查同名窗口是否
-//! 已存在，存在就复用它并聚焦，否则才新建。契约（13 个标志、三条窗口名规则、配对
+//! 已存在，存在就复用它并聚焦，否则按策略添加页签或新建窗口。契约（13 个标志、三条窗口名规则、配对
 //! 窗口的参数构造）与逐字段收据见 `docs/re/display-window-contract.md`。
 //!
 //! 这里只实现窗口层；根的内容由各自视图提供，服务未接通时不会伪造设备事实。
@@ -13,8 +13,9 @@ use std::cell::RefCell;
 /// `searchParams.get("displayMode")` 的比较字面量。
 ///
 /// 四个取值都来自 [分支审计](../docs/re/display-mode-audit.md)；
-/// `multiDevicePairing`、`macro`、`armory` 与 `profiles` 已接上本地窗口根，
-/// `chromaApp` 仍属于独立 Chroma 应用。
+/// The application modules live in host tabs. Product-side macro/armory roots
+/// are separate embedded modes, not an OS-window policy. Pairing retains an
+/// explicitly requested second window; `chromaApp` belongs to Chroma.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DisplayMode {
@@ -54,8 +55,9 @@ pub(super) struct WindowIdentity {
     pub(super) serial_number: Option<String>,
 }
 
-/// Dashboard 的窗口策略标志。`Same` 表示复用同名的既有窗口（原版先查窗口是否
-/// 存在，存在就复用），另外两个才总是新窗口；三个取值都来自窗口契约。
+/// Dashboard policy flags. Same attaches a named tab to the current host
+/// window; Different and DifferentSingleProcess create OS windows. Name
+/// deduplication happens before policy dispatch in the original host.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum WindowPolicy {
@@ -124,6 +126,10 @@ pub(super) fn open_or_focus<V: Render + 'static>(
     options: WindowOptions,
     build: impl FnOnce(&mut Window, &mut App) -> Entity<V>,
 ) -> anyhow::Result<(WindowOutcome, AnyWindowHandle)> {
+    anyhow::ensure!(
+        policy != WindowPolicy::Same,
+        "policy=3 must be opened through the host tab registry"
+    );
     let live = cx.windows();
     let existing = OPEN_WINDOWS.with(|windows| {
         let mut windows = windows.borrow_mut();

@@ -11,6 +11,38 @@ use gpui_kit::{
 };
 use std::{cell::Cell, rc::Rc};
 
+#[gpui_kit::test]
+fn named_modules_reuse_host_tabs_and_preserve_legacy_alexa_order(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        let mut tabs = HostTabs::new(cx);
+        for tab in [
+            HostTab::Macro,
+            HostTab::Feedback,
+            HostTab::Alexa,
+            HostTab::Profiles,
+        ] {
+            tabs.visit(&tab.location(), cx);
+            tabs.visit(&tab.location(), cx);
+        }
+        assert_eq!(
+            tabs.order(),
+            ["macro", "feedback-synapse", "alexa", "profiles"]
+        );
+        tabs.restore_order(&["host-alexa".into(), "profiles".into(), "macro".into()]);
+        assert_eq!(
+            tabs.order(),
+            ["alexa", "profiles", "macro", "feedback-synapse"]
+        );
+        assert!(tabs.remove(&HostTab::Feedback, &Location::Feedback) == Some(Location::Macro));
+        tabs.visit(&Location::Feedback, cx);
+        assert_eq!(
+            tabs.order(),
+            ["alexa", "profiles", "macro", "feedback-synapse"]
+        );
+        assert!(!tabs.closed.contains(&HostTab::Feedback));
+    });
+}
+
 struct ChromeFixture {
     scroll: ScrollHandle,
     blank_presses: Rc<Cell<usize>>,

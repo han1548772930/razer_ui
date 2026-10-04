@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / ".ref/devices/691"
 PREFIX = "/synapse/products/691/ui/"
 KEYS = {
+    "gifWorker.js": "js",
+    "static/js/9537.835bd6f0.chunk.js": "js",
     **{f"static/media/{index}_15fps.gif": "gif" for index in range(1, 7)},
     "static/media/lets-go-animated_232x64.gif": "gif",
     "static/media/magick.wasm": "wasm",
@@ -37,6 +39,8 @@ def unsigned_leb(data, offset):
     for shift in range(0, 35, 7):
         byte = data[offset]
         offset += 1
+        if shift == 28 and byte & 0xf0:
+            raise ValueError("WASM section length exceeds u32")
         value |= (byte & 127) << shift
         if not byte & 128:
             return value, offset
@@ -82,13 +86,39 @@ def validate_payload(kind, data, pid=None):
                      "validation_scope": "header and section bounds; no execution"}
         else:
             value = json.loads(data)
-            if value.get("version") != 3 or not isinstance(value.get("sources"), list):
+            if (not isinstance(value, dict) or value.get("version") != 3
+                    or not isinstance(value.get("sources"), list)
+                    or not all(isinstance(source, str) for source in value["sources"])):
                 raise ValueError("Expected source-map version 3")
+            contents = value.get("sourcesContent", [])
+            if not isinstance(contents, list) or (
+                    "sourcesContent" in value and len(contents) != len(value["sources"])):
+                raise ValueError("Source-map sourcesContent does not match sources")
             extra = {"sources": value["sources"],
-                     "sources_content_count": len(value.get("sourcesContent", []))}
+                     "sources_content_count": len(contents)}
         return {"valid": True, "kind": kind, "reason": None, **extra}
     except (IndexError, KeyError, OSError, TypeError, ValueError) as error:
         return {"valid": False, "kind": kind, "reason": str(error)}
+
+
+def verify_receipt(url, target, kind, receipt):
+    """Bind the HTTP receipt to the exact local body before publishing evidence."""
+    successful = receipt.get("http_status") == 200
+    body = target if successful else target.with_name(target.name + ".response")
+    if receipt.get("source_url") != url or receipt.get("body_file") != body.name:
+        raise ValueError(f"Receipt URL/body mismatch: {target}")
+    data = body.read_bytes()
+    if receipt.get("bytes") != len(data) or receipt.get("sha256") != discovery.sha256(data):
+        raise ValueError(f"Receipt byte count/hash mismatch: {target}")
+    if successful:
+        validation = validate_payload(kind, data)
+        if receipt.get("validation") != validation:
+            raise ValueError(f"Receipt payload validation mismatch: {target}")
+        if receipt.get("result") != ("ok" if validation["valid"] else "invalid_payload"):
+            raise ValueError(f"Receipt result/validation mismatch: {target}")
+    elif receipt.get("http_status") == 404 and receipt.get("result") != "not_found":
+        raise ValueError(f"Receipt absence status mismatch: {target}")
+    return body.relative_to(ROOT).as_posix()
 
 
 def main():
@@ -105,7 +135,14 @@ def main():
         parser.error("workers, timeout and attempts must be positive")
     if options.offline and options.refresh:
         parser.error("offline and refresh are mutually exclusive")
-    manifest = json.loads((BASE / "asset-manifest.json").read_text())
+    manifest_path = BASE / "asset-manifest.json"
+    manifest_receipt_path = BASE / "asset-manifest.json.http.json"
+    manifest_receipt = json.loads(manifest_receipt_path.read_text())
+    verify_receipt("https://apps.razer.com" + PREFIX + "asset-manifest.json",
+                   manifest_path, "assets", manifest_receipt)
+    if manifest_receipt.get("result") != "ok":
+        parser.error("Current product manifest has no successful HTTP receipt")
+    manifest = json.loads(manifest_path.read_text())
     jobs = []
     for key, kind in KEYS.items():
         declared = manifest["files"][key]
@@ -115,14 +152,36 @@ def main():
         target = (BASE / relative).resolve()
         if not target.is_relative_to(BASE.resolve()):
             parser.error("Resource path leaves current product snapshot")
+        cached_receipt_path = target.with_name(target.name + ".http.json")
+        if cached_receipt_path.is_file():
+            cached = json.loads(cached_receipt_path.read_text())
+            expected_body = target.name + ("" if cached.get("http_status") == 200 else ".response")
+            if cached.get("body_file") != expected_body:
+                parser.error(f"Unexpected cached response body: {cached_receipt_path}")
         jobs.append(("https://apps.razer.com" + declared, target, kind))
     # Specialize validation in this helper's process only; shared tools retain
     # their own schema. The downloaded code is never loaded as Python or JS.
     discovery.validate_payload = validate_payload
     with concurrent.futures.ThreadPoolExecutor(max_workers=options.workers) as pool:
         replies = list(pool.map(lambda job: discovery.fetch_snapshot(*job, options), jobs))
-    for (url, _, kind), reply in zip(jobs, replies):
+    bodies = []
+    for (url, target, kind), reply in zip(jobs, replies):
+        bodies.append(verify_receipt(url, target, kind, reply))
         print(f"{reply['result']}: {kind} {url}", flush=True)
+    discovery.write_json(ROOT / "docs/re/oled-worker-resources-current-evidence.json", {
+        "product_id": 691,
+        "manifest": ".ref/devices/691/asset-manifest.json",
+        "manifest_http_receipt": manifest_receipt_path.relative_to(ROOT).as_posix(),
+        "manifest_sha256": discovery.sha256((BASE / "asset-manifest.json").read_bytes()),
+        "resources": [{
+            "manifest_key": key, "body_path": body,
+            "kind": kind, "path": target.relative_to(ROOT).as_posix(),
+            "http_receipt": target.with_name(target.name + ".http.json").relative_to(ROOT).as_posix(),
+            **{key: reply.get(key) for key in (
+                "source_url", "result", "http_status", "fetched_at_utc", "sha256", "bytes", "validation")},
+        } for key, (_, target, kind), reply, body in zip(KEYS, jobs, replies, bodies)],
+        "validation": "Static HTTP/hash, GIF media decode, WASM header/section bounds and JSON parsing only; no downloaded code execution.",
+    })
     if any(reply["result"] != "ok" and not (kind == "sourcemap" and reply["result"] == "not_found")
            for (_, _, kind), reply in zip(jobs, replies)):
         raise SystemExit(1)

@@ -105,6 +105,34 @@
     "output_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
   },
   {
+    "source": ".ref/devices/3946/static/media/icon_direction_up_999.2c24f25f.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_up_999.2c24f25f.svg",
+    "output": "assets/synapse/automation-icon_direction_up_999.svg",
+    "source_sha256": "3c600a5559b552ebf0e3d7b5115620958defb466f92b7590c38c64b929340594",
+    "output_sha256": "3c600a5559b552ebf0e3d7b5115620958defb466f92b7590c38c64b929340594"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_direction_up.f4029a80.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_up.f4029a80.svg",
+    "output": "assets/synapse/automation-icon_direction_up.svg",
+    "source_sha256": "f4b59720a3c34e20d2b879144f2e4c1cc99641a610eb69907391836959deb710",
+    "output_sha256": "f4b59720a3c34e20d2b879144f2e4c1cc99641a610eb69907391836959deb710"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_direction_down_999.56bcfa23.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_down_999.56bcfa23.svg",
+    "output": "assets/synapse/automation-icon_direction_down_999.svg",
+    "source_sha256": "0b7f9af912f1eaa67f79d9b8fcb07c3aa176fea8e154e6e11723577d6b82c9ff",
+    "output_sha256": "0b7f9af912f1eaa67f79d9b8fcb07c3aa176fea8e154e6e11723577d6b82c9ff"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_direction_down.531edd48.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_down.531edd48.svg",
+    "output": "assets/synapse/automation-icon_direction_down.svg",
+    "source_sha256": "df5ad0e600e74eb95a552dc8b44c43cd1c4257fd7849362e82a5ce089eedbbd6",
+    "output_sha256": "df5ad0e600e74eb95a552dc8b44c43cd1c4257fd7849362e82a5ce089eedbbd6"
+  },
+  {
     "source": ".ref/devices/3946/static/js/main.46ad416c.js",
     "source_offset": 6917536,
     "source_end": 6918270,

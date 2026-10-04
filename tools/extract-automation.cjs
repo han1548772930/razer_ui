@@ -57,9 +57,13 @@ const effects=exported('QUICK_EFFECTS'),metadata=exported('DeviceInfo');
 const constantsModule=modules.get(13254),constantsExports=calls.find(c=>c.start>=constantsModule.start&&c.end<=constantsModule.end);
 const effectDefaults=decode(constantsExports.arguments[1].properties.find(p=>p.key.name==='U2A').value.body);
 const quickColorClasses=[];
+let colorPickerRender;
+const laneMounts=[];
 function captureQuickColor(node){
  if(!node?.type)return;
- if(node.type==='ClassDeclaration'&&['_l','vl'].includes(node.id?.name)&&node.start>6400000&&node.start<6460000)quickColorClasses.push(node);
+ if(node.type==='ClassDeclaration'&&['_l','vl','Ql','AI','uP','yT'].includes(node.id?.name)&&node.start>6390000&&node.start<6690000)quickColorClasses.push(node);
+ if(node.type==='ClassDeclaration'&&node.id?.name==='sl'&&node.start>6400000&&node.start<6430000)colorPickerRender=node.body.body.find(method=>method.key?.name==='render');
+ if(node.type==='CallExpression'&&node.start>6695000&&node.start<6696000&&node.arguments[0]?.name==='GP')laneMounts.push(node);
  for(const value of Object.values(node))if(Array.isArray(value))value.forEach(captureQuickColor);else if(value?.type)captureQuickColor(value);
 }
 captureQuickColor(ast);
@@ -103,7 +107,7 @@ for(const [ix,node] of kinds.init.elements.entries()){
  if(!Object.values(manifest.files).some(p=>p.replace(/^\.\//,'')===request))throw Error('Undeclared icon');
  assets.push({source:'.ref/devices/3946/'+request,url:'https://apps.razer.com/synapse/products/3946/ui/'+request,output:`assets/synapse/automation-${ix}.svg`});
 }
-for(const name of ['icon_add_light_grey','icon_delete','tooltip_questionmark','icon_warning','thx_spatial_audio_logo','logo-7.1','icon_folder','icon_expand','icon_close']){
+for(const name of ['icon_add_light_grey','icon_delete','tooltip_questionmark','icon_warning','thx_spatial_audio_logo','logo-7.1','icon_folder','icon_expand','icon_close','icon_direction_up_999','icon_direction_up','icon_direction_down_999','icon_direction_down']){
  const request=Object.values(manifest.files).find(v=>new RegExp('/'+name+'\\.[a-f0-9]+\\.svg$').test(v))?.replace(/^\.\//,'');
  if(!request)throw Error('Missing auxiliary icon '+name);
  assets.push({source:'.ref/devices/3946/'+request,url:'https://apps.razer.com/synapse/products/3946/ui/'+request,output:`assets/synapse/automation-${name}.svg`});
@@ -133,7 +137,7 @@ for(const branch of macroIcon.body.body.find(n=>n.type==='SwitchStatement').case
 }
 const css=[];
 for(const f of fs.readdirSync(path.join(root,'.ref/devices/3946/static/css')).filter(f=>f.endsWith('.css'))){
- const p='.ref/devices/3946/static/css/'+f,s=read(p),rules=s.split('}').filter(r=>/automation-|AutomationModal_|LaunchSoundApp_|quick-macro|macro-type-select|macro-keyboard|macro-pill|effects-area|color-opts|dropdown-color/.test(r.split('{')[0])).map(r=>r+'}');
+ const p='.ref/devices/3946/static/css/'+f,s=read(p),rules=s.split('}').filter(r=>/automation-|AutomationModal_|LaunchSoundApp_|quick-macro|macro-type-select|macro-keyboard|macro-pill|effects-area|color-opts|dropdown-color|random-color|toggle-btn|modes-tab|dir-up|dir-down|stepper|slider-container|range-slider|^\.slider[:{]|^\.foot\./.test(r.split('{')[0])||r.startsWith('.slider{')).map(r=>r+'}');
  if(rules.length)css.push({path:p,sha256:hash(s),rules});
 }
 function emit(p,v){const s=JSON.stringify(v,null,2)+'\n';if(process.argv.includes('--check')){if(read(p)!==s)throw Error('Stale '+p);}else fs.writeFileSync(path.join(root,p),s);}
@@ -147,6 +151,12 @@ for(const needle of ['this.loadActiveProfileSettings=async()=>','case le.nI5:','
  persistence.push({needle,offset,source:source.slice(offset,offset+(needle.startsWith('this.')?2800:550))});
 }
 const automation_actions=Object.fromEntries(['jy3','c24','nI5','HTo'].map(k=>[k,decode(constantsExports.arguments[1].properties.find(p=>p.key.name===k).value.body)]));
-const quick_color_parameters={palette:{offset:paletteNode.start,end:paletteNode.end,source:source.slice(paletteNode.start,paletteNode.end)},components:quickColorClasses.map(node=>({name:node.id.name,offset:node.start,end:node.end,source:source.slice(node.start,node.end)})),mounted_by:sourceColorRendering};
+const fragment=node=>({offset:node.start,end:node.end,source:source.slice(node.start,node.end)});
+const quick_color_parameters={palette:fragment(paletteNode),components:quickColorClasses.map(node=>({name:node.id.name,...fragment(node)})),mounted_by:sourceColorRendering,
+ color_picker_render:fragment(colorPickerRender),lane_mounts:laneMounts.map(fragment),
+ lane_connector:fragment(declarations.find(node=>node.id.name==='GP'&&node.start>6693000&&node.start<6694000)),
+ number_input:{module:44230,...fragment(modules.get(44230))},
+ parameter_labels:Object.fromEntries(['arT','XE0','rwE','LS','mQh','vvC','G2f','WLd'].map(key=>[key,labels[key]])),
+ aliases:declarations.filter(node=>['NP','dI','Jl','CP','II','lI','RP','GT'].includes(node.id.name)&&node.start>6400000&&node.start<6690000).map(node=>({name:node.id.name,...fragment(node)}))};
 emit('docs/re/automation-current-evidence.json',{method:'Acorn literals and mounted current source; vendor code never executed',generator_sha256:hash(fs.readFileSync(__filename)),source_files:pending.source_files,profile_bar,profile_bar_labels,persistence,automation_actions,quick_color_parameters,manifest:{path:manifestPath,sha256:hash(read(manifestPath))},actions:{offset:kinds.start,end:kinds.end,source:source.slice(kinds.start,kinds.end)},css,components});
 console.log('Extracted August T2 automation categories, localized labels and artwork.');

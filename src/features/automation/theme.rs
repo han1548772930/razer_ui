@@ -29,6 +29,12 @@ impl Colors {
     pub(super) fn border() -> Hsla {
         rgb(0x444444).into()
     }
+    pub(super) fn slider_track() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
+    pub(super) fn slider_pressed() -> Hsla {
+        rgb(0x383838).into()
+    }
     pub(super) fn input_border() -> Hsla {
         rgb(0x5d5d5d).into()
     }
@@ -46,6 +52,21 @@ impl Colors {
     }
     pub(super) fn danger() -> Hsla {
         rgb(0xfd4949).into()
+    }
+    pub(super) fn black() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(super) fn delete_pressed() -> Hsla {
+        rgb(0xcc3333).into()
+    }
+    pub(super) fn delete_cancel() -> Hsla {
+        rgb(0x666666).into()
+    }
+    pub(super) fn delete_cancel_hover() -> Hsla {
+        rgb(0x555555).into()
+    }
+    pub(super) fn delete_dirty_hover() -> Hsla {
+        rgb(0xff4444).into()
     }
     pub(super) fn warning() -> Hsla {
         rgb(0xfd8611).into()

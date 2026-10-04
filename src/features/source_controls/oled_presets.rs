@@ -5,7 +5,11 @@ use crate::{i18n::t, ui::theme::OledColors};
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::radio::Radio;
 use serde::Serialize;
-use std::path::Path;
+use std::sync::Arc;
+
+#[path = "oled_crop.rs"]
+mod crop;
+use crop::{CROP_HEIGHT, CROP_TOP, CropCanvas, HEIGHT, WIDTH};
 
 #[derive(Clone, Copy)]
 enum PresetKind {
@@ -86,6 +90,10 @@ impl OledMediaDraft {
         if self.visualizer_enabled {
             preview = preview.child(
                 img(OLED_MEDIA_VISUALIZERS[self.visualizer_index])
+                    .id(SharedString::from(format!(
+                        "oled-media-preview-{}",
+                        OLED_MEDIA_VISUALIZERS[self.visualizer_index]
+                    )))
                     .w(surface::css(232.))
                     .h(surface::css(44.))
                     .object_fit(ObjectFit::Fill),
@@ -257,6 +265,9 @@ impl Render for OledMediaEditor {
                                     .when(selected, |button| button.border_2().p_0())
                                     .child(
                                         img(source)
+                                            .id(SharedString::from(format!(
+                                                "oled-media-image-{source}"
+                                            )))
                                             .w(surface::css(232.))
                                             .h(surface::css(44.))
                                             .object_fit(ObjectFit::Fill),
@@ -345,7 +356,10 @@ struct Preset {
 
 #[derive(Clone, Deserialize, Serialize)]
 struct CropPlacement {
+    /// Legacy centred-preview magnification, used only without canvas data.
     zoom: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    canvas: Option<CropCanvas>,
 }
 
 impl CropPlacement {
@@ -355,6 +369,7 @@ impl CropPlacement {
         } else {
             1.
         };
+        self.canvas = self.canvas.and_then(CropCanvas::normalized);
         self
     }
 }
@@ -362,8 +377,34 @@ impl CropPlacement {
 /// The fixed crop box and the saved preset preview use the same placement.
 /// Keeping the original data URL plus local geometry makes the local preview
 /// reversible without claiming to have encoded a source-compatible payload.
-fn cropped_preview(source: SharedString, crop: Option<&CropPlacement>) -> AnyElement {
+fn cropped_preview(
+    id: SharedString,
+    source: SharedString,
+    crop: Option<&CropPlacement>,
+) -> AnyElement {
+    // GPUI only retains animated frame state for an image with an ElementId.
+    // Include content identity so replacing a slot starts its new GIF at zero.
+    let image_id: SharedString = format!("{id}:{}", gpui_kit::hash(&source)).into();
     let zoom = crop.map_or(1., |crop| crop.clone().normalized().zoom);
+    let canvas = crop
+        .and_then(|crop| crop.canvas)
+        .and_then(CropCanvas::normalized);
+    let (left, top, width, height) = canvas.map_or(
+        (
+            (WIDTH - WIDTH * zoom) / 2.,
+            (CROP_HEIGHT - CROP_HEIGHT * zoom) / 2.,
+            WIDTH * zoom,
+            CROP_HEIGHT * zoom,
+        ),
+        |canvas| {
+            (
+                canvas.left(),
+                canvas.top() - CROP_TOP,
+                canvas.width(),
+                canvas.height(),
+            )
+        },
+    );
     div()
         .relative()
         .w(surface::css(232.))
@@ -372,13 +413,19 @@ fn cropped_preview(source: SharedString, crop: Option<&CropPlacement>) -> AnyEle
         .bg(OledColors::screen())
         .overflow_hidden()
         .child(
-            img(source)
+            img(crop::preview_source(image_id.clone(), source))
+                .id(image_id)
                 .absolute()
-                .left(surface::css((232. - 232. * zoom) / 2.))
-                .top(surface::css((64. - 64. * zoom) / 2.))
-                .w(surface::css(232. * zoom))
-                .h(surface::css(64. * zoom))
-                .object_fit(ObjectFit::Contain),
+                .left(surface::css(left))
+                .top(surface::css(top))
+                .w(surface::css(width))
+                .h(surface::css(height))
+                .grayscale(true)
+                .object_fit(if canvas.is_some() {
+                    ObjectFit::Fill
+                } else {
+                    ObjectFit::Contain
+                }),
         )
         .into_any_element()
 }
@@ -454,6 +501,7 @@ fn restore_preset_selection(target: &mut PresetSelection, saved: Option<&Value>,
 struct PresetEditor {
     kind: PresetKind,
     selection: PresetSelection,
+    import_generation: u64,
 }
 
 /// Local crop draft used by the source's upload flow. The original cropper
@@ -463,75 +511,360 @@ struct PresetEditor {
 /// service boundary.
 struct CropDraft {
     source: SharedString,
+    preview: Arc<RenderImage>,
     index: usize,
-    zoom: f32,
+    canvas: CropCanvas,
+    initial_canvas: CropCanvas,
+    drag_position: Option<Point<Pixels>>,
+    focus: FocusHandle,
+    zoom_level: u8,
+    zoom_slider: Entity<SliderState>,
+    _subscriptions: Vec<Subscription>,
     kind: PresetKind,
 }
 
 impl CropDraft {
-    fn zoom_by(&mut self, delta: f32, cx: &mut Context<Self>) {
-        self.zoom = (self.zoom + delta).clamp(1., 10.);
+    fn new(
+        source: SharedString,
+        preview: Arc<RenderImage>,
+        index: usize,
+        kind: PresetKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let zoom_slider = cx.new(|_| {
+            SliderState::new()
+                .min(1.)
+                .max(10.)
+                .step(1.)
+                .default_value(1.)
+        });
+        let subscription = cx.subscribe_in(&zoom_slider, window, |this, _, event, _, cx| {
+            let SliderEvent::Change(value) = event else {
+                return;
+            };
+            let next = value.start().round().clamp(1., 10.) as u8;
+            if next != this.zoom_level {
+                // OLED `xe` passes directional values to Cropper.zoom; the
+                // slider position is not an absolute magnification factor.
+                let delta = crop_slider_delta(this.zoom_level, next);
+                this.canvas.zoom_by(delta);
+                this.zoom_level = next;
+                cx.notify();
+            }
+        });
+        let dimensions = preview.size(0);
+        let canvas = CropCanvas::new(dimensions.width.0 as f32, dimensions.height.0 as f32);
+        Self {
+            source,
+            preview,
+            index,
+            canvas,
+            initial_canvas: canvas,
+            drag_position: None,
+            focus: cx.focus_handle().tab_stop(true),
+            zoom_level: 1,
+            zoom_slider,
+            _subscriptions: vec![subscription],
+            kind,
+        }
+    }
+
+    fn step_zoom(&mut self, increment: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if (increment && self.zoom_level == 10) || (!increment && self.zoom_level == 1) {
+            return;
+        }
+        self.zoom_level = if increment {
+            self.zoom_level + 1
+        } else {
+            self.zoom_level - 1
+        };
+        self.canvas.zoom_by(if increment { 0.1 } else { -0.1 });
+        let level = self.zoom_level as f32;
+        self.zoom_slider
+            .update(cx, |slider, cx| slider.set_value(level, window, cx));
         cx.notify();
+    }
+
+    fn drag_canvas(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(previous) = self.drag_position else {
+            return;
+        };
+        if !event.dragging() {
+            self.drag_position = None;
+        } else {
+            let scale = f32::from(surface::css(1.).to_pixels(window.rem_size()));
+            self.canvas.move_by(
+                f32::from(event.position.x - previous.x) / scale,
+                f32::from(event.position.y - previous.y) / scale,
+            );
+            // Cropper updates pointer start coordinates after every event,
+            // including a move clamped against a canvas boundary.
+            self.drag_position = Some(event.position);
+        }
+        cx.notify();
+    }
+
+    fn end_drag(&mut self, cx: &mut Context<Self>) {
+        if self.drag_position.take().is_some() {
+            cx.notify();
+        }
     }
 }
 
+fn crop_slider_delta(previous: u8, next: u8) -> f32 {
+    if next < previous {
+        (next as f32 - 11.) / 10.
+    } else if next > previous {
+        next as f32 / 10.
+    } else {
+        0.
+    }
+}
+
+fn crop_frame(focused: bool, cx: &App) -> AnyElement {
+    let accent = cx.theme().primary;
+    div()
+        .absolute()
+        .left_0()
+        .top_0()
+        .size_full()
+        .child(
+            div()
+                .absolute()
+                .left(surface::css(-1.))
+                .top(surface::css(CROP_TOP - 1.))
+                .w(surface::css(WIDTH + 2.))
+                .h(surface::css(CROP_HEIGHT + 2.))
+                .border_1()
+                .border_dashed()
+                .border_color(accent),
+        )
+        .children(
+            [(false, false), (true, false), (false, true), (true, true)]
+                .into_iter()
+                .map(|(right, bottom)| {
+                    div()
+                        .absolute()
+                        .w(surface::css(14.))
+                        .h(surface::css(14.))
+                        .left(surface::css(if right { WIDTH + 3. - 14. } else { -3. }))
+                        .top(surface::css(if bottom {
+                            CROP_TOP + CROP_HEIGHT + 3. - 14.
+                        } else {
+                            CROP_TOP - 3.
+                        }))
+                        .border_color(accent)
+                        .when(right, |view| view.border_r(surface::css(3.)))
+                        .when(!right, |view| view.border_l(surface::css(3.)))
+                        .when(bottom, |view| view.border_b(surface::css(3.)))
+                        .when(!bottom, |view| view.border_t(surface::css(3.)))
+                }),
+        )
+        .when(focused, |view| {
+            view.child(
+                div()
+                    .absolute()
+                    .left(surface::css(-5.))
+                    .top(surface::css(-5.))
+                    .w(surface::css(WIDTH + 10.))
+                    .h(surface::css(HEIGHT + 10.))
+                    .border_1()
+                    .border_color(cx.theme().ring),
+            )
+        })
+        .into_any_element()
+}
+
 impl Render for CropDraft {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let source = self.source.clone();
-        let zoom = self.zoom;
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let canvas = self.canvas;
+        let pointer = cx.weak_entity();
+        let level = self.zoom_level;
         v_flex()
             .gap(surface::css(10.))
             .child(
-                h_flex()
-                    .w(surface::css(580.))
-                    .h(surface::css(190.))
-                    .bg(OledColors::screen())
-                    .border_1()
-                    .border_color(OledColors::border())
-                    .items_center()
-                    .justify_center()
-                    .overflow_hidden()
-                    .child(
-                        div()
-                            .border_1()
-                            .border_color(OledColors::border())
-                            .child(cropped_preview(source, Some(&CropPlacement { zoom }))),
-                    ),
+                h_flex().justify_center().child(
+                    div()
+                        .id("oled-crop-canvas")
+                        .role(Role::Group)
+                        .aria_label(t("ANIMATION_CROPPER_TITLE"))
+                        .aria_keyshortcuts("ArrowUp ArrowDown ArrowLeft ArrowRight")
+                        .track_focus(&self.focus)
+                        .relative()
+                        .w(surface::css(WIDTH))
+                        .h(surface::css(HEIGHT))
+                        .cursor(if self.drag_position.is_some() {
+                            CursorStyle::ClosedHand
+                        } else {
+                            CursorStyle::OpenHand
+                        })
+                        .child(
+                            div()
+                                .size_full()
+                                .relative()
+                                .overflow_hidden()
+                                .child(
+                                    img(self.preview.clone())
+                                        .id(("oled-crop-image", self.preview.id.0))
+                                        .absolute()
+                                        .left(surface::css(canvas.left()))
+                                        .top(surface::css(canvas.top()))
+                                        .w(surface::css(canvas.width()))
+                                        .h(surface::css(canvas.height()))
+                                        .object_fit(ObjectFit::Fill)
+                                        .grayscale(true),
+                                )
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left_0()
+                                        .top_0()
+                                        .w_full()
+                                        .h(surface::css(CROP_TOP))
+                                        .bg(OledColors::screen())
+                                        .opacity(0.5),
+                                )
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left_0()
+                                        .bottom_0()
+                                        .w_full()
+                                        .h(surface::css(CROP_TOP))
+                                        .bg(OledColors::screen())
+                                        .opacity(0.5),
+                                )
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left_0()
+                                        .top(surface::css(CROP_TOP))
+                                        .w_full()
+                                        .h(surface::css(CROP_HEIGHT))
+                                        .bg(OledColors::crop_face())
+                                        .opacity(0.1),
+                                ),
+                        )
+                        .child(crop_frame(self.focus.is_focused(window), cx))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                                this.focus.focus(window, cx);
+                                this.drag_position = Some(event.position);
+                                cx.stop_propagation();
+                                cx.notify();
+                            }),
+                        )
+                        .on_mouse_up(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.end_drag(cx)),
+                        )
+                        .on_mouse_up_out(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.end_drag(cx)),
+                        )
+                        .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                            let delta = match event.keystroke.key.as_str() {
+                                "left" => (-1., 0.),
+                                "right" => (1., 0.),
+                                "up" => (0., -1.),
+                                "down" => (0., 1.),
+                                _ => return,
+                            };
+                            let step = if event.keystroke.modifiers.shift {
+                                10.
+                            } else {
+                                1.
+                            };
+                            this.canvas.move_by(delta.0 * step, delta.1 * step);
+                            window.prevent_default();
+                            cx.stop_propagation();
+                            cx.notify();
+                        }))
+                        .child(
+                            gpui_kit::canvas(
+                                |_, _, _| {},
+                                move |_, _, window, cx| {
+                                    let Some(entity) = pointer.upgrade() else {
+                                        return;
+                                    };
+                                    if entity.read(cx).drag_position.is_none() {
+                                        return;
+                                    }
+                                    let motion = entity.clone();
+                                    window.on_mouse_event(
+                                        move |event: &MouseMoveEvent, phase, window, cx| {
+                                            if phase.capture() {
+                                                motion.update(cx, |this, cx| {
+                                                    this.drag_canvas(event, window, cx)
+                                                });
+                                            }
+                                        },
+                                    );
+                                    window.on_mouse_event(
+                                        move |event: &MouseUpEvent, phase, _, cx| {
+                                            if phase.capture() && event.button == MouseButton::Left
+                                            {
+                                                entity.update(cx, |this, cx| this.end_drag(cx));
+                                            }
+                                        },
+                                    );
+                                },
+                            )
+                            .absolute()
+                            .size_0(),
+                        ),
+                ),
             )
             .child(
                 h_flex()
-                    .gap(surface::css(8.))
+                    .justify_center()
                     .items_center()
                     .child(
                         Button::new("oled-crop-zoom-out")
                             .label("−")
+                            .accessibility_label(t("ZOOM_OUT"))
                             .outline()
-                            .disabled(zoom <= 1.)
-                            .on_click(cx.listener(|this, _, _, cx| this.zoom_by(-0.1, cx))),
+                            .disabled(level == 1)
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
+                                    this.step_zoom(false, window, cx)
+                                }),
+                            ),
                     )
                     .child(
                         div()
-                            .w(surface::css(58.))
-                            .text_center()
-                            .text_size(surface::css(12.))
-                            .child(format!("{:.1}×", zoom)),
+                            .w(surface::css(150.))
+                            .mx(surface::css(10.))
+                            .mt(surface::css(4.))
+                            .child(Slider::new(&self.zoom_slider)),
                     )
                     .child(
                         Button::new("oled-crop-zoom-in")
                             .label("+")
+                            .accessibility_label(t("ZOOM_IN"))
                             .outline()
-                            .disabled(zoom >= 10.)
-                            .on_click(cx.listener(|this, _, _, cx| this.zoom_by(0.1, cx))),
-                    )
-                    .child(
-                        Button::new("oled-crop-reset")
-                            .label(t("RESET"))
-                            .outline()
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.zoom = 1.;
-                                cx.notify();
-                            })),
+                            .disabled(level == 10)
+                            .on_click(
+                                cx.listener(|this, _, window, cx| this.step_zoom(true, window, cx)),
+                            ),
                     ),
+            )
+            .child(
+                h_flex().justify_center().child(
+                    Button::new("oled-crop-reset")
+                        .label(t("RESET"))
+                        .outline()
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.canvas = this.initial_canvas;
+                            this.drag_position = None;
+                            this.zoom_level = 1;
+                            this.zoom_slider
+                                .update(cx, |slider, cx| slider.set_value(1., window, cx));
+                            cx.notify();
+                        })),
+                ),
             )
             .when(matches!(self.kind, PresetKind::Animation), |view| {
                 view.child(
@@ -582,6 +915,7 @@ impl Render for PresetEditor {
                             .focus_visible(|s| s.border_color(cx.theme().primary))
                             .child(div().when(!enabled, |preview| preview.opacity(0.1)).child(
                                 cropped_preview(
+                                    format!("oled-editor-{id}").into(),
                                     SharedString::from(source),
                                     preset.local_crop.as_ref(),
                                 ),
@@ -638,6 +972,8 @@ impl Render for PresetEditor {
 
 impl PresetEditor {
     fn import_custom(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        self.import_generation = self.import_generation.wrapping_add(1);
+        let generation = self.import_generation;
         let prompt = match self.kind {
             PresetKind::Animation => "Choose a GIF animation".into(),
             PresetKind::Image => "Choose an OLED image".into(),
@@ -649,36 +985,50 @@ impl PresetEditor {
             prompt: Some(prompt),
         });
         let kind = self.kind;
+        let renderer = cx.svg_renderer();
         let parent = cx.weak_entity();
         cx.spawn_in(window, async move |_, cx| {
-            let result = match picker.await {
-                Ok(Ok(Some(paths))) => paths.into_iter().next().and_then(|path| {
-                    let extension = path
-                        .extension()
-                        .and_then(|value| value.to_str())
-                        .unwrap_or_default()
-                        .to_ascii_lowercase();
-                    let allowed = match kind {
-                        PresetKind::Animation => extension == "gif",
-                        PresetKind::Image => {
-                            matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "bmp")
-                        }
-                    };
-                    allowed.then(|| load_data_url(&path, &extension))
-                }),
+            let path = match picker.await {
+                Ok(Ok(Some(paths))) => paths.into_iter().next(),
                 _ => None,
             };
-            let Some(Ok((source, size))) = result else {
+            let Some(path) = path else {
+                return;
+            };
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            let allowed = match kind {
+                PresetKind::Animation => extension == "gif",
+                PresetKind::Image => {
+                    matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "bmp")
+                }
+            };
+            if !allowed {
+                return;
+            }
+            // Disk I/O and base64 encoding can be substantial for imported
+            // animations. Only the completed draft returns to the UI thread.
+            let Ok(imported) = cx
+                .background_spawn(async move { crop::load_preset(&path, &extension, renderer) })
+                .await
+            else {
                 return;
             };
             _ = parent.update_in(cx, |this, window, cx| {
+                // A later file selection supersedes an earlier, slower read.
+                if this.import_generation != generation {
+                    return;
+                }
                 if this
                     .selection
                     .list
                     .get(index)
                     .is_some_and(|item| item.enabled)
                 {
-                    this.open_crop(index, kind, source, size, window, cx);
+                    this.open_crop(index, kind, imported, window, cx);
                 }
             });
         })
@@ -689,17 +1039,12 @@ impl PresetEditor {
         &mut self,
         index: usize,
         kind: PresetKind,
-        source: String,
-        size: u64,
+        imported: crop::ImportedPreset,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let crop = cx.new(|_| CropDraft {
-            source: source.clone().into(),
-            index,
-            zoom: 1.,
-            kind,
-        });
+        let (source, size, preview) = imported.into_parts();
+        let crop = cx.new(|cx| CropDraft::new(source.into(), preview, index, kind, window, cx));
         let parent = cx.weak_entity();
         let width = surface::css(640.).to_pixels(window.rem_size());
         window.open_dialog(cx, move |dialog, _, _| {
@@ -727,7 +1072,8 @@ impl PresetEditor {
                                     let source = crop_for_apply.read(cx).source.clone();
                                     let index = crop_for_apply.read(cx).index;
                                     let placement = CropPlacement {
-                                        zoom: crop_for_apply.read(cx).zoom,
+                                        zoom: 1.,
+                                        canvas: Some(crop_for_apply.read(cx).canvas),
                                     }
                                     .normalized();
                                     let _ = parent.update(cx, |this, cx| {
@@ -750,21 +1096,6 @@ impl PresetEditor {
                 )
         });
     }
-}
-
-fn load_data_url(path: &Path, extension: &str) -> Result<(String, u64), std::io::Error> {
-    let bytes = std::fs::read(path)?;
-    let mime = match extension {
-        "gif" => "image/gif",
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "bmp" => "image/bmp",
-        _ => "application/octet-stream",
-    };
-    Ok((
-        format!("data:{mime};base64,{}", base64_encode(&bytes)),
-        bytes.len() as u64,
-    ))
 }
 
 /// Tiny dependency-free base64 encoder for local preview data URLs.
@@ -860,7 +1191,11 @@ impl SourceControls {
                                         .border_color(OledColors::border())
                                         .items_center()
                                         .justify_center()
-                                        .child(cropped_preview(SharedString::from(source), crop)),
+                                        .child(cropped_preview(
+                                            format!("oled-home-{}", kind.key()).into(),
+                                            SharedString::from(source),
+                                            crop,
+                                        )),
                                 )
                                 .child(
                                     Button::new(SharedString::from(format!(
@@ -1082,7 +1417,11 @@ impl SourceControls {
             return;
         }
         let selection = self.preset_selection(kind);
-        let editor = cx.new(|_| PresetEditor { kind, selection });
+        let editor = cx.new(|_| PresetEditor {
+            kind,
+            selection,
+            import_generation: 0,
+        });
         let parent = cx.weak_entity();
         let width = surface::css(800.).to_pixels(window.rem_size());
         window.open_dialog(cx, move |dialog, _, _| {
@@ -1192,7 +1531,10 @@ mod tests {
         imported.custom = true;
         imported.src = Some("data:image/png;base64,iVBORw0KGgo=".into());
         imported.size = Some(8);
-        imported.local_crop = Some(CropPlacement { zoom: 1.8 });
+        imported.local_crop = Some(CropPlacement {
+            zoom: 1.8,
+            canvas: None,
+        });
         saved_selection.set_enabled(1, false);
         let saved = serde_json::to_value(saved_selection).unwrap();
 

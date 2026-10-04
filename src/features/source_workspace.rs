@@ -7,6 +7,8 @@ use crate::{
     ui::{scroll::SourceScrollable as _, surface},
 };
 use gpui_kit::component::{
+    input::{InputEvent, InputState},
+    list::ListState,
     select::{SelectEvent, SelectState},
     *,
 };
@@ -14,7 +16,11 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde_json::Value;
 
 mod accessory;
+mod profile_actions;
 mod profile_bar;
+mod profile_linked_games;
+mod profile_menu;
+mod profile_transfer;
 #[cfg(test)]
 mod tests;
 use accessory::AccessoryPage;
@@ -42,6 +48,16 @@ pub(crate) struct SourceProductWorkspace {
     dock_pairing: Option<Entity<super::dock_pairing::DockPairing>>,
     accessory: Option<AccessoryPage>,
     profile: Entity<SelectState<Vec<Choice>>>,
+    profile_name: Entity<InputState>,
+    profile_rename: Option<String>,
+    profile_menu: Entity<ListState<profile_menu::ProfileCommands>>,
+    profile_confirmation: Option<profile_actions::ProfileConfirmation>,
+    profile_confirm_focus: FocusHandle,
+    profile_confirm_task: Option<Task<()>>,
+    profile_transfer: Option<Entity<profile_transfer::SourceProfileTransfer>>,
+    profile_transfer_subscription: Option<Subscription>,
+    profile_linked_games: Option<Entity<profile_linked_games::ProfileLinkedGames>>,
+    profile_linked_games_subscription: Option<Subscription>,
     _subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
@@ -53,6 +69,7 @@ impl SourceProductWorkspace {
         {
             return;
         }
+        self.dismiss_profile_dialog(window, cx);
         self.device.active_profile = id.to_owned();
         let factory_default_profile = self
             .device
@@ -302,6 +319,21 @@ impl SourceProductWorkspace {
                 }
             },
         ));
+        let name_limit = profile_menu::spec(device.product_id).map_or(32, |spec| spec.name_limit());
+        let profile_name = cx.new(|cx| {
+            InputState::new(window, cx)
+                .validate(move |value, _| value.encode_utf16().count() <= name_limit)
+        });
+        subscriptions.push(cx.subscribe_in(&profile_name, window, |this: &mut Self, _, event, window, cx| {
+            if matches!(event, InputEvent::PressEnter { .. } | InputEvent::Blur) {
+                this.finish_profile_rename(window, cx);
+                if matches!(event, InputEvent::PressEnter { .. }) {
+                    this.profile.update(cx, |state, cx| state.focus(window, cx));
+                }
+            }
+        }));
+        let owner = cx.entity().downgrade();
+        let profile_menu = cx.new(|cx| ListState::new(profile_menu::ProfileCommands::new(owner), window, cx));
         let help = cx.new(|cx| super::source_help::SourceHelp::new(device.clone(), cx));
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));
@@ -318,6 +350,16 @@ impl SourceProductWorkspace {
             dock_pairing,
             accessory,
             profile,
+            profile_name,
+            profile_rename: None,
+            profile_menu,
+            profile_confirmation: None,
+            profile_confirm_focus: cx.focus_handle(),
+            profile_confirm_task: None,
+            profile_transfer: None,
+            profile_transfer_subscription: None,
+            profile_linked_games: None,
+            profile_linked_games_subscription: None,
             _subscriptions: subscriptions,
         };
         this.restore_active(window, cx);
@@ -352,10 +394,9 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     pub(crate) fn discard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.dismiss_profile_dialog(window, cx);
         self.device = self.saved.clone();
-        self.profile.update(cx, |p, cx| {
-            p.set_selected_value(&self.device.active_profile, window, cx)
-        });
+        self.refresh_profile_choices(window, cx);
         self.restore_active(window, cx);
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
@@ -734,7 +775,7 @@ impl Render for SourceProductWorkspace {
             .any(|page| page.role() == ProductPageRole::Help);
         let available = f32::from(window.viewport_size().width) * 16.
             / f32::from(window.rem_size())
-            - if self.profile_bar_visible() { 286. } else { 0. }
+            - self.profile_bar_width()
             - surface::device_right_width(&self.device, has_help, window)
             - surface::NAV_MORE_WIDTH
             - surface::NAV_MORE_MARGIN
@@ -801,10 +842,11 @@ impl Render for SourceProductWorkspace {
             .child(
                 h_flex()
                     .h(surface::css(48.))
+                    .when(self.profile_linked_games.is_some(), |bar| bar.opacity(0.5))
                     .flex_shrink_0()
                     .border_b_2()
                     .border_color(cx.theme().title_bar)
-                    .child(surface::nav_left().child(self.profile_bar(cx)))
+                    .child(surface::nav_left().child(self.profile_bar(window, cx)))
                     .child(
                         gpui_kit::base::Tabs::new("source-product-navigation")
                             .flex()
@@ -876,5 +918,7 @@ impl Render for SourceProductWorkspace {
                     .scrollable_both()
                     .child(body),
             )
+            .children(self.profile_transfer.clone())
+            .children(self.profile_linked_games.clone())
     }
 }

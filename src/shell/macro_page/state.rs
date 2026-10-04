@@ -296,6 +296,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn select_entry(&mut self, id: u64, cx: &mut Context<Self>) {
+        self.binding_menu = None;
         if let Some(entry) = self.entries.iter_mut().find(|e| e.id == id) {
             self.tree_selection = Some(id);
             if entry.kind == EntryKind::Folder {
@@ -497,6 +498,7 @@ impl MacroPage {
             deleted.extend(children);
         }
         self.entries.retain(|e| !deleted.contains(&e.id));
+        self.forget_bindings(&deleted);
         if redirect && self.tab != MacroTab::MyMacros {
             self.tab = MacroTab::MyMacros;
             self.history.truncate(self.history_index + 1);

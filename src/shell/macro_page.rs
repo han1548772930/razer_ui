@@ -17,9 +17,11 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
+mod bindings;
 mod body;
 mod chrome;
 mod editors;
+mod palette;
 mod state;
 mod tree;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial};
@@ -120,6 +122,12 @@ pub(super) struct MacroPage {
     deletion: Option<u64>,
     locale: String,
     search_focused: bool,
+    devices: Vec<Entity<crate::features::ProductWorkspace>>,
+    device_subscriptions: Vec<Subscription>,
+    local_bindings: Vec<bindings::LocalBinding>,
+    binding_menu: Option<String>,
+    binding_dialog: Option<Entity<bindings::BindingDialog>>,
+    binding_subscription: Option<Subscription>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -237,6 +245,12 @@ impl MacroPage {
             deletion: None,
             locale: i18n::locale(),
             search_focused: false,
+            devices: Vec::new(),
+            device_subscriptions: Vec::new(),
+            local_bindings: Vec::new(),
+            binding_menu: None,
+            binding_dialog: None,
+            binding_subscription: None,
             _subscriptions: subscriptions,
         }
     }
@@ -273,6 +287,11 @@ impl MacroPage {
         self.sort_open = false;
         self.tree_menu = None;
         self.deletion = None;
+        if let Some(dialog) = self.binding_dialog.take() {
+            dialog.update(cx, |dialog, cx| dialog.close(window, cx));
+        }
+        self.binding_subscription = None;
+        self.binding_menu = None;
         self.rename = None;
         self.rename_in_tree = false;
         self.clear_action_editors();
@@ -810,10 +829,13 @@ impl Render for MacroPage {
         if self.locale != i18n::locale() {
             self.locale = i18n::locale();
             self.update_search_placeholder(window, cx);
+            if let Some(dialog) = &self.binding_dialog {
+                dialog.update(cx, |dialog, cx| dialog.refresh_locale(window, cx));
+            }
         }
         let body = match self.tab {
             MacroTab::MyMacros => self.editor(window, cx),
-            MacroTab::KeyBinds => self.key_binds(cx),
+            MacroTab::KeyBinds => self.key_binds(window, cx),
             MacroTab::Help => self.help(cx),
         };
         v_flex()
@@ -844,6 +866,9 @@ impl Render for MacroPage {
             )
             .when(self.deletion.is_some(), |root| {
                 root.child(self.delete_confirmation(window, cx))
+            })
+            .when_some(self.binding_dialog.clone(), |root, dialog| {
+                root.child(dialog)
             })
     }
 }

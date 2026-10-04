@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 3,
   "source": {
     "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
     "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
@@ -14,6 +14,20 @@
     "source": "render(){const e=this.props.lang;return(0,ne.jsxs)(\"div\",{className:\"feedback-container\",children:[this.renderToolbar(),(0,ne.jsxs)(oe,{ref:this.feedback,className:\"page-feedback \".concat(e),children:[this.renderMainPage(),this.renderFooter()]})]})}"
   },
   "handlers": {
+    "getCategoryById": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 120322,
+      "end": 120732,
+      "source": "getCategoryById(e){switch(e){case ds.FEEDBACK_FEATURE_TAB:return(0,ne.jsx)(ce,{text:\"TEXT_FEEDBACK_W_FEATURE_REQUEST\"});case ds.REPORT_BUG_TAB:return(0,ne.jsx)(ce,{text:$});case ds.CUSTOMER_SUPPORT:return(0,ne.jsxs)(ne.Fragment,{children:[(0,ne.jsx)(ce,{text:\"TEXT_CUSTOMER_SUPPORT\"}),\"/\",(0,ne.jsx)(ce,{text:$})]});case ds.PRIVACY_ENQUIRE:return(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES\"});default:return\"\"}}"
+    },
+    "categoryOnClick": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 104985,
+      "end": 105244,
+      "source": "e=>{this.toggleDropdown(\"showCategoryDropdown\",!1);const t={category:e};e!==ds.CUSTOMER_SUPPORT&&\"\"===this.state.email?t.errorEmail=!1:e===ds.CUSTOMER_SUPPORT&&this.state.email.length>0&&(t.errorEmail=!gn(this.state.email)),this.setState(t,this.enableSubmit)}"
+    },
     "inputOnChange": {
       "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
       "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
@@ -49,6 +63,34 @@
       "end": 112178,
       "source": "()=>{const e=this.state,t=e.isGuest,n=e.email,s=e.category,o=(this.props.lang,(a=D(this.state.category===ds.CUSTOMER_SUPPORT?\"TEXT_REQUIRE\":\"TEXT_OPTIONAL\")).charAt(0).toUpperCase()+a.slice(1));var a;const i=D(\"TEXT_EMAIL\")+\" (\"+o+\")\";return!1!==t&&s!==ds.PRIVACY_ENQUIRE?(0,ne.jsxs)(ne.Fragment,{children:[(0,ne.jsx)(\"div\",{className:(r={\"input-container\":!0,email:!0,error:this.state.errorEmail},Object.entries(r).filter(e=>(0,w.A)(e,2)[1]).map(e=>(0,w.A)(e,1)[0]).join(\" \")),children:(0,ne.jsx)(Sn,{onChange:this.inputOnChange,onBlur:this.emailOnBlur,value:n,name:\"email\",type:\"email\",placeholder:i,maxLength:W.lR,spellCheck:\"false\",autoComplete:\"off\"})}),this.state.errorEmail?(0,ne.jsx)(\"div\",{className:\"error-desc\",children:\"Please enter a valid email address\"}):null]}):null;var r}"
     },
+    "renderSynapseDevices": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 109776,
+      "end": 110958,
+      "source": "()=>{if(document.title=D(Y),this.state.appName!==W.ut)return null;const e=this.deviceOnClick,t=this.toggleDropdown,n=this.state,s=n.synapseDevices,o=n.device,a=n.showDeviceDropdown,i={productId:0,productName:D(q)},r=0!==o?s.find(e=>e.productId===o):i,c=e=>{let t=\"\";if(\"string\"===typeof e.productName&&(t=e.productName),\"object\"===typeof(null===e||void 0===e?void 0:e.productName)){const n=this.props.lang.toLowerCase();t=e.productName[\"zh-cn\"===n?\"zh-cn\":\"en\"]}return(0,ne.jsx)(ne.Fragment,{children:t})};return(0,ne.jsxs)(\"div\",{className:\"input-container dropdown-selector\",children:[(0,ne.jsx)(\"div\",{onClick:a?()=>t(\"showDeviceDropdown\",!1):()=>t(\"showDeviceDropdown\",!0),className:\"box \".concat(a?\"active\":\"\",\" \").concat(\"\"===o?\"disabled-2\":\"\",\" \"),children:r?\"string\"!==typeof r.productName?r.productName[\"zh-cn\"===this.props.lang.toLowerCase()?\"zh-cn\":\"en\"]:r.productName:(0,ne.jsx)(ce,{text:\"TEXT_DEVICE_NAME\"})}),(0,ne.jsx)(fn,{isMounted:a,onHidden:()=>t(\"showDeviceDropdown\",!1),children:[...s,i].map(t=>t.productName?(0,ne.jsx)(\"button\",{onClick:()=>e(t.productId),className:\"\".concat(o===t.productId?\"active\":\"\",\" dropdown-item\"),children:c(t)},t.productId):null)})]})}"
+    },
+    "renderPrivacyEnquiry": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 120732,
+      "end": 121548,
+      "source": "renderPrivacyEnquiry(){const e=()=>{RazerApp.openInDefaultBrowser(W.to)};if(this.state.category===ds.PRIVACY_ENQUIRE)return(0,ne.jsxs)(\"div\",{className:\"bug-bounty privacy-enquire\",children:[(0,ne.jsx)(\"div\",{className:\"title\",children:(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRY_TITLE\"})}),(0,ne.jsxs)(\"div\",{className:\"description\",children:[(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION\"}),(0,ne.jsx)(\"div\",{className:\"note\",dangerouslySetInnerHTML:{__html:D(\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION_2\",{a:'<a id=\"btnPrivacyPolicy\" onClick=\"openPrivacyPolicy()\" rel=\"noopener noreferrer\">',aEnd:\"</a>\"})}}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION_3\"})})]}),(0,ne.jsx)(bn,{onClick:e,className:\"btn-green\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_CONTACT_US\"})})]})}"
+    },
+    "renderSubmittingForm": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 121548,
+      "end": 122569,
+      "source": "renderSubmittingForm(){const e=()=>{this.setState({withLogs:!1},()=>{this.onSubmit(),this.setState({showLogRequestForm:!1})})},t=()=>{this.setState({withLogs:!0},()=>{this.onSubmit(),this.setState({showLogRequestForm:!1})})},n=()=>{this.setState({showLogRequestForm:!1})};if(this.state.showLogRequestForm)return(0,ne.jsxs)(\"div\",{className:\"submitting-form-wrapper\",children:[(0,ne.jsx)(\"div\",{className:\"background\",onClick:n}),(0,ne.jsxs)(\"div\",{className:\"submitting-form\",children:[(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM\"})}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_1\"})}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_2\"})}),(0,ne.jsxs)(\"div\",{className:\"actions\",children:[(0,ne.jsx)(bn,{onClick:e,className:\"btn btn-gray\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_ACTION_1\"})}),(0,ne.jsx)(bn,{onClick:t,className:\"btn-green\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_ACTION_2\"})})]})]})]})}"
+    },
+    "renderSendLogCheckBox": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 110986,
+      "end": 111371,
+      "source": "()=>this.isCheckLogNeeded(this.state.category)?(0,ne.jsxs)(Cn,{checked:this.state.withLogs,onChange:this.inputOnChange,name:\"withLogs\",children:[(0,ne.jsx)(ce,{text:\"TEXT_SEND_LOG_FILE\"}),(0,ne.jsx)(\"div\",{className:\"helper\",children:this.state.category===ds.REPORT_BUG_TAB?(0,ne.jsx)(ce,{text:\"TEXT_SEND_LOG_FILE_HELPER_1\"}):(0,ne.jsx)(ce,{text:\"TEXT_SEND_LOG_FILE_HELPER\"})})]}):null"
+    },
     "renderForm": {
       "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
       "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
@@ -69,7 +111,66 @@
       "offset": 107536,
       "end": 107753,
       "source": "()=>{!this.state.withLogs&&this.isCheckLogNeeded(this.state.category)?this.setState({showLogRequestForm:!0}):this.isCheckLogNeeded(this.state.category)?this.onSubmit():this.setState({withLogs:!1},()=>this.onSubmit())}"
+    },
+    "isCheckLogNeeded": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 107457,
+      "end": 107511,
+      "source": "e=>[ds.REPORT_BUG_TAB,ds.CUSTOMER_SUPPORT].includes(e)"
+    },
+    "onSubmit": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 106268,
+      "end": 106966,
+      "source": "()=>{if(this.state.isSubmitting)return;\"activeElement\"in document&&document.activeElement.blur(),this.setState({isSubmitting:!0,error:\"\"});const e=this.state,t=e.appName,n=e.category,s=e.email,o=e.title,a=e.description,i=e.device,r=e.withLogs,c=e.synapseDevices;let l=\"\";const d={productId:0,productName:D(q)},p=0!==i?c.find(e=>e.productId===i):d;\"string\"===typeof(null===p||void 0===p?void 0:p.productName)&&(l=p.productName),\"object\"===typeof(null===p||void 0===p?void 0:p.productName)&&(l=p.productName.en),Jn({appName:t,category:n,email:s,title:o,description:a,device:i,withLogs:r,deviceName:l}).then(e=>{let t=e.error;t?this.setState({error:t,isSubmitting:!1}):this.setState({isSuccess:!0})})}"
     }
+  },
+  "validation": {
+    "email": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 81812,
+      "end": 81968,
+      "source": "function gn(e){return/^[-!#$%&'*+/0-9=?A-Z^_a-z{|}~](\\.?[-!#$%&'*+/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\\.?[a-zA-Z0-9])*\\.[a-zA-Z](-?[a-zA-Z0-9])+$/.test(e)}"
+    },
+    "blank": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 81769,
+      "end": 81812,
+      "source": "function hn(e){return!/\\S/.test(e)||\"\"===e}"
+    },
+    "utf16_units": true,
+    "guest_only_locally": true
+  },
+  "service": {
+    "submit": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 89113,
+      "end": 93518,
+      "source": "async function Jn(e){var t,n;let s=e.appName,o=e.category,a=e.email,i=e.title,r=e.description,c=e.device,l=e.withLogs,d=void 0!==l&&l,p=\"\";console.log(\"sendFeedbackItem\",s,o,a,i,r,c);try{if(d){const e=await qn();p=await e.generateAsync({type:\"base64\",compression:\"DEFLATE\",compressionOptions:{level:9}})}}catch(f){console.error(\"zip error\")}let u=null===(t=Xn(s))||void 0===t?void 0:t.serviceCode;u||(u=W.B1),console.log(\"afterZip\",Wn(p.length));let h=null===(n=Xn(s))||void 0===n?void 0:n.version;window.apiElectron&&(h=window.apiElectron.engineVersion);const g=\"undefined\"!==typeof c?await(async e=>{try{const t=await he.A.getWindowStorageItem(\"connectedDevices\");let n=\"\";if(t&&Array.isArray(t)){const s=t.find(t=>t.productId===+e);s&&(n=s.serialNumber)}return n}catch(f){return\"\"}})(c):\"\";let m=a;try{const e=await(async()=>{const e=new Array(39).join(\"\\u25c8\"),t=new Array(39).join(\"\\u2014\");return[await(async()=>{const e=await he.A.getWindowStorageItem(\"connectedDevices\");return e?JSON.parse(e).map(e=>{e.windowName;let t=e.value;const n=JSON.parse(t);return\"\".concat([n.category,n.subCategory].filter(Boolean).join(\"_\"),\"/\").concat(n.productName.en||n.name.en,\"/\").concat(n.firmwareInfo?n.firmwareInfo.currentFWVersion:\"unknow firmware version\",\"\\nproductId: \").concat(n.productId,\" layoutId:\").concat(n.layoutId,\" editionId:\").concat(n.editionId)}).join(\"\\n\"+t+\"\\n\"):\"\"})(),await(async()=>{const e=await caches.keys();return(await Promise.all(e.map(async e=>{const t=await caches.open(e),n=(await t.keys()).filter(e=>\"GET\"===e.method&&/\\/manifest\\.\\bjson\\b/.test(e.url));for(const s of n){const e=await(await t.match(s.url,{ignoreSearch:!0})).json(),n=e.version,o=e.buildVersion,a=e.gitMetadata,i=e.dependencies,r=a||{},c=r.buildTime,l=r.commit;return\"url: \".concat(s.url.replace(/\\/manifest.json.*/i,\"/\"),\"\\n        version: \").concat(n,\"\\n        buildVersion: \").concat(o,\"\\n        git: \").concat(l,\" -- build time: \").concat(new Date(c).toLocaleString(),\"\\n        dependencies:\\n\").concat((i||[]).map(e=>{let t=e.name,n=e.version,s=e.branch;return\"\\t- \".concat(t,\": \").concat(s,\"#\").concat(n)}).join(\"\\n\"))}}))||[]).filter(Boolean).join(\"\\n\"+t+\"\\n\")})()].filter(Boolean).join(\"\\n\\n\"+e+\"\\n\\n\")})();m=[a,e].join(\"\\n\\n\")}catch(w){console.warn(\"getExtraData failed\",w)}return console.log(\"sendLog data:\",{category:o,title:i,description:r,product:u,razer_id:RazerApp.userId||\"\",language:RazerApp.language,version:h,device:c||0,os:Mn().os.family||\"\",os_version:Gn.osDescription?Gn.osDescription+Gn.osVersion:Mn().os.version,firmware_version:Mn().description||\"notdefined\",extra_data:m,os_language:Gn.systemLang||\"notdefined\",cpu_type:Gn.cpuModel||\"notdefined\",memory_size:Gn.totalMemoryGB?Gn.totalMemoryGB+\"GB\":\"notdefined\",memory_speed:\"notdefined\",memory_type:\"notdefined\",gpu_speed:\"notdefined\",gpu_type:\"notdefined\",cpu_speed:\"notdefined\",serial_number:g||\"\"}),Ln()({url:\"/api/feedback/report/submit\",method:\"POST\",data:{headers:{\"content-type\":\"multipart/form-data\"},data:{category:o,title:i,description:r,product:u,razer_id:RazerApp.userId||\"\",language:RazerApp.language,version:h,device:c||0,os:Mn().os.family||\"\",zip_log:p,os_version:Gn.osDescription?Gn.osDescription+Gn.osVersion:Mn().os.version,firmware_version:Mn().description||\"notdefined\",extra_data:m,os_language:Gn.systemLang||\"notdefined\",cpu_type:Gn.cpuModel||\"notdefined\",memory_size:Gn.totalMemoryGB?Gn.totalMemoryGB+\"GB\":\"notdefined\",memory_speed:\"notdefined\",memory_type:\"notdefined\",gpu_speed:\"notdefined\",gpu_type:\"notdefined\",cpu_speed:\"notdefined\",serial_number:g||\"\"}}}).then(e=>({data:e.data})).catch(e=>(console.log(\"\\ud83d\\ude80 ~ file: feedback-actions.js:125 ~ err:\",e),(async e=>{let t,n=e.errorData,s=void 0===n?{}:n,o=e.action,a=\"\",i=\"\";const r=s.response;if(r){const e=r.data,n=r.status,s=r.config.url;if(t=n,e&&\"object\"===typeof e){const t=e.error,n=e.message,s=e.Status,o=e.error_type,r=e.error_description;a=r||o||t||n||s&&s.Message,i=t&&(r||o)?t:\"\"}if(401===n&&\"function\"===typeof o&&(\"unauthorized\"!==i||\"User needs to authenticate using OTP before unlinking\"!==a)){if((await RazerApp.generateToken().catch(e=>J.A.error(\"handleError -> generateJwtToken - \".concat(e.message)))).token&&zn.indexOf(s)<0)return zn.push(s),o();RazerApp.logOut()}}else a=D(\"TEXT_ERROR_OFFLINE\");return a&&\"Unexpected error.\"!==a||(a=D(\"TEXT_ERROR_UNEXPECTED\")),{errorData:s,errorType:i,error:a,errorCode:t}})({errorData:e})))}"
+    },
+    "collect_logs": {
+      "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+      "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+      "offset": 93959,
+      "end": 96113,
+      "source": "async function qn(e){const t=[\"%c[%s]\",\"color: #4caf50; font-weight: bold; font-size: 12px;\",\"zipFiles\"],n=new(Bn());let s=0;const o=async function(e,o){let a=arguments.length>2&&void 0!==arguments[2]?arguments[2]:new Date;const i=new(Bn());i.file(e,o,{date:a});const r=(await i.generateAsync({type:\"uint8array\",compression:\"DEFLATE\",compressionOptions:{level:9}})).length;s+r>52428800?console.error(...t,\"file size is too big, skip\",e,Wn(r)):(console.log(...t,\"Adding \".concat(e,\" to zip, size: \").concat(Wn(o.size),\", compressed: \").concat(Wn(r))),n.file(e,o,{date:a}),s+=r)};await o(\"localStorage.json\",new Blob([JSON.stringify(localStorage,null,\"\\t\")],{type:\"application/json\"}));{let e=await he.A.getLogFiles();if(Array.isArray(e)){e=Vn(e,4);for(const t of e){const e=new Blob([t.data],{type:\"text/plain\"});await o(t.folder+\"\\\\\"+t.name,e,t.mTime?new Date(t.mTime):new Date)}}}{const e=[\"WindowStorage\",\"MemoryStorage\"],t=await Promise.all(e.map(Zn));for(let n=0,s=t.length;n<s;n++){const s=t[n],a=e[n],i=new Blob([JSON.stringify(s,null,\"\\t\")],{type:\"application/json\"});await o(\"\".concat(a,\".json\"),i)}}if(!he.A.isElectron){let t=\"\",n=await RazerApp.getLogs();\"function\"===typeof e&&(n=n.filter(e)),n=On(n,{loggedAt:1}),n.forEach(e=>{t+=\"[\".concat(e.type.toUpperCase(),\"-\").concat(new Date(e.loggedAt).toISOString(),\"] \").concat(e.content,\"\\n\")}),await o(\"logs.txt\",new Blob([t],{type:\"text/plain\"}))}await(async(e,t)=>{try{const n=await new Promise((t,n)=>{const s=indexedDB.open(e);s.onsuccess=()=>t(s.result),s.onerror=()=>n(s.error)}),s=n.transaction(t,\"readonly\").objectStore(t),o=await new Promise((e,t)=>{const n=s.getAll();n.onsuccess=()=>e(n.result),n.onerror=()=>t(n.error)});return n.close(),o}catch(n){return console.error(\"Failed to dump IndexedDB \".concat(e,\".\").concat(t,\":\"),n),[]}})(\"macros\",\"macros\").then(e=>{const t=new Blob([JSON.stringify(e,null,\"\\t\")],{type:\"application/json\"});return o(\"macros.json\",t)});try{const e=Object.values(n.files);Array.isArray(e)&&e.forEach(e=>{var n;return console.log(...t,\"zipFiles ~ file: \",e.name,\" date: \",null===(n=e.date)||void 0===n?void 0:n.getTime())})}catch(a){console.log(a)}return n}"
+    },
+    "attachments": {
+      "file_inputs_in_component": [],
+      "generated_zip_field": "zip_log",
+      "accumulated_entry_compressed_limit_bytes": 52428800,
+      "overflow_behavior": "Skip the entry whose compressed size would exceed the running sum; this is not a user attachment size validator or a final ZIP size guarantee."
+    },
+    "native_implementation": "Unavailable service boundary; no log collection or feedback POST is invoked."
+  },
+  "privacy_urls": {
+    "to": "https://www.razer.com/privacy-enquiries",
+    "v7": "https://www.razer.com/legal/customer-privacy-policy"
   },
   "categories": {
     "FEEDBACK_FEATURE_TAB": 1,
@@ -80,6 +181,60 @@
     "path": ".ref/applications/feedback/static/css/496.d9e63f8f.chunk.css",
     "sha256": "de804b7c3bd707698210503d443a9767ee3dd768ef9b61f7a458b83f5024dd97",
     "rules": [
+      {
+        "offset": 501,
+        "selector": ".input-container.error",
+        "conditions": [],
+        "declarations": "margin:0",
+        "properties": [
+          {
+            "property": "margin",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 533,
+        "selector": ".input-container.error .form-control",
+        "conditions": [],
+        "declarations": "border:1px solid #fd4949;margin-bottom:0",
+        "properties": [
+          {
+            "property": "border",
+            "value": "1px solid #fd4949",
+            "important": false
+          },
+          {
+            "property": "margin-bottom",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 25493,
+        "selector": ".input-container",
+        "conditions": [],
+        "declarations": "background-color:#000;margin-bottom:10px;position:relative",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "margin-bottom",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          }
+        ]
+      },
       {
         "offset": 25569,
         "selector": "textarea.form-control",
@@ -943,6 +1098,24 @@
         ]
       },
       {
+        "offset": 31125,
+        "selector": ".input-container.privacy-enquire",
+        "conditions": [],
+        "declarations": "flex:0 0 50%;z-index:50",
+        "properties": [
+          {
+            "property": "flex",
+            "value": "0 0 50%",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "50",
+            "important": false
+          }
+        ]
+      },
+      {
         "offset": 31182,
         "selector": ".page-feedback .dropdown-selector,.page-feedback .dropdown-selector>.box",
         "conditions": [],
@@ -1348,6 +1521,21 @@
     },
     "subject_guard": 50
   },
-  "local_boundary": "Feedback form remains a local draft; submit and log download show unavailable-service status and do not call the remote API.",
+  "local_boundary": "Feedback remains a local guest draft. Submit (including either log choice) reports unavailable; no remote API or log collection runs. The unmounted renderLeft log-export controls are not reproduced. Privacy uses its current source URLs; service success is not synthesized.",
+  "native_page": {
+    "path": "src/shell/feedback_page.rs",
+    "sha256": "95fa4fab6be3e2370640436d95b1f13b9d08dbe0fe5714058acd7b4d611d1a53",
+    "popup": "GPUI Base DialogPopup provides popup hit-test occlusion; Dialog owns Escape, backdrop cancellation and focus trapping."
+  },
+  "native_route": {
+    "shell": "src/shell.rs",
+    "tabs": "src/shell/host_tabs.rs",
+    "location": "Location::Feedback",
+    "identity": "feedback-synapse",
+    "retained_entity": "feedback_page",
+    "host_policy": 3,
+    "container": "Named tab in the existing host window."
+  },
+  "verification_scope": "Static AST, CSS, native source fragments and routing checks; no downloaded JavaScript, application or tests executed. Fragment checks are not an execution-equivalence proof. Dialog pixel geometry, popup hit testing, keyboard focus restoration and link rendering still require an authorized runtime review.",
   "problems": []
 }

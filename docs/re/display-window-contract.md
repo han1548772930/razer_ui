@@ -1,6 +1,6 @@
 # 当前窗口打开契约
 
-Dashboard 不是用路由切换这些根，而是打开**具名且可复用**的窗口。下表来自当前 Dashboard 包（`.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js`，SHA-256 `c962f6962441b1b0…`），由 `tools/extract-window-contract.cjs` 静态提取，没有执行下载的 JavaScript。
+Dashboard 通过 `window.open` 打开具名页面；宿主根据策略选择已有窗口内的页签或新的系统窗口。不能仅根据 `windowName` 推断它是第二个系统窗口。下表来自当前 Dashboard 包（`.ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js`，SHA-256 `c962f6962441b1b0…`），由 `tools/extract-window-contract.cjs` 静态提取，没有执行下载的 JavaScript。策略的实际执行链见 [宿主策略审计](host-window-policy-current-audit.md)。
 
 ## 窗口标志
 
@@ -86,7 +86,7 @@ Dashboard 模块 54420 用同一张表登记所有具名窗口（窗口名符号
 
 ## 对本仓库的要求
 
-- 第二个窗口必须是真正的新窗口，并且**按名字单例**：再次打开同一设备／模式时聚焦已有窗口，不重复创建。
+- `policy=3` 模块使用宿主具名页签；确需第二窗口的策略使用系统窗口。两种情形均先按名字查找并聚焦已有页面。多设备配对保留历史明确要求的第二窗口，这是偏离其源 `policy=3` 调用的本地例外。
 - 窗口标志决定可见性与聚焦：`sameWindow` 表示复用当前窗口，`diffWindow` 才开新窗口。
 - 图标按模式区分（`chromaApp` 用 Chroma 图标），标题与 favicon 由该根自己设置。
 - 关闭语义也来自根：例如多设备配对窗口会在配对对象窗口关闭后自行关闭。

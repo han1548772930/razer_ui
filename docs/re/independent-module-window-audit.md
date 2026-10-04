@@ -1,4 +1,32 @@
-# 独立模块窗口接入审计
+# 模块宿主页签接入审计
+
+2026-10-04 更正：旧实现将 `policy=3` 解释为“第二个 gpui 窗口且同名复用”，
+只改策略标签而没有核对宿主执行链，这个结论不成立。4.0.827 `Tab.js` 将此策略
+送入已有窗口的标签栏；该处理器的新窗口分支对应 `policy=5/6/7/8`，两种分支之前
+都会检查同名页面。完整调用链与哈希见[宿主策略审计](host-window-policy-current-audit.md)。
+
+| 模块 | 宿主页签名 | 本地页面 |
+| --- | --- | --- |
+| `alexa` | `alexa` | `AlexaPage` |
+| `macro` | `macro` | `MacroPage` |
+| `armory` | `armory` | `ArmoryPage` |
+| `linkedGames` | `profiles` | `ProfilesPage` |
+| `feedback` | `feedback-synapse` | `FeedbackPage` |
+
+模块目录及 App Picker 共用 `AppShell::open_module_tab`，通过现有导航保护和
+`HostTabs::visit` 打开并聚焦具名页签。页签顺序、关闭、重新打开和键盘切换由宿主
+处理；页面实体由 AppShell 保留。Feedback 保留草稿和确认层焦点，其根下不添加
+Dashboard 工具栏。旧 `independent_window.rs` 的重复包装已删除。Alexa 页签采用
+原始 `alexa` 名称，并兼容旧 `host-alexa` 保存顺序。
+
+多设备配对按历史明确要求保留第二个 gpui 窗口和具名单例。这是本地例外：其原入口
+也传 `sameWindow`，不能再声称第二窗口等价于原策略。局部窗口层使用 `Different`
+表达本地选择，并拒绝用 `Same` 新建系统窗口。
+
+直接打开入口不写入外部安装状态；各应用的设备、账户、扫描、日志、提交等服务边界
+未改变。本轮只做静态与编译检查，不构成实际窗口或像素验收。
+
+## 历史记录（以下独立系统窗口结论已被上文更正）
 
 2026-10-04。当前 Dashboard 源码把 Macro、Armory、Profiles 和 Feedback 登记为具名应用根。它们
 相对于 Dashboard 是独立窗口，但模块表传入 `sameWindow`（`policy=3`）、`shouldFocus=1`

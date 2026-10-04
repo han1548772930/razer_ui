@@ -89,6 +89,7 @@ impl ProductWorkspace {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
+                    WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                 });
                 cx.notify();
             });
@@ -102,6 +103,7 @@ impl ProductWorkspace {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
+                    WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                 });
                 cx.notify();
             });
@@ -126,6 +128,16 @@ impl ProductWorkspace {
     }
     pub(crate) fn snapshot(&self, cx: &App) -> Device {
         self.device(cx).clone()
+    }
+    /// The current 653 chromaApp root mounts the same lighting content as its
+    /// normal lighting tab, without the product navigation/profile chrome.
+    pub(crate) fn chroma_lighting_workspace(&self, cx: &App) -> Option<Entity<DeviceWorkspace>> {
+        match &self.body {
+            Body::Existing(workspace) if workspace.read(cx).device().product_id == 653 => {
+                Some(workspace.clone())
+            }
+            _ => None,
+        }
     }
     /// Existing local profile associations; no executable is launched or scanned.
     pub(crate) fn profile_linked_games(&self, profile: &str, cx: &App) -> Vec<(String, String)> {
@@ -291,8 +303,9 @@ impl ProductWorkspace {
         }
     }
     pub(crate) fn dismiss_profile_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if let Body::Existing(e) = &self.body {
-            e.update(cx, |v, cx| v.dismiss_profile_dialog(window, cx));
+        match &self.body {
+            Body::Existing(e) => e.update(cx, |v, cx| v.dismiss_profile_dialog(window, cx)),
+            Body::Source(e) => e.update(cx, |v, cx| v.dismiss_profile_dialog(window, cx)),
         }
     }
     pub(crate) fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {

@@ -51,6 +51,7 @@ pub(crate) fn select<I: SelectItem<Value = String> + 'static>(
         style: StyleRefinement::default(),
         disabled: false,
         label: None,
+        placeholder: None,
         presentation: Presentation::Synapse,
     }
 }
@@ -73,6 +74,7 @@ pub(crate) struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     style: StyleRefinement,
     disabled: bool,
     label: Option<SharedString>,
+    placeholder: Option<SharedString>,
     presentation: Presentation,
 }
 
@@ -90,6 +92,12 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
 
     pub(crate) fn accessibility_label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
+        self
+    }
+
+    /// Text shown while no domain value is selected; never added to the menu.
+    pub(crate) fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
+        self.placeholder = Some(placeholder.into());
         self
     }
 }
@@ -114,6 +122,7 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     style: StyleRefinement,
     disabled: bool,
     label: Option<SharedString>,
+    placeholder: Option<SharedString>,
     presentation: Presentation,
     open: bool,
     hovered: bool,
@@ -160,6 +169,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             style: StyleRefinement::default(),
             disabled: false,
             label: None,
+            placeholder: None,
             presentation: Presentation::Synapse,
             open: false,
             hovered: false,
@@ -277,6 +287,7 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
         view.update(cx, |view, cx| {
             view.style = self.style;
             view.label = self.label;
+            view.placeholder = self.placeholder;
             view.disabled = self.disabled;
             view.presentation = self.presentation;
             if self.disabled {
@@ -299,7 +310,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
             .iter()
             .find(|item| Some(item.value()) == selected)
             .map(SelectItem::title)
-            .unwrap_or_default();
+            .unwrap_or_else(|| self.placeholder.clone().unwrap_or_default());
         let presentation = self.presentation;
         let alexa = presentation == Presentation::Alexa;
         let menu_height = (options.items.len() as f32 * presentation.row_height() + 2.)

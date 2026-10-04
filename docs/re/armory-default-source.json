@@ -1775,13 +1775,21 @@
       "lazy_list_module": 86024,
       "detail_module": 13476,
       "share_module": 66517,
-      "empty_dataset_render": "null"
+      "empty_dataset_render": "null",
+      "local_share": {
+        "entry": "ArmoryPage::open_share_profile",
+        "evidence": "docs/re/armory-share-current-evidence.json",
+        "profile_snapshot": true,
+        "form": true,
+        "preview": "local profile summary and available mouse DPI",
+        "service_submission": false
+      }
     }
   },
   "limitations": [
     "The source initially chooses Spotlight, then settles on Browse when feature loading ends with phase1 false.",
     "The source localStorage key is mirrored under APPDATA/razer_ui; service-backed persistence remains local to this shell.",
-    "Filter controls mirror the source device/download groups and six sort entries with local state; the source search shell and 300ms debounce are mounted without remote suggestions/results; service-backed filtering/sorting, content cards, detail/share dialogs and services remain incomplete. Current source receipts cover card (27588), detail (13476), and upload/share (66517) branches without inventing their service payloads.",
+    "Filter controls mirror the source device/download groups and six sort entries with local state; search/debounce remain local. An explicit existing-profile Share command opens the current form and local summary/DPI preview. Remote filtering/sorting, contribution cards, full remote detail, account/moderation and submission remain incomplete; see the separate share audit.",
     "No application execution or pixel validation."
   ],
   "problems": []

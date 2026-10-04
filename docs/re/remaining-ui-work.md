@@ -1,5 +1,22 @@
 # 尚未完成的界面与产品
 
+2026-10-04 后续进展：Armory 本地分享表单已接到 182/653 配置更多菜单；Macro 新增
+设备/配置/真实产品输入区域的会话内绑定；3946 自动化的星光、波浪、音频表参数
+与快速宏 `.exe` 文件选择已落地。OLED 裁剪画布/移动/中心缩放与持久化几何已按当前
+Cropper 源修正。上述均为本地 UI 进展；Armory 完整详情/上传、宏设备服务、GIF 编码
+与原生裁剪输出仍缺，以下旧轮次描述若冲突以各专项当前审计为准。
+
+2026-10-04 恢复会话后的更正：Macro、Armory、Profiles、Alexa、Feedback 的普通入口
+已按 4.0.827 宿主实际处理接入同一窗口的具名页签。`policy=3` 不表示第二个系统
+窗口；多设备配对按历史明确要求保留第二窗口，并标记为偏离其源调用的本地例外。
+见[宿主页签更正](independent-module-window-audit.md)。以下旧进度中的窗口解释以此为准。
+
+本轮同时修复相机步进器与滑块的共同初始化、鼠标释放重复步进、最终 CSS 覆盖和
+小数格式，增加真实挂载的曝光补偿数字框；Feedback 补齐隐私类别与日志确认表单，
+OLED 补齐缩放控制与后台文件读取并校验当前 worker 资源；后续已补齐裁剪画布几何。
+GIF 编码、原生裁剪输出、设备传输及实际像素/交互验收仍缺，不能把资源齐备或编译
+通过算作产品完成。
+
 2026-10-04 本次集成：Macro、Armory、Profiles 已接入当前源码登记的具名 gpui 窗口（窗口名分别为 `macro`、`armory`、`profiles`，策略为 `policy=3`，同名再次打开时聚焦），并保留各自的页面外框与明确服务边界。Macro已替换占位正文，接入原始无宏布局、显式新建宏/文件夹、选择搜索排序、重命名复制删除、教程、无设备绑定分支、Help，本地动作草稿的插入/选择/删除/撤销/重做/保存，Delay/Keyboard/Mouse/Loop/Text/Command/Launch 参数编辑，以及编辑器底部源码定义的100px拖放保留区和事件行排序，并接入顶部历史；其真实录制、设备传输、XML、完整文件夹菜单和独立产品绑定模式仍未完成，详见[宏复核](macro-current-source-review.md)。Armory已纠正默认可见导航、补内部历史、介绍横幅、左侧 68142 搜索入口（200px 输入框与 300ms 防抖壳）和 Browse 顶栏多条件筛选、My Downloads 顶栏单排序控件及本地选中态；远端建议/结果、服务筛选/排序、详情弹层和内容服务仍缺。Profiles已接入真实两页签、设备磁贴、设备关联弹层、Profile选择/重命名、关联游戏磁贴和本地已知关联的切换，并为游戏扫描、已安装程序刷新、Profile服务菜单显示未连接提示；安装程序扫描、全局游戏目录与设备子设备数据仍缺，不能把空目录或本地关联当作服务同步结果。相机页保留实时流不可用边界，音频演示保留播放服务不可用边界，见对应审计文档。电量块补齐当前挂载的`role="img"`语义，电量/托盘过渡保持源码时序。后端与DLL修改继续后置。
 
 2026-10-04 更正：旧日志停止原因是轮次上限，目标没有完成。旧表中的Profiles五路由、无法还原文案、缺少全部宏/Profiles图标及设备标签栏重复箭头均不再成立。最新修复和明确未完成项见[逐项复核](source-ui-review-2026-10-04.md)、[Profiles](profiles-app-audit.md)、[导航栏](device-tabs-audit.md)。以下旧轮次明细保留为历史，不是新增验收结论。
@@ -15,7 +32,7 @@
 | displayMode 独立窗口 | 四种根级分支的**打开者**都已从当前源码查清：`multiDevicePairing`（30 包）已按原版做成真正的第二个 gpui 窗口（具名单例、存在即聚焦，配对页设备卡为入口，见 [配对窗口审计](multi-pairing-window-current-audit.md)）；`macro`（174 包）不是第二个产品窗口，而是宏应用窗口（`macro`／`/synapse/macro/`／`policy=3,tab_visible=1`）在「绑定到设备」弹层里的 iframe，宏窗口本地已实现外框与两个导航标签（见 [宏应用审计](macro-app-current-audit.md)、[界面审计](macro-app-ui-audit.md)）；`chromaApp`（212 包）在 Dashboard 里出现 0 次，属于独立 Chroma 应用窗口；`armory`（226 包）属于 `armory` 应用窗口，本地已实现窗口外框与四个导航标签（精选推荐／浏览／我的下载／我的上传），并在模块目录里改为直接打开，见 [Armory 依据](armory-app-current-audit.md)；资料分享服务与内容未接入。模块目录七个盒子现在有六个直接打开（Alexa、宏、已关联的游戏→profiles 窗口、Armory、配置文件迁移、介绍导览），只有 `feedback` 仍是门控：它的窗口名 `feedback-synapse` 与 URL 都取自模块表，但该应用源码不在当前提取范围内，无法复刻界面。表与打开参数见 [模块注册表依据](module-registry-audit.md)。具名窗口清单、标志与模块盒去向见 [窗口契约](display-window-contract.md)。窗口图标（`app_icon_path`）在 gpui 里没有对应字段 |
 | 740 / 746 磁轴键盘 | 完整页与配套校准弹层已接入；载入/光标动画、错误后关闭时序、出厂配置禁用分支及介绍状态持久化仍有缺口 |
 | 691 BlackWidow V4 Pro 75% | OLED 预设导入/裁剪、主页 Emote/Banner/Media/System/Keyboard 分支已接入本地草稿；语言选择/下载、GIF 帧处理、设备传输进度/错误和完整 hover 动画仍缺 |
-| 3592 / 3594 / 3595 / 3596 Kiyo | Framing controls, resolution, watermark tray, LDC/resolution disable branch, white-box drag, directional assets, and stepper timing are integrated. Live stream and device enumeration retain an explicit source-sized unavailable boundary; third-party branches, missing directional assets, and six image steppers remain open. See camera-framing-current-audit.md and camera-preview-placeholder-audit.md. |
+| 3592 / 3594 / 3595 / 3596 Kiyo | 已接入方向图、图像四行/变焦及实际挂载的曝光补偿步进器；最终 CSS、长按/释放、键盘/文字提交、小数及动态最小值按当前调用链纠正。锐度和增益在这四个根关闭，不再列作缺失行。实时流、设备枚举、第三方分支和实际交互验收仍缺，见 camera-framing-current-audit.md。 |
 | 3587 / 3589 / 3590 Kiyo | 共享 Customize 布局已补 520×292 相机预览外框和明确不可用边界；实时流、设备枚举、取景与叠加层仍未实现 |
 | 1392 / 1442 / 3942 audio demo products | Source poster, dimensions, floating preference, and the source-sized control bar are restored. The progress/volume sliders retain local preview values, while native audio playback, live timing, floating video and complex mappings remain open; clicking reports the service boundary. See audio-demo-playback-boundary.md. |
 | 164 / 241 Mouse Dock | dongle 713 额外确认、部分配对状态动画、弹层 viewport / 滚动几何等价 |
@@ -23,7 +40,7 @@
 | 3884 / 3886 无线 ARGB | 原版检测动画、hover 过渡、tooltip 时序；3886 原代码端口分支不可达，不能把样例编辑器算成原版普通页 |
 | 784 Aether Light Strip | 轮播平滑居中、Identify 延迟、部分 tooltip 触发/定位和底部提示定位 |
 | 769 Philips Hue | 发现、连接、设备状态的完整交互和精确视觉验证；已接入主体与引导不等于全部完成 |
-| 3946 自动化 / Base Station V3 | 完整宏录制器、游戏浏览与关联、快捷键子编辑器；每种灯效参数面板；删除确认锚定、原始图标槽位及过渡动画 |
+| 3946 自动化 / Base Station V3 | 实际挂载的 Static/Breathing/Starlight/Wave/Audio Meter 参数已接入；Fire/Spectrum 无参数面板。完整宏录制器、游戏浏览与关联、快捷键子编辑器、删除确认锚定、原始图标槽位及过渡动画仍缺 |
 | 原有十个适配器 | 182、653、777、3072、3073、3074、3076、3077、3078、3080 的 27 个主页面已逐页复核（`partial_native_reaudited`，带本地路由与源码依据），见 [逐页复核](legacy-adapter-page-reaudit.md)；仍未进入 `source_help` 描述符、182 规格条目 `pages` 为空、653/777 仍走各自手写页面，仍是部分实现 |
 | 设备页顶栏电量 | 已按当前源码接入（状态机 `off`/`Charging`/`charging100`/`NoCharge_BatteryFull`/`batt-warning`/`ReachChargingLimit`，图标与文案逐条取证，见 [电量依据](battery-indicator-audit.md)）；原版的 `hideBattValue` 与耳机左右耳电量因本地无数据来源未实现 |
 | 所有产品 | 仍无实际窗口的字体度量、缩放、焦点、滚动和动画逐像素验收结论；不能以检查通过认定视觉完整 |

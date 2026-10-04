@@ -1,0 +1,17 @@
+[
+  {
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "output": "assets/synapse/automation-delete-action.svg",
+    "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+    "output_sha256": "dd282ead206dce6701199c0e9fc58e0bf1a38f9ebc4b892e947de59a9676f964",
+    "source_kind": "inline_svg",
+    "source_symbol": "vM",
+    "source_offset": 6734463,
+    "source_end": 6735586,
+    "source_view_box": "0 0 10 12",
+    "supplied_dimensions": [
+      24,
+      24
+    ]
+  }
+]

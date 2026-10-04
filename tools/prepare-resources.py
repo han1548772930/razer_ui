@@ -844,7 +844,7 @@ for entry in json.loads((OUT / "tutorial-media-manifest.json").read_text(encodin
 # Each product artwork preparer records the exact current JS import and raster
 # source. Include these files using their relative paths, preserving SVGs and
 # the mouse-products namespace instead of flattening equal basenames.
-for manifest_path in [OUT / "keyboard-product-manifest.json", ROOT / "docs/re/mouse-product-assets.json", OUT / "oled-assets-manifest.json", OUT / "oled-home-assets-manifest.json", OUT / "keyboard-calibration-manifest.json", OUT / "audio-demo-manifest.json", OUT / "hue-manifest.json", OUT / "dock-pairing-manifest.json", OUT / "wired-argb-manifest.json", OUT / "wireless-argb-manifest.json", OUT / "aether-strip-manifest.json", OUT / "automation-manifest.json"]:
+for manifest_path in [OUT / "keyboard-product-manifest.json", ROOT / "docs/re/mouse-product-assets.json", OUT / "oled-assets-manifest.json", OUT / "oled-home-assets-manifest.json", OUT / "keyboard-calibration-manifest.json", OUT / "audio-demo-manifest.json", OUT / "hue-manifest.json", OUT / "dock-pairing-manifest.json", OUT / "wired-argb-manifest.json", OUT / "wireless-argb-manifest.json", OUT / "aether-strip-manifest.json", OUT / "automation-manifest.json", OUT / "automation-delete-manifest.json", OUT / "source-profile-transfer-manifest.json", OUT / "chroma-app-manifest.json"]:
     if not manifest_path.exists():
         continue
     for entry in json.loads(manifest_path.read_text(encoding="utf-8")):
@@ -900,6 +900,8 @@ for name, original in {
     "text.svg": "icon_config_text_b.bc93ac89.svg",
     "loop.svg": "icon_refresh-1_r.ff48f955.svg",
     "close.svg": "close.1d7eff2a.svg",
+    "binding-more.svg": "icon_more_g.32e1e984.svg",
+    "binding-close.svg": "icon_close.4f578909.svg",
     "drag.svg": "icon_draggable_g.695879f5.svg",
     "new.svg": "icon_new_marco.6edec51b.svg",
     "new-hover.svg": "icon_new_marco-hover.47953e67.svg",

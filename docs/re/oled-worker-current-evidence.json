@@ -1,0 +1,342 @@
+{
+  "product_id": 691,
+  "manifest": {
+    "path": ".ref/devices/691/asset-manifest.json",
+    "http_receipt": ".ref/devices/691/asset-manifest.json.http.json",
+    "sha256": "d086f08d0559d1c1248ac6fcfd090a5b6537a1e91660ae0a39551655b3adfa5b"
+  },
+  "receipt_checks": [
+    "complete unique manifest-key inventory",
+    "exact manifest URL and local path",
+    "HTTP status/result and captured timestamp",
+    "exact body filename/path",
+    "body byte count and SHA-256",
+    "resource/HTTP validation agreement"
+  ],
+  "dependencies": [
+    {
+      "manifest_key": "gifWorker.js",
+      "body_path": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js",
+      "kind": "js",
+      "path": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js",
+      "http_receipt": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/gifWorker.91a1316a.chunk.js",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-02T05:32:12Z",
+      "sha256": "eb36bdd22d669c316ed8d9114f67188021c48ceeb1130aec3ca2e77cd8d8b5a6",
+      "bytes": 3729
+    },
+    {
+      "manifest_key": "static/js/9537.835bd6f0.chunk.js",
+      "body_path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js",
+      "kind": "js",
+      "path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js",
+      "http_receipt": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/9537.835bd6f0.chunk.js",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-02T05:32:11Z",
+      "sha256": "1d65f413410fa3353a5127338d66d25ed488195e762807d6fc1bc7083a3d0a77",
+      "bytes": 196224
+    },
+    {
+      "manifest_key": "static/media/1_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/1_15fps.0e27c499.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/1_15fps.0e27c499.gif",
+      "http_receipt": ".ref/devices/691/static/media/1_15fps.0e27c499.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/1_15fps.0e27c499.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:36Z",
+      "sha256": "ecd80c2684a7c0ab533a49ac43832bc68a17096dbff116f72c1a1547bbb58585",
+      "bytes": 466811
+    },
+    {
+      "manifest_key": "static/media/2_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/2_15fps.c72766f3.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/2_15fps.c72766f3.gif",
+      "http_receipt": ".ref/devices/691/static/media/2_15fps.c72766f3.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/2_15fps.c72766f3.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:37Z",
+      "sha256": "2cb86ee66dee83f692357592ab5fdbdfcc40b88fdb5bd6fb1ed5363ef6152969",
+      "bytes": 535499
+    },
+    {
+      "manifest_key": "static/media/3_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/3_15fps.6fb70343.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/3_15fps.6fb70343.gif",
+      "http_receipt": ".ref/devices/691/static/media/3_15fps.6fb70343.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/3_15fps.6fb70343.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:38Z",
+      "sha256": "b42d639a9240ca0843c4347ffa5385f04099476e9521b6fd49c9402df6ab0bb2",
+      "bytes": 617707
+    },
+    {
+      "manifest_key": "static/media/4_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/4_15fps.f1994f8c.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/4_15fps.f1994f8c.gif",
+      "http_receipt": ".ref/devices/691/static/media/4_15fps.f1994f8c.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/4_15fps.f1994f8c.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:40Z",
+      "sha256": "df8ad4405e0fc40976b28dbf24ae67910f4d70ec051a2508ce5f8b998f0fbfa5",
+      "bytes": 761555
+    },
+    {
+      "manifest_key": "static/media/5_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/5_15fps.a9814f0a.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/5_15fps.a9814f0a.gif",
+      "http_receipt": ".ref/devices/691/static/media/5_15fps.a9814f0a.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/5_15fps.a9814f0a.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:41Z",
+      "sha256": "44d9d8d04498ec8e1d2614e7461258eed96674b7e31ee45882de3c321dd610b8",
+      "bytes": 718740
+    },
+    {
+      "manifest_key": "static/media/6_15fps.gif",
+      "body_path": ".ref/devices/691/static/media/6_15fps.976777b0.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/6_15fps.976777b0.gif",
+      "http_receipt": ".ref/devices/691/static/media/6_15fps.976777b0.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/6_15fps.976777b0.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:43Z",
+      "sha256": "2028457683181400956d17fbb41af9136ce9927d58e44122bacfc06200b0d952",
+      "bytes": 715862
+    },
+    {
+      "manifest_key": "static/media/lets-go-animated_232x64.gif",
+      "body_path": ".ref/devices/691/static/media/lets-go-animated_232x64.e28cc764.gif",
+      "kind": "gif",
+      "path": ".ref/devices/691/static/media/lets-go-animated_232x64.e28cc764.gif",
+      "http_receipt": ".ref/devices/691/static/media/lets-go-animated_232x64.e28cc764.gif.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/lets-go-animated_232x64.e28cc764.gif",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:43Z",
+      "sha256": "7fd810b27991b39556c4f1ae892871e485ff00f66d19394d52ac58b55f931bb4",
+      "bytes": 10797
+    },
+    {
+      "manifest_key": "static/media/magick.wasm",
+      "body_path": ".ref/devices/691/static/media/magick.b51fdc57.wasm",
+      "kind": "wasm",
+      "path": ".ref/devices/691/static/media/magick.b51fdc57.wasm",
+      "http_receipt": ".ref/devices/691/static/media/magick.b51fdc57.wasm.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/media/magick.b51fdc57.wasm",
+      "result": "ok",
+      "http_status": 200,
+      "fetched_at_utc": "2026-10-04T10:48:50Z",
+      "sha256": "39e1970ee4f3024949b6f6ae0d9409ae9df63cc88a3ec933a10262133d454f72",
+      "bytes": 14422294
+    },
+    {
+      "manifest_key": "gifWorker.91a1316a.chunk.js.map",
+      "body_path": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js.2e0ca6f8517de09245d0ef89cddeb48a.map.response",
+      "kind": "sourcemap",
+      "path": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js.2e0ca6f8517de09245d0ef89cddeb48a.map",
+      "http_receipt": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js.2e0ca6f8517de09245d0ef89cddeb48a.map.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/gifWorker.91a1316a.chunk.js.2e0ca6f8517de09245d0ef89cddeb48a.map",
+      "result": "not_found",
+      "http_status": 404,
+      "fetched_at_utc": "2026-10-04T11:05:58Z",
+      "sha256": "0802559db1375af3ff5caabba71acea1d6299f1a7fc64b6a5024f19cbd33b72f",
+      "bytes": 10
+    },
+    {
+      "manifest_key": "9537.835bd6f0.chunk.js.map",
+      "body_path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js.a65ba105e253d901bff2dbe7a80ccd18.map.response",
+      "kind": "sourcemap",
+      "path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js.a65ba105e253d901bff2dbe7a80ccd18.map",
+      "http_receipt": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js.a65ba105e253d901bff2dbe7a80ccd18.map.http.json",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/9537.835bd6f0.chunk.js.a65ba105e253d901bff2dbe7a80ccd18.map",
+      "result": "not_found",
+      "http_status": 404,
+      "fetched_at_utc": "2026-10-04T11:05:58Z",
+      "sha256": "0802559db1375af3ff5caabba71acea1d6299f1a7fc64b6a5024f19cbd33b72f",
+      "bytes": 10
+    }
+  ],
+  "modules": [
+    {
+      "module_id": 71568,
+      "path": ".ref/devices/691/static/js/gifWorker.91a1316a.chunk.js",
+      "offset": 485,
+      "end": 2386,
+      "sha256": "99fa63235d2faab50a9ee109a80aacdac68830f2318c6622ddca2a659cb25a75",
+      "source": "(e,r,t)=>{var o=t(64175);const s=new URL(t(29623),t.b);let a=!1;self.onmessage=async e=>{const r=e.data||{},t=r.originalData,n=r.animationDelay,i=r.config;if(!t)return void self.postMessage({type:\"error\",error:\"No data received\"});const c=i.containerWidth,l=i.containerHeight,f=i.canvasWidth,p=i.canvasHeight,g=i.canvasOffsetLeft,d=i.canvasOffsetTop,u=i.cropBoxWidth,b=i.cropBoxHeight,h=i.cropBoxOffsetLeft,y=i.cropBoxOffsetTop;try{a||(await(0,o.ii)(s),a=!0,console.log(\"*** ImageMagick WASM initialized inside Worker\")),o.Yu.readCollection(t,o.qX.Gif,e=>{try{if(!e||0===e.length)return void self.postMessage({type:\"error\",error:\"Failed to read GIF frames\"})}catch(s){return e&&e.dispose(),void self.postMessage({type:\"error\",error:s.message})}console.log(\"*** ✅ GIF frames read successfully\"),e.coalesce();const r=Math.min(e.length,150),t=o.mt.create();(function(e,r){const t=[];for(let o=0;o<e.length;o+=r)t.push(e.slice(o,o+r));return t})(e.slice(0,r),20).forEach(e=>{e.forEach(e=>{const r=o.Qo.create(new o.n9(\"black\"),c,l);e.resize(new o.B0(f,p)),r.compositeGravity(e,\"Center\",new o.bR(g,d)),r.resetPage(),r.crop(new o.B0(h,y,u,b)),r.resetPage(),r.grayscale(),r.resize(new o.B0(232,64)),r.animationDelay=Math.max(e.animationDelay,n),t.push(r),e.dispose()});const s=Math.min(Math.round(t.length/r*100),100);self.postMessage({type:\"progress\",progress:s})}),console.log(\"*** ✅ Output collection size:\",t.length),t.length>0&&(t.optimizePlus(),t.write(o.qX.Gif,e=>{const t=function(e){const r=32768;let t=\"\";for(let o=0;o<e.length;o+=r){const s=e.subarray(o,o+r);let a=\"\";for(let e=0;e<s.length;e++)a+=String.fromCharCode(s[e]);t+=a}return btoa(t)}(e),o=\"data:image/gif;base64,\".concat(t),s=e.length;console.log(\"*** ✅ GIF processing complete:\",{frames:r,size:s}),self.postMessage({type:\"complete\",payload:{gifData:o,size:s,frames:r}})}))})}catch(v){self.postMessage({type:\"error\",error:v.message})}}}"
+    },
+    {
+      "module_id": 29623,
+      "path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js",
+      "offset": 581,
+      "end": 641,
+      "sha256": "4449c65fa65c5ce02288296726d3b17f0a621f244f5008c697a4f28f99517b1c"
+    },
+    {
+      "module_id": 64175,
+      "path": ".ref/devices/691/static/js/9537.835bd6f0.chunk.js",
+      "offset": 648,
+      "end": 196139,
+      "sha256": "6b2b80d7b0dfb5a53b296358224a523624f08fe9cd7dda4acf8c5f7a3c05c783"
+    }
+  ],
+  "crop_bridge": {
+    "path": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+    "offset": 11964,
+    "end": 14924,
+    "sha256": "4c511d763bab92186c31a150f61e4aa4bcf8310125d641dbe8e267945f313886",
+    "source": "e=>{let t=e.file,a=e.showCropperInfo,l=void 0===a||a,r=e.onCancel,o=e.onApply,c=e.animationFPS,d=void 0===c?30:c,u=e.type;const m=(0,i.useRef)(null),p=(0,i.useRef)(null),h=(0,i.useState)(!1),f=(0,s.A)(h,2),x=f[0],b=f[1],A=(0,i.useMemo)(()=>URL.createObjectURL(t),[t]),y=(0,i.useMemo)(()=>15===d?6:3,[d]);(0,i.useEffect)(()=>{const e=new Worker(new URL(n.p+n.u(8609),n.b));return p.current=e,p.current.onmessage=e=>{const t=e.data,n=t.type,s=t.progress,i=t.payload,a=t.error;if(\"progress\"===n)console.log(\"*** ✅ GIF Processing: \".concat(s,\"%\")),b(!0);else if(\"complete\"===n){console.log(\"*** ✅ GIF processing complete:\",i);const e=i.gifData,t=i.size;b(!1),o(e,t),p.current.terminate()}else\"error\"===n&&(console.error(\"*** ❌ GIF Worker error:\",a),b(!1),p.current.terminate())},p.current.onerror=e=>{console.error(\"*** ❌ Worker initialization error:\",e),b(!1)},()=>{var e;null===(e=p.current)||void 0===e||e.terminate()}},[]);const C=(0,i.useCallback)(async()=>{if(!x){if(b(!0),\"animation\"===u)try{var e;const t=null===(e=m.current)||void 0===e?void 0:e.cropper;if(!t)return console.error(\"*** ❌ Cropper instance not found\"),void b(!1);const n=function(e){const t=e.getContainerData(),n=t.width,s=t.height,i=e.getCanvasData(),a=i.width,l=i.height,r=i.left,o=i.top,c=e.getCropBoxData();return{containerWidth:n,containerHeight:s,canvasWidth:a,canvasHeight:l,canvasOffsetLeft:r,canvasOffsetTop:o,cropBoxWidth:c.width,cropBoxHeight:c.height,cropBoxOffsetLeft:c.left,cropBoxOffsetTop:c.top}}(t),s=await fetch(A),i=new Uint8Array(await s.arrayBuffer());p.current.postMessage({originalData:i,config:n,animationDelay:y})}catch(n){console.error(\"*** ❌ GIF processing failed:\",n),b(!1)}if(\"image\"===u){var t;(new $.Q).crop({src:A,cropperInstance:null===(t=m.current)||void 0===t?void 0:t.cropper,outputType:\"base64\",outputWidth:232,outputHeight:64}).then(e=>{b(!1),o(e,1)})}}},[A,u,y,o,x]),j=(0,i.useCallback)(()=>{var e;null===(e=p.current)||void 0===e||e.terminate(),r()},[r]);return(0,J.jsxs)(\"div\",{className:\"animation-crop-body\",children:[(0,J.jsx)(\"div\",{className:\"animation-crop-title\",children:(0,J.jsx)(g.A,{text:v.CHf})}),(0,J.jsx)(\"br\",{}),(0,J.jsx)(\"div\",{className:\"animation-cropper-div\",children:(0,J.jsx)(\"div\",{className:\"animation-cropper-wrapper\",children:(0,J.jsx)(K.A,{src:A,style:{height:190,width:\"100%\"},aspectRatio:3.625,viewMode:0,cropBoxMovable:!1,cropBoxResizable:!1,background:!1,center:!1,dragMode:\"move\",guides:!1,minCanvasHeight:64,minCropBoxHeight:64,minCropBoxWidth:232,ref:m,autoCropArea:1,zoomOnWheel:!1,zoomOnTouch:!1})})}),(0,J.jsx)(\"br\",{}),(0,J.jsx)(xe,{zoom:e=>{var t;return null===(t=m.current)||void 0===t?void 0:t.cropper.zoom(e)},reset:()=>{var e;return null===(e=m.current)||void 0===e?void 0:e.cropper.reset()}}),(0,J.jsx)(\"br\",{}),l&&(0,J.jsx)(\"div\",{className:\"animation-crop-info\",children:(0,J.jsx)(g.A,{text:v.SKm})}),(0,J.jsx)(\"br\",{}),(0,J.jsx)(ve,{onCancel:j,onApply:C,applyBtnName:\"CROPPER_CROP_BTN\",loading:x})]})}",
+    "animation_only": true,
+    "image_branch": "shared image cropper, base64 output at 232x64",
+    "loading": "Apply sets busy; progress keeps busy; complete/error/onerror clear busy",
+    "termination": "complete, worker error message, Cancel and component unmount terminate the worker",
+    "initialization_error": "worker onerror clears busy and logs; does not call terminate itself",
+    "completion": "forwards processed gifData and byte count to the isolated preset callback"
+  },
+  "zoom_controls": {
+    "path": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+    "offset": 11360,
+    "end": 11960,
+    "sha256": "48fd2098b3a2370ab93bbbf9da2503bc8b01b8bba98ea9de352a59a18007dd9a",
+    "source": "e=>{let t=e.zoom,n=e.reset;const a=(0,i.useState)(1),l=(0,s.A)(a,2),r=l[0],o=l[1];return(0,J.jsxs)(J.Fragment,{children:[(0,J.jsxs)(\"div\",{className:\"animation-crop-controls\",children:[(0,J.jsx)(ue,{onClick:()=>{r>1&&(o(r-1),t(-.1))}}),(0,J.jsx)(te.A,{extraClass:\"zoom-level-slider\",min:1,max:10,step:1,value:r,active:!0,noTag:!0,noTip:!0,changeValue:e=>{e<r&&t((e-11)/10),e>r&&t(e/10),o(e)}}),(0,J.jsx)(ae,{onClick:()=>{r<10&&(o(r+1),t(.1))}})]}),(0,J.jsx)(\"div\",{className:\"animation-crop-controls\",children:(0,J.jsx)(ee.A,{onClick:()=>{o(1),n()},name:\"RESET\",extraClass:\"reset-cropper-btn\"})})]})}"
+  },
+  "cropper_zoom": {
+    "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+    "offset": 337654,
+    "end": 337772,
+    "sha256": "7328f51c2b7a797f880c594ab54272798c236eba8de7f980dfe22473c4df756b",
+    "source": "function(A,e){var t=this.canvasData;return A=(A=Number(A))<0?1/(1-A):1+A,this.zoomTo(t.width*A/t.naturalWidth,null,e)}"
+  },
+  "zoom_css": {
+    "path": ".ref/devices/691/static/css/OLED.a636cf4a.chunk.css",
+    "sha256": "57fe855ef0cf030f5d1b0fdedade193b676820a7951dbce50e30775cf48dfa8d",
+    "rules": [
+      {
+        "offset": 7843,
+        "selector": ".animation-crop-controls",
+        "conditions": [],
+        "declarations": "display:flex;flex-direction:row;justify-content:center",
+        "properties": [
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "row",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "center",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 7984,
+        "selector": ".zoom-level-slider",
+        "conditions": [],
+        "declarations": "margin:4px 10px 0;width:150px",
+        "properties": [
+          {
+            "property": "margin",
+            "value": "4px 10px 0",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "150px",
+            "important": false
+          }
+        ]
+      }
+    ]
+  },
+  "native_zoom": {
+    "control_positions": [
+      1,
+      10
+    ],
+    "step": 1,
+    "buttons": "step position by one; call relative zoom with +0.1 or -0.1",
+    "slider": "down: (next - 11) / 10; up: next / 10; same position: no change",
+    "ratio": "negative delta: multiply by 1 / (1 - delta); nonnegative: multiply by 1 + delta",
+    "reset": "restore initial canvas geometry and slider position 1",
+    "preview_limit": "viewMode 0: minimum canvas height 64; no 10x magnification cap; left in [-canvasWidth,232] and top in [-canvasHeight,190]. Native extreme-value guard: canvas edges at most 2^40 CSS pixels, above every u32 image initial canvas. Legacy zoom-only saved drafts retain their earlier preview."
+  },
+  "worker_contract": {
+    "initialize_once": true,
+    "input": [
+      "originalData",
+      "config",
+      "animationDelay"
+    ],
+    "crop_geometry": [
+      "containerWidth",
+      "containerHeight",
+      "canvasWidth",
+      "canvasHeight",
+      "canvasOffsetLeft",
+      "canvasOffsetTop",
+      "cropBoxWidth",
+      "cropBoxHeight",
+      "cropBoxOffsetLeft",
+      "cropBoxOffsetTop"
+    ],
+    "coalesce_before_limit": true,
+    "maximum_frames": 150,
+    "progress_batch_frames": 20,
+    "output_dimensions": [
+      232,
+      64
+    ],
+    "background": "black",
+    "grayscale": true,
+    "delay": "max(source frame delay, animationFPS === 15 ? 6 : 3), in GIF centiseconds",
+    "optimize": "optimizePlus before GIF encoding",
+    "output": {
+      "type": "complete",
+      "payload": [
+        "gifData (data:image/gif;base64)",
+        "size (encoded bytes)",
+        "frames"
+      ]
+    }
+  },
+  "native_scope": "Original local upload bytes plus reversible crop preview; no worker execution, processed GIF or device transfer.",
+  "native_import": {
+    "background_work": [
+      "local file read",
+      "base64 encode",
+      "GPUI image decode and EXIF orientation"
+    ],
+    "completion": "weak preset-editor entity update, latest file-selection generation and enabled slot rechecked before opening crop",
+    "local_preview": "crop uses decoded RenderImage; restored data URLs use a native Asset cache rather than URI/HTTP loading",
+    "cache_lifetime": "displayed-image leases share decoded data and remove the cache entry after the last preview disappears or changes content",
+    "local_guards": "64MiB encoded input and 256MiB resident-RGBA estimate are checked before decoding all supported formats; these are local safeguards, not vendor limits or a hard process-memory bound",
+    "accessibility": "zoom buttons use current ZOOM_IN/ZOOM_OUT translations"
+  },
+  "limitations": [
+    "Both production source maps return HTTP 404; current minified modules are parsed directly.",
+    "WASM validation covers its header and section bounds, not instruction semantics or equivalence to a native encoder.",
+    "Worker uses ImageMagick composite/resize/grayscale/optimization; Pillow preparation is not an equivalent custom-GIF processing implementation."
+  ],
+  "validation": "Acorn AST, source slices, manifest URLs, HTTP receipts and SHA-256 only; no downloaded JavaScript or WASM execution."
+}

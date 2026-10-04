@@ -1,6 +1,44 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Current Feedback application's mounted form and privacy-overlay CSS.
+pub(crate) struct FeedbackColors;
+impl FeedbackColors {
+    pub(crate) fn background() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn input() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn foreground() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn placeholder() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn error() -> Hsla {
+        rgb(0xfd4949).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn privacy_text() -> Hsla {
+        rgb(0xeeeeee).into()
+    }
+    pub(crate) fn primary() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn primary_foreground() -> Hsla {
+        rgb(0x000000).into()
+    }
+}
+
 /// Current Dock Pro HyperPolling and Dock V2 Pro Duallink CSS modules.
 pub(crate) struct DockPairingColors;
 impl DockPairingColors {
@@ -595,6 +633,9 @@ impl DrawerColors {
 /// Current product 691 OLED screensaver CSS, independent of app theme.
 pub(crate) struct OledColors;
 impl OledColors {
+    pub(crate) fn crop_face() -> Hsla {
+        rgb(0xffffff).into()
+    }
     pub(crate) fn screen() -> Hsla {
         rgb(0x000000).into()
     }
@@ -612,6 +653,15 @@ impl OledColors {
 /// Current camera CSS `.advanced-camera-container .default-button`.
 pub(crate) struct CameraProductColors;
 impl CameraProductColors {
+    pub(crate) fn focus() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn spinner_hover() -> Hsla {
+        rgba(0xffffff1a).into()
+    }
+    pub(crate) fn spinner_pressed() -> Hsla {
+        rgba(0x0000001a).into()
+    }
     pub(crate) fn border() -> gpui_kit::Hsla {
         gpui_kit::rgb(0x5d5d5d).into()
     }

@@ -1,6 +1,7 @@
 use super::*;
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
+    radio::Radio,
     select::{Select, SelectEvent, SelectState},
 };
 
@@ -11,6 +12,12 @@ pub(super) struct QuickMacroEditor {
     catalog_names: Vec<String>,
     name: Entity<InputState>,
     value: Entity<InputState>,
+    website: Entity<InputState>,
+    program_path: String,
+    picker_pending: bool,
+    picker_generation: u64,
+    picker_task: Option<Task<()>>,
+    picker_error: Option<String>,
     text: Entity<TextareaState>,
     type_select: Entity<SelectState<Vec<Choice>>>,
     kind: String,
@@ -25,12 +32,19 @@ impl QuickMacroEditor {
         let next_name = Self::next_name_for(&names);
         let name = cx.new(|cx| InputState::new(window, cx).default_value(next_name));
         let value = cx.new(|cx| InputState::new(window, cx));
+        let website = cx.new(|cx| InputState::new(window, cx));
         let text = cx.new(|cx| TextareaState::new(window, cx));
         let type_select = cx.new(|cx| SelectState::new(Self::type_choices(), None, window, cx));
         let mut this = Self {
             catalog_names: names,
             name,
             value,
+            website,
+            program_path: String::new(),
+            picker_pending: false,
+            picker_generation: 0,
+            picker_task: None,
+            picker_error: None,
             text,
             type_select,
             kind: String::new(),
@@ -43,6 +57,8 @@ impl QuickMacroEditor {
             .push(cx.observe(&this.name, |_, _, cx| cx.notify()));
         this.subscriptions
             .push(cx.observe(&this.value, |_, _, cx| cx.notify()));
+        this.subscriptions
+            .push(cx.observe(&this.website, |_, _, cx| cx.notify()));
         this.subscriptions
             .push(cx.observe(&this.text, |_, _, cx| cx.notify()));
         this.subscriptions.push(cx.subscribe_in(
@@ -122,12 +138,14 @@ impl QuickMacroEditor {
     }
 
     fn ready(&self, cx: &Context<Self>) -> bool {
-        if self.name.read(cx).value().trim().is_empty() {
+        if self.picker_pending || self.name.read(cx).value().trim().is_empty() {
             return false;
         }
         match self.kind.as_str() {
             "keyboard" => !self.keys.is_empty(),
-            "launch" | "runCommand" => !self.value.read(cx).value().trim().is_empty(),
+            "launch" if self.launch_kind == "PROGRAM" => !self.program_path.trim().is_empty(),
+            "launch" => !self.website.read(cx).value().trim().is_empty(),
+            "runCommand" => !self.value.read(cx).value().trim().is_empty(),
             "text" => !self.text.read(cx).value().trim().is_empty(),
             _ => false,
         }
@@ -184,6 +202,11 @@ impl QuickMacroEditor {
             }
             "launch" => {
                 result["mode"] = json!(self.launch_kind.to_lowercase());
+                let value = if self.launch_kind == "PROGRAM" {
+                    self.program_path.trim().to_owned()
+                } else {
+                    self.website.read(cx).value().trim().to_owned()
+                };
                 let target = if self.launch_kind == "WEBSITE"
                     && !value.starts_with("http://")
                     && !value.starts_with("https://")
@@ -208,17 +231,176 @@ impl QuickMacroEditor {
     }
 
     fn clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // A picker response from before Clear or a type change must not
+        // repopulate the new draft. The native picker itself remains open.
+        self.picker_generation = self.picker_generation.wrapping_add(1);
+        self.picker_error = None;
+        self.program_path.clear();
         self.launch_kind = "PROGRAM".into();
         self.keys.clear();
         self.value
+            .update(cx, |state, cx| state.set_value("", window, cx));
+        self.website
             .update(cx, |state, cx| state.set_value("", window, cx));
         self.text
             .update(cx, |state, cx| state.set_value("", window, cx));
         cx.notify();
     }
 
+    fn browse_program(&mut self, cx: &mut Context<Self>) {
+        if self.kind != "launch" || self.launch_kind != "PROGRAM" || self.picker_pending {
+            return;
+        }
+        let generation = self.picker_generation;
+        self.picker_pending = true;
+        self.picker_error = None;
+        // Current aH.ie requests one .exe. GPUI's path prompt has no extension
+        // filter, so validate the returned path before changing the draft.
+        let picker = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some(format!("{} (.exe)", text("PROGRAM")).into()),
+        });
+        self.picker_task = Some(cx.spawn(async move |view, cx| {
+            let result = picker.await;
+            let _ = view.update(cx, |this, cx| {
+                this.picker_pending = false;
+                this.picker_task = None;
+                if this.picker_generation == generation && this.kind == "launch" {
+                    match result {
+                        Ok(Ok(Some(paths))) => {
+                            if let Some(path) = paths.first() {
+                                if path.extension().and_then(|value| value.to_str())
+                                    .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+                                {
+                                    // Store only the path. Never inspect or launch the executable.
+                                    this.program_path = path.to_string_lossy().into_owned();
+                                } else {
+                                    this.picker_error = Some(Self::picker_message(
+                                        "请选择 .exe 文件。原路径已保留。",
+                                        "Choose an .exe file. The previous path is retained.",
+                                    ));
+                                }
+                            }
+                        }
+                        Ok(Ok(None)) => {} // Native Cancel preserves all draft fields.
+                        _ => this.picker_error = Some(Self::picker_message(
+                            "无法打开文件选择器。原路径已保留，请重试。",
+                            "Could not open the file picker. The previous path is retained; try again.",
+                        )),
+                    }
+                }
+                cx.notify();
+            });
+        }));
+        cx.notify();
+    }
+
+    fn picker_message(zh: &str, en: &str) -> String {
+        if i18n::locale().to_ascii_lowercase().starts_with("zh") {
+            zh.into()
+        } else {
+            en.into()
+        }
+    }
+
+    fn launch_field(&self, cx: &Context<Self>) -> AnyElement {
+        let program = self.launch_kind == "PROGRAM";
+        v_flex()
+            .w_full()
+            .min_w_0()
+            .gap(surface::css(10.))
+            .child(
+                v_flex()
+                    .gap(surface::css(6.))
+                    .child(
+                        Radio::new("quick-macro-launch-PROGRAM")
+                            .label(text("PROGRAM"))
+                            .checked(program)
+                            .on_change(cx.listener(|this, _, _, cx| {
+                                this.launch_kind = "PROGRAM".into();
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        gpui_kit::base::Button::new("quick-macro-program-browse")
+                            .accessibility_label(format!(
+                                "{}: {}",
+                                text("PROGRAM"),
+                                self.program_path
+                            ))
+                            .ml(surface::css(30.))
+                            .h(surface::css(27.))
+                            .flex()
+                            .items_center()
+                            .px(surface::css(5.))
+                            .gap(surface::css(5.))
+                            .border_1()
+                            .border_color(Colors::input_border())
+                            .hover(|style| style.border_color(Colors::primary()))
+                            .focus_visible(|style| style.border_color(Colors::primary()))
+                            .disabled(!program || self.picker_pending)
+                            .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .truncate()
+                                    .text_left()
+                                    .child(self.program_path.clone()),
+                            )
+                            .child(
+                                img("synapse/automation-icon_folder.svg")
+                                    .size(surface::css(16.67))
+                                    .flex_shrink_0(),
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| this.browse_program(cx))),
+                    ),
+            )
+            .child(
+                v_flex()
+                    .gap(surface::css(6.))
+                    .child(
+                        Radio::new("quick-macro-launch-WEBSITE")
+                            .label(text("WEBSITE"))
+                            .checked(!program)
+                            .on_change(cx.listener(|this, _, _, cx| {
+                                this.launch_kind = "WEBSITE".into();
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        div()
+                            .ml(surface::css(30.))
+                            .when(program, |view| view.opacity(0.3))
+                            .child(
+                                Input::new(&self.website)
+                                    .appearance(false)
+                                    .aria_label(text("WEBSITE"))
+                                    .disabled(program)
+                                    .w_full()
+                                    .h(surface::css(27.))
+                                    .px(surface::css(5.))
+                                    .border_1()
+                                    .border_color(Colors::input_border()),
+                            ),
+                    ),
+            )
+            .when_some(self.picker_error.clone(), |view, error| {
+                view.child(
+                    div()
+                        .text_size(surface::css(12.))
+                        .text_color(Colors::danger())
+                        .child(error),
+                )
+            })
+            .into_any_element()
+    }
+
     fn field(&self, cx: &Context<Self>) -> AnyElement {
         match self.kind.as_str() {
+            "launch" => self.launch_field(cx),
             "keyboard" => div()
                 .id("quick-macro-key-capture")
                 .track_focus(&self.capture)
@@ -331,6 +513,9 @@ impl Render for QuickMacroEditor {
             .id("quick-macro-popup")
             .w(surface::css(500.))
             .h(surface::css(369.))
+            .when(self.picker_error.is_some(), |view| {
+                view.h(surface::css(409.))
+            })
             .p(surface::css(20.))
             .bg(Colors::panel())
             .border_1()
@@ -415,6 +600,9 @@ impl Render for QuickMacroEditor {
                             .accessibility_label(text("CLEAR"))
                             .disabled(
                                 self.keys.is_empty()
+                                    && self.program_path.is_empty()
+                                    && self.website.read(cx).value().is_empty()
+                                    && (self.kind != "launch" || self.launch_kind == "PROGRAM")
                                     && self.value.read(cx).value().is_empty()
                                     && self.text.read(cx).value().is_empty(),
                             )
@@ -431,22 +619,6 @@ impl Render for QuickMacroEditor {
                     .child(self.section_icon())
                     .child(self.field(cx)),
             )
-            .when(self.kind == "launch", |view| {
-                view.child(
-                    h_flex()
-                        .gap(surface::css(8.))
-                        .children(["PROGRAM", "WEBSITE"].map(|kind| {
-                            Button::new(SharedString::from(format!("quick-macro-launch-{kind}")))
-                                .outline()
-                                .selected(self.launch_kind == kind)
-                                .label(text(kind))
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.launch_kind = kind.into();
-                                    cx.notify();
-                                }))
-                        })),
-                )
-            })
             .when(self.kind == "text", |view| {
                 view.child(
                     div()

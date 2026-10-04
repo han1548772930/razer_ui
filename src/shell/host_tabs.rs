@@ -41,6 +41,7 @@ pub(super) enum HostTab {
     Macro,
     Armory,
     Profiles,
+    Feedback,
 }
 impl HostTab {
     fn location(&self) -> Location {
@@ -53,13 +54,14 @@ impl HostTab {
             Self::Macro => Location::Macro,
             Self::Armory => Location::Armory,
             Self::Profiles => Location::Profiles,
+            Self::Feedback => Location::Feedback,
         }
     }
     fn id(&self) -> SharedString {
         match self {
             Self::Device(key) => format!("host-{key}").into(),
             Self::Tour(kind) => kind.id().into(),
-            Self::Alexa => "host-alexa".into(),
+            Self::Alexa => "alexa".into(),
             Self::FirmwareUpdate => "host-firmware-update".into(),
             Self::ProfileMigration => "syn3-profile-migration".into(),
             // 原版这个窗口的名字就是 `macro`。
@@ -68,6 +70,7 @@ impl HostTab {
             Self::Armory => "armory".into(),
             // 模块表里这个窗口就叫 `profiles`。
             Self::Profiles => "profiles".into(),
+            Self::Feedback => "feedback-synapse".into(),
         }
     }
     fn from_location(location: &Location) -> Option<Self> {
@@ -80,6 +83,7 @@ impl HostTab {
             Location::Macro => Some(Self::Macro),
             Location::Armory => Some(Self::Armory),
             Location::Profiles => Some(Self::Profiles),
+            Location::Feedback => Some(Self::Feedback),
             _ => None,
         }
     }
@@ -159,7 +163,10 @@ impl HostTabs {
         self.open.sort_by_key(|entry| {
             order
                 .iter()
-                .position(|id| id == entry.tab.id().as_ref())
+                .position(|id| {
+                    id == entry.tab.id().as_ref()
+                        || (id == "host-alexa" && entry.tab == HostTab::Alexa)
+                })
                 .unwrap_or(usize::MAX)
         });
         self.saved_order = self.order();
@@ -392,6 +399,7 @@ impl AppShell {
                     // 原版标题 key 为 DASHBOARD_WORKSHOP / DASHBOARD_EXCHANGE，中文都是「互换」。
                     HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
                     HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
+                    HostTab::Feedback => crate::i18n::t("FEEDBACK"),
                 };
                 let label = label.to_uppercase();
                 let width = tab_width(&label, window);
@@ -532,6 +540,7 @@ impl AppShell {
             Some(HostTab::Armory) => "synapse/module-armory.svg",
             // 模块目录里 linkedGames 与 armory 共用同一套模块图标资源目录。
             Some(HostTab::Profiles) => "synapse/module-linked-games.svg",
+            Some(HostTab::Feedback) => "synapse/module-feedback.svg",
             Some(HostTab::Device(key)) => match self
                 .devices
                 .iter()

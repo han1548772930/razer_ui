@@ -37,8 +37,8 @@ row, hover, pressed, foreground, muted, primary, border, footer, danger and
 warning roles. Body uses Roboto 14px at the source 16px rem scale; widget title
 uses RazerF5 16px. Widget and row widths/padding, 60px item height, 355px lane
 width, 34/35px lane gaps, 37px category select, footer sizing and 109px modal
-top margin are derived from the current CSS. Nineteen SVG assets are recorded in
-`automation-manifest.json`: fifteen exact copies from manifest-declared current
+top margin are derived from the current CSS. Twenty-three SVG assets are recorded in
+`automation-manifest.json`: nineteen exact copies from manifest-declared current
 URLs and four type icons converted from literal JSX SVG paths. Inline receipts
 retain the current source range, fragment and source/output hashes.
 
@@ -59,10 +59,41 @@ retain the current source range, fragment and source/output hashes.
   retained under `quick_color_parameters`. Each edit changes only its lane's
   local `setting` and clears apply-to-other-devices as `LP`'s `P` callback does.
   The editor retains these changes until Save; Cancel discards the rule draft.
-  Starlight duration/color, Wave direction and audio-meter parameter subpanels
-  remain to be ported. Fire and Spectrum Cycling mount no parameter component
+  Starlight now shares the two-color/random controls and adds the actual 1–3
+  duration slider with Short/Medium/Long tags and no numeric tooltip. Its changes
+  merge settings. Wave uses `DeviceInfo.WAVE_DIRECTION=UpDown` and values 3/4;
+  `GT/yT` toggles on either half, including the selected half, and on the outside
+  frame. Current arrow artwork, 42px frame, 40×30 segments, active green fill and
+  hover border are prepared from the current source. Audio Meter mounts the
+  Color Boost stepper (0.25–4, step 0.25, maxLength 4); unlike the other effects,
+  `AI.changeColorBoost` replaces settings with `{colorBoost}` after rounding up
+  to a quarter. There is no mounted hardware color picker or Wave speed branch
+  for this product. Fire and Spectrum Cycling mount no parameter component
   in this current `LP` switch; shared speed variants are not evidence that 3946
   should display additional controls.
+  The number editor is current module 44230, whose behavior is identical to the
+  retained native Kiyo editor. Its caller-provided `stepperRegex` is not consumed
+  by that module. Automation adds the higher-specificity `.modes-area .stepper`
+  presentation (60×27; input 58×25 with 5px left padding and 17px line height),
+  keeping the default Kiyo 62×26 presentation. The source receipts include the
+  complete stepper module, resolved aliases, parameter labels and the relevant
+  ordered CSS rules. Duration owns retained slider/focus state per trigger;
+  keyboard changes explicitly update the draft because GPUI `set_value` does not
+  emit a SliderEvent. Pointer changes also set the discrete value back into the
+  retained slider to snap its percentage to Short/Medium/Long. Visible color
+  captions, their 5px trigger gap, the independently centered Medium label and
+  30px Apply-to-all gap follow the source layout. Mode switches and Off's
+  apply-to-all toggle merge into the existing lane data. Reselecting an effect
+  restores that lane's saved setting if present, otherwise the source default;
+  this is not a cache of unsaved alternate effects. `yP.renderEffects` contains
+  an OR of the two lane props, but the two `GP` mounts each receive only their
+  own data and its connector does not inject either lane, so no cross-lane
+  advanced panel is implied. These changes have no executor or hardware I/O.
+  The duration observer also handles Base Slider accessibility adjustments,
+  which do not emit Change; equality checks avoid rewriting the lane or clearing
+  apply flags during parent synchronization. Every parameter edit emits LP's
+  exact quick-effect envelope, with Audio Meter retaining only its colorBoost
+  setting as required by AI.
 - The source quick-macro entry opens a 500×369 local editor derived from `aH`
   at UTF-16 offsets 6920385–6931761. It follows the empty-type initial state,
   `Macro N` default naming, four-type dropdown, keyboard capture with a
@@ -73,8 +104,13 @@ retain the current source range, fragment and source/output hashes.
   resolves duplicate names before adding a local candidate to the selected
   lane. It stores UI-readable local action data, without a vendor macro service
   payload, native macro execution or driver acknowledgement.
-  The Program branch currently accepts a local path as text; the source `.exe`
-  picker is pending. Native type-menu row icons, source capture-session keyup
+  The Program branch now opens a single-file picker and shows a read-only
+  selected `.exe` path; cancellation or invalid selection retains the previous
+  draft. Program and Website preserve separate values; Clear and type changes
+  invalidate older picker results. GPUI cannot filter extensions in its native
+  picker, so `.exe` is checked after selection. See
+  [current program picker evidence](automation-quick-program-current-audit.md).
+  Native type-menu row icons, source capture-session keyup
   behavior, exact pill hover/delete overlays and transition timing still need
   completion. Game browser/link editing and
   global-shortcut assignment remain follow-up work; their buttons continue to

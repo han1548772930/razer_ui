@@ -41,12 +41,12 @@ cargo run
 ## 原始参考
 
 ```text
-.ref/frontend/                 主前端
+.ref/applications/synapse/dashboard/  当前 Dashboard 前端
 .ref/devices/182/              DeathAdder V3 Pro
 .ref/devices/653/              BlackWidow V4 Pro
 .ref/devices/777/              Kraken BT Sanrio
-.ref/synapse-asar/             Electron 壳和设备桥
-.ref/tools/                    抓取、扫描、CSS 审计工具
+.ref/host-4.0.827/             当前官方宿主的静态提取源码
+tools/                        维护中的静态抓取、解析和校验工具
 ```
 
 项目目标不是复制 Electron，而是使用原生 Rust UI 实现同样的产品能力和交互模型。

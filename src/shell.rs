@@ -26,11 +26,10 @@ mod app_picker;
 mod app_picker_host;
 mod armory_page;
 mod display_window;
-mod firmware_update;
 mod feedback_page;
+mod firmware_update;
 mod header_status;
 mod host_tabs;
-mod independent_window;
 mod introduction_tour;
 mod iot_popup;
 mod macro_page;
@@ -58,6 +57,7 @@ enum Location {
     Macro,
     Armory,
     Profiles,
+    Feedback,
 }
 struct PreparedSave {
     window: AnyWindowHandle,
@@ -137,6 +137,7 @@ pub struct AppShell {
     macro_page: Option<Entity<macro_page::MacroPage>>,
     armory_page: Option<Entity<armory_page::ArmoryPage>>,
     profiles_page: Option<Entity<profiles_page::ProfilesPage>>,
+    feedback_page: Option<Entity<feedback_page::FeedbackPage>>,
     tour_trigger: FocusHandle,
     shortcuts: Entity<crate::features::shortcuts::Shortcuts>,
     settings: Entity<settings_page::SettingsPage>,
@@ -223,6 +224,7 @@ impl AppShell {
             macro_page: None,
             armory_page: None,
             profiles_page: None,
+            feedback_page: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
             shortcuts,
             settings,
@@ -384,7 +386,7 @@ impl AppShell {
                         );
                     }
                     service_pages::ModulePage::Alexa => {
-                        this.open_independent_module(service_pages::ModulePage::Alexa, cx);
+                        this.open_module_tab(service_pages::ModulePage::Alexa, window, cx);
                     }
                     // 原版此盒聚焦 `synapse-introduction` 窗口。
                     service_pages::ModulePage::IntroductionTour => {
@@ -392,18 +394,18 @@ impl AppShell {
                     }
                     // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）。
                     service_pages::ModulePage::Macro => {
-                        this.open_independent_module(service_pages::ModulePage::Macro, cx);
+                        this.open_module_tab(service_pages::ModulePage::Macro, window, cx);
                     }
                     // 原版此盒打开 `armory` 窗口（`/synapse/armory/`）。
                     service_pages::ModulePage::Armory => {
-                        this.open_independent_module(service_pages::ModulePage::Armory, cx);
+                        this.open_module_tab(service_pages::ModulePage::Armory, window, cx);
                     }
                     // 原版此盒打开 `profiles` 窗口（`/synapse/profiles/`）。
                     service_pages::ModulePage::Profiles => {
-                        this.open_independent_module(service_pages::ModulePage::Profiles, cx);
+                        this.open_module_tab(service_pages::ModulePage::Profiles, window, cx);
                     }
                     service_pages::ModulePage::Feedback => {
-                        this.open_independent_module(service_pages::ModulePage::Feedback, cx);
+                        this.open_module_tab(service_pages::ModulePage::Feedback, window, cx);
                     }
                 },
                 service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
@@ -517,9 +519,20 @@ impl AppShell {
         }
         let entity =
             cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
-        self.subscriptions.push(
-            cx.subscribe_in(&entity, window, |this, _, event, _window, cx| match event {
+        self.subscriptions.push(cx.subscribe_in(
+            &entity,
+            window,
+            |this, entity, event, window, cx| match event {
                 WorkspaceEvent::Changed => cx.notify(),
+                WorkspaceEvent::ShareProfile => {
+                    let device = entity.read(cx).snapshot(cx);
+                    this.open_module_tab(service_pages::ModulePage::Armory, window, cx);
+                    if this.location == Location::Armory {
+                        if let Some(page) = &this.armory_page {
+                            page.update(cx, |page, cx| page.open_share_profile(device, window, cx));
+                        }
+                    }
+                }
                 WorkspaceEvent::IntroDismissed => {
                     this.tracking_intro_seen = true;
                     for device in &this.devices {
@@ -529,14 +542,17 @@ impl AppShell {
                         .update(cx, |settings, cx| settings.tutorial_viewed(cx));
                     this.save_auxiliary_preferences(cx);
                 }
-            }),
-        );
+            },
+        ));
         if crate::features::has_product_workspace(entity.read(cx).device(cx).product_id) {
             self.host_tabs
                 .open(host_tabs::HostTab::Device(entity.read(cx).identity(cx)), cx);
         }
         self.devices.push(entity);
         if let Some(page) = &self.profiles_page {
+            page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
+        }
+        if let Some(page) = &self.macro_page {
             page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
         }
         self.sync_app_picker(window, cx);
@@ -577,9 +593,10 @@ impl AppShell {
             window_min_size: Some(size(px(1080.), px(720.))),
             ..TitleBar::window_options()
         };
-        // 原版对这个窗口传 `ZP.sameWindow`（`policy=3`）与 `ZP.autoFocus`
-        // （`shouldFocus=1`）：命中同名窗口就复用并聚焦。
-        let policy = display_window::WindowPolicy::Same;
+        // The source opener uses policy=3 (a host tab). Keep the separately
+        // requested second pairing window as an explicit local exception;
+        // its OS-window policy must not be presented as source equivalence.
+        let policy = display_window::WindowPolicy::Different;
         // `allMasters` 来自宿主写入的 connectedDeviceInfo 投影（Dashboard `jt`/`Et`），
         // 该投影尚未审计；没有真实记录时传 None，窗口显示 4130 页面原有的空态。
         let payload = pairing_window::PairingWindowPayload { all_masters: None };
@@ -591,94 +608,24 @@ impl AppShell {
             eprintln!("无法打开配对窗口：{error}");
         }
     }
-    /// Open one of the current Dashboard module applications as a named
-    /// independent window. Existing windows with the same source name are
-    /// focused instead of duplicated.
-    fn open_independent_module(&mut self, module: service_pages::ModulePage, cx: &mut App) {
-        let (name, bounds, minimum) = match module {
-            service_pages::ModulePage::Alexa => (
-                SharedString::from("alexa"),
-                size(px(1180.), px(780.)),
-                size(px(960.), px(620.)),
-            ),
-            service_pages::ModulePage::Macro => (
-                SharedString::from("macro"),
-                size(px(1240.), px(820.)),
-                size(px(1040.), px(680.)),
-            ),
-            service_pages::ModulePage::Armory => (
-                SharedString::from("armory"),
-                size(px(1280.), px(780.)),
-                size(px(1040.), px(640.)),
-            ),
-            service_pages::ModulePage::Profiles => (
-                SharedString::from("profiles"),
-                size(px(1160.), px(780.)),
-                size(px(900.), px(620.)),
-            ),
-            service_pages::ModulePage::Feedback => (
-                SharedString::from("feedback-synapse"),
-                size(px(620.), px(700.)),
-                size(px(540.), px(560.)),
-            ),
+    /// Dashboard modules use policy=3: a named tab in the current host window.
+    /// Tab.js routes this policy through sendCreateNewTabAction; only the
+    /// different-window policies create an OS window. See the host policy audit.
+    fn open_module_tab(
+        &mut self,
+        module: service_pages::ModulePage,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let next = match module {
+            service_pages::ModulePage::Alexa => Location::Alexa,
+            service_pages::ModulePage::Macro => Location::Macro,
+            service_pages::ModulePage::Armory => Location::Armory,
+            service_pages::ModulePage::Profiles => Location::Profiles,
+            service_pages::ModulePage::Feedback => Location::Feedback,
             _ => return,
         };
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::centered(bounds, cx)),
-            window_min_size: Some(minimum),
-            ..TitleBar::window_options()
-        };
-        let devices = self.devices.clone();
-        let result: anyhow::Result<()> = match module {
-            service_pages::ModulePage::Alexa => display_window::open_or_focus(
-                cx,
-                name,
-                display_window::WindowPolicy::Same,
-                options,
-                |window, cx| cx.new(|cx| independent_window::AlexaWindow::new(window, cx)),
-            )
-            .map(|_| ()),
-            service_pages::ModulePage::Macro => display_window::open_or_focus(
-                cx,
-                name,
-                // The module registry uses `sameWindow` (`policy=3`): this
-                // is a named application root that is reused and focused.
-                display_window::WindowPolicy::Same,
-                options,
-                |window, cx| cx.new(|cx| independent_window::MacroWindow::new(window, cx)),
-            )
-            .map(|_| ()),
-            service_pages::ModulePage::Armory => display_window::open_or_focus(
-                cx,
-                name,
-                display_window::WindowPolicy::Same,
-                options,
-                |window, cx| cx.new(|cx| independent_window::ArmoryWindow::new(window, cx)),
-            )
-            .map(|_| ()),
-            service_pages::ModulePage::Profiles => display_window::open_or_focus(
-                cx,
-                name,
-                display_window::WindowPolicy::Same,
-                options,
-                move |window, cx| {
-                    cx.new(|cx| independent_window::ProfilesWindow::new(window, cx, devices))
-                },
-            )
-            .map(|_| ()),
-            service_pages::ModulePage::Feedback => display_window::open_or_focus(
-                cx,
-                name,
-                display_window::WindowPolicy::Same,
-                options,
-                |window, cx| cx.new(|cx| independent_window::FeedbackWindow::new(window, cx)),
-            )
-            .map(|_| ()),
-            _ => return,
-        };
-        if let Err(error) = result {
-            eprintln!("无法打开独立模块窗口：{error}");
-        }
+        self.navigate(next, window, cx);
     }
     fn request_navigation(
         &mut self,
@@ -691,6 +638,11 @@ impl AppShell {
             self.host_tabs.focus_location(&next, window, cx);
             if next == Location::Alexa {
                 if let Some(page) = &self.alexa {
+                    page.update(cx, |page, cx| page.focus(window, cx));
+                }
+            }
+            if next == Location::Feedback {
+                if let Some(page) = &self.feedback_page {
                     page.update(cx, |page, cx| page.focus(window, cx));
                 }
             }
@@ -823,6 +775,16 @@ impl AppShell {
                     page.update(cx, |page, cx| page.focus(window, cx));
                 }
             }
+            if next == Location::Feedback {
+                if self.feedback_page.is_none() {
+                    self.feedback_page =
+                        Some(cx.new(|cx| feedback_page::FeedbackPage::new(window, cx)));
+                }
+                self.feedback_page
+                    .as_ref()
+                    .unwrap()
+                    .update(cx, |page, cx| page.focus(window, cx));
+            }
             if next == Location::ProfileMigration && self.profile_migration.is_none() {
                 self.profile_migration = Some(cx.new(profile_migration::MigrationPage::new));
             }
@@ -854,6 +816,7 @@ impl AppShell {
             if next == Location::Macro {
                 if self.macro_page.is_none() {
                     let page = cx.new(|cx| macro_page::MacroPage::new(window, cx));
+                    page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
                     self.subscriptions
                         .push(cx.observe(&page, |_, _, cx| cx.notify()));
                     self.macro_page = Some(page);
@@ -1346,6 +1309,7 @@ impl AppShell {
             Location::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
             // 模块表把 `linkedGames` 指向 profiles 窗口，标题用它的文案 key。
             Location::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
+            Location::Feedback => crate::i18n::t("FEEDBACK"),
         };
         let has_previous = self.history_target(false, cx).is_some();
         let has_next = self.history_target(true, cx).is_some();
@@ -1682,6 +1646,11 @@ impl Render for AppShell {
                 .as_ref()
                 .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
+            Location::Feedback => self
+                .feedback_page
+                .as_ref()
+                .map(|page| page.clone().into_any_element())
+                .unwrap_or_else(|| div().into_any_element()),
             Location::Pairing => div()
                 .id("pairing-page-scroll")
                 .size_full()
@@ -1702,7 +1671,10 @@ impl Render for AppShell {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(self.title_bar(window, cx))
-            .child(self.toolbar(cx))
+            // Feedback mounts only its own form and footer beneath the host tabs.
+            .when(self.location != Location::Feedback, |view| {
+                view.child(self.toolbar(cx))
+            })
             .child(
                 div()
                     .id("shell-content-viewport")
@@ -1715,16 +1687,18 @@ impl Render for AppShell {
             .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
             .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
             .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
-            .child(
-                div()
-                    .h(surface::css(24.))
-                    .flex_shrink_0()
-                    .px_3()
-                    .flex()
-                    .items_center()
-                    .text_size(surface::css(12.))
-                    .text_color(cx.theme().muted_foreground)
-                    .child(self.status.clone()),
-            )
+            .when(self.location != Location::Feedback, |view| {
+                view.child(
+                    div()
+                        .h(surface::css(24.))
+                        .flex_shrink_0()
+                        .px_3()
+                        .flex()
+                        .items_center()
+                        .text_size(surface::css(12.))
+                        .text_color(cx.theme().muted_foreground)
+                        .child(self.status.clone()),
+                )
+            })
     }
 }

@@ -14,6 +14,9 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use std::{path::PathBuf, time::Duration};
 
+mod share_profile;
+use share_profile::{ShareClosed, ShareProfileDialog};
+
 fn tr(key: &str) -> String {
     i18n::t(&format!("ARMORY_SOURCE.{key}"))
 }
@@ -202,6 +205,8 @@ pub(super) struct ArmoryPage {
     search_pending: bool,
     search_generation: u64,
     search_task: Option<Task<()>>,
+    share_profile: Option<Entity<ShareProfileDialog>>,
+    share_subscription: Option<Subscription>,
     _subscriptions: Vec<Subscription>,
 }
 impl ArmoryPage {
@@ -231,13 +236,40 @@ impl ArmoryPage {
             search_pending: false,
             search_generation: 0,
             search_task: None,
+            share_profile: None,
+            share_subscription: None,
             _subscriptions: vec![search_subscription],
             focus: cx.focus_handle(),
         }
     }
     pub(super) fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.focus.focus(window, cx);
+        if let Some(dialog) = &self.share_profile {
+            dialog.update(cx, |dialog, cx| dialog.focus(window, cx));
+        } else {
+            self.focus.focus(window, cx);
+        }
         cx.notify();
+    }
+    /// Explicit local-profile entry; the guest Browse grid stays empty without
+    /// remote contributions. The snapshot is retained only as a sharing draft.
+    pub(super) fn open_share_profile(
+        &mut self,
+        device: crate::model::Device,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let dialog = cx.new(|cx| ShareProfileDialog::new(device, window, cx));
+        self.share_subscription =
+            Some(
+                cx.subscribe_in(&dialog, window, |this, _, _: &ShareClosed, window, cx| {
+                    this.share_profile = None;
+                    this.share_subscription = None;
+                    this.focus.focus(window, cx);
+                    cx.notify();
+                }),
+            );
+        self.share_profile = Some(dialog);
+        self.focus(window, cx);
     }
     fn visible(&self, tab: ArmoryTab) -> bool {
         (!self.guest || tab != ArmoryTab::MyUploads)
@@ -764,5 +796,6 @@ impl Render for ArmoryPage {
                     .scrollable_both()
                     .child(body),
             )
+            .children(self.share_profile.clone())
     }
 }

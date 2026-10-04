@@ -84,43 +84,47 @@ const gate = () => {
 
 黑框自身的盒模型也对齐了原版：`.black-box` 是 `width:220px;height:132px` 加 `1px` 边框的 content-box，边框盒为 222×134；本地此前把 220×132 当作边框盒（内容盒只有 218×130），现在按 222×134 绘制，内容盒正好 220×132，白框坐标与钳制常数随之与原版一致。拖拽需要的黑框窗口坐标由 `canvas` 在布局阶段记录，对应原版的 `getBoundingClientRect()`；方向键的 ±1 步进此前已论证与原版一致（原版把 pan/tilt ±1 换算成像素再换算回来，线性映射下等价，钳制点也相同）。
 
-## 数字步进器（共享设置行）
+## 数字步进器（2026-10-04 重新核对）
 
-变焦行在原版是共享设置行 `HM.A`：`hasStepper:!0, allowDecimal:!0, roundUpDecimals:!0, stepValue:<步长>, minStepper/maxStepper`，`disabledStepper` 接同一道 LDC 复合条件，内容区才是滑块。本地新增共享步进器 [stepper.rs](../../src/ui/stepper.rs)，像素与行为都按产品包 CSS/JS：
+本轮按四个当前产品包的实际类、设置行适配器及完整 CSS 顺序重审，收据由 `tools/generate-native-camera-controls.cjs` 写入 [camera-stepper-current-evidence.json](camera-stepper-current-evidence.json)。此前只读取前段 CSS、并把设置行调用处的属性当作输入属性，所得的尺寸与小数结论作废。
 
-| 项 | 原版 | 本地 |
+| 项 | 当前源码的最终规则 | 本地实现 |
 | --- | --- | --- |
-| 外框 | `.stepper{width:60px;height:27px;border:1px solid #5d5d5d}` | 60×27 + `1px #5d5d5d` |
-| 输入区 | `58x25`、`#111` 背景、`#ccc`、`14px/17px`、`padding:5px 18px 5px 5px` | 同值 |
-| 箭头 | `14x12`、`background-size:8px`、上 `background-position-y:5px`／下 `3px` | 14×12，图标 8×8，上/下偏移按 CSS |
-| 箭头显隐 | `.icon.spinner{opacity:0;visibility:hidden}`，`.stepper:hover`／`:focus-within` 时 `0.1s linear` 淡入 | `group_hover` 显示 |
-| 箭头状态色 | hover `#ffffff1a`、按下 `#0000001a` | hover 已接；按下态未接 |
-| 长按 | `onMouseDown` 立即一步 + `setInterval(()=>{e()},300)`，`onMouseUp` 停止 | 立即一步 + 每 300ms 重复，`mouse_up`/`mouse_up_out` 停止 |
-| 禁用 | `.stepper.disabled{opacity:.3;pointer-events:none}` | `opacity(0.3)` 且不挂事件 |
-| 小数 | `allowDecimal` + `roundUpDecimals` 时显示三位小数输入 | 按步长显示 1/2 位 |
+| 外框 | 后段 `.stepper` 覆盖为 `62×26`、相对定位、`1px solid #5d5d5d`；悬停/内部焦点绿色边框 | 同尺寸与状态，颜色来自产品主题令牌 |
+| 输入区 | `38×24`、`left:6px`、`padding:0`、`14px/14px`、`#ccc`；透明背景露出外框 `#111` | 保留 `InputState`，38px 文字区及左侧 6px，支持真实文字编辑 |
+| 箭头 | `14×12`；SVG 固有 2:1 比例按 8px 背景宽缩为 `8×4`；上偏移 5px、下偏移 3px | 同图标和几何 |
+| 显隐与按压 | 产品末段规则令上下箭头始终 `opacity:1;visibility:visible`；hover `#ffffff1a`、active `#0000001a` | 常显并应用两个状态令牌；不再使用过期的 hover-only 规则 |
+| 范围边界 | 达最小/最大值时对应箭头 `opacity:.3;pointer-events:none` | 对应方向淡化并停止指针重复 |
+| 长按 | 按下立即一步，每 300ms 重复，松开/离开停止，更新到范围边界时清计时器 | 保留任务，松开、移出、禁用及实体销毁均停止；抑制 GPUI NumberInput 在释放时的额外 click，避免双步进 |
+| 输入、键盘 | 正负整数或至多三位小数草稿，可暂时为空/`-`；方向上/下步进，Enter/Escape 失焦提交 | 复用 `Input` 与 Base `NumberInput` 的文字/键盘行为，显式禁用默认 numeric mask 以保留原草稿 |
+| 失焦归整 | 整数先向上归到步长再钳制；小数先钳制，再以 `1e-10` 容差判断是否向上归到步长 | 同一顺序；点击输入首次全选，后续点击可定位光标；聚焦时滚轮步进 |
 
-描述符新增 `has_stepper`／`allow_decimal`／`round_up_decimals`，由 `tools/generate-native-camera-controls.cjs` 逐行取证：变焦行取自 `disabledStepper:…,stepValue:…,minStepper:…,maxStepper:…,hasStepper:!0`，图像四行取自各自行字面量（`name:<labels>.a1g` 等）后 900 字符内、且未跨入下一行的 `hasStepper:!0`（白平衡行的该标志在 500 字符之后，因此窗口不能更窄；负向前瞻 `(?!name:)` 防止把邻行的步进器算进本行）。缺证据即抛错。
+变焦行确实传入 `allowDecimal:true, roundUpDecimals:true`，但四个当前包的共享设置行都只转发 `allowDecimals`，**没有转发 `roundUpDecimals`**。实际输入未在点击编辑状态时使用 `toFixed(3)`，所以变焦静止显示 `1.000`，不是按 0.1／0.01 步长显示一位／两位。描述符现在记录经过适配器后的有效属性；静态扫描同时校验实际输入类与转发对象，不再由调用处推测。
 
-已接入步进器的行（3592/3594/3595/3596 各 5 行）：变焦（步长 0.1／3596 为 0.01、一位小数）、亮度、对比度、饱和度（步长 1、0–255、整数）、白平衡（步长 10、`disabledStepper` 即自动白平衡开启时禁用，本地由 `disabled_when` 驱动同一行为）。**仍未接入**：原版的锐度（`UFE`）与增益（`cSw`）两行本身是有条件的 `a&&(…)`／`t&&(…)` 分支，本地相机页尚未挂载这两行，因此也不存在对应步进器——这是「条件行未接入」而不是「步进器缺失」。
+已挂载的步进器共 23 个：3592/3594/3595 各 6 个，3596 共 5 个。
+
+- 四个根都含变焦、亮度、对比度、饱和度、白平衡。图像前三项 `maxLength:3`，白平衡最大长度来自该产品 `whiteBalance.max.toString().length`，变焦未传长度上限。整数行按源码保留手工输入字符串后 `e + stepValue` 的转换行为；例如未失焦的 `12` 再按上键会先形成 `121`，随后进行范围钳制。
+- 3592/3594/3595 另直接挂载曝光补偿步进器，步长 0.1、`roundUpDecimals:true`、`maxLength:1`，绕过上述设置行适配器。它与补偿滑块共用值，测光模式改变时同步最小值（-3／-1）。长度限制只约束手工输入，程序步进仍可显示小数，保持源行为。
+- 所有步进器与同一行滑块分别创建保留状态，初始化滑块不会再通过 `else if` 跳过数字编辑器。同步不会回发用户变更；小数写回消除滑块 f32 带来的显示长尾。
+- 锐度与增益在当前四个根都未启用：3592 挂载点未传 props、默认 false，其余三个显式传 false。它们不属于待补的已挂载控件，收据见 `camera-controls-source.json` 的 `sharpness_gain_rows`。
 
 ## 验证
 
 - `node tools/generate-native-camera-controls.cjs`：重新生成 7 份描述符。相机控件合计 `direction` 1、`pan_tilt` 4、`preset` 4、`keys` 4、`select` 6（3 个快门速度 + 3 个分辨率）、滑块 46。
 - `python -X utf8 tools/validate-native-product-data.py`：通过；新种类、`tilt_path`、`box_width`、水印位置取值与门控路径均已纳入断言。
 - `python -X utf8 tools/audit-native-product-coverage.py`：覆盖统计不变（331 产品、1419 页）；没有把本轮工作写成整页完成。
-- `cargo check --locked --all-targets`、`cargo fmt --all -- --check`：通过。
+- 本轮 Rust 编译与格式检查由主线程统一执行；此处不把之前的检查结果当作本轮通过证据。
 - 未运行应用、构建、测试、安装器或下载的 JavaScript，因此没有真实窗口的像素、焦点与拖拽验收结论。
 
 ## 仍然缺的部分
 
 - 实时摄像头画面与设备枚举（`navigator.mediaDevices`）、Camo／NVIDIA Broadcast／XSplit 的第三方分支与「更高代线材」提示。
 - 水印的外观与处理说明文案（`WATERMARK_AVAILABLE_*` 一类），以及 HDR／自动取景开启时的附加提示。
-- 取景禁用的条件分支：已实现（见「复合禁用条件」一节）。仍缺原版禁用态下步进器上下键的额外处理，以及禁用时取景黑框是否一并隐藏的判定。
+- 取景禁用的条件分支已实现（见「复合禁用条件」）；本地数字编辑器禁用时停止键盘、文字和计时器变更。禁用时黑框显隐及跨区域滚轮捕获尚无真实窗口验收。
 - AI 自动取景（`autoFraming`）在本代根上都被传 `supportAutoFrame:!1`，没有挂载，因此未生成。
 - 白框拖动与黑框鼠标移动分支：已实现（见「白框拖动与黑框几何」）。仍缺原版在拖动过程中对方向键上下键的额外处理、以及拖动时是否暂停取景预设动画。
-- 方向键图标：左右键用的 `icon_arrow_left_thin.e6d37c55.svg`／`icon_arrow_right_thin.bef8ca32.svg` 已在本地打包（与 `history-back/forward.svg` 同名同哈希，直接复用），按 CSS 以 10×10 绘制；上下与中心键用的 `icon_pan_top.938f0ae8.svg`、`icon_pan_bottom.bb4772a7.svg`、`icon_pan_center` 在当前源码包里不存在，这三键仍只有边框，不用别的图标代替。gpui 按边框盒裁剪、CSS 按 padding 盒裁剪，绘制位置相差 1px。
+- 方向键图标已按当前产品 manifest 获取并静态验哈希，上、下、中心键均使用真实资源，收据见 [camera-pan-assets-current-evidence.json](camera-pan-assets-current-evidence.json)。此前“资源不存在、仅有边框”的记录作废；尚未做运行窗口的裁剪与像素验收。
 - 分辨率列表在开启能力探测的根（3595）上由设备能力过滤，本地使用产品自身的回退列表。
-??????? CAMERA ??????????????????3587?3589?3590???? Customize ????? CAMERA ????????????????????????????
 
 ## Legacy Customize preview mount
 

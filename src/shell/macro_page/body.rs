@@ -1124,66 +1124,6 @@ impl MacroPage {
             .into_any_element()
     }
 
-    pub(super) fn key_binds(&self, _cx: &mut Context<Self>) -> AnyElement {
-        // 21700: currentProfile == "" still mounts the warning and inert card;
-        // only null returns no page. No validDevices are invented for assignment.
-        v_flex()
-            .id("macro-key-binds-page")
-            .w_full()
-            .min_w(css(900.))
-            .child(
-                h_flex()
-                    .justify_center()
-                    .mt(css(22.))
-                    .text_size(css(14.))
-                    .child(
-                        img("synapse/macro/warning.svg")
-                            .w(css(20.))
-                            .h(css(17.))
-                            .mr(css(10.)),
-                    )
-                    .child(tr("TEXT_MARCRO_WARING")),
-            )
-            .child(
-                h_flex()
-                    .w_full()
-                    .justify_center()
-                    .mt(css(20.))
-                    .opacity(0.3)
-                    .child(
-                        v_flex()
-                            .w(css(300.))
-                            .h(css(230.))
-                            .px(css(20.))
-                            .py(css(8.))
-                            .bg(rgb(0x222222))
-                            .rounded(css(5.))
-                            .border_2()
-                            .border_dashed()
-                            .border_color(rgb(0x5d5d5d))
-                            .items_center()
-                            .child(
-                                div().relative().w(css(250.)).h(css(140.)).child(
-                                    img("synapse/macro/add.svg")
-                                        .absolute()
-                                        .top(css(50.))
-                                        .left(css(105.))
-                                        .size(css(40.)),
-                                ),
-                            )
-                            .child(
-                                div()
-                                    .w_full()
-                                    .text_center()
-                                    .text_size(css(14.))
-                                    .line_height(css(16.))
-                                    .child(tr("TEXT_ASSIGN_MACRO_TO_DEVICES")),
-                            ),
-                    ),
-            )
-            .into_any_element()
-    }
-
     pub(super) fn help(&self, _cx: &mut Context<Self>) -> AnyElement {
         // 1519 C: body-widgets > widget-col.left > Support widget > anchor.
         div()

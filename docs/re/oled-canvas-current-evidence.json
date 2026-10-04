@@ -1,0 +1,1671 @@
+{
+  "product_id": 691,
+  "sources": [
+    {
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "sha256": "cbc102f21b57ce2cd289c942e091c51dc1328b5829d4a67f26bf243d8ec39a22"
+    },
+    {
+      "path": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6"
+    },
+    {
+      "path": ".ref/devices/691/static/css/OLED.a636cf4a.chunk.css",
+      "sha256": "57fe855ef0cf030f5d1b0fdedade193b676820a7951dbce50e30775cf48dfa8d"
+    }
+  ],
+  "mounted_cropper": {
+    "symbol": "be",
+    "path": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+    "offset": 11964,
+    "end": 14924,
+    "sha256": "4c511d763bab92186c31a150f61e4aa4bcf8310125d641dbe8e267945f313886"
+  },
+  "functions": [
+    {
+      "name": "initCanvas",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 323351,
+      "end": 324013,
+      "sha256": "14a9ae7a90221842e0d9e16105a6253ed91daf7f33089f1f23468db6b99991f5",
+      "source": "function(){var A=this.containerData,e=this.imageData,t=this.options.viewMode,r=Math.abs(e.rotate)%180===90,n=r?e.naturalHeight:e.naturalWidth,i=r?e.naturalWidth:e.naturalHeight,s=n/i,o=A.width,a=A.height;A.height*s>A.width?3===t?o=A.height*s:a=A.width/s:3===t?a=A.width/s:o=A.height*s;var c={aspectRatio:s,naturalWidth:n,naturalHeight:i,width:o,height:a};this.canvasData=c,this.limited=1===t||2===t,this.limitCanvas(!0,!0),c.width=Math.min(Math.max(c.width,c.minWidth),c.maxWidth),c.height=Math.min(Math.max(c.height,c.minHeight),c.maxHeight),c.left=(A.width-c.width)/2,c.top=(A.height-c.height)/2,c.oldLeft=c.left,c.oldTop=c.top,this.initialCanvasData=yA({},c)}"
+    },
+    {
+      "name": "limitCanvas",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 324026,
+      "end": 325076,
+      "sha256": "ce548ff06921f669962da6b5174e3c18d12f1d2082d8dc954644b4b144d0ac70",
+      "source": "function(A,e){var t=this.options,r=this.containerData,n=this.canvasData,i=this.cropBoxData,s=t.viewMode,o=n.aspectRatio,a=this.cropped&&i;if(A){var c=Number(t.minCanvasWidth)||0,B=Number(t.minCanvasHeight)||0;s>1?(c=Math.max(c,r.width),B=Math.max(B,r.height),3===s&&(B*o>c?c=B*o:B=c/o)):s>0&&(c?c=Math.max(c,a?i.width:0):B?B=Math.max(B,a?i.height:0):a&&(c=i.width,(B=i.height)*o>c?c=B*o:B=c/o));var l=$A({aspectRatio:o,width:c,height:B});c=l.width,B=l.height,n.minWidth=c,n.minHeight=B,n.maxWidth=1/0,n.maxHeight=1/0}if(e)if(s>(a?0:1)){var u=r.width-n.width,h=r.height-n.height;n.minLeft=Math.min(0,u),n.minTop=Math.min(0,h),n.maxLeft=Math.max(0,u),n.maxTop=Math.max(0,h),a&&this.limited&&(n.minLeft=Math.min(i.left,i.left+(i.width-n.width)),n.minTop=Math.min(i.top,i.top+(i.height-n.height)),n.maxLeft=i.left,n.maxTop=i.top,2===s&&(n.width>=r.width&&(n.minLeft=Math.min(0,u),n.maxLeft=Math.max(0,u)),n.height>=r.height&&(n.minTop=Math.min(0,h),n.maxTop=Math.max(0,h))))}else n.minLeft=-n.width,n.minTop=-n.height,n.maxLeft=r.width,n.maxTop=r.height}"
+    },
+    {
+      "name": "renderCanvas",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 325090,
+      "end": 326061,
+      "sha256": "4ee35d3124723a296eff130d96a85406bbea1835f84911c48aa478c86b17335f",
+      "source": "function(A,e){var t=this.canvasData,r=this.imageData;if(e){var n=Ae({width:r.naturalWidth*Math.abs(r.scaleX||1),height:r.naturalHeight*Math.abs(r.scaleY||1),degree:r.rotate||0}),i=n.width,s=n.height,o=t.width*(i/t.naturalWidth),a=t.height*(s/t.naturalHeight);t.left-=(o-t.width)/2,t.top-=(a-t.height)/2,t.width=o,t.height=a,t.aspectRatio=i/s,t.naturalWidth=i,t.naturalHeight=s,this.limitCanvas(!0,!1)}(t.width>t.maxWidth||t.width<t.minWidth)&&(t.left=t.oldLeft),(t.height>t.maxHeight||t.height<t.minHeight)&&(t.top=t.oldTop),t.width=Math.min(Math.max(t.width,t.minWidth),t.maxWidth),t.height=Math.min(Math.max(t.height,t.minHeight),t.maxHeight),this.limitCanvas(!1,!0),t.left=Math.min(Math.max(t.left,t.minLeft),t.maxLeft),t.top=Math.min(Math.max(t.top,t.minTop),t.maxTop),t.oldLeft=t.left,t.oldTop=t.top,bA(this.canvas,yA({width:t.width,height:t.height},jA({translateX:t.left,translateY:t.top}))),this.renderImage(A),this.cropped&&this.limited&&this.limitCropBox(!0,!0)}"
+    },
+    {
+      "name": "initCropBox",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 326403,
+      "end": 326992,
+      "sha256": "444dddd11020cc23ea50ef0e379beec6079eb50ea4df97fff626c07a9ce310eb",
+      "source": "function(){var A=this.options,e=this.canvasData,t=A.aspectRatio||A.initialAspectRatio,r=Number(A.autoCropArea)||.8,n={width:e.width,height:e.height};t&&(e.height*t>e.width?n.height=n.width/t:n.width=n.height*t),this.cropBoxData=n,this.limitCropBox(!0,!0),n.width=Math.min(Math.max(n.width,n.minWidth),n.maxWidth),n.height=Math.min(Math.max(n.height,n.minHeight),n.maxHeight),n.width=Math.max(n.minWidth,n.width*r),n.height=Math.max(n.minHeight,n.height*r),n.left=e.left+(e.width-n.width)/2,n.top=e.top+(e.height-n.height)/2,n.oldLeft=n.left,n.oldTop=n.top,this.initialCropBoxData=yA({},n)}"
+    },
+    {
+      "name": "limitCropBox",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 327006,
+      "end": 327774,
+      "sha256": "1df1b010f60d2ad73921fae8c760fe5c1ab9893d039eb3dee7cfb632998f9f3f",
+      "source": "function(A,e){var t=this.options,r=this.containerData,n=this.canvasData,i=this.cropBoxData,s=this.limited,o=t.aspectRatio;if(A){var a=Number(t.minCropBoxWidth)||0,c=Number(t.minCropBoxHeight)||0,B=s?Math.min(r.width,n.width,n.width+n.left,r.width-n.left):r.width,l=s?Math.min(r.height,n.height,n.height+n.top,r.height-n.top):r.height;a=Math.min(a,r.width),c=Math.min(c,r.height),o&&(a&&c?c*o>a?c=a/o:a=c*o:a?c=a/o:c&&(a=c*o),l*o>B?l=B/o:B=l*o),i.minWidth=Math.min(a,B),i.minHeight=Math.min(c,l),i.maxWidth=B,i.maxHeight=l}e&&(s?(i.minLeft=Math.max(0,n.left),i.minTop=Math.max(0,n.top),i.maxLeft=Math.min(r.width,n.left+n.width)-i.width,i.maxTop=Math.min(r.height,n.top+n.height)-i.height):(i.minLeft=0,i.minTop=0,i.maxLeft=r.width-i.width,i.maxTop=r.height-i.height))}"
+    },
+    {
+      "name": "renderCropBox",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 327789,
+      "end": 328525,
+      "sha256": "5590872f7ac1eb9344027eeca7849c3f580ed5cb318de5f9ac154e71fd01ff2d",
+      "source": "function(){var A=this.options,e=this.containerData,t=this.cropBoxData;(t.width>t.maxWidth||t.width<t.minWidth)&&(t.left=t.oldLeft),(t.height>t.maxHeight||t.height<t.minHeight)&&(t.top=t.oldTop),t.width=Math.min(Math.max(t.width,t.minWidth),t.maxWidth),t.height=Math.min(Math.max(t.height,t.minHeight),t.maxHeight),this.limitCropBox(!1,!0),t.left=Math.min(Math.max(t.left,t.minLeft),t.maxLeft),t.top=Math.min(Math.max(t.top,t.minTop),t.maxTop),t.oldLeft=t.left,t.oldTop=t.top,A.movable&&A.cropBoxMovable&&MA(this.face,P,t.width>=e.width&&t.height>=e.height?F:C),bA(this.cropBox,yA({width:t.width,height:t.height},jA({translateX:t.left,translateY:t.top}))),this.cropped&&this.limited&&this.limitCanvas(!0,!0),this.disabled||this.output()}"
+    },
+    {
+      "name": "change",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 333176,
+      "end": 335790,
+      "sha256": "f5f3b03e77ad9e9e22645ed3abe55304938d45cb6a134d092ebf6c546f26a267",
+      "source": "function(A){var e,t=this.options,r=this.canvasData,n=this.containerData,i=this.cropBoxData,s=this.pointers,o=this.action,a=t.aspectRatio,c=i.left,B=i.top,l=i.width,u=i.height,h=c+l,g=B+u,d=0,p=0,f=n.width,w=n.height,Q=!0;!a&&A.shiftKey&&(a=l&&u?l/u:1),this.limited&&(d=i.minLeft,p=i.minTop,f=d+Math.min(n.width,r.width,r.left+r.width),w=p+Math.min(n.height,r.height,r.top+r.height));var K=s[Object.keys(s)[0]],L={x:K.endX-K.startX,y:K.endY-K.startY},S=function(A){switch(A){case v:h+L.x>f&&(L.x=f-h);break;case y:c+L.x<d&&(L.x=d-c);break;case H:B+L.y<p&&(L.y=p-B);break;case E:g+L.y>w&&(L.y=w-g)}};switch(o){case C:c+=L.x,B+=L.y;break;case v:if(L.x>=0&&(h>=f||a&&(B<=p||g>=w))){Q=!1;break}S(v),(l+=L.x)<0&&(o=y,c-=l=-l),a&&(u=l/a,B+=(i.height-u)/2);break;case H:if(L.y<=0&&(B<=p||a&&(c<=d||h>=f))){Q=!1;break}S(H),u-=L.y,B+=L.y,u<0&&(o=E,B-=u=-u),a&&(l=u*a,c+=(i.width-l)/2);break;case y:if(L.x<=0&&(c<=d||a&&(B<=p||g>=w))){Q=!1;break}S(y),l-=L.x,c+=L.x,l<0&&(o=v,c-=l=-l),a&&(u=l/a,B+=(i.height-u)/2);break;case E:if(L.y>=0&&(g>=w||a&&(c<=d||h>=f))){Q=!1;break}S(E),(u+=L.y)<0&&(o=H,B-=u=-u),a&&(l=u*a,c+=(i.width-l)/2);break;case I:if(a){if(L.y<=0&&(B<=p||h>=f)){Q=!1;break}S(H),u-=L.y,B+=L.y,l=u*a}else S(H),S(v),L.x>=0?h<f?l+=L.x:L.y<=0&&B<=p&&(Q=!1):l+=L.x,L.y<=0?B>p&&(u-=L.y,B+=L.y):(u-=L.y,B+=L.y);l<0&&u<0?(o=D,B-=u=-u,c-=l=-l):l<0?(o=b,c-=l=-l):u<0&&(o=x,B-=u=-u);break;case b:if(a){if(L.y<=0&&(B<=p||c<=d)){Q=!1;break}S(H),u-=L.y,B+=L.y,l=u*a,c+=i.width-l}else S(H),S(y),L.x<=0?c>d?(l-=L.x,c+=L.x):L.y<=0&&B<=p&&(Q=!1):(l-=L.x,c+=L.x),L.y<=0?B>p&&(u-=L.y,B+=L.y):(u-=L.y,B+=L.y);l<0&&u<0?(o=x,B-=u=-u,c-=l=-l):l<0?(o=I,c-=l=-l):u<0&&(o=D,B-=u=-u);break;case D:if(a){if(L.x<=0&&(c<=d||g>=w)){Q=!1;break}S(y),l-=L.x,c+=L.x,u=l/a}else S(E),S(y),L.x<=0?c>d?(l-=L.x,c+=L.x):L.y>=0&&g>=w&&(Q=!1):(l-=L.x,c+=L.x),L.y>=0?g<w&&(u+=L.y):u+=L.y;l<0&&u<0?(o=I,B-=u=-u,c-=l=-l):l<0?(o=x,c-=l=-l):u<0&&(o=b,B-=u=-u);break;case x:if(a){if(L.x>=0&&(h>=f||g>=w)){Q=!1;break}S(v),u=(l+=L.x)/a}else S(E),S(v),L.x>=0?h<f?l+=L.x:L.y>=0&&g>=w&&(Q=!1):l+=L.x,L.y>=0?g<w&&(u+=L.y):u+=L.y;l<0&&u<0?(o=b,B-=u=-u,c-=l=-l):l<0?(o=D,c-=l=-l):u<0&&(o=I,B-=u=-u);break;case F:this.move(L.x,L.y),Q=!1;break;case m:this.zoom(ZA(s),A),Q=!1;break;case U:if(!L.x||!L.y){Q=!1;break}e=XA(this.cropper),c=K.startX-e.left,B=K.startY-e.top,l=i.minWidth,u=i.minHeight,L.x>0?o=L.y>0?x:I:L.x<0&&(c-=l,o=L.y>0?D:b),L.y<0&&(B-=u),this.cropped||(KA(this.cropBox,O),this.cropped=!0,this.limited&&this.limitCropBox(!0,!0))}Q&&(i.width=l,i.height=u,i.left=c,i.top=B,this.action=o,this.renderCropBox()),vA(s,function(A){A.startX=A.endX,A.startY=A.endY})}"
+    },
+    {
+      "name": "reset",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 336018,
+      "end": 336264,
+      "sha256": "f92ee9bfbf62627d0a8440213574068abac514e4f4f0c14dc3f71a63de11b1ec",
+      "source": "function(){return this.ready&&!this.disabled&&(this.imageData=yA({},this.initialImageData),this.canvasData=yA({},this.initialCanvasData),this.cropBoxData=yA({},this.initialCropBoxData),this.renderCanvas(),this.cropped&&this.renderCropBox()),this}"
+    },
+    {
+      "name": "moveTo",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 337392,
+      "end": 337648,
+      "sha256": "7876bce624a9870e06c0267ad0998b520196d3efbb2fb1f3de4db64e062148e1",
+      "source": "function(A){var e=arguments.length>1&&void 0!==arguments[1]?arguments[1]:A,t=this.canvasData,r=!1;return A=Number(A),e=Number(e),this.ready&&!this.disabled&&this.options.movable&&(dA(A)&&(t.left=A,r=!0),dA(e)&&(t.top=e,r=!0),r&&this.renderCanvas(!0)),this}"
+    },
+    {
+      "name": "zoom",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 337654,
+      "end": 337772,
+      "sha256": "7328f51c2b7a797f880c594ab54272798c236eba8de7f980dfe22473c4df756b",
+      "source": "function(A,e){var t=this.canvasData;return A=(A=Number(A))<0?1/(1-A):1+A,this.zoomTo(t.width*A/t.naturalWidth,null,e)}"
+    },
+    {
+      "name": "zoomTo",
+      "path": ".ref/devices/691/static/js/3725.ac580dd5.chunk.js",
+      "offset": 337780,
+      "end": 338413,
+      "sha256": "f45a68267e669b201503598876f501c9f57da29af9c74a5c9c1e1ec4897f1672",
+      "source": "function(A,e,t){var r=this.options,n=this.canvasData,i=n.width,s=n.height,o=n.naturalWidth,a=n.naturalHeight;if((A=Number(A))>=0&&this.ready&&!this.disabled&&r.zoomable){var c=o*A,B=a*A;if(!1===NA(this.element,nA,{ratio:A,oldRatio:i/o,originalEvent:t}))return this;if(t){var l=this.pointers,u=XA(this.cropper),h=l&&Object.keys(l).length?qA(l):{pageX:t.pageX,pageY:t.pageY};n.left-=(c-i)*((h.pageX-u.left-n.left)/i),n.top-=(B-s)*((h.pageY-u.top-n.top)/s)}else CA(e)&&dA(e.x)&&dA(e.y)?(n.left-=(c-i)*((e.x-n.left)/i),n.top-=(B-s)*((e.y-n.top)/s)):(n.left-=(c-i)/2,n.top-=(B-s)/2);n.width=c,n.height=B,this.renderCanvas(!0)}return this}"
+    }
+  ],
+  "css_rules": [
+    {
+      "offset": 2888,
+      "selector": ".cropper-container",
+      "conditions": [],
+      "declarations": "-webkit-touch-callout:none;direction:ltr;font-size:0;line-height:0;position:relative;touch-action:none;-webkit-user-select:none;user-select:none",
+      "properties": [
+        {
+          "property": "-webkit-touch-callout",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "direction",
+          "value": "ltr",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "touch-action",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "-webkit-user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "user-select",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3239,
+      "selector": ".cropper-container img",
+      "conditions": [],
+      "declarations": "-webkit-backface-visibility:hidden;backface-visibility:hidden;display:block;height:100%;image-orientation:0deg;max-height:none!important;max-width:none!important;min-height:0!important;min-width:0!important;width:100%",
+      "properties": [
+        {
+          "property": "-webkit-backface-visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "backface-visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "image-orientation",
+          "value": "0deg",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "none",
+          "important": true
+        },
+        {
+          "property": "max-width",
+          "value": "none",
+          "important": true
+        },
+        {
+          "property": "min-height",
+          "value": "0",
+          "important": true
+        },
+        {
+          "property": "min-width",
+          "value": "0",
+          "important": true
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3480,
+      "selector": ".cropper-canvas,.cropper-crop-box,.cropper-drag-box,.cropper-modal,.cropper-wrap-box",
+      "conditions": [],
+      "declarations": "bottom:0;left:0;position:absolute;right:0;top:0",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3613,
+      "selector": ".cropper-canvas,.cropper-wrap-box",
+      "conditions": [],
+      "declarations": "overflow:hidden",
+      "properties": [
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3663,
+      "selector": ".cropper-drag-box",
+      "conditions": [],
+      "declarations": "background-color:#fff;opacity:0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#fff",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3713,
+      "selector": ".cropper-modal",
+      "conditions": [],
+      "declarations": "background-color:#000;opacity:.5",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".5",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3761,
+      "selector": ".cropper-view-box",
+      "conditions": [],
+      "declarations": "display:block;height:100%;outline:1px solid #39f;outline-color:#3399ffbf;overflow:hidden;width:100%",
+      "properties": [
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "outline",
+          "value": "1px solid #39f",
+          "important": false
+        },
+        {
+          "property": "outline-color",
+          "value": "#3399ffbf",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3879,
+      "selector": ".cropper-dashed",
+      "conditions": [],
+      "declarations": "border:0 dashed #eee;display:block;opacity:.5;position:absolute",
+      "properties": [
+        {
+          "property": "border",
+          "value": "0 dashed #eee",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".5",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 3959,
+      "selector": ".cropper-dashed.dashed-h",
+      "conditions": [],
+      "declarations": "border-bottom-width:1px;border-top-width:1px;height:33.33333%;left:0;top:33.33333%;width:100%",
+      "properties": [
+        {
+          "property": "border-bottom-width",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "border-top-width",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "33.33333%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "33.33333%",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4078,
+      "selector": ".cropper-dashed.dashed-v",
+      "conditions": [],
+      "declarations": "border-left-width:1px;border-right-width:1px;height:100%;left:33.33333%;top:0;width:33.33333%",
+      "properties": [
+        {
+          "property": "border-left-width",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "border-right-width",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "33.33333%",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "33.33333%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4197,
+      "selector": ".cropper-center",
+      "conditions": [],
+      "declarations": "display:block;height:0;left:50%;opacity:.75;position:absolute;top:50%;width:0",
+      "properties": [
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".75",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4291,
+      "selector": ".cropper-center:after,.cropper-center:before",
+      "conditions": [],
+      "declarations": "background-color:#eee;content:\" \";display:block;position:absolute",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#eee",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\" \"",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4402,
+      "selector": ".cropper-center:before",
+      "conditions": [],
+      "declarations": "height:1px;left:-3px;top:0;width:7px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "7px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4462,
+      "selector": ".cropper-center:after",
+      "conditions": [],
+      "declarations": "height:7px;left:0;top:-3px;width:1px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "7px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "1px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4521,
+      "selector": ".cropper-face,.cropper-line,.cropper-point",
+      "conditions": [],
+      "declarations": "display:block;height:100%;opacity:.1;position:absolute;width:100%",
+      "properties": [
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".1",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4630,
+      "selector": ".cropper-face",
+      "conditions": [],
+      "declarations": "background-color:#fff;left:0;top:0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#fff",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4679,
+      "selector": ".cropper-line",
+      "conditions": [],
+      "declarations": "background-color:#39f",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#39f",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4715,
+      "selector": ".cropper-line.line-e",
+      "conditions": [],
+      "declarations": "cursor:ew-resize;right:-3px;top:0;width:5px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ew-resize",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4780,
+      "selector": ".cropper-line.line-n",
+      "conditions": [],
+      "declarations": "cursor:ns-resize;height:5px;left:0;top:-3px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ns-resize",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4845,
+      "selector": ".cropper-line.line-w",
+      "conditions": [],
+      "declarations": "cursor:ew-resize;left:-3px;top:0;width:5px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ew-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4909,
+      "selector": ".cropper-line.line-s",
+      "conditions": [],
+      "declarations": "bottom:-3px;cursor:ns-resize;height:5px;left:0",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "cursor",
+          "value": "ns-resize",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 4977,
+      "selector": ".cropper-point",
+      "conditions": [],
+      "declarations": "background-color:#39f;height:5px;opacity:.75;width:5px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#39f",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".75",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5047,
+      "selector": ".cropper-point.point-e",
+      "conditions": [],
+      "declarations": "cursor:ew-resize;margin-top:-3px;right:-3px;top:50%",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ew-resize",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "50%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5122,
+      "selector": ".cropper-point.point-n",
+      "conditions": [],
+      "declarations": "cursor:ns-resize;left:50%;margin-left:-3px;top:-3px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ns-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5197,
+      "selector": ".cropper-point.point-w",
+      "conditions": [],
+      "declarations": "cursor:ew-resize;left:-3px;margin-top:-3px;top:50%",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "ew-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "50%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5271,
+      "selector": ".cropper-point.point-s",
+      "conditions": [],
+      "declarations": "bottom:-3px;cursor:s-resize;left:50%;margin-left:-3px",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "cursor",
+          "value": "s-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5348,
+      "selector": ".cropper-point.point-ne",
+      "conditions": [],
+      "declarations": "cursor:nesw-resize;right:-3px;top:-3px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "nesw-resize",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5411,
+      "selector": ".cropper-point.point-nw",
+      "conditions": [],
+      "declarations": "cursor:nwse-resize;left:-3px;top:-3px",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "nwse-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5473,
+      "selector": ".cropper-point.point-sw",
+      "conditions": [],
+      "declarations": "bottom:-3px;cursor:nesw-resize;left:-3px",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "cursor",
+          "value": "nesw-resize",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5538,
+      "selector": ".cropper-point.point-se",
+      "conditions": [],
+      "declarations": "bottom:-3px;cursor:nwse-resize;height:20px;opacity:1;right:-3px;width:20px",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "cursor",
+          "value": "nwse-resize",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5662,
+      "selector": ".cropper-point.point-se",
+      "conditions": [
+        "@media (min-width:768px)"
+      ],
+      "declarations": "height:15px;width:15px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "15px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "15px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5735,
+      "selector": ".cropper-point.point-se",
+      "conditions": [
+        "@media (min-width:992px)"
+      ],
+      "declarations": "height:10px;width:10px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5809,
+      "selector": ".cropper-point.point-se",
+      "conditions": [
+        "@media (min-width:1200px)"
+      ],
+      "declarations": "height:5px;opacity:.75;width:5px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".75",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 5867,
+      "selector": ".cropper-point.point-se:before",
+      "conditions": [],
+      "declarations": "background-color:#39f;bottom:-50%;content:\" \";display:block;height:200%;opacity:0;position:absolute;right:-50%;width:200%",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#39f",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "-50%",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\" \"",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "200%",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-50%",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "200%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6020,
+      "selector": ".cropper-invisible",
+      "conditions": [],
+      "declarations": "opacity:0",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6049,
+      "selector": ".cropper-bg",
+      "conditions": [],
+      "declarations": "background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAAA3NCSVQICAjb4U/gAAAABlBMVEXMzMz////TjRV2AAAACXBIWXMAAArrAAAK6wGCiw1aAAAAHHRFWHRTb2Z0d2FyZQBBZG9iZSBGaXJld29ya3MgQ1M26LyyjAAAABFJREFUCJlj+M/AgBVhF/0PAH6/D/HkDxOGAAAAAElFTkSuQmCC)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAAA3NCSVQICAjb4U/gAAAABlBMVEXMzMz////TjRV2AAAACXBIWXMAAArrAAAK6wGCiw1aAAAAHHRFWHRTb2Z0d2FyZQBBZG9iZSBGaXJld29ya3MgQ1M26LyyjAAAABFJREFUCJlj+M/AgBVhF/0PAH6/D/HkDxOGAAAAAElFTkSuQmCC)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6330,
+      "selector": ".cropper-hide",
+      "conditions": [],
+      "declarations": "display:block;height:0;position:absolute;width:0",
+      "properties": [
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6393,
+      "selector": ".cropper-hidden",
+      "conditions": [],
+      "declarations": "display:none!important",
+      "properties": [
+        {
+          "property": "display",
+          "value": "none",
+          "important": true
+        }
+      ]
+    },
+    {
+      "offset": 6432,
+      "selector": ".cropper-move",
+      "conditions": [],
+      "declarations": "cursor:move",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "move",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6458,
+      "selector": ".cropper-crop",
+      "conditions": [],
+      "declarations": "cursor:crosshair",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "crosshair",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6489,
+      "selector": ".cropper-disabled .cropper-drag-box,.cropper-disabled .cropper-face,.cropper-disabled .cropper-line,.cropper-disabled .cropper-point",
+      "conditions": [],
+      "declarations": "cursor:not-allowed",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "not-allowed",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6641,
+      "selector": ".animation-crop-body",
+      "conditions": [],
+      "declarations": "color:#ccc;font-size:14px",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6688,
+      "selector": ".animation-crop-body img",
+      "conditions": [],
+      "declarations": "filter:grayscale(100%)",
+      "properties": [
+        {
+          "property": "filter",
+          "value": "grayscale(100%)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6736,
+      "selector": ".animation-crop-body .animation-crop-title",
+      "conditions": [],
+      "declarations": "text-align:center;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6822,
+      "selector": ".animation-crop-body .animation-cropper-div",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:center",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "row",
+          "important": false
+        },
+        {
+          "property": "flex-wrap",
+          "value": "nowrap",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 6957,
+      "selector": ".animation-crop-body .animation-cropper-wrapper",
+      "conditions": [],
+      "declarations": "width:232px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "232px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7017,
+      "selector": ".animation-crop-body .animation-cropper-wrapper img",
+      "conditions": [],
+      "declarations": "filter:grayscale(100%)",
+      "properties": [
+        {
+          "property": "filter",
+          "value": "grayscale(100%)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7092,
+      "selector": ".animation-crop-body .cropper-bg",
+      "conditions": [],
+      "declarations": "background-image:none",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7147,
+      "selector": ".animation-crop-body .animation-crop-info",
+      "conditions": [],
+      "declarations": "color:#999;text-align:center",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#999",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7218,
+      "selector": ".animation-crop-body .cropper-view-box",
+      "conditions": [],
+      "declarations": "outline:1px dashed #44d62c;outline-color:#44d62c",
+      "properties": [
+        {
+          "property": "outline",
+          "value": "1px dashed #44d62c",
+          "important": false
+        },
+        {
+          "property": "outline-color",
+          "value": "#44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7306,
+      "selector": ".cropper-crop-box:after,.cropper-crop-box:before,.cropper-crop-box>:first-child:after,.cropper-crop-box>:first-child:before",
+      "conditions": [],
+      "declarations": "border-color:#44d62c;border-style:solid;content:\" \";height:14px;position:absolute;width:14px;z-index:100",
+      "properties": [
+        {
+          "property": "border-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border-style",
+          "value": "solid",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\" \"",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "100",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7535,
+      "selector": ".cropper-crop-box:before",
+      "conditions": [],
+      "declarations": "border-width:3px 0 0 3px;left:-3px;top:-3px",
+      "properties": [
+        {
+          "property": "border-width",
+          "value": "3px 0 0 3px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7604,
+      "selector": ".cropper-crop-box:after",
+      "conditions": [],
+      "declarations": "border-width:3px 3px 0 0;right:-3px;top:-3px",
+      "properties": [
+        {
+          "property": "border-width",
+          "value": "3px 3px 0 0",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7673,
+      "selector": ".cropper-crop-box>:first-child:before",
+      "conditions": [],
+      "declarations": "border-width:0 3px 3px 0;bottom:-3px;right:-3px",
+      "properties": [
+        {
+          "property": "border-width",
+          "value": "0 3px 3px 0",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7759,
+      "selector": ".cropper-crop-box>:first-child:after",
+      "conditions": [],
+      "declarations": "border-width:0 0 3px 3px;bottom:-3px;left:-3px",
+      "properties": [
+        {
+          "property": "border-width",
+          "value": "0 0 3px 3px",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "-3px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7843,
+      "selector": ".animation-crop-controls",
+      "conditions": [],
+      "declarations": "display:flex;flex-direction:row;justify-content:center",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "row",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "offset": 7923,
+      "selector": ".animation-crop-body .cropper-point",
+      "conditions": [],
+      "declarations": "background-color:initial",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "initial",
+          "important": false
+        }
+      ]
+    }
+  ],
+  "geometry": {
+    "container": {
+      "width": 232,
+      "height": 190
+    },
+    "crop_box": {
+      "left": 0,
+      "top": 63,
+      "width": 232,
+      "height": 64
+    },
+    "derivation": "CSS fixes container width 232. Crop-box minWidth 232 and viewMode-0 container maxWidth 232 fix its width; aspect 3.625 fixes height 64. initCropBox centres it on the centred initial canvas.",
+    "initial_canvas": "contain in 232x190, then minCanvasHeight 64 with preserved decoded image aspect; centre in container",
+    "movement": "incremental pointer delta; left clamps to [-width,232], top to [-height,190]; pointer origin advances even at a bound",
+    "zoom": "relative Cropper factor about current canvas centre; on a minimum-size violation restore old position before sizing to height 64; source has no maximum zoom, native uses the extreme-value safeguard documented below",
+    "reset": "restore initial canvas rectangle and slider position 1; clear drag",
+    "source_derived_examples": [
+      {
+        "image": [
+          232,
+          64
+        ],
+        "canvas": {
+          "left": 0,
+          "top": 63,
+          "width": 232,
+          "height": 64
+        }
+      },
+      {
+        "image": [
+          100,
+          1000
+        ],
+        "canvas": {
+          "left": 106.5,
+          "top": 0,
+          "width": 19,
+          "height": 190
+        }
+      },
+      {
+        "image": [
+          1000,
+          100
+        ],
+        "canvas": {
+          "left": -204,
+          "top": 63,
+          "width": 640,
+          "height": 64
+        }
+      },
+      {
+        "image": [
+          100,
+          100
+        ],
+        "canvas": {
+          "left": 21,
+          "top": 0,
+          "width": 190,
+          "height": 190
+        }
+      }
+    ],
+    "example_scope": "Algebraic examples from the inspected source, not executed native UI tests"
+  },
+  "native": {
+    "files": [
+      {
+        "path": "src/features/source_controls/oled_presets.rs",
+        "sha256": "6b6c2832b3deb1c53457b156679c1ff4c982e102d880be31f2b6b964aaee6b3e"
+      },
+      {
+        "path": "src/features/source_controls/oled_crop.rs",
+        "sha256": "cbcf47f6c9ffef5c9e942cfb5a791b647501a9e69de47331b4de5a8e3ad667b8"
+      }
+    ],
+    "pointer": "focus on press; window capture listeners continue outside the canvas; local/up-out release also handles a release before the next frame",
+    "keyboard": "focused crop group: arrows move one CSS pixel; Shift+arrows move ten; framework controls keep zoom/reset keyboard access",
+    "preview": "grayscale decoded image in full canvas; 50% black masks outside crop and 10% white face overlay; dashed outline and corner marks",
+    "persistence": "store width/height/left/top under local_crop.canvas; preset/home preview subtracts cropTop 63; legacy zoom-only drafts retain the previous placement",
+    "media": "read and decode on background executor using existing GPUI codecs; crop reuses RenderImage; saved data URLs use the native Asset cache and a local base64 decoder",
+    "animation": "image ElementIds retain frame state; slot/content identity resets a replaced animation; GPUI uses original frame delays while active and respects reduced motion",
+    "asset_lifetime": "keyed image leases count simultaneous previews by data URL; the last released lease removes pending or completed asset data; GPUI weak completion state prevents a late result replacing an evicted entry",
+    "input_guards": {
+      "source": "native allocation/layout safeguards, not vendor limits",
+      "maximum_encoded_bytes": 67108864,
+      "decoded_rgba_estimate_bytes": 268435456,
+      "estimate": "width * height * 4 * frameCount + 128 * frameCount; excludes codec working canvases, compressed data and metadata, so not a hard process-memory ceiling",
+      "preflight": [
+        "PNG complete IHDR dimensions",
+        "JPEG SOF dimensions before SOS, reject conflicting dimensions",
+        "BMP complete DIB header bounds, positive width and absolute height",
+        "GIF logical canvas, image bounds, palettes/sub-block bounds and all frame records"
+      ],
+      "decoding": "preflight does not execute compressed media; malformed compressed data remains subject to GPUI codec errors. GPUI can skip individually damaged GIF frames and errors if none decode",
+      "decoded_validation": "before returning any RenderImage, require nonzero dimensions, a consistent canvas size across all frames and resident frame buffers within the estimate; this cannot bound decoder transient memory",
+      "maximum_canvas_edge_css": 1099511627776,
+      "initial_canvas": "2^40 exceeds the maximum 2^38-width initial canvas produced by a u32 image aspect and minCanvasHeight 64",
+      "failure": "an import error preserves the draft; malformed restored media returns a cached image error and remains replaceable/resettable; invalid saved canvas falls back to the legacy placement"
+    },
+    "gpui_decoder": {
+      "package": "gpui-pre",
+      "version": "0.3.7",
+      "platform_sha256": "9de7e0b0f29c51b149263b9bc9b4061bfbe41849e296b75df9cf259d9bbbdc4c",
+      "asset_cache_sha256": "cc1eb306523094d2d9a0e15538ce9a4fe29408288bd73e27781ea9a92c1b059e",
+      "app_sha256": "075e8977cd92dc5937ed638522eda17507da39d2a0bf9602fad1fc46df0f941f",
+      "image_element_sha256": "c196cb1ed3db30ab3141b036c84288a22e04de2b53b687e1d86fe732420374e3"
+    }
+  },
+  "boundaries": [
+    "No application, tests, downloaded JS/WASM/DLL or image codec was executed by this audit.",
+    "Native image/GIF crop encoding and processed byte counts remain unimplemented; only original bytes and preview geometry are stored.",
+    "No hardware transport, source ImageMagick equivalence or measured runtime pixel parity is claimed."
+  ],
+  "validation": "Acorn AST, exact mounted-source slices, CSS, SHA-256 and native/GPUI source inspection only."
+}

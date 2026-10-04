@@ -277,7 +277,7 @@ fn nav_label_width(label: &str, window: &Window) -> f32 {
     label_width(label, 12., window)
 }
 
-fn label_width(label: &str, font_size: f32, window: &Window) -> f32 {
+pub(crate) fn label_width(label: &str, font_size: f32, window: &Window) -> f32 {
     let mut font = window.text_style().font();
     font.family = "Roboto".into();
     font.weight = gpui_kit::gpui::FontWeight::NORMAL;

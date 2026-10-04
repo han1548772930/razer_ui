@@ -69,7 +69,7 @@
     "mounted_pages": 322
   },
   "inputs_sha256": {
-    "src/features/source_controls_data.json": "7cd4d18228be1e741f878b857801b3c3620bc70c95ca188bb799abbd4c4a388d",
+    "src/features/source_controls_data.json": "7242f9f5d9476d8baefe9199f67266d3ea9ab8c976f92016979389c2740090a2",
     "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
     "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
     "src/features/keyboard_oled_editor_data.json": "d23d48ffc96e19b16a097e21b39bb886205562de40f92a2764917302f3f0fb3c",

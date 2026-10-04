@@ -34,6 +34,18 @@ pub(crate) struct KeyboardProductSpec {
     controls: Value,
 }
 impl KeyboardProductSpec {
+    pub(crate) fn macro_keys(&self) -> &[Value] {
+        &self.keys
+    }
+    pub(crate) fn macro_shapes(&self) -> &[crate::resources::KeyboardKey] {
+        &self.shapes
+    }
+    pub(crate) fn macro_image(&self) -> Option<&str> {
+        self.image.as_deref()
+    }
+    pub(crate) fn macro_viewbox(&self) -> [f32; 2] {
+        self.viewbox
+    }
     fn default_profile(&self) -> Value {
         let mut profile = self.config["DEFAULTPROFILE"].clone();
         if let (Some(profile), Some(defaults)) = (

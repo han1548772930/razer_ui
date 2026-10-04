@@ -37,7 +37,7 @@
 - `macro` 不是独立产品窗口：它是宏应用（`/synapse/macro/` 窗口）在「绑定到设备」弹层里嵌入的 iframe，参数 `displayMode=macro&macro=<id>&containerId=…&deviceEditionInfo=…&serialNumber=…`，因此产品包的 `macro` 分支只在那个 iframe 里出现，产品根本身不会自己开窗。
 - `chromaApp` 在当前 Dashboard 包里出现 `0` 次：Synapse 不打开这个模式，它属于独立的 Chroma 应用窗口。
 
-本地窗口层已经接入 `macro`、`armory` 和 `profiles` 三个具名根：它们相对于 Dashboard 是独立的 gpui 窗口，但按当前模块表使用 `sameWindow`（`policy=3`）登记，同名再次打开时聚焦既有窗口。窗口根只复刻已审计的页面外框和本地状态；宏服务、Workshop 内容服务、Profiles 扫描服务仍未连接。
+本地 `macro`、`armory`、`profiles`、`alexa` 和 `feedback-synapse` 通过宿主具名页签打开。当前 4.0.827 的 `Tab.js` 将 `policy=3` 分派到已有窗口的标签栏，同名再次打开时聚焦已有页签；旧版文档把它解释成第二个 gpui 窗口的结论已撤回。多设备配对仍按历史明确要求保留第二窗口，这是本地例外，其源调用同样传 `sameWindow`。详情见 [宿主策略审计](host-window-policy-current-audit.md)。页面与设备服务仍按各自边界记录。
 
 - 窗口名、可见性与聚焦标志、每个模式的 URL 参数见 [窗口打开契约](display-window-contract.md)。
 - 逐产品的分支、参数、引用组件与文本窗口范围见 [机器可读清单](display-mode-audit.json)。

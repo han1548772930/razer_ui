@@ -94,7 +94,7 @@ const report = {
     output_dimensions: [232, 64], aspect_ratio: 3.625, container_height: 190,
     crop_box_movable: false, crop_box_resizable: false, drag_mode: 'move',
     vendor_animation_processing: 'worker 8609 receives original bytes and cropper geometry',
-    local_payload: 'original imported data URL and byte count, plus local_crop.zoom preview metadata',
+    local_payload: 'original imported data URL and byte count, plus local_crop.canvas rectangle; legacy local_crop.zoom remains readable',
     local_restore: 'matches fixed current-source preset IDs, restores optional payload fields, normalizes selection/zoom',
     cancel_discards_isolated_draft: true,
     image_crop_info_visible: false,
@@ -110,7 +110,7 @@ const report = {
     native_state: 'local selection/apply mirror; middleware download state remains unavailable',
   },
   limitations: [
-    'Local crop placement is a reversible preview; original CropperJS canvas/pan/zoom geometry and slider callbacks remain partial.',
+    'Native viewMode-0 canvas/pan/zoom and media-cache receipts are in oled-canvas-current-evidence.json; rendered pixel parity remains unmeasured.',
     'GIF processing, processed output size, device transfer and language download progress are not fabricated.',
     'Pure restoration regressions are type-checked by cargo check --locked --all-targets; tests and application are not executed.',
   ],

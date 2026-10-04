@@ -10,6 +10,7 @@ mod help_page;
 mod keyboard_controls;
 mod lighting_color;
 mod lighting_input;
+pub(crate) mod macro_inputs;
 mod sensitivity;
 pub mod settings;
 pub(crate) mod shortcut_engine;

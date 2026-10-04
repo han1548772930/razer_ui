@@ -7,8 +7,57 @@ const configs=JSON.parse(read('docs/re/source-product-configs.json')).products;
 const traces=JSON.parse(read('docs/re/source-product-pages.json')).products;
 const evidence=JSON.parse(read('docs/re/camera-product-evidence.json'));
 if(evidence.parser_sha256!==hash(fs.readFileSync(path.join(__dirname,'extract-audio-evidence.cjs'))))throw Error('Regenerate camera evidence with current parser');
-const output=[],receipts=[];
+const output=[],receipts=[],stepperReceipts=[];
 const walk=(n,fn)=>{if(!n?.type||fn(n)===false)return;for(const v of Object.values(n)){if(Array.isArray(v))v.forEach(x=>walk(x,fn));else if(v?.type)walk(v,fn);}};
+function stepperEvidence(pid,file,source) {
+ const classes=[],mounts=[];
+ walk(acorn.parse(source,{ecmaVersion:'latest'}),node=>{
+  if(/^Class(?:Declaration|Expression)$/.test(node.type)) {
+   const text=source.slice(node.start,node.end);
+   if(text.includes('this.parseInput=')&&text.includes('this.handleContinuous='))classes.push(node);
+  }
+  if(node.type==='ObjectExpression'&&node.properties.some(p=>p.type==='Property'&&(p.key.name??p.key.value)==='extraClass'&&p.value.value==='override-stepper'))mounts.push(node);
+ });
+ const props=node=>node.properties.map(p=>p.key?.name??p.key?.value);
+ const adapters=mounts.filter(node=>props(node).includes('allowDecimals')&&!props(node).includes('roundUpDecimals'));
+ if(classes.length!==1||adapters.length!==1)throw Error(`Ambiguous numeric editor/adapter ${pid}`);
+ const receipt=node=>({path:file,offset:node.start,end:node.end,sha256:hash(source.slice(node.start,node.end)),source:source.slice(node.start,node.end)});
+ const editor=receipt(classes[0]);
+ for(const required of ['Math.ceil(','.toFixed(3)','1e-10','38===','40===','13!==','27!==','setInterval(()=>','},300)','onMouseLeave:this.handleStopContinuous']) {
+  if(!editor.source.includes(required))throw Error(`Changed numeric behavior ${pid}:${required}`);
+ }
+ const cssDir=path.join(root,`.ref/devices/${pid}/static/css`);
+ const cssFiles=fs.readdirSync(cssDir).filter(name=>/^main\..*\.css$/.test(name));
+ if(cssFiles.length!==1)throw Error(`Ambiguous camera CSS ${pid}`);
+ const cssPath=`.ref/devices/${pid}/static/css/${cssFiles[0]}`,css=read(cssPath),rules=[];
+ const applicable=new Set(['.stepper','.stepper input','.stepper .icon.spinner','.icon.spinner.up','.icon.spinner.down','.stepper .icon.spinner.up','.stepper .icon.spinner.down','.stepper .icon.spinner:hover','.stepper .icon.spinner:active','.stepper:focus-within','.stepper:hover','.stepper.disabled','.stepper .icon.spinner.up.disabled','.stepper .icon.spinner.down.disabled']);
+ for(const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  const selectors=match[1].split(',').filter(s=>applicable.has(s));
+  if(selectors.length)rules.push({offset:match.index,end:match.index+match[0].length,selectors,declarations:match[2]});
+ }
+ const final={};
+ for(const selector of ['.stepper','.stepper input','.stepper .icon.spinner','.stepper .icon.spinner.up','.stepper .icon.spinner.down']) {
+  final[selector]={};
+  for(const rule of rules.filter(r=>r.selectors.includes(selector)))for(const pair of rule.declarations.split(';')) {
+   const colon=pair.indexOf(':');if(colon>=0)final[selector][pair.slice(0,colon)]=pair.slice(colon+1);
+  }
+ }
+ for(const [selector,key,value] of [['.stepper','width','62px'],['.stepper','height','26px'],['.stepper','border','1px solid #5d5d5d'],['.stepper','position','relative'],['.stepper input','width','38px'],['.stepper input','height','24px'],['.stepper input','left','6px'],['.stepper input','padding','0'],['.stepper .icon.spinner','width','14px'],['.stepper .icon.spinner','height','12px'],['.stepper .icon.spinner.up','opacity','1'],['.stepper .icon.spinner.down','opacity','1']]) {
+  if(final[selector][key]!==value)throw Error(`Changed final camera stepper CSS ${pid}:${selector}:${key}`);
+ }
+ const manifestPath=`.ref/devices/${pid}/asset-manifest.json`,manifest=JSON.parse(read(manifestPath));
+ const assets=['up','down'].map(direction=>{
+  const key=`static/media/stepper_${direction}.svg`,declared=manifest.files[key];
+  if(!declared)throw Error(`Missing stepper asset manifest entry ${pid}:${direction}`);
+  const assetName=declared.split('/').at(-1),assetPath=`.ref/devices/${pid}/static/media/${assetName}`;
+  const prepared=`assets/synapse/wired-argb-3871-stepper_${direction}.svg`,bytes=fs.readFileSync(path.join(root,assetPath));
+  if(!bytes.equals(fs.readFileSync(path.join(root,prepared))))throw Error(`Different numeric arrow asset ${pid}:${direction}`);
+  return {manifest_key:key,path:assetPath,url:`https://apps.razer.com/synapse/products/${pid}/ui/static/media/${assetName}`,prepared_path:prepared,sha256:hash(bytes)};
+ });
+ const result={product_id:pid,source:file,sha256:hash(source),editor,adapter:receipt(adapters[0]),forwarded_props:props(adapters[0]),round_up_decimals_forwarded:false,css:{path:cssPath,sha256:hash(css),rules,final_exact_selector_declarations:final},asset_manifest:{path:manifestPath,sha256:hash(read(manifestPath))},assets};
+ stepperReceipts.push(result);
+ return result;
+}
 for(const p of configs.filter(p=>p.family==='camera')) {
  const pid=p.product_id,config=p.config.exports,info=config.DeviceInfo;
  const trace=traces.find(p=>p.product_id===pid);
@@ -96,6 +145,7 @@ for(const p of configs.filter(p=>p.family==='camera')) {
   const pg=result.pages.find(p=>p.key==='TAB_CUSTOMIZE');
   const image=pg.sections.shift(); pg.sections.push(image);
  } else {
+  const numericEvidence=stepperEvidence(pid,file,source);
   const mounted=key=>audited.pages.find(p=>p.key===key)?.components??[];
   const sourceFor=(key,field)=>mounted(key).find(c=>c.source.includes(`advancedWebcamReducer.${field}`)&&c.source.includes('children:'));
   const receiptControl=(s,kind,key,title,path,proof,extra={})=>{
@@ -123,7 +173,17 @@ for(const p of configs.filter(p=>p.family==='camera')) {
    const row=rowLiteral(symbol);
    if(!row||!row.includes('hasStepper:!0'))throw Error(`Missing row stepper ${pid}:${symbol}`);
    if(!/stepValue:([\d.]+)/.test(row))throw Error(`Missing row stepper step ${pid}:${symbol}`);
-   Object.assign(rowControl,{has_stepper:true,allow_decimal:false,round_up_decimals:false});
+   const stepMatch=/stepValue:([\d.]+)/.exec(row);
+   if(+stepMatch[1]!==rowControl.step)throw Error(`Changed row step ${pid}:${field}`);
+   let maxLength;
+   if(field==='white-balance') {
+    if(!/maxLength:[\w$.]+\.whiteBalance&&null!=[\w$.]+\.whiteBalance\.max\?[\w$.]+\.whiteBalance\.max\.toString\(\)\.length:4/.test(row))throw Error(`Missing white-balance input length ${pid}`);
+    maxLength=String(wb.max).length;
+   } else {
+    const length=/maxLength:(\d+)/.exec(row);if(!length)throw Error(`Missing row input length ${pid}:${field}`);
+    maxLength=+length[1];
+   }
+   Object.assign(rowControl,{has_stepper:true,allow_decimal:false,round_up_decimals:false,stepper_max_length:maxLength});
   }
   const focus=page('CAMERA').sections.find(s=>s.title===label('dgn'));
   // Rebuild manual focus using the mounted component's explicit overrides.
@@ -149,7 +209,9 @@ for(const p of configs.filter(p=>p.family==='camera')) {
    if(shutter)receiptControl(exposure,'select','shutter',label('SJ$'),'/camera/autoExposure/shutterSpeed',exposureProof,{options:shutter.value.filter(v=>v.value>=info.shutterSpeed.min&&v.value<=info.shutterSpeed.max).map(v=>({label:v.name,value:v.value})),...whenManual});
    const meter=optionsFor(exposureProof,a=>a.some(x=>x.name==='AVERAGE'));
    addOptions(exposure,'metering',label('cSt'),'/camera/autoExposure/metering',exposureProof,meter,{visible_when:{path:'/camera/autoExposure/isEnabled',value:true}});
-   receiptControl(exposure,'slider','compensation',label('F9S'),'/camera/autoExposure/compensation',exposureProof,{min:-3,max:3,step:.1,visible_when:{path:'/camera/autoExposure/isEnabled',value:true},minimum_when:{path:'/camera/autoExposure/metering',value:5,min:-1}});
+   const compensation=/minValue:[\w$]+,maxValue:3,maxLength:1,stepValue:\.1,value:[\w$]+,active:!0,extraClass:"override-stepper",setParentState:[\w$]+,roundUpDecimals:!0,allowDecimals:!0/.exec(exposureProof.source);
+   if(!compensation)throw Error(`Missing direct compensation stepper ${pid}`);
+   receiptControl(exposure,'slider','compensation',label('F9S'),'/camera/autoExposure/compensation',exposureProof,{min:-3,max:3,step:.1,has_stepper:true,allow_decimal:true,round_up_decimals:true,stepper_max_length:1,visible_when:{path:'/camera/autoExposure/isEnabled',value:true},minimum_when:{path:'/camera/autoExposure/metering',value:5,min:-1}});
    receiptControl(exposure,'reset','reset-exposure','RESET','/camera/autoExposure',exposureProof,{reset_value:result.profile.camera.autoExposure});
   }
   const processingProof=sourceFor('PROCESSING','mjpegQuality');
@@ -236,14 +298,19 @@ for(const p of configs.filter(p=>p.family==='camera')) {
   });
   const gate=gatedResolutions.map(value=>[{path:'/camera/ldc',value:true},{path:'/camera/resolution',value}]);
   // 变焦行由共享设置行渲染：`HM.A` + `hasStepper:!0`，同时带
-  // `allowDecimal:!0,roundUpDecimals:!0`（缩放显示一位小数）与 `disabledStepper`
+  // `allowDecimal:!0,roundUpDecimals:!0` 与 `disabledStepper`
   // （同一道 LDC 复合条件）。步进器本身的步长/上下限用 `stepValue/minStepper/maxStepper`。
   const zoomStepper=/disabledStepper:[\w$]+\(\),name:[\w$]+\.[\w$]+,tooltipContent:[\w$]+\.[\w$]+,stepValue:([\w$.]+),minStepper:([\w$.]+),maxStepper:([\w$.]+),stepperValue:[\w$]+\.zoom,handleStepperValue:[\w$]+,hasStepper:!0/
    .exec(framingProof.source);
   if(!zoomStepper)throw Error(`Missing zoom stepper row ${pid}`);
+  // The mounted setting-row adapter forwards allowDecimal but drops
+  // roundUpDecimals. Read its actual JSX props rather than copying the caller.
+  const forwardedProps=numericEvidence.forwarded_props;
+  if(!forwardedProps.includes('allowDecimals')||forwardedProps.includes('roundUpDecimals'))throw Error(`Changed stepper forwarding ${pid}`);
   const zoomStepperFlags={has_stepper:true,
    allow_decimal:framingProof.source.includes('roundUpDecimals:!0')&&framingProof.source.includes('allowDecimal:!0'),
-   round_up_decimals:framingProof.source.includes('roundUpDecimals:!0'),
+   round_up_decimals:false,
+   adapter_receipt:{path:file,offset:numericEvidence.adapter.offset,end:numericEvidence.adapter.end},
    stepper_receipt:{path:framingProof.path,offset:framingProof.offset+zoomStepper.index,end:framingProof.offset+zoomStepper.index+zoomStepper[0].length}};
   const framing={title:label(zoomName),controls:[]};
   slider(framing,'zoom',label(zoomName),'@view/zoom',zoom.min,zoom.max,zoom.step,{tooltip:label(zoomTooltip),source:{path:framingProof.path,offset:framingProof.offset,end:framingProof.end},disabled_when_any:gate,...zoomStepperFlags});
@@ -364,7 +431,7 @@ for(const p of configs.filter(p=>p.family==='camera')) {
  }
  const limitations=legacy
   ? ['Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized.']
-  : ['The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized.'];
+  : ['The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized.'];
  // 锐度/增益两行在图像页里由 `supportSharpness`/`supportGain` 决定是否渲染，
  // 而相机标签页的挂载点：3592 完全不传 props（两者默认 false），3594/3595/3596
  // 显式传 `!1`。因此当前稳定版这四个产品都不渲染这两行——这是核对结果，不是缺口。
@@ -378,4 +445,5 @@ for(const p of configs.filter(p=>p.family==='camera')) {
 }
 fs.writeFileSync(path.join(root,'src/features/source_controls_data.json'),JSON.stringify(output,null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/camera-controls-source.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:receipts},null,2)+'\n');
+fs.writeFileSync(path.join(root,'docs/re/camera-stepper-current-evidence.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:stepperReceipts},null,2)+'\n');
 console.log(`Generated ${output.length} source-specific camera control descriptors.`);

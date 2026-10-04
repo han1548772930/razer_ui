@@ -3,6 +3,10 @@
 2026-10-03。机器可读结果 [module-registry-audit.json](module-registry-audit.json)，脚本 [tools/audit-module-registry.cjs](../../tools/audit-module-registry.cjs)（`--check` 失败即报错）。
 源码：`.ref/applications/rz-app-menu/static/js/main.83ced465.js`。
 
+2026-10-04 已追踪 4.0.827 宿主执行链：本表的 `sameWindow` 模块进入当前窗口的具名
+页签，旧文档把它解释成第二个 gpui 窗口的结论已撤回。模块目录和 App Picker
+共用 `open_module_tab`；见[宿主策略审计](host-window-policy-current-audit.md)。
+
 ## 打开参数枚举（`ZP`）
 
 | 名字 | 值 |
@@ -36,12 +40,12 @@
 
 | 模块盒 | 本地目标 | 说明 |
 | --- | --- | --- |
-| alexa | `ModulePage::Picker(Alexa)` | 直接打开 |
+| alexa | `ModulePage::Alexa` | 直接打开宿主 `alexa` 页签 |
 | macro | `ModulePage::Macro` | 直接打开（窗口名 `macro`） |
-| linked-games | `ModulePage::Profiles` → named `profiles` window | **本轮新接入**：按模块表以 `policy=3` 打开并复用 profiles 窗口 |
+| linked-games | `ModulePage::Profiles` → `profiles` 宿主页签 | 按模块表以 `policy=3` 打开并聚焦已有页签 |
 | armory | `ModulePage::Armory` | 直接打开 |
 | profile-migration | `ModulePage::Picker(ProfileMigration)` | 直接打开 |
 | tour | `ModulePage::IntroductionTour` | 直接打开 |
-| feedback | `ModulePage::Feedback` | 当前官方 `/feedback/` HTML、清单与 27 个 JS/CSS 已静态取得；按具名 `feedback-synapse` 窗口直接打开，提交和日志收集仍未连接服务 |
+| feedback | `ModulePage::Feedback` | 当前官方 `/feedback/` HTML、清单与 27 个 JS/CSS 已静态取得；直接打开 `feedback-synapse` 宿主页签，提交和日志收集仍未连接服务 |
 
 当前 Profiles 页面按 module 43 的实际挂载复刻 Games 和 Devices 两个页签，复用本地 `ProductWorkspace` 列表与用户关联；服务扫描仍未连接。Feedback 的实际根仅挂载 500px 表单和页脚，旧 `renderLeft` 方法未被调用。具体组件、输入限制与服务边界见 [Feedback 审计](feedback-app-current-audit.md)。七个模块盒现在均有直接打开入口；入口可用不代表设备、账户或远端服务已连接。

@@ -177,6 +177,7 @@ enum ProfileCommand {
     Add,
     Import,
     LinkedGames,
+    Share,
     Rename,
     Duplicate,
     Export,
@@ -196,6 +197,7 @@ impl ProfileCommand {
             Self::Add => "profile-add",
             Self::Import => "profile-import",
             Self::LinkedGames => "profile-linked-games",
+            Self::Share => "profile-share",
             Self::Rename => "profile-rename",
             Self::Duplicate => "profile-duplicate",
             Self::Export => "profile-export",
@@ -203,7 +205,10 @@ impl ProfileCommand {
             Self::Delete => "profile-delete",
         }
     }
-    fn label(self) -> &'static str {
+    fn label(self) -> String {
+        if matches!(self, Self::Share) {
+            return crate::i18n::t("SHARE_TO_WORKSHOP");
+        }
         match self {
             Self::Add => "添加",
             Self::Import => "导入",
@@ -213,7 +218,9 @@ impl ProfileCommand {
             Self::Export => "导出",
             Self::Reset => "重置",
             Self::Delete => "删除",
+            Self::Share => unreachable!(),
         }
+        .to_owned()
     }
     fn disabled_reason(self, device: &Device) -> Option<&'static str> {
         match self {
@@ -242,12 +249,16 @@ pub(super) fn command_list(
         last.push(Reset);
     }
     last.push(Delete);
+    let mut linked = vec![LinkedGames];
+    if matches!(pid, 182 | 653) {
+        linked.push(Share);
+    }
     cx.new(|cx| {
         ListState::new(
             ProfileCommands {
                 sections: vec![
                     vec![Add, Import],
-                    vec![LinkedGames],
+                    linked,
                     vec![Rename, Duplicate, Export],
                     last,
                 ],
@@ -468,6 +479,7 @@ impl DeviceWorkspace {
             ProfileCommand::Import => self.open_profile_import(window, cx),
             ProfileCommand::Export => self.continue_with(Continue::ExportProfile, window, cx),
             ProfileCommand::LinkedGames => self.open_linked_games(window, cx),
+            ProfileCommand::Share => cx.emit(WorkspaceEvent::ShareProfile),
         }
     }
 

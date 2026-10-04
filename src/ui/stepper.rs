@@ -1,28 +1,13 @@
-//! 共享数字步进器（`.stepper`）。
-//!
-//! 当前源码里这个组件被相机页与 ARGB 页共用，行为与像素都取自产品包 CSS 与 JS
-//! （3594／3595／3871 是同一份实现）：
-//!
-//! - 盒模型：`60x27` 外框、`1px solid #5d5d5d`；输入区 `58x25`（`#111` 背景、
-//!   `#ccc` 文字、`14px/17px`、`padding:5px 18px 5px 5px`）；
-//! - 上下箭头：`14x12`、`background-position:50%`、`background-size:8px`，上箭头
-//!   贴顶（`background-position-y:5px`）、下箭头贴底（`3px`）；默认不可见，在
-//!   `.stepper:hover`／`:focus-within` 时 `0.1s linear` 淡入；箭头 hover 背景
-//!   `#ffffff1a`、按下 `#0000001a`；
-//! - 交互：按下立即走一步，随后每 `300ms` 重复一次（`setInterval(()=>{e()},300)`），
-//!   松开或移出停止；禁用时整块 `opacity:.3;pointer-events:none`。
-//!
-//! 箭头图标是产品包里同名同哈希的两份 SVG（`stepper_up.dcb04520.svg`、
-//! `stepper_down.349f755c.svg`），已按原样打包为
-//! `synapse/wired-argb-3871-stepper_up.svg` / `_down.svg`。
+//! Current product numeric editor; Kiyo and automation module 44230 share behavior.
 use crate::ui::{surface, theme::CameraProductColors as Colors};
+use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
+use gpui_kit::component::input::{Input, InputEvent, InputState, MaskPattern};
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use std::{cell::Cell, rc::Rc, time::Duration};
+use std::time::Duration;
 
-/// 原版 `setInterval(()=>{e()},300)` 的重复间隔。
 const REPEAT: Duration = Duration::from_millis(300);
 
-/// 步进器每次改值都会发出这个事件；父视图在自己的 `Context` 里处理。
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct StepperEvent {
     pub value: f64,
@@ -31,185 +16,411 @@ impl EventEmitter<StepperEvent> for Stepper {}
 
 pub(crate) struct Stepper {
     id: SharedString,
+    input: Entity<InputState>,
     value: f64,
     min: f64,
     max: f64,
     step: f64,
-    /// `allowDecimal` + `roundUpDecimals` 决定显示几位小数。
-    decimals: usize,
+    allow_decimal: bool,
+    round_up_decimals: bool,
+    modes_area: bool,
     disabled: bool,
-    /// 按住箭头期间为真；松开即置假，重复任务据此退出。
-    holding: Rc<Cell<bool>>,
+    focused: bool,
+    interacting: bool,
+    draft_from_typing: bool,
+    suppress_pointer_click: bool,
     task: Option<Task<()>>,
+    _subscription: Subscription,
 }
+
+fn valid_draft(value: &str, decimal: bool) -> bool {
+    if matches!(value, "" | "-") {
+        return true;
+    }
+    let value = value.strip_prefix('-').unwrap_or(value);
+    let mut parts = value.split('.');
+    let integer = parts.next().unwrap_or_default();
+    !integer.is_empty()
+        && integer.bytes().all(|byte| byte.is_ascii_digit())
+        && parts.next().is_none_or(|fraction| {
+            decimal && fraction.len() <= 3 && fraction.bytes().all(|byte| byte.is_ascii_digit())
+        })
+        && parts.next().is_none()
+}
+
 impl Stepper {
-    pub(crate) fn new(id: impl Into<SharedString>, value: f64) -> Self {
+    pub(crate) fn new(
+        id: impl Into<SharedString>,
+        value: f64,
+        range: (f64, f64, f64),
+        allow_decimal: bool,
+        round_up_decimals: bool,
+        max_length: Option<usize>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let input = cx.new(|cx| {
+            InputState::new(window, cx)
+                // Keep the source's intermediate drafts (including `-` and `1.`).
+                // NumberInput otherwise installs its own numeric mask at render.
+                .mask_pattern(MaskPattern::None)
+                .default_value(Self::format(value, allow_decimal, round_up_decimals))
+                .validate(move |value, _| {
+                    valid_draft(value, allow_decimal)
+                        && max_length.is_none_or(|limit| {
+                            value.len() <= limit + usize::from(value.starts_with('-'))
+                        })
+                })
+        });
+        let subscription =
+            cx.subscribe_in(&input, window, |this, _, event, window, cx| match event {
+                InputEvent::Focus => {
+                    this.focused = true;
+                    cx.notify();
+                }
+                InputEvent::Blur => {
+                    this.focused = false;
+                    this.interacting = false;
+                    this.task = None;
+                    this.commit(window, cx);
+                    cx.notify();
+                }
+                InputEvent::PressEnter { .. } => window.blur(cx),
+                InputEvent::Change => {
+                    this.draft_from_typing = true;
+                    cx.notify();
+                }
+            });
         Self {
             id: id.into(),
+            input,
             value,
-            min: 0.,
-            max: 100.,
-            step: 1.,
-            decimals: 0,
+            min: range.0,
+            max: range.1,
+            step: range.2,
+            allow_decimal,
+            round_up_decimals,
+            modes_area: false,
             disabled: false,
-            holding: Rc::new(Cell::new(false)),
+            focused: false,
+            interacting: false,
+            draft_from_typing: false,
+            suppress_pointer_click: false,
             task: None,
+            _subscription: subscription,
         }
     }
-    pub(crate) fn range(mut self, min: f64, max: f64, step: f64) -> Self {
-        self.min = min;
-        self.max = max;
-        self.step = step;
+
+    /// `.modes-area .stepper` wins over the later generic Kiyo dimensions.
+    pub(crate) fn in_modes_area(mut self) -> Self {
+        self.modes_area = true;
         self
     }
-    pub(crate) fn decimals(mut self, decimals: usize) -> Self {
-        self.decimals = decimals;
-        self
-    }
-    fn clamp(&self, value: f64) -> f64 {
-        let stepped = (value / self.step).round() * self.step;
-        ((stepped / self.step).round() * self.step).clamp(self.min, self.max)
-    }
-    fn formatted(&self) -> String {
-        if self.decimals == 0 {
-            format!("{}", self.value.round() as i64)
+
+    fn format(value: f64, decimal: bool, round_up: bool) -> String {
+        if decimal && !round_up {
+            format!("{value:.3}")
         } else {
-            format!("{:.*}", self.decimals, self.value)
+            value.to_string()
         }
     }
-    /// 原版 `onMouseDown`：立即走一步并开始每 300ms 重复；`onMouseUp` 停止。
-    fn press(&mut self, delta: f64, window: &mut Window, cx: &mut Context<Self>) {
-        let value = self.clamp(self.value + delta * self.step);
-        self.set_value(value, cx);
-        self.holding.set(true);
-        let holding = self.holding.clone();
-        let (min, max, step) = (self.min, self.max, self.step);
-        let current = Rc::new(Cell::new(value));
+
+    fn write_input(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let text = Self::format(
+            self.value,
+            self.allow_decimal,
+            self.round_up_decimals || self.interacting,
+        );
+        self.input
+            .update(cx, |input, cx| input.set_value(text, window, cx));
+    }
+
+    fn commit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.disabled {
+            return;
+        }
+        let mut value = self
+            .input
+            .read(cx)
+            .value()
+            .parse::<f64>()
+            .ok()
+            .filter(|v| v.is_finite())
+            .unwrap_or(0.);
+        // Source integer parseInput snaps before clamping; decimal blur snaps
+        // after clamping, with the source's 1e-10 floating-point tolerance.
+        if !self.allow_decimal {
+            value = (value / self.step).ceil() * self.step;
+        }
+        value = value.clamp(self.min, self.max);
+        if self.allow_decimal {
+            let nearest = (value / self.step).round() * self.step;
+            if (value - nearest).abs() > 1e-10 {
+                value = (value / self.step).ceil() * self.step;
+            }
+        }
+        self.set_value(value, window, cx);
+    }
+
+    fn step_once(&mut self, action: StepAction, window: &mut Window, cx: &mut Context<Self>) {
+        if self.disabled {
+            return;
+        }
+        let sign = if action == StepAction::Increment {
+            1.
+        } else {
+            -1.
+        };
+        let draft = self.input.read(cx).value();
+        // handleChange stores a string, while parent updates store a number.
+        // Preserve the source's integer `e + stepValue` coercion as well as
+        // the explicit parseFloat used by its decimal branch.
+        let mut next =
+            if !self.allow_decimal && self.draft_from_typing && action == StepAction::Increment {
+                format!("{draft}{}", self.step).parse::<f64>().unwrap_or(0.)
+            } else {
+                draft.parse::<f64>().unwrap_or(f64::NAN) + sign * self.step
+            };
+        if !next.is_finite() {
+            next = 0.;
+        }
+        if self.allow_decimal {
+            next = (next * 1000.).round() / 1000.;
+        } else {
+            next = (next / self.step).ceil() * self.step;
+        }
+        self.set_value(next.clamp(self.min, self.max), window, cx);
+    }
+
+    fn press(&mut self, action: StepAction, window: &mut Window, cx: &mut Context<Self>) {
+        self.task = None;
+        self.step_once(action, window, cx);
+        if self.disabled || self.at_limit(action) {
+            return;
+        }
         self.task = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
                 cx.background_executor().timer(REPEAT).await;
-                if !holding.get() {
-                    break;
-                }
-                let next = (current.get() + delta * step).clamp(min, max);
-                if (next - current.get()).abs() < f64::EPSILON {
-                    // 已经到边界：原版仍会重复触发，但值不再变化。
-                    continue;
-                }
-                current.set(next);
-                if view
-                    .update(cx, |stepper, cx| stepper.set_value(next, cx))
-                    .is_err()
-                {
+                let stop = view.update_in(cx, |this, window, cx| {
+                    if this.disabled || this.at_limit(action) {
+                        return true;
+                    }
+                    this.step_once(action, window, cx);
+                    this.at_limit(action)
+                });
+                if !matches!(stop, Ok(false)) {
                     break;
                 }
             }
         }));
     }
-    fn set_value(&mut self, value: f64, cx: &mut Context<Self>) {
+
+    fn at_limit(&self, action: StepAction) -> bool {
+        // Source uses strict equality: an uncommitted string is not its
+        // numeric bound even when the text is the same number.
+        if self.draft_from_typing {
+            return false;
+        }
+        if action == StepAction::Increment {
+            self.value >= self.max
+        } else {
+            self.value <= self.min
+        }
+    }
+
+    fn set_value(&mut self, value: f64, window: &mut Window, cx: &mut Context<Self>) {
         self.value = value;
+        self.draft_from_typing = false;
+        self.write_input(window, cx);
         cx.emit(StepperEvent { value });
         cx.notify();
     }
-    /// 父视图同步草稿值：步进器本身不改状态，只显示当前值与禁用态。
-    pub(crate) fn sync_value(&mut self, value: f64, disabled: bool, cx: &mut Context<Self>) {
-        let changed = (self.value - value).abs() > f64::EPSILON || self.disabled != disabled;
+
+    pub(crate) fn sync_value(
+        &mut self,
+        value: f64,
+        min: f64,
+        disabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let value_changed = (self.value - value).abs() > f64::EPSILON;
+        let changed = value_changed || self.min != min || self.disabled != disabled;
         self.value = value;
+        self.min = min;
         self.disabled = disabled;
+        if disabled {
+            self.task = None;
+            self.suppress_pointer_click = false;
+        }
+        self.input
+            .update(cx, |input, cx| input.set_disabled(disabled, cx));
+        if value_changed {
+            self.draft_from_typing = false;
+            self.write_input(window, cx);
+        }
         if changed {
             cx.notify();
         }
     }
-    fn release(&mut self, cx: &mut Context<Self>) {
-        self.holding.set(false);
-        self.task = None;
-        cx.notify();
-    }
-    fn spinner(
-        &self,
-        which: &'static str,
-        icon: &'static str,
-        delta: f64,
-        top: f32,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        let group = SharedString::from(format!("{}-spinner", which));
-        let id = SharedString::from(format!("{}:{}", self.id, which));
-        let mut spinner = div()
-            .id(id)
-            .absolute()
-            .right_0()
-            .top(surface::css(top))
+
+    fn spinner(&self, button: BaseButton, action: StepAction, cx: &Context<Self>) -> BaseButton {
+        let at_limit = self.at_limit(action);
+        let disabled = self.disabled || at_limit;
+        let owner = cx.entity().downgrade();
+        let down = owner.clone();
+        let up = owner.clone();
+        let outside = owner.clone();
+        let leave = owner;
+        button
             .w(surface::css(14.))
             .h(surface::css(12.))
-            .group(group.clone())
-            // `.icon.spinner{opacity:0;visibility:hidden}` → `.stepper:hover` 时显示。
-            .opacity(0.)
-            .group_hover(self.id.clone(), |spinner| spinner.opacity(1.))
-            .hover(|spinner| spinner.bg(gpui_kit::rgba(0xffffff1a)))
+            .p_0()
+            .relative()
+            .opacity(if at_limit { 0.3 } else { 1. })
+            .when(!disabled, |button| {
+                button
+                    .hover(|style| style.bg(Colors::spinner_hover()))
+                    .active(|style| style.bg(Colors::spinner_pressed()))
+            })
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                let _ = down.update(cx, |this, cx| {
+                    this.suppress_pointer_click = true;
+                    if !this.at_limit(action) {
+                        this.press(action, window, cx);
+                    }
+                });
+            })
+            .on_mouse_up(MouseButton::Left, move |_, _, cx| {
+                let _ = up.update(cx, |this, _| this.task = None);
+                // NumberInput installs its own click callback after decorating
+                // the button. Consume that callback without taking a second
+                // step, then clear any unconsumed marker after this dispatch.
+                let reset = up.clone();
+                cx.defer(move |cx| {
+                    let _ = reset.update(cx, |this, _| this.suppress_pointer_click = false);
+                });
+            })
+            .on_mouse_up_out(MouseButton::Left, move |_, _, cx| {
+                let _ = outside.update(cx, |this, _| {
+                    this.task = None;
+                    this.suppress_pointer_click = false;
+                });
+            })
+            .on_hover(move |hovered, _, cx| {
+                if !*hovered {
+                    let _ = leave.update(cx, |this, _| this.task = None);
+                }
+            })
             .child(
-                img(icon)
-                    .absolute()
-                    .left(surface::css(3.))
-                    .top(surface::css(2.))
-                    .w(surface::css(8.))
-                    .h(surface::css(8.)),
-            );
-        if !self.disabled {
-            spinner = spinner
-                .cursor_pointer()
-                .on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(move |this, _, window, cx| this.press(delta, window, cx)),
-                )
-                .on_mouse_up(
-                    MouseButton::Left,
-                    cx.listener(|this, _, _, cx| this.release(cx)),
-                )
-                .on_mouse_up_out(
-                    MouseButton::Left,
-                    cx.listener(|this, _, _, cx| this.release(cx)),
-                );
-        }
-        spinner.into_any_element()
+                img(if action == StepAction::Increment {
+                    "synapse/wired-argb-3871-stepper_up.svg"
+                } else {
+                    "synapse/wired-argb-3871-stepper_down.svg"
+                })
+                .absolute()
+                .left(surface::css(3.))
+                .top(surface::css(if action == StepAction::Increment {
+                    5.
+                } else {
+                    3.
+                }))
+                .w(surface::css(8.))
+                .h(surface::css(4.)),
+            )
     }
 }
+
 impl Render for Stepper {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let text = self.formatted();
-        let mut root = div()
-            .relative()
-            .w(surface::css(60.))
-            .h(surface::css(27.))
+        let focus = self.input.focus_handle(cx);
+        let owner = cx.entity().downgrade();
+        let increment = self.spinner(BaseButton::new("increment"), StepAction::Increment, cx);
+        let decrement = self.spinner(BaseButton::new("decrement"), StepAction::Decrement, cx);
+        div()
+            .id(self.id.clone())
+            .track_focus(&focus)
+            .w(surface::css(if self.modes_area { 60. } else { 62. }))
+            .h(surface::css(if self.modes_area { 27. } else { 26. }))
+            .flex_shrink_0()
+            .bg(Colors::background())
             .border_1()
-            .border_color(Colors::border());
-        if self.disabled {
-            // `.stepper.disabled{opacity:.3;pointer-events:none}`
-            root = root.opacity(0.3);
-        }
-        root.id(self.id.clone())
+            .border_color(if self.focused && !self.disabled {
+                Colors::focus()
+            } else {
+                Colors::border()
+            })
+            .opacity(if self.disabled { 0.3 } else { 1. })
+            .when(!self.disabled, |root| {
+                root.hover(|style| style.border_color(Colors::focus()))
+            })
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                if !this.disabled && event.keystroke.key == "escape" {
+                    window.blur(cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
+                if this.disabled || !this.focused {
+                    return;
+                }
+                let delta = event.delta.pixel_delta(px(1.)).y;
+                if delta == px(0.) {
+                    return;
+                }
+                let action = if delta > px(0.) {
+                    StepAction::Increment
+                } else {
+                    StepAction::Decrement
+                };
+                if !this.at_limit(action) {
+                    this.step_once(action, window, cx);
+                }
+                cx.stop_propagation();
+            }))
             .child(
-                div()
-                    .absolute()
-                    .left_0()
-                    .top_0()
-                    .w(surface::css(58.))
-                    .h(surface::css(25.))
-                    .bg(Colors::background())
-                    .text_size(surface::css(14.))
-                    .line_height(surface::css(17.))
-                    .text_color(Colors::text())
-                    .px(surface::css(5.))
-                    .py(surface::css(5.))
-                    .child(text),
+                NumberInput::new(&self.input)
+                    .disabled(self.disabled)
+                    .size_full()
+                    .controls_right()
+                    .input(
+                        div()
+                            .id("stepper-input")
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                if !this.disabled && !this.interacting {
+                                    this.interacting = true;
+                                    this.input
+                                        .update(cx, |input, cx| input.select_all(window, cx));
+                                }
+                            }))
+                            .child(
+                                Input::new(&self.input)
+                                    .appearance(false)
+                                    .bordered(false)
+                                    .focus_bordered(false)
+                                    .h(surface::css(if self.modes_area { 25. } else { 24. }))
+                                    .w(surface::css(if self.modes_area { 42. } else { 44. }))
+                                    .p_0()
+                                    .pl(surface::css(if self.modes_area { 5. } else { 6. }))
+                                    .text_size(surface::css(14.))
+                                    .line_height(surface::css(if self.modes_area {
+                                        17.
+                                    } else {
+                                        14.
+                                    }))
+                                    .text_color(Colors::text()),
+                            ),
+                    )
+                    .increment_button(move |_| increment)
+                    .decrement_button(move |_| decrement)
+                    .on_step(move |action, window, cx| {
+                        let _ = owner.update(cx, |this, cx| {
+                            if std::mem::take(&mut this.suppress_pointer_click) {
+                                return;
+                            }
+                            this.step_once(action, window, cx);
+                        });
+                    }),
             )
-            .child(self.spinner("up", "synapse/wired-argb-3871-stepper_up.svg", 1., 0., cx))
-            .child(self.spinner(
-                "down",
-                "synapse/wired-argb-3871-stepper_down.svg",
-                -1.,
-                15.,
-                cx,
-            ))
     }
 }

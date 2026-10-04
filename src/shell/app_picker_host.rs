@@ -94,19 +94,19 @@ impl AppShell {
                 }
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Alexa)) => {
-                self.open_independent_module(service_pages::ModulePage::Alexa, cx);
+                self.open_module_tab(service_pages::ModulePage::Alexa, window, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::ProfileMigration)) => {
                 self.navigate(Location::ProfileMigration, window, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::LinkedGames)) => {
-                self.open_independent_module(service_pages::ModulePage::Profiles, cx);
+                self.open_module_tab(service_pages::ModulePage::Profiles, window, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Macro)) => {
-                self.open_independent_module(service_pages::ModulePage::Macro, cx);
+                self.open_module_tab(service_pages::ModulePage::Macro, window, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Armory)) => {
-                self.open_independent_module(service_pages::ModulePage::Armory, cx);
+                self.open_module_tab(service_pages::ModulePage::Armory, window, cx);
             }
             AppPickerEvent::AddWifiDevice
             | AppPickerEvent::Open(PickerTarget::Module(PickerModule::AddWifi)) => {

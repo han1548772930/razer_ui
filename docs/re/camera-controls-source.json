@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "e8b6869d189a531f9f0c875ccf4360f0627b84746fe01057194a3f23e34a1804",
+  "scanner_sha256": "a5570989eaf71d1dd177b43025b879cd7b0f3128c0b63e6f1e2dd85afd2a70c2",
   "products": [
     {
       "sharpness_gain_rows": {
@@ -173,7 +173,7 @@
         }
       ],
       "limitations": [
-        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized."
       ]
     },
     {
@@ -241,7 +241,7 @@
         }
       ],
       "limitations": [
-        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized."
       ]
     },
     {
@@ -318,7 +318,7 @@
         }
       ],
       "limitations": [
-        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized."
       ]
     },
     {
@@ -377,7 +377,7 @@
         }
       ],
       "limitations": [
-        "The mounted framing row (zoom, pan/tilt pad, five view presets and the preset shortcut chord) is retained, plus the resolution row and the watermark placement pad wherever the source mounts them. Live video, camera enumeration, watermark appearance and processing notes, AI auto framing, the LDC/resolution disable branch, dragging the white framing box and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized."
+        "The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized."
       ]
     }
   ]

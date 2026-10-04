@@ -22,6 +22,7 @@ use std::collections::BTreeMap;
 pub enum WorkspaceEvent {
     Changed,
     IntroDismissed,
+    ShareProfile,
 }
 pub(super) struct MappingDraft {
     pub(super) input: String,

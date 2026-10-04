@@ -5,6 +5,9 @@ const {Source, hash} = require('./webpack-source.cjs');
 const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const source = new Source('synapse/armory');
+if (process.argv.includes('--check') && process.argv.includes('--write-locales')) {
+  throw Error('--check is read-only and cannot be combined with --write-locales');
+}
 const keys = ['SPOTLIGHT_HEADER', 'BROWSE_HEADER', 'MY_DOWNLOADS_HEADER', 'MY_UPLOADS_HEADER',
   'DASHBOARD_WORKSHOP', 'DASHBOARD_EXCHANGE', 'WORKSHOP_GET_STARTED', 'EXCHANGE_GET_STARTED',
   'AI_MACRO_DESC', 'MACRO_USAGE_DESC', 'ASSIGN_MACRO_DESC', 'CLOSE'];
@@ -30,9 +33,8 @@ for (const file of source.files.filter(f => /\/trans-[^.]+\.[a-f0-9]+\.chunk\.js
   }
   locales.push({locale, module: module.id, path: file, sha256: hash(source.text(file)), values});
 }
-// The card/detail/share surfaces are lazy modules, but their source is part of
-// the current manifest. Keep them in the receipt even though the local shell
-// cannot fabricate service-backed contribution data.
+// Current lazy card/detail/share modules remain in the root receipt. Local
+// sharing now has a separate audit; it does not fabricate service contributions.
 const components = [29770, 20540, 77989, 60094, 95889, 3026, 86024, 68142,
   27588, 13476, 66517, 54408, 49496, 38198, 52259, 70017, 8679].map(id => ({
   module: id, ...source.receipt(id, source.module(id).fn),
@@ -87,11 +89,13 @@ const report = {schema_version: 1, method: 'Acorn module scopes and export gette
       option_panels: ['armory-filter-options', 'armory-sort-options'], service_actions: 'deferred'},
     search: {source_module: 68142, debounce_ms: 300, service_actions: 'deferred'},
     content: {card_module: 27588, lazy_list_module: 86024, detail_module: 13476,
-      share_module: 66517, empty_dataset_render: 'null'},
+      share_module: 66517, empty_dataset_render: 'null',
+      local_share: {entry: 'ArmoryPage::open_share_profile', evidence: 'docs/re/armory-share-current-evidence.json',
+        profile_snapshot: true, form: true, preview: 'local profile summary and available mouse DPI', service_submission: false}},
   },
   limitations: ['The source initially chooses Spotlight, then settles on Browse when feature loading ends with phase1 false.',
     'The source localStorage key is mirrored under APPDATA/razer_ui; service-backed persistence remains local to this shell.',
-    'Filter controls mirror the source device/download groups and six sort entries with local state; the source search shell and 300ms debounce are mounted without remote suggestions/results; service-backed filtering/sorting, content cards, detail/share dialogs and services remain incomplete. Current source receipts cover card (27588), detail (13476), and upload/share (66517) branches without inventing their service payloads.',
+    'Filter controls mirror the source device/download groups and six sort entries with local state; search/debounce remain local. An explicit existing-profile Share command opens the current form and local summary/DPI preview. Remote filtering/sorting, contribution cards, full remote detail, account/moderation and submission remain incomplete; see the separate share audit.',
     'No application execution or pixel validation.'], problems};
 const target = 'docs/re/armory-default-source.json', rendered = JSON.stringify(report, null, 2) + '\n';
 if (process.argv.includes('--check')) {

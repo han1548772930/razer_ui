@@ -94,11 +94,13 @@ struct ControlSpec {
     ///（校验脚本按 `名字：值` 的 ASCII 冒号形式识别字段，注释里不要那样写。）
     #[serde(default)]
     has_stepper: bool,
-    /// `allowDecimal` 与 `roundUpDecimals` 为真时步进器显示小数。
+    /// Effective props of the actual numeric editor, after the setting-row adapter.
     #[serde(default)]
     allow_decimal: bool,
     #[serde(default)]
     round_up_decimals: bool,
+    #[serde(default)]
+    stepper_max_length: Option<usize>,
     #[serde(default = "default_max_pan_tilt")]
     max_pan_tilt: f32,
     /// Mounted pan/tilt pad content box, in the product's own pixels.
@@ -262,23 +264,37 @@ impl SourceControls {
                         this.edit(&target, serde_json::json!(value.start()), window, cx);
                     },
                 ));
-                this.sliders.insert(key, state);
-            } else if control.has_stepper && !this.steppers.contains_key(&key) {
-                // 原版这一行的步进器与滑块写同一个字段，步进器只是 ±step。
+                this.sliders.insert(key.clone(), state);
+            }
+            // A source setting row can own both controls. Creating its slider
+            // must not skip the separately retained numeric input.
+            if control.has_stepper && !this.steppers.contains_key(&key) {
+                // Slider and numeric editor write the same source setting.
                 let initial = this.value(control).and_then(Value::as_f64).unwrap_or(0.);
-                let (min, max, step) =
-                    (control.min as f64, control.max as f64, control.step as f64);
-                // `allowDecimal`/`roundUpDecimals`：相机这四行的两个标志同时为真，
-                // 显示位数由步长决定（原版是 `toFixed(3)`）。
-                let decimals = if control.allow_decimal || control.round_up_decimals {
-                    decimals_for_step(step)
-                } else {
-                    0
-                };
-                let state = cx.new(|_| {
-                    Stepper::new(SharedString::from(format!("{key}:stepper")), initial)
-                        .range(min, max, step)
-                        .decimals(decimals)
+                let (min, max, step) = (
+                    control.min as f64,
+                    control
+                        .max
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("source maximum"),
+                    control
+                        .step
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("source step"),
+                );
+                let state = cx.new(|cx| {
+                    Stepper::new(
+                        SharedString::from(format!("{key}:stepper")),
+                        initial,
+                        (min, max, step),
+                        control.allow_decimal,
+                        control.round_up_decimals,
+                        control.stepper_max_length,
+                        window,
+                        cx,
+                    )
                 });
                 let target = key.clone();
                 // 步进器写的是同一个字段，走和滑块一样的 `edit` 路径（含禁用判断）。
@@ -548,6 +564,10 @@ impl SourceControls {
                 (min + ((n - min) / control.step).round() * control.step).clamp(min, control.max);
             value = if control.step.fract() == 0. {
                 serde_json::json!(snapped as i64)
+            } else if control.has_stepper {
+                // Camera editors accept at most three decimal places. Do not
+                // expose the slider's f32 conversion tail in the text input.
+                serde_json::json!((f64::from(snapped) * 1000.).round() / 1000.)
             } else {
                 serde_json::json!(snapped)
             };
@@ -713,6 +733,8 @@ impl SourceControls {
                     .clamp(min, control.max);
                 *value = if control.step.fract() == 0. {
                     serde_json::json!(number as i64)
+                } else if control.has_stepper {
+                    serde_json::json!((f64::from(number) * 1000.).round() / 1000.)
                 } else {
                     serde_json::json!(number)
                 };
@@ -741,7 +763,10 @@ impl SourceControls {
             if let Some(control) = self.control(key) {
                 let value = self.value(control).and_then(Value::as_f64).unwrap_or(0.);
                 let disabled = self.disabled(control);
-                state.update(cx, |stepper, cx| stepper.sync_value(value, disabled, cx));
+                let min = f64::from(self.minimum(control));
+                state.update(cx, |stepper, cx| {
+                    stepper.sync_value(value, min, disabled, window, cx)
+                });
             }
         }
         for (key, state) in &self.selects {
@@ -1650,18 +1675,6 @@ impl PanTiltBox {
 }
 /// Product input IDs and their source display names, module 6114.
 const KEYS: &[(&str, &str, &str)] = include!("mapping_keys.rs");
-/// 原版把 `parseFloat(value).toFixed(3)` 交给输入框，显示位数由步长决定。
-fn decimals_for_step(step: f64) -> usize {
-    if step >= 1. {
-        0
-    } else if step >= 0.1 {
-        1
-    } else if step >= 0.01 {
-        2
-    } else {
-        3
-    }
-}
 fn is_modifier(id: &str) -> bool {
     KEYS.iter()
         .any(|(group, key, _)| *group == "modifiers" && *key == id)

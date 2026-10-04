@@ -210,3 +210,200 @@ Reproducible source and boundary receipts are in
 `tools/audit-oled-crop-language.cjs`. GIF worker execution, complete cropper
 canvas/pan/zoom geometry, original slider callbacks, language download UI state,
 hardware transfer and pixel-level runtime validation remain open.
+
+## Worker resources and crop zoom continuation on 2026-10-04
+
+`fetch-oled-worker-resources.py` now covers the manifest-declared worker and
+ImageMagick JS dependency, six 15fps animation GIFs, the `lets-go` GIF, the
+14,422,294-byte `magick.b51fdc57.wasm`, and both declared source maps. All ten
+required resources are available with HTTP and SHA-256 receipts. The two source
+maps return HTTP 404; their response bodies and hashes are retained as absence
+evidence. Each animation preset is 232x64 with 60 frames and 60/70ms delays;
+`lets-go` is 232x64 with 82 frames and 70ms delays. GIF validation decodes media
+only. WASM validation reads its version-1 header and section bounds without
+instantiating or executing it. The reproducible acquisition report is
+`oled-worker-resources-current-evidence.json`.
+
+The acquisition and worker audits now bind every dependency to its exact
+manifest key, URL, local path, HTTP receipt and response body. They require the
+complete unique twelve-resource inventory, matching HTTP status/result,
+captured timestamp, byte count, SHA-256 and validation metadata. The manifest
+itself is checked against its successful HTTP receipt. A source-map absence
+must be `not_found` with HTTP 404 and the exact `.response` body; an unrelated
+body, omitted dependency or stale size is rejected. The WASM section-length
+reader rejects values that overflow its unsigned 32-bit length field.
+
+`audit-oled-worker.cjs` statically parses the current worker module 71568,
+ImageMagick module 64175 and WASM URL module 29623. Its receipt connects the
+mounted `be` component to worker chunk 8609 and the worker to chunk 9537 and
+the exact manifest WASM URL. The processing contract coalesces frames before
+limiting to 150, processes batches of 20, constructs a black canvas from the
+Cropper geometry, resizes/composites/crops, converts to grayscale, and resizes
+to 232x64. Each output delay is at least 6 GIF centiseconds for 15fps mode or
+3 for the alternate mode. `optimizePlus()` precedes GIF encoding. A complete
+reply contains a GIF data URL, encoded byte count and frame count. This is
+static source evidence, not an implemented native encoder or an executed
+worker. The detailed report is `oled-worker-current-evidence.json`.
+
+The bridge receipt also records its lifecycle. Animation Apply sends the
+original bytes and geometry; image Apply uses the separate shared image
+cropper at 232x64. Apply sets loading, progress retains loading, and
+complete/error clears it. Complete forwards the processed data URL and encoded
+byte count to the isolated preset callback. Complete, a worker error message,
+Cancel and unmount terminate the worker. The separate worker `onerror`
+callback clears loading and logs the error without itself terminating it.
+These are source behaviors; native local staging does not synthesize these
+processing states or output values.
+
+The native crop editor now has the current `xe` slider with retained positions
+1 through 10 and step 1. The source positions are control state, not absolute
+zoom ratios: buttons move one position and pass +/-0.1 to the zoom function;
+slider movement passes `(next-11)/10` when decreasing and `next/10` when
+increasing. Cropper converts a negative input to `1/(1-input)` and a positive
+input to `1+input`, then multiplies the current ratio. Native callbacks now
+follow these expressions and keep button changes and Reset synchronized with
+the slider. Reset returns both states to 1. The slider has the source CSS's
+150px width and 4px/10px margins; Reset occupies its own centered row.
+The ratio formula is independently checked against the `zoom` AST node in
+the current product's `3725.ac580dd5.chunk.js`, including its full-file and
+function-slice hashes. Both zoom buttons have localized accessible names from
+the existing `ZOOM_IN`/`ZOOM_OUT` keys.
+
+Reading and base64-encoding an imported file now runs on the background
+executor so a large animation does not synchronously occupy the UI thread.
+Completion uses the existing weak editor reference, rejects results from older
+file selections, and rechecks the slot's enabled state before opening the crop draft. It still stages the original
+bytes and size; background file loading is not GIF processing.
+
+The existing local preview still clamps magnification to 1..10 and uses its
+existing centered viewport. This guard is not the source's `minCanvasHeight`
+constraint. Full image-dependent canvas geometry, panning, GIF encoding and
+hardware transport remain pending. Apply still retains original local bytes
+and the local preview placement in the isolated preset draft. The previous
+limitation concerning missing slider callbacks is superseded by this section;
+the complete crop renderer remains partial.
+
+Validation for this continuation: offline resource/hash/media validation,
+Acorn parsing and source-contract checks, current crop/language audit, and
+Rust formatting. The parent task performs the consolidated
+`cargo check --locked --all-targets`. No application, tests, build, downloaded
+JavaScript, WASM, installer or DLL was executed.
+
+Reproduction commands for the focused static checks:
+
+```powershell
+.work/resource-env/Scripts/python.exe tools/fetch-oled-worker-resources.py --offline
+node tools/audit-oled-worker.cjs
+node tools/audit-oled-crop-language.cjs
+rustfmt --edition 2024 --check src/features/source_controls/oled_presets.rs
+```
+
+## Canvas geometry and local media continuation on 2026-10-04
+
+The current `be` component and OLED stylesheet fix the actual Cropper
+container to **232x190**, not the previous native 580px width. With
+`viewMode:0`, `minCropBoxWidth:232`, aspect ratio 3.625 and container width
+232, the fixed crop box is exactly `{left:0,top:63,width:232,height:64}`.
+Eleven current Cropper AST functions, their byte-for-byte source slices,
+the mounted options and relevant CSS are recorded in
+`oled-canvas-current-evidence.json` by `tools/audit-oled-canvas.cjs`.
+
+The native canvas now implements that initialization and geometry. It first
+contains the decoded image within 232x190, then applies `minCanvasHeight:64`
+while preserving the image aspect, and centres the result. Consequently a
+100x1000 portrait begins at 19x190 with horizontal black space in the OLED
+output, while a 1000x100 image begins at 640x64 with both sides extending
+outside the crop. The crop editor shows the full image canvas with the source
+grayscale treatment, transparent container background, 50% black top/bottom
+masks, 10% white crop-face overlay, dashed outline and corner marks.
+
+Dragging moves the canvas, keeping the crop box fixed. Position follows the
+source's view-mode-0 bounds: left `[-canvasWidth,232]`, top
+`[-canvasHeight,190]`; blank crop regions are valid. Window capture listeners
+continue dragging outside the image area, and release inside/outside clears
+the drag, including release before a new frame installs those listeners.
+Pointer deltas are converted back from current UI scale to source CSS units.
+The focused crop group also supports arrow keys for 1px movement and
+Shift+arrow for 10px movement. Slider/button zoom remains relative to the
+current canvas centre. If it reaches the minimum size, source
+`renderCanvas` preserves the old position before applying height 64. There
+is no 10x cap on the active geometry. Reset restores the initial rectangle,
+clears dragging and returns the slider to position 1.
+
+The background import now reuses GPUI's existing decoder rather than inferring
+image aspect from the OLED output dimensions. This keeps GIF frames and uses
+the decoder's EXIF-adjusted dimensions for images. The crop dialog directly
+uses the resulting `RenderImage`. Another native defect was corrected:
+passing a `data:image/...` string directly to `img` takes GPUI's URI/HTTP
+loading route. Saved local data URLs now use a native `Asset` cache that
+decodes base64 and image bytes on GPUI's background executor. The source
+inspection records the pinned GPUI 0.3.7 decoder and cache hashes. No new
+dependency was added, and local image data is not submitted to an HTTP client.
+
+Apply stores the exact canvas width, height, left and top in
+`local_crop.canvas`. Both preset and home previews render that same image
+rectangle relative to crop-top 63; restore preserves the rectangle and clamps
+invalid saved positions. Previously saved zoom-only drafts retain their
+earlier placement. The original file data URL and byte count remain intact.
+The isolated editor draft, Cancel/Escape behavior, enabled-slot check and
+latest-file-selection generation check remain in force.
+
+This section supersedes the earlier statements that canvas geometry, panning
+and active zoom limits are still represented only by a centred 1..10 preview.
+Native processed image/GIF encoding, ImageMagick equivalence, processed byte
+counts and device transport remain separate unfinished work. No runtime
+pixel or interaction parity is claimed: verification is static source
+inspection, formatting and the parent task's permitted consolidated
+`cargo check --locked --all-targets`.
+
+Focused reproduction also includes:
+
+```powershell
+node tools/audit-oled-canvas.cjs --check
+rustfmt --edition 2024 --check src/features/source_controls/oled_presets.rs src/features/source_controls/oled_crop.rs
+```
+
+The subsequent static self-review found and corrected two lifecycle defects.
+GPUI retains animated frame state only when the image has an `ElementId`;
+both the crop image and preset/home images now have stable identities. Slot
+and content identity keep redraws on the same animation while replacement
+starts a new animation. The existing media visualizer images received the
+same identity correction. GPUI selects frames using their original delays,
+pauses when the window is inactive and respects reduced-motion settings. Its
+decoder can skip individually damaged GIF frames and returns an error if
+none decode; this preview behavior does not imply the worker's coalescing,
+150-frame output limit or optimized encoding.
+
+GPUI's asset cache also retains pending and completed results until explicit
+removal. Each displayed local image now owns a keyed lease. Concurrent home
+and editor previews share one decoded data-URL asset; replacement or removal
+releases the lease, and the final release removes the asset. The GPUI cached
+load keeps completion state weakly, so a removed pending entry cannot later
+publish into a replacement. The original saved bytes remain in the preset
+draft independently of whether a preview is currently decoded.
+
+Local resource safeguards now run before decoding files and restored data
+URLs. Encoded input is limited to 64MiB, including a bounded file read that
+also handles a file growing after its metadata was read. PNG IHDR, JPEG SOF
+and BMP DIB dimensions are checked; JPEG rejects conflicting frame dimensions,
+and BMP header bounds are verified. GIF scanning checks the logical canvas,
+each frame rectangle, palette and sub-block bounds and all frame records
+without running LZW. The estimated resident RGBA frames plus per-frame
+records must fit 256MiB. This is **not a hard process-memory limit**: codec
+working buffers, compressed bytes and metadata are outside the estimate, and
+compressed-data validity still belongs to the existing decoder. These are
+native safeguards, not source UI limits.
+
+Both load paths additionally reject decoded results with zero dimensions,
+inconsistent frame canvas sizes or excessive resident frame bytes before
+handing them to GPUI layout. This post-decode check does not bound transient
+memory already used inside the codec.
+
+Invalid imports preserve the previous draft; malformed restored data URLs
+produce a cached image error and remain replaceable or resettable. Invalid
+saved rectangles fall back to the older zoom placement. A 2^40 CSS-pixel
+canvas-edge guard rejects extreme finite floats before layout arithmetic;
+it exceeds the largest initial canvas possible from u32 image dimensions
+with minimum height 64, so it does not limit a valid default Cropper canvas.
+The self-review is static and does not claim exhaustive codec safety or
+executed interaction coverage.

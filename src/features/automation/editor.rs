@@ -1,6 +1,14 @@
 use super::*;
 use crate::features::lighting_color::LightingColorPicker;
+use crate::ui::stepper::{Stepper, StepperEvent};
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
+use gpui_kit::component::slider::SliderState;
+use std::{cell::Cell, rc::Rc};
+#[path = "delete_confirmation.rs"]
+mod delete_confirmation;
+use delete_confirmation::DeleteConfirmation;
+#[path = "effects.rs"]
+mod effect_parameters;
 #[path = "quick_macro.rs"]
 mod quick_macro;
 use quick_macro::{QuickMacroEditor, QuickMacroSaved};
@@ -17,11 +25,19 @@ pub(super) struct AutomationEditor {
     category: Entity<SelectState<Vec<Choice>>>,
     effects: [Entity<SelectState<Vec<Choice>>>; 2],
     colors: [[Entity<ColorPickerState>; 2]; 2],
+    durations: [Entity<SliderState>; 2],
+    duration_focus: [FocusHandle; 2],
+    boosts: [Entity<Stepper>; 2],
     catalogs: BTreeMap<u32, Vec<Value>>,
     installed: Option<bool>,
     busy: bool,
     preview: bool,
-    deleting: bool,
+    delete_confirmation: Option<Entity<DeleteConfirmation>>,
+    delete_subscription: Option<Subscription>,
+    delete_trigger_focus: FocusHandle,
+    delete_trigger_bounds: Rc<Cell<Bounds<Pixels>>>,
+    delete_footer_bounds: Rc<Cell<Bounds<Pixels>>>,
+    delete_hovered: bool,
     macro_picker: Option<bool>,
     alert: Option<String>,
     syncing: bool,
@@ -45,6 +61,30 @@ impl AutomationEditor {
         let colors = std::array::from_fn(|_| {
             std::array::from_fn(|_| cx.new(|cx| ColorPickerState::new(window, cx)))
         });
+        let durations = std::array::from_fn(|_| {
+            cx.new(|_| {
+                SliderState::new()
+                    .min(1.)
+                    .max(3.)
+                    .step(1.)
+                    .default_value(2.)
+            })
+        });
+        let boosts = std::array::from_fn(|lane| {
+            cx.new(|cx| {
+                Stepper::new(
+                    format!("automation-color-boost-{lane}"),
+                    1.,
+                    (0.25, 4., 0.25),
+                    true,
+                    true,
+                    Some(4),
+                    window,
+                    cx,
+                )
+                .in_modes_area()
+            })
+        });
         let mut this = Self {
             draft: rule.clone(),
             original: rule,
@@ -53,11 +93,19 @@ impl AutomationEditor {
             category: category.clone(),
             effects,
             colors,
+            durations,
+            duration_focus: std::array::from_fn(|_| cx.focus_handle().tab_stop(true)),
+            boosts,
             catalogs,
             installed,
             busy,
             preview,
-            deleting: false,
+            delete_confirmation: None,
+            delete_subscription: None,
+            delete_trigger_focus: cx.focus_handle().tab_stop(true),
+            delete_trigger_bounds: Rc::new(Cell::new(Bounds::default())),
+            delete_footer_bounds: Rc::new(Cell::new(Bounds::default())),
+            delete_hovered: false,
             macro_picker: None,
             alert: None,
             syncing: false,
@@ -87,7 +135,25 @@ impl AutomationEditor {
                     if !this.syncing {
                         if let SelectEvent::Confirm(Some(id)) = event {
                             if let Ok(id) = id.parse::<u32>() {
-                                this.choose(down, Self::quick(id), cx);
+                                let mut value = Self::quick(id);
+                                // LP restores the saved lane setting when that
+                                // effect is selected again; unsaved alternatives
+                                // are not an additional per-effect cache.
+                                if let Some(saved) = this
+                                    .original
+                                    .lane(down)
+                                    .data
+                                    .iter()
+                                    .find(|value| {
+                                        value["selectedEffectId"].as_u64() == Some(id.into())
+                                    })
+                                    .and_then(|value| value.get("setting"))
+                                    .filter(|setting| setting.is_object())
+                                {
+                                    value["setting"] = saved.clone();
+                                    value["setting"]["effectId"] = json!(id);
+                                }
+                                this.choose(down, value, cx);
                                 this.sync(window, cx);
                             }
                         }
@@ -112,7 +178,7 @@ impl AutomationEditor {
                             .cloned()
                             .unwrap_or_default();
                         let effect = value["selectedEffectId"].as_u64().unwrap_or(4);
-                        if !matches!(effect, 1 | 2)
+                        if !matches!(effect, 1 | 2 | 7)
                             || (effect == 1 && channel == 1)
                             || value["setting"]["isRandom"] == true
                         {
@@ -142,6 +208,70 @@ impl AutomationEditor {
                     },
                 ));
             }
+        }
+        for down in [false, true] {
+            this.subscriptions.push(cx.observe_in(
+                &this.durations[down as usize],
+                window,
+                move |this, slider, window, cx| {
+                    if this.syncing || this.selected_effect(down) != 7 {
+                        return;
+                    }
+                    let saved = this
+                        .draft
+                        .lane(down)
+                        .data
+                        .first()
+                        .and_then(|v| v["setting"]["duration"].as_f64())
+                        .unwrap_or(2.) as f32;
+                    let raw = slider.read(cx).value().start();
+                    let editable = this.chroma_parameters_editable(down);
+                    let value = if editable {
+                        raw.round().clamp(1., 3.)
+                    } else {
+                        saved
+                    };
+                    // Observe also covers Base Slider's accessibility actions,
+                    // which set_value without emitting Change. Equality checks
+                    // keep parent synchronization from clearing apply flags.
+                    if raw != value
+                        || (slider.read(cx).percentage().end - (value - 1.) / 2.).abs()
+                            > f32::EPSILON
+                    {
+                        slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
+                    }
+                    if editable && saved != value {
+                        this.update_chroma_setting(down, "duration", json!(value as u32), cx);
+                    }
+                },
+            ));
+            this.subscriptions.push(cx.subscribe_in(
+                &this.boosts[down as usize],
+                window,
+                move |this, stepper, event: &StepperEvent, window, cx| {
+                    if this.syncing
+                        || !this.chroma_parameters_editable(down)
+                        || this.selected_effect(down) != 12
+                    {
+                        return;
+                    }
+                    let boost = (event.value * 4.).ceil().clamp(1., 16.) / 4.;
+                    let Some(value) = this.draft.lane(down).data.first() else {
+                        return;
+                    };
+                    if value["setting"]["colorBoost"].as_f64() != Some(boost) {
+                        // AI.changeColorBoost replaces settings, unlike Wave/Starlight.
+                        this.choose(
+                            down,
+                            Self::quick_payload(12, json!({"colorBoost":boost})),
+                            cx,
+                        );
+                    }
+                    stepper.update(cx, |stepper, cx| {
+                        stepper.sync_value(boost, 0.25, false, window, cx)
+                    });
+                },
+            ));
         }
         this.sync(window, cx);
         this
@@ -203,6 +333,9 @@ impl AutomationEditor {
         if id == 4 {
             setting["direction"] = json!(4);
         }
+        Self::quick_payload(id, setting)
+    }
+    fn quick_payload(id: u32, setting: Value) -> Value {
         json!({"selectedEffectId":id,"setting":setting,"isApplyToOtherDevices":false,"isAdvEffect":false,"index":spec().effects.iter().position(|e|e.id==id).unwrap_or(0)})
     }
     fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -228,6 +361,23 @@ impl AutomationEditor {
                 .first()
                 .cloned()
                 .unwrap_or_else(|| Self::quick(id as u32));
+            self.durations[down as usize].update(cx, |slider, cx| {
+                slider.set_value(
+                    value["setting"]["duration"].as_f64().unwrap_or(2.) as f32,
+                    window,
+                    cx,
+                )
+            });
+            let disabled = !self.chroma_parameters_editable(down) || id != 12;
+            self.boosts[down as usize].update(cx, |stepper, cx| {
+                stepper.sync_value(
+                    value["setting"]["colorBoost"].as_f64().unwrap_or(1.),
+                    0.25,
+                    disabled,
+                    window,
+                    cx,
+                )
+            });
             for channel in 0..2 {
                 let color = value["setting"]
                     .get(if channel == 0 { "color1" } else { "color2" })
@@ -283,10 +433,10 @@ impl AutomationEditor {
         data["setting"][key] = value;
         // LP's P callback emits the updated setting for this lane and clears
         // apply-to-other-devices; it never updates the opposite trigger lane.
-        data["isApplyToOtherDevices"] = json!(false);
-        self.choose(down, data, cx);
+        let id = data["selectedEffectId"].as_u64().unwrap_or(4) as u32;
+        self.choose(down, Self::quick_payload(id, data["setting"].take()), cx);
     }
-    fn render_effect_parameters(
+    fn render_color_parameters(
         &self,
         down: bool,
         value: &Value,
@@ -294,28 +444,34 @@ impl AutomationEditor {
         cx: &Context<Self>,
     ) -> AnyElement {
         let effect = value["selectedEffectId"].as_u64().unwrap_or(4);
-        if !matches!(effect, 1 | 2) {
+        if !matches!(effect, 1 | 2 | 7) {
             return div().into_any_element();
         }
-        let breathing = effect == 2;
-        let random = breathing && value["setting"]["isRandom"] == true;
+        let two_colors = matches!(effect, 2 | 7);
+        let random = two_colors && value["setting"]["isRandom"] == true;
         h_flex()
             .items_start()
             .flex_wrap()
-            .gap(surface::css(10.))
             .mt(surface::css(20.))
-            .children((0..if breathing { 2 } else { 1 }).map(|channel| {
-                let label = if breathing {
+            .children((0..if two_colors { 2 } else { 1 }).map(|channel| {
+                let label = if two_colors {
                     text("COLOR_DROP_NAME").replace("{{num}}", &(channel + 1).to_string())
                 } else {
                     text("COLOR")
                 };
-                LightingColorPicker::new(&self.colors[down as usize][channel], label)
-                    .allow_none(breathing)
-                    .disabled(disabled || random)
+                v_flex()
+                    .mr(surface::css(20.))
+                    .child(div().line_height(surface::css(20.)).child(label.clone()))
+                    .child(
+                        div().mt(surface::css(5.)).child(
+                            LightingColorPicker::new(&self.colors[down as usize][channel], label)
+                                .allow_none(two_colors)
+                                .disabled(disabled || random),
+                        ),
+                    )
                     .into_any_element()
             }))
-            .when(breathing, |view| {
+            .when(two_colors, |view| {
                 view.child(
                     div().mt(surface::css(25.)).child(
                         checkbox::Checkbox::new(SharedString::from(format!(
@@ -403,17 +559,18 @@ impl AutomationEditor {
                         .label(text(key))
                         .on_click(cx.listener(
                             move |this, _, window, cx| {
-                                this.choose(
-                                    down,
-                                    match choice {
-                                        "off" => {
-                                            json!({"isOff":true,"applyToAllChromaDevices":false})
-                                        }
-                                        "advanced" => json!({"isAdvEffect":true}),
-                                        _ => Self::quick(4),
-                                    },
-                                    cx,
-                                );
+                                // yP.handleToggleChange preserves the selected
+                                // effect, parameters and both apply flags.
+                                let mut value = this
+                                    .draft
+                                    .lane(down)
+                                    .data
+                                    .first()
+                                    .cloned()
+                                    .unwrap_or_else(|| Self::quick(4));
+                                value["isAdvEffect"] = json!(choice == "advanced");
+                                value["isOff"] = json!(choice == "off");
+                                this.choose(down, value, cx);
                                 this.sync(window, cx);
                             },
                         ))
@@ -421,30 +578,39 @@ impl AutomationEditor {
                 ),
             );
             if mode == "quick" {
-                content = content.child(
+                let quick_controls = v_flex().child(
                     surface::select(&self.effects[down as usize])
                         .items(Self::effect_choices())
                         .accessibility_label(text("QUICK_EFFECTS"))
                         .disabled(disabled)
                         .w_full(),
                 );
-                content = content.child(self.render_effect_parameters(down, &value, disabled, cx));
+                let quick_controls =
+                    quick_controls.child(self.render_effect_parameters(down, &value, disabled, cx));
                 content = content.child(
-                    checkbox::Checkbox::new(SharedString::from(format!("automation-apply-{down}")))
-                        .checked(value["isApplyToOtherDevices"] == true)
-                        .disabled(disabled)
-                        .label(text("APPLY_TO_ALL_CHROMA_DEVICES"))
-                        .on_click(cx.listener(move |this, on, _, cx| {
-                            let mut value = this
-                                .draft
-                                .lane(down)
-                                .data
-                                .first()
-                                .cloned()
-                                .unwrap_or_else(|| Self::quick(4));
-                            value["isApplyToOtherDevices"] = json!(on);
-                            this.choose(down, value, cx);
-                        })),
+                    quick_controls.child(
+                        div().pt(surface::css(30.)).child(
+                            checkbox::Checkbox::new(SharedString::from(format!(
+                                "automation-apply-{down}"
+                            )))
+                            .checked(value["isApplyToOtherDevices"] == true)
+                            .disabled(disabled)
+                            .label(text("APPLY_TO_ALL_CHROMA_DEVICES"))
+                            .on_click(cx.listener(
+                                move |this, on, _, cx| {
+                                    let mut value = this
+                                        .draft
+                                        .lane(down)
+                                        .data
+                                        .first()
+                                        .cloned()
+                                        .unwrap_or_else(|| Self::quick(4));
+                                    value["isApplyToOtherDevices"] = json!(on);
+                                    this.choose(down, value, cx);
+                                },
+                            )),
+                        ),
+                    ),
                 );
             } else if mode == "off" {
                 content = content.child(text("TURN_OFF_CHROMA_LIGHTING")).child(
@@ -455,7 +621,15 @@ impl AutomationEditor {
                     .disabled(disabled)
                     .label(text("APPLY_TO_ALL_CHROMA_DEVICES"))
                     .on_click(cx.listener(move |this, on, _, cx| {
-                        this.choose(down, json!({"isOff":true,"applyToAllChromaDevices":on}), cx);
+                        let mut value = this
+                            .draft
+                            .lane(down)
+                            .data
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| Self::quick(4));
+                        value["applyToAllChromaDevices"] = json!(on);
+                        this.choose(down, value, cx);
                     })),
                 );
             } else if self.installed == Some(false) {
@@ -806,41 +980,7 @@ impl Render for AutomationEditor {
                         .child(message),
                 )
             });
-        let delete = self.deleting.then(|| {
-            v_flex()
-                .p(surface::css(20.))
-                .border_1()
-                .border_color(Colors::danger())
-                .rounded(surface::css(3.))
-                .bg(Colors::panel())
-                .gap(surface::css(10.))
-                .child(
-                    div()
-                        .text_size(surface::css(16.))
-                        .text_color(Colors::danger())
-                        .child(text("DELETE_ACTION").to_uppercase()),
-                )
-                .child(text("DELETE_ACTION_DESC"))
-                .child(
-                    h_flex()
-                        .gap(surface::css(12.))
-                        .child(
-                            command("automation-cancel-delete", text("CANCEL"), false, false)
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.deleting = false;
-                                    cx.notify();
-                                })),
-                        )
-                        .child(
-                            command("automation-confirm-delete", text("DELETE"), false, false)
-                                .bg(Colors::danger())
-                                .on_click(cx.listener(|this, _, window, cx| {
-                                    cx.emit(EditorEvent::Delete(this.draft.id));
-                                    window.close_dialog(cx);
-                                })),
-                        ),
-                )
-        });
+        let footer_bounds = self.delete_footer_bounds.clone();
         v_flex()
             .font_family("Roboto")
             .text_size(surface::css(14.))
@@ -877,30 +1017,29 @@ impl Render for AutomationEditor {
                     .px(surface::css(30.))
                     .child(body),
             )
-            .children(delete)
             .child(
                 h_flex()
                     .relative()
                     .justify_center()
-                    .py(surface::css(30.))
-                    .px(surface::css(10.))
+                    // `.modal-patch-notes .modal-footer` has greater
+                    // specificity than `.automation-footer`.
+                    .py(surface::css(10.))
+                    .px(surface::css(30.))
                     .border_t_1()
-                    .border_color(Colors::divider())
+                    .border_color(Colors::delete_cancel_hover())
+                    .items_center()
+                    .child(self.delete_trigger(window, cx))
                     .child(
-                        Button::new("automation-delete")
-                            .ghost()
-                            .small()
-                            .absolute()
-                            .left(surface::css(31.))
-                            .child(
-                                img("synapse/automation-icon_delete.svg").size(surface::css(24.)),
-                            )
-                            .accessibility_label(text("DELETE"))
-                            .disabled(!self.editing)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.deleting = true;
-                                cx.notify();
-                            })),
+                        canvas(
+                            move |rect, window, _| {
+                                if footer_bounds.replace(rect) != rect {
+                                    window.refresh();
+                                }
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .inset_0(),
                     )
                     .child(
                         h_flex()
@@ -920,5 +1059,6 @@ impl Render for AutomationEditor {
                             ),
                     ),
             )
+            .children(self.delete_confirmation.clone())
     }
 }

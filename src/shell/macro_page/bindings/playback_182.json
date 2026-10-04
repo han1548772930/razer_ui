@@ -1,0 +1,38 @@
+{
+  "normal": [
+    {
+      "id": "Once",
+      "content": "PLAY_ONCE"
+    },
+    {
+      "id": "NTimes",
+      "content": "PLAY_MULTIPLE_TIMES"
+    },
+    {
+      "id": "ContinuousToggle",
+      "content": "TOGGLE_CONTINUOUS_PLAYBACK"
+    },
+    {
+      "id": "ContinuousHeld",
+      "content": "PLAY_WHILE_KEY_PRESSED"
+    },
+    {
+      "id": "Queue",
+      "content": "MACRO_QUEUE"
+    }
+  ],
+  "wheel": [
+    {
+      "id": "Once",
+      "content": "PLAY_ONCE"
+    },
+    {
+      "id": "NTimes",
+      "content": "PLAY_MULTIPLE_TIMES"
+    },
+    {
+      "id": "Queue",
+      "content": "MACRO_QUEUE"
+    }
+  ]
+}
