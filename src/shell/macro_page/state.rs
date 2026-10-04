@@ -1,10 +1,138 @@
 use super::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ActionKind {
+    Delay,
+    Keyboard,
+    Mouse,
+    Macro,
+    Launch,
+    Command,
+    Text,
+    Loop,
+}
+
+/// One locally editable event row. The current Synapse editor renders a
+/// compact action-specific value beside every event (delay seconds, key,
+/// mouse button, text, command, and so on). The value is intentionally kept
+/// as display text here: no device recorder or mapping service is available
+/// in this shell, while the edit/undo/save interaction remains reviewable.
+#[derive(Clone, PartialEq, Eq)]
+pub(super) struct ActionItem {
+    pub(super) kind: ActionKind,
+    pub(super) value: String,
+    /// The second launch target (`Content1`) stays separate from the program
+    /// path (`Content0`) when switching the Program/Website radio selection.
+    pub(super) secondary_value: String,
+    /// Delay randomization keeps the two source `Number.min`/`Number.max`
+    /// values separate from the fixed delay value. These remain local draft
+    /// fields because profile delay settings are service-owned in Synapse.
+    pub(super) number_min: String,
+    pub(super) number_max: String,
+    /// Source keeps button/loop state beside the primary value (`State` or
+    /// `LoopEvent.State`). It is local metadata here because no recorder or
+    /// mapping service is connected to this shell.
+    pub(super) state: String,
+}
+
+impl ActionItem {
+    pub(super) fn new(kind: ActionKind) -> Self {
+        let value = match kind {
+            ActionKind::Delay => "0.000".to_string(),
+            ActionKind::Keyboard
+            | ActionKind::Mouse
+            | ActionKind::Macro
+            | ActionKind::Launch
+            | ActionKind::Command => String::new(),
+            ActionKind::Text => String::new(),
+            ActionKind::Loop => "1".to_string(),
+        };
+        let state = match kind {
+            ActionKind::Loop => "start".to_string(),
+            ActionKind::Launch => "program".to_string(),
+            ActionKind::Delay => "fixed".to_string(),
+            _ => String::new(),
+        };
+        Self {
+            kind,
+            value,
+            secondary_value: String::new(),
+            number_min: if kind == ActionKind::Delay {
+                "0.000".to_string()
+            } else {
+                String::new()
+            },
+            number_max: if kind == ActionKind::Delay {
+                "0.000".to_string()
+            } else {
+                String::new()
+            },
+            state,
+        }
+    }
+}
+
+impl ActionKind {
+    pub(super) fn value_is_translation_key(self, value: &str) -> bool {
+        match self {
+            // These are source placeholders. Once a user enters text, command
+            // content, a path, or a selected macro, it must render verbatim.
+            Self::Text | Self::Command | Self::Launch => false,
+            Self::Delay => false,
+            Self::Keyboard => value == "TEXT_NO_KEY_SET",
+            Self::Mouse => editors::MOUSE_ACTION_KEYS.contains(&value),
+            Self::Macro => value == "TEXT_SELECT_A_MACRO",
+            Self::Loop => false,
+        }
+    }
+}
+
+impl ActionKind {
+    pub(super) fn from_palette(kind: &str) -> Option<Self> {
+        Some(match kind {
+            "delay" => Self::Delay,
+            "keyboard" => Self::Keyboard,
+            "mouse" => Self::Mouse,
+            "macro" => Self::Macro,
+            "launch" => Self::Launch,
+            "command" => Self::Command,
+            "text" => Self::Text,
+            "loop" => Self::Loop,
+            _ => return None,
+        })
+    }
+    pub(super) fn icon(self) -> &'static str {
+        match self {
+            Self::Delay => "delay",
+            Self::Keyboard => "keyboard",
+            Self::Mouse => "mouse",
+            Self::Macro => "macro",
+            Self::Launch => "launch",
+            Self::Command => "command",
+            Self::Text => "text",
+            Self::Loop => "loop",
+        }
+    }
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Delay => "TEXT_ADD_MENU_DELAY",
+            Self::Keyboard => "TEXT_ADD_MENU_KEYBOARD",
+            Self::Mouse => "TEXT_ADD_MENU_MOUSE_FUNCTION",
+            Self::Macro => "TEXT_ADD_MENU_MACRO",
+            Self::Launch => "TEXT_ADD_MENU_LAUNCH",
+            Self::Command => "TEXT_ADD_MENU_RUN_COMMAND",
+            Self::Text => "TEXT_ADD_MENU_TEXT_FUNCTION",
+            Self::Loop => "TEXT_ADD_MENU_LOOP",
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntryKind {
     Macro,
     Folder,
 }
+
 #[derive(Clone)]
 pub(super) struct Entry {
     pub id: u64,
@@ -148,7 +276,14 @@ impl MacroPage {
             open: false,
         });
         if kind == EntryKind::Macro {
+            self.clear_action_editors();
             self.current = Some(id);
+            self.actions_for = Some(id);
+            self.actions.clear();
+            self.saved_actions_for = Some(id);
+            self.saved_actions.clear();
+            self.undo.clear();
+            self.redo.clear();
             self.tree_selection = Some(id);
             self.selector_open = false;
             if self.tutorial == Tutorial::Initial {
@@ -166,7 +301,18 @@ impl MacroPage {
             if entry.kind == EntryKind::Folder {
                 entry.open = !entry.open;
             } else if self.current != Some(id) {
+                self.editing_action = None;
+                self.launch_open = None;
+                self.launch_is_website = false;
+                self.randomized_open = None;
+                self.choice_action = None;
                 self.current = Some(id);
+                self.actions_for = None;
+                self.actions.clear();
+                self.saved_actions_for = None;
+                self.saved_actions.clear();
+                self.undo.clear();
+                self.redo.clear();
                 self.selector_open = false;
                 self.tree_menu = None;
             }
@@ -358,6 +504,7 @@ impl MacroPage {
             self.history_index = self.history.len() - 1;
         }
         if self.current.is_some_and(|id| deleted.contains(&id)) {
+            self.clear_action_editors();
             // zs chooses macroList[0], whose creation order is unchanged by a
             // profile-tree move. Entry IDs retain that same insertion order.
             self.current = self
@@ -366,6 +513,12 @@ impl MacroPage {
                 .filter(|e| e.kind == EntryKind::Macro)
                 .min_by_key(|e| e.id)
                 .map(|e| e.id);
+            self.actions_for = None;
+            self.actions.clear();
+            self.saved_actions_for = None;
+            self.saved_actions.clear();
+            self.undo.clear();
+            self.redo.clear();
         }
         self.tree_selection = self.current;
         self.deletion = None;

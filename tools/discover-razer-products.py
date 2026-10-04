@@ -129,8 +129,15 @@ def validate_payload(kind, data, pid=None):
                 valid = False
             return {"valid": valid, "kind": kind, "reason": None if valid else "Expected SVG document"}
         if kind == "media":
-            valid = len(data) > 12 and (data[4:8] == b"ftyp" or data[:4] == b"RIFF")
-            return {"valid": valid, "kind": kind, "reason": None if valid else "Expected MP4/AVIF/WebP media container"}
+            # The selective asset fetcher also accepts the original PNG/JPEG/GIF
+            # requests. Check their file signatures without executing source.
+            valid = len(data) > 12 and (
+                data[4:8] == b"ftyp" or data[:4] == b"RIFF"
+                or data.startswith(b"\x89PNG\r\n\x1a\n")
+                or data.startswith(b"\xff\xd8\xff")
+                or data[:6] in (b"GIF87a", b"GIF89a"))
+            return {"valid": valid, "kind": kind,
+                    "reason": None if valid else "Expected MP4/AVIF/WebP/PNG/JPEG/GIF media container"}
         text = data.decode("utf-8-sig")
         if kind in ("js", "css"):
             valid = bool(text.strip()) and not re.match(r"\s*<(?:!doctype|html|\?xml)", text, re.I)

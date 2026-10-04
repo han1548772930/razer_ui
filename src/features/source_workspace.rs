@@ -47,9 +47,58 @@ pub(crate) struct SourceProductWorkspace {
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
-    pub(super) fn change_profile_metadata(&mut self, id: &str, change: super::product_workspace::ProfileMetadata, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn select_profile(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.device.profiles.iter().any(|profile| profile.id == id)
+            || self.device.active_profile == id
+        {
+            return;
+        }
+        self.device.active_profile = id.to_owned();
+        let factory_default_profile = self
+            .device
+            .profiles
+            .iter()
+            .find(|profile| profile.id == self.device.active_profile)
+            .is_some_and(|profile| {
+                let name = profile.name.to_ascii_lowercase();
+                name == "factory default"
+                    || name == "factory_default"
+                    || name == "factory-default"
+                    || profile.id.eq_ignore_ascii_case("factory-default")
+            });
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |keyboard, cx| {
+                keyboard.set_factory_default_profile(factory_default_profile, window, cx)
+            });
+        }
+        let selected = self.device.active_profile.clone();
+        self.profile.update(cx, |state, cx| {
+            state.set_selected_value(&selected, window, cx)
+        });
+        self.restore_active(window, cx);
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+    }
+
+    pub(super) fn change_profile_metadata(
+        &mut self,
+        id: &str,
+        change: super::product_workspace::ProfileMetadata,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if super::product_workspace::edit_profile_metadata(&mut self.device, id, change) {
-            self.profile.update(cx, |state, cx| state.set_items(self.device.profiles.iter().map(|p| Choice::new(&p.id, &p.name)).collect(), window, cx));
+            self.profile.update(cx, |state, cx| {
+                state.set_items(
+                    self.device
+                        .profiles
+                        .iter()
+                        .map(|p| Choice::new(&p.id, &p.name))
+                        .collect(),
+                    window,
+                    cx,
+                )
+            });
             cx.emit(WorkspaceEvent::Changed);
             cx.notify();
         }
@@ -116,9 +165,21 @@ impl SourceProductWorkspace {
             ));
             FamilyBody::Mouse(body)
         } else if super::keyboard_products::source_product(device.product_id).is_some() {
+            let factory_default_profile = device
+                .profiles
+                .iter()
+                .find(|profile| profile.id == device.active_profile)
+                .is_some_and(|profile| {
+                    let name = profile.name.to_ascii_lowercase();
+                    name == "factory default"
+                        || name == "factory_default"
+                        || name == "factory-default"
+                        || profile.id.eq_ignore_ascii_case("factory-default")
+                });
             let body = cx.new(|cx| {
                 super::keyboard_products::KeyboardProductWorkspace::new(
                     device.product_id,
+                    factory_default_profile,
                     window,
                     cx,
                 )
@@ -237,12 +298,7 @@ impl SourceProductWorkspace {
             window,
             |this: &mut Self, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(id)) = event {
-                    if this.device.profiles.iter().any(|p| p.id == *id) {
-                        this.device.active_profile = id.clone();
-                        this.restore_active(window, cx);
-                        cx.emit(WorkspaceEvent::Changed);
-                        cx.notify();
-                    }
+                    this.select_profile(id, window, cx);
                 }
             },
         ));
@@ -285,7 +341,10 @@ impl SourceProductWorkspace {
                 .iter()
                 .zip(&self.saved.profiles)
                 .any(|(a, b)| {
-                    a.id != b.id || a.name != b.name || a.source_settings != b.source_settings || a.settings != b.settings
+                    a.id != b.id
+                        || a.name != b.name
+                        || a.source_settings != b.source_settings
+                        || a.settings != b.settings
                 })
     }
     pub(crate) fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {

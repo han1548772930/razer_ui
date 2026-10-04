@@ -969,10 +969,15 @@ struct Module {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ModulePage {
     Picker(PickerModule),
+    /// Alexa is registered by the current Dashboard as the named `alexa`
+    /// application window (`policy=3`, `/synapse/alexa/`).  Keep it separate
+    /// from the host tab route used by Settings previews.
+    Alexa,
     IntroductionTour,
     Macro,
     Armory,
     Profiles,
+    Feedback,
 }
 // 6505/44442 ne te are a static catalogue. No installed/available state is
 // inferred from these records; that state belongs to the installer service.
@@ -992,7 +997,7 @@ const MODULES: &[Module] = &[
         image: Some("synapse/module-alexa.png"),
         description: "对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云中。需要有效的麦克风和 Amazon Alexa 账户。",
         link: Some("https://www.razer.com/chroma/alexa"),
-        native_page: Some(ModulePage::Picker(PickerModule::Alexa)),
+        native_page: Some(ModulePage::Alexa),
     },
     Module {
         id: "macro",
@@ -1002,7 +1007,7 @@ const MODULES: &[Module] = &[
         title: "宏",
         icon: "synapse/module-macro.svg",
         image: Some("synapse/module-macro.png"),
-        description: "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的键盘敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合。",
+        description: "Independent Macro application window; local editor chrome and draft actions are available, while macro transport and device binding remain service boundaries.",
         link: None,
         // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）；本地已实现该窗口的
         // 外框与两个导航标签，宏服务与功能面板仍未接入。
@@ -1016,7 +1021,7 @@ const MODULES: &[Module] = &[
         title: "已关联的游戏",
         icon: "synapse/module-linked-games.svg",
         image: None,
-        description: "原版此模块盒打开 profiles 窗口（/synapse/profiles/），用于按程序切换配置文件和灯光效果；本地尚未实现该窗口，设备 Profile 内的关联程序可在对应配置菜单中管理。",
+        description: "Independent Profiles application window; games and devices views, local profile associations and local game tiles are available. Service scanning remains deferred.",
         link: None,
         // 模块表：`linkedGames → windowName:"profiles", url:"/synapse/profiles/"`，
         // 打开参数 `policy=3,shouldFocus=1,tab_visible=1`（同窗口 + 聚焦 + 标签可见）。
@@ -1031,9 +1036,9 @@ const MODULES: &[Module] = &[
         title: "反馈",
         icon: "synapse/module-feedback.svg",
         image: None,
-        description: "原版此模块盒打开 feedback-synapse 窗口（同一窗口 + 聚焦 + 标签可见）；                      该应用的源码不在当前提取范围内，故本地未实现其界面。",
+        description: "Current feedback-synapse form; local validation and drafts are available while submission and log export remain unavailable without the service.",
         link: None,
-        native_page: None,
+        native_page: Some(ModulePage::Feedback),
     },
     Module {
         id: "armory",
@@ -1043,7 +1048,7 @@ const MODULES: &[Module] = &[
         title: "工坊",
         icon: "synapse/module-armory.svg",
         image: None,
-        description: "原版此模块盒打开 armory 窗口；本地已实现窗口外框与四个导航标签（资料分享服务未接入）。",
+        description: "Independent Armory application window; source navigation, banner and local filter/sort surfaces are available. Workshop content service remains deferred.",
         link: None,
         // 原版此盒打开 `armory` 窗口（`/synapse/armory/`）；本地已实现该窗口的
         // 外框与四个导航标签，资料分享服务仍未接入。

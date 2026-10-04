@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "method": "Current product manifest, HTTP hashes, CSS and audited mount data; no downloaded code execution",
+  "products": [
+    {
+      "product_id": 3592,
+      "assets": [
+        {
+          "manifest_key": "static/media/icon_pan_top.svg",
+          "source_path": ".ref/devices/3592/static/media/icon_pan_top.938f0ae8.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3592/ui/static/media/icon_pan_top.938f0ae8.svg",
+          "sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27",
+          "bytes": 483,
+          "prepared_path": "assets/synapse/camera-pan-top.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_bottom.svg",
+          "source_path": ".ref/devices/3592/static/media/icon_pan_bottom.bb4772a7.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3592/ui/static/media/icon_pan_bottom.bb4772a7.svg",
+          "sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220",
+          "bytes": 490,
+          "prepared_path": "assets/synapse/camera-pan-bottom.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_center.svg",
+          "source_path": ".ref/devices/3592/static/media/icon_pan_center.38b59cfe.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3592/ui/static/media/icon_pan_center.38b59cfe.svg",
+          "sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba",
+          "bytes": 2132,
+          "prepared_path": "assets/synapse/camera-pan-center.svg"
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3592/static/css/main.4a286209.css",
+          "sha256": "6a7d2189332d9304050e71a44ecfe24c4e415da1b8aaf55aa6c9461c996af6bd",
+          "rules": [
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .pan-and-tilt-name{font:14px/16px Roboto}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container{margin:20px auto;position:relative;width:-webkit-max-content;width:max-content}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .default-button-style{background-position:50%;background-repeat:no-repeat;background-size:10px 10px;border:1px solid #5d5d5d;border-radius:2px;cursor:pointer;height:10px;min-width:10px;position:absolute;width:10px}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up{background-image:url(../../static/media/icon_pan_top.938f0ae8.svg);border-bottom:none;left:50%;top:0;transform:translate(-50%,-10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right{background-image:url(../../static/media/icon_arrow_right_thin.bef8ca32.svg);border-left:none;right:0;top:50%;transform:translate(10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down{background-image:url(../../static/media/icon_pan_bottom.bb4772a7.svg);border-top:none;bottom:0;left:50%;transform:translate(-50%,10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left{background-image:url(../../static/media/icon_arrow_left_thin.e6d37c55.svg);border-right:none;left:0;top:50%;transform:translate(-10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-center{background-image:url(../../static/media/icon_pan_center.38b59cfe.svg);background-position:50%;background-size:20px 20px;border-radius:2px;cursor:pointer;height:15px;left:50%;min-width:15px;position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;z-index:3}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box{border:5px solid #5d5d5d;box-sizing:initial;position:relative;z-index:2}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box .white-box{background-color:#ccc;box-sizing:initial;height:100%;position:absolute;width:100%}"
+          ]
+        }
+      ],
+      "image_mount": {
+        "source": ".ref/devices/3592/static/js/main.323f0a8a.js",
+        "sha256": "e2752209d1aa227aca1dbaee32f7ef1ef261ac9b8ccb906636976174dc4e464b",
+        "component": "(0,Ye.jsx)(DG,{})",
+        "sharpness_gain_rendered": false
+      }
+    },
+    {
+      "product_id": 3594,
+      "assets": [
+        {
+          "manifest_key": "static/media/icon_pan_top.svg",
+          "source_path": ".ref/devices/3594/static/media/icon_pan_top.938f0ae8.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3594/ui/static/media/icon_pan_top.938f0ae8.svg",
+          "sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27",
+          "bytes": 483,
+          "prepared_path": "assets/synapse/camera-pan-top.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_bottom.svg",
+          "source_path": ".ref/devices/3594/static/media/icon_pan_bottom.bb4772a7.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3594/ui/static/media/icon_pan_bottom.bb4772a7.svg",
+          "sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220",
+          "bytes": 490,
+          "prepared_path": "assets/synapse/camera-pan-bottom.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_center.svg",
+          "source_path": ".ref/devices/3594/static/media/icon_pan_center.38b59cfe.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3594/ui/static/media/icon_pan_center.38b59cfe.svg",
+          "sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba",
+          "bytes": 2132,
+          "prepared_path": "assets/synapse/camera-pan-center.svg"
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3594/static/css/main.adc2e258.css",
+          "sha256": "3c1ea914562ce339f1190de2dd42da19dfa2e9293bc5e5db5e7e50e9e3d25828",
+          "rules": [
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .pan-and-tilt-name{font:14px/16px Roboto}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container{margin:20px auto;position:relative;width:-webkit-max-content;width:max-content}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .default-button-style{background-position:50%;background-repeat:no-repeat;background-size:10px 10px;border:1px solid #5d5d5d;border-radius:2px;cursor:pointer;height:10px;min-width:10px;position:absolute;width:10px}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up{background-image:url(../../static/media/icon_pan_top.938f0ae8.svg);border-bottom:none;left:50%;top:0;transform:translate(-50%,-10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right{background-image:url(../../static/media/icon_arrow_right_thin.bef8ca32.svg);border-left:none;right:0;top:50%;transform:translate(10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down{background-image:url(../../static/media/icon_pan_bottom.bb4772a7.svg);border-top:none;bottom:0;left:50%;transform:translate(-50%,10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left{background-image:url(../../static/media/icon_arrow_left_thin.e6d37c55.svg);border-right:none;left:0;top:50%;transform:translate(-10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-center{background-image:url(../../static/media/icon_pan_center.38b59cfe.svg);background-position:50%;background-size:20px 20px;border-radius:2px;cursor:pointer;height:15px;left:50%;min-width:15px;position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;z-index:3}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box{border:5px solid #5d5d5d;box-sizing:initial;position:relative;z-index:2}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box .white-box{background-color:#ccc;box-sizing:initial;height:100%;position:absolute;width:100%}"
+          ]
+        }
+      ],
+      "image_mount": {
+        "source": ".ref/devices/3594/static/js/main.bb246bb0.js",
+        "sha256": "3ac856b9d24a80432ee50a8d785a1fc230568b9231ce760c95e059e110415170",
+        "component": "(0,P_.jsx)(SU,{supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0})",
+        "sharpness_gain_rendered": false
+      }
+    },
+    {
+      "product_id": 3595,
+      "assets": [
+        {
+          "manifest_key": "static/media/icon_pan_top.svg",
+          "source_path": ".ref/devices/3595/static/media/icon_pan_top.938f0ae8.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3595/ui/static/media/icon_pan_top.938f0ae8.svg",
+          "sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27",
+          "bytes": 483,
+          "prepared_path": "assets/synapse/camera-pan-top.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_bottom.svg",
+          "source_path": ".ref/devices/3595/static/media/icon_pan_bottom.bb4772a7.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3595/ui/static/media/icon_pan_bottom.bb4772a7.svg",
+          "sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220",
+          "bytes": 490,
+          "prepared_path": "assets/synapse/camera-pan-bottom.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_center.svg",
+          "source_path": ".ref/devices/3595/static/media/icon_pan_center.38b59cfe.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3595/ui/static/media/icon_pan_center.38b59cfe.svg",
+          "sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba",
+          "bytes": 2132,
+          "prepared_path": "assets/synapse/camera-pan-center.svg"
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3595/static/css/main.9616d4be.css",
+          "sha256": "aae1c49abffc3614c8671290b11f68d7dbb5d4de8b92c7dc4dcfd3b7af1e0b63",
+          "rules": [
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .pan-and-tilt-name{font:14px/16px Roboto}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container{margin:20px auto;position:relative;width:-webkit-max-content;width:max-content}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .default-button-style{background-position:50%;background-repeat:no-repeat;background-size:10px 10px;border:1px solid #5d5d5d;border-radius:2px;cursor:pointer;height:10px;min-width:10px;position:absolute;width:10px}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up{background-image:url(../../static/media/icon_pan_top.938f0ae8.svg);border-bottom:none;left:50%;top:0;transform:translate(-50%,-10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right{background-image:url(../../static/media/icon_arrow_right_thin.bef8ca32.svg);border-left:none;right:0;top:50%;transform:translate(10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down{background-image:url(../../static/media/icon_pan_bottom.bb4772a7.svg);border-top:none;bottom:0;left:50%;transform:translate(-50%,10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left{background-image:url(../../static/media/icon_arrow_left_thin.e6d37c55.svg);border-right:none;left:0;top:50%;transform:translate(-10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-center{background-image:url(../../static/media/icon_pan_center.38b59cfe.svg);background-position:50%;background-size:20px 20px;border-radius:2px;cursor:pointer;height:15px;left:50%;min-width:15px;position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;z-index:3}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box{border:5px solid #5d5d5d;box-sizing:initial;position:relative;z-index:2}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box .white-box{background-color:#ccc;box-sizing:initial;height:100%;position:absolute;width:100%}"
+          ]
+        }
+      ],
+      "image_mount": {
+        "source": ".ref/devices/3595/static/js/main.19c1ceba.js",
+        "sha256": "a6dcff393dd84d2b8cfeae2a31c5a457201609f6f3ddef68877c87ef85414377",
+        "component": "(0,M_.jsx)(Dh,{supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0})",
+        "sharpness_gain_rendered": false
+      }
+    },
+    {
+      "product_id": 3596,
+      "assets": [
+        {
+          "manifest_key": "static/media/icon_pan_top.svg",
+          "source_path": ".ref/devices/3596/static/media/icon_pan_top.938f0ae8.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3596/ui/static/media/icon_pan_top.938f0ae8.svg",
+          "sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27",
+          "bytes": 483,
+          "prepared_path": "assets/synapse/camera-pan-top.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_bottom.svg",
+          "source_path": ".ref/devices/3596/static/media/icon_pan_bottom.bb4772a7.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3596/ui/static/media/icon_pan_bottom.bb4772a7.svg",
+          "sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220",
+          "bytes": 490,
+          "prepared_path": "assets/synapse/camera-pan-bottom.svg"
+        },
+        {
+          "manifest_key": "static/media/icon_pan_center.svg",
+          "source_path": ".ref/devices/3596/static/media/icon_pan_center.38b59cfe.svg",
+          "source_url": "https://apps.razer.com/synapse/products/3596/ui/static/media/icon_pan_center.38b59cfe.svg",
+          "sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba",
+          "bytes": 2132,
+          "prepared_path": "assets/synapse/camera-pan-center.svg"
+        }
+      ],
+      "css": [
+        {
+          "path": ".ref/devices/3596/static/css/main.bcf8a150.css",
+          "sha256": "6f41bd2591562b2d5d8bbadcdad0048a05287278b483d39324959fb4d8f43e01",
+          "rules": [
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .pan-and-tilt-name{font:14px/16px Roboto}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container{margin:20px auto;position:relative;width:-webkit-max-content;width:max-content}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up,.advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .default-button-style{background-position:50%;background-repeat:no-repeat;background-size:10px 10px;border:1px solid #5d5d5d;border-radius:2px;cursor:pointer;height:10px;min-width:10px;position:absolute;width:10px}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-up{background-image:url(../../static/media/icon_pan_top.938f0ae8.svg);border-bottom:none;left:50%;top:0;transform:translate(-50%,-10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-right{background-image:url(../../static/media/icon_arrow_right_thin.bef8ca32.svg);border-left:none;right:0;top:50%;transform:translate(10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-down{background-image:url(../../static/media/icon_pan_bottom.bb4772a7.svg);border-top:none;bottom:0;left:50%;transform:translate(-50%,10px)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-left{background-image:url(../../static/media/icon_arrow_left_thin.e6d37c55.svg);border-right:none;left:0;top:50%;transform:translate(-10px,-50%)}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .button-center{background-image:url(../../static/media/icon_pan_center.38b59cfe.svg);background-position:50%;background-size:20px 20px;border-radius:2px;cursor:pointer;height:15px;left:50%;min-width:15px;position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;z-index:3}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box{border:5px solid #5d5d5d;box-sizing:initial;position:relative;z-index:2}",
+            ".advanced-camera-container .camera-container .pan-and-tilt-container .black-box-container .black-box .white-box{background-color:#ccc;box-sizing:initial;height:100%;position:absolute;width:100%}"
+          ]
+        }
+      ],
+      "image_mount": {
+        "source": ".ref/devices/3596/static/js/main.0e57873f.js",
+        "sha256": "d5c7ad36f9f5b145578d8849b5132535617f36d2fc740a246b643663fc370f2e",
+        "component": "(0,M_.jsx)(XU,{supportSharpness:!1,supportGain:!1,isDisabledWhenAutoFrameOn:!0,supportWatermark:!1,isDisableWhenThirdPartySelected:!0})",
+        "sharpness_gain_rendered": false
+      }
+    }
+  ]
+}

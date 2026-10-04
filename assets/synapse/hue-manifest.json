@@ -120,6 +120,16 @@
     "output_sha256": "2b5db331c603fcfd8f7bf882f013fc50d90f997b8504da4ac1adca616842e5a1"
   },
   {
+    "source": ".ref/devices/769/static/media/indicator_animated.e9e90a63.svg",
+    "url": "https://apps.razer.com/synapse/products/769/ui/static/media/indicator_animated.e9e90a63.svg",
+    "asset": "synapse/hue-indicator_animated.svg",
+    "output": "assets/synapse/hue-indicator_animated.svg",
+    "context": ".ref/devices/769/static/css/main.341edb83.css",
+    "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+    "source_sha256": "cebe98fd31d7bd812d1a9030badfb2d8f10a5775c384ca4018bd3b78fb5ee0be",
+    "output_sha256": "cebe98fd31d7bd812d1a9030badfb2d8f10a5775c384ca4018bd3b78fb5ee0be"
+  },
+  {
     "source": ".ref/devices/769/static/js/main.ad1113f8.js",
     "source_sha256": "3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d",
     "output": "assets/synapse/hue-light-bollard.svg",

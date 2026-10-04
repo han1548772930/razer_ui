@@ -38,10 +38,10 @@
 | --- | --- | --- |
 | alexa | `ModulePage::Picker(Alexa)` | 直接打开 |
 | macro | `ModulePage::Macro` | 直接打开（窗口名 `macro`） |
-| linked-games | `ModulePage::Profiles` → `Location::Profiles` | **本轮新接入**：按模块表打开 profiles 窗口 |
+| linked-games | `ModulePage::Profiles` → named `profiles` window | **本轮新接入**：按模块表以 `policy=3` 打开并复用 profiles 窗口 |
 | armory | `ModulePage::Armory` | 直接打开 |
 | profile-migration | `ModulePage::Picker(ProfileMigration)` | 直接打开 |
 | tour | `ModulePage::IntroductionTour` | 直接打开 |
-| feedback | 仍为门控 | 窗口名 `feedback-synapse`、URL 已按模块表原文写死；**该应用源码不在当前提取范围内**，无法复刻其界面，因此不伪造 |
+| feedback | `ModulePage::Feedback` | 当前官方 `/feedback/` HTML、清单与 27 个 JS/CSS 已静态取得；按具名 `feedback-synapse` 窗口直接打开，提交和日志收集仍未连接服务 |
 
-新页面 [src/shell/profiles_page.rs](../../src/shell/profiles_page.rs) 给出 profiles 窗口外框（窗口名 `profiles`、`/synapse/profiles/`、`policy=3,shouldFocus=1,tab_visible=1`）与诚实正文。profiles 应用的导航是状态驱动（源码里没有可提取的路由表或 nav 数组），所以**没有臆造标签页**；配置文件列表与编辑、本地/云配置文件、导入导出、已关联游戏列表等待该应用视图接入。
+当前 Profiles 页面按 module 43 的实际挂载复刻 Games 和 Devices 两个页签，复用本地 `ProductWorkspace` 列表与用户关联；服务扫描仍未连接。Feedback 的实际根仅挂载 500px 表单和页脚，旧 `renderLeft` 方法未被调用。具体组件、输入限制与服务边界见 [Feedback 审计](feedback-app-current-audit.md)。七个模块盒现在均有直接打开入口；入口可用不代表设备、账户或远端服务已连接。

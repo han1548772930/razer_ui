@@ -101,7 +101,7 @@ MacroContent (600px)
 
 - `.MacroContent_macro_content__6RXBP @32173`：600px，top20px，left20px/right0，margin0 auto。**只有max-width1120px媒体查询**的@32386才改成margin-left270px/right:auto。后者不能当无条件级联覆盖。
 - `.MacroMenu_macro_menu__rXsnP @0`：绝对定位、margin-left **-260px**、250px宽、padding10px 0、#111、圆角5px。故相对编辑器左侧留10px间隔。
-- 编辑器内列表 `@32544`：min-height420px，overflow-y:auto；JS `ja @1361495..1365156` 的 viewport height 取`max(450,window.outerHeight-208)`，事件行42px，底部100px drop-space。
+- 编辑器内列表 `@32544`：min-height420px，overflow-y:auto；JS `ja @1361495..1365156` 的 viewport height 取`max(450,window.outerHeight-208)`，事件行42px，底部100px drop-space。当前 Rust 已把该 100px 保留区与事件行拖拽排序接入 `macro-item-list`；真实录制与设备传输仍在服务边界之外。
 - `.page>.main` 位于主CSS@105729：height `calc(100vh - 85px)`，双向滚动；wrapper默认min-width1280px，**仅max-width900px**查询覆盖为900px。
 - actionbar @20588：54px高，padding12px10px，左内边距被@20521!important设12px；背景#111、底边#222；三组checkbox/duration、record、undo/redo/save。无宏时duration文本不挂载，图标仍挂载。
 - save按钮@22270：min-width100px、高27px、12/14px、#44d62c/#000、圆角3px；disabled opacity .3、hover#7ce26c。undo/redo各20px，undo右margin16px，使用实际默认/enable/hover SVG。
@@ -201,9 +201,48 @@ MacroContent (600px)
 
 **后续更新：**文件夹/宏树菜单、递归复制/移动/删除、搜索排序、名称限制与placeholder已在下一专项继续实施；该专项还撤销了本报告实施时部分错误推断（尤其菜单复制实际使用25572.iV，而非N）。以[`macro-metadata-review-2026-10-04.md`](macro-metadata-review-2026-10-04.md)及其新AST/CSS收据为准。下面清单保留为前轮交接历史，不代表这些条目目前全都未实现。
 
-1. 事件编辑器、palette插入/拖动、录制及录制选项、撤销/重做/保存、XML导入导出尚未接入。相应操作明确禁用；页面不存在技术说明假产品文案，但禁用条件仍有本地未实现造成的差异。
-2. folder上下文完整Rename/Duplicate/Delete菜单、文件夹移动/复制与删除入口尚未完整复刻。目前文件夹右侧入口直接进入重命名，是待纠正的临时交互，不是源Ct菜单已实现的证据。
-3. 宏header按14px Open Sans量宽的溢出菜单、初始profile loader的500ms时序、按需教程fixed dot、onboarding高度200ms动画、菜单背景色过渡尚待补齐。已实现的动画不能替代其余CSS时间线。
-4. 输入长度在提交时按32 UTF-16单位检查；源DOM在键入时maxlength=32，此处尚有编辑过程差异。搜索语言切换后的placeholder也需在实体刷新时更新。
-5. KeyBinds真实设备卡片/分配弹层及产品`displayMode=macro`必须等待明确设备数据与对应产品分支；无设备条件本轮未填充fixture。阶段/序列宏、AI能力分支与sharing服务能力也未默认开启。
-6. 本轮只静态复核及允许的检查，不以应用截图或运行结果确认最终像素、弹层锚点/遮挡及实际输入焦点。删除提示采用当前profilebar几何推导的锚点，后续应继续对照实际元素布局而不是沿用固定估值。
+1. Real recording, recording options, XML import/export, complete folder menus, and independent device binding remain service-boundary work. Action parameter editors for Delay, Keyboard, Mouse, Loop, Text, Command, and Launch, plus palette/event-row drag reorder, are implemented as local draft UI with undo/redo; they do not call device or recorder services.
+
+## 2026-10-04 event parameter editor handoff
+
+The Rust Macro page now stores each local event as `ActionItem { kind, value, secondary_value, number_min, number_max, state }`, extending the previous enum-only rows. This is a service-free static subset of the current stable 8190 chunk module 58190 `CustomInput`: the source selects editors by `item.Type` for Delay (`Number`), Keyboard (`KeyEvent`), Mouse (`MouseEvent`), Text (`Text`), Command (`Content`), Loop, and Launch (`Content0`/`Content1`).
+
+- Delay starts at `0.000`; the local editor accepts the source `0..99999.999` range with three decimal places.
+- Keyboard uses a local display editor because the source `ShortcutKey` capture depends on native input capture; Mouse and Loop expose their source-shaped local controls.
+- Text uses a source-sized modal with an explicit Save/Cancel flow and a 250 UTF-16-unit limit. Command uses the source-width input. Launch keeps separate `Content0`/`Content1` targets and a local Program/Website selector; file picking and launch dispatch remain unavailable.
+- Parameter edits share the existing local undo/redo snapshots and Save draft state.
+- No value is sent to a device, recorder, mapping engine, or service; real key capture, mouse movement, macro lists, and transfer remain backend work.
+
+Evidence: `8190.61506f5b.chunk.js`, module 58190, `En` dispatches by `item.Type` to `St/yn/je/dn/Ot/yt`; `yn` is the keyboard editor, `dn` the text editor, and `Fr` mounts `item_editor`/`MacroItem`. Verification remains formatting, `cargo check --locked --all-targets`, and static parsing only; the app, downloaded scripts, DLLs, installers, and test programs were not run.
+
+## 2026-10-04 action row reorder handoff
+
+Static review of current stable chunk `8190.61506f5b.chunk.js`, module 58190, confirms that each `.functional_item` sets a drag payload (`dragType` and source `index`), paints a two-pixel green dashed insertion line on drag-over, and dispatches `{ type: T9, index: currentIndex, dragType, indexMoveItem: sourceIndex }` on drop. The Rust editor now mirrors that interaction with a page-scoped `ActionDrag` payload, GPUI `on_drag`/`drag_over`/`on_drop` handlers on every event row, and a green insertion border. `MacroPage::move_action` inserts before the target row, records undo history, clears stale selection/edit state, and invalidates redo snapshots. No recorder, device, or service call is introduced.
+
+The local Delay input follows source `InputNumber`'s `max=99999.999`; this remains a display-only draft value until a future service-backed persistence path is authorized.
+
+## 2026-10-04 CustomInput fidelity correction
+
+A second static pass over current `8190.61506f5b.chunk.js` module 58190 and `8190.5ef5dbbc.chunk.css` corrected the local editor contract:
+
+- `CustomInput` dispatches Delay to `InputNumberCustom` (`Number`, step `.001`, clamp `0..99999.999`), Loop to `InputStepper` (`Number`, clamp `1..99999`, plus `LoopEvent.State`), Mouse to `CustomDropdown`, Keyboard to `ShortcutKey`, Text to the 250-character `CustomModal` textarea, Command to the 200px `InputText`, and Launch to the Program/Website modal with `Content0`/`Content1`.
+- The Rust draft now stores `ActionItem { kind, value, secondary_value, state }`. Loop count and loop state are separate; arbitrary text, command content, and launch targets are rendered verbatim instead of being passed through the locale translator.
+- Mouse uses the source's ten fixed dropdown keys (`TEXT_LEFT_CLICK`, `TEXT_RIGHT_CLICK`, `TEXT_SCROLL_CLICK`, `TEXT_MOUSE_BUTTON_4/5`, `TEXT_DOUBLE_CLICK`, `TEXT_SCROLL_LEFT/RIGHT/UP/DOWN`) in a local Popover. Keyboard, Delay, Command, Launch, and numeric Loop count use local editors; Text uses GPUI `Textarea` with the source 250-character boundary. No key-capture, file picker, recorder, or service dispatch is fabricated.
+- Palette entries now carry the same page-scoped drag payload as event rows. Dropping a palette item inserts a freshly initialized action before a row or at the trailing drop space; moving an existing row remains undoable.
+
+Static CSS receipts used for editor geometry: `.CustomDropdown` 160x27, `.InputNumberCustom_*` 88x27 (randomized min/max 60px), `.InputStepper_*` 88x27, `.InputText_*` 200x27, `.CustomModal` 250px with 210x96 textarea, and `.ShortcutKey_display_name` 210px minimum/27px.
+
+The Text popup now follows the 250px container, 210x96 textarea, uppercase heading, count, and explicit Save/Cancel flow; the source close SVG was prepared byte-for-byte from current `close.1d7eff2a.svg`. Enter remains a multiline edit. The local limit and count use UTF-16 units as HTML `maxLength` and JavaScript `length` do. Source emoji categories and character-map launcher are still missing. Launch now presents a 250px local Program/Website radio-style modal with separate `Content0`/`Content1` text targets and source input widths; the native file picker remains deliberately unavailable. Delay random mode keeps local min/max fields with source 0..5 bounds and two-decimal draft validation. Loop and numeric Delay editors use 88x27 right-side stepper arrows. Keyboard capture and nested Macro selection remain unfinished. The preceding editor work is therefore a local subset, not a full Macro replica acceptance claim.
+
+Verification after these edits: file-level `rustfmt --check`, `cargo check --locked --all-targets` (no Rust warnings), and scoped `git diff --check` passed. No app, test program, installer, downloaded JavaScript, or DLL was executed.
+
+## 2026-10-04 numeric and Launch follow-up
+
+`tools/audit-macro-editors.cjs` parses current module 58190 with the maintained `webpack-source.cjs` Acorn reader and records `St` (Delay), `yt` (Loop), `rt` (Launch), `z` (Program/Website radio list), and `En` (mounted CustomInput branches) in `macro-editors-current-audit.json`. The receipt includes module byte offsets, current JS/CSS SHA-256, actual mounted CSS rules, dictionary export resolutions, and byte-equality checks for stepper-up, stepper-down, and close SVGs. It does not evaluate downloaded JS.
+
+- Fixed Delay edits use an 88x27 local number input with .001 steps, 0..99999.999 clamping, and three decimal places. The source mounts an HTML `type=number` input; GPUI uses `NumberInput` to supply the equivalent arrows. Loop count also uses an 88x27 editor, unit steps, and 1..99999 bounds. Existing local Loop state remains separate.
+- Randomized Delay exposes two 60x27 draft inputs, permits empty partial drafts, restricts numeric text to three integer digits/two fraction digits and a maximum of 5, and follows the source crossing rule: changing minimum to `>= maximum` or maximum to `< minimum` adjusts maximum to `min(minimum + 1, 5)`. Blur between the pair keeps both editors open; leaving the pair/Enter commits one undo snapshot. Source uses `profile.delaySetting == 2` and an object-valued `Number` to mount this branch. The local per-action mode button makes that subset reviewable without fabricating a service profile or recorder setting; its position and mode ownership differ from the original.
+- Launch now uses the source 250px popup/padding/title/close geometry with Program/Website radio choices, 142px program and 164x27 website fields, and the 30px field inset. Cancel/close/outside click discard the popup draft; Save records both content values and mode as one undo snapshot. The program field accepts an explicitly typed local path. It does not impersonate the source `showFileOpenDialog`, open a file selector, execute a program, or browse the website. A file-selection button/icon and service-backed selection still require integration.
+- New action insertion, row reorder, undo/redo, deleting actions, and switching/creating/deleting macros clear old editor indices and popup drafts. A stale launch/range edit additionally checks the current macro/action kind before it can be committed.
+
+Remaining Macro scope includes source emoji categories/character-map launch, real keyboard capture, nested Macro choice/cycle prevention, recorder options and profile-wide delay-setting ownership, import/export, device bindings, and service persistence. This static/local follow-up does not claim that Macro as a whole or all pixels are complete.

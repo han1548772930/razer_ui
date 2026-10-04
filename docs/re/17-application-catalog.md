@@ -11,6 +11,7 @@
 | [/chroma-app/dashboard/](https://apps.razer.com/chroma-app/dashboard/) | ok | 齐备 | 89/89 |
 | [/chroma-app/settings/](https://apps.razer.com/chroma-app/settings/) | ok | 齐备 | 25/25 |
 | [/cortex/](https://apps.razer.com/cortex/) | not_found | 待追踪 | 0/0 |
+| [/feedback/](https://apps.razer.com/feedback/) | ok | 齐备 | 27/27 |
 | [/natalie/](https://apps.razer.com/natalie/) | ok | 齐备 | 5/5 |
 | [/profile-migration/](https://apps.razer.com/profile-migration/) | ok | 齐备 | 67/67 |
 | [/rz-app-menu/](https://apps.razer.com/rz-app-menu/) | ok | 齐备 | 11/11 |

@@ -1,6 +1,6 @@
 # 尚未完成的界面与产品
 
-2026-10-04 本次集成：Macro已替换占位正文，接入原始无宏布局、显式新建宏/文件夹、选择搜索排序、重命名复制删除、教程、无设备绑定分支与Help，并接入顶部历史；其录制、事件编辑、XML、完整文件夹菜单和独立产品绑定模式仍未完成，详见[宏复核](macro-current-source-review.md)。Armory已纠正默认可见导航、补内部历史及介绍横幅，搜索/筛选/详情仍缺。Profiles当前仅有真实两页签和游戏空目录/添加弹层，设备列表和关联详情仍未完成。后端与DLL修改继续后置。
+2026-10-04 本次集成：Macro、Armory、Profiles 已接入当前源码登记的具名 gpui 窗口（窗口名分别为 `macro`、`armory`、`profiles`，策略为 `policy=3`，同名再次打开时聚焦），并保留各自的页面外框与明确服务边界。Macro已替换占位正文，接入原始无宏布局、显式新建宏/文件夹、选择搜索排序、重命名复制删除、教程、无设备绑定分支、Help，本地动作草稿的插入/选择/删除/撤销/重做/保存，Delay/Keyboard/Mouse/Loop/Text/Command/Launch 参数编辑，以及编辑器底部源码定义的100px拖放保留区和事件行排序，并接入顶部历史；其真实录制、设备传输、XML、完整文件夹菜单和独立产品绑定模式仍未完成，详见[宏复核](macro-current-source-review.md)。Armory已纠正默认可见导航、补内部历史、介绍横幅、左侧 68142 搜索入口（200px 输入框与 300ms 防抖壳）和 Browse 顶栏多条件筛选、My Downloads 顶栏单排序控件及本地选中态；远端建议/结果、服务筛选/排序、详情弹层和内容服务仍缺。Profiles已接入真实两页签、设备磁贴、设备关联弹层、Profile选择/重命名、关联游戏磁贴和本地已知关联的切换，并为游戏扫描、已安装程序刷新、Profile服务菜单显示未连接提示；安装程序扫描、全局游戏目录与设备子设备数据仍缺，不能把空目录或本地关联当作服务同步结果。相机页保留实时流不可用边界，音频演示保留播放服务不可用边界，见对应审计文档。电量块补齐当前挂载的`role="img"`语义，电量/托盘过渡保持源码时序。后端与DLL修改继续后置。
 
 2026-10-04 更正：旧日志停止原因是轮次上限，目标没有完成。旧表中的Profiles五路由、无法还原文案、缺少全部宏/Profiles图标及设备标签栏重复箭头均不再成立。最新修复和明确未完成项见[逐项复核](source-ui-review-2026-10-04.md)、[Profiles](profiles-app-audit.md)、[导航栏](device-tabs-audit.md)。以下旧轮次明细保留为历史，不是新增验收结论。
 
@@ -14,10 +14,10 @@
 | 鼠标、键盘共享页面 | 完整自定义映射、高级动作、替代布局和条件分支；源产品工作区的配置更多菜单、部分右侧图标 |
 | displayMode 独立窗口 | 四种根级分支的**打开者**都已从当前源码查清：`multiDevicePairing`（30 包）已按原版做成真正的第二个 gpui 窗口（具名单例、存在即聚焦，配对页设备卡为入口，见 [配对窗口审计](multi-pairing-window-current-audit.md)）；`macro`（174 包）不是第二个产品窗口，而是宏应用窗口（`macro`／`/synapse/macro/`／`policy=3,tab_visible=1`）在「绑定到设备」弹层里的 iframe，宏窗口本地已实现外框与两个导航标签（见 [宏应用审计](macro-app-current-audit.md)、[界面审计](macro-app-ui-audit.md)）；`chromaApp`（212 包）在 Dashboard 里出现 0 次，属于独立 Chroma 应用窗口；`armory`（226 包）属于 `armory` 应用窗口，本地已实现窗口外框与四个导航标签（精选推荐／浏览／我的下载／我的上传），并在模块目录里改为直接打开，见 [Armory 依据](armory-app-current-audit.md)；资料分享服务与内容未接入。模块目录七个盒子现在有六个直接打开（Alexa、宏、已关联的游戏→profiles 窗口、Armory、配置文件迁移、介绍导览），只有 `feedback` 仍是门控：它的窗口名 `feedback-synapse` 与 URL 都取自模块表，但该应用源码不在当前提取范围内，无法复刻界面。表与打开参数见 [模块注册表依据](module-registry-audit.md)。具名窗口清单、标志与模块盒去向见 [窗口契约](display-window-contract.md)。窗口图标（`app_icon_path`）在 gpui 里没有对应字段 |
 | 740 / 746 磁轴键盘 | 完整页与配套校准弹层已接入；载入/光标动画、错误后关闭时序、出厂配置禁用分支及介绍状态持久化仍有缺口 |
-| 691 BlackWidow V4 Pro 75% | OLED 内容编辑器、主页预览卡片、语言选择/下载相关 UI 与传输状态 |
-| 3592 / 3594 / 3595 / 3596 Kiyo | 取景行（变焦、平移／倾斜、五个预设、预设快捷键）、分辨率行、水印放置盘、LDC×分辨率复合禁用、白框拖动与黑框跟随、左右方向键图标、变焦步进器（含 300ms 长按重复与 hover 显隐）均已接入；实时画面与设备枚举、第三方（Camo／NVIDIA／XSplit）分支、上下/中心方向键图标（资源缺失）、亮度/对比度/饱和度/锐度/增益/白平衡六行的步进器仍缺，见 [取景审计](camera-framing-current-audit.md) |
-| 3587 / 3589 / 3590 Kiyo | 仍是共享 Customize 布局，实时相机预览、枚举、取景与叠加层都没有实现 |
-| 1392 / 1442 / 3942 音频演示产品 | 目前主要恢复原始初始画面；完整有声演示播放、进度交互及部分复杂映射未完成 |
+| 691 BlackWidow V4 Pro 75% | OLED 预设导入/裁剪、主页 Emote/Banner/Media/System/Keyboard 分支已接入本地草稿；语言选择/下载、GIF 帧处理、设备传输进度/错误和完整 hover 动画仍缺 |
+| 3592 / 3594 / 3595 / 3596 Kiyo | Framing controls, resolution, watermark tray, LDC/resolution disable branch, white-box drag, directional assets, and stepper timing are integrated. Live stream and device enumeration retain an explicit source-sized unavailable boundary; third-party branches, missing directional assets, and six image steppers remain open. See camera-framing-current-audit.md and camera-preview-placeholder-audit.md. |
+| 3587 / 3589 / 3590 Kiyo | 共享 Customize 布局已补 520×292 相机预览外框和明确不可用边界；实时流、设备枚举、取景与叠加层仍未实现 |
+| 1392 / 1442 / 3942 audio demo products | Source poster, dimensions, floating preference, and the source-sized control bar are restored. The progress/volume sliders retain local preview values, while native audio playback, live timing, floating video and complex mappings remain open; clicking reports the service boundary. See audio-demo-playback-boundary.md. |
 | 164 / 241 Mouse Dock | dongle 713 额外确认、部分配对状态动画、弹层 viewport / 滚动几何等价 |
 | 778 ASRock B550 / 3871 Chroma ARGB | 部分 300ms hover、自动检测点击短动画、步进器长按重复 |
 | 3884 / 3886 无线 ARGB | 原版检测动画、hover 过渡、tooltip 时序；3886 原代码端口分支不可达，不能把样例编辑器算成原版普通页 |
@@ -58,4 +58,8 @@
 
 ## 资源准备更正（2026-10-04）
 
-宏manifest声明的229个SVG和Profiles的299个SVG已按官方静态地址准备，未执行下载JavaScript。宏palette的11个图标不再缺失。应用专用语言包正在按真正的加载链复核，不能继续以公共语言包里找不到同名键判断无译文。资源到位不等于UI已经实现。
+宏manifest声明的229个SVG和Profiles的工具栏/弹层SVG已按官方静态地址准备，资源清单共1029项并通过来源、格式、嵌入键校验，未执行下载JavaScript。宏palette的11个图标不再缺失。应用专用语言包正在按真正的加载链复核，不能继续以公共语言包里找不到同名键判断无译文。资源到位不等于UI已经实现。
+
+2026-10-04 calibration follow-up: the introduction banner now persists the audited `showNotificationBannerCalibration` key, factory-default profile warning/disabled branch follows `isFactoryDefaultProfile`, and the explicit failure preview mirrors the source's 15-second idle close. The real calibration transport remains unavailable and its live Next action stays disabled.
+
+2026-10-04 Macro follow-up: action parameter editors now cover Delay, Keyboard, Mouse, Loop, Text, Command, and Launch as local draft controls; event rows support source-shaped drag reorder and the 100px trailing drop area with undo/redo integration. Real recording, device transfer, XML import/export, complete folder menus, and independent binding remain service-boundary gaps. See [macro-current-source-review.md](macro-current-source-review.md).

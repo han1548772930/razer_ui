@@ -1,5 +1,5 @@
 //! Adapter from local workspace snapshots to the independent app picker.
-use super::{AppShell, Location, Tab, app_picker::*, iot_popup};
+use super::{AppShell, Location, Tab, app_picker::*, iot_popup, service_pages};
 use crate::{model::SetupStatus, resources};
 use gpui_kit::*;
 
@@ -52,11 +52,17 @@ impl AppShell {
             .bundled_modules([
                 PickerModule::Alexa,
                 PickerModule::AddWifi,
+                PickerModule::Macro,
+                PickerModule::LinkedGames,
+                PickerModule::Armory,
                 PickerModule::ProfileMigration,
             ])
             .launchable_modules([
                 PickerModule::Alexa,
                 PickerModule::AddWifi,
+                PickerModule::Macro,
+                PickerModule::LinkedGames,
+                PickerModule::Armory,
                 PickerModule::ProfileMigration,
             ])
             .launchable_apps([PickerApp::Synapse]);
@@ -88,10 +94,19 @@ impl AppShell {
                 }
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Alexa)) => {
-                self.navigate(Location::Alexa, window, cx);
+                self.open_independent_module(service_pages::ModulePage::Alexa, cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::ProfileMigration)) => {
                 self.navigate(Location::ProfileMigration, window, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::LinkedGames)) => {
+                self.open_independent_module(service_pages::ModulePage::Profiles, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::Macro)) => {
+                self.open_independent_module(service_pages::ModulePage::Macro, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::Armory)) => {
+                self.open_independent_module(service_pages::ModulePage::Armory, cx);
             }
             AppPickerEvent::AddWifiDevice
             | AppPickerEvent::Open(PickerTarget::Module(PickerModule::AddWifi)) => {

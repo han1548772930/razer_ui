@@ -6,6 +6,7 @@ use crate::features::source_workspace::SourceProductWorkspace;
 use crate::ui::{scroll::SourceScrollable as _, theme::KeyboardCalibrationColors as Colors};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::prelude::FluentBuilder as _;
+use std::{path::PathBuf, time::Duration};
 
 #[cfg(test)]
 #[path = "keyboard_calibration_tests.rs"]
@@ -31,6 +32,45 @@ fn specification(pid: u32) -> Option<&'static Spec> {
         })
         .iter()
         .find(|spec| spec.product_id == pid)
+}
+
+/// The dashboard source stores this banner in localStorage under the exact
+/// key below. Keep the same cross-startup behavior in the native shell using
+/// the app's local data directory; no device or host service is involved.
+const INTRO_STORAGE_KEY: &str = "showNotificationBannerCalibration";
+
+fn intro_storage_path() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("razer_ui")
+        .join(format!("{INTRO_STORAGE_KEY}.json"))
+}
+
+pub(super) fn load_intro_visibility() -> bool {
+    match std::fs::read_to_string(intro_storage_path()) {
+        Ok(value) => serde_json::from_str::<bool>(&value).unwrap_or(true),
+        Err(_) => true,
+    }
+}
+
+pub(super) fn save_intro_visibility(visible: bool) {
+    let path = intro_storage_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(
+        path,
+        serde_json::to_string(&visible).unwrap_or_else(|_| "true".into()),
+    );
+}
+
+fn ease_in_out(phase: f32) -> f32 {
+    if phase < 0.5 {
+        2. * phase * phase
+    } else {
+        1. - (-2. * phase + 2.).powi(2) / 2.
+    }
 }
 
 impl KeyboardProductWorkspace {
@@ -77,8 +117,31 @@ impl KeyboardProductWorkspace {
                         close_button("keyboard-calibration-intro-close", &spec.text("cancel"), cx)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.calibration_intro_visible = false;
+                                save_intro_visibility(false);
                                 cx.notify();
                             })),
+                    )
+            }))
+            .children(self.factory_default_profile.then(|| {
+                v_flex()
+                    .gap(surface::css(6.))
+                    .p(surface::css(12.))
+                    .bg(Colors::panel())
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .rounded(surface::css(5.))
+                    .child(
+                        div()
+                            .font_family("RazerF5")
+                            .text_size(surface::css(14.))
+                            .text_color(cx.theme().primary)
+                            .child(t("FACTORY_DEFAULT_PROFILE_TITTLE").to_uppercase()),
+                    )
+                    .child(
+                        div()
+                            .text_size(surface::css(12.))
+                            .text_color(cx.theme().muted_foreground)
+                            .child(t("FACTORY_DEFAULT_PROFILE_NOTICE")),
                     )
             }))
             // Source la uses pointer-events:none. Calibration must not select or
@@ -88,44 +151,49 @@ impl KeyboardProductWorkspace {
                 surface::page_columns().child(surface::page_column(
                     surface::panel(spec.text("title"), cx)
                         .child(spec.text("description"))
-                        .child(
-                            div().mt(surface::css(4.)).child(
-                                command_button(
-                                    "keyboard-calibration-start",
-                                    spec.text("start"),
-                                    true,
-                                    false,
-                                    cx,
-                                )
-                                .w(surface::css(146.))
-                                .on_click(cx.listener(
-                                    move |this, _, window, cx| {
-                                        this.dismiss_calibration(window, cx);
-                                        this.calibration_modal = Some(CalibrationModal::open(
-                                            spec,
-                                            this.calibration_preview.then_some(Sample::SelectKey),
-                                            window,
-                                            cx,
-                                        ));
-                                        cx.notify();
-                                    },
-                                )),
-                            ),
-                        )
-                        .child(
-                            h_flex()
-                                .items_start()
-                                .gap(surface::css(5.))
-                                .mt(surface::css(4.))
-                                .text_size(surface::css(12.))
-                                .text_color(cx.theme().muted_foreground)
-                                .child(
-                                    img("synapse/keyboard-calibration-info.svg")
-                                        .size(surface::css(24.))
-                                        .flex_shrink_0(),
-                                )
-                                .child(spec.text("note")),
-                        ),
+                        .when(!self.factory_default_profile, |panel| {
+                            panel.child(
+                                div().mt(surface::css(4.)).child(
+                                    command_button(
+                                        "keyboard-calibration-start",
+                                        spec.text("start"),
+                                        true,
+                                        false,
+                                        cx,
+                                    )
+                                    .w(surface::css(146.))
+                                    .on_click(cx.listener(
+                                        move |this, _, window, cx| {
+                                            this.dismiss_calibration(window, cx);
+                                            this.calibration_modal = Some(CalibrationModal::open(
+                                                spec,
+                                                this.calibration_preview
+                                                    .then_some(Sample::SelectKey),
+                                                window,
+                                                cx,
+                                            ));
+                                            cx.notify();
+                                        },
+                                    )),
+                                ),
+                            )
+                        })
+                        .when(!self.factory_default_profile, |panel| {
+                            panel.child(
+                                h_flex()
+                                    .items_start()
+                                    .gap(surface::css(5.))
+                                    .mt(surface::css(4.))
+                                    .text_size(surface::css(12.))
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(
+                                        img("synapse/keyboard-calibration-info.svg")
+                                            .size(surface::css(24.))
+                                            .flex_shrink_0(),
+                                    )
+                                    .child(spec.text("note")),
+                            )
+                        }),
                 )),
             )
             .into_any_element()
@@ -495,23 +563,38 @@ fn modal_content(spec: &Spec, sample: Sample, cx: &App) -> AnyElement {
                         ),
                 )
                 .children(sample.pending().then(|| {
+                    let progress = div()
+                        .relative()
+                        .h(surface::css(5.))
+                        .rounded_full()
+                        .overflow_hidden()
+                        .bg(cx.theme().primary.opacity(0.3));
+                    let bar = div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .w(relative(0.25))
+                        .rounded_full()
+                        .bg(cx.theme().primary);
+                    let bar = if cx.reduce_motion() {
+                        bar.left(relative(0.0)).into_any_element()
+                    } else {
+                        bar.with_animation(
+                            "keyboard-calibration-progress",
+                            Animation::new(Duration::from_secs(2))
+                                .repeat()
+                                .with_easing(ease_in_out),
+                            |bar, phase| bar.left(relative(phase * 1.25 - 0.25)),
+                        )
+                        .into_any_element()
+                    };
                     v_flex()
                         .gap(surface::css(8.))
                         .child(spec.text("calibrating"))
-                        // A static waiting sample. No timer fabricates a device response.
-                        .child(
-                            div()
-                                .h(surface::css(5.))
-                                .rounded_full()
-                                .bg(cx.theme().primary.opacity(0.3))
-                                .child(
-                                    div()
-                                        .w(relative(0.25))
-                                        .h_full()
-                                        .rounded_full()
-                                        .bg(cx.theme().primary),
-                                ),
-                        )
+                        // Source CSS animates this bar; it never completes a
+                        // calibration by itself, so the native service boundary
+                        // remains explicit while the waiting animation is real.
+                        .child(progress.child(bar))
                 }))
         }))
         .into_any_element()
@@ -575,6 +658,7 @@ struct CalibrationPreview {
     keyboard: Entity<KeyboardProductWorkspace>,
     _keyboard_subscription: Subscription,
     _modal_subscription: Option<Subscription>,
+    failure_close_task: Option<Task<()>>,
 }
 impl CalibrationPreview {
     fn new(product_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -601,10 +685,12 @@ impl CalibrationPreview {
             keyboard,
             _keyboard_subscription: subscription,
             _modal_subscription: None,
+            failure_close_task: None,
         }
     }
 
     fn select_sample(&mut self, sample: Sample, window: &mut Window, cx: &mut Context<Self>) {
+        self.failure_close_task = None;
         self.workspace.update(cx, |workspace, cx| {
             workspace.set_page_key("TAB_CALIBRATION", window, cx)
         });
@@ -615,6 +701,34 @@ impl CalibrationPreview {
                 Some(CalibrationModal::open(spec, Some(sample), window, cx));
             cx.notify();
         });
+        if sample == Sample::Failure {
+            // The source starts a one-second idle watchdog and closes the
+            // calibration surface after 15 seconds without a fresh input.
+            // The preview has no input redirect, so expose the same terminal
+            // failure timeout without fabricating a device response.
+            self.failure_close_task = Some(cx.spawn_in(window, async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(15_000))
+                    .await;
+                let _ = this.update_in(cx, |this, window, cx| {
+                    let failed = this
+                        .keyboard
+                        .read(cx)
+                        .calibration_modal
+                        .as_ref()
+                        .is_some_and(|modal| {
+                            let modal = modal.read(cx);
+                            modal.open && modal.sample == Some(Sample::Failure)
+                        });
+                    if failed {
+                        this.keyboard
+                            .update(cx, |keyboard, cx| keyboard.dismiss_calibration(window, cx));
+                    }
+                    this.failure_close_task = None;
+                    cx.notify();
+                });
+            }));
+        }
         cx.notify();
     }
 }

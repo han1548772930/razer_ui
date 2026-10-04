@@ -180,6 +180,18 @@ impl Automation {
                 rule.name = action_name(rule.id).into();
                 rule.pick_up.data.truncate(1);
                 rule.put_down.data.truncate(1);
+                if rule.id == 5 {
+                    for value in rule.pick_up.data.iter().chain(rule.put_down.data.iter()) {
+                        let id = value.get("id").and_then(Value::as_str).unwrap_or_default();
+                        if !id.is_empty()
+                            && !self.catalogs.entry(5).or_default().iter().any(|existing| {
+                                existing.get("id").and_then(Value::as_str) == Some(id)
+                            })
+                        {
+                            self.catalogs.entry(5).or_default().push(value.clone());
+                        }
+                    }
+                }
                 self.rules.push(rule);
             }
         }
@@ -231,6 +243,18 @@ impl Automation {
             &editor,
             |this, _, event: &editor::EditorEvent, cx| match event {
                 editor::EditorEvent::Save(rule) => {
+                    if rule.id == 5 {
+                        for value in rule.pick_up.data.iter().chain(rule.put_down.data.iter()) {
+                            let id = value.get("id").and_then(Value::as_str).unwrap_or_default();
+                            if !id.is_empty()
+                                && !this.catalogs.entry(5).or_default().iter().any(|existing| {
+                                    existing.get("id").and_then(Value::as_str) == Some(id)
+                                })
+                            {
+                                this.catalogs.entry(5).or_default().push(value.clone());
+                            }
+                        }
+                    }
                     this.rules.retain(|r| r.id != rule.id);
                     this.rules.push(rule.clone());
                     this.rules.sort_by_key(|r| r.id);
@@ -347,6 +371,8 @@ impl Render for Automation {
                             .flex_1()
                             .min_w_0()
                             .h_full()
+                            .hover(|s| s.bg(Colors::row_hover()))
+                            .active(|s| s.bg(Colors::row_active()))
                             .child(icon(id))
                             .child(
                                 v_flex()

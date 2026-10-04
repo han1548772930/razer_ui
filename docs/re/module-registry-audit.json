@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "78278370377736dd0ab4d9ecd65c97e0d241fcfe3b1d28d5e422098f3d8c889c",
+  "scanner_sha256": "3d0661337fd6b462950577bcbf5b1bbd7c7a7415bf2b8cff4e3012047aaa81f3",
   "source": {
     "path": ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
     "sha256": "421b5d6900421a99c0520e1fe63d4a83072799ac4bb45d848fa0e8170bf70716"
@@ -85,13 +85,19 @@
     }
   ],
   "local_module_rows": {
-    "alexa": "Picker",
+    "alexa": "Alexa",
     "macro": "Macro",
     "linked-games": "Profiles",
-    "feedback": "None",
+    "feedback": "Feedback",
     "armory": "Armory",
     "profile-migration": "Picker",
     "tour": "IntroductionTour"
   },
+  "local_picker_modules": [
+    "Alexa",
+    "Macro",
+    "LinkedGames",
+    "Armory"
+  ],
   "problems": []
 }

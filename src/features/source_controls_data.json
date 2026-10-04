@@ -74,6 +74,7 @@
       "imageMode": 0,
       "mappings": []
     },
+    "layout": "legacy-camera",
     "pages": [
       {
         "key": "TAB_CUSTOMIZE",
@@ -269,6 +270,7 @@
       ],
       "imageSettingMode": 0
     },
+    "layout": "legacy-camera",
     "pages": [
       {
         "key": "TAB_CUSTOMIZE",
@@ -494,6 +496,7 @@
       "imageMode": 0,
       "mappings": []
     },
+    "layout": "legacy-camera",
     "pages": [
       {
         "key": "TAB_CUSTOMIZE",

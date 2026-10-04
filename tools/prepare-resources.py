@@ -651,6 +651,11 @@ vectors = {
     "chroma-studio.svg": (653, "chroma_studio.55db6875.svg"),
     "history-back.svg": (182, "icon_arrow_left_thin.e6d37c55.svg"),
     "history-forward.svg": (182, "icon_arrow_right_thin.bef8ca32.svg"),
+    # Kiyo's pan/tilt controls are declared by the current 3592/3594/3595/3596
+    # manifests. The hashes are identical across all four product packages.
+    "camera-pan-top.svg": (3592, "icon_pan_top.938f0ae8.svg"),
+    "camera-pan-bottom.svg": (3592, "icon_pan_bottom.bb4772a7.svg"),
+    "camera-pan-center.svg": (3592, "icon_pan_center.38b59cfe.svg"),
     "settings.svg": (182, "icon_settings-2.07e96d4c.svg"),
     "profile.svg": (182, "profile-default.f608d82c.svg"),
     "profile-unsupported.svg": (182, "profile-unsupported.671bbbc6.svg"),
@@ -894,6 +899,7 @@ for name, original in {
     "command.svg": "icon_runcmd_b.10c00024.svg",
     "text.svg": "icon_config_text_b.bc93ac89.svg",
     "loop.svg": "icon_refresh-1_r.ff48f955.svg",
+    "close.svg": "close.1d7eff2a.svg",
     "drag.svg": "icon_draggable_g.695879f5.svg",
     "new.svg": "icon_new_marco.6edec51b.svg",
     "new-hover.svg": "icon_new_marco-hover.47953e67.svg",
@@ -941,6 +947,20 @@ for name, original in {
     else:
         shutil.copyfile(src, dst)
     record(src, dst, source_url="https://apps.razer.com/synapse/armory/static/media/" + original, **metadata)
+
+# The Armory filtering bar keeps these two controls as inline SVG modules
+# (70017/8679), so they are not declared in the application media manifest.
+# Preserve the exact module geometry as local native assets for the GPUI shell.
+armory_source_js = ROOT / ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js"
+armory_inline = {
+    "armory-filter.svg": '''<svg id="Filter_icon" data-name="Filter icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect id="Rectangle_4803" data-name="Rectangle 4803" width="24" height="24" fill="none"/><path id="Path_35201" data-name="Path 35201" d="M7,16a.982.982,0,0,1-1-1V9L.22,1.6A.954.954,0,0,1,.108.55.926.926,0,0,1,1.018,0H14.982a.926.926,0,0,1,.91.55A.954.954,0,0,1,15.78,1.6L9.995,9v4a2.6,2.6,0,0,1-1,2A3.775,3.775,0,0,1,7,16M8,8.3,12.937,2H3.063Z" transform="translate(4 4)" fill="#cccccc"/></svg>''',
+    "armory-sort.svg": '''<svg id="Sort_-_Order" data-name="Sort - Order" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><g id="icon_sort_descending"><rect id="Rectangle_4662" data-name="Rectangle 4662" width="26" height="26" fill="#111" opacity="0"/><path id="Path_29561" data-name="Path 29561" d="M8,12H5V1A1,1,0,0,0,3,1V12H0l4,4ZM19,2H7V0H19a1,1,0,0,1,0,2M17,6H7V4H17a1,1,0,0,1,0,2m-2,4H7V8h8a1,1,0,0,1,0,2m-2,4H8l2-2h3a1,1,0,0,1,0,2" transform="translate(3 5)" fill="#cccccc"/></g></svg>''',
+}
+for name, literal in armory_inline.items():
+    dst = OUT / name
+    dst.write_text(literal + "\n", encoding="utf-8")
+    record(armory_source_js, dst, source_module=(70017 if "filter" in name else 8679),
+           source_url="https://apps.razer.com/synapse/armory/static/js/main.3d0e8bd0.js")
 records.extend(prepare_tray(ROOT, OUT))
 (OUT/"manifest.json").write_text(json.dumps(dict(version=1,entries=records),indent=2),encoding="utf-8")
 (OUT/"embedded.rs").write_text(

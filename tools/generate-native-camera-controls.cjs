@@ -37,8 +37,9 @@ for(const p of configs.filter(p=>p.family==='camera')) {
  const select=(s,key,text,path,options)=>control(s,'options',key,text,path,{options:options.map(([label,value])=>({label,value}))});
  const legacy=pid===3587||pid===3589||pid===3590;
   // The four current roots mount one 400px `.camera-container` column; the
-  // three earlier roots keep the shared Customize layout.
-  if(!legacy)result.layout='camera';
+  // three earlier roots keep the shared Customize layout and its 520x292
+  // `.camera_setting .main_preview` frame.
+  result.layout=legacy?'legacy-camera':'camera';
  const imagePage=legacy?'TAB_CUSTOMIZE':'IMAGE';
  const image=section(imagePage,label('W1Z'));
  const profileImages=result.profile.image;

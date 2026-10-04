@@ -38,7 +38,7 @@ for locale, labels in spec['translations'].items():
 
 manifest = json.loads((ROOT / 'assets/synapse/hue-manifest.json').read_text(encoding='utf-8'))
 outputs = {entry['output'] for entry in manifest}
-assert len(outputs) == len(manifest) == 62
+assert len(outputs) == len(manifest) == 63
 for entry in manifest:
     assert digest(entry['source']) == entry['source_sha256']
     assert digest(entry['output']) == entry['output_sha256']
@@ -49,4 +49,5 @@ for entry in manifest:
 for path in [ROOT / 'src/features/hue.rs', *sorted((ROOT / 'src/features/hue').glob('*.rs'))]:
     for asset in re.findall(r'"(synapse/hue-[a-zA-Z0-9_-]+\.(?:svg|png))"',path.read_text(encoding='utf-8')):
         assert 'assets/'+asset in outputs, (path.name,asset)
-print('Hue: current receipts, 10 locale maps, 5 quick effects and 62 resources validated.')
+assert 'assets/synapse/hue-indicator_animated.svg' in outputs
+print('Hue: current receipts, 10 locale maps, 5 quick effects and 63 resources validated.')

@@ -1,6 +1,7 @@
 """Static current-source, resource and category validation; no UI execution."""
 import hashlib
 import json
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
@@ -12,17 +13,30 @@ assets=load('assets/synapse/automation-manifest.json')
 assert audit['generator_sha256']==digest((ROOT/'tools/extract-automation.cjs').read_bytes())
 assert spec['product_id']==3946 and spec['page']=='TAB_CUSTOMIZE'
 assert [a['id'] for a in spec['actions']]==list(range(6))
-assert len(spec['translations'])==10 and len(assets)==12
+assert len(spec['translations'])==10 and len(assets)==19
 assert {e['id'] for e in spec['effects']}=={1,2,3,4,7,8,12}
 for record in audit['source_files']+audit['css']+[audit['manifest']]:assert digest((ROOT/record['path']).read_bytes())==record['sha256']
 source=(ROOT/audit['source_files'][0]['path']).read_text(encoding='utf8').encode('utf-16-le')
 for record in audit['components']+[audit['actions']]:assert source[record['offset']*2:record['end']*2].decode('utf-16-le')==record['source']
+color_audit=audit['quick_color_parameters']
+assert {record['name'] for record in color_audit['components']}=={'_l','vl'}
+for record in color_audit['components']+[color_audit['palette'],color_audit['mounted_by']]:
+    assert source[record['offset']*2:record['end']*2].decode('utf-16-le')==record['source']
+assert 'Breathing_Effect:o=cl' in color_audit['mounted_by']['source']
+assert 'Static_Effect:o=Hl' in color_audit['mounted_by']['source']
+palette=spec['quick_color_palette']
+assert len(palette)==41 and palette[-1]=='no-color'
+native_palette=(ROOT/'src/features/lighting_color.rs').read_text(encoding='utf8').split('const PRESETS: [u32; 40] = [',1)[1].split('];',1)[0]
+assert palette[:-1]==['#'+color.lower() for color in re.findall(r'0x([a-fA-F0-9]{6})',native_palette)]
 for asset in assets:
     content=(ROOT/asset['source']).read_bytes()
     output=(ROOT/asset['output']).read_bytes()
     assert digest(content)==asset['source_sha256'] and digest(output)==asset['output_sha256']
+    if 'inline_svg' in asset:
+        fragment=content.decode('utf8').encode('utf-16-le')[asset['source_offset']*2:asset['source_end']*2].decode('utf-16-le')
+        assert fragment==asset['source_fragment'] and output.decode('utf8')==asset['inline_svg']
     svg=ET.fromstring(output)
     assert svg.tag.endswith('svg') and not any(n.tag.endswith('script') for n in svg.iter())
 for key in ['AUTOMATIONS','AUTOMATION_DESC','ADD_AUTOMATION','PICKING_UP_HEAD_SET','PUTTING_DOWN_HEAD_SET','ADD_GLOBAL_SHORTCUT_TO_START','ADD_GAME_TO_START','ADD_MACRO_TO_START']:
     assert key in spec['translations']['en']
-print('Validated 3946 automation source, six categories, seven effects, ten locales and twelve SVGs.')
+print('Validated 3946 automation source, six categories, seven effects, ten locales and nineteen SVGs.')

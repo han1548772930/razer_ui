@@ -17,12 +17,16 @@ spec.loader.exec_module(discovery)
 SOURCES = (
     ".ref/host-4.0.827/electron/constants.js",
     ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+    ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
     ".ref/settings/static/js/720.1e5d1c8f.chunk.js",
 )
-ROUTE_PATH = r'/(?:synapse|chroma-app|natalie|alisha|sophie|sophie-lite|settings|cortex|rz-app-menu|rz-user-profile-menu|systray|release-patch-note|profile-migration|background-manager)[^"\x27`<>\s$]*'
+ROUTE_PATH = r'/(?:synapse|chroma-app|natalie|alisha|sophie|sophie-lite|settings|cortex|rz-app-menu|rz-user-profile-menu|systray|release-patch-note|profile-migration|background-manager|feedback)[^"\x27`<>\s$]*'
 PATH_LITERAL = re.compile(r'''["']((?:https://apps\.razer\.com)?''' + ROUTE_PATH + r''')["']''')
 # Only the origin is interpolated: preserve the static route without evaluating JS.
 ORIGIN_TEMPLATE = re.compile(r'`\$\{window\.location\.origin\}(' + ROUTE_PATH + r')`')
+# A query-only interpolation does not affect the static application directory.
+# Keep the literal prefix as evidence; never evaluate the template expression.
+QUERY_TEMPLATE = re.compile(r'`(' + ROUTE_PATH + r'\?[^"\x27`<>\s$]*?)\$\{')
 
 
 def route_seeds():
@@ -33,7 +37,7 @@ def route_seeds():
             continue
         source = path.read_text(encoding="utf-8")
         matches = sorted(
-            (match for pattern in (PATH_LITERAL, ORIGIN_TEMPLATE) for match in pattern.finditer(source)),
+            (match for pattern in (PATH_LITERAL, ORIGIN_TEMPLATE, QUERY_TEMPLATE) for match in pattern.finditer(source)),
             key=lambda match: match.start(1),
         )
         for match in matches:
@@ -70,14 +74,22 @@ def main():
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--retry-errors", action="store_true")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--routes", nargs="+", help="Acquire only these source-defined routes; preserve other catalog records")
     options = parser.parse_args()
     options.keepalive = True
     if options.workers < 1 or options.attempts < 1 or options.timeout <= 0:
         parser.error("workers, attempts and timeout must be positive")
     if options.offline and options.refresh:
         parser.error("offline and refresh are mutually exclusive")
-    records = []
-    for route, evidence in sorted(route_seeds().items()):
+    seeds = route_seeds()
+    selected_routes = {"/" + value.strip("/") + "/" for value in options.routes or []}
+    if selected_routes - seeds.keys():
+        parser.error("routes absent from current source literals: " + ", ".join(sorted(selected_routes - seeds.keys())))
+    previous = discovery.read_json(ROOT / ".ref/discovery/applications.json") or {}
+    records = list(previous.get("applications", [])) if selected_routes else []
+    for route, evidence in sorted(seeds.items()):
+        if selected_routes and route not in selected_routes:
+            continue
         base = "https://apps.razer.com" + route
         endpoints = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
@@ -115,10 +127,11 @@ def main():
             "files": sorted(files, key=lambda f: f["url"]), "skipped": skipped,
             "manifest_code_complete": html["result"] == "ok" and assets["result"] == "ok"
                 and bool(files) and not skipped and all(f["result"] == "ok" for f in files)}
-        records.append(record)
+        records = [row for row in records if row["route"] != route] + [record]
         print(f"{route}: HTML {html['result']}, JS/CSS {sum(f['result'] == 'ok' for f in files)}/{len(files)}", flush=True)
         # Preserve finished applications if a later source is interrupted.
         discovery.write_json(ROOT / ".ref/discovery/applications.json", {"applications": records})
+    records.sort(key=lambda row: row["route"])
     summary = {"routes": len(records), "html_found": sum(r["endpoints"]["index.html"]["result"] == "ok" for r in records),
         "manifest_code_complete": sum(r["manifest_code_complete"] for r in records),
         "code_results": dict(Counter(f["result"] for r in records for f in r["files"]))}
@@ -133,7 +146,7 @@ def main():
     for row in records:
         lines.append(f"| [{row['route']}](https://apps.razer.com{row['route']}) | {row['endpoints']['index.html']['result']} | {'齐备' if row['manifest_code_complete'] else '待追踪'} | {sum(f['result'] == 'ok' for f in row['files'])}/{len(row['files'])} |")
     lines += ["", "没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。", "",
-        "`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。发现脚本只提取静态路径，不执行模板或下载的代码。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。", ""]
+        "`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。`/feedback/` 来自当前 Dashboard、App Menu 和 Settings 中查询参数插值之前的固定路径。发现脚本只提取静态路径，不执行模板或下载的代码。`--routes` 仅准备已在源码登记的应用，保留其他已取得的目录记录。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。", ""]
     (ROOT / "docs/re/17-application-catalog.md").write_text("\n".join(lines), encoding="utf-8")
     print(json.dumps(summary))
 

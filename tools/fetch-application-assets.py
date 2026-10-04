@@ -1,4 +1,4 @@
-"""Fetch explicitly selected media from a cached application's asset manifest.
+"""Fetch selected media from a cached application or product asset manifest.
 
 Only reads manifests and media bytes; never executes downloaded source. Uses the
 same HTTP/hash receipts and offline validation as the source discovery tools.
@@ -22,7 +22,9 @@ spec.loader.exec_module(discovery)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--route", required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--route", help="Application route below apps.razer.com")
+    source.add_argument("--product", type=int, help="Current Synapse product ID")
     parser.add_argument("--assets", nargs="+", default=[],
                         help="Exact static/media/... keys in asset-manifest.json")
     parser.add_argument("--shared-app-icons", nargs="+", default=[],
@@ -35,16 +37,22 @@ def main():
     parser.add_argument("--attempts", type=int, default=3)
     options = parser.parse_args()
     options.keepalive = True
-    route = options.route.strip("/")
-    if not re.fullmatch(r"[a-z0-9-]+(?:/[a-z0-9-]+)*", route):
-        parser.error("route must name an application below apps.razer.com")
+    if options.product is not None:
+        if options.product <= 0:
+            parser.error("product must be a positive ID")
+        route = f"synapse/products/{options.product}/ui"
+        directory = ROOT / ".ref/devices" / str(options.product)
+    else:
+        route = options.route.strip("/")
+        if not re.fullmatch(r"[a-z0-9-]+(?:/[a-z0-9-]+)*", route):
+            parser.error("route must name an application below apps.razer.com")
+        directory = ROOT / ".ref/applications" / route
     if options.workers < 1 or options.timeout <= 0 or options.attempts < 1:
         parser.error("workers, timeout and attempts must be positive")
     if options.offline and options.refresh:
         parser.error("offline and refresh are mutually exclusive")
     if not options.assets and not options.shared_app_icons:
         parser.error("specify assets or shared app icons")
-    directory = ROOT / ".ref/applications" / route
     manifest = json.loads((directory / "asset-manifest.json").read_text(encoding="utf-8-sig"))
     base = f"https://apps.razer.com/{route}/"
     jobs = []

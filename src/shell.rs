@@ -27,8 +27,10 @@ mod app_picker_host;
 mod armory_page;
 mod display_window;
 mod firmware_update;
+mod feedback_page;
 mod header_status;
 mod host_tabs;
+mod independent_window;
 mod introduction_tour;
 mod iot_popup;
 mod macro_page;
@@ -381,21 +383,27 @@ impl AppShell {
                             cx,
                         );
                     }
+                    service_pages::ModulePage::Alexa => {
+                        this.open_independent_module(service_pages::ModulePage::Alexa, cx);
+                    }
                     // 原版此盒聚焦 `synapse-introduction` 窗口。
                     service_pages::ModulePage::IntroductionTour => {
                         this.navigate(Location::Tour(TourKind::Synapse), window, cx);
                     }
                     // 原版此盒聚焦名为 `macro` 的窗口（`/synapse/macro/`）。
                     service_pages::ModulePage::Macro => {
-                        this.navigate(Location::Macro, window, cx);
+                        this.open_independent_module(service_pages::ModulePage::Macro, cx);
                     }
                     // 原版此盒打开 `armory` 窗口（`/synapse/armory/`）。
                     service_pages::ModulePage::Armory => {
-                        this.navigate(Location::Armory, window, cx);
+                        this.open_independent_module(service_pages::ModulePage::Armory, cx);
                     }
                     // 原版此盒打开 `profiles` 窗口（`/synapse/profiles/`）。
                     service_pages::ModulePage::Profiles => {
-                        this.navigate(Location::Profiles, window, cx);
+                        this.open_independent_module(service_pages::ModulePage::Profiles, cx);
+                    }
+                    service_pages::ModulePage::Feedback => {
+                        this.open_independent_module(service_pages::ModulePage::Feedback, cx);
                     }
                 },
                 service_pages::ModuleCatalogEvent::FirmwareUpdate { device, preview } => {
@@ -583,6 +591,95 @@ impl AppShell {
             eprintln!("无法打开配对窗口：{error}");
         }
     }
+    /// Open one of the current Dashboard module applications as a named
+    /// independent window. Existing windows with the same source name are
+    /// focused instead of duplicated.
+    fn open_independent_module(&mut self, module: service_pages::ModulePage, cx: &mut App) {
+        let (name, bounds, minimum) = match module {
+            service_pages::ModulePage::Alexa => (
+                SharedString::from("alexa"),
+                size(px(1180.), px(780.)),
+                size(px(960.), px(620.)),
+            ),
+            service_pages::ModulePage::Macro => (
+                SharedString::from("macro"),
+                size(px(1240.), px(820.)),
+                size(px(1040.), px(680.)),
+            ),
+            service_pages::ModulePage::Armory => (
+                SharedString::from("armory"),
+                size(px(1280.), px(780.)),
+                size(px(1040.), px(640.)),
+            ),
+            service_pages::ModulePage::Profiles => (
+                SharedString::from("profiles"),
+                size(px(1160.), px(780.)),
+                size(px(900.), px(620.)),
+            ),
+            service_pages::ModulePage::Feedback => (
+                SharedString::from("feedback-synapse"),
+                size(px(620.), px(700.)),
+                size(px(540.), px(560.)),
+            ),
+            _ => return,
+        };
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::centered(bounds, cx)),
+            window_min_size: Some(minimum),
+            ..TitleBar::window_options()
+        };
+        let devices = self.devices.clone();
+        let result: anyhow::Result<()> = match module {
+            service_pages::ModulePage::Alexa => display_window::open_or_focus(
+                cx,
+                name,
+                display_window::WindowPolicy::Same,
+                options,
+                |window, cx| cx.new(|cx| independent_window::AlexaWindow::new(window, cx)),
+            )
+            .map(|_| ()),
+            service_pages::ModulePage::Macro => display_window::open_or_focus(
+                cx,
+                name,
+                // The module registry uses `sameWindow` (`policy=3`): this
+                // is a named application root that is reused and focused.
+                display_window::WindowPolicy::Same,
+                options,
+                |window, cx| cx.new(|cx| independent_window::MacroWindow::new(window, cx)),
+            )
+            .map(|_| ()),
+            service_pages::ModulePage::Armory => display_window::open_or_focus(
+                cx,
+                name,
+                display_window::WindowPolicy::Same,
+                options,
+                |window, cx| cx.new(|cx| independent_window::ArmoryWindow::new(window, cx)),
+            )
+            .map(|_| ()),
+            service_pages::ModulePage::Profiles => display_window::open_or_focus(
+                cx,
+                name,
+                display_window::WindowPolicy::Same,
+                options,
+                move |window, cx| {
+                    cx.new(|cx| independent_window::ProfilesWindow::new(window, cx, devices))
+                },
+            )
+            .map(|_| ()),
+            service_pages::ModulePage::Feedback => display_window::open_or_focus(
+                cx,
+                name,
+                display_window::WindowPolicy::Same,
+                options,
+                |window, cx| cx.new(|cx| independent_window::FeedbackWindow::new(window, cx)),
+            )
+            .map(|_| ()),
+            _ => return,
+        };
+        if let Err(error) = result {
+            eprintln!("无法打开独立模块窗口：{error}");
+        }
+    }
     fn request_navigation(
         &mut self,
         next: Location,
@@ -744,7 +841,7 @@ impl AppShell {
             }
             if next == Location::Armory {
                 if self.armory_page.is_none() {
-                    let page = cx.new(armory_page::ArmoryPage::new);
+                    let page = cx.new(|cx| armory_page::ArmoryPage::new(window, cx));
                     self.subscriptions
                         .push(cx.observe(&page, |_, _, cx| cx.notify()));
                     self.armory_page = Some(page);
@@ -792,7 +889,11 @@ impl AppShell {
                 }
             }
             Location::Profiles => {
-                if self.profiles_page.as_ref().is_some_and(|page| page.read(cx).history_blocked(cx)) {
+                if self
+                    .profiles_page
+                    .as_ref()
+                    .is_some_and(|page| page.read(cx).history_blocked(cx))
+                {
                     return None;
                 }
                 if let Some(page) = self.profiles_page.as_ref().filter(|page| {

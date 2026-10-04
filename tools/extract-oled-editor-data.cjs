@@ -108,7 +108,7 @@ const output={product_id:691,source:file,animation_fps:product.config.OLED_ANIMA
   animations,images,visualizers,banner_fonts:fonts,banner_sizes:sizes,home_default:home,media_default:media,
   preset_defaults:presetDefaults,editor_evidence:editorEvidence,
   evidence:[...modules].map(([module,n])=>({module,offset:n.start,end:n.end,sha256:hash(source.slice(n.start,n.end))})),
-  limitations:['Native preset selection is mounted; import/crop/custom reset and device transport remain pending.',
+  limitations:['Native preset selection, local import/crop/custom reset and crop-placement draft metadata are mounted; GIF processing and device transport remain unavailable.',
     'Media and system sample values in the source must not be represented as live device readings.']};
 fs.writeFileSync(path.join(root,'src/features/keyboard_oled_editor_data.json'),JSON.stringify(output)+'\n');
 console.log(`Extracted ${animations.length} animation presets, ${images.length} image presets, ${fonts.length} fonts and ${sizes.length} sizes from current modules.`);

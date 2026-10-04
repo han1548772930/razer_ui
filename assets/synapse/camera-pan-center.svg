@@ -1,0 +1,27 @@
+<svg id="Center" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+  <rect id="Rectangle_3622" data-name="Rectangle 3622" width="20" height="20" fill="none"/>
+  <g id="Group_9631" data-name="Group 9631" transform="translate(3 3)">
+    <g id="Border" fill="#111" stroke="#5d5d5d" stroke-width="1">
+      <rect width="15" height="15" rx="2" stroke="none"/>
+      <rect x="0.5" y="0.5" width="14" height="14" rx="1.5" fill="none"/>
+    </g>
+    <g id="Group_9636" data-name="Group 9636" transform="translate(3 3)">
+      <g id="Subtraction_1" data-name="Subtraction 1" transform="translate(5 0.001)" fill="#fff">
+        <path d="M4,4H0V0H.8V3.2H4V4Z" stroke="none"/>
+        <path d="M 4.000483989715576 4.001956462860107 L 4.140625151194399e-06 4.001956462860107 L 4.140625151194399e-06 0.0009765625 L 0.8007841110229492 -3.437500026848284e-06 L 0.8007841110229492 3.201176643371582 L 4.000483989715576 3.201176643371582 L 4.000483989715576 4.001956462860107 Z" stroke="none" fill="#fff"/>
+      </g>
+      <g id="Subtraction_1-2" data-name="Subtraction 1" transform="translate(9 5) rotate(90)" fill="#fff">
+        <path d="M4,4H0V0H.8V3.2H4V4Z" stroke="none"/>
+        <path d="M 4 4 L 0 4 L 0 0.0009800000116229057 L 0.8007799983024597 0 L 0.8007799983024597 3.199219942092896 L 4 3.199219942092896 L 4 4 Z" stroke="none" fill="#fff"/>
+      </g>
+      <g id="Subtraction_1-3" data-name="Subtraction 1" transform="translate(4 4) rotate(180)" fill="#fff">
+        <path d="M4,0H0V4H.8V.8H4V0Z" stroke="none"/>
+        <path d="M 0 0 L 4 0.0007801055908203125 L 4 0.8004701137542725 L 0.8006999492645264 0.8004701137542725 L 0.8006999492645264 4 L 0 3.99921989440918 L 0 0 Z" stroke="none" fill="#fff"/>
+      </g>
+      <g id="Subtraction_1-4" data-name="Subtraction 1" transform="translate(4 5) rotate(90)" fill="#fff">
+        <path d="M4,0H0V4H.8V.8H4V0Z" stroke="none"/>
+        <path d="M 0 0 L 4 0.0007801055908203125 L 4 0.8004701137542725 L 0.8006999492645264 0.8004701137542725 L 0.8006999492645264 4 L 0 3.99921989440918 L 0 0 Z" stroke="none" fill="#fff"/>
+      </g>
+    </g>
+  </g>
+</svg>

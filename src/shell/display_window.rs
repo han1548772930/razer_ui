@@ -12,8 +12,9 @@ use std::cell::RefCell;
 /// 产品包按 `?displayMode=` 选择的根，取值即原版
 /// `searchParams.get("displayMode")` 的比较字面量。
 ///
-/// 四个取值都来自 [分支审计](../docs/re/display-mode-audit.md)；目前只有
-/// `multiDevicePairing` 接上了窗口与内容，其余三个等各自的根实现后再接线。
+/// 四个取值都来自 [分支审计](../docs/re/display-mode-audit.md)；
+/// `multiDevicePairing`、`macro`、`armory` 与 `profiles` 已接上本地窗口根，
+/// `chromaApp` 仍属于独立 Chroma 应用。
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DisplayMode {
@@ -54,8 +55,7 @@ pub(super) struct WindowIdentity {
 }
 
 /// Dashboard 的窗口策略标志。`Same` 表示复用同名的既有窗口（原版先查窗口是否
-/// 存在，存在就复用），另外两个才总是新窗口；三个取值都来自窗口契约，只有配对窗口
-/// 用到的 `Same` 已接线。
+/// 存在，存在就复用），另外两个才总是新窗口；三个取值都来自窗口契约。
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum WindowPolicy {

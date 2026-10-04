@@ -120,4 +120,8 @@ const gate = () => {
 - 白框拖动与黑框鼠标移动分支：已实现（见「白框拖动与黑框几何」）。仍缺原版在拖动过程中对方向键上下键的额外处理、以及拖动时是否暂停取景预设动画。
 - 方向键图标：左右键用的 `icon_arrow_left_thin.e6d37c55.svg`／`icon_arrow_right_thin.bef8ca32.svg` 已在本地打包（与 `history-back/forward.svg` 同名同哈希，直接复用），按 CSS 以 10×10 绘制；上下与中心键用的 `icon_pan_top.938f0ae8.svg`、`icon_pan_bottom.bb4772a7.svg`、`icon_pan_center` 在当前源码包里不存在，这三键仍只有边框，不用别的图标代替。gpui 按边框盒裁剪、CSS 按 padding 盒裁剪，绘制位置相差 1px。
 - 分辨率列表在开启能力探测的根（3595）上由设备能力过滤，本地使用产品自身的回退列表。
-- 3587／3589／3590 仍按共享 Customize 布局渲染，没有取景块。
+??????? CAMERA ??????????????????3587?3589?3590???? Customize ????? CAMERA ????????????????????????????
+
+## Legacy Customize preview mount
+
+The three earlier roots (3587 Kiyo, 3589 Kiyo Pro and 3590 Kiyo X) use the shared `TAB_CUSTOMIZE` camera widget. Static JSX evidence in each current bundle contains `.camera_setting .main_preview`; companion CSS fixes its surface to `background-color:#222` and `height:292px`, with a 520px video frame (`video_frame` declares `width=520`, `height=292`). The native renderer now uses `layout="legacy-camera"` for these descriptors and reserves that exact frame before image and focus controls. Because this workspace has no camera stream or device-enumeration transport, the frame displays an explicit unavailable state and never fabricates a still image or camera identity.

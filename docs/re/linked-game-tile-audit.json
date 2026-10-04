@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "1d5ede8828a9ce27b7de0ad4c0da22259acd8388a5d140bea350a69005cb13b0",
+  "scanner_sha256": "c8c5533f7787828804e6a6938f8da31e34f7c928d74370600b1d45a8282fb528",
   "source": {
     "path": ".ref/applications/synapse/profiles/static/css/1255.d3d31cbf.chunk.css",
     "sha256": "52d3d3679f5cced4c49ce9f558de6045f5d8a31b9de2aa10efe3b2a7929d70dc"

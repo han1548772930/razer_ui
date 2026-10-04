@@ -18,3 +18,13 @@
 仍未完成：设备传输及事件时序、错误后 15 秒关闭、真实按键捕获、出厂配置禁用分支、介绍关闭状态的跨启动持久化、光标和载入动画。静态布局不代表实际窗口像素已验收，因此这两页仍为 `partial_native`。
 
 可复核命令：`node tools/extract-keyboard-calibration.cjs --check`。两项新增 UI 交互检查源码覆盖打开/关闭、焦点恢复、rem 几何、配置不变及示例等待状态；仅经 `cargo check --locked --all-targets` 编译，没有运行测试、应用、构建、安装器或厂商代码。
+
+## Native completion notes (2026-10-04)
+
+The native page now mirrors the source's three remaining UI contracts without claiming a device response:
+
+- `showNotificationBannerCalibration` is persisted in the local workspace directory, so closing the introduction banner hides it on the next start.
+- The `isFactoryDefaultProfile` branch renders the audited factory-profile warning and removes the calibration start controls while that profile is active. Selecting another local profile updates the branch and dismisses any open modal when returning to the factory profile.
+- The source's 15-second input-error idle watchdog is represented in the explicit failure preview. It closes that preview modal after 15 seconds; live calibration remains disabled because `initCalibration` and the input redirect transport are not available in this reconstruction.
+
+No application, downloaded script, DLL, or build artifact was executed.

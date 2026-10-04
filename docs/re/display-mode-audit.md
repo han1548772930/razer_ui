@@ -37,6 +37,8 @@
 - `macro` 不是独立产品窗口：它是宏应用（`/synapse/macro/` 窗口）在「绑定到设备」弹层里嵌入的 iframe，参数 `displayMode=macro&macro=<id>&containerId=…&deviceEditionInfo=…&serialNumber=…`，因此产品包的 `macro` 分支只在那个 iframe 里出现，产品根本身不会自己开窗。
 - `chromaApp` 在当前 Dashboard 包里出现 `0` 次：Synapse 不打开这个模式，它属于独立的 Chroma 应用窗口。
 
+本地窗口层已经接入 `macro`、`armory` 和 `profiles` 三个具名根：它们相对于 Dashboard 是独立的 gpui 窗口，但按当前模块表使用 `sameWindow`（`policy=3`）登记，同名再次打开时聚焦既有窗口。窗口根只复刻已审计的页面外框和本地状态；宏服务、Workshop 内容服务、Profiles 扫描服务仍未连接。
+
 - 窗口名、可见性与聚焦标志、每个模式的 URL 参数见 [窗口打开契约](display-window-contract.md)。
 - 逐产品的分支、参数、引用组件与文本窗口范围见 [机器可读清单](display-mode-audit.json)。
 

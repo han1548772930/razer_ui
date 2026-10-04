@@ -1,4 +1,9 @@
 use super::*;
+use crate::features::lighting_color::LightingColorPicker;
+use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
+#[path = "quick_macro.rs"]
+mod quick_macro;
+use quick_macro::{QuickMacroEditor, QuickMacroSaved};
 pub(super) enum EditorEvent {
     Save(Rule),
     Delete(u32),
@@ -11,11 +16,13 @@ pub(super) struct AutomationEditor {
     available: Vec<u32>,
     category: Entity<SelectState<Vec<Choice>>>,
     effects: [Entity<SelectState<Vec<Choice>>>; 2],
+    colors: [[Entity<ColorPickerState>; 2]; 2],
     catalogs: BTreeMap<u32, Vec<Value>>,
     installed: Option<bool>,
     busy: bool,
     preview: bool,
     deleting: bool,
+    macro_picker: Option<bool>,
     alert: Option<String>,
     syncing: bool,
     subscriptions: Vec<Subscription>,
@@ -35,6 +42,9 @@ impl AutomationEditor {
         let category = cx.new(|cx| SelectState::new(Self::choices(&available), None, window, cx));
         let effects = [false, true]
             .map(|_| cx.new(|cx| SelectState::new(Self::effect_choices(), None, window, cx)));
+        let colors = std::array::from_fn(|_| {
+            std::array::from_fn(|_| cx.new(|cx| ColorPickerState::new(window, cx)))
+        });
         let mut this = Self {
             draft: rule.clone(),
             original: rule,
@@ -42,11 +52,13 @@ impl AutomationEditor {
             available,
             category: category.clone(),
             effects,
+            colors,
             catalogs,
             installed,
             busy,
             preview,
             deleting: false,
+            macro_picker: None,
             alert: None,
             syncing: false,
             subscriptions: vec![],
@@ -83,8 +95,91 @@ impl AutomationEditor {
                 },
             ));
         }
+        for down in [false, true] {
+            for channel in 0..2 {
+                this.subscriptions.push(cx.subscribe_in(
+                    &this.colors[down as usize][channel],
+                    window,
+                    move |this, _, event, _, cx| {
+                        if this.syncing || !this.chroma_parameters_editable(down) {
+                            return;
+                        }
+                        let value = this
+                            .draft
+                            .lane(down)
+                            .data
+                            .first()
+                            .cloned()
+                            .unwrap_or_default();
+                        let effect = value["selectedEffectId"].as_u64().unwrap_or(4);
+                        if !matches!(effect, 1 | 2)
+                            || (effect == 1 && channel == 1)
+                            || value["setting"]["isRandom"] == true
+                        {
+                            return;
+                        }
+                        let ColorPickerEvent::Change(color) = event;
+                        if effect == 1 && color.is_none() {
+                            return;
+                        }
+                        let color = color
+                            .map(|color| {
+                                let color = Rgba::from(color);
+                                format!(
+                                    "#{:02x}{:02x}{:02x}",
+                                    (color.r * 255.).round() as u8,
+                                    (color.g * 255.).round() as u8,
+                                    (color.b * 255.).round() as u8
+                                )
+                            })
+                            .unwrap_or_else(|| "no-color".into());
+                        this.update_chroma_setting(
+                            down,
+                            if channel == 0 { "color1" } else { "color2" },
+                            json!(color),
+                            cx,
+                        );
+                    },
+                ));
+            }
+        }
         this.sync(window, cx);
         this
+    }
+
+    fn open_macro_picker(&mut self, down: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let names = self
+            .catalogs
+            .get(&5)
+            .into_iter()
+            .flatten()
+            .filter_map(|value| value["name"].as_str().map(str::to_owned))
+            .collect();
+        let picker = cx.new(|cx| QuickMacroEditor::new(names, window, cx));
+        self.subscriptions.push(cx.subscribe(
+            &picker,
+            move |this, _, event: &QuickMacroSaved, cx| {
+                this.catalogs.entry(5).or_default().push(event.0.clone());
+                this.choose(down, event.0.clone(), cx);
+                this.macro_picker = None;
+                cx.notify();
+            },
+        ));
+        self.macro_picker = Some(down);
+        let rem_size = window.rem_size();
+        let margin_top = (window.viewport_size().height - rem_size * (369. / 16.)) / 2.;
+        window.open_dialog(cx, move |dialog, _, _| {
+            dialog
+                .w(rem_size * (500. / 16.))
+                .margin_top(margin_top)
+                .overlay(false)
+                .overlay_closable(true)
+                .close_button(false)
+                .p_0()
+                .bg(Colors::panel())
+                .rounded(surface::css(3.))
+                .child(picker.clone())
+        });
     }
     fn choices(ids: &[u32]) -> Vec<Choice> {
         ids.iter()
@@ -126,6 +221,28 @@ impl AutomationEditor {
             self.effects[down as usize].update(cx, |s, cx| {
                 s.set_selected_value(&id.to_string(), window, cx)
             });
+            let value = self
+                .draft
+                .lane(down)
+                .data
+                .first()
+                .cloned()
+                .unwrap_or_else(|| Self::quick(id as u32));
+            for channel in 0..2 {
+                let color = value["setting"]
+                    .get(if channel == 0 { "color1" } else { "color2" })
+                    .and_then(Value::as_str)
+                    .and_then(|color| color.strip_prefix('#'))
+                    .filter(|color| color.len() == 6)
+                    .and_then(|color| u32::from_str_radix(color, 16).ok());
+                self.colors[down as usize][channel].update(cx, |picker, cx| {
+                    if let Some(color) = color {
+                        picker.set_value(rgb(color), window, cx);
+                    } else {
+                        picker.clear_value(window, cx);
+                    }
+                });
+            }
         }
         self.syncing = false;
     }
@@ -135,6 +252,85 @@ impl AutomationEditor {
         }
         self.draft.lane_mut(down).data = vec![value];
         cx.notify();
+    }
+    fn chroma_parameters_editable(&self, down: bool) -> bool {
+        self.draft.id == 0
+            && self.draft.lane(down).is_enabled
+            && !self.busy
+            && self
+                .draft
+                .lane(down)
+                .data
+                .first()
+                .is_some_and(|value| value["isOff"] != true && value["isAdvEffect"] != true)
+    }
+    fn update_chroma_setting(
+        &mut self,
+        down: bool,
+        key: &str,
+        value: Value,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.chroma_parameters_editable(down) {
+            return;
+        }
+        let Some(mut data) = self.draft.lane(down).data.first().cloned() else {
+            return;
+        };
+        if !data["setting"].is_object() {
+            data["setting"] = json!({});
+        }
+        data["setting"][key] = value;
+        // LP's P callback emits the updated setting for this lane and clears
+        // apply-to-other-devices; it never updates the opposite trigger lane.
+        data["isApplyToOtherDevices"] = json!(false);
+        self.choose(down, data, cx);
+    }
+    fn render_effect_parameters(
+        &self,
+        down: bool,
+        value: &Value,
+        disabled: bool,
+        cx: &Context<Self>,
+    ) -> AnyElement {
+        let effect = value["selectedEffectId"].as_u64().unwrap_or(4);
+        if !matches!(effect, 1 | 2) {
+            return div().into_any_element();
+        }
+        let breathing = effect == 2;
+        let random = breathing && value["setting"]["isRandom"] == true;
+        h_flex()
+            .items_start()
+            .flex_wrap()
+            .gap(surface::css(10.))
+            .mt(surface::css(20.))
+            .children((0..if breathing { 2 } else { 1 }).map(|channel| {
+                let label = if breathing {
+                    text("COLOR_DROP_NAME").replace("{{num}}", &(channel + 1).to_string())
+                } else {
+                    text("COLOR")
+                };
+                LightingColorPicker::new(&self.colors[down as usize][channel], label)
+                    .allow_none(breathing)
+                    .disabled(disabled || random)
+                    .into_any_element()
+            }))
+            .when(breathing, |view| {
+                view.child(
+                    div().mt(surface::css(25.)).child(
+                        checkbox::Checkbox::new(SharedString::from(format!(
+                            "automation-random-{down}"
+                        )))
+                        .label(text("RANDOM_COLOR"))
+                        .checked(random)
+                        .disabled(disabled)
+                        .on_click(cx.listener(move |this, on, _, cx| {
+                            this.update_chroma_setting(down, "isRandom", json!(on), cx)
+                        })),
+                    ),
+                )
+            })
+            .into_any_element()
     }
     fn enable(&mut self, down: bool, value: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.draft.lane_mut(down).is_enabled = value;
@@ -154,9 +350,12 @@ impl AutomationEditor {
     }
     fn request(&mut self, key: &str, cx: &mut Context<Self>) {
         self.alert = Some(if self.preview {
-            format!("示例请求：{}", text(key))
+            format!("Preview request: {}", text(key))
         } else {
-            format!("{}暂不可用。", text(key))
+            format!(
+                "{} is unavailable while its service is disconnected.",
+                text(key)
+            )
         });
         cx.notify();
     }
@@ -229,6 +428,7 @@ impl AutomationEditor {
                         .disabled(disabled)
                         .w_full(),
                 );
+                content = content.child(self.render_effect_parameters(down, &value, disabled, cx));
                 content = content.child(
                     checkbox::Checkbox::new(SharedString::from(format!("automation-apply-{down}")))
                         .checked(value["isApplyToOtherDevices"] == true)
@@ -331,7 +531,13 @@ impl AutomationEditor {
                     .outline()
                     .disabled(disabled)
                     .label(text(key))
-                    .on_click(cx.listener(move |this, _, _, cx| this.request(key, cx))),
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        if this.draft.id == 5 {
+                            this.open_macro_picker(down, window, cx);
+                        } else {
+                            this.request(key, cx);
+                        }
+                    })),
                 );
             }
         }
@@ -343,6 +549,33 @@ impl AutomationEditor {
             .find_map(|k| value.get(k).map(ToString::to_string))
             .unwrap_or_default()
     }
+
+    /// The live modal gives each service its own card treatment.  The service
+    /// payload is intentionally kept opaque here, but these fields are stable
+    /// in the current source and let a locally restored draft retain the same
+    /// title/detail hierarchy without inventing device data.
+    fn option_text(&self, value: &Value) -> (String, Option<String>) {
+        let title = value["name"]
+            .as_str()
+            .or_else(|| value["content"].as_str())
+            .or_else(|| value["title"].as_str())
+            .unwrap_or("-")
+            .to_owned();
+        let detail = match self.draft.id {
+            3 => value["key"]
+                .as_str()
+                .or_else(|| value["shortcut"].as_str())
+                .or_else(|| value["assignmentValue"].as_str()),
+            4 => value["path"]
+                .as_str()
+                .or_else(|| value["executable"].as_str()),
+            5 => value["description"]
+                .as_str()
+                .or_else(|| value["type"].as_str()),
+            _ => value["content"].as_str(),
+        };
+        (title, detail.map(str::to_owned))
+    }
     fn choice(&self, down: bool, value: Value, disabled: bool, cx: &Context<Self>) -> AnyElement {
         let selected = self
             .draft
@@ -350,6 +583,9 @@ impl AutomationEditor {
             .data
             .first()
             .is_some_and(|v| Self::identity(v) == Self::identity(&value));
+        let (title, detail) = self.option_text(&value);
+        let category = self.draft.id;
+        let icon_name = if category <= 2 { Some(category) } else { None };
         gpui_kit::base::Button::new(SharedString::from(format!(
             "automation-choice-{down}-{}",
             Self::identity(&value)
@@ -368,7 +604,40 @@ impl AutomationEditor {
             Colors::editor()
         })
         .text_color(Colors::foreground())
-        .child(value["name"].as_str().unwrap_or("-").to_owned())
+        .hover(|s| s.border_color(Colors::primary().opacity(0.3)))
+        .child(
+            h_flex()
+                .w_full()
+                .gap(surface::css(8.))
+                .items_center()
+                .when_some(icon_name, |row, id| {
+                    row.child(icon(id).size(surface::css(20.)))
+                })
+                .child(
+                    v_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .gap(surface::css(2.))
+                        .child(div().text_ellipsis().child(title))
+                        .when_some(detail, |row, detail| {
+                            row.child(
+                                div()
+                                    .text_size(surface::css(12.))
+                                    .text_color(Colors::muted())
+                                    .text_ellipsis()
+                                    .child(detail),
+                            )
+                        }),
+                )
+                .when(selected, |row| {
+                    row.child(
+                        div()
+                            .text_color(Colors::primary())
+                            .text_size(surface::css(16.))
+                            .child("\u{2713}"),
+                    )
+                }),
+        )
         .on_click(cx.listener(move |this, _, _, cx| this.choose(down, value.clone(), cx)))
         .into_any_element()
     }
@@ -381,6 +650,7 @@ impl AutomationEditor {
         window.close_dialog(cx);
     }
 }
+
 fn command(
     id: impl Into<ElementId>,
     label: String,
@@ -591,7 +861,7 @@ impl Render for AutomationEditor {
                         Button::new("automation-close")
                             .ghost()
                             .small()
-                            .label("×")
+                            .label("x")
                             .accessibility_label(text("CLOSE"))
                             .on_click(|_, window, cx| window.close_dialog(cx)),
                     ),

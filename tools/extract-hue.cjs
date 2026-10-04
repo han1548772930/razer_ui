@@ -98,6 +98,11 @@ const archetypes = literal(archetypeNode.init);
 const cssPath = '.ref/devices/769/static/css/main.341edb83.css', css = read(cssPath);
 const cssRules = css.split('}').filter(r => /\.(Home_|BridgeLogo_|Bridge_|Brightness_|Devices_|screen|install-chroma-img|chroma-studio-btn|chroma-sync|quickeffect-text|modes-area|twoway-lighting|effects-area)/.test(r)).map(r => r+'}');
 const requests = [...new Set(cssRules.flatMap(r => [...r.matchAll(/url\(\.\.\/\.\.\/(static\/media\/[^)]+)\)/g)].map(m => m[1])))];
+// The advanced-effects tutorial mounts this animated indicator from the
+// JavaScript bundle (not from a CSS rule), so include its manifest entry
+// explicitly. It is a static SVG resource; no vendor code is executed.
+const tutorialIndicator = 'static/media/indicator_animated.e9e90a63.svg';
+if (!requests.includes(tutorialIndicator)) requests.push(tutorialIndicator);
 const manifestPath = '.ref/devices/769/asset-manifest.json';
 const manifest = JSON.parse(read(manifestPath));
 const assets = requests.map(request => {

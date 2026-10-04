@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+    <defs>
+        <style>.a{fill:#fff;opacity:0;}.b{fill:#ccc;}</style>
+    </defs>
+    <g transform="translate(-220 -130)">
+        <rect class="a" width="20" height="20" transform="translate(220 130)"/>
+        <path class="b" d="M8,2H2A2,2,0,0,0,.01,4L0,16a2.006,2.006,0,0,0,2,2H18a2.006,2.006,0,0,0,2-2V6a2.006,2.006,0,0,0-2-2H10Z" transform="translate(220 130)"/>
+    </g>
+</svg>

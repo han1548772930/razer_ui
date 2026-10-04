@@ -138,6 +138,10 @@ impl HueWorkspace {
                 self.draft["ports"] = json!([{"id":17,"brightness":{"value":60}},{"id":42,"brightness":{"value":50}}]);
             }
         }
+        // The source tutorial is mounted after the paired Home page receives
+        // its first non-loading bridge state. Preview samples stand in for
+        // that service transition without claiming a real bridge response.
+        self.tutorial_visible = self.bridge.is_paired && !self.bridge.is_loading;
         let choices = self
             .bridge
             .groups

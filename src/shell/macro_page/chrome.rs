@@ -142,12 +142,12 @@ impl MacroPage {
         };
         h_flex()
             .id("macro-navbar")
-            .h(css(48.))
+            .h(css(46.))
             .w_full()
             .flex_shrink_0()
-            .bg(rgb(0x222222))
+            .bg(cx.theme().sidebar)
             .border_b_2()
-            .border_color(rgb(0))
+            .border_color(cx.theme().title_bar)
             .items_center()
             .child(
                 h_flex()

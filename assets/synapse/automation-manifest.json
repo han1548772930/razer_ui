@@ -82,5 +82,66 @@
     "output": "assets/synapse/automation-logo-7.1.svg",
     "source_sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa",
     "output_sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_folder.e5ceb5b6.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_folder.e5ceb5b6.svg",
+    "output": "assets/synapse/automation-icon_folder.svg",
+    "source_sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001",
+    "output_sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_expand.55a47b0c.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_expand.55a47b0c.svg",
+    "output": "assets/synapse/automation-icon_expand.svg",
+    "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+    "output_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88"
+  },
+  {
+    "source": ".ref/devices/3946/static/media/icon_close.55fe41f1.svg",
+    "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_close.55fe41f1.svg",
+    "output": "assets/synapse/automation-icon_close.svg",
+    "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+    "output_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+  },
+  {
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "source_offset": 6917536,
+    "source_end": 6918270,
+    "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M18 5V15H2V5H18ZM18 3H2C1.47005 3.00158 0.962265 3.2128 0.587535 3.58753C0.212805 3.96227 0.00158273 4.47005 0 5L0 15C0.00158273 15.5299 0.212805 16.0377 0.587535 16.4125C0.962265 16.7872 1.47005 16.9984 2 17H18C18.5299 16.9984 19.0377 16.7872 19.4125 16.4125C19.7872 16.0377 19.9984 15.5299 20 15V5C19.9984 4.47005 19.7872 3.96227 19.4125 3.58753C19.0377 3.2128 18.5299 3.00158 18 3V3ZM5 8H3V6H5V8ZM8 8H6V6H8V8ZM11 8H9V6H11V8ZM14 8H12V6H14V8ZM17 8H15V6H17V8ZM5 11H3V9H5V11ZM8 11H6V9H8V11ZM11 11H9V9H11V11ZM14 11H12V9H14V11ZM17 11H15V9H17V11ZM14 14H6V12H14V14Z\",fill:\"#44D62C\"})})",
+    "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 5V15H2V5H18ZM18 3H2C1.47005 3.00158 0.962265 3.2128 0.587535 3.58753C0.212805 3.96227 0.00158273 4.47005 0 5L0 15C0.00158273 15.5299 0.212805 16.0377 0.587535 16.4125C0.962265 16.7872 1.47005 16.9984 2 17H18C18.5299 16.9984 19.0377 16.7872 19.4125 16.4125C19.7872 16.0377 19.9984 15.5299 20 15V5C19.9984 4.47005 19.7872 3.96227 19.4125 3.58753C19.0377 3.2128 18.5299 3.00158 18 3V3ZM5 8H3V6H5V8ZM8 8H6V6H8V8ZM11 8H9V6H11V8ZM14 8H12V6H14V8ZM17 8H15V6H17V8ZM5 11H3V9H5V11ZM8 11H6V9H8V11ZM11 11H9V9H11V11ZM14 11H12V9H14V11ZM17 11H15V9H17V11ZM14 14H6V12H14V14Z\" fill=\"#44D62C\"></path></svg>\n",
+    "output": "assets/synapse/automation-quick-macro-keyboard.svg",
+    "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+    "output_sha256": "a7531a6b258435c1aead2ca586259b31b3fda36f7d176e903c166652b62f8301"
+  },
+  {
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "source_offset": 6918290,
+    "source_end": 6919457,
+    "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M19.0017 12.8017V16.0017C19.0097 16.1351 18.9894 16.2687 18.9419 16.3937C18.8945 16.5186 18.8211 16.6321 18.7266 16.7266C18.6321 16.8211 18.5186 16.8945 18.3937 16.9419C18.2687 16.9894 18.1351 17.0097 18.0017 17.0017H2.0017C1.86829 17.0097 1.73469 16.9894 1.60973 16.9419C1.48477 16.8945 1.37129 16.8211 1.27678 16.7266C1.18228 16.6321 1.10889 16.5186 1.06147 16.3937C1.01405 16.2687 0.993683 16.1351 1.0017 16.0017V4.0017C0.993683 3.86829 1.01405 3.73469 1.06147 3.60973C1.10889 3.48477 1.18228 3.37129 1.27678 3.27678C1.37129 3.18228 1.48477 3.10889 1.60973 3.06147C1.73469 3.01405 1.86829 2.99368 2.0017 3.0017H9.2017L12.0017 5.8017L10.9017 6.9017L10.8017 7.0017H3.0017V15.0017H17.0017V10.8017L19.0017 12.8017ZM14.8017 5.8017L12.3017 8.3017C12.1191 8.48799 12.0175 8.7388 12.0188 8.99963C12.0201 9.26046 12.1243 9.51023 12.3087 9.69467C12.4932 9.8791 12.7429 9.9833 13.0038 9.98462C13.2646 9.98594 13.5154 9.88427 13.7017 9.7017L16.2017 7.2017L19.0017 10.0017V3.0017H12.0017L14.8017 5.8017Z\",fill:\"#DB2687\"})})",
+    "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M19.0017 12.8017V16.0017C19.0097 16.1351 18.9894 16.2687 18.9419 16.3937C18.8945 16.5186 18.8211 16.6321 18.7266 16.7266C18.6321 16.8211 18.5186 16.8945 18.3937 16.9419C18.2687 16.9894 18.1351 17.0097 18.0017 17.0017H2.0017C1.86829 17.0097 1.73469 16.9894 1.60973 16.9419C1.48477 16.8945 1.37129 16.8211 1.27678 16.7266C1.18228 16.6321 1.10889 16.5186 1.06147 16.3937C1.01405 16.2687 0.993683 16.1351 1.0017 16.0017V4.0017C0.993683 3.86829 1.01405 3.73469 1.06147 3.60973C1.10889 3.48477 1.18228 3.37129 1.27678 3.27678C1.37129 3.18228 1.48477 3.10889 1.60973 3.06147C1.73469 3.01405 1.86829 2.99368 2.0017 3.0017H9.2017L12.0017 5.8017L10.9017 6.9017L10.8017 7.0017H3.0017V15.0017H17.0017V10.8017L19.0017 12.8017ZM14.8017 5.8017L12.3017 8.3017C12.1191 8.48799 12.0175 8.7388 12.0188 8.99963C12.0201 9.26046 12.1243 9.51023 12.3087 9.69467C12.4932 9.8791 12.7429 9.9833 13.0038 9.98462C13.2646 9.98594 13.5154 9.88427 13.7017 9.7017L16.2017 7.2017L19.0017 10.0017V3.0017H12.0017L14.8017 5.8017Z\" fill=\"#DB2687\"></path></svg>\n",
+    "output": "assets/synapse/automation-quick-macro-launch.svg",
+    "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+    "output_sha256": "4526f8430417c599117948182253130ba88456360e9f9a650a590c93f8dcdc51"
+  },
+  {
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "source_offset": 6919481,
+    "source_end": 6920085,
+    "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M18 3H2C1.73478 3 1.48043 3.10536 1.29289 3.29289C1.10536 3.48043 1 3.73478 1 4V16C1 16.2652 1.10536 16.5196 1.29289 16.7071C1.48043 16.8946 1.73478 17 2 17H18C18.2652 17 18.5196 16.8946 18.7071 16.7071C18.8946 16.5196 19 16.2652 19 16V4C19 3.73478 18.8946 3.48043 18.7071 3.29289C18.5196 3.10536 18.2652 3 18 3ZM17 15H3V7H17V15ZM15 14H10V12H15V14ZM5.707 13.707L4.293 12.293L5.586 11L4.293 9.707L5.707 8.293L8.414 11L5.707 13.707Z\",fill:\"#26AADB\"})})",
+    "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 3H2C1.73478 3 1.48043 3.10536 1.29289 3.29289C1.10536 3.48043 1 3.73478 1 4V16C1 16.2652 1.10536 16.5196 1.29289 16.7071C1.48043 16.8946 1.73478 17 2 17H18C18.2652 17 18.5196 16.8946 18.7071 16.7071C18.8946 16.5196 19 16.2652 19 16V4C19 3.73478 18.8946 3.48043 18.7071 3.29289C18.5196 3.10536 18.2652 3 18 3ZM17 15H3V7H17V15ZM15 14H10V12H15V14ZM5.707 13.707L4.293 12.293L5.586 11L4.293 9.707L5.707 8.293L8.414 11L5.707 13.707Z\" fill=\"#26AADB\"></path></svg>\n",
+    "output": "assets/synapse/automation-quick-macro-runCommand.svg",
+    "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+    "output_sha256": "121b0cdfc8f9b3efa579490d9a8dbc2f2d8025c75f72bef88a4d35a2bd78e18c"
+  },
+  {
+    "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+    "source_offset": 6920103,
+    "source_end": 6920359,
+    "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M15 5H3V3H15V5ZM17 6H3V8H17V6ZM11 9H3V11H11V9ZM15 12H3V14H15V12ZM13 15H3V17H13V15Z\",fill:\"#4496FB\"})})",
+    "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M15 5H3V3H15V5ZM17 6H3V8H17V6ZM11 9H3V11H11V9ZM15 12H3V14H15V12ZM13 15H3V17H13V15Z\" fill=\"#4496FB\"></path></svg>\n",
+    "output": "assets/synapse/automation-quick-macro-text.svg",
+    "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+    "output_sha256": "45637b07a4f0650d7b8f5b11e4ae4a6cde35d46786d9e887f0ad6cfc55a2dcb3"
   }
 ]

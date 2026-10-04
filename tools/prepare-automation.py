@@ -22,9 +22,13 @@ for asset in spec['assets']:
         source.write_bytes(content)
         source.with_name(source.name+'.http.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf8')
     content=source.read_bytes()
-    svg=ET.fromstring(content)
+    output_content=asset.get('inline_svg', '').encode('utf8') or content
+    if 'inline_svg' in asset:
+        fragment=content.decode('utf8').encode('utf-16-le')[asset['source_offset']*2:asset['source_end']*2].decode('utf-16-le')
+        assert fragment==asset['source_fragment']
+    svg=ET.fromstring(output_content)
     assert svg.tag.endswith('svg') and not any(n.tag.endswith('script') for n in svg.iter())
-    output.write_bytes(content)
-    records.append({**asset,'source_sha256':digest(content),'output_sha256':digest(content)})
+    output.write_bytes(output_content)
+    records.append({**asset,'source_sha256':digest(content),'output_sha256':digest(output_content)})
 (ROOT/'assets/synapse/automation-manifest.json').write_text(json.dumps(records,indent=2)+'\n',encoding='utf8')
 print(f'Prepared {len(records)} current automation SVG resources.')

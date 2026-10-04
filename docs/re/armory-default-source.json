@@ -57,6 +57,86 @@
       "offset": 22613,
       "end": 23576,
       "source": "(e,n,i){i.d(n,{A:()=>h});var t=i(9446),o=i(41594),s=i(1050),a=i(19040),l=i(135),d=i(66269),c=i(81209),r=i(27588),u=i(23764),v=i(54693),m=i(30699),p=i(92722);const h=e=>{const n=(0,s.Wx)({threshold:.1}),i=n.ref,h=n.inView,f=(0,a.useDispatch)(),g=(0,l.N4)(e=>e.nav.activeView),w=(0,l.N4)(e=>e.browseReducer.nextCursor),A=(0,l.N4)(e=>e.myDownloadReducer.nextCursor),x=(0,l.N4)(e=>e.languageReducer.lang),j=(0,l.N4)(e=>e.viewAs.viewAsList),y=(0,l.N4)(e=>e.filterReducer.page),N=(0,o.useMemo)(()=>(0,m.A)({page:y,pageName:v.Hzf}),[y]),b=(0,o.useMemo)(()=>(0,m.A)({page:y,pageName:v.Vb_}),[y]),C=(0,o.useMemo)(()=>g===v.Hzf?N:g===v.Vb_?b:e.params,[e.params,g,N,b]);return(0,o.useEffect)(()=>{h&&(\"BROWSE_HEADER\"===g&&w&&f((0,d.jL)((0,t.A)((0,t.A)({},C),{},{cursor:w}))),\"MY_DOWNLOADS_HEADER\"===g&&A&&f((0,c.FM)((0,t.A)((0,t.A)({},C),{},{cursor:A}))))},[h]),e.data.length?j?(0,p.jsx)(u.A,(0,t.A)({ref:i,language:x},e)):(0,p.jsx)(r.A,(0,t.A)({ref:i,language:x},e)):null}}"
+    },
+    {
+      "module": 68142,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 567382,
+      "end": 568962,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>_});var o=n(71748),i=n(41594),r=n(135),s=n(54730),a=n(75553),c=n(9728),l=n(40232),d=n(54693),u=n(18691),E=n(92722);const _=()=>{const e=(0,r.YQ)(),t=(0,i.useState)(\"\"),n=(0,o.A)(t,2),_=n[0],p=n[1],h=(0,i.useState)(!1),m=(0,o.A)(h,2),f=m[0],g=m[1],A=(0,i.useState)([]),v=(0,o.A)(A,2),S=v[0],y=v[1],D=(0,i.useRef)(null),N=(0,r.N4)(e=>e.nav.activeView),C=(0,i.useRef)(null);(0,i.useEffect)(()=>{const e=e=>{C.current&&!C.current.contains(e.target)&&g(!1)};return document.addEventListener(\"mousedown\",e),()=>{document.removeEventListener(\"mousedown\",e)}},[]);return(0,E.jsx)(\"div\",{className:\"main-nav\",style:{paddingLeft:\"10px\"},children:f?(0,E.jsx)(E.Fragment,{children:(0,E.jsxs)(\"div\",{className:\"search-wrapper\",ref:C,children:[(0,E.jsx)(\"input\",{value:_,className:\"search-input\",type:\"text\",autoFocus:!0,onChange:e=>{const t=e.target.value;p(t),D.current&&clearTimeout(D.current),D.current=setTimeout(()=>{t.length>0?(0,c.qp)(t).then(e=>{y(e.map(e=>e.title))}):y([])},300)},onKeyDown:t=>{\"Escape\"===t.code&&(g(!1),y([])),\"Enter\"===t.code&&_.trim().length>0&&(e((0,a.zl)({page:N,keyword:_.trim()})),g(!1),p(\"\"),y([]))},\"aria-autocomplete\":\"list\",\"aria-controls\":\"autocomplete-list\"}),\"\"!==_?(0,E.jsx)(\"i\",{className:\"remove-text-search\",onClick:()=>{g(!1),p(\"\")},id:\"remove-icon\"}):null,(0,E.jsx)(\"span\",{}),S.length>0&&(0,E.jsx)(s.A,{suggestions:S,handleSuggestionClick:t=>{g(!1),p(\"\"),y([]),e((0,a.zl)({page:N,keyword:t}))}})]})}):(0,E.jsx)(l.A,{content:(0,u.JN)(d.Dnh),children:(0,E.jsx)(\"div\",{className:\"search\",onClick:()=>{g(!0)}})})})}}"
+    },
+    {
+      "module": 27588,
+      "path": ".ref/applications/synapse/armory/static/js/630.c8ee2a14.chunk.js",
+      "sha256": "548949eb77971c55bd0d89c387fbddd650a49262318d1b0286ac5db0cf28927e",
+      "offset": 6043,
+      "end": 14124,
+      "source": "(e,n,i){i.d(n,{A:()=>V});var t=i(9446),o=i(71748),s=i(22172),a=i(54543),l=i(99020),d=i(11052),c=i(1297),r=i(59748),u=i(40232),v=i(35062),m=i(27707),p=i(959),h=i(11921),f=i(76921),g=i(135),w=i(88794),A=i(6371),x=i(54425),j=i(39641),y=i(31993),N=i(74220),b=i(41594),C=i(930),I=i(20612),_=i(54176),E=i(18691),D=i(54693),O=i(69937),P=i(10942),M=i(31867),k=i(52259),S=i(40483),T=i(9893),R=i(84058),L=i(92722);const U=(0,b.forwardRef)((e,n)=>{let i=e.data,t=e.language,s=e.downloadHandle,a=e.onShowDetail;const l=(0,b.useState)(null),d=(0,o.A)(l,2),c=d[0],r=d[1],u=(0,g.N4)(e=>null!==c&&void 0!==c&&c.uuid?e.downloadsReducer.downloads[null===c||void 0===c?void 0:c.uuid]:null),v=(0,b.useMemo)(()=>i.map(e=>\"\".concat(e.uuid,\"-\").concat(e.updatedAt||e.downloadedAt||\"\")).join(\"-\"),[i]),m=(0,b.useMemo)(()=>i.map((e,o)=>{const l=o===i.length-1;return(0,L.jsx)(F,{ref:n,item:e,isLast:l,language:t,downloadHandle:s,onShowDetail:a,setSelectedItem:r},e.uuid)}),[i,t,s,a,n]);return(0,L.jsxs)(\"div\",{id:\"profileCardWithGridMode\",className:\"profile-card-grid-wrapper\",children:[m,c&&(0,L.jsx)(S.A,{selectedItem:c,isOpen:!!c,onConfirm:()=>{c&&(s(c,(null===u||void 0===u?void 0:u.status)||\"\"),r(null))},onCancel:()=>{r(null)}})]},v)});U.displayName=\"SharedProfileCardGrid\";const V=U,F=(0,b.forwardRef)((e,n)=>{var i,S,U;let V=e.item,F=e.onShowDetail,W=e.downloadHandle,H=e.language,Y=e.isLast,Z=e.setSelectedItem;const G=V.tags,J=V.category,B=V.isDownloaded,K=V.likesCount,q=V.downloadsCount,z=V.isLiked,X=(0,g.N4)(e=>e.commonReducer).installedModules,$=(0,b.useMemo)(()=>k.Ki[J],[J]),Q=(0,g.N4)(e=>V.uuid?e.downloadsReducer.downloads[V.uuid]:null),ee=(0,g.N4)(e=>e.deviceReducer).devices,ne=(0,b.useState)(!1),ie=(0,o.A)(ne,2),te=ie[0],oe=ie[1],se=(0,b.useState)(!1),ae=(0,o.A)(se,2),le=ae[0],de=ae[1],ce=(0,b.useState)(),re=(0,o.A)(ce,2),ue=re[0],ve=re[1],me=J===f.VZ.CHROMA,pe=J===f.VZ.MACRO,he=J===f.VZ.PROFILE,fe=(0,b.useMemo)(()=>{const e=(0,w._I)(V).map(e=>e.productId);return(ee||[]).map(n=>null!==e&&void 0!==e&&e.includes(n.productId)?n:(0,t.A)((0,t.A)({},n),{},{hasWarning:!0}))},[V,ee]),ge=(0,b.useMemo)(()=>me&&fe.some(e=>e.hasWarning),[fe,me]),we=(0,b.useMemo)(()=>ge&&\"downloading\"!==(null===Q||void 0===Q?void 0:Q.status)&&(null===ee||void 0===ee?void 0:ee.length)>0&&!B,[ge,null===Q||void 0===Q?void 0:Q.status,ee,B]),Ae=(0,b.useCallback)(e=>{we&&Z(e)},[we]),xe=(0,b.useMemo)(()=>X.some(e=>e===$&&(!pe||!he)),[X,$,pe,he]),je=(0,b.useMemo)(()=>{var e,n,i;const t=null===(e=G.filter(e=>\"GAME\"===e.category))||void 0===e||null===(n=e[0])||void 0===n||null===(i=n.images)||void 0===i?void 0:i.coverImageUrl;if(J==f.VZ.PROFILE){var o,s,a,l,r;const e=null===G||void 0===G?void 0:G.find(e=>e.category===f.VZ.DEVICE),n=null!==(o=null===V||void 0===V||null===(s=V.contributionContent)||void 0===s?void 0:s.editionId)&&void 0!==o?o:0,i=null===e||void 0===e||null===(a=e.metadata)||void 0===a?void 0:a.type,d=null!==(l=null===V||void 0===V||null===(r=V.contributionContent)||void 0===r?void 0:r.layoutId)&&void 0!==l?l:i&&[f.IV.LAPTOP,f.IV.KEYBOARD,f.IV.KEYPAD].includes(i)?1:0;return t||(e?\"\".concat((0,h.N)(),\"/synapse/products/\").concat(e.referenceUuid,\"/ui/\").concat(e.referenceUuid,\"_\").concat(n,\"/PluginImages/\").concat(e.referenceUuid,\"_\").concat(n,\"_\").concat(d,\"_dashboard3x.avif\"):null)}if(J==f.VZ.MACRO){const e=G.find(e=>e.category===f.eC.AI||e.category===f.eC.PRODUCTIVITY||e.category===f.eC.GAMING);return null!==e&&void 0!==e&&e.category?d:c}return J==f.VZ.CHROMA?te&&null!==V&&void 0!==V&&V.videoPreview?V.videoPreview:(null===V||void 0===V?void 0:V.imageProfile)||t:null},[V,te]),ye=(0,b.useCallback)(e=>e?e.toLowerCase().replace(/_/g,\" \").split(\" \").map(e=>e.charAt(0).toUpperCase()+e.slice(1)).join(\" \"):\"\",[]),Ne=(0,b.useMemo)(()=>{const e=G.filter(e=>e.category!==f.eC.AI&&e.category!==f.eC.PRODUCTIVITY&&e.category!==f.eC.GAMING&&\"Unknown\"!==e.title);return(0,L.jsxs)(L.Fragment,{children:[e.slice(0,7).map((e,n)=>\"DEVICE\"===e.category?(0,L.jsx)(u.A,{content:(0,L.jsx)(\"div\",{children:ye(null===e||void 0===e?void 0:e.title)}),fit:!0,children:(0,L.jsx)(\"img\",{className:\"icon\",src:m.u9[e.metadata.type],alt:\"device\"})},e.referenceUuid||\"\".concat(e.category,\"_\").concat(n)):\"FUNCTION\"===e.category?(0,L.jsx)(u.A,{content:(0,L.jsx)(\"div\",{children:ye((0,E.JN)(null===e||void 0===e?void 0:e.title))}),fit:!0,children:(0,L.jsx)(r.q,{macroEvent:(0,p.DG)(e.title)})},e.referenceUuid||\"\".concat(e.category,\"_\").concat(n)):\"GAME\"===e.category?null!=e.images.coverImageUrl?(0,L.jsx)(u.A,{content:(0,L.jsx)(\"div\",{children:null===e||void 0===e?void 0:e.title}),fit:!0,children:(0,L.jsx)(\"img\",{className:\"icon icon-game\",src:e.images.coverImageUrl,alt:\"iconApp\"})},e.referenceUuid||\"\".concat(e.category,\"_\").concat(n)):(0,L.jsx)(\"div\",{className:\"icon\",children:(0,L.jsx)(u.A,{content:e.title,fit:!0,children:(0,L.jsx)(l.A,{})})}):void 0),e.length>7&&(0,L.jsx)(u.A,{content:(0,L.jsx)(\"div\",{children:e.slice(7).map(e=>(0,L.jsx)(\"p\",{children:ye(null===e||void 0===e?void 0:e.title)},e.referenceUuid))}),fit:!0,children:(0,L.jsx)(\"div\",{style:{display:\"flex\",alignItems:\"center\",height:\"100%\"},children:(0,L.jsxs)(\"span\",{children:[\"+\",e.length-7]})})})]})},[G]),be=(0,b.useCallback)(async e=>{if(null===e||void 0===e||e.stopPropagation(),null===e||void 0===e||e.preventDefault(),!xe)switch($){case O.BDG:window.open(\"/installer/#type=module&id=macro&location=synapse/macro\",\"synapse_install_macro\",\"policy=7,tab_visible=0,browser_visible=0\"),await(0,M.yy)(300),(0,R._P)(\"/synapse/macro/\",O.BDG,R.ZP.tabVisible,R.ZP.autoFocus);break;case O.HqM:await(0,P.DT)()}},[xe,$]),Ce=(0,b.useMemo)(()=>{const e=k.pB[J];return e?(0,L.jsxs)(\"button\",{className:\"install-module-button\",onClick:be,children:[(0,L.jsx)(\"img\",{src:e.svg,alt:J}),(0,L.jsx)(\"span\",{children:(0,T.k)((0,E.JN)(e.text,{_lang:H}),H)})]}):null},[J,be,H]),Ie=(0,b.useCallback)(()=>{F&&F(V)},[V,F]),_e=(0,b.useCallback)(()=>{me&&oe(!0)},[me]),Ee=(0,b.useCallback)(()=>{me&&oe(!1)},[me]);return(0,L.jsx)(y.A,{uuid:V.uuid,item:V,notificationInfo:ue,children:(0,L.jsxs)(\"div\",{className:\"profileCard\",ref:Y?n:null,children:[(0,L.jsxs)(\"div\",{className:\"thumbnail-container\",onMouseEnter:_e,onMouseLeave:Ee,style:{opacity:le?\"0.3\":\"1\"},children:[me&&te&&null!==V&&void 0!==V&&V.videoPreview?(0,L.jsx)(\"video\",{onClick:Ie,src:je,className:\"thumbnail\",style:{cursor:\"pointer\"},autoPlay:!0,loop:!0,muted:!0,playsInline:!0}):(0,L.jsx)(\"img\",{onClick:Ie,src:je,alt:\"iconApp\",className:\"thumbnail\",style:{cursor:\"pointer\"}}),!xe&&(0,L.jsx)(\"div\",{className:\"overlay\",onClick:Ie,style:{cursor:\"pointer\"},children:Ce}),V.isDownloaded&&xe&&(0,L.jsx)(I.A,{style:{position:\"absolute\",top:\"123px\",left:\"100px\",width:\"90px\",height:\"27px\",textTransform:\"uppercase\"},contribution:V,changeDisableApply:de,onApply:()=>(e=>{ve(e)})(V)})]}),(0,L.jsx)(A.A,{text:(0,T.N)(J,G),hasTick:B}),(0,L.jsx)(\"div\",{style:{position:\"absolute\",top:\"10px\",right:\"10px\"},children:(0,L.jsx)(_.A,{menuClass:\"profile-act\",profile:V,isCustomStyles:!0})}),(0,L.jsx)(x.A,{content:V.title,children:(0,L.jsx)(\"div\",{className:\"profileName truncate-2\",onClick:Ie,style:{cursor:\"pointer\"},children:V.title})}),(0,L.jsx)(\"div\",{className:\"iconInfo\",children:0===V.tags.length?(0,L.jsx)(\"div\",{className:\"icon\",style:{height:\"24px\"}}):Ne}),(0,L.jsx)(N.A,{userName:null===(i=V.contributionAuthor)||void 0===i?void 0:i.nickname,avatar:null===(S=V.contributionAuthor)||void 0===S?void 0:S.avatarUrl,isVerified:null===(U=V.contributionAuthor)||void 0===U?void 0:U.isVerified}),(0,L.jsxs)(\"div\",{className:\"uploadDateInfo\",children:[B?(0,L.jsx)(u.A,{content:\"Download date\",children:(0,L.jsx)(a.A,{width:20,height:20,fill:\"#999999\"})}):(0,L.jsx)(u.A,{content:(0,E.JN)(D.LNH,{_lang:H}),children:(0,L.jsx)(s.A,{width:16,height:16,fill:\"#999999\"})}),(0,L.jsx)(v.A,{date:B&&V.downloadedAt?V.downloadedAt:V.updatedAt,isUpdate:V.isUpdateAvailable&&B})]}),(0,L.jsx)(j.A,{likeCount:K,downloadCount:q,isLiked:z,isDownloaded:B,uuid:V.uuid,category:V.category}),(0,L.jsx)(C.A,{item:V,onClick:we?Ae:W}),(0,L.jsx)(\"div\",{className:\"progress\"})]})},V.uuid)});F.displayName=\"ProfileCardItemGrid\"}"
+    },
+    {
+      "module": 13476,
+      "path": ".ref/applications/synapse/armory/static/js/941.dd2b4d2b.chunk.js",
+      "sha256": "d488f28d0c56e8f7951f636d456e7116c81c07b6e1af8ea4e909224c7402e328",
+      "offset": 531,
+      "end": 4788,
+      "source": "(e,d,o){o.r(d),o.d(d,{default:()=>F});var n=o(9446),t=o(71748),i=o(54693),s=o(86024),l=o(30699),a=o(76921),u=o(135),r=o(81209),c=o(74502),v=o(99404),f=o(41594),b=o(19040),p=o(95091),x=o(10264),g=o(43439),m=o(64650),w=o(90516),A=o(93771),j=o(98631),h=o(91900),y=o(18691),E=o(52259),N=o(20612),P=o(930),_=o(46476),C=o(77989),D=o(92722);const F=()=>{const e=(0,u.N4)(e=>e.myDownloadReducer).data,d=(0,b.useDispatch)(),o=(0,j.A)().handleDownloadProfile,F=(0,C.A)().isPhase1FeaturesEnabled,I=(0,u.N4)(e=>e.filterReducer.page),R=(0,u.N4)(e=>e.nav.activeView),V=(0,f.useMemo)(()=>(0,l.A)({pageName:i.Vb_,page:I,params:{isDownloaded:1}}),[I]),k=(0,u.N4)(e=>e.languageReducer.lang),M=(0,f.useState)(!1),O=(0,t.A)(M,2),S=O[0],L=O[1],Z=(0,f.useState)(a.VZ.PROFILE),z=(0,t.A)(Z,2),B=z[0],K=z[1],T=(0,f.useState)(A.b),q=(0,t.A)(T,2),J=q[0],G=q[1],H=(0,u.N4)(e=>{var d;return null!==(d=e.downloadsReducer.downloads[null===J||void 0===J?void 0:J.uuid])&&void 0!==d?d:null}),U=J.category,Y=J.isDownloaded,Q=(0,f.useMemo)(()=>E.Ki[U],[U]),W=U===a.VZ.MACRO,X=U===a.VZ.PROFILE,$=(0,u.N4)(e=>e.commonReducer).installedModules,ee=(0,f.useMemo)(()=>$.some(e=>e===Q&&(!W||!X)),[$,Q,W,X]),de=(0,f.useState)(!1),oe=(0,t.A)(de,2),ne=oe[0],te=oe[1],ie=(0,f.useState)(!1),se=(0,t.A)(ie,2),le=se[0],ae=se[1],ue=(0,f.useMemo)(()=>W&&!ne,[W,ne]),re=(0,f.useMemo)(()=>ue&&\"downloading\"!==(null===H||void 0===H?void 0:H.status),[ue,null===H||void 0===H?void 0:H.status]);(0,f.useEffect)(()=>{const e=$.some(e=>e===i.BDG);te(e)},[$]),(0,f.useEffect)(()=>{R===i.Vb_&&d((0,r.PF)(V))},[V,R]),(0,f.useEffect)(()=>{const e=e=>{\"isOnline\"===e.key&&\"true\"===e.newValue&&d((0,r.PF)(V))};return window.addEventListener(\"storage\",e),()=>{window.removeEventListener(\"storage\",e)}},[d,V]);const ce=e=>{K(null===e||void 0===e?void 0:e.category),G(e),S||L(!0)},ve=e=>{G(d=>(0,n.A)((0,n.A)({},d),e))},fe=()=>{L(!1)},be=(0,f.useMemo)(()=>{var d;const o=e.find(e=>e.uuid===J.uuid);return null===o||void 0===o||null===(d=o.tags.find(e=>\"DEVICE\"===e.category))||void 0===d?void 0:d.title},[J.uuid]);return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsxs)(g.A,{visible:S,width:1020,headerIcon:(0,D.jsxs)(D.Fragment,{children:[be?\" - \"+be:null,null!==J&&void 0!==J&&J.isDownloaded?(0,D.jsx)(\"img\",{\"data-tip-on-hover\":(0,y.JN)(i.aNb),src:p.A}):null]}),title:B===a.VZ.PROFILE?i.lv1:i.Mau,onClosePopup:fe,footer:(()=>{let d,n;if(null!==J&&void 0!==J&&J.uuid&&e.length){var t,s;const o=e.findIndex(e=>e.uuid===J.uuid);console.log(\"**** ~ index.tsx:86 ~ renderPopupFooter ~ currentProfileIndex:\",o),null!==(t=e[o-1])&&void 0!==t&&t.uuid&&(d=e[o-1]),null!==(s=e[o+1])&&void 0!==s&&s.uuid&&(n=e[o+1])}return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsxs)(\"div\",{className:\"detail-footer\",children:[(0,D.jsx)(\"div\",{className:\"detail-footer__btn\",onClick:()=>d&&\"downloading\"!==(null===H||void 0===H?void 0:H.status)&&ce(d),style:{opacity:\"downloading\"!==(null===H||void 0===H?void 0:H.status)?1:.4},children:(0,D.jsx)(x.A,{text:i.kn4})}),(0,D.jsxs)(\"div\",{className:\"middle-btn-container\",children:[Y&&ee&&(0,D.jsx)(N.A,{contribution:J}),(0,D.jsx)(P.A,{item:J,onClick:()=>{re?ae(!0):o(J,null===H||void 0===H?void 0:H.status)},customButton:e=>(0,D.jsx)(\"div\",{className:\"detail-footer__btn \".concat(\"update\"===e?\"update\":\"download\"),\"data-tip-on-hover\":(0,y.JN)(\"cancel\"===e?i.bOp:\"update\"===e?i.q6F:i.dCE,{_lang:k}),children:(0,D.jsx)(x.A,{text:\"cancel\"===e?i.bOp:\"update\"===e?i.q6F:i.dCE})})}),(0,D.jsxs)(\"div\",{className:\"file-size\",children:[(0,D.jsx)(x.A,{text:i.rbP}),\": 3KB\"]})]}),(0,D.jsx)(\"div\",{className:\"detail-footer__btn\",onClick:()=>n&&\"downloading\"!==(null===H||void 0===H?void 0:H.status)&&ce(n),style:{opacity:\"downloading\"!==(null===H||void 0===H?void 0:H.status)?1:.4},children:(0,D.jsx)(x.A,{text:i.K29})})]}),le&&(0,D.jsx)(_.A,{isOpen:le,onCancel:()=>ae(!1),contribution:J}),(0,D.jsx)(h.A,{contributionUuid:J.uuid})]})})(),children:[B===a.VZ.PROFILE&&null!==J&&void 0!==J&&J.uuid?(0,D.jsx)(w.A,{contribution:J,onClosePopup:fe,updateProfile:ve}):(0,D.jsx)(\"div\",{}),B===a.VZ.MACRO&&null!==J&&void 0!==J&&J.uuid?(0,D.jsx)(m.A,{contribution:J,onClosePopup:fe,updateProfile:ve}):(0,D.jsx)(\"div\",{})]}),(0,D.jsx)(v.A,{}),F&&(0,D.jsx)(c.A,{}),(0,D.jsx)(s.A,{data:e,params:V,downloadHandle:o,onShowDetail:ce})]})}}"
+    },
+    {
+      "module": 66517,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 464256,
+      "end": 466200,
+      "source": "(e,t,n){\"use strict\";n.r(t),n.d(t,{SHARE_PROFILE_MODAL_OPEN:()=>S,SYNAPSE_CURRENT_USER:()=>v,default:()=>y});var o=n(9446),i=n(71748),r=n(54693),s=n(135),a=n(45190),c=n(74502),l=n(99404),d=n(41594),u=n(19040),E=n(65632),_=n(24988),p=n(30699),h=n(30885),m=n(61197),f=n(22478),g=n(77989),A=n(92722);const v=\"currentUserId\",S=\"shareProfileModalOpen\",y=()=>{const e=(0,u.useDispatch)(),t=(0,d.useState)(!1),n=(0,i.A)(t,2),y=n[0],D=n[1],N=(0,s.N4)(e=>e.myUploadsScreen.profileIDForUpdate),C=(0,s.N4)(e=>e.filterReducer.page),M=(0,s.N4)(e=>e.nav.activeView),O=(0,d.useMemo)(()=>(0,p.A)({page:C,pageName:r.C9E}),[C]),T=(0,g.A)().isPhase1FeaturesEnabled,I=(0,s.N4)(e=>e.myUploadsScreen.showShareNewModal),w=(0,s.N4)(e=>e.viewAs.viewAsList),K=(0,s.N4)(e=>e.myUploadsScreen.myUploadedProfilesData),R=[\"flexView\"];w?R.push(\"viewMode--list\"):R.push(\"viewMode--grid\");const P=async t=>{try{const n=await window.localStorage.getItem(v);if(!n)return void console.warn(\"No current user ID found\");await e((0,a.Is)((0,o.A)({userRazerId:n},t)))}catch(n){console.error(\"Failed to fetch available contributions:\",n)}};return(0,d.useEffect)(()=>{if(M!==r.C9E)return;const e=f.A.get(\"isOnline\");D(!1===e),P(O)},[O,M]),(0,d.useEffect)(()=>{const e=e=>{\"isOnline\"===e.key&&(D(\"false\"===e.newValue),\"true\"===e.newValue&&P(O))};return window.addEventListener(\"storage\",e),()=>{window.removeEventListener(\"storage\",e)}},[e,O]),(0,d.useEffect)(()=>(I||\"\"!==N?f.A.set(S,!0):f.A.remove(S),()=>{f.A.remove(S)}),[I,N]),(0,A.jsxs)(\"div\",{children:[(0,A.jsx)(l.A,{}),T&&(0,A.jsx)(c.A,{}),y?null:(0,A.jsxs)(A.Fragment,{children:[(0,A.jsxs)(\"div\",{className:R.join(\" \"),children:[(0,A.jsx)(E.A,{onClickShareNewProfileBox:()=>e((0,a.j2)(!0))}),((e,t)=>e?(0,A.jsx)(m.A,{data:t,params:O}):(0,A.jsx)(h.A,{viewAsList:e,data:t,params:O}))(w,K)]}),(0,A.jsx)(_.A,{isMounted:I||\"\"!==N,onCloseModal:()=>{e((0,a.j2)(!1)),e((0,a.zr)(\"\")),e((0,a.Uy)(!1)),e((0,a.PW)()),f.A.remove(S)}})]})]})}}"
+    },
+    {
+      "module": 54408,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 506861,
+      "end": 507796,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>l});var o=n(71748),i=n(41594),r=n(38198),s=n(49496),a=n(135),c=n(92722);const l=()=>{const e=(0,a.N4)(e=>e.nav.activeView),t=\"MULTIPLE\",n=\"SINGLE\",l=(0,i.useState)(\"\"),d=(0,o.A)(l,2),u=d[0],E=d[1],_=(0,i.useState)(null),p=(0,o.A)(_,2),h=p[0],m=p[1],f=(0,i.useRef)(null),g=(0,i.useCallback)(()=>{if(f.current){var e;const n=f.current.getBoundingClientRect(),o=window.innerHeight-n.bottom-16,i=null===(e=document.getElementById(u===t?\"filter-multi-options\":\"filter-single-options\"))||void 0===e?void 0:e.clientHeight;m(i&&o>i?null:Math.max(100,o))}},[]);return(0,i.useEffect)(()=>{if(u===n||u===t)return g(),window.addEventListener(\"resize\",g),()=>{window.removeEventListener(\"resize\",g)}},[u,g]),(0,c.jsxs)(\"div\",{className:\"filteringBar\",ref:f,children:[\"BROWSE_HEADER\"===e&&(0,c.jsx)(s.A,{onClose:e=>E(e?t:\"\"),open:u===t,maxHeight:h}),(0,c.jsx)(r.A,{onClose:e=>E(e?n:\"\"),open:u===n,maxHeight:h})]})}}"
+    },
+    {
+      "module": 49496,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 501146,
+      "end": 505442,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>f});var o=n(9446),i=n(70017),r=n(18691),s=n(10264),a=n(54693),c=n(19959),l=n(52259),d=n(96472),u=n(76921),E=n(135),_=n(75553),p=n(41594),h=n(92722);const m=e=>{let t=e.value,n=e.onClick,o=e.name,i=void 0===o?\"\":o;return(0,h.jsx)(\"div\",{className:\"dropdown-group\",children:(0,h.jsxs)(\"label\",{className:\"checkbox-razer \",children:[(0,h.jsx)(\"input\",{type:\"checkbox\",checked:t,onChange:n}),(0,h.jsx)(\"div\",{className:\"checkbox\"}),(0,h.jsx)(\"div\",{className:\"info info-armory\",children:(0,h.jsx)(\"div\",{className:\"description\",children:(0,h.jsx)(s.A,{text:i||\"\"})})})]})})},f=e=>{let t=e.onClose,n=e.open,f=e.maxHeight;const g=(0,E.N4)(e=>e.filterReducer.page.BROWSE_HEADER),A=(0,E.N4)(e=>e.languageReducer.lang),v=(0,p.useRef)(null),S=(0,E.YQ)();(0,d.A)();(0,p.useEffect)(()=>{(async()=>{const e=await(0,d.K)();S((0,_.EC)(e.map(e=>({name:e.productName[A],value:!0}))))})()},[]);const y=(0,p.useMemo)(()=>{const e=g.profile.connectedDevices,t=e.filter(e=>e.value).length===e.length,n=g.profile.connectedDevices.filter(e=>e.value),o=g.profile.deviceType.filter(e=>e.value),i=g.profile.download.filter(e=>e.value);return{allDevicesSelected:t,checkedDevices:n,checkedOptions:n.length+o.length+i.length,checkedDownload:i,checkedDeviceType:o}},[g.profile]),D=y.allDevicesSelected,N=y.checkedDevices,C=y.checkedOptions,M=y.checkedDownload,O=y.checkedDeviceType,T=(0,p.useMemo)(()=>{const e=g.macro.macroTypes.filter(e=>e.value),t=g.macro.download.filter(e=>e.value);return{checkedLengthMacroFilter:e.length+t.length,checkedDownloadMacro:t,checkedMacroType:e}},[g.macro]),I=T.checkedLengthMacroFilter,w=T.checkedDownloadMacro,K=T.checkedMacroType;(0,p.useEffect)(()=>{g.category!==u.VZ.PROFILE&&\"\"!==g.category||g.macro.all.value||S((0,_.VN)(!0))},[g.category]),(0,p.useEffect)(()=>{const e=e=>{n&&v.current&&!v.current.contains(e.target)&&t(!1)};return document.addEventListener(\"click\",e),()=>{document.removeEventListener(\"click\",e)}},[]);return(0,h.jsxs)(\"div\",{className:\"dropdown-selector filter-multi \".concat(n?\"active\":\"\"),children:[(0,h.jsx)(c.A,{tooltip:(0,r.JN)(a.x1N),className:\"filter-tooltip\",children:(0,h.jsx)(i.A,{width:24,height:24,fill:n?\"#44D62C\":\"#cccccc\"})}),(0,h.jsx)(\"button\",{className:\"box\",onClick:e=>{e.stopPropagation(),t(!n)},children:(e=>{const t=e=>(0,h.jsxs)(h.Fragment,{children:[\"Filtered (\",e,\")\"]});if(e===u.VZ.MACRO){if(1===I){const e=1===w.length?w[0].text:1===K.length?K[0].text:null;if(e)return(0,r.JN)(e)}return 0!==I?t(I):(0,h.jsx)(s.A,{text:a.z8Z})}const n=C>0?C:\"0\";if(D)return C>N.length?t(n):(0,h.jsx)(s.A,{text:a.izD});if(1===C){const e=1===M.length?M[0].text:1===N.length?N[0].text:1===O.length?O[0].text:null;return e?(0,r.JN)(e):(0,h.jsx)(s.A,{text:a.z8Z})}return 0!==C?t(n):(0,h.jsx)(s.A,{text:a.z8Z})})(g.category)}),n&&(0,h.jsx)(\"div\",{className:\"filter-multi-options\",id:\"filter-multi-options\",ref:v,style:{maxHeight:null!==f&&void 0!==f?f:\"none\",overflowY:f?\"auto\":\"visible\"},children:g.category===u.VZ.PROFILE||\"\"===g.category||g.category===u.VZ.CHROMA?(0,h.jsxs)(h.Fragment,{children:[(0,h.jsx)(m,{onClick:()=>{S((0,_.VN)(!D))},value:D,name:(0,r.JN)(l.mI.name)}),g.profile.connectedDevices.map(e=>(0,h.jsx)(m,{value:e.value,name:e.text,onClick:()=>{S((0,_.ng)((0,o.A)((0,o.A)({},e),{},{value:!e.value})))}},e.id)),(0,h.jsx)(\"div\",{className:\"_divider\"}),g.profile.deviceType.map(e=>(0,h.jsx)(m,{value:e.value,name:e.text,onClick:()=>{S((0,_.Tc)((0,o.A)((0,o.A)({},e),{},{value:!e.value})))}},e.id)),(0,h.jsx)(\"div\",{className:\"_divider\"}),g.profile.download.map(e=>(0,h.jsx)(m,{value:e.value,name:e.text,onClick:()=>{S((0,_.gO)((0,o.A)((0,o.A)({},e),{},{value:!e.value})))}},e.id)),(0,h.jsx)(\"div\",{className:\"_divider\"}),(0,h.jsx)(m,{value:g.profile.all.value,name:g.profile.all.text,onClick:()=>{S((0,_.hJ)())}})]}):(0,h.jsxs)(h.Fragment,{children:[g.macro.macroTypes.map(e=>(0,h.jsx)(m,{value:e.value,name:e.text,onClick:()=>{S((0,_.nA)((0,o.A)((0,o.A)({},e),{},{value:!e.value})))}},e.id)),(0,h.jsx)(\"div\",{className:\"_divider\"}),g.macro.download.map(e=>(0,h.jsx)(m,{value:e.value,name:e.text,onClick:()=>{S((0,_.hD)((0,o.A)((0,o.A)({},e),{},{value:!e.value})))}},e.id)),(0,h.jsx)(\"div\",{className:\"_divider\"}),(0,h.jsx)(m,{value:g.macro.all.value,name:g.macro.all.text,onClick:()=>{S((0,_.Kd)())}})]})})]})}}"
+    },
+    {
+      "module": 38198,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 505448,
+      "end": 506855,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>E});var o=n(8679),i=n(18691),r=n(54693),s=n(19959),a=n(135),c=n(75553),l=n(41594),d=n(19040),u=n(92722);const E=e=>{let t=e.onClose,n=e.open,E=void 0!==n&&n,_=e.maxHeight;const p=(0,a.N4)(e=>e.nav.activeView),h=(0,a.N4)(e=>e.filterReducer.page[p].sort),m=(0,a.N4)(e=>e.languageReducer.lang),f=(0,l.useRef)(null),g=(0,d.useDispatch)();return(0,l.useEffect)(()=>{const e=e=>{E&&(null===e||void 0===e?void 0:e.target)!==(null===f||void 0===f?void 0:f.current)&&t(!1)};return document.addEventListener(\"click\",e),()=>{document.removeEventListener(\"click\",e)}},[]),(0,u.jsxs)(\"div\",{className:\"dropdown-selector filter-single \".concat(E?\"active\":\"\"),children:[(0,u.jsx)(s.A,{className:\"box-state\",onClick:e=>{e.stopPropagation(),t(!E)},tooltip:(0,i.JN)(r.fvL),children:(0,u.jsx)(o.A,{width:24,height:24,fill:E?\"#44D62C\":\"#cccccc\",className:\"ico-sort\"})}),E&&(0,u.jsx)(\"div\",{className:\"filter-single-options\",id:\"filter-single-options\",ref:f,style:{maxHeight:null!==_&&void 0!==_?_:\"none\",overflowY:_?\"auto\":\"visible\"},children:h.map((e,n)=>(0,u.jsx)(\"div\",{className:\"dropdown-group\",onClick:()=>{g((0,c.zb)({page:p,id:e.id})),t(!1)},children:(0,u.jsx)(\"label\",{className:\"checkbox-razer \",children:(0,u.jsx)(\"div\",{className:\"info info-armory\",children:(0,u.jsx)(\"div\",{className:\"description \".concat(e.value?\"active\":\"\"),children:(0,i.JN)(e.text,{_lang:m})})})})},n))})]})}}"
+    },
+    {
+      "module": 52259,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 582759,
+      "end": 584059,
+      "source": "(e,t,n){\"use strict\";n.d(t,{DX:()=>c,HJ:()=>l,IS:()=>h,Ki:()=>m,QB:()=>E,aU:()=>d,gp:()=>g,mI:()=>u,pB:()=>f,tp:()=>p,xt:()=>_});var o=n(54693),i=n(76921),r=n(69937),s=n(18295),a=n(94112);const c=[{id:\"LAPTOP\",name:o.Uip,checked:!1,group:\"DEVICE_TYPES\"},{id:\"MOUSE\",name:o.zwJ,checked:!1,group:\"DEVICE_TYPES\"},{id:\"KEYBOARD\",name:o.f$H,checked:!1,group:\"DEVICE_TYPES\"},{id:\"HEADSET\",name:o.E_Q,checked:!1,group:\"DEVICE_TYPES\"},{id:\"SPEAKER\",name:o.xlL,checked:!1,group:\"DEVICE_TYPES\"}],l=[{id:0,name:o.hdj,checked:!1,group:\"DOWNLOAD_STATUS\"},{id:1,name:o.bN,checked:!1,group:\"DOWNLOAD_STATUS\"}],d={id:o.z8Z,name:o.z8Z,checked:!1,group:o.z8Z},u={id:\"ALL_CONNECTED_DEVICES\",name:o.izD,checked:!0,group:\"CONNECTED_DEVICES\"},E=[{id:i.ev.LIKES,text:o.J6M,value:!0},{id:i.ev.DOWNLOADS,text:o.uYs,value:!1},{id:i.ev.DATE,text:o.k0f,value:!1}],_=[{id:i.ev.TITLE,text:o.lyf,value:!1},{id:i.ev.NICKNAME,text:o.TML,value:!1},{id:i.ev.TRENDING,text:o._1S,value:!1}],p=[{id:i.WP.AI,text:o.kd,value:!1},{id:i.WP.GAMING,text:o.R5J,value:!1},{id:i.WP.PRODUCTIVITY,text:o.Clv,value:!1}],h=\"isShowArmoryIntroductionBanner\",m={[i.VZ.PROFILE]:r.BDG,[i.VZ.MACRO]:r.BDG,[i.VZ.CHROMA]:r.HqM},f={[i.VZ.PROFILE]:{svg:a.A,text:o.yoc},[i.VZ.MACRO]:{svg:a.A,text:o.yoc},[i.VZ.CHROMA]:{svg:s.A,text:o.ay3}},g=[o.U$c,o._1S,o.Y_0]}"
+    },
+    {
+      "module": 70017,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 395958,
+      "end": 396651,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>a});var o=n(9446),i=n(41594),r=n(92722);const s=e=>(0,r.jsxs)(\"svg\",(0,o.A)((0,o.A)({id:\"Filter_icon\",\"data-name\":\"Filter icon\",xmlns:\"http://www.w3.org/2000/svg\",width:\"24\",height:\"24\",viewBox:\"0 0 24 24\"},e),{},{children:[(0,r.jsx)(\"rect\",{id:\"Rectangle_4803\",\"data-name\":\"Rectangle 4803\",width:\"24\",height:\"24\",fill:\"none\"}),(0,r.jsx)(\"path\",{id:\"Path_35201\",\"data-name\":\"Path 35201\",d:\"M7,16a.982.982,0,0,1-1-1V9L.22,1.6A.954.954,0,0,1,.108.55.926.926,0,0,1,1.018,0H14.982a.926.926,0,0,1,.91.55A.954.954,0,0,1,15.78,1.6L9.995,9v4a2.6,2.6,0,0,1-1,2A3.775,3.775,0,0,1,7,16M8,8.3,12.937,2H3.063Z\",transform:\"translate(4 4)\",fill:e.fill})]})),a=(0,i.memo)(s)}"
+    },
+    {
+      "module": 8679,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 399736,
+      "end": 400426,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>a});var o=n(9446),i=n(41594),r=n(92722);const s=e=>(0,r.jsx)(\"svg\",(0,o.A)((0,o.A)({id:\"Sort_-_Order\",\"data-name\":\"Sort - Order\",xmlns:\"http://www.w3.org/2000/svg\",width:\"26\",height:\"26\",viewBox:\"0 0 26 26\"},e),{},{children:(0,r.jsxs)(\"g\",{id:\"icon_sort_descending\",children:[(0,r.jsx)(\"rect\",{id:\"Rectangle_4662\",\"data-name\":\"Rectangle 4662\",width:\"26\",height:\"26\",fill:\"#111\",opacity:\"0\"}),(0,r.jsx)(\"path\",{id:\"Path_29561\",\"data-name\":\"Path 29561\",d:\"M8,12H5V1A1,1,0,0,0,3,1V12H0l4,4ZM19,2H7V0H19a1,1,0,0,1,0,2M17,6H7V4H17a1,1,0,0,1,0,2m-2,4H7V8h8a1,1,0,0,1,0,2m-2,4H8l2-2h3a1,1,0,0,1,0,2\",transform:\"translate(3 5)\",fill:e.fill})]})})),a=(0,i.memo)(s)}"
     }
   ],
   "locales": [
@@ -832,6 +912,146 @@
     {
       "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
       "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53134,
+      "selector": ".profile-act",
+      "declarations": "background:#000;border:1px solid #5d5d5d;height:0;left:-1px;max-width:280px;min-width:155px;position:absolute;top:26px;transition:height 0s,visibility 0s,opacity .1s linear;visibility:hidden;width:-webkit-max-content;width:max-content;will-change:height,visibility,opacity;z-index:3"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53430,
+      "selector": ".profile-act.show",
+      "declarations": "height:auto;opacity:1;visibility:visible;z-index:11"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53500,
+      "selector": ".profile-act .action",
+      "declarations": "align-items:center;background-color:#0000;display:flex;height:auto;line-height:17px;padding:5px 6px;text-transform:capitalize;transition:background-color .3s;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53708,
+      "selector": ".profile-act .action .linked-games-wrapper",
+      "declarations": "align-items:start;display:flex;flex-direction:column"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53804,
+      "selector": ".profile-act .action .linked-games-wrapper .linked-games",
+      "declarations": "height:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 53997,
+      "selector": ".profile-act .divider",
+      "declarations": "background:#5d5d5d;height:1px;margin:4px 6px;width:calc(100% - 12px)"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 54088,
+      "selector": ".profile-act .action:hover",
+      "declarations": "background-color:#ffffff1a"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 54142,
+      "selector": ".profile-act .action.disabled",
+      "declarations": "opacity:.3"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 54183,
+      "selector": ".profile-act .action.disabled:hover",
+      "declarations": "background-color:#0000;cursor:default"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67059,
+      "selector": ".reshare",
+      "declarations": "align-items:center;background:#111;border:1px solid #fd8611;border-radius:5px;display:flex;display:none;flex-direction:column;gap:15px;left:40%;padding:20px;position:absolute;top:30px;width:300px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67264,
+      "selector": ".reshare-show",
+      "declarations": "display:flex"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67291,
+      "selector": ".reshare_wrapper",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67326,
+      "selector": ".reshare__dot",
+      "declarations": "background-color:#fd8611;border-radius:50%;height:8px;position:absolute;right:10px;top:0;transform:translate(50%,-50%);width:8px;z-index:100"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67481,
+      "selector": ".reshare__indicator",
+      "declarations": "background-image:url(../../static/media/indicator.b7ce7af4.svg);background-repeat:no-repeat;background-size:100%;height:36px;left:162px;pointer-events:none;position:absolute;top:-50px;transform:translate(-50%);transition:opacity .3s linear;width:36px;z-index:1050"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67765,
+      "selector": ".reshare__desc",
+      "declarations": "text-align:center;text-transform:none"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 67818,
+      "selector": ".reshare__btn",
+      "declarations": "background-color:#707070;background-color:#44d62c;border:1px solid #000;border-radius:3px;color:#000;cursor:pointer;font-size:12px;height:27px;line-height:14px;padding:6px 0 7px;text-align:center;text-transform:uppercase;-webkit-user-select:none;user-select:none;width:100px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 68107,
+      "selector": ".reshare__btn,.reshare__edit",
+      "declarations": "transition:opacity .3s;will-change:opacity"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 68179,
+      "selector": ".reshare__edit",
+      "declarations": "font-size:14px;opacity:1;text-decoration:underline;text-transform:none"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 68265,
+      "selector": ".reshare__edit:hover",
+      "declarations": "color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 68300,
+      "selector": ".reshare__dot__option",
+      "declarations": "background-color:#fd8611;border-radius:100%;height:7px;margin-left:auto;width:7px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
       "offset": 367170,
       "selector": ".checkbox-razer>input:checked+.checkbox,.filteringBar .filter-multi-options .dropdown-group .checkbox-razer>input:checked+.checkbox",
       "declarations": "background-color:#44d62c;border-color:#44d62c"
@@ -909,6 +1129,489 @@
     {
       "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
       "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382039,
+      "selector": ".share-new-profile-modal",
+      "declarations": "background-color:#222;border-radius:5px 5px 0 0;display:flex;flex-direction:column;justify-content:space-between;left:50%!important;max-width:1020px;min-width:800px;overflow:visible!important;overflow:initial!important;position:absolute;top:108px!important;transform:translate(-50%);transition:top .3s;width:80%;will-change:top"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382392,
+      "selector": ".share-new-profile-modal .modal-header",
+      "declarations": "box-shadow:0 1px 0 0 #5d5d5d;color:#999;font-family:RazerF5;font-size:16px;height:36px;line-height:19px;padding:9px 0 8px;position:relative;text-align:center;text-transform:uppercase;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382624,
+      "selector": ".share-new-profile-modal .modal-header .close-button",
+      "declarations": "cursor:pointer;height:36px;position:absolute;right:0;top:0;transition:background-color .2s;width:36px;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382808,
+      "selector": ".share-new-profile-modal .modal-header .close-button:hover",
+      "declarations": "background-color:#ffffff1a"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382894,
+      "selector": ".share-new-profile-modal .modal-header .close-button:active",
+      "declarations": "background-color:#0000001a"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 382981,
+      "selector": ".share-new-profile-modal .modal-body",
+      "declarations": "height:100%;margin-bottom:40px;overflow-y:scroll;padding:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383080,
+      "selector": ".share-new-profile-modal .modal-footer",
+      "declarations": "align-items:center;background-color:#222;border-top:1px solid #5d5d5d;display:flex;justify-content:center;padding:9px 0 8px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383254,
+      "selector": ".share-new-profile-modal .modal-footer .btn-submit",
+      "declarations": "background-color:#44d62c;border:none;color:#000;cursor:pointer;height:27px;margin:0;width:100px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383401,
+      "selector": ".share-new-profile-form",
+      "declarations": "background-color:#111;border-radius:5px;max-width:800px;min-width:800px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383497,
+      "selector": ".share-new-profile-form .form-input,.share-new-profile-form .form-tool",
+      "declarations": "grid-gap:5px;display:grid;gap:5px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383613,
+      "selector": ".share-new-profile-form .form-input--label",
+      "declarations": "color:#999;font-family:Roboto;font-size:12px;height:17px;text-transform:uppercase"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383738,
+      "selector": ".share-new-profile-form .form-input--helper-text",
+      "declarations": "color:#999;font-family:Roboto;font-size:14px;height:17px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383844,
+      "selector": ".share-new-profile-form .form-input--text-count",
+      "declarations": "color:#707070;font-family:Roboto;font-size:14px;height:17px;text-align:right"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 383969,
+      "selector": ".share-new-profile-form .form-input--warning",
+      "declarations": "align-items:center;color:#fd8611;display:flex;font-family:Roboto;font-size:12px;font-weight:400;gap:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 384118,
+      "selector": ".share-new-profile-form .form-input .warning,.share-new-profile-form .form-tool .warning",
+      "declarations": "border:1px solid #fd8611"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 384232,
+      "selector": ".share-new-profile-form .form-input .dropdown-area,.share-new-profile-form .form-tool .dropdown-area",
+      "declarations": "margin:0;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 384353,
+      "selector": ".share-new-profile-form .form-input .dropdown-area .s3-dropdown,.share-new-profile-form .form-tool .dropdown-area .s3-dropdown",
+      "declarations": "height:27px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 384492,
+      "selector": ".share-new-profile-form .form-input .dropdown-area .s3-options .raw-text .img-wrap img,.share-new-profile-form .form-tool .dropdown-area .s3-options .raw-text .img-wrap img",
+      "declarations": "margin-right:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 384682,
+      "selector": ".share-new-profile-form .form-input .dropdown-area .dropdown-tooltip,.share-new-profile-form .form-tool .dropdown-area .dropdown-tooltip",
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;border-radius:4px;color:#ccc;font-family:Roboto;font-size:14px;font-weight:400;line-height:1.2142857143em;max-width:300px;padding:8px 10px;pointer-events:none;position:absolute;z-index:1000"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385056,
+      "selector": ".share-new-profile-form .form-input>input,.share-new-profile-form .form-tool>input",
+      "declarations": "background:#111;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;height:23px;line-height:17px;padding-left:5px;text-align:left"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385287,
+      "selector": ".share-new-profile-form .form-input>textarea,.share-new-profile-form .form-tool>textarea",
+      "declarations": "background:#111;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;height:91px;line-height:17px;padding-left:5px;resize:none;text-align:left"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385536,
+      "selector": ".share-new-profile-form .form-tool",
+      "declarations": "align-items:end;display:flex;justify-content:space-between;margin-top:30px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385646,
+      "selector": ".share-new-profile-form .form-tool .add-btn",
+      "declarations": "align-items:center;background-color:#0000;border:1px solid #575757;cursor:pointer;display:flex;height:32px;justify-content:center;width:32px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385831,
+      "selector": ".share-new-profile-form .form-tool .add-btn.active",
+      "declarations": "background-color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385907,
+      "selector": ".share-new-profile-form .form-tool .add-btn:hover",
+      "declarations": "border:1px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 385982,
+      "selector": ".share-new-profile-form .form-body",
+      "declarations": "display:flex;flex-direction:column;gap:15px;padding:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 386074,
+      "selector": ".share-new-profile-form .form-row",
+      "declarations": "grid-gap:15px;display:grid;gap:15px;grid-template-columns:1fr 1fr"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 386174,
+      "selector": ".share-new-profile-form .tab",
+      "declarations": "display:flex;font-family:RazerF5;font-size:12px;gap:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 386260,
+      "selector": ".share-new-profile-form .tab-disable",
+      "declarations": "opacity:.3;pointer-events:none"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 386328,
+      "selector": ".share-new-profile-form .popup-widget .choose-a-mat",
+      "declarations": "top:50px;width:80%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 386399,
+      "selector": ".share-new-profile-form .popup-widget .choose-a-mat .content .text-wrapper",
+      "declarations": "max-width:550px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395230,
+      "selector": ".detail-footer",
+      "declarations": "align-items:center;display:flex;justify-content:space-between;padding:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395320,
+      "selector": ".detail-footer .middle-btn-container",
+      "declarations": "align-items:center;display:flex;height:27px;position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395419,
+      "selector": ".detail-footer__btn",
+      "declarations": "align-content:center;border:1px solid #ccc;border-radius:3px;color:#ccc;cursor:pointer;font-size:12px;height:27px;line-height:16px;text-align:center;text-transform:uppercase;width:90px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395624,
+      "selector": ".detail-footer__btn:hover",
+      "declarations": "background-color:#000"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395672,
+      "selector": ".detail-footer__btn.download",
+      "declarations": "background-color:#44d62c;border:1px solid #0000;color:#000;padding:6px 16px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395788,
+      "selector": ".detail-footer__btn.download:hover",
+      "declarations": "background-color:#7de36c"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395848,
+      "selector": ".detail-footer__btn.update",
+      "declarations": "background-color:#fd8611;border:1px solid #0000;color:#000;padding:6px 16px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 395962,
+      "selector": ".detail-footer__btn.update:hover",
+      "declarations": "background-color:#feab59"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 396020,
+      "selector": ".detail-footer .apply-button",
+      "declarations": "margin-right:10px;position:absolute;right:100%;text-align:center;width:90px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 396125,
+      "selector": ".detail-footer .file-size",
+      "declarations": "color:#999;left:100%;margin-left:10px;position:absolute;white-space:nowrap;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 396483,
+      "selector": ".popUp-button .profile-act",
+      "declarations": "width:100px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 396754,
+      "selector": ".popUp-button.list .profile-act",
+      "declarations": "left:auto;right:0;top:26px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 402003,
+      "selector": ".custom-profile-act",
+      "declarations": "margin-top:2px;width:100px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 410509,
+      "selector": ".share-profile-card",
+      "declarations": "background:#111 0 0 no-repeat padding-box;border-radius:5px;box-shadow:0 0 6px 0 #000c;display:flex;flex-direction:column;height:360px;position:relative;width:290px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 410694,
+      "selector": ".share-profile-card .thumbnail",
+      "declarations": "background-position:50%;background-repeat:no-repeat;background-size:contain;border-top-left-radius:2px;border-top-right-radius:2px;height:160px;object-fit:cover;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 410897,
+      "selector": ".share-profile-card .thumbnail-container",
+      "declarations": "height:160px;position:relative;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 410980,
+      "selector": ".share-profile-card .overlay",
+      "declarations": "align-items:center;background:#0009;display:flex;height:100%;justify-content:center;left:0;position:absolute;top:0;width:100%;z-index:2"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411145,
+      "selector": ".share-profile-card:hover",
+      "declarations": "border-color:#43d62c4d"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411194,
+      "selector": ".share-profile-card .chipTag__text",
+      "declarations": "left:10px;position:absolute;top:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411266,
+      "selector": ".share-profile-card .content",
+      "declarations": "padding:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411308,
+      "selector": ".share-profile-card .content .profileName",
+      "declarations": "-webkit-line-clamp:2;-webkit-box-orient:vertical;color:#ccc;display:-webkit-box;font:normal normal normal 16px/18px RazerF5;height:37px;letter-spacing:0;margin:0;opacity:1;overflow:hidden;position:relative;text-align:left"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411572,
+      "selector": ".share-profile-card .content .uploadDateInfo",
+      "declarations": "align-items:center;display:flex;gap:7px;margin-top:32px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411673,
+      "selector": ".share-profile-card .content .uploadDateInfo .uploadDate",
+      "declarations": "color:#999;font:normal 14px/16px Roboto"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411770,
+      "selector": ".share-profile-card .content .supportedImages",
+      "declarations": "align-items:center;display:flex;gap:10px;margin-top:15px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411873,
+      "selector": ".share-profile-card .content .supportedImages .icon-game",
+      "declarations": "object-fit:cover"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 411947,
+      "selector": ".share-profile-card .content .supportedImages .icon",
+      "declarations": "color:#fff;height:20px;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412033,
+      "selector": ".share-profile-card .content .supportedImages .icon[data-icon-tip]:after",
+      "declarations": "content:attr(data-icon-tip);height:auto;left:50%;width:-webkit-fit-content;width:fit-content;z-index:3"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412209,
+      "selector": ".share-profile-card .content .footer",
+      "declarations": "align-items:end;display:flex;justify-content:space-between;margin-top:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412320,
+      "selector": ".share-profile-card .content .footer .profile-del",
+      "declarations": "white-space:pre-line;width:300px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412403,
+      "selector": ".share-profile-card .content .footer .left",
+      "declarations": "align-items:end;display:flex;gap:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412484,
+      "selector": ".share-profile-card .content .footer .left .interaction",
+      "declarations": "display:flex;gap:20px;margin:0;padding:0"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412581,
+      "selector": ".share-profile-card .content .footer .left .tooltip-container",
+      "declarations": "height:17px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 412655,
+      "selector": ".share-profile-card .content .footer .tooltip-container",
+      "declarations": "margin:0;padding:0"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 418070,
+      "selector": ".profile-card-item-list",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 418112,
+      "selector": ".profile-card-item-list .install-button",
+      "declarations": "position:absolute;right:3px;top:3px;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 418559,
+      "selector": ".profile-card-grid-wrapper",
+      "declarations": "display:flex;flex-wrap:wrap;gap:16px;padding-left:30px;padding-top:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 418658,
+      "selector": ".profile-card-grid-wrapper>div",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
+      "offset": 418707,
+      "selector": ".profile-card-grid-wrapper>div:hover:after",
+      "declarations": "border:2px solid #44d62c4d;border-radius:5px;content:\"\";inset:0;pointer-events:none;position:absolute;z-index:10"
+    },
+    {
+      "path": ".ref/applications/synapse/armory/static/css/main.c0e644c4.css",
+      "sha256": "a86928bec83aa85ace16977a240478ce8eb667954b88bb9fe9690c1ec2e282df",
       "offset": 418863,
       "selector": ".nav-tabs .profile-wrapper",
       "declarations": "padding-left:0"
@@ -977,6 +1680,37 @@
       "declarations": "background-image:url(../../static/media/icon_close.cb2e944c.svg);background-position:50%;background-repeat:no-repeat;cursor:pointer;height:24px;margin-left:auto;margin-right:0;position:absolute;right:10px;top:10px;width:24px"
     }
   ],
+  "inline_icons": [
+    {
+      "module": 70017,
+      "output": "assets/synapse/armory-filter.svg",
+      "sha256": "744cb5903dbb0b84b0cafa5325f7a0607348063a6745bfd1d42196970de63872"
+    },
+    {
+      "module": 8679,
+      "output": "assets/synapse/armory-sort.svg",
+      "sha256": "f6668f4975a2f754591b15765fad856a796023d45888ed737b8c51bad21c9fc0"
+    }
+  ],
+  "verified_control_locale_keys": [
+    "ALL_CONNECTED_DEVICES_TEXT",
+    "LAPTOPS",
+    "MICE",
+    "KEYBOARDS",
+    "HEADSETS",
+    "SPEAKERS",
+    "NEVER_DOWNLOADED",
+    "ALREADY_DOWNLOADED",
+    "VIEW_ALL_ITEMS",
+    "MOST_LIKES",
+    "MOST_DOWNLOADS",
+    "LATEST",
+    "TITLE",
+    "CREATOR_NAME",
+    "TEXT_TRENDING",
+    "FILTER",
+    "SORT"
+  ],
   "behavior": {
     "settled_without_features": [
       "BROWSE_HEADER",
@@ -986,12 +1720,68 @@
     "feature_flags": false,
     "data_grid_when_empty": null,
     "banner_default": true,
-    "banner_close_source": "localStorage boolean via module 95889"
+    "banner_close_source": "localStorage boolean via module 95889",
+    "filtering_bar": {
+      "mounted_for": [
+        "BROWSE_HEADER",
+        "MY_DOWNLOADS_HEADER"
+      ],
+      "source_modules": [
+        54408,
+        49496,
+        38198,
+        52259,
+        70017,
+        8679
+      ],
+      "local_state": [
+        "filter_open",
+        "sort_open",
+        "filter_selection",
+        "sort_choice"
+      ],
+      "filter_options": [
+        "ALL_CONNECTED_DEVICES_TEXT",
+        "LAPTOPS",
+        "MICE",
+        "KEYBOARDS",
+        "HEADSETS",
+        "SPEAKERS",
+        "NEVER_DOWNLOADED",
+        "ALREADY_DOWNLOADED",
+        "VIEW_ALL_ITEMS"
+      ],
+      "sort_options": [
+        "MOST_LIKES",
+        "MOST_DOWNLOADS",
+        "LATEST",
+        "TITLE",
+        "CREATOR_NAME",
+        "TEXT_TRENDING"
+      ],
+      "option_panels": [
+        "armory-filter-options",
+        "armory-sort-options"
+      ],
+      "service_actions": "deferred"
+    },
+    "search": {
+      "source_module": 68142,
+      "debounce_ms": 300,
+      "service_actions": "deferred"
+    },
+    "content": {
+      "card_module": 27588,
+      "lazy_list_module": 86024,
+      "detail_module": 13476,
+      "share_module": 66517,
+      "empty_dataset_render": "null"
+    }
   },
   "limitations": [
     "The source initially chooses Spotlight, then settles on Browse when feature loading ends with phase1 false.",
-    "Local banner dismissal is retained for the lifetime of this page; source localStorage persistence remains to be connected.",
-    "Search/filter controls, feature-enabled content, detail/share dialogs and services remain incomplete.",
+    "The source localStorage key is mirrored under APPDATA/razer_ui; service-backed persistence remains local to this shell.",
+    "Filter controls mirror the source device/download groups and six sort entries with local state; the source search shell and 300ms debounce are mounted without remote suggestions/results; service-backed filtering/sorting, content cards, detail/share dialogs and services remain incomplete. Current source receipts cover card (27588), detail (13476), and upload/share (66517) branches without inventing their service payloads.",
     "No application execution or pixel validation."
   ],
   "problems": []

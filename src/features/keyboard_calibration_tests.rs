@@ -12,7 +12,7 @@ fn calibration_open_cancel_and_keyboard_never_modify_profile(cx: &mut TestAppCon
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16. * scale)));
         let mut entity = None;
         let handle = cx.open_window(size(px(1280. * scale), px(1100. * scale)), |window, cx| {
-            let view = cx.new(|cx| KeyboardProductWorkspace::new(pid, window, cx));
+            let view = cx.new(|cx| KeyboardProductWorkspace::new(pid, false, window, cx));
             view.update(cx, |view, cx| view.set_page("TAB_CALIBRATION", window, cx));
             entity = Some(view.clone());
             Root::new(view, window, cx)

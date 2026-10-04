@@ -112,7 +112,13 @@ mod sensitivity_tests;
 #[path = "workspace_tests.rs"]
 mod tests;
 impl DeviceWorkspace {
-    pub(super) fn change_profile_metadata(&mut self, id: &str, change: super::product_workspace::ProfileMetadata, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn change_profile_metadata(
+        &mut self,
+        id: &str,
+        change: super::product_workspace::ProfileMetadata,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if super::product_workspace::edit_profile_metadata(&mut self.device, id, change) {
             self.refresh_profile_choices(window, cx);
             self.changed(cx);

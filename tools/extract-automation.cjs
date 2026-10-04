@@ -56,12 +56,26 @@ const exported=name=>decode(productExports.arguments[1].properties.find(p=>p.key
 const effects=exported('QUICK_EFFECTS'),metadata=exported('DeviceInfo');
 const constantsModule=modules.get(13254),constantsExports=calls.find(c=>c.start>=constantsModule.start&&c.end<=constantsModule.end);
 const effectDefaults=decode(constantsExports.arguments[1].properties.find(p=>p.key.name==='U2A').value.body);
+const quickColorClasses=[];
+function captureQuickColor(node){
+ if(!node?.type)return;
+ if(node.type==='ClassDeclaration'&&['_l','vl'].includes(node.id?.name)&&node.start>6400000&&node.start<6460000)quickColorClasses.push(node);
+ for(const value of Object.values(node))if(Array.isArray(value))value.forEach(captureQuickColor);else if(value?.type)captureQuickColor(value);
+}
+captureQuickColor(ast);
+const paletteDeclaration=declarations.find(node=>node.id.name==='ZT'&&node.start>6400000&&node.start<6410000);
+const paletteNode=paletteDeclaration.init.type==='SequenceExpression'?paletteDeclaration.init.expressions.at(-1):paletteDeclaration.init;
+const quickColorPalette=decode(paletteNode);
+const sourceColorRendering=components.find(component=>component.source.startsWith('function LP('));
+for(const item of quickColorClasses)for(const match of source.slice(item.start,item.end).matchAll(/ze\.([A-Za-z_$][\w$]*)/g))if(labels[match[1]])keys.add(labels[match[1]]);
+for(const key of ['COLOR','COLOR_DROP_NAME','RANDOM_COLOR'])keys.add(key);
 for(const effect of effects)keys.add(effect.name);
 const empty=declarations.find(n=>n.id.name==='lH'&&n.start>6935000&&n.start<6935612);
 const empty_messages=Object.fromEntries(empty.init.properties.map(p=>[p.key.value,labels[p.value.properties[0].value.property.name]]));
 for(const key of Object.values(empty_messages))keys.add(key);
 for(const a of actions)keys.add(a.content);
 for(const key of ['PICK_UP','PUT_DOWN','RESTORE_PREVIOUS_SETTINGS','QUICK_EFFECTS','ADVANCED_EFFECTS','CHROMA','AUDIO_DEVICE','MICROPHONE','GLOBAL_SHORTCUT_AUTO','LAUNCH_A_GAME','MACRO','CANCEL','SAVE','ADD','DELETE','PAUSE_GAME_AUTO'])keys.add(key);
+const quickMacroTypes=decode(declarations.find(n=>n.id.name==='Jv'&&n.start>6910000&&n.start<6920000).init);
 const localeMap=declarations.find(n=>n.init?.type==='ObjectExpression'&&n.init.properties.length===10&&n.init.properties.every(p=>p.value.type==='Identifier')&&n.init.properties.some(p=>p.key.name==='en')&&n.init.properties.some(p=>{try{return (p.computed?decode(p.key):p.key.value)==='zh-CN';}catch{return false;}}));
 if(!localeMap)throw Error('Missing locale map');
 const translations={};
@@ -89,18 +103,41 @@ for(const [ix,node] of kinds.init.elements.entries()){
  if(!Object.values(manifest.files).some(p=>p.replace(/^\.\//,'')===request))throw Error('Undeclared icon');
  assets.push({source:'.ref/devices/3946/'+request,url:'https://apps.razer.com/synapse/products/3946/ui/'+request,output:`assets/synapse/automation-${ix}.svg`});
 }
-for(const name of ['icon_add_light_grey','icon_delete','tooltip_questionmark','icon_warning','thx_spatial_audio_logo','logo-7.1']){
+for(const name of ['icon_add_light_grey','icon_delete','tooltip_questionmark','icon_warning','thx_spatial_audio_logo','logo-7.1','icon_folder','icon_expand','icon_close']){
  const request=Object.values(manifest.files).find(v=>new RegExp('/'+name+'\\.[a-f0-9]+\\.svg$').test(v))?.replace(/^\.\//,'');
  if(!request)throw Error('Missing auxiliary icon '+name);
  assets.push({source:'.ref/devices/3946/'+request,url:'https://apps.razer.com/synapse/products/3946/ui/'+request,output:`assets/synapse/automation-${name}.svg`});
 }
+// Convert only literal JSX SVG props. No downloaded JavaScript is evaluated.
+const macroIcon=declarations.find(n=>n.id.name==='tH'&&n.start>6917000&&n.end<6920390).init;
+const escapeXml=value=>String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function literalSvg(node){
+ if(node.type!=='CallExpression'||node.arguments[0]?.type!=='Literal'||node.arguments[1]?.type!=='ObjectExpression')throw Error('Changed quick macro JSX');
+ const tag=node.arguments[0].value;
+ if(!['svg','path'].includes(tag))throw Error('Unexpected quick macro SVG node');
+ const props=node.arguments[1].properties,attributes=[],children=[];
+ for(const p of props){
+  const key=p.key.name??p.key.value;
+  if(key==='children'){children.push(literalSvg(p.value));continue;}
+  if(key==='width'||key==='height'){attributes.push(`${key}="20"`);continue;}
+  if(p.value.type!=='Literal')throw Error('Nonliteral quick macro SVG attribute');
+  attributes.push(`${key}="${escapeXml(p.value.value)}"`);
+ }
+ return `<${tag} ${attributes.join(' ')}>${children.join('')}</${tag}>`;
+}
+for(const branch of macroIcon.body.body.find(n=>n.type==='SwitchStatement').cases){
+ const statement=branch.consequent.find(n=>n.type==='ReturnStatement'&&n.argument?.type==='CallExpression');
+ if(!statement||!branch.test)continue;
+ const kind=branch.test.value,svg=literalSvg(statement.argument)+'\n';
+ assets.push({source:file.path,source_offset:statement.argument.start,source_end:statement.argument.end,source_fragment:source.slice(statement.argument.start,statement.argument.end),inline_svg:svg,output:`assets/synapse/automation-quick-macro-${kind}.svg`});
+}
 const css=[];
 for(const f of fs.readdirSync(path.join(root,'.ref/devices/3946/static/css')).filter(f=>f.endsWith('.css'))){
- const p='.ref/devices/3946/static/css/'+f,s=read(p),rules=s.split('}').filter(r=>/automation-|AutomationModal_|LaunchSoundApp_/.test(r.split('{')[0])).map(r=>r+'}');
+ const p='.ref/devices/3946/static/css/'+f,s=read(p),rules=s.split('}').filter(r=>/automation-|AutomationModal_|LaunchSoundApp_|quick-macro|macro-type-select|macro-keyboard|macro-pill|effects-area|color-opts|dropdown-color/.test(r.split('{')[0])).map(r=>r+'}');
  if(rules.length)css.push({path:p,sha256:hash(s),rules});
 }
 function emit(p,v){const s=JSON.stringify(v,null,2)+'\n';if(process.argv.includes('--check')){if(read(p)!==s)throw Error('Stale '+p);}else fs.writeFileSync(path.join(root,p),s);}
-emit('src/features/automation_data.json',{product_id:3946,page:page.key,metadata,effects,effect_defaults:effectDefaults,empty_messages,actions,translations,assets});
+emit('src/features/automation_data.json',{product_id:3946,page:page.key,metadata,effects,effect_defaults:effectDefaults,empty_messages,actions,quick_macro_types:quickMacroTypes,quick_color_palette:quickColorPalette,translations,assets});
 const profile_bar=[];
 for(const needle of ['setProfileDropdownState','enableSwitchProfile:','displayProfileBar:','isEnableProfileBar:'])for(const match of source.matchAll(new RegExp(needle,'g')))profile_bar.push({needle,offset:Math.max(0,match.index-120),source:source.slice(Math.max(0,match.index-120),match.index+350)});
 const profile_bar_labels=Object.fromEntries(['tPc','_$r','lgc'].map(k=>[k,labels[k]]));
@@ -110,5 +147,6 @@ for(const needle of ['this.loadActiveProfileSettings=async()=>','case le.nI5:','
  persistence.push({needle,offset,source:source.slice(offset,offset+(needle.startsWith('this.')?2800:550))});
 }
 const automation_actions=Object.fromEntries(['jy3','c24','nI5','HTo'].map(k=>[k,decode(constantsExports.arguments[1].properties.find(p=>p.key.name===k).value.body)]));
-emit('docs/re/automation-current-evidence.json',{method:'Acorn literals and mounted current source; vendor code never executed',generator_sha256:hash(fs.readFileSync(__filename)),source_files:pending.source_files,profile_bar,profile_bar_labels,persistence,automation_actions,manifest:{path:manifestPath,sha256:hash(read(manifestPath))},actions:{offset:kinds.start,end:kinds.end,source:source.slice(kinds.start,kinds.end)},css,components});
+const quick_color_parameters={palette:{offset:paletteNode.start,end:paletteNode.end,source:source.slice(paletteNode.start,paletteNode.end)},components:quickColorClasses.map(node=>({name:node.id.name,offset:node.start,end:node.end,source:source.slice(node.start,node.end)})),mounted_by:sourceColorRendering};
+emit('docs/re/automation-current-evidence.json',{method:'Acorn literals and mounted current source; vendor code never executed',generator_sha256:hash(fs.readFileSync(__filename)),source_files:pending.source_files,profile_bar,profile_bar_labels,persistence,automation_actions,quick_color_parameters,manifest:{path:manifestPath,sha256:hash(read(manifestPath))},actions:{offset:kinds.start,end:kinds.end,source:source.slice(kinds.start,kinds.end)},css,components});
 console.log('Extracted August T2 automation categories, localized labels and artwork.');

@@ -234,6 +234,55 @@ impl HueWorkspace {
                         .child(self.effect_parameters(enabled, cx)),
                 );
         }
+        // `pA` mounts this helper into the advanced-effects tab in the
+        // current Hue bundle. Keep the same 36px animated indicator and the
+        // 280px explanatory popover, while allowing the user to dismiss it
+        // locally. No service state is inferred from the tutorial.
+        if self.tutorial_visible && enabled {
+            card = card.child(
+                div()
+                    .id("hue-advanced-tutorial")
+                    .absolute()
+                    .left_0()
+                    .right_0()
+                    .top(surface::css(5.))
+                    .h(surface::css(36.))
+                    .child(
+                        gpui_kit::base::Button::new("hue-advanced-tutorial-dot")
+                            .p_0()
+                            .size(surface::css(36.))
+                            .accessibility_label(i18n::t("ADVANCED_EFFECT_DETAILS"))
+                            .child(img("synapse/hue-indicator_animated.svg").size_full())
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.tutorial_visible = false;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        div()
+                            .absolute()
+                            .left(surface::css(90.))
+                            .top(surface::css(-15.))
+                            .w(surface::css(280.))
+                            .p(surface::css(15.))
+                            .border_1()
+                            .border_color(Colors::warning())
+                            .rounded(surface::css(3.))
+                            .shadow(vec![BoxShadow {
+                                inset: false,
+                                color: rgba(0x00000033).into(),
+                                offset: point(px(0.), px(6.)),
+                                blur_radius: px(10.),
+                                spread_radius: px(0.),
+                            }])
+                            .bg(rgb(0x111111))
+                            .text_color(rgb(0xcccccc))
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(17.))
+                            .child(i18n::t("ADVANCED_EFFECT_DETAILS")),
+                    ),
+            );
+        }
         card.into_any_element()
     }
     fn effect_parameters(&self, enabled: bool, cx: &Context<Self>) -> AnyElement {

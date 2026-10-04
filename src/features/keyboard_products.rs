@@ -71,13 +71,21 @@ pub(crate) struct KeyboardProductWorkspace {
     scroll: ScrollHandle,
     actuation: Option<actuation::State>,
     calibration_intro_visible: bool,
+    /// Source `profileReducer.isFactoryDefaultProfile`; the calibration page
+    /// renders a warning and disables its customize surface for this profile.
+    factory_default_profile: bool,
     /// Explicit development workspace only; live calibration never fabricates events.
     calibration_preview: bool,
     calibration_modal: Option<Entity<calibration::CalibrationModal>>,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
-    pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(
+        pid: u32,
+        factory_default_profile: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let spec = source_product(pid).expect("audited keyboard product");
         let mut this = Self {
             spec,
@@ -91,7 +99,8 @@ impl KeyboardProductWorkspace {
             syncing: false,
             scroll: ScrollHandle::new(),
             actuation: None,
-            calibration_intro_visible: true,
+            calibration_intro_visible: calibration::load_intro_visibility(),
+            factory_default_profile,
             calibration_preview: false,
             calibration_modal: None,
         };
@@ -136,6 +145,22 @@ impl KeyboardProductWorkspace {
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
+    }
+
+    pub(crate) fn set_factory_default_profile(
+        &mut self,
+        factory_default_profile: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.factory_default_profile == factory_default_profile {
+            return;
+        }
+        self.factory_default_profile = factory_default_profile;
+        if factory_default_profile {
+            self.dismiss_calibration(window, cx);
+        }
+        cx.notify();
     }
     pub(crate) fn snapshot(&self) -> Value {
         self.draft.clone()
@@ -367,6 +392,84 @@ impl KeyboardProductWorkspace {
             cx.emit(KeyboardProductChanged);
             cx.notify();
         }
+    }
+    fn keymap_assignment(&self, input: &str) -> Option<Value> {
+        self.draft
+            .pointer(&self.mapping_path())
+            .and_then(Value::as_array)
+            .and_then(|mappings| {
+                mappings.iter().find(|mapping| {
+                    mapping["inputID"].as_str() == Some(input)
+                        && mapping["isHyperShift"].as_bool().unwrap_or(false) == self.hypershift
+                        && mapping["outputType"].as_str() == Some("keymapGroup")
+                })
+            })
+            .cloned()
+    }
+    fn assign_keymap(
+        &mut self,
+        input: &str,
+        kind: &str,
+        keymap: Option<&Value>,
+        clutch: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let mut group = json!({"type": kind, "isClutch": false});
+        if kind == "specificKeymap" {
+            let Some(keymap) = keymap else {
+                return;
+            };
+            let Some(guid) = keymap["guid"].as_str() else {
+                return;
+            };
+            group["guid"] = json!(guid);
+            group["name"] = keymap["name"].clone();
+            group["isClutch"] = json!(clutch);
+            if clutch {
+                if let Some(active) = self.draft["activeKeymapId"].as_str() {
+                    group["previousKeymapGuid"] = json!(active);
+                }
+            }
+        }
+        self.assign_key(
+            input,
+            json!({
+                "outputType": "keymapGroup",
+                "keymapGroup": group,
+            }),
+            cx,
+        );
+    }
+    fn assign_keyboard_mouse(
+        &mut self,
+        input: &str,
+        assignment: Option<&str>,
+        cx: &mut Context<Self>,
+    ) {
+        let path = self.mapping_path();
+        let Some(mappings) = self.draft.pointer_mut(&path).and_then(Value::as_array_mut) else {
+            return;
+        };
+        let Some(mapping) = mappings.iter_mut().find(|mapping| {
+            mapping["inputID"].as_str() == Some(input)
+                && mapping["isHyperShift"].as_bool().unwrap_or(false) == self.hypershift
+                && mapping["outputType"].as_str() == Some("keyboardGroup")
+        }) else {
+            return;
+        };
+        let Some(group) = mapping["keyboardGroup"].as_object_mut() else {
+            return;
+        };
+        match assignment {
+            Some(assignment) => {
+                group.insert("mouseGroup".into(), json!({"mouseAssignment": assignment}));
+            }
+            None => {
+                group.remove("mouseGroup");
+            }
+        }
+        cx.emit(KeyboardProductChanged);
+        cx.notify();
     }
     fn choices(
         &self,
@@ -752,6 +855,220 @@ impl KeyboardProductWorkspace {
                             this.assign_key(&input,json!({"outputType":"keyboardGroup","keyboardGroup":{"key":{"HID":hid,"pageID":page,"flag":0},"modifiers":[]}}),cx);
                         })))
                     })));
+                }
+                if supported("MOUSE_FUNCTION") {
+                    let keyboard_mapping = self
+                        .draft
+                        .pointer(&self.mapping_path())
+                        .and_then(Value::as_array)
+                        .and_then(|mappings| {
+                            mappings.iter().find(|mapping| {
+                                mapping["inputID"].as_str() == Some(&input)
+                                    && mapping["isHyperShift"].as_bool().unwrap_or(false)
+                                        == self.hypershift
+                                    && mapping["outputType"].as_str() == Some("keyboardGroup")
+                            })
+                        })
+                        .cloned()
+                        .unwrap_or_default();
+                    let keyboard_group = keyboard_mapping["keyboardGroup"].clone();
+                    let mouse_assignment = keyboard_group
+                        .pointer("/mouseGroup/mouseAssignment")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned);
+                    let has_keyboard = keyboard_group.is_object();
+                    let mouse_actions = [
+                        ("Click", "TEXT_MOUSE_BIND_LEFT_CLICK"),
+                        ("Menu", "TEXT_MOUSE_BIND_RIGHT_CLICK"),
+                        ("ScrollButton", "TEXT_MOUSE_BIND_SCROLL_CLICK"),
+                        ("Previous", "TEXT_MOUSE_BUTTON_4"),
+                        ("Next", "TEXT_MOUSE_BUTTON_5"),
+                        ("ScrollUp", "TEXT_MOUSE_BIND_SCROLL_UP"),
+                        ("ScrollDown", "TEXT_MOUSE_BIND_SCROLL_DOWN"),
+                    ];
+                    panel =
+                        panel
+                            .child(div().child(t("MOUSE_FUNCTION")))
+                            .child(
+                                Checkbox::new("keyboard-combine-mouse")
+                                    .label(t("COMBINE_WITH_MOUSE"))
+                                    .checked(mouse_assignment.is_some())
+                                    .disabled(!has_keyboard)
+                                    .on_change(cx.listener({
+                                        let input = input.clone();
+                                        move |this, value: &bool, _, cx| {
+                                            this.assign_keyboard_mouse(
+                                                &input,
+                                                (*value).then_some("Click"),
+                                                cx,
+                                            );
+                                        }
+                                    })),
+                            )
+                            .child(h_flex().gap_2().flex_wrap().children(
+                                mouse_actions.into_iter().map(|(assignment, label)| {
+                                    let input = input.clone();
+                                    let selected = mouse_assignment.as_deref() == Some(assignment);
+                                    Button::new(SharedString::from(format!(
+                                        "keyboard-mouse-target-{assignment}"
+                                    )))
+                                    .label(t(label))
+                                    .outline()
+                                    .selected(selected)
+                                    .disabled(!has_keyboard || mouse_assignment.is_none())
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.assign_keyboard_mouse(&input, Some(assignment), cx);
+                                    }))
+                                }),
+                            ));
+                }
+                if supported("SWITCH_KEYMAP") {
+                    let keymaps = self.draft["keymaps"]
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default();
+                    let active_keymap = self.draft["activeKeymapId"].as_str().map(str::to_owned);
+                    let mut ordered_keymaps = keymaps.iter().collect::<Vec<_>>();
+                    ordered_keymaps.sort_by_key(|keymap| {
+                        keymap["slot"]
+                            .as_str()
+                            .and_then(|slot| slot.parse::<u32>().ok())
+                            .unwrap_or(u32::MAX)
+                    });
+                    let first_keymap = ordered_keymaps
+                        .first()
+                        .and_then(|keymap| keymap["guid"].as_str())
+                        .map(str::to_owned);
+                    let last_keymap = ordered_keymaps
+                        .last()
+                        .and_then(|keymap| keymap["guid"].as_str())
+                        .map(str::to_owned);
+                    let has_multiple = keymaps.iter().any(|keymap| {
+                        keymap["guid"].as_str().is_some()
+                            && keymap["guid"].as_str() != active_keymap.as_deref()
+                    });
+                    let current = self.keymap_assignment(&input).unwrap_or_default();
+                    let current_group = current["keymapGroup"].clone();
+                    let current_type = current_group["type"].as_str().unwrap_or_default();
+                    let mut actions = h_flex().gap_2().flex_wrap();
+                    for (kind, label) in [
+                        ("nextKeymap", "NEXT_KEYMAP"),
+                        ("previousKeymap", "PREVIOUS_KEYMAP"),
+                        ("cycleUpKeymap", "CYCLE_UP_KEYMAP"),
+                        ("cycleDownKeymap", "CYCLE_DOWN_KEYMAP"),
+                    ] {
+                        let input = input.clone();
+                        actions = actions.child(
+                            Button::new(SharedString::from(format!(
+                                "keyboard-keymap-action-{kind}"
+                            )))
+                            .label(t(label))
+                            .outline()
+                            .selected(current_type == kind)
+                            .disabled(match kind {
+                                "nextKeymap" => {
+                                    !has_multiple
+                                        || active_keymap.as_deref() == last_keymap.as_deref()
+                                }
+                                "previousKeymap" => {
+                                    !has_multiple
+                                        || active_keymap.as_deref() == first_keymap.as_deref()
+                                }
+                                _ => !has_multiple,
+                            })
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.assign_keymap(&input, kind, None, false, cx);
+                                },
+                            )),
+                        );
+                    }
+                    panel = panel.child(div().child(t("SWITCH_KEYMAP"))).child(actions);
+                    if has_multiple {
+                        let specific_selected = current_type == "specificKeymap";
+                        panel = panel.child(
+                            Button::new("keyboard-keymap-specific")
+                                .label(t("SPECIFIC_KEYMAP"))
+                                .outline()
+                                .selected(specific_selected)
+                                .on_click(cx.listener({
+                                    let input = input.clone();
+                                    let keymaps = keymaps.clone();
+                                    let active_keymap = active_keymap.clone();
+                                    move |this, _, _, cx| {
+                                        if let Some(keymap) = keymaps.iter().find(|keymap| {
+                                            keymap["guid"].as_str().is_some()
+                                                && keymap["guid"].as_str()
+                                                    != active_keymap.as_deref()
+                                        }) {
+                                            this.assign_keymap(
+                                                &input,
+                                                "specificKeymap",
+                                                Some(keymap),
+                                                false,
+                                                cx,
+                                            );
+                                        }
+                                    }
+                                })),
+                        );
+                        let mut specific = h_flex().gap_2().flex_wrap();
+                        for keymap in keymaps.iter().filter(|keymap| {
+                            keymap["guid"].as_str().is_some()
+                                && keymap["guid"].as_str() != active_keymap.as_deref()
+                        }) {
+                            let Some(guid) = keymap["guid"].as_str() else {
+                                continue;
+                            };
+                            let name = keymap["name"].as_str().unwrap_or("Keymap").to_owned();
+                            let selected = current_group["guid"].as_str() == Some(guid);
+                            let keymap = keymap.clone();
+                            let input = input.clone();
+                            specific =
+                                specific.child(
+                                    Button::new(SharedString::from(format!(
+                                        "keyboard-keymap-specific-{guid}"
+                                    )))
+                                    .label(name)
+                                    .outline()
+                                    .selected(selected)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.assign_keymap(
+                                            &input,
+                                            "specificKeymap",
+                                            Some(&keymap),
+                                            false,
+                                            cx,
+                                        );
+                                    })),
+                                );
+                        }
+                        panel = panel.child(specific);
+                        if specific_selected {
+                            if let Some(keymap) = keymaps.iter().find(|keymap| {
+                                keymap["guid"].as_str() == current_group["guid"].as_str()
+                            }) {
+                                let input = input.clone();
+                                let keymap = keymap.clone();
+                                panel = panel.child(
+                                    Checkbox::new("keyboard-keymap-clutch")
+                                        .label(t("SWITCH_BACK_TO_PREVIOUS_KEYMAP_DESCRIPTION"))
+                                        .checked(
+                                            current_group["isClutch"].as_bool().unwrap_or(false),
+                                        )
+                                        .on_click(cx.listener(move |this, value, _, cx| {
+                                            this.assign_keymap(
+                                                &input,
+                                                "specificKeymap",
+                                                Some(&keymap),
+                                                *value,
+                                                cx,
+                                            );
+                                        })),
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }

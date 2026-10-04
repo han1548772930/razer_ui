@@ -48,3 +48,12 @@ python tools/validate-mouse-keyboard-products.py
 键盘默认布局之外的地区布局与版本、完整映射编辑器、其余 Customize 控件（包括回报率、Snap Tap、Command Dial）、Actuation、Calibration、OLED、Pairing，以及灯效参数/高级 Chroma 仍需继续。文件中存在页面标题或已解析到源组件，均不计为这些界面已完成。
 
 `cargo check --locked --all-targets` 已通过；另完成 JSON、源文件 SHA-256、资源存在、几何有效性、物理区域身份、范围/默认值和整包节点排除检查。没有运行应用，所以没有像素、字体、滚动、焦点或硬件往返验收。机器记录见 [mouse-keyboard-native-coverage.json](mouse-keyboard-native-coverage.json)。
+
+## 2026-10-04 Keymap assignment branch
+
+The current dashboard source includes `MapSwitchKeymap.06e7bf95.chunk.js` (module 5144). Its `MapSwitchKeymap` editor exposes `Next Keymap`, `Previous Keymap`, `Cycle Up Keymap`, `Cycle Down Keymap`, and `Specific Keymap`; specific assignments carry `guid`, `name`, `type`, and optional clutch metadata (`isClutch`, `previousKeymapGuid`). The source disables next/previous when the selected keymap is already at the corresponding boundary and hides the control when fewer than two valid keymaps exist.
+
+`src/features/keyboard_products.rs` now mirrors this branch for source products whose `functionList` contains `SWITCH_KEYMAP`. The controls are rendered only for those inputs, derive keymaps from the current local profile, exclude the active keymap from specific targets, preserve hypershift and active keymap identity, and save assignment records as local profile draft JSON via the existing `assign_key` path. The clutch option records the active keymap as `previousKeymapGuid` for the source's switch-back behavior. This is a static/local UI branch; no native mapping service or hardware write is claimed.
+
+Remaining shared-page gaps include the full cross-device device picker, macro/lighting service actions, and source workspace more-menu details.
+The same source package also exposes `MapKeyboardCombineMouse.08131cea.chunk.js` (module 88164). Its `KEYBOARD_FUNCTION` editor has a `COMBINE_WITH_MOUSE` checkbox and a mouse assignment list (left/right/scroll/button 4/button 5 and scroll directions); the list is disabled until a keyboard assignment exists, and the saved `keyboardGroup` carries an optional nested `mouseGroup.mouseAssignment`. The native keyboard product workspace now mirrors this conditional branch for inputs advertising `MOUSE_FUNCTION`: it shows the localized combine checkbox, keeps the mouse choices disabled until a keyboard group exists, and edits/removes only the nested local `mouseGroup` while retaining the keyboard assignment. This remains a local draft and does not invoke input redirection or hardware APIs.

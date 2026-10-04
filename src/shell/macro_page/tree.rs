@@ -152,8 +152,11 @@ impl MacroPage {
                     .text_size(css(14.))
                     .line_height(css(30.))
                     .hover(move |s| {
-                        s.bg(rgb(0x222222))
-                            .when(!folder, |s| s.text_color(rgb(0x44d62c)))
+                        if folder {
+                            s.bg(rgb(0x222222))
+                        } else {
+                            s.bg(rgb(0x222222)).text_color(rgb(0x44d62c))
+                        }
                     })
                     .on_hover(cx.listener(move |this, hovered, _, cx| {
                         let next = if *hovered {

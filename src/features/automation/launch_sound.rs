@@ -69,9 +69,9 @@ impl Automation {
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if installed {
                                 this.alert = Some(if this.preview {
-                                    format!("示例请求：{}", text(action))
+                                    format!("Preview request: {}", text(action))
                                 } else {
-                                    "暂时无法启动音频应用。".into()
+                                    "Audio service unavailable.".into()
                                 });
                                 cx.notify();
                             } else {
@@ -96,9 +96,9 @@ impl Automation {
                                         .title(text("ACTIVATION_CODE_FOR_THX_SPATIAL_AUDIO"))
                                         .child(surface::note(
                                             if preview {
-                                                "示例状态：激活码尚未返回。"
+                                                "Preview activation code is unavailable."
                                             } else {
-                                                "暂时无法获取激活码，请稍后重试。"
+                                                "Activation code service unavailable; try again later."
                                             },
                                             cx,
                                         ))

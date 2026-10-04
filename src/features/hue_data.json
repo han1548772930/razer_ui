@@ -834,6 +834,14 @@
       "output": "assets/synapse/hue-hue_light_logo.svg",
       "context": ".ref/devices/769/static/css/main.341edb83.css",
       "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6"
+    },
+    {
+      "source": ".ref/devices/769/static/media/indicator_animated.e9e90a63.svg",
+      "url": "https://apps.razer.com/synapse/products/769/ui/static/media/indicator_animated.e9e90a63.svg",
+      "asset": "synapse/hue-indicator_animated.svg",
+      "output": "assets/synapse/hue-indicator_animated.svg",
+      "context": ".ref/devices/769/static/css/main.341edb83.css",
+      "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6"
     }
   ],
   "bridge_icons": [

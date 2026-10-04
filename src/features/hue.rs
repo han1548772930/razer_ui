@@ -215,6 +215,11 @@ pub(crate) struct HueWorkspace {
     // isChromaEnabled / installation status are global service state, outside
     // the device quickEffects profile. Preview values stay in this entity.
     advanced: bool,
+    /// The current source mounts a one-shot advanced-effects tutorial dot when
+    /// the quick-effects widget becomes usable. It is local UI state; the
+    /// service does not provide (and this app must not invent) a persistence
+    /// response for it.
+    tutorial_visible: bool,
     chroma_installed: Option<bool>,
     chroma_profiles: Entity<SelectState<Vec<Choice>>>,
 }
@@ -273,6 +278,7 @@ impl HueWorkspace {
             colors,
             color_boost,
             advanced: false,
+            tutorial_visible: false,
             chroma_installed: None,
             chroma_profiles,
         };

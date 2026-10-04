@@ -772,6 +772,7 @@ impl SourceControls {
         self.staged.clear();
         if let Some(value) = value {
             merge_known(&mut self.draft, value);
+            self.restore_oled_custom_presets(value);
         }
         self.normalize();
         self.sync(window, cx);
@@ -843,10 +844,9 @@ impl SourceControls {
                 3 => button.border_r_0(),
                 _ => button,
             };
-            // 原版只给左右键准备了图：`icon_arrow_left_thin.e6d37c55.svg` 与
-            // `icon_arrow_right_thin.bef8ca32.svg`，两者与本地已打包的
-            // `history-back/forward.svg` 是同一份文件（同名同哈希）。上下与中心
-            // 用的是 `icon_pan_top/bottom/center`，当前源码包里不存在，保持只有边框。
+            // 原版方向键使用产品包中的 pan-top/pan-bottom 以及左右箭头图标。
+            // 图标尺寸与 CSS 的 10px background-size 对齐；中心键使用 20px 画布，
+            // 其透明边距正好把 15px 的可点击区域包住。
             if let Some(icon) = icon {
                 button = button.overflow_hidden().child(
                     img(icon)
@@ -981,7 +981,7 @@ impl SourceControls {
                 -10.,
                 10.,
                 0,
-                None,
+                Some("synapse/camera-pan-top.svg"),
             ))
             .child(pad_button(
                 "right",
@@ -1001,7 +1001,7 @@ impl SourceControls {
                 outer_h,
                 10.,
                 2,
-                None,
+                Some("synapse/camera-pan-bottom.svg"),
             ))
             .child(pad_button(
                 "left",
@@ -1022,8 +1022,6 @@ impl SourceControls {
                     .w(surface::css(15.))
                     .h(surface::css(15.))
                     .rounded(surface::css(2.))
-                    .border_1()
-                    .border_color(Colors::border())
                     .when(!disabled, |center| {
                         center
                             .cursor_pointer()
@@ -1038,7 +1036,16 @@ impl SourceControls {
                             gpui_kit::component::tooltip::Tooltip::new(tooltip.clone())
                                 .build(window, cx)
                         })
-                    }),
+                    })
+                    .overflow_hidden()
+                    .child(
+                        img("synapse/camera-pan-center.svg")
+                            .absolute()
+                            .left(surface::css(-2.5))
+                            .top(surface::css(-2.5))
+                            .w(surface::css(20.))
+                            .h(surface::css(20.)),
+                    ),
             );
         v_flex()
             .gap(surface::css(4.))
@@ -1482,6 +1489,43 @@ impl SourceControls {
             .bg(Colors::background())
             .px(surface::css(20.))
             .py(surface::css(27.));
+        // The current camera roots mount a live preview beside this control
+        // column.  The native camera stream/device-enumeration service is not
+        // available in this workspace, so keep the source-sized surface while
+        // making the unavailable state explicit.  No frame or device identity
+        // is synthesized here; a future transport can replace this child
+        // without changing the surrounding controls.
+        if page.key == "CAMERA" {
+            column = column.child(
+                v_flex()
+                    .id("camera-preview-unavailable")
+                    .test_support()
+                    .w_full()
+                    .h(surface::css(202.))
+                    .mb(surface::css(20.))
+                    .px(surface::css(16.))
+                    .bg(gpui_kit::rgb(0x000000))
+                    .border_1()
+                    .border_color(Colors::border())
+                    .items_center()
+                    .justify_center()
+                    .gap(surface::css(8.))
+                    .child(
+                        div()
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(17.))
+                            .text_color(Colors::text())
+                            .child("实时预览不可用"),
+                    )
+                    .child(
+                        div()
+                            .text_size(surface::css(12.))
+                            .line_height(surface::css(15.))
+                            .text_color(Colors::placeholder())
+                            .child("当前未接入摄像头流服务"),
+                    ),
+            );
+        }
         for (index, section) in page.sections.iter().enumerate() {
             if index > 0 {
                 column = column.child(
@@ -1513,6 +1557,40 @@ impl SourceControls {
             );
         }
         column.into_any_element()
+    }
+
+    /// Legacy Kiyo roots (3587/3589/3590) mount the shared Customize widget,
+    /// whose audited source still includes `.camera_setting .main_preview`.
+    /// The source frame is 520px wide by 292px high with a `#222` surface.
+    /// Camera transport is not connected here, so no video frame or device
+    /// identity is fabricated.
+    fn render_legacy_camera_preview(&self) -> AnyElement {
+        use crate::ui::theme::CameraProductColors as Colors;
+        v_flex()
+            .id("legacy-camera-preview-unavailable")
+            .test_support()
+            .w(surface::css(520.))
+            .h(surface::css(292.))
+            .mx_auto()
+            .bg(gpui_kit::rgb(0x222222))
+            .items_center()
+            .justify_center()
+            .gap(surface::css(8.))
+            .child(
+                div()
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .text_color(Colors::text())
+                    .child("实时预览不可用"),
+            )
+            .child(
+                div()
+                    .text_size(surface::css(12.))
+                    .line_height(surface::css(15.))
+                    .text_color(Colors::placeholder())
+                    .child("当前未接入摄像头流服务"),
+            )
+            .into_any_element()
     }
 }
 
@@ -1665,6 +1743,12 @@ impl Render for SourceControls {
             .iter()
             .find(|p| p.key == self.page && !p.sections.is_empty())
         {
+            if self.spec.layout.as_deref() == Some("legacy-camera") && self.page == "TAB_CUSTOMIZE"
+            {
+                // The shared Customize root mounts its camera preview before
+                // the image and focus setting widgets.
+                view = view.child(self.render_legacy_camera_preview());
+            }
             let columns = page.sections.iter().any(|section| section.column.is_some());
             let mut left = v_flex()
                 .flex_1()

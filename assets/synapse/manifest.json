@@ -4238,6 +4238,24 @@
       "sha256": "6fc4199ed8a4fb00dadd4b11dd159f7c82634c938f40597b9cf6642c51008e1f"
     },
     {
+      "source": ".ref/devices/3592/static/media/icon_pan_top.938f0ae8.svg",
+      "output": "assets/synapse/camera-pan-top.svg",
+      "source_sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27",
+      "sha256": "5c1d93ef43939a86591481c24d95fc61d670dc814c46c1ad6387927bf58a4d27"
+    },
+    {
+      "source": ".ref/devices/3592/static/media/icon_pan_bottom.bb4772a7.svg",
+      "output": "assets/synapse/camera-pan-bottom.svg",
+      "source_sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220",
+      "sha256": "b571090b10a0b856d412c1aa0f97170520a00de9ec64fbfcad9b92ef57859220"
+    },
+    {
+      "source": ".ref/devices/3592/static/media/icon_pan_center.38b59cfe.svg",
+      "output": "assets/synapse/camera-pan-center.svg",
+      "source_sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba",
+      "sha256": "5eb4a4d8c54d5f70af1ca520e0308c17b6bad6a91862e655625292a859f585ba"
+    },
+    {
       "source": ".ref/devices/182/static/media/icon_settings-2.07e96d4c.svg",
       "output": "assets/synapse/settings.svg",
       "source_sha256": "7bf93d2d7e3c9c409f10383fbfdd21dc7dfbb06fc0eeeea11b3b62ddf9da75e5",
@@ -11289,7 +11307,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 100,
@@ -11406,7 +11424,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 100,
@@ -11523,7 +11541,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 100,
@@ -11640,7 +11658,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 100,
@@ -11757,7 +11775,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 120,
@@ -11894,7 +11912,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "loop": 0,
       "frames": 100,
@@ -12011,7 +12029,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "515351d354d0a82df62fc781e678a578f3869259744f12d692adf2a176eb1c85"
     },
@@ -12024,7 +12042,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "3ac321579839bef4be352a16f29d3b2244c2f595f05613ba3c54d100a1f66fe6"
     },
@@ -12037,7 +12055,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "23ab5ad7bb8dccb9013a3a8170a50a56800834f772e557362e0ce6a62a7e3d05"
     },
@@ -12050,7 +12068,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "6f26a9109f70fb4aaa77026ea427098c96a89f57c6fa19b3b8ad11e013073fbb"
     },
@@ -12063,7 +12081,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "1dcb23afe08b60547508623e7670fc9634167826dd0a4336b9066b988b9e5e47"
     },
@@ -12076,7 +12094,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "ecec55800ba3242437720d999ec9dd7a767405b37732a9dba8702fa80fa5ef80"
     },
@@ -12089,7 +12107,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "f16bbf02d7aa65c2218c2a7d5a41dffd4e2266c817dea91b2d758c9df34ee230"
     },
@@ -12102,7 +12120,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "123e96a047c6716e7de91d44409d7cbd83bd967771c58dbf8ea6ccc22b9117a1"
     },
@@ -12115,7 +12133,7 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "729f0a6201dd79653149d4179cc597c15c97f7c4a298b5a18112c0696e680624"
     },
@@ -12128,9 +12146,165 @@
       "height": 64,
       "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
       "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
-      "descriptor_sha256": "fd652aee7aa9681abc03d98c35542a04858ad5758f03a1ebd2f4cab8aa0697e7",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
       "grayscale": true,
       "sha256": "7dde66c798199770bfeffb5d1a5f5a51f5d58da21259f030682991f54db3452b"
+    },
+    {
+      "preset_id": "visualizer-1",
+      "source": ".ref/devices/691/static/media/bar.6ddbeafd.gif",
+      "source_sha256": "18366a934c6ee57eabafccf1d552b7951e55057be452a8b528fb6f5530f4a99c",
+      "output": "assets/synapse/oled-home-visualizer-1.webp",
+      "width": 696,
+      "height": 132,
+      "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
+      "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
+      "grayscale": true,
+      "display_width": 232,
+      "display_height": 44,
+      "loop": 0,
+      "frames": 15,
+      "frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "source_frames": 15,
+      "source_frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "sha256": "27e8df0353d7764201babd2a7479e002f2109335f406c119b9399fcd8104d32f"
+    },
+    {
+      "preset_id": "visualizer-2",
+      "source": ".ref/devices/691/static/media/bar_bottom.d1ca9b66.gif",
+      "source_sha256": "26a8b4335ddfb5440699eb3ffefa38d64fdb4d4db5d8ee70edd00c0df2675036",
+      "output": "assets/synapse/oled-home-visualizer-2.webp",
+      "width": 696,
+      "height": 132,
+      "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
+      "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
+      "grayscale": true,
+      "display_width": 232,
+      "display_height": 44,
+      "loop": 0,
+      "frames": 15,
+      "frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "source_frames": 15,
+      "source_frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "sha256": "a3dbbc505d785c254dcfd1a0edb57224666429fee993a4346b744420bb82d292"
+    },
+    {
+      "preset_id": "visualizer-3",
+      "source": ".ref/devices/691/static/media/dot.be50974f.gif",
+      "source_sha256": "03a329af80e5babe8051ee912f67d5003bc29292afd50d4e19848a743a5dc268",
+      "output": "assets/synapse/oled-home-visualizer-3.webp",
+      "width": 696,
+      "height": 132,
+      "module_file": ".ref/devices/691/static/js/main.e51ce83a.js",
+      "module_sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
+      "descriptor_sha256": "4d0b3144aa90c336b137e33cf5a78cdfd4fd8c507791db2a0143fc27e8d506ad",
+      "grayscale": true,
+      "display_width": 232,
+      "display_height": 44,
+      "loop": 0,
+      "frames": 15,
+      "frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "source_frames": 15,
+      "source_frame_durations_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "sha256": "c321bf40c5b31453a5020c5cf0df67036c5d3aa4785eacc98c34e28055d16209"
     },
     {
       "source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
@@ -12311,6 +12485,16 @@
       "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
       "source_sha256": "2b5db331c603fcfd8f7bf882f013fc50d90f997b8504da4ac1adca616842e5a1",
       "sha256": "2b5db331c603fcfd8f7bf882f013fc50d90f997b8504da4ac1adca616842e5a1"
+    },
+    {
+      "source": ".ref/devices/769/static/media/indicator_animated.e9e90a63.svg",
+      "url": "https://apps.razer.com/synapse/products/769/ui/static/media/indicator_animated.e9e90a63.svg",
+      "asset": "synapse/hue-indicator_animated.svg",
+      "output": "assets/synapse/hue-indicator_animated.svg",
+      "context": ".ref/devices/769/static/css/main.341edb83.css",
+      "context_sha256": "121ff9f1752fbd93d5aafe7e4d7d8e5e189320d2354b9038c25ff0d368d7f6c6",
+      "source_sha256": "cebe98fd31d7bd812d1a9030badfb2d8f10a5775c384ca4018bd3b78fb5ee0be",
+      "sha256": "cebe98fd31d7bd812d1a9030badfb2d8f10a5775c384ca4018bd3b78fb5ee0be"
     },
     {
       "source": ".ref/devices/769/static/js/main.ad1113f8.js",
@@ -15168,6 +15352,67 @@
       "sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa"
     },
     {
+      "source": ".ref/devices/3946/static/media/icon_folder.e5ceb5b6.svg",
+      "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_folder.e5ceb5b6.svg",
+      "output": "assets/synapse/automation-icon_folder.svg",
+      "source_sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001",
+      "sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001"
+    },
+    {
+      "source": ".ref/devices/3946/static/media/icon_expand.55a47b0c.svg",
+      "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_expand.55a47b0c.svg",
+      "output": "assets/synapse/automation-icon_expand.svg",
+      "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88"
+    },
+    {
+      "source": ".ref/devices/3946/static/media/icon_close.55fe41f1.svg",
+      "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/automation-icon_close.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "source_offset": 6917536,
+      "source_end": 6918270,
+      "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M18 5V15H2V5H18ZM18 3H2C1.47005 3.00158 0.962265 3.2128 0.587535 3.58753C0.212805 3.96227 0.00158273 4.47005 0 5L0 15C0.00158273 15.5299 0.212805 16.0377 0.587535 16.4125C0.962265 16.7872 1.47005 16.9984 2 17H18C18.5299 16.9984 19.0377 16.7872 19.4125 16.4125C19.7872 16.0377 19.9984 15.5299 20 15V5C19.9984 4.47005 19.7872 3.96227 19.4125 3.58753C19.0377 3.2128 18.5299 3.00158 18 3V3ZM5 8H3V6H5V8ZM8 8H6V6H8V8ZM11 8H9V6H11V8ZM14 8H12V6H14V8ZM17 8H15V6H17V8ZM5 11H3V9H5V11ZM8 11H6V9H8V11ZM11 11H9V9H11V11ZM14 11H12V9H14V11ZM17 11H15V9H17V11ZM14 14H6V12H14V14Z\",fill:\"#44D62C\"})})",
+      "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 5V15H2V5H18ZM18 3H2C1.47005 3.00158 0.962265 3.2128 0.587535 3.58753C0.212805 3.96227 0.00158273 4.47005 0 5L0 15C0.00158273 15.5299 0.212805 16.0377 0.587535 16.4125C0.962265 16.7872 1.47005 16.9984 2 17H18C18.5299 16.9984 19.0377 16.7872 19.4125 16.4125C19.7872 16.0377 19.9984 15.5299 20 15V5C19.9984 4.47005 19.7872 3.96227 19.4125 3.58753C19.0377 3.2128 18.5299 3.00158 18 3V3ZM5 8H3V6H5V8ZM8 8H6V6H8V8ZM11 8H9V6H11V8ZM14 8H12V6H14V8ZM17 8H15V6H17V8ZM5 11H3V9H5V11ZM8 11H6V9H8V11ZM11 11H9V9H11V11ZM14 11H12V9H14V11ZM17 11H15V9H17V11ZM14 14H6V12H14V14Z\" fill=\"#44D62C\"></path></svg>\n",
+      "output": "assets/synapse/automation-quick-macro-keyboard.svg",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "sha256": "a7531a6b258435c1aead2ca586259b31b3fda36f7d176e903c166652b62f8301"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "source_offset": 6918290,
+      "source_end": 6919457,
+      "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M19.0017 12.8017V16.0017C19.0097 16.1351 18.9894 16.2687 18.9419 16.3937C18.8945 16.5186 18.8211 16.6321 18.7266 16.7266C18.6321 16.8211 18.5186 16.8945 18.3937 16.9419C18.2687 16.9894 18.1351 17.0097 18.0017 17.0017H2.0017C1.86829 17.0097 1.73469 16.9894 1.60973 16.9419C1.48477 16.8945 1.37129 16.8211 1.27678 16.7266C1.18228 16.6321 1.10889 16.5186 1.06147 16.3937C1.01405 16.2687 0.993683 16.1351 1.0017 16.0017V4.0017C0.993683 3.86829 1.01405 3.73469 1.06147 3.60973C1.10889 3.48477 1.18228 3.37129 1.27678 3.27678C1.37129 3.18228 1.48477 3.10889 1.60973 3.06147C1.73469 3.01405 1.86829 2.99368 2.0017 3.0017H9.2017L12.0017 5.8017L10.9017 6.9017L10.8017 7.0017H3.0017V15.0017H17.0017V10.8017L19.0017 12.8017ZM14.8017 5.8017L12.3017 8.3017C12.1191 8.48799 12.0175 8.7388 12.0188 8.99963C12.0201 9.26046 12.1243 9.51023 12.3087 9.69467C12.4932 9.8791 12.7429 9.9833 13.0038 9.98462C13.2646 9.98594 13.5154 9.88427 13.7017 9.7017L16.2017 7.2017L19.0017 10.0017V3.0017H12.0017L14.8017 5.8017Z\",fill:\"#DB2687\"})})",
+      "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M19.0017 12.8017V16.0017C19.0097 16.1351 18.9894 16.2687 18.9419 16.3937C18.8945 16.5186 18.8211 16.6321 18.7266 16.7266C18.6321 16.8211 18.5186 16.8945 18.3937 16.9419C18.2687 16.9894 18.1351 17.0097 18.0017 17.0017H2.0017C1.86829 17.0097 1.73469 16.9894 1.60973 16.9419C1.48477 16.8945 1.37129 16.8211 1.27678 16.7266C1.18228 16.6321 1.10889 16.5186 1.06147 16.3937C1.01405 16.2687 0.993683 16.1351 1.0017 16.0017V4.0017C0.993683 3.86829 1.01405 3.73469 1.06147 3.60973C1.10889 3.48477 1.18228 3.37129 1.27678 3.27678C1.37129 3.18228 1.48477 3.10889 1.60973 3.06147C1.73469 3.01405 1.86829 2.99368 2.0017 3.0017H9.2017L12.0017 5.8017L10.9017 6.9017L10.8017 7.0017H3.0017V15.0017H17.0017V10.8017L19.0017 12.8017ZM14.8017 5.8017L12.3017 8.3017C12.1191 8.48799 12.0175 8.7388 12.0188 8.99963C12.0201 9.26046 12.1243 9.51023 12.3087 9.69467C12.4932 9.8791 12.7429 9.9833 13.0038 9.98462C13.2646 9.98594 13.5154 9.88427 13.7017 9.7017L16.2017 7.2017L19.0017 10.0017V3.0017H12.0017L14.8017 5.8017Z\" fill=\"#DB2687\"></path></svg>\n",
+      "output": "assets/synapse/automation-quick-macro-launch.svg",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "sha256": "4526f8430417c599117948182253130ba88456360e9f9a650a590c93f8dcdc51"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "source_offset": 6919481,
+      "source_end": 6920085,
+      "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M18 3H2C1.73478 3 1.48043 3.10536 1.29289 3.29289C1.10536 3.48043 1 3.73478 1 4V16C1 16.2652 1.10536 16.5196 1.29289 16.7071C1.48043 16.8946 1.73478 17 2 17H18C18.2652 17 18.5196 16.8946 18.7071 16.7071C18.8946 16.5196 19 16.2652 19 16V4C19 3.73478 18.8946 3.48043 18.7071 3.29289C18.5196 3.10536 18.2652 3 18 3ZM17 15H3V7H17V15ZM15 14H10V12H15V14ZM5.707 13.707L4.293 12.293L5.586 11L4.293 9.707L5.707 8.293L8.414 11L5.707 13.707Z\",fill:\"#26AADB\"})})",
+      "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 3H2C1.73478 3 1.48043 3.10536 1.29289 3.29289C1.10536 3.48043 1 3.73478 1 4V16C1 16.2652 1.10536 16.5196 1.29289 16.7071C1.48043 16.8946 1.73478 17 2 17H18C18.2652 17 18.5196 16.8946 18.7071 16.7071C18.8946 16.5196 19 16.2652 19 16V4C19 3.73478 18.8946 3.48043 18.7071 3.29289C18.5196 3.10536 18.2652 3 18 3ZM17 15H3V7H17V15ZM15 14H10V12H15V14ZM5.707 13.707L4.293 12.293L5.586 11L4.293 9.707L5.707 8.293L8.414 11L5.707 13.707Z\" fill=\"#26AADB\"></path></svg>\n",
+      "output": "assets/synapse/automation-quick-macro-runCommand.svg",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "sha256": "121b0cdfc8f9b3efa579490d9a8dbc2f2d8025c75f72bef88a4d35a2bd78e18c"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "source_offset": 6920103,
+      "source_end": 6920359,
+      "source_fragment": "(0,zi.jsx)(\"svg\",{width:n,height:n,viewBox:\"0 0 20 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",\"aria-hidden\":\"true\",children:(0,zi.jsx)(\"path\",{d:\"M15 5H3V3H15V5ZM17 6H3V8H17V6ZM11 9H3V11H11V9ZM15 12H3V14H15V12ZM13 15H3V17H13V15Z\",fill:\"#4496FB\"})})",
+      "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M15 5H3V3H15V5ZM17 6H3V8H17V6ZM11 9H3V11H11V9ZM15 12H3V14H15V12ZM13 15H3V17H13V15Z\" fill=\"#4496FB\"></path></svg>\n",
+      "output": "assets/synapse/automation-quick-macro-text.svg",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "sha256": "45637b07a4f0650d7b8f5b11e4ae4a6cde35d46786d9e887f0ad6cfc55a2dcb3"
+    },
+    {
       "source": ".ref/applications/synapse/profiles/static/media/icon_addnotgrey.f73db7b6.svg",
       "output": "assets/synapse/profiles-add.svg",
       "source_sha256": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71",
@@ -15252,6 +15497,20 @@
       "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_close.55fe41f1.svg"
     },
     {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_back_arrow.b39e4841.svg",
+      "output": "assets/synapse/profiles-back.svg",
+      "source_sha256": "3e6bc69f37cefbaac32580de419872fe4ddaf0a175805cc0610eaf352da5d6de",
+      "sha256": "3e6bc69f37cefbaac32580de419872fe4ddaf0a175805cc0610eaf352da5d6de",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_back_arrow.b39e4841.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/background_glow.43f70cb2.svg",
+      "output": "assets/synapse/profiles-glow.svg",
+      "source_sha256": "f823fb713910231a041b531361f50bf14fb327b0907cc552fab5508706c3e9bc",
+      "sha256": "f823fb713910231a041b531361f50bf14fb327b0907cc552fab5508706c3e9bc",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/background_glow.43f70cb2.svg"
+    },
+    {
       "source": ".ref/applications/synapse/macro/static/media/icon_delay_g.5050a3f7.svg",
       "output": "assets/synapse/macro/delay.svg",
       "source_sha256": "1583896befa623e3365ea1fa9a8ee15de5aa58f36018dea742f57639814c6ad0",
@@ -15306,6 +15565,13 @@
       "source_sha256": "613c38b8dba5e15c3f57a1c83577e3d94e5ca55fc3dba9773401d8f45d146a85",
       "sha256": "613c38b8dba5e15c3f57a1c83577e3d94e5ca55fc3dba9773401d8f45d146a85",
       "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_refresh-1_r.ff48f955.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/close.1d7eff2a.svg",
+      "output": "assets/synapse/macro/close.svg",
+      "source_sha256": "d1658818e809b21249127ab364cfc5b71771869ed2324985e0a57144d96448b6",
+      "sha256": "d1658818e809b21249127ab364cfc5b71771869ed2324985e0a57144d96448b6",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/close.1d7eff2a.svg"
     },
     {
       "source": ".ref/applications/synapse/macro/static/media/icon_draggable_g.695879f5.svg",
@@ -15483,6 +15749,34 @@
       "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_expand_d.3.2a1d50df.svg"
     },
     {
+      "source": ".ref/applications/synapse/macro/static/media/icon_more-pressed.f7f8588b.svg",
+      "output": "assets/synapse/macro/tree-more-hover.svg",
+      "source_sha256": "a062053b52d5dce01d34833f8941e4f71c2e127058fe0bf403f7c907ead4e1d0",
+      "sha256": "a062053b52d5dce01d34833f8941e4f71c2e127058fe0bf403f7c907ead4e1d0",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_more-pressed.f7f8588b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_more-hover.aa4fe640.svg",
+      "output": "assets/synapse/macro/tree-more-active.svg",
+      "source_sha256": "c7aaae66e3ed3e38fd98b1b5f60ee8e6698b53fcb19c61fb98e6ee6e1d574681",
+      "sha256": "c7aaae66e3ed3e38fd98b1b5f60ee8e6698b53fcb19c61fb98e6ee6e1d574681",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_more-hover.aa4fe640.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_folder_g.220b24b0.svg",
+      "output": "assets/synapse/macro/drag-folder.svg",
+      "source_sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+      "sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_folder_g.220b24b0.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_layer.0c20e889.svg",
+      "output": "assets/synapse/macro/drag-file.svg",
+      "source_sha256": "d7032eb5b2d17528aac1e2b3951f80704637d5b6872099f32dfe392786ca03b1",
+      "sha256": "d7032eb5b2d17528aac1e2b3951f80704637d5b6872099f32dfe392786ca03b1",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_layer.0c20e889.svg"
+    },
+    {
       "source": ".ref/applications/synapse/armory/static/media/Dissmissible-banner-image-x2.c6eaaf4b.avif",
       "output": "assets/synapse/armory-introduction.png",
       "source_sha256": "2236c46b33e6947b7b73c1632fcc2806b148c004262f6253d8feb6a2a35bfd55",
@@ -15497,6 +15791,22 @@
       "source_sha256": "658ae30f9d51519ce387e739b3274f2c31a058b7c73cc792642e8c2b0562d0f0",
       "sha256": "658ae30f9d51519ce387e739b3274f2c31a058b7c73cc792642e8c2b0562d0f0",
       "source_url": "https://apps.razer.com/synapse/armory/static/media/icon_close.cb2e944c.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "output": "assets/synapse/armory-filter.svg",
+      "source_sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "sha256": "744cb5903dbb0b84b0cafa5325f7a0607348063a6745bfd1d42196970de63872",
+      "source_module": 70017,
+      "source_url": "https://apps.razer.com/synapse/armory/static/js/main.3d0e8bd0.js"
+    },
+    {
+      "source": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "output": "assets/synapse/armory-sort.svg",
+      "source_sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "sha256": "f6668f4975a2f754591b15765fad856a796023d45888ed737b8c51bad21c9fc0",
+      "source_module": 8679,
+      "source_url": "https://apps.razer.com/synapse/armory/static/js/main.3d0e8bd0.js"
     },
     {
       "source": ".ref/host-4.0.827/electron/resources/images/rzAppEngine.ico",

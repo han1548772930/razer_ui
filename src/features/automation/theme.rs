@@ -8,6 +8,12 @@ impl Colors {
     pub(super) fn row() -> Hsla {
         rgb(0x222222).into()
     }
+    pub(super) fn row_hover() -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+    pub(super) fn row_active() -> Hsla {
+        rgb(0x1f1f1f).into()
+    }
     pub(super) fn editor() -> Hsla {
         rgb(0x2b2b2b).into()
     }
@@ -22,6 +28,12 @@ impl Colors {
     }
     pub(super) fn border() -> Hsla {
         rgb(0x444444).into()
+    }
+    pub(super) fn input_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(super) fn close_hover() -> Hsla {
+        rgba(0xffffff1a).into()
     }
     pub(super) fn divider() -> Hsla {
         rgba(0xffffff14).into()

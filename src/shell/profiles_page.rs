@@ -14,6 +14,7 @@ use gpui_kit::base::{
 use gpui_kit::component::{
     input::{Input, InputState},
     select::SelectState,
+    tooltip::Tooltip,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -30,7 +31,9 @@ fn popup_width(viewport: f32, device: bool) -> f32 {
     if device && viewport >= 1600. {
         1300.
     } else {
-        (viewport - 40.).min(if viewport <= 900. { 800. } else { 1050. }).max(0.)
+        (viewport - 40.)
+            .min(if viewport <= 900. { 800. } else { 1050. })
+            .max(0.)
     }
 }
 
@@ -108,8 +111,15 @@ impl ProfilesPage {
         }
     }
 
-    pub(super) fn set_devices(&mut self, devices: Vec<Entity<ProductWorkspace>>, cx: &mut Context<Self>) {
-        self.device_subscriptions = devices.iter().map(|device| cx.observe(device, |_, _, cx| cx.notify())).collect();
+    pub(super) fn set_devices(
+        &mut self,
+        devices: Vec<Entity<ProductWorkspace>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device_subscriptions = devices
+            .iter()
+            .map(|device| cx.observe(device, |_, _, cx| cx.notify()))
+            .collect();
         self.devices = devices;
         cx.notify();
     }
@@ -142,8 +152,13 @@ impl ProfilesPage {
         self.history_index + 1 < self.history.len()
     }
     pub(super) fn history_blocked(&self, cx: &App) -> bool {
-        self.add_dialog.as_ref().is_some_and(|dialog| dialog.read(cx).open)
-            || self.device_dialog.as_ref().is_some_and(|dialog| dialog.read(cx).open)
+        self.add_dialog
+            .as_ref()
+            .is_some_and(|dialog| dialog.read(cx).open)
+            || self
+                .device_dialog
+                .as_ref()
+                .is_some_and(|dialog| dialog.read(cx).open)
     }
     pub(super) fn step_history(
         &mut self,
@@ -236,7 +251,13 @@ impl ProfilesPage {
                         "SCAN_FOR_GAMES",
                         cx,
                     )
-                    .disabled(true),
+                    .disabled(true)
+                    // The source dispatches `initiateGameScan` here. Keep the
+                    // control visible while making the unavailable service
+                    // boundary explicit instead of implying a scan ran.
+                    .tooltip(|window, cx| {
+                        Tooltip::new("Game scan service unavailable").build(window, cx)
+                    }),
                 );
             left = if self.searching {
                 left.child(search_field(
@@ -583,7 +604,11 @@ impl Render for AddGameDialog {
         let app_height = viewport.height - unit * 42.;
         let backdrop_top = unit * (42. + if self.from_device { 0. } else { 89. });
         let popup_top = if self.from_device { 100. } else { 20. };
-        let container_height = if self.from_device { app_height } else { app_height.max(unit * 650.) };
+        let container_height = if self.from_device {
+            app_height
+        } else {
+            app_height.max(unit * 650.)
+        };
         let top = backdrop_top + unit * (110. + popup_top);
         let start = backdrop_top + unit * 110. + container_height;
         let animated_top = start + (top - start) * progress;
@@ -603,7 +628,10 @@ impl Render for AddGameDialog {
                     "REFRESH",
                     cx,
                 )
-                .disabled(true),
+                .disabled(true)
+                .tooltip(|window, cx| {
+                    Tooltip::new("Installed-program service unavailable").build(window, cx)
+                }),
             );
         nav = if self.searching {
             nav.child(search_field(
@@ -637,6 +665,9 @@ impl Render for AddGameDialog {
                 .child(
                     BaseButton::new("profiles-program-browse")
                         .disabled(true)
+                        .tooltip(|window, cx| {
+                            Tooltip::new("Executable browse service unavailable").build(window, cx)
+                        })
                         .p_0()
                         .child(i18n::t("BROWSE")),
                 ),
@@ -694,13 +725,25 @@ impl Render for AddGameDialog {
                             .line_height(surface::css(19.))
                             .text_color(cx.theme().muted_foreground)
                             .child(i18n::t("ADD_GAME_TITLE").to_uppercase())
-                            .when(self.from_device, |head| head.child(
-                                BaseButton::new("profiles-add-back").absolute().top_0().left_0().size(surface::css(36.)).p_0()
-                                    .accessibility_label(i18n::t("BACK"))
-                                    .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
-                                    .child(img("synapse/profiles-back.svg").size(surface::css(20.)))
-                                    .on_click(cx.listener(|this, _, window, cx| this.close(window, cx)))
-                            ))
+                            .when(self.from_device, |head| {
+                                head.child(
+                                    BaseButton::new("profiles-add-back")
+                                        .absolute()
+                                        .top_0()
+                                        .left_0()
+                                        .size(surface::css(36.))
+                                        .p_0()
+                                        .accessibility_label(i18n::t("BACK"))
+                                        .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
+                                        .child(
+                                            img("synapse/profiles-back.svg")
+                                                .size(surface::css(20.)),
+                                        )
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            this.close(window, cx)
+                                        })),
+                                )
+                            })
                             .child(
                                 BaseButton::new("profiles-add-close")
                                     .accessibility_label(i18n::t("CLOSE"))
@@ -735,7 +778,27 @@ impl Render for AddGameDialog {
                                     .id("profiles-installed-programs")
                                     .flex_1()
                                     .min_h_0()
-                                    .scrollable_y(),
+                                    .scrollable_y()
+                                    // No installed-program payload is present
+                                    // until the host discovery service answers.
+                                    // Render a stable empty state so the blank
+                                    // list cannot be mistaken for a completed
+                                    // scan or a fabricated catalog.
+                                    .child(
+                                        v_flex()
+                                            .w_full()
+                                            .items_center()
+                                            .justify_center()
+                                            .pt(surface::css(48.))
+                                            .gap(surface::css(8.))
+                                            .text_color(cx.theme().muted_foreground)
+                                            .child(i18n::t("GAME_NOT_SEE"))
+                                            .child(
+                                                div()
+                                                    .text_size(surface::css(12.))
+                                                    .child("Game discovery service unavailable"),
+                                            ),
+                                    ),
                             ),
                     ),
             )

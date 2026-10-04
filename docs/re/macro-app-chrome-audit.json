@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "77f64319768be82d260d20e694c21387f001fd154521a2ab0f99bf944e0d2f92",
+  "scanner_sha256": "76d38a3a91e58dc3d101f6a4d1ed6ea3394e8fc4638b6aeda504bc11dd65da3c",
   "sources": {
     "css": {
       "path": ".ref/applications/synapse/macro/static/css/main.9ea5d7e7.css",
@@ -65,45 +65,7 @@
   "referenced_media": {
     "total": 164,
     "missing": [
-      "chroma_studio.eb1dafb4.svg",
-      "chroma_sync.af68ffe5.svg",
-      "windows_logo.e334c8f1.svg",
-      "icon_close.4f578909.svg",
-      "icon_help_active.59a3a2e2.svg",
-      "icon_help_hover.64282a2f.svg",
-      "icon_obm.2a120b52.svg",
-      "icon_obm_red.9afbbfa0.svg",
-      "icon_obm_green.e8d21bac.svg",
-      "icon_obm_blue.f68986bb.svg",
-      "icon_obm_cyan.d0281737.svg",
-      "icon_direction_cw_999.fb252011.svg",
-      "icon_direction_cw.dcb6ed6c.svg",
-      "icon_direction_ccw_999.011051c8.svg",
-      "icon_direction_ccw.9ea4d74f.svg",
-      "icon_config_switch_lighting.40a460a6.svg",
-      "icon_config_switch_lighting_a.10af6d2f.svg",
-      "icon_config_volume_down.8440b286.svg",
-      "icon_config_volume_up.eb182a42.svg",
-      "icon_config_volume_down_a.94a7ba42.svg",
-      "icon_config_volume_up_a.e0a9120c.svg",
-      "icon_record.9183ffe6.svg",
-      "icon_delete.d1a6a9ad.svg",
-      "icon_delete_r.033c20fb.svg",
-      "icon_chevron.6a725e60.svg",
-      "icon_chevron_r.0ba840e4.svg",
-      "icon_textfield_clear_icon.f384744b.svg",
-      "icon_more-pressed.f7f8588b.svg",
-      "icon_more-hover.aa4fe640.svg",
-      "icon_folder_close-2.523e657a.svg",
-      "icon_folder_open.076142a3.svg",
-      "icon_macro-file.2f24e5a0.svg",
-      "icon_marco-file-hover.0e086ddd.svg",
-      "icon_addfolder-hover.a804c680.svg",
-      "icon_addfolder-pressed.aa5ec3ce.svg",
-      "icon_addfolder-1.3c65591c.svg",
-      "icon_new_marco-hover.47953e67.svg",
-      "icon_new_marco-pressed.0faeaad4.svg",
-      "icon_new_marco.6edec51b.svg"
+      "icon_close.4f578909.svg"
     ]
   },
   "problems": []

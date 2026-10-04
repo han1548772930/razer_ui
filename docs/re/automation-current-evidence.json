@@ -1,6 +1,6 @@
 {
   "method": "Acorn literals and mounted current source; vendor code never executed",
-  "generator_sha256": "0b41e56200adcdf994e3d3d8af0c91ebaefbfbadb27ea4d24e7745fba1494bba",
+  "generator_sha256": "1e7467e3e9d12c2c6c42fd68084174861817ccba6af3d2a00706fd1bc74744ba",
   "source_files": [
     {
       "path": ".ref/devices/3946/static/js/main.46ad416c.js",
@@ -111,6 +111,105 @@
     "nI5": "MW_SET_AUTOMATION_TO_UI",
     "HTo": "MAPPINGLIST_AUTOMATION"
   },
+  "quick_color_parameters": {
+    "palette": {
+      "offset": 6402349,
+      "end": 6402761,
+      "source": "[\"#ffffff\",\"#ffc0c0\",\"#ffe0c0\",\"#ffffc0\",\"#c0ffc0\",\"#c0ffff\",\"#c0c0ff\",\"#ffc0ff\",\"#e0e0e0\",\"#ff8080\",\"#ffc182\",\"#ffff80\",\"#80ff80\",\"#80ffff\",\"#8080ff\",\"#ff80ff\",\"#c0c0c0\",\"#ff0000\",\"#ff8000\",\"#ffff00\",\"#00ff00\",\"#00ffff\",\"#0000ff\",\"#ff00ff\",\"#808080\",\"#c00000\",\"#c06000\",\"#c0c000\",\"#00c000\",\"#00c0c0\",\"#0000c0\",\"#c000c0\",\"#404040\",\"#800000\",\"#804000\",\"#808000\",\"#008000\",\"#008080\",\"#000080\",\"#800080\",\"no-color\"]"
+    },
+    "components": [
+      {
+        "name": "_l",
+        "offset": 6423938,
+        "end": 6425144,
+        "source": "class _l extends m.Component{constructor(){super(...arguments),this.onColor1Change=e=>{console.log(\"color1 :\".concat(e)),this.updateEffect({color1:e})},this.onColor2Change=e=>{console.log(\"color2 :\".concat(e)),this.updateEffect({color2:e})},this.toggleRandom=()=>{this.updateEffect({isRandom:!this.props.effectSetting.isRandom})},this.updateEffect=e=>{this.props.updateEffect(this.props.effectId,(0,v.A)((0,v.A)({},this.props.effectSetting),e),this.props.regionId)},this.onMouseDown=e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}}render(){const e=this.props.effectSetting,t=e.color1,a=e.color2,n=e.isRandom;return(0,zi.jsx)(\"div\",{className:\"effects-area\",\"data-effect\":\"breathing\",children:(0,zi.jsxs)(\"div\",{className:\"flex wrap-150\",children:[(0,zi.jsx)(El,{name:ze.arT,nameParams:{num:1},selectedColor:t,disabled:n,onChange:this.onColor1Change,onMouseDown:this.onMouseDown}),(0,zi.jsx)(El,{name:ze.arT,nameParams:{num:2},selectedColor:a,disabled:n,onChange:this.onColor2Change,onMouseDown:this.onMouseDown}),(0,zi.jsx)(W_.A,{id:\"randColor\",active:n,onCheck:this.toggleRandom,name:ze.XE0,extraClass:\"random-color has-color\",onMouseDown:this.onMouseDown})]})})}}"
+      },
+      {
+        "name": "vl",
+        "offset": 6431552,
+        "end": 6432090,
+        "source": "class vl extends m.Component{constructor(){super(...arguments),this.onChange=e=>{console.log(\"color1 :\".concat(e)),this.props.updateEffect(this.props.effectId,{color1:e},this.props.regionId)},this.onMouseDown=e=>{this.props.checkAdjustmentModeIsRunning&&this.props.checkAdjustmentModeIsRunning(e)}}render(){return(0,zi.jsx)(\"div\",{className:\"flex effects-area\",\"data-effect\":\"static\",children:(0,zi.jsx)(El,{name:ze.o$r,hideNoColor:!0,selectedColor:this.props.effectSetting.color1,onChange:this.onChange,onMouseDown:this.onMouseDown})})}}"
+      }
+    ],
+    "mounted_by": {
+      "path": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "offset": 6682450,
+      "end": 6687325,
+      "source": "function LP(e){var t,a,n,o,i;const r=e.isBle,s=e.type,E=e.chromaPickUpData,_=e.chromaPutDownData,c=e.isEnablePickUp,T=e.onEmitQuickEffect,l=e.isEnablePutDown,I=e.automationWidget,A=e.deviceQuickEffect,d=(0,m.useState)(()=>A.findIndex(t=>t.id===e.selectedEffectId)),O=(0,Ce.A)(d,2),S=(O[0],O[1]),u=(0,m.useState)(!1),R=(0,Ce.A)(u,2),N=R[0],D=(R[1],r&&(null===(t=CP.ble)||void 0===t?void 0:t.useHardwareEffect)),C=A.findIndex(e=>e.id===le.AoV.Wave_Effect),p=(0,m.useRef)(!1),L=(0,m.useRef)(!1);(0,m.useEffect)(()=>{S(A.findIndex(t=>t.id===e.selectedEffectId))},[e.selectedEffectId]);const h=()=>{var e;const t=null===(e=ie.DeviceInfo.WAVE_DIRECTION)||void 0===e?void 0:e.toUpperCase();return{direction:ke.hz[t]||2}},P=(e,t)=>{null===T||void 0===T||T({index:A.findIndex(t=>t.id===e),selectedEffectId:e,setting:t,isApplyToOtherDevices:!1,isAdvEffect:!1})},M=t=>{e.adjustmentModeRunning&&t.preventDefault()},g=()=>{const e=s===We.qWQ.PICK_UP_DEVICE.action?E:_;T((0,v.A)((0,v.A)({},e),{},{isApplyToOtherDevices:!e.isApplyToOtherDevices}))};return(0,m.useEffect)(()=>{!c||null!==E&&void 0!==E&&E.selectedEffectId||null!==E&&void 0!==E&&E.isAdvEffect||T({index:A.findIndex(e=>e.id===le.AoV.Wave_Effect),selectedEffectId:le.AoV.Wave_Effect,setting:{effectId:le.AoV.Wave_Effect,direction:h().direction},isApplyToOtherDevices:!1,isAdvEffect:!1}),!l||null!==_&&void 0!==_&&_.selectedEffectId||null!==_&&void 0!==_&&_.isAdvEffect||T({index:A.findIndex(e=>e.id===le.AoV.Wave_Effect),selectedEffectId:le.AoV.Wave_Effect,setting:{effectId:le.AoV.Wave_Effect,direction:h().direction},isApplyToOtherDevices:!1,isAdvEffect:!1})},[l,null===E||void 0===E?void 0:E.selectedEffectId,null===E||void 0===E?void 0:E.setting,c,null===_||void 0===_?void 0:_.selectedEffectId,null===_||void 0===_?void 0:_.isAdvEffect,null===E||void 0===E?void 0:E.isAdvEffect,T,A]),(0,m.useEffect)(()=>{c&&(p.current=!1)},[c]),(0,m.useEffect)(()=>{l&&(L.current=!1)},[l]),(0,zi.jsxs)(\"div\",{className:\"\".concat(D?\"\":\"modes-area active\"),children:[(0,zi.jsx)(\"div\",{className:\"flex chroma-flex-row\",children:(0,zi.jsx)(SE.A,{dataSet:A,selectOption:t=>{var a;const n=A[t].id;S(t);const o=e.defaultEffectSettings[n];let i=null;var r,E,_;if(s===We.qWQ.PICK_UP_DEVICE.action)i=null===I||void 0===I||null===(r=I[0])||void 0===r||null===(E=r.pickUp)||void 0===E||null===(_=E.data)||void 0===_?void 0:_.find(e=>(null===e||void 0===e?void 0:e.selectedEffectId)===n);else if(s===We.qWQ.PUT_DOWN_DEVICE.action){var c,l,d;i=null===I||void 0===I||null===(c=I[0])||void 0===c||null===(l=c.putDown)||void 0===l||null===(d=l.data)||void 0===d?void 0:d.find(e=>(null===e||void 0===e?void 0:e.selectedEffectId)===n)}const O=(0,v.A)((0,v.A)({},(null===(a=i)||void 0===a?void 0:a.setting)||o),{},{effectId:n});n!==le.bHc.Wave||i||(O.direction=h().direction),null===T||void 0===T||T({index:A.findIndex(e=>e.id===n),selectedEffectId:n,setting:O,isApplyToOtherDevices:!1,isAdvEffect:!1})},value:s===We.qWQ.PICK_UP_DEVICE.action?null!==(a=E.index)&&void 0!==a?a:C:null!==(n=_.index)&&void 0!==n?n:C,onMouseDown:M})}),(()=>{var t,a;const n=s===We.qWQ.PICK_UP_DEVICE.action?null!==(t=null===E||void 0===E?void 0:E.selectedEffectId)&&void 0!==t?t:le.AoV.Wave_Effect:null!==(a=null===_||void 0===_?void 0:_.selectedEffectId)&&void 0!==a?a:le.AoV.Wave_Effect;let o;switch(n){case le.AoV.Breathing_Effect:o=cl;break;case le.AoV.Radiate_Effect:o=gl;break;case le.AoV.Reactive_Effect:o=Gl;break;case le.AoV.Static_Effect:o=Hl;break;case le.AoV.Ripple_Effect:o=Bl;break;case le.AoV.Starlight_Effect:o=NP;break;case le.AoV.Wave_Effect:o=CP.isWaveWithSpeed?eI:Jl;break;case le.AoV.Wheel_Effect:o=cI;break;case le.AoV.Audio_Meter_Effect:o=dI;break;case le.AoV.Ambient_Effect:o=hI;break;case le.AoV.Battery_Level_Effect:o=MI;break;case le.AoV.Tidal_Effect:o=PI;break;default:return null}var i,r,c,T;return s===We.qWQ.PICK_UP_DEVICE.action?pP(o,{useHardwareEffect:e.isBle&&(null===(i=CP.ble)||void 0===i?void 0:i.useHardwareEffect),category:CP.category,effectId:n,updateEffect:P,hasWarning:N,effectSetting:null!==(r=E.setting)&&void 0!==r?r:{effectId:le.AoV.Wave_Effect,direction:h().direction},checkAdjustmentModeIsRunning:M}):s===We.qWQ.PUT_DOWN_DEVICE.action?pP(o,{useHardwareEffect:e.isBle&&(null===(c=CP.ble)||void 0===c?void 0:c.useHardwareEffect),category:CP.category,effectId:n,updateEffect:P,hasWarning:N,effectSetting:null!==(T=_.setting)&&void 0!==T?T:{effectId:le.AoV.Wave_Effect,direction:h().direction},checkAdjustmentModeIsRunning:M}):void 0})(),(0,zi.jsxs)(\"div\",{style:{display:\"flex\",paddingTop:\"30px\"},onClick:e=>e.stopPropagation(),children:[(0,zi.jsx)(W_.A,{onCheck:g,active:s===We.qWQ.PICK_UP_DEVICE.action?null!==(o=E.isApplyToOtherDevices)&&void 0!==o&&o:null!==(i=_.isApplyToOtherDevices)&&void 0!==i&&i}),(0,zi.jsx)(\"div\",{onClick:e=>{e.stopPropagation(),g()},style:{marginTop:\"2px\"},children:(0,zi.jsx)(ki.A,{text:ze.QPb})})]})]})}",
+      "jsx": [
+        {
+          "component": "\"div\"",
+          "props": {},
+          "expressions": {
+            "className": "\"\".concat(D?\"\":\"modes-area active\")"
+          },
+          "offset": 6684377
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "className": "flex chroma-flex-row"
+          },
+          "expressions": {},
+          "offset": 6684452
+        },
+        {
+          "component": "SE.A",
+          "props": {},
+          "expressions": {
+            "dataSet": "A",
+            "selectOption": "t=>{var a;const n=A[t].id;S(t);const o=e.defaultEffectSettings[n];let i=null;var r,E,_;if(s===We.qWQ.PICK_UP_DEVICE.action)i=null===I||void 0===I||null===(r=I[0])||void 0===r||null===(E=r.pickUp)||void 0===E||null===(_=E.data)||void 0===_?void 0:_.find(e=>(null===e||void 0===e?void 0:e.selectedEffectId)===n);else if(s===We.qWQ.PUT_DOWN_DEVICE.action){var c,l,d;i=null===I||void 0===I||null===(c=I[0])||void 0===c||null===(l=c.putDown)||void 0===l||null===(d=l.data)||void 0===d?void 0:d.find(e=>(null===e||void 0===e?void 0:e.selectedEffectId)===n)}const O=(0,v.A)((0,v.A)({},(null===(a=i)||void 0===a?void 0:a.setting)||o),{},{effectId:n});n!==le.bHc.Wave||i||(O.direction=h().direction),null===T||void 0===T||T({index:A.findIndex(e=>e.id===n),selectedEffectId:n,setting:O,isApplyToOtherDevices:!1,isAdvEffect:!1})}",
+            "value": "s===We.qWQ.PICK_UP_DEVICE.action?null!==(a=E.index)&&void 0!==a?a:C:null!==(n=_.index)&&void 0!==n?n:C",
+            "onMouseDown": "M"
+          },
+          "offset": 6684512
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "style": {
+              "display": "flex",
+              "paddingTop": "30px"
+            }
+          },
+          "expressions": {
+            "onClick": "e=>e.stopPropagation()"
+          },
+          "offset": 6686928
+        },
+        {
+          "component": "W_.A",
+          "props": {},
+          "expressions": {
+            "onCheck": "g",
+            "active": "s===We.qWQ.PICK_UP_DEVICE.action?null!==(o=E.isApplyToOtherDevices)&&void 0!==o&&o:null!==(i=_.isApplyToOtherDevices)&&void 0!==i&&i"
+          },
+          "offset": 6687029
+        },
+        {
+          "component": "\"div\"",
+          "props": {
+            "style": {
+              "marginTop": "2px"
+            }
+          },
+          "expressions": {
+            "onClick": "e=>{e.stopPropagation(),g()}"
+          },
+          "offset": 6687198
+        },
+        {
+          "component": "ki.A",
+          "props": {
+            "text": "APPLY_TO_ALL_CHROMA_DEVICES"
+          },
+          "expressions": {},
+          "offset": 6687286
+        }
+      ],
+      "render": []
+    }
+  },
   "manifest": {
     "path": ".ref/devices/3946/asset-manifest.json",
     "sha256": "0b05d43c0ea9735ba8d5ad588c80df59ed22ecac507f8ff99642e3426ced59a4"
@@ -125,6 +224,49 @@
       "path": ".ref/devices/3946/static/css/main.1aa32102.css",
       "sha256": "45b5a1636279972a88383ebf971348a90e320cea1711dce75d0f38feac7fa4fe",
       "rules": [
+        ".modes-area .effects-area[data-effect=audioMeter] .stepper input{background-color:#0000}",
+        ".effects-area{position:relative}",
+        ".effects-area .slider-label{margin-bottom:5px}",
+        ".effects-area[data-effect=breathing],.effects-area[data-effect=starlight]{display:flex}",
+        ".effects-area[data-effect=ambient] .has-color,.effects-area[data-effect=audioMeter] .has-color,.effects-area[data-effect=fire] .has-color,.effects-area[data-effect=reactive] #secondColor,.effects-area[data-effect=reactive] .random-color,.effects-area[data-effect=ripple] #secondColor,.effects-area[data-effect=ripple] .random-color,.effects-area[data-effect=spectrum] .has-color,.effects-area[data-effect=static] #secondColor,.effects-area[data-effect=static] .random-color,.effects-area[data-effect=warning] .has-color,.effects-area[data-effect=wave] .has-color,.effects-area[data-effect=wheel] .has-color{display:none}",
+        ".effects-area[data-effect=wave] .direction-area{display:flex!important}",
+        ".effects-area[data-effect=wave] #waveSlider{align-items:flex-end}",
+        ".effects-area[data-effect=wave] .slider-wrapper{width:315px}",
+        ".effects-area[data-effect=wave] .slider-wrapper>div{margin-top:10px}",
+        ".effects-area[data-effect=ambient] .direction-area,.effects-area[data-effect=audioMeter] .direction-area,.effects-area[data-effect=wheel] .direction-area{display:flex!important}",
+        ".effects-area[data-effect=battery]{margin-top:20px}",
+        ".effects-area[data-effect=battery] .battery-header{display:flex;position:relative}",
+        ".effects-area[data-effect=battery] .battery-help-container{left:32px;position:relative;top:-8px}",
+        ".effects-area[data-effect=battery] .battery-level{background-image:url(../../static/media/icon_battery_graph.5140e4be.svg);background-repeat:no-repeat;background-size:cover;height:10px;margin:5px 0}",
+        ".effects-area[data-effect=battery] p{margin:0}",
+        ".effects-area[data-effect=battery] .battery-percent{display:flex;justify-content:space-between}",
+        ".effects-area[data-effect=reactive] #reactiveSlider,.effects-area[data-effect=starlight] #starSlider{display:block}",
+        ".effect-wrapper .effects-area .stepper{border:1px solid #5d5d5d;box-sizing:border-box;height:27px;margin-top:10px;position:relative;transition:opacity .2s;width:60px;will-change:opacity}",
+        ".effect-wrapper .effects-area .stepper input{background-color:#111;border:none;box-sizing:border-box;color:#ccc;font-size:14px;height:25px;line-height:17px;padding:5px 18px 5px 5px;text-align:left;width:58px}",
+        ".effect-wrapper .effects-area .stepper:hover{border:1px solid #44d62c}",
+        ".effect-wrapper .effects-area[data-effect=breathing]{flex-wrap:wrap;gap:15px;justify-content:space-between;max-width:150px}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150{flex-wrap:wrap}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>div:not(:last-child){flex:0 0 50%!important}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>div:not(:last-child) .dropdown-area{margin-top:15px}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.last-child{margin-top:10px}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.random-color{margin:30px 0 0}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .wrap-150>.random-color .random-color{margin:0}",
+        ".effect-wrapper .effects-area[data-effect=breathing] .dropdown-area{margin-right:0}",
+        ".dropdown-area.dropdown-color{flex:0 0 auto!important;margin-left:0;margin-right:20px;margin-top:5px;width:53px}",
+        ".dropdown-color .s3-options{height:0;opacity:0;transition:all .1s,width 0;will-change:all}",
+        ".dropdown-color .s3-options .color-label{color:#ccc;font-size:14px;height:20px;line-height:20px;margin-top:10px;padding-left:10px;text-align:left;text-transform:capitalize;width:100%}",
+        ".dropdown-color .s3-options.expand{background-color:#111;height:250px;min-height:250px;min-width:250px;opacity:1;overflow:visible;overflow:initial;padding:5px 0 10px;width:250px}",
+        ".dropdown-color .presets{flex-wrap:wrap;height:150px;justify-content:center;max-height:150px}",
+        ".dropdown-color .presets.custom{height:85px;max-height:85px}",
+        ".dropdown-color .preset{background-color:#fff;border:1px solid #0000004d;border-radius:3px;flex:0 0 auto!important;height:20px;margin:5px;min-height:20px!important;position:relative;transition:border-color .2s,opacity .2s,background-color .2s;width:20px;will-change:border-color,opacity,background-color}",
+        ".dropdown-color .s3-dropdown .selected{overflow:visible;overflow:initial}",
+        ".dropdown-area.dropdown-color{z-index:auto}",
+        ".s3-options.color-opts.hide{display:none}",
+        ".s3-options.color-opts{display:block}",
+        ".color-opts{flex-direction:column}",
+        "#multipleBrightness .multiple-quickeffect .quickeffect .effects-area .wrap-150,#multipleBrightness .multiple-quickeffect .quickeffect .effects-area--wireless .wrap-150{flex-wrap:wrap;width:150px}",
+        ".optionButtonGroup_effects-area__8iBAF.optionButtonGroup_with-option-buttons__gEnlO{display:flex;flex-direction:column}",
+        ".optionButtonGroup_effects-area__8iBAF[data-effect=wave].optionButtonGroup_with-option-buttons__gEnlO #optionButtonGroup_waveSlider__V1ggR{align-items:flex-start}",
         ".LaunchSoundApp_imgText__TtbjM .LaunchSoundApp_getStarted__YigjL{align-items:center;display:flex;text-decoration:underline}",
         ".LaunchSoundApp_imgText__TtbjM .LaunchSoundApp_getStarted__YigjL:hover{color:#44d62c;-webkit-text-decoration-color:#44d62c;text-decoration-color:#44d62c}",
         ".LaunchSoundApp_imgText__TtbjM .LaunchSoundApp_getStarted__YigjL:after{background-image:url(../../static/media/icon_external_link_sprite.0b292d50.svg#link);background-position:50%;background-repeat:no-repeat;content:\"\";display:inline-block;height:20px;line-height:20px;margin-left:4px;transition:color .3s,opacity .3s;width:20px;will-change:color,opacity}",
@@ -302,6 +444,85 @@
         ".automation-modal .modal-body{flex:1 1;max-height:none}",
         ".AutomationModal_automation-delete-dialog-title__B1WEC{color:#fd4949;font-size:16px;text-transform:uppercase}",
         ".AutomationModal_automation-delete-dialog-content__g5tYV{color:#ccc;font-size:14px}",
+        ".quick-macro-popup__backdrop{inset:0;position:fixed}",
+        ".quick-macro-popup__dialog{background:#111;border:1px solid #44d62c;border-radius:3px;display:flex;flex-direction:column;height:369px;left:50%;padding:20px;position:fixed;top:50%;transform:translate(-50%,-50%);width:500px;z-index:102}",
+        ".quick-macro-popup__title{color:#44d62c;font-family:RazerF5;line-height:100%;margin-bottom:24px;text-align:center;text-transform:uppercase}",
+        ".quick-macro-popup__close{background-color:#0000;background-image:url(../../static/media/icon_close.55fe41f1.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:32px;position:absolute;right:0;top:0;transition:background-color .2s ease;width:32px}",
+        ".quick-macro-popup__close:hover{background-color:#ffffff1a}",
+        ".quick-macro-popup__body{display:flex;flex:1 1;flex-direction:column;gap:20px}",
+        ".quick-macro-popup__body button,.quick-macro-popup__body span{font-family:Roboto}",
+        ".quick-macro-row{display:flex;gap:20px}",
+        ".quick-macro-row .quick-macro-label{flex:1 1}",
+        ".quick-macro-label{color:#999;display:flex;flex-direction:column;font-size:14px;gap:8px;text-transform:uppercase}",
+        ".quick-macro-input,.quick-macro-textarea{background:#111;border:1px solid #5d5d5d;color:#ccc;height:16px;padding:5px 6px}",
+        ".quick-macro-input:hover,.quick-macro-textarea:hover{border-color:#44d62c}",
+        ".quick-macro-input:focus,.quick-macro-textarea:focus{border-color:#44d62c;outline:none}",
+        ".quick-macro-textarea{background-color:#111;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;font-family:Roboto;font-size:14px;height:54px;line-height:17px;overflow-y:auto;padding:5px;resize:none}",
+        ".quick-macro-textarea-container{display:flex;flex-direction:column}",
+        ".quick-macro-textarea-container .character-counter{color:#707070;font-family:Roboto;font-size:14px;line-height:17px;margin-top:5px;text-align:right}",
+        ".macro-type-select{position:relative}",
+        ".macro-type-select__control{background-color:#0000;border:1px solid #515151;color:#ccc;font-size:14px;height:27px;line-height:17px;position:relative;text-transform:none;transition:opacity .3s,border .3s;width:100%;will-change:opacity,border;z-index:1}",
+        ".macro-type-select.open .macro-type-select__control,.macro-type-select__control:hover{border:1px solid #44d62c}",
+        ".macro-type-select__value{align-items:center;color:#ccc;display:flex;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+        ".macro-type-select__placeholder{color:#666}",
+        ".macro-type-select__chevron{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;transform:rotate(0deg);transition:transform .3s;width:29px;will-change:transform}",
+        ".macro-type-select.open .macro-type-select__chevron{transform:rotate(180deg)}",
+        ".macro-type-select__menu{background-color:#000;flex-direction:column;height:0;left:0;margin-top:1px;max-height:0;min-width:100%;overflow-x:hidden;overflow-y:auto;position:absolute;transition:height .2s,max-height .2s;width:-webkit-fit-content;width:fit-content;will-change:height,max-height;z-index:1000}",
+        ".macro-type-select.open .macro-type-select__menu{border:1px solid #515151;height:auto;max-height:180px}",
+        ".macro-type-select__option{align-items:center;background:#0000;border:none;display:flex;font-size:14px;gap:10px;min-height:30px;padding:5px 6px;text-transform:none;width:100%}",
+        ".macro-type-select__option:hover{background-color:#ffffff1a}",
+        ".macro-type-select__option.selected .macro-type-select__value{color:#44d62c}",
+        ".macro-type-select .ellipsis-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+        ".macro-type-select__option-icon{align-items:center;display:flex;flex-shrink:0;justify-content:center}",
+        ".macro-type-select__option-copy{flex:1 1;min-width:0}",
+        ".macro-type-select__option-label{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+        ".quick-macro-section{display:flex;flex-direction:column;gap:10px}",
+        ".quick-macro-clear{align-items:center;background:#0000;border:none;color:#ccc;display:inline-flex;font-size:14px;gap:2px;text-decoration:underline;transition:color .2s ease,opacity .2s ease}",
+        ".quick-macro-clear:disabled{opacity:.3}",
+        ".quick-macro-clear:disabled:hover{color:#ccc}",
+        ".quick-macro-clear:disabled:hover svg path{fill:#ccc}",
+        ".quick-macro-clear svg{height:20px;width:20px}",
+        ".quick-macro-clear:hover{color:#44d62c}",
+        ".quick-macro-clear:hover svg path{fill:#44d62c;transition:fill .2s ease}",
+        ".quick-macro-section__body{display:flex;gap:10px}",
+        ".quick-macro-section__icon{margin-top:6px}",
+        ".quick-macro-section__icon--text{margin-top:0}",
+        ".quick-macro-section__icon--disabled{opacity:.3}",
+        ".quick-macro-section__content{display:flex;flex:1 1;flex-direction:column;gap:14px}",
+        ".quick-macro-section__content .quick-macro-input{height:26px}",
+        ".macro-keyboard-capture{align-items:center;display:flex;flex-wrap:wrap;gap:5px}",
+        ".macro-keyboard-input{background:#0000;border:none;caret-color:#44d62c;font-size:14px;height:28px;padding:0;width:100%}",
+        ".macro-keyboard-input::placeholder{color:#7c7c7c}",
+        ".macro-keyboard-pills{align-items:center;display:flex;flex-wrap:wrap;gap:5px}",
+        ".macro-pill-separator{color:#ccc;font-size:14px}",
+        ".macro-pill{align-items:center;background:#0000;border:1px solid #5d5d5d;border-radius:4px;cursor:default;display:inline-flex;font-size:13px;justify-content:center;min-height:16px;min-width:12px;padding:8px 10px;position:relative;text-transform:capitalize;transition:border-color .2s ease}",
+        ".macro-pill:hover{border-color:#ff4a4a}",
+        ".macro-pill:hover>span{opacity:0}",
+        ".macro-pill--plus{border-color:#999;color:#ccc}",
+        ".macro-pill--plus:hover{border-color:#44d62c;color:#ccc}",
+        ".macro-pill--plus:hover>span{opacity:1}",
+        ".macro-pill:active{border-color:#4e4e4e}",
+        ".macro-pill:active .macro-pill__delete svg path{fill:#4e4e4e;transition:fill .2s ease}",
+        ".macro-pill>span,.macro-pill__delete{transition:opacity .2s ease}",
+        ".macro-pill__delete{align-items:center;border-radius:2px;display:flex;justify-content:center;left:50%;opacity:0;padding:0;position:absolute;top:50%;transform:translate(-50%,-50%)}",
+        ".macro-pill:hover .macro-pill__delete{opacity:1}",
+        ".quick-macro-popup__body .radio-item{margin:0}",
+        ".quick-macro-launch{display:flex;flex-direction:column;gap:10px}",
+        ".quick-macro-launch__option{display:flex;flex-direction:column;gap:6px}",
+        ".quick-macro-launch__row{align-items:center;display:flex;position:relative}",
+        ".quick-macro-launch__row:hover .launch-input:not(:disabled):not(.disabled){border-color:#44d62c}",
+        ".quick-macro-launch__row:hover .folder:not(.disabled){filter:brightness(0) saturate(100%) invert(60%) sepia(85%) saturate(454%) hue-rotate(72deg) brightness(93%) contrast(94%)}",
+        ".quick-macro-launch .launch-input{background-color:#0000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;height:27px;margin:0 0 0 30px;padding:0 5px;width:387.5px}",
+        ".quick-macro-launch .launch-input:not(:disabled):not(.disabled):hover{border-color:#44d62c}",
+        ".quick-macro-launch .launch-input.has-icon{cursor:default;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+        ".quick-macro-launch .launch-input.disabled,.quick-macro-launch .launch-input:disabled{opacity:.3}",
+        ".quick-macro-launch .folder{background-color:#0000;background-image:url(../../static/media/icon_folder.e5ceb5b6.svg);background-position:50%;background-repeat:no-repeat;background-size:contain;border:none;margin:0;position:absolute;right:5.67px;width:16.67px}",
+        ".quick-macro-launch .folder.disabled{opacity:.3;pointer-events:none}",
+        ".quick-macro-popup__actions{display:flex;gap:10px;justify-content:center}",
+        "@keyframes quick-macro-fade{0%{opacity:0}",
+        ".macro-type-select__option{padding:8px 12px}",
+        ".quick-macro-popup__actions{flex-direction:column}",
+        ".macro-keyboard-capture--disabled{opacity:.3;pointer-events:none}",
         ".automation-macro-container{position:relative}",
         ".automation-macro-container .add_box{border:1px dashed #444;border-radius:5px;margin:10px 0 0;padding:10px;text-align:center;width:355px}",
         ".automation-macro-container .add_box:hover{border:1px dashed #44d62c4d}",

@@ -8,6 +8,9 @@ const source = new Source('synapse/armory');
 const keys = ['SPOTLIGHT_HEADER', 'BROWSE_HEADER', 'MY_DOWNLOADS_HEADER', 'MY_UPLOADS_HEADER',
   'DASHBOARD_WORKSHOP', 'DASHBOARD_EXCHANGE', 'WORKSHOP_GET_STARTED', 'EXCHANGE_GET_STARTED',
   'AI_MACRO_DESC', 'MACRO_USAGE_DESC', 'ASSIGN_MACRO_DESC', 'CLOSE'];
+const controlKeys = ['ALL_CONNECTED_DEVICES_TEXT', 'LAPTOPS', 'MICE', 'KEYBOARDS', 'HEADSETS',
+  'SPEAKERS', 'NEVER_DOWNLOADED', 'ALREADY_DOWNLOADED', 'VIEW_ALL_ITEMS', 'MOST_LIKES',
+  'MOST_DOWNLOADS', 'LATEST', 'TITLE', 'CREATOR_NAME', 'TEXT_TRENDING', 'FILTER', 'SORT'];
 const locales = [];
 for (const file of source.files.filter(f => /\/trans-[^.]+\.[a-f0-9]+\.chunk\.js$/.test(f))) {
   source.parse(file);
@@ -21,9 +24,17 @@ for (const file of source.files.filter(f => /\/trans-[^.]+\.[a-f0-9]+\.chunk\.js
     fs.writeFileSync(path.join(root, filename), JSON.stringify(local, null, 2) + '\n');
   }
   for (const key of keys) if (local.ARMORY_SOURCE?.[key] !== values[key]) throw Error(`Locale mismatch ${locale}:${key}`);
+  for (const key of controlKeys) {
+    const value = source.literal(module.id, source.exported(module.id, key));
+    if (local[key] !== value) throw Error(`Control locale mismatch ${locale}:${key}`);
+  }
   locales.push({locale, module: module.id, path: file, sha256: hash(source.text(file)), values});
 }
-const components = [29770, 20540, 77989, 60094, 95889, 3026, 86024].map(id => ({
+// The card/detail/share surfaces are lazy modules, but their source is part of
+// the current manifest. Keep them in the receipt even though the local shell
+// cannot fabricate service-backed contribution data.
+const components = [29770, 20540, 77989, 60094, 95889, 3026, 86024, 68142,
+  27588, 13476, 66517, 54408, 49496, 38198, 52259, 70017, 8679].map(id => ({
   module: id, ...source.receipt(id, source.module(id).fn),
 }));
 const nav = source.binding(20540, 'c');
@@ -33,27 +44,54 @@ const css = [];
 for (const name of ['main.c0e644c4.css', '458.d86e844b.chunk.css']) {
   const file = `${source.directory}/static/css/${name}`, text = read(file);
   for (const match of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (/armory-introduction-banner|^\.nav-tabs|^div.nav-tabs|^\.main-nav|filteringBar/.test(match[1])) {
+    if (/armory-introduction-banner|^\.nav-tabs|^div.nav-tabs|^\.main-nav|filteringBar|profile-card|detail-footer|share-new-profile-modal|share-new-profile-form|profile-act|\.reshare/.test(match[1])) {
       css.push({path: file, sha256: hash(text), offset: match.index, selector: match[1], declarations: match[2]});
     }
   }
 }
 const local = read('src/shell/armory_page.rs'), shell = read('src/shell.rs');
 const problems = [];
+const inlineIcons = [
+  {module: 70017, output: 'assets/synapse/armory-filter.svg'},
+  {module: 8679, output: 'assets/synapse/armory-sort.svg'},
+].map(item => {
+  const literal = read(item.output), currentModule = source.snippet(item.module, source.module(item.module).fn);
+  for (const match of literal.matchAll(/\b(?:d|viewBox|transform|width|height)="([^"]+)"/g)) {
+    if (!currentModule.includes(JSON.stringify(match[1]))) problems.push(`Inline SVG differs from module ${item.module}: ${match[0]}`);
+  }
+  return {...item, sha256: hash(literal)};
+});
 for (const text of ['phase1: false', 'guest: true', 'tab: ArmoryTab::Browse',
   'history: vec![ArmoryTab::Browse]', 'self.history.truncate', 'fn visible(',
-  'self.phase1', 'self.guest', 'synapse/armory-introduction.png']) {
+  'self.phase1', 'self.guest', 'synapse/armory-introduction.png',
+  'filter_open: false', 'sort_open: false', 'filter_selection:', 'fn filtering_bar(',
+  'id("armory-filtering-bar")', 'armory-filter', 'armory-sort',
+  'armory-filter-options', 'armory-sort-options', 'armory-filter-laptop',
+  'armory-filter-never-downloaded', 'armory-sort-trending',
+  'synapse/armory-filter.svg', 'synapse/armory-sort.svg', 'fn armory_option(',
+  'fn search_control(', 'armory-search-wrapper', 'armory-search-clear',
+  'Duration::from_millis(300)']) {
   if (!local.includes(text)) problems.push(`Missing local default/history contract: ${text}`);
 }
 if (!shell.includes('HistoryTarget::Armory')) problems.push('Armory history not connected to shell');
 const report = {schema_version: 1, method: 'Acorn module scopes and export getters; static CSS declarations',
-  components, locales, css,
+  components, locales, css, inline_icons: inlineIcons, verified_control_locale_keys: controlKeys,
   behavior: {settled_without_features: ['BROWSE_HEADER', 'MY_DOWNLOADS_HEADER'],
     guest: true, feature_flags: false, data_grid_when_empty: null,
-    banner_default: true, banner_close_source: 'localStorage boolean via module 95889'},
+    banner_default: true, banner_close_source: 'localStorage boolean via module 95889',
+    filtering_bar: {mounted_for: ['BROWSE_HEADER', 'MY_DOWNLOADS_HEADER'],
+      source_modules: [54408, 49496, 38198, 52259, 70017, 8679],
+      local_state: ['filter_open', 'sort_open', 'filter_selection', 'sort_choice'],
+      filter_options: ['ALL_CONNECTED_DEVICES_TEXT', 'LAPTOPS', 'MICE', 'KEYBOARDS', 'HEADSETS', 'SPEAKERS', 'NEVER_DOWNLOADED', 'ALREADY_DOWNLOADED', 'VIEW_ALL_ITEMS'],
+      sort_options: ['MOST_LIKES', 'MOST_DOWNLOADS', 'LATEST', 'TITLE', 'CREATOR_NAME', 'TEXT_TRENDING'],
+      option_panels: ['armory-filter-options', 'armory-sort-options'], service_actions: 'deferred'},
+    search: {source_module: 68142, debounce_ms: 300, service_actions: 'deferred'},
+    content: {card_module: 27588, lazy_list_module: 86024, detail_module: 13476,
+      share_module: 66517, empty_dataset_render: 'null'},
+  },
   limitations: ['The source initially chooses Spotlight, then settles on Browse when feature loading ends with phase1 false.',
-    'Local banner dismissal is retained for the lifetime of this page; source localStorage persistence remains to be connected.',
-    'Search/filter controls, feature-enabled content, detail/share dialogs and services remain incomplete.',
+    'The source localStorage key is mirrored under APPDATA/razer_ui; service-backed persistence remains local to this shell.',
+    'Filter controls mirror the source device/download groups and six sort entries with local state; the source search shell and 300ms debounce are mounted without remote suggestions/results; service-backed filtering/sorting, content cards, detail/share dialogs and services remain incomplete. Current source receipts cover card (27588), detail (13476), and upload/share (66517) branches without inventing their service payloads.',
     'No application execution or pixel validation.'], problems};
 const target = 'docs/re/armory-default-source.json', rendered = JSON.stringify(report, null, 2) + '\n';
 if (process.argv.includes('--check')) {

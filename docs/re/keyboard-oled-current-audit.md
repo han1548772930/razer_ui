@@ -37,9 +37,9 @@ lossless animated WebP with frame pixel and duration validation. The native
 selector retains the reducer's IDs 0–3; eventual device transport must encode
 ID 0 as disabled and IDs 1–3 as enabled with values 0–2, matching the reducer.
 
-Still pending: home-screen cards and editors, language download conditions,
-live device transport, original
-layout and tooltips. Language selection is now staged outside the persisted
+Still pending: language download conditions, live device transport, original
+layout and tooltips. Home-screen cards and local preset editors are mounted;
+their GIF processing and host transfer remain unavailable. Language selection is now staged outside the persisted
 snapshot until Apply, with the source complemented-byte decoding (`raw < 127 ?
 raw : 255 & ~raw`) and unchanged-value disable behavior. BLE disables both the
 select and Apply. Leaving the page drops unapplied selection. The source
@@ -113,18 +113,100 @@ now extracted independently from its asset arrays. Mounted wt/Vt/jt/Ht/pi/ve
 function receipts accompany those defaults; validation checks their source
 slices and all sixteen embedded resource paths.
 
-This is **preset selection only**, not the complete OLED editor. Upload, crop,
-custom-content reset, transfer/progress/error handling, emote/banner/media/system
-editors and the complete home card layout remain pending. Native enable switches
-are visible below previews for keyboard access; the source hover toolbar and
-its animation have not been reproduced. The original mode button group remains.
-No hardware success or progress is simulated.
+The preset editor now also mounts the source upload affordances. Animation slots
+accept local GIFs and image slots accept PNG/JPG/JPEG/BMP through the host path
+picker. The crop dialog keeps the source's fixed 232×64 (3.625) frame, local
+zoom, reset control and Apply/Cancel footer. The original cropper has a 1–10
+slider whose callbacks change its zoom ratio; the current local 1×–10× preview
+is still a partial implementation, not an assertion that its geometry and zoom
+steps equal CropperJS. Source crop settings are recorded independently below.
+Local staging does not claim GIF frame processing, hardware transfer, progress
+or success: those operations remain outside the current service boundary.
 
-Three Rust regression cases cover selection fallback, the last-enabled invariant,
-isolated drafts and invalid saved indices. They are type-checked by
+The home selector now mounts source-shaped branches for emote, banner, media,
+system and keyboard-information modes. Media uses the source's black OLED
+preview surface and visualizer-bar arrangement; system intentionally shows
+placeholders instead of battery/temperature/date telemetry. Emote and banner
+open explicit editor dialogs whose unavailable service boundary is visible.
+Native enable switches remain below previews for keyboard access and the source
+hover toolbar animation is still represented by the stable controls rather than
+runtime hover transitions.
+
+Five Rust regression cases cover selection fallback, the last-enabled invariant,
+isolated drafts, invalid saved indices, imported-payload restoration and the
+current preset schema. They are type-checked by
 `cargo check --locked --all-targets`, **not executed**, under AGENTS.md.
 
 Verification: `cargo check --locked --all-targets` passes with existing unused
 import/dead-code warnings; native descriptor validation and all 605 embedded
 resource entries pass static validation. No application, build, test, installer,
 downloaded JavaScript or DLL was executed.
+## Media editor continuation on 2026-10-04
+
+The product 691 `Os`/`Ns` receipts now have a native counterpart in
+`source_controls/oled_presets.rs`. The source keeps cloned `media.info` and
+`media.visualizer` objects until Apply: media information can be disabled or
+placed `top`/`bottom`, and the visualizer can be disabled or selected from the
+three current assets. The source invariant is retained: disabling the
+visualizer enables media information, while disabling information enables the
+visualizer; enabling either preserves the other setting. Both cannot be
+disabled at once. Reset restores `{info:{enabled:true,selected:"top"},
+visualizer:{enabled:true,selected:0}}`. Cancel/Escape/close discard the clone.
+
+The preview follows `Ns`: black OLED surface, 232x64 content, 14px source
+text and the source order (top text, visualizer, bottom text). The mounted CSS
+receipt sets the visualizer card to 232x44 with a 1px `#5d5d5d` border, 2px
+`#44d62c` selected border, 5px grid gap, and a `#5d5d5d` disabled overlay.
+The three current GIFs are preserved as grayscale animated WebP at their source
+696x132 raster dimensions and displayed at 232x44, matching browser image
+scaling rather than inventing a resize filter; frame count and durations are
+validated in `prepare-oled-home-assets.py`.
+
+The media editor is available only for wired OLED mode and an enabled home
+screen, matching the source `requireSynapse`/BLE branch. Applying only changes
+the local device-owned `oled.media` mirror and emits the existing local change
+event; no audio metadata, telemetry, OLED packet, or host transfer is
+claimed. Current source receipts: `Os` 60934--63382, `Ns` 60612--60930 in
+`OLED.b7b95581.chunk.js`; visualizer CSS is in
+`OLED.a636cf4a.chunk.css`.
+
+## Import draft and language-state review on 2026-10-04
+
+The current `be` cropper uses a 190px container, fixed 3.625 aspect ratio,
+`cropBoxMovable:false`, `cropBoxResizable:false`, `viewMode:0`, `dragMode:"move"`,
+and minimum crop box 232×64. Image Apply invokes the shared image cropper with
+232×64 output; animation Apply sends the original bytes and container/canvas/
+crop-box geometry to worker 8609. The callbacks replace only the isolated
+`wt`/`Vt` list item and leave the parent OLED mirror unchanged until its Apply.
+`Vt` suppresses the animation-only crop information; reset is available only
+for an enabled custom item. These are vendor source facts, not claims that the
+local renderer produces the same processed payload.
+
+Two native data-loss bugs are corrected: crop Apply now retains
+`local_crop.zoom`, and the OLED restore hook restores `src`, `size` and this
+placement despite their absence from reducer default records. Crop, preset
+editor and home previews use one fixed 232×64 viewport so the staged zoom is
+still visible after Apply and restore. Restoration matches the current preset
+ID at each fixed index, accepts the import branch's data-URL MIME types, keeps
+enabled/selected values, and normalizes malformed selection and zoom values.
+`size` remains the original local file byte count; no processed GIF size or
+device transfer estimate is inferred. Reset discards these local fields and
+returns to the prepared current-source resource.
+
+Language `wi` is disabled for BLE or `oledLoading.type === "progress"`.
+Selection stages the raw value and displays its complemented-byte form;
+the source's unchanged predicate compares both raw and displayed values.
+`oledLanguageChanged` increments when middleware sends
+`MW_SET_OLED_LANGUAGE_TO_UI`. When system mode (6) is active, later language
+updates replace system slide labels; they are not a local select side effect.
+`Wi` mounts the language progress dialog only when the loading reducer has
+`target:"language", type:"progress"`; `Ui` exposes its cancel confirmation and
+dispatches `CANCEL_OLED_LANGUAGE_UPDATE`. The native UI has no middleware
+loading/reply source, therefore it keeps language Apply as a local mirror and
+does not fabricate download progress, cancellation or completed status.
+
+Reproducible source and boundary receipts are in
+`oled-crop-language-current-evidence.json`, generated by
+`tools/audit-oled-crop-language.cjs`. GIF worker execution, complete cropper
+canvas/pan/zoom geometry, original slider callbacks, language download UI state,
+hardware transfer and pixel-level runtime validation remain open.

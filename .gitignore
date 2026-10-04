@@ -96,6 +96,13 @@
 !/tools/validate-embedded-json.py
 !/tools/audit-armory-default.cjs
 !/tools/extract-macro-locales.cjs
+!/tools/extract-feedback-locales.cjs
+!/tools/audit-feedback-app.cjs
+!/tools/audit-macro-editors.cjs
+!/tools/audit-camera-pan-assets.py
+!/tools/fetch-oled-worker-resources.py
+!/tools/audit-oled-worker.cjs
+!/tools/audit-oled-crop-language.cjs
 !/tools/audit-resource-usage.py
 !/tools/css-source.cjs
 !/tools/extract-macro-metadata.cjs

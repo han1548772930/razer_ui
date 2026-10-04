@@ -1,0 +1,342 @@
+{
+  "method": "Acorn module-local AST and static CSS parsing; no reference JavaScript execution",
+  "module": 58190,
+  "source": {
+    "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+    "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f"
+  },
+  "components": {
+    "St": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1246399,
+      "end": 1252233,
+      "source": "(0,Se.connect)(e=>{var t;return{macroList:e.macroList.macroList,currentProfile:e.macroList.currentProfile,randomizeDelay:null===(t=e.macroList.recordProfile)||void 0===t?void 0:t.randomizeDelay}})(e=>{var t,n,r;const{item:i,itemIndex:s,currentProfile:c,macroList:l,type:d}=e,_=(0,Se.useDispatch)(),E=(0,a.useRef)(),u=(0,a.useRef)(),m=(0,a.useRef)(),h=(0,a.useRef)(),A=(0,a.useRef)(),S=(0,a.useRef)(),I=(0,a.useRef)(),[D,T]=(0,a.useState)(i.Number||0),[g,p]=(0,a.useState)({min:(null===(t=i.Number)||void 0===t?void 0:t.min)||0,max:(null===(n=i.Number)||void 0===n?void 0:n.max)||0}),N=(0,a.useMemo)(()=>l.find(e=>e.guid===c),[l,c]),f=null!==(r=null===N||void 0===N?void 0:N.delaySetting)&&void 0!==r?r:0,L=e=>{e.stopPropagation(),_({type:o.oA,payload:!1});const t=S.current||A.current;if(t&&t instanceof Element)try{(0,Ke.th)(e,t)}catch(n){console.warn(\"Error in arrangeMacroItems:\",n)}null!==u&&void 0!==u&&u.current&&(u.current.style.display=\"block\",null!==S&&void 0!==S&&S.current&&(S.current.style.display=\"none\"),u.current.focus(),u.current.select())},v=(e,t)=>{var n;if(2===f){if(e){e.stopPropagation(),_({type:o.oA,payload:!1});try{const t=I.current||A.current;t&&t instanceof Element&&(0,Ke.th)(e,t)}catch(a){console.warn(\"Error in arrangeMacroItems:\",a)}if(null!==I&&void 0!==I&&null!==(n=I.current)&&void 0!==n&&n.style&&(I.current.style.display=\"none\"),null!==m&&void 0!==m&&m.current&&null!==h&&void 0!==h&&h.current){m.current.style.display=\"inline-block\",m.current.style.visibility=\"visible\",m.current.readOnly=!1,m.current.disabled=!1,h.current.style.display=\"inline-block\",h.current.style.visibility=\"visible\",h.current.readOnly=!1,h.current.disabled=!1;const e=1===t?m:h;requestAnimationFrame(()=>{e.current&&(e.current.focus({preventScroll:!0}),e.current.select())})}}}else L(e)},w=e=>(e=parseFloat(e),Number.isNaN(e)&&(e=0),e<0&&(e=0),\"delay\"===d&&e>99999.999&&(e=99999.999),Number.isInteger(e)?e:Number(e.toFixed(3))),U=(e,t)=>{13!==e.keyCode&&27!==e.keyCode||H(e,t),8===e.keyCode||/[0-9.]/.test(e.key)||e.preventDefault()},P=(0,a.useCallback)(e=>{M.A.lock().then(()=>{_({type:o.Lt,updateValue:e,index:s})})},[_,s]),$=(0,a.useCallback)((e,t)=>{M.A.lock().then(()=>{_({type:o.Lt,index:s,updateValue:{min:e,max:t},additionalUpdates:{Number1:e,Number2:t}})})},[_,s]),G=e=>t=>{const n=t.target.value,a=(e=>{if(!isNaN(e)&&\"\"!==e){const t=String(e).split(\".\");return 1===t.length?t[0].length<=3?t[0]:t[0].slice(0,3):(t[0].length<=3?t[0]:t[0].slice(0,3))+\".\"+(t[1].length<=2?t[1]:t[1].slice(0,2))}return null})(n);if(\"\"===n)return void p(t=>({...t,[e]:\"\"}));if(null===a)return;const r=parseFloat(a);if(Number.isNaN(r)||r>5)return;const o=Number(g.min||0),i=Number(g.max||0);if(\"max\"===e){if(!isNaN(o)&&r<o){const e=Math.min(o+1,5);return void p(t=>({...t,max:e.toString()}))}}else if(\"min\"===e&&!isNaN(i)&&r>=i){const e=Math.max(0,r),t=Math.min(e+1,5);return void p(n=>({...n,min:e.toString(),max:t.toString()}))}p(t=>({...t,[e]:a}))},H=(0,a.useCallback)(e=>{clearTimeout(E.current),(e.type!==C.uM||S.current&&!u.current)&&u.current&&\"none\"!==u.current.style.display&&y.A.init().then(e=>{At(e),P(w(D).toString()),S.current&&S.current.style&&(S.current.style.display=\"\"),u.current&&u.current.style&&(u.current.style.display=\"none\"),_({type:o.oA,payload:!0})})},[D,P,_]),b=(0,a.useCallback)(e=>{if(2!==f)return void H(e);const t=e.relatedTarget;if(t===m.current||t===h.current)return;if(clearTimeout(E.current),e.type===C.uM&&!I.current)return;const n=document.activeElement===m.current,a=document.activeElement===h.current;n||a||y.A.init().then(e=>{var t;At(e),\"object\"===typeof i.Number&&null!==i.Number&&g.min===i.Number.min&&g.max===i.Number.max||$(g.min,g.max),null!==(t=I.current)&&void 0!==t&&t.style&&(I.current.style.display=\"flex\"),m.current&&(m.current.style.display=\"none\"),h.current&&(h.current.style.display=\"none\"),_({type:o.oA,payload:!0})})},[g,$,_,f,H,i.Number]);(0,a.useLayoutEffect)(()=>{const e=u.current;return window.addEventListener(C.uM,H),e&&e.addEventListener(\"blur\",H),()=>{window.removeEventListener(C.uM,H),e&&e.removeEventListener(\"blur\",H)}},[H]),(0,a.useEffect)(()=>{2!==f&&m.current&&h.current&&(m.current.style.display=\"none\",h.current.style.display=\"none\",I.current&&(I.current.style.display=\"\"))},[f]),(0,a.useEffect)(()=>{\"number\"===typeof i.Number?T(i.Number):i.Number&&\"object\"===typeof i.Number&&p({min:i.Number.min||0,max:i.Number.max||0})},[i.Number]);const F=i.Number&&\"object\"===typeof i.Number&&null!=i.Number.min&&null!=i.Number.max;return 2===f&&F?(0,Ne.jsxs)(\"div\",{className:`${_t}`,ref:A,onClick:e=>{(e.target===A.current||e.target.closest(`.${Et}`))&&v(e,1)},style:{display:\"flex\"},children:[(0,Ne.jsxs)(\"div\",{className:Et,children:[(0,Ne.jsx)(\"p\",{children:(0,O.JN)(R.NCD)}),(0,Ne.jsxs)(\"div\",{className:ut,ref:I,children:[(0,Ne.jsxs)(\"span\",{onClick:e=>v(e,1),children:[\"(\",g.min,\"s\"]}),(0,Ne.jsx)(\"span\",{children:\" - \"}),(0,Ne.jsxs)(\"span\",{onClick:e=>v(e,2),children:[g.max,\"s)\"]})]})]}),(0,Ne.jsx)(\"input\",{ref:m,type:\"number\",className:`${dt} ${mt}`,onKeyDown:e=>U(e,1),onBlur:e=>b(e,1),onChange:G(\"min\"),value:g.min,step:\"0.001\",style:{display:\"none\"}}),(0,Ne.jsx)(\"input\",{ref:h,type:\"number\",className:`${dt} ${ht}`,onKeyDown:e=>U(e,2),onBlur:e=>b(e,2),onChange:G(\"max\"),value:g.max,step:\"0.001\",style:{display:\"none\"}})]}):(0,Ne.jsxs)(\"div\",{className:Et,ref:A,onClick:L,children:[(0,Ne.jsx)(\"span\",{ref:S,children:\"undefined\"!==typeof i.Number&&(\"object\"===typeof i.Number?(0,O.JN)(R.KNn,{times:`${i.Number.min}s - ${i.Number.max}s`}):`${i.Number}s`)}),(0,Ne.jsx)(\"input\",{className:lt,type:\"number\",step:\"0.001\",value:D,ref:u,onChange:e=>{const t=e.target.value;if(\"\"===t)return void T(\"\");const n=w(t);T(n),e.target.value=t.endsWith(\".\")?t:n,clearTimeout(E.current),E.current=setTimeout(()=>{P(n.toString())},150)},onKeyDown:U,style:{display:\"none\"}})]})})"
+    },
+    "yt": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1252422,
+      "end": 1254619,
+      "source": "e=>{const{item:t,itemIndex:n}=e,r=(0,a.useRef)(),i=(0,Se.useDispatch)(),s=(0,a.useRef)(),c=(0,a.useRef)(),[l,d]=(0,a.useState)(t.Number),_=e=>(e=parseFloat(e),Number.isNaN(e)||e<1?e=1:e>99999&&(e=99999),e),E=(0,a.useCallback)(e=>{M.A.lock().then(()=>{i({type:o.Lt,updateValue:e,index:n})})},[i,n]),u=t=>{let a={type:e.item.Type,id:e.item.Id,value:t,index:n},r=new CustomEvent(\"changeInputStepperEvent\",{detail:a});window.dispatchEvent(r)},m=e=>{e.detail.type===t.Type&&e.detail.id===t.Id&&e.detail.index!==n&&d(e.detail.value)},h=(0,a.useCallback)(e=>{clearTimeout(r.current),(e.type!==C.uM||c.current&&s.current)&&\"none\"!==s.current.style.display&&(\"block\"===s.current.style.display&&(E(_(s.current.children[0].value)),i({type:o.oA,payload:!0})),s.current.children[0].style.display=\"none\",c.current.style.display=\"block\",s.current.style.display=\"none\")},[E]);return(0,a.useLayoutEffect)(()=>{const e=s.current;return window.addEventListener(\"changeInputStepperEvent\",m),e.addEventListener(\"blur\",h),window.addEventListener(\"click\",h),window.addEventListener(C.uM,h),()=>{window.addEventListener(\"changeInputStepperEvent\",m,!1),e.removeEventListener(\"blur\",h),window.removeEventListener(\"click\",h),window.removeEventListener(C.uM,h)}},[]),(0,a.useLayoutEffect)(()=>{d(t.Number)},[t]),(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:pt,onClick:e=>{i({type:o.oA,payload:!1}),(0,Ke.th)(e,c.current),c.current.style.display=\"none\",s.current.style.display=\"block\",s.current.children[0].style.display=\"block\",s.current.children[0].focus(),s.current.children[0].select()},ref:c,children:l}),(0,Ne.jsxs)(\"div\",{className:Dt,ref:s,children:[(0,Ne.jsx)(\"input\",{className:It,type:\"text\",value:l,onKeyDown:t=>{var n;13!==t.keyCode&&27!==t.keyCode||h(t),\"loop\"===e.type&&(8===t.keyCode||(n=t.key,/[0-9]/.test(n))||t.preventDefault())},onChange:()=>{const e=_(s.current.children[0].value);d(e),u(e),clearTimeout(r.current),setTimeout(()=>{E(e)},150)}}),(0,Ne.jsx)(\"div\",{className:`${Tt} ${Ct}`,onClick:()=>{let e=l;e++,e=_(e),d(e),s.current.children[0].select(),u(e)}}),(0,Ne.jsx)(\"div\",{className:`${Tt} ${gt}`,onClick:()=>{let e=l;e--,e=_(e),d(e),s.current.children[0].select(),u(e)}})]})]})}"
+    },
+    "rt": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1238617,
+      "end": 1244464,
+      "source": "e=>{const{item:t,itemIndex:n,dataList:r,placeholder:i,contentList:s,disabled:c,dpIndex:l}=e,d=(0,nt.A)(),_=(0,Se.useDispatch)(),E=(0,Se.useSelector)(e=>e.macroList.lightingProfile),u=(0,Se.useSelector)(e=>e.macroList.currentProfile),m=(0,Se.useSelector)(e=>{var t;return null===(t=e.macroList.macroList.find(e=>e.guid===u))||void 0===t?void 0:t.macroType}),[h,A]=(0,a.useState)(l||0===l?r[l].profiles:[]),[S]=(0,a.useState)(Y),[I,D]=(0,a.useState)(!1),[T,g]=(0,a.useState)(l),[p,N]=(0,a.useState)(t.RadioIndex),[O,f]=(0,a.useState)(t.Option?t.Option.PIndex:null),[L,v]=(0,a.useState)(t.Option?t.Option.Switch:null),[w,U]=(0,a.useState)(t.Option?t.Option.EffectIndex:null),[P,$]=(0,a.useState)(t.Content0),[G,H]=(0,a.useState)(t.Content1),b=(0,a.useRef)(),F=(0,a.useRef)(),k=n=>{switch(t.Type){case 8:g(e.dpIndex),N(t.RadioIndex),f(t.Option.PIndex),v(t.Option.Switch),U(t.Option.EffectIndex);break;case 10:N(t.RadioIndex),$(t.Content0),H(t.Content1)}j(n)},B=e=>{I&&y.A.init().then(a=>{switch(at(a),t.Type){case 8:M.A.lock().then(()=>{_({type:o.Lt,updateValue:{RadioIndex:p,DPIndex:T,PIndex:O,Switch:L,EffectIndex:w,deviceName:r[T].name,guid:h.length&&(O||0===O)?h[O].guid:null},index:n})});break;case 10:M.A.lock().then(()=>{_({type:o.Lt,updateValue:{RadioIndex:p,Content0:P,Content1:G},index:n})})}j(e)})},V=e=>{let t=e.target.value;H(t)},x=e=>{N(e||0)},K=()=>{v(!L)},W=e=>{const t=m===C.CK.PHASED?6:4;let n=e;for(let o=0;o<t;o++)n=n.parentNode;const a=e.parentNode.parentNode.parentNode,r=n.clientHeight-a.offsetTop;e.style.cssText=r>100?\"display:block\":\"display:block;top:-300px\"},j=(0,a.useCallback)(e=>{(e.type!==C.uM||F.current&&b.current)&&(F.current&&F.current.classList.remove(\"active\"),b.current.style.display=\"none\",_({type:o.oA,payload:!0}),D(!1))},[_]),z=async e=>{e.preventDefault(),e.stopPropagation();let t=await ge.A.showFileOpenDialog(\"Select Launch App\",!1);t=\"string\"===typeof t?JSON.parse(t,\"array\"):t,t.length&&$(t[0]),t.length&&D(!0)};(0,a.useLayoutEffect)(()=>(window.addEventListener(\"click\",k),window.addEventListener(C.uM,k),()=>{window.removeEventListener(\"click\",k),window.removeEventListener(C.uM,k)})),(0,a.useEffect)(()=>{D(!(!G||1!==p)||!(!P||0!==p))},[G,P,p]),(0,a.useEffect)(()=>{(p||0===p)&&D(!0)},[p]),(0,a.useEffect)(()=>{l!==T&&g(l)},[l,T]),(0,a.useEffect)(()=>{(T||0===T)&&A(r[T].profiles)},[T,r]);const X=8===t.Type?()=>{let e=\"\"===t.name?i:t.name,n=\"\";return null!==t.RadioIndex&&(n=4===t.RadioIndex?n.concat(` - ${h[t.Option.PIndex].name}, ${S[t.Option.EffectIndex].name}`):n.concat(` - ${s[t.RadioIndex].name}`)),e+n}:10===t.Type?()=>{if(\"number\"!==typeof t.RadioIndex)return i;let e=`${d(R.Qei)} \"${G}\"`;return 0===t.RadioIndex&&(e=`${d(R.zUM)} \"${P.substring(P.lastIndexOf(\"\\\\\")+1)}\"`),(0,Ne.jsxs)(\"div\",{className:ze.macro_launch,children:[(0,Ne.jsxs)(\"div\",{className:ze.text_prefix,children:[d(R.oeC),\":\"]}),(0,Ne.jsx)(\"div\",{className:ze.text,children:e})]})}:()=>null;let J=s?s.map((e,t)=>{const a=!!(null===T||4===t&&r[T].disabled);switch(e.type){case\"radio\":return(0,Ne.jsx)(tt,{name:d(e.name),id:e.id+n,active:p===t,disabled:a,onCheck:x,value:t},t);case\"radioInput\":return(0,Ne.jsxs)(\"div\",{children:[(0,Ne.jsx)(tt,{name:d(e.name),id:e.id+t+n,active:p===t,onCheck:x,value:t}),(0,Ne.jsxs)(\"div\",{style:{position:\"relative\"},children:[\"program\"===e.id?(0,Ne.jsx)(\"input\",{type:\"file\",id:`${e.id}${n}`,className:`${ze.input} ${e.id}`,disabled:p!==t,onChange:V,onClick:z}):(0,Ne.jsx)(\"input\",{type:\"text\",id:`${e.id}${n}`,className:`${ze.input} ${e.id}`,disabled:p!==t,onChange:V,value:G}),\"program\"===e.id?(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"span\",{className:ze.folder}),(0,Ne.jsx)(\"span\",{className:`${ze.input} ${e.id}`,onClick:()=>{document.getElementById(`${e.id}${n}`).click()},children:P.substring(P.lastIndexOf(\"\\\\\")+1)})]}):null]})]},t);default:return null}}):null;var Q=\"thx-btn map-save \"+(I?\"\":\"disabled\");let q=null;switch(t.Type){case 8:q=(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:ze.close,onClick:k}),(0,Ne.jsx)(\"div\",{className:ze.heading,children:(0,Ne.jsx)(Ie.A,{text:i})}),(0,Ne.jsx)(We.A,{dataSet:r,selectOption:g,defaultValue:T,value:T,placeholder:d(R.sUC)}),c&&\"\"!==t.name&&e.dataList[T].disabled?(0,Ne.jsx)(\"div\",{className:`${ze.text} ${ze.disabled}`,children:\"Device is not connected\"}):null,J,4===p?(0,Ne.jsxs)(\"div\",{className:ze.specific_profile,children:[(0,Ne.jsx)(We.A,{dataSet:h,selectOption:f,value:O}),(0,Ne.jsx)(Fe,{id:\"checkLighting\",active:L,onCheck:K,name:d(R.GyO)}),(0,Ne.jsx)(We.A,{dataSet:E,selectOption:U,value:w,extraStyle:{zIndex:98}})]}):null,(0,Ne.jsxs)(\"div\",{className:\"flex keymap-action\",children:[(0,Ne.jsx)(\"div\",{className:\"thx-btn map-cancel test\",onClick:k,children:(0,Ne.jsx)(Ie.A,{text:R.F5E})}),(0,Ne.jsx)(\"div\",{className:Q,onClick:B,children:(0,Ne.jsx)(Ie.A,{text:R.wnR})})]})]});break;case 10:q=(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:ze.close,onClick:k}),(0,Ne.jsx)(\"div\",{className:ze.heading,children:(0,Ne.jsx)(Ie.A,{text:R.oeC})}),J,(0,Ne.jsxs)(\"div\",{className:\"flex keymap-action\",children:[(0,Ne.jsx)(\"div\",{className:\"thx-btn map-cancel test\",onClick:k,children:(0,Ne.jsx)(Ie.A,{text:R.rE$})}),(0,Ne.jsx)(\"div\",{className:Q,onClick:B,children:(0,Ne.jsx)(Ie.A,{text:R.a_Y})})]})]})}let Z=null;return Z=8===t.Type?\"\"===t.name?`${ze.text} ${ze.placeholder} keep-text`:c?`${ze.text} ${ze.disabled} keep-text`:`${ze.text} keep-text`:10===t.Type?t[\"Content\"+t.RadioIndex]?`${ze.text} keep-text`:`${ze.text} ${ze.placeholder} keep-text`:t.Text?`${ze.text} keep-text`:`${ze.text} ${ze.placeholder} keep-text`,(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:Z,ref:F,onClick:e=>{_({type:o.oA,payload:!1}),(0,Ke.th)(e,F.current),F.current&&F.current.classList.add(\"active\"),W(b.current)},children:X()}),(0,Ne.jsx)(\"div\",{className:ze.custom_modal,ref:b,children:q})]})}"
+    },
+    "z": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1217170,
+      "end": 1217289,
+      "source": "R.E7b,R.GI6,R.n8$,R.SvU,R.Xb_,[{name:R.zUM,id:\"program\",type:\"radioInput\"},{name:R.Qei,id:\"website\",type:\"radioInput\"}]"
+    },
+    "En": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1330111,
+      "end": 1331904,
+      "source": "(0,Se.connect)(e=>({lightingProfile:e.macroList.lightingProfile,macroList:e.macroList.macroList,selectedMacro:e.macroList.currentProfile}))(e=>{const{item:t,itemIndex:n,leave:r,macroList:o,selectedMacro:i}=e,[s]=(0,a.useState)(z),[c]=(0,a.useState)(X),l=(0,nt.A)(),d=(0,a.useMemo)(()=>{const e=new Map(o.map(e=>[e.guid,e])),t=function(n){let a=arguments.length>1&&void 0!==arguments[1]?arguments[1]:[];const r=e.get(n);if(!r||!r.macroEvents)return a;return r.macroEvents.reduce((e,t)=>(7===t.Type&&t.guid&&e.push(t.guid),e),[]).forEach(e=>{a.push(e),t(e,a)}),a},n=o.map(e=>t(e.guid,[e.guid]));return o.map(e=>({...e,disabled:n.some(t=>t.includes(i)&&t[0]===e.guid)}))},[i,o.length]);let _=null;switch(t.Type){case x.RG:_=(0,Ne.jsx)(St,{itemIndex:n,item:t,type:\"delay\"});break;case x.lk:_=(0,Ne.jsx)(je,{leave:r,dataList:W.map(e=>({name:l(e.name)})),itemIndex:n,item:t,placeholder:l(R.oof)});break;case x.m2:_=(0,Ne.jsx)(ct,{itemIndex:n,item:t});break;case x.HL:_=(0,Ne.jsx)(dn,{placeholder:l(R.bYY),itemIndex:n,item:t});break;case x.Jt:_=(0,Ne.jsx)(Ot,{placeholder:l(R.sxb),itemIndex:n,item:t});break;case x.gL:_=(0,Ne.jsx)(yt,{itemIndex:n,item:t,type:\"loop\"});break;case x.W1:_=(0,Ne.jsx)(je,{leave:r,dataList:d,itemIndex:n,item:t,placeholder:l(R.Adr),selectedMacro:e.selectedMacro});break;case x.bt:_=(0,Ne.jsx)(je,{leave:r,dataList:c,itemIndex:n,item:t,placeholder:l(R.nGM)});break;case x.xs:_=(0,Ne.jsx)(rt,{contentList:s,placeholder:l(R.H7L),itemIndex:n,item:t});break;case x.oE:_=(0,Ne.jsx)(je,{leave:r,dataList:e.lightingProfile,itemIndex:n,item:t,placeholder:l(R.eRF)})}return(0,Ne.jsx)(\"div\",{className:`${_n} customInput`,style:{position:4===t.Type||3===t.Type?\"initial\":\"relative\"},onClick:e=>{e.stopPropagation()},draggable:\"true\",onDragStart:e=>{e.preventDefault()},children:_})})"
+    }
+  },
+  "localeKeys": {
+    "NCD": "RANDOMIZE_DELAY_TILE",
+    "KNn": "TEXT_RANDOMIZE_DELAY",
+    "zUM": "TEXT_LAUNCH_PROGRAM",
+    "Qei": "TEXT_LAUNCH_WEBSITE",
+    "oeC": "TEXT_ADD_MENU_LAUNCH",
+    "rE$": "TEXT_LAUNCH_CANCEL",
+    "a_Y": "TEXT_LAUNCH_SAVE"
+  },
+  "css": {
+    "path": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+    "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911",
+    "rules": [
+      {
+        "offset": 2428,
+        "end": 2626,
+        "rule": ".CustomModal_custom_modal__WqzRG{background-color:#111;border:1px solid #5d5d5d;border-radius:5px;box-shadow:0 0 20px 0 #000000b3;display:none;padding:20px;position:absolute;width:250px;z-index:100}"
+      },
+      {
+        "offset": 2626,
+        "end": 2797,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_heading__7mUyy{color:#44d62c;font-family:RazerF5;font-size:16px;line-height:19px;margin-bottom:20px;text-transform:uppercase}"
+      },
+      {
+        "offset": 2797,
+        "end": 3129,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT{background-color:#0000;background-image:url(../../static/media/close.1d7eff2a.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;right:0;top:0;transition:background-color .2s;width:36px;will-change:background-color}"
+      },
+      {
+        "offset": 3129,
+        "end": 3237,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT:hover{background-color:#ffffff1a;cursor:pointer}"
+      },
+      {
+        "offset": 3237,
+        "end": 3331,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT:active{background-color:#0000001a}"
+      },
+      {
+        "offset": 3331,
+        "end": 3407,
+        "rule": ".CustomModal_custom_modal__WqzRG .dropdown-area{margin:0 0 10px;width:210px}"
+      },
+      {
+        "offset": 3407,
+        "end": 3491,
+        "rule": ".CustomModal_custom_modal__WqzRG .dropdown-area .selected.placeholder{color:#707070}"
+      },
+      {
+        "offset": 3491,
+        "end": 3579,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2{padding-left:30px}"
+      },
+      {
+        "offset": 3579,
+        "end": 3789,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .check-item,.CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .dropdown-area{height:34px;margin-bottom:10px;width:180px}"
+      },
+      {
+        "offset": 3789,
+        "end": 3992,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .check-item .check-text,.CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .dropdown-area .check-text{width:150px}"
+      },
+      {
+        "offset": 3992,
+        "end": 4065,
+        "rule": ".CustomModal_custom_modal__WqzRG .radio-item{display:block;margin:10px 0}"
+      },
+      {
+        "offset": 4065,
+        "end": 4150,
+        "rule": ".CustomModal_custom_modal__WqzRG .radio-item.disabled{opacity:.3;pointer-events:none}"
+      },
+      {
+        "offset": 4150,
+        "end": 4220,
+        "rule": ".CustomModal_custom_modal__WqzRG .radio-item.disabled~span{opacity:.3}"
+      },
+      {
+        "offset": 4220,
+        "end": 4473,
+        "rule": ".CustomModal_custom_modal__WqzRG textarea{background-color:#111;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;font-family:Roboto;font-size:14px;height:96px;line-height:17px;min-width:210px;overflow-y:auto;padding:5px;resize:none;width:210px}"
+      },
+      {
+        "offset": 4473,
+        "end": 4636,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6{border:1px solid #5d5d5d;display:block;margin-left:30px;padding-left:6px;padding-right:30px;width:142px}"
+      },
+      {
+        "offset": 4636,
+        "end": 4793,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6.website{background-color:#111;color:#ccc;height:27px;margin-bottom:20px;padding:0 6px;width:164px}"
+      },
+      {
+        "offset": 4793,
+        "end": 4904,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6:disabled{border:1px solid #5d5d5d4d;color:#cccccc4d}"
+      },
+      {
+        "offset": 4904,
+        "end": 5067,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6:disabled+.CustomModal_folder__Q2AnN{background-image:url(../../static/media/icon_folder_g.220b24b0.svg)}"
+      },
+      {
+        "offset": 5067,
+        "end": 5144,
+        "rule": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6.program{opacity:0}"
+      },
+      {
+        "offset": 5144,
+        "end": 5336,
+        "rule": ".CustomModal_custom_modal__WqzRG span.CustomModal_input__-Ilh6.program{height:29px;line-height:27px;opacity:1;overflow:hidden;position:absolute;text-overflow:ellipsis;top:0;white-space:nowrap}"
+      },
+      {
+        "offset": 9775,
+        "end": 9966,
+        "rule": "input.InputNumberCustom_delay__Nxfq2,input.InputNumberCustom_randomizeDelay__RX66I{background-color:#111;border:1px solid #44d62c;color:#ccc;display:none;height:27px;padding:0 6px;width:88px}"
+      },
+      {
+        "offset": 9966,
+        "end": 10146,
+        "rule": "input.InputNumberCustom_randomizeDelay__RX66I.InputNumberCustom_editing__UYlQ5{left:auto;opacity:1;pointer-events:auto;position:relative;top:auto;transform:none;visibility:visible}"
+      },
+      {
+        "offset": 10146,
+        "end": 10301,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW{align-items:center;display:flex;gap:4px;line-height:27px;margin:4px 0;min-height:34px;position:relative}"
+      },
+      {
+        "offset": 10301,
+        "end": 10489,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_text__bhC9q{align-items:center;display:flex;gap:4px;height:27px;line-height:27px;position:relative;white-space:nowrap}"
+      },
+      {
+        "offset": 10489,
+        "end": 10618,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delayValues__wRJK-{align-items:center;display:flex;gap:4px}"
+      },
+      {
+        "offset": 10618,
+        "end": 10727,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delayValues__wRJK- span{cursor:pointer}"
+      },
+      {
+        "offset": 10727,
+        "end": 10841,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delayValues__wRJK- span:hover{color:#44d62c}"
+      },
+      {
+        "offset": 10841,
+        "end": 11067,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delay__Nxfq2{background-color:#111;border:1px solid #44d62c;box-sizing:border-box;color:#ccc;display:none;height:27px;margin:0 2px;padding:0 6px;width:60px}"
+      },
+      {
+        "offset": 11067,
+        "end": 11167,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delay1__RVifs{margin-left:4px}"
+      },
+      {
+        "offset": 11167,
+        "end": 11268,
+        "rule": ".InputNumberCustom_randomizedDelayContainer__ST6aW .InputNumberCustom_delay2__u01W7{margin-right:4px}"
+      },
+      {
+        "offset": 11268,
+        "end": 11316,
+        "rule": ".InputNumberCustom_stepper__v21\\+x{display:none}"
+      },
+      {
+        "offset": 11316,
+        "end": 11539,
+        "rule": ".InputNumberCustom_stepper__v21\\+x .InputNumberCustom_spinner__ORnKK{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:8px;height:12px;position:absolute;right:0;width:18px;z-index:4}"
+      },
+      {
+        "offset": 11539,
+        "end": 11733,
+        "rule": ".InputNumberCustom_stepper__v21\\+x .InputNumberCustom_spinner__ORnKK.InputNumberCustom_up__Q5e53{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}"
+      },
+      {
+        "offset": 11733,
+        "end": 11934,
+        "rule": ".InputNumberCustom_stepper__v21\\+x .InputNumberCustom_spinner__ORnKK.InputNumberCustom_down__eowyL{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}"
+      },
+      {
+        "offset": 11934,
+        "end": 12036,
+        "rule": ".InputNumberCustom_stepper__v21\\+x .InputNumberCustom_spinner__ORnKK:hover{background-color:#ffffff1a}"
+      },
+      {
+        "offset": 12036,
+        "end": 12139,
+        "rule": ".InputNumberCustom_stepper__v21\\+x .InputNumberCustom_spinner__ORnKK:active{background-color:#0000001a}"
+      },
+      {
+        "offset": 12139,
+        "end": 12266,
+        "rule": ".InputNumberCustom_text__bhC9q:hover{color:#44d62c;cursor:url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer}"
+      },
+      {
+        "offset": 12266,
+        "end": 12407,
+        "rule": "input.InputStepper_delay__\\+0jCL{background-color:#111;border:1px solid #44d62c;color:#ccc;display:none;height:27px;padding:0 6px;width:88px}"
+      },
+      {
+        "offset": 12407,
+        "end": 12450,
+        "rule": ".InputStepper_stepper__G\\+j5I{display:none}"
+      },
+      {
+        "offset": 12450,
+        "end": 12663,
+        "rule": ".InputStepper_stepper__G\\+j5I .InputStepper_spinner__jyRTq{background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:8px;height:12px;position:absolute;right:0;width:18px;z-index:4}"
+      },
+      {
+        "offset": 12663,
+        "end": 12842,
+        "rule": ".InputStepper_stepper__G\\+j5I .InputStepper_spinner__jyRTq.InputStepper_up__wu3vD{background-image:url(../../static/media/stepper_up.dcb04520.svg);background-position-y:5px;top:0}"
+      },
+      {
+        "offset": 12842,
+        "end": 13028,
+        "rule": ".InputStepper_stepper__G\\+j5I .InputStepper_spinner__jyRTq.InputStepper_down__NMMY0{background-image:url(../../static/media/stepper_down.349f755c.svg);background-position-y:3px;bottom:0}"
+      },
+      {
+        "offset": 13028,
+        "end": 13120,
+        "rule": ".InputStepper_stepper__G\\+j5I .InputStepper_spinner__jyRTq:hover{background-color:#ffffff1a}"
+      },
+      {
+        "offset": 13120,
+        "end": 13213,
+        "rule": ".InputStepper_stepper__G\\+j5I .InputStepper_spinner__jyRTq:active{background-color:#0000001a}"
+      },
+      {
+        "offset": 13213,
+        "end": 13335,
+        "rule": ".InputStepper_text__m5-Cl:hover{color:#44d62c;cursor:url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer}"
+      }
+    ]
+  },
+  "assets": [
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/stepper_up.dcb04520.svg",
+      "prepared": "assets/synapse/stepper-up.svg",
+      "sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c"
+    },
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/stepper_down.349f755c.svg",
+      "prepared": "assets/synapse/stepper-down.svg",
+      "sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa"
+    },
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/close.1d7eff2a.svg",
+      "prepared": "assets/synapse/macro/close.svg",
+      "sha256": "d1658818e809b21249127ab364cfc5b71771869ed2324985e0a57144d96448b6"
+    }
+  ],
+  "constraints": {
+    "delay": {
+      "step": 0.001,
+      "min": 0,
+      "max": 99999.999,
+      "decimalPlaces": 3
+    },
+    "randomizedDelay": {
+      "profileDelaySetting": 2,
+      "minFieldMax": 5,
+      "maxFieldMax": 5,
+      "textIntegerDigits": 3,
+      "textFractionDigits": 2,
+      "inputStep": 0.001,
+      "minWidth": 60,
+      "maxWidth": 60,
+      "crossingMinimum": "min >= max sets max to min(min + 1, 5)",
+      "crossingMaximum": "max < min sets max to min(min + 1, 5)"
+    },
+    "loop": {
+      "min": 1,
+      "max": 99999,
+      "step": 1,
+      "width": 88,
+      "height": 27,
+      "spinnerWidth": 18,
+      "spinnerHeight": 12
+    },
+    "launch": {
+      "modalWidth": 250,
+      "padding": 20,
+      "programInputWidth": 142,
+      "websiteInputWidth": 164,
+      "websiteInputHeight": 27,
+      "programContent": "Content0",
+      "websiteContent": "Content1",
+      "mode": "RadioIndex",
+      "programPicker": "showFileOpenDialog; native/service boundary"
+    }
+  }
+}

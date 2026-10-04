@@ -27,7 +27,9 @@ is `synapse_3946.profiles[activeProfile].automation`: the current root's
 profile state even though it has a separate reducer. `automationLinkedGame`
 is another source profile field; its editor is still pending. The `persistence`
 and `automation_actions` evidence entries retain these paths. Catalogs and
-install/service observations are never restored from profile data. The explicit
+install/service observations are never restored from profile data. Locally saved
+quick macros are restored into the local candidate list from their rule lanes.
+The explicit
 fixture is isolated from persistence.
 
 `src/features/automation/theme.rs` defines the exact CSS palette for panel,
@@ -35,8 +37,10 @@ row, hover, pressed, foreground, muted, primary, border, footer, danger and
 warning roles. Body uses Roboto 14px at the source 16px rem scale; widget title
 uses RazerF5 16px. Widget and row widths/padding, 60px item height, 355px lane
 width, 34/35px lane gaps, 37px category select, footer sizing and 109px modal
-top margin are derived from the current CSS. Twelve SVG assets are copied from
-manifest-declared current URLs and hashed in `automation-manifest.json`.
+top margin are derived from the current CSS. Nineteen SVG assets are recorded in
+`automation-manifest.json`: fifteen exact copies from manifest-declared current
+URLs and four type icons converted from literal JSX SVG paths. Inline receipts
+retain the current source range, fragment and source/output hashes.
 
 ## Explicit remaining fidelity and integration work
 
@@ -45,16 +49,41 @@ manifest-declared current URLs and hashed in `automation-manifest.json`.
   entitlement and activation-code retrieval are not synthesized. A management
   request that cannot be fulfilled reports that it is unavailable; fixture
   requests are visibly labeled as examples.
-- Quick-effect presets and apply-to-all are present; full per-effect color,
-  speed, duration and audio-meter parameter subpanels remain to be ported.
-- The complete source quick-macro recorder, game browser/link editor and
-  global-shortcut assignment subeditors remain separate follow-up work.
-  Their management controls currently report unavailable rather than open an
-  invented substitute. These are **not counted as completed source flows**.
+- Static and Breathing now render the actual source color parameters for each
+  trigger lane. Static exposes one color and hides no-color; Breathing exposes
+  Color 1 / Color 2 (including no-color) and Random color. Random disables both
+  color pickers without discarding their values. Both reuse the native source
+  palette/custom-color editor: the validator compares all forty native preset
+  colors against the current 3946 `ZT` literal, including `#ffc182`.
+  Source-mounted `LP` selects `cl` (`_l`, 6423938–6425144) and `Hl` (`vl`),
+  retained under `quick_color_parameters`. Each edit changes only its lane's
+  local `setting` and clears apply-to-other-devices as `LP`'s `P` callback does.
+  The editor retains these changes until Save; Cancel discards the rule draft.
+  Starlight duration/color, Wave direction and audio-meter parameter subpanels
+  remain to be ported. Fire and Spectrum Cycling mount no parameter component
+  in this current `LP` switch; shared speed variants are not evidence that 3946
+  should display additional controls.
+- The source quick-macro entry opens a 500×369 local editor derived from `aH`
+  at UTF-16 offsets 6920385–6931761. It follows the empty-type initial state,
+  `Macro N` default naming, four-type dropdown, keyboard capture with a
+  ten-key limit and removable pills, launch program/website selection,
+  run-command and 54px multiline text (including the source's 250 UTF-16-unit
+  limit and counter).
+  Clear resets action input; Save requires a name and nonempty action and
+  resolves duplicate names before adding a local candidate to the selected
+  lane. It stores UI-readable local action data, without a vendor macro service
+  payload, native macro execution or driver acknowledgement.
+  The Program branch currently accepts a local path as text; the source `.exe`
+  picker is pending. Native type-menu row icons, source capture-session keyup
+  behavior, exact pill hover/delete overlays and transition timing still need
+  completion. Game browser/link editing and
+  global-shortcut assignment remain follow-up work; their buttons continue to
+  report the unavailable service boundary rather than inventing catalogs.
 - Advanced Chroma profile selection requires the real profile catalog; source
   unavailable/install/empty states are represented. The THX activation overlay
   reports unavailable and does not generate a code.
-- Source row background transitions (300ms), action/text transitions (200ms),
+- Source row background transitions (300ms) now have matching hover/pressed
+  color states in the native row buttons. Action/text transitions (200ms),
   exact selector icon slots, original headset-toggle SVGs and anchored delete
   confirmation placement are still pending. Existing native controls supply
   keyboard behavior but are not evidence of exact source animations.

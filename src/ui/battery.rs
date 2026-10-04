@@ -187,6 +187,9 @@ pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
                         "device-battery:{}",
                         badge.class
                     )))
+                    // Dashboard mounts this block as `role="img"` with the
+                    // battery status text and icon as one accessible unit.
+                    .role(Role::Image)
                     .h(surface::css(46.))
                     .items_center()
                     .justify_center()
