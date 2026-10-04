@@ -322,8 +322,7 @@
       "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
       "excerpt": "n.d(t,{JB:()=>m,i:()=>f,vB:()=>h})"
     },
-    "icons_present": [],
-    "icons_missing": [
+    "icons_present": [
       {
         "type": "ai_rephrase",
         "media": "static/media/ai_rephrase.ce435691.svg"
@@ -369,6 +368,7 @@
         "media": "static/media/icon_refresh-1_r.ff48f955.svg"
       }
     ],
-    "note": "The reference package contains this application's JS/CSS only; static/media was not fetched, so the palette icons are absent and no substitute is used."
+    "icons_missing": [],
+    "note": "Manifest-declared SVG assets were fetched as static data on 2026-10-04. Existence does not establish that the palette has been implemented. The older locale scan below is incomplete: application-specific dictionary modules are re-audited separately."
   }
 }

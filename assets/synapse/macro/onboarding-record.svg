@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="68" viewBox="0 0 260 68">
+  <g id="SVG" transform="translate(-278 -288)">
+    <g id="Rectangle_5" data-name="Rectangle 5" transform="translate(365 344)" fill="#707070" stroke="#707070" stroke-width="1" stroke-dasharray="4 4" fill-opacity="0" >
+      <rect width="87" height="12" rx="3" stroke="none"/>
+      <rect x="0.5" y="0.5" width="86" height="11" rx="2.5" fill="#707070"/>
+                  <animate id="fadein5"
+             attributeName="fill-opacity"
+             values="0;1" dur="0.01s"
+             begin="fadein4.end+0.4s" fill="freeze"/>
+            <animate id="fadeout"
+             attributeName="fill-opacity"
+             values="1;0" dur="0.6s"
+             begin="fadein5.end+0.6s" fill="freeze"/>
+    </g>
+    <g id="Rectangle_4" data-name="Rectangle 4" transform="translate(365 330)" fill="#707070" stroke="#707070" stroke-width="1" stroke-dasharray="4 4" fill-opacity="0">
+      <rect width="87" height="12" rx="3" stroke="none"/>
+      <rect x="0.5" y="0.5" width="86" height="11" rx="2.5" fill="#707070"/>
+                  <animate id="fadein4"
+             attributeName="fill-opacity"
+             values="0;1" dur="0.01s"
+             begin="fadein3.end+0.4s" fill="freeze"/>
+            <animate id="fadeout"
+             attributeName="fill-opacity"
+             values="1;0" dur="0.6s"
+             begin="fadein5.end+0.6s" fill="freeze"/>
+    </g>
+    <g id="Rectangle_3" data-name="Rectangle 3" transform="translate(365 316)" fill="#707070" stroke="#707070" stroke-width="1" stroke-dasharray="4 4" fill-opacity="0">
+      <rect width="87" height="12" rx="3" stroke="none"/>
+      <rect x="0.5" y="0.5" width="86" height="11" rx="2.5" fill="#707070"/>
+                  <animate id="fadein3"
+             attributeName="fill-opacity"
+             values="0;1" dur="0.01s"
+             begin="fadein2.end+0.4s" fill="freeze"/>
+            <animate id="fadeout"
+             attributeName="fill-opacity"
+             values="1;0" dur="0.6s"
+             begin="fadein5.end+0.6s" fill="freeze"/> 
+    </g>
+    <g id="Rectangle_2" data-name="Rectangle 2" transform="translate(365 302)" fill="#707070" stroke="#707070" stroke-width="1" stroke-dasharray="4 4" fill-opacity="0">
+      <rect width="87" height="12" rx="3" stroke="none"/>
+      <rect x="0.5" y="0.5" width="86" height="11" rx="2.5" fill="#707070"/>
+                  <animate id="fadein2"
+             attributeName="fill-opacity"
+             values="0;1" dur="0.01s"
+             begin="fadein1.end+0.4s" fill="freeze"/>
+            <animate id="fadeout"
+             attributeName="fill-opacity"
+             values="1;0" dur="0.6s"
+             begin="fadein5.end+0.6s" fill="freeze"/>
+    </g>
+    <g id="Rectangle_1" data-name="Rectangle 1" transform="translate(365 288)" fill="#707070" stroke="#707070" stroke-width="1" stroke-dasharray="4 4" fill-opacity="0">
+      <rect width="87" height="12" rx="3" stroke="none"/>
+      <rect x="0.5" y="0.5" width="86" height="11" rx="2.5" fill="#707070"/>
+        <animate id="fadein1"
+             attributeName="fill-opacity"
+             values="0;1" dur="0.01s"
+             begin="0s; fadeout.end+0.6s" fill="freeze"/>
+            <animate id="fadeout"
+             attributeName="fill-opacity"
+             values="1;0" dur="0.6s"
+             begin="fadein5.end+0.6s" fill="freeze"/>
+    </g>
+    <rect id="Bounding_Box" data-name="Bounding Box" width="260" height="68" transform="translate(278 288)" fill="#707070" opacity="0"/>
+  </g>
+</svg>

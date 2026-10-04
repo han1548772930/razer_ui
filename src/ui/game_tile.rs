@@ -175,9 +175,3 @@ pub(crate) fn add_new_tile(
         )
         .into_any_element()
 }
-
-/// 该磁贴组当前使用的「添加」文案 key（源码里是三个片段拼在一行 label 里，
-/// 符号在压缩后被改名，无法逐一还原，因此这里用语义最接近的一条已存在 key）。
-pub(crate) fn add_new_label() -> String {
-    i18n::t_or("ADD_GAME", "添加游戏")
-}

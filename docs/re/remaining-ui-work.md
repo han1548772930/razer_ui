@@ -1,5 +1,10 @@
 # 尚未完成的界面与产品
 
+2026-10-04 本次集成：Macro已替换占位正文，接入原始无宏布局、显式新建宏/文件夹、选择搜索排序、重命名复制删除、教程、无设备绑定分支与Help，并接入顶部历史；其录制、事件编辑、XML、完整文件夹菜单和独立产品绑定模式仍未完成，详见[宏复核](macro-current-source-review.md)。Armory已纠正默认可见导航、补内部历史及介绍横幅，搜索/筛选/详情仍缺。Profiles当前仅有真实两页签和游戏空目录/添加弹层，设备列表和关联详情仍未完成。后端与DLL修改继续后置。
+
+2026-10-04 更正：旧日志停止原因是轮次上限，目标没有完成。旧表中的Profiles五路由、无法还原文案、缺少全部宏/Profiles图标及设备标签栏重复箭头均不再成立。最新修复和明确未完成项见[逐项复核](source-ui-review-2026-10-04.md)、[Profiles](profiles-app-audit.md)、[导航栏](device-tabs-audit.md)。以下旧轮次明细保留为历史，不是新增验收结论。
+
+
 2026-10-03 当前状态：331 个注册产品、1419 个主导航页都有入口与部分内容，其中 1392 页记为 partial_native，27 页是原有十个适配器的部分实现。本轮没有把任何产品标记为完整复刻；“完全没有主体”的主导航页计数为零，并不表示条件分支、弹层、独立模式或视觉细节已完成。
 
 ## 已确认的缺口
@@ -51,8 +56,6 @@
 | 导入/导出底栏：`.import-profile-btn-group`、导出模式的 `willNotImport` 文案、关联游戏弹层打开时导航行 `opacity .5`（`div.nav-tabs.disabled`） | [import-export-footer-audit.md](import-export-footer-audit.md) | `audit-import-export.cjs` |
 | 宏窗口顶栏：46px / `#222` / 2px `#000` / 居中（`.nav-wrapper` + `.module-nav`） | [macro-app-chrome-audit.md](macro-app-chrome-audit.md) | `audit-macro-app-chrome.cjs` |
 
-## 缺失资源（挡住后续复刻）
+## 资源准备更正（2026-10-04）
 
-- **宏应用**：`.ref/applications/synapse/macro/static/media/` 本次抽取中不存在；其 CSS 引用的 164 个媒体文件里 **39 个在整个 `.ref` 树中按哈希找不到**（`icon_new_marco*`、`icon_addfolder*`、`icon_layer` 等），因此左栏「新建宏 / 新建文件夹」按钮与功能面板图标无法绘制。
-- **profiles 应用**：`static/media/` 同样为空（`icon_add.c95a8d74.svg` 一类因为设备包里有同哈希副本才拿到）。
-- 这些缺口都以「记录规则 + 不绘制」的方式处理，没有用替代图形顶替。
+宏manifest声明的229个SVG和Profiles的299个SVG已按官方静态地址准备，未执行下载JavaScript。宏palette的11个图标不再缺失。应用专用语言包正在按真正的加载链复核，不能继续以公共语言包里找不到同名键判断无译文。资源到位不等于UI已经实现。

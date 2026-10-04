@@ -698,3 +698,11 @@ impl TrayColors {
         rgb(0xeeeeee).into()
     }
 }
+
+/// Current device and Profiles CSS `.nav-tabs .nav:active`.
+pub(crate) struct NavigationColors;
+impl NavigationColors {
+    pub(crate) fn pressed() -> Hsla {
+        rgb(0x3cbf27).into()
+    }
+}

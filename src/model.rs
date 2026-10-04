@@ -186,8 +186,8 @@ pub struct FirmwareInfo {
 /// 电池状态（实测字段 `powerStatus`）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PowerStatus {
-    /// 电量百分比 0–100。
-    pub level: u8,
+    /// Source level may be negative; the UI then renders "-".
+    pub level: i32,
     /// 充电状态原文（雷云直接下发字符串，如 `CHARGING` / `NOT_CHARGING`）。
     pub charging_status: String,
 }

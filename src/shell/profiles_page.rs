@@ -1,279 +1,744 @@
-//! Profiles（`/synapse/profiles/`）窗口。
-//!
-//! # 依据
-//!
-//! 模块表（`.ref/applications/rz-app-menu/static/js/main.83ced465.js`，见
-//! [module-registry-audit.json](../../docs/re/module-registry-audit.json)）里：
-//!
-//! ```js
-//! {moduleName:"linkedGames", windowName:"profiles", url:"/synapse/profiles/",
-//!  openParam:[ZP.sameWindow, ZP.autoFocus, ZP.tabVisible]}
-//! ```
-//!
-//! 其中 `ZP.sameWindow="policy=3"`、`ZP.autoFocus="shouldFocus=1"`、
-//! `ZP.tabVisible="tab_visible=1"`：即**同一窗口 + 聚焦 + 在标签栏出现**。
-//! 因此「已关联的游戏」入口打开的是这个 `profiles` 窗口，而不是新进程窗口。
-//!
-//! # 未接入的部分
-//!
-//! profiles 应用本体（`.ref/applications/synapse/profiles/`）的各视图内容尚未实现：
-//! 配置文件列表与编辑、本地/云配置文件、导入导出、通用快捷键、以及已关联游戏列表。
-//! 应用自己的**路由**可以从源码常量里取到（`H=/\/devices\/\d+\//`、
-//! `b=/\/globalShortcuts\//`、`F=/\/chromaStudio\//`、`B=/\/macro\//`、
-//! `k=/\/linkedGames\//`），因此左侧按这些路由列出视图；每个视图的正文目前是依据说明。
+//! Current /synapse/profiles/ module 43: Ba mounts Games (oe) and Devices (Ga).
+//! Shared URL-matching constants are not navigation entries. See the scoped
+//! AST/CSS receipts in docs/re/profiles-app-audit.json. Service data is deferred;
+//! an empty catalog remains empty instead of becoming a list of fixture games.
 use crate::{
+    features::{Choice, ProductWorkspace},
     i18n,
-    ui::{game_tile, surface},
+    ui::{scroll::SourceScrollable as _, surface},
 };
-use gpui_kit::component::*;
-use gpui_kit::*;
+use gpui_kit::base::{
+    Button as BaseButton,
+    motion::{self, Easing, Presence, Transition},
+};
+use gpui_kit::component::{
+    input::{Input, InputState},
+    select::SelectState,
+    *,
+};
+use gpui_kit::{prelude::FluentBuilder as _, *};
+use std::time::Duration;
 
-pub(super) struct ProfilesPage {
-    focus: FocusHandle,
-    status: String,
-    view: ProfilesView,
-    /// profiles 应用的导航栏（源码 `Xt` 组件）自己维护历史：chunk 里是
-    /// `tabNavigation` / `currentTabNavigation` + `navigateBack` / `navigateForward`，
-    /// 标签栏最左边就是 `.nav.back` / `.nav.forward`。
-    history: Vec<ProfilesView>,
-    history_index: usize,
-    history_navigation: bool,
+mod devices;
+
+const FILTER_KEYS: [&str; 3] = ["ALL_GAMES", "LINKED_GAMES", "REMOVED_GAMES"];
+const SORT_KEYS: [&str; 4] = ["NAME_A_TO_Z", "NAME_Z_TO_A", "LAST_PLAYED", "MOST_PLAYED"];
+
+// main CSS <=900 max-width, >=1440 !important width; lazy CSS >=1600
+// device override. A bare 1300px or 800px loses the enclosing media query.
+fn popup_width(viewport: f32, device: bool) -> f32 {
+    if device && viewport >= 1600. {
+        1300.
+    } else {
+        (viewport - 40.).min(if viewport <= 900. { 800. } else { 1050. }).max(0.)
+    }
 }
 
-/// profiles 应用自己的路由（源码常量正则，见模块文档）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum ProfilesView {
+    Games,
     Devices,
-    GlobalShortcuts,
-    ChromaStudio,
-    Macro,
-    LinkedGames,
 }
-
 impl ProfilesView {
-    const ALL: [Self; 5] = [
-        Self::Devices,
-        Self::GlobalShortcuts,
-        Self::ChromaStudio,
-        Self::Macro,
-        Self::LinkedGames,
-    ];
-    /// 源码里对应的路由正则原文。
-    fn route(self) -> &'static str {
+    const ALL: [Self; 2] = [Self::Games, Self::Devices];
+    fn key(self) -> &'static str {
         match self {
-            Self::Devices => r"H=/\/devices\/\d+\//",
-            Self::GlobalShortcuts => r"b=/\/globalShortcuts\//",
-            Self::ChromaStudio => r"F=/\/chromaStudio\//",
-            Self::Macro => r"B=/\/macro\//",
-            Self::LinkedGames => r"k=/\/linkedGames\//",
+            Self::Games => "GAMES_HEADER",
+            Self::Devices => "DEVICE",
         }
     }
     fn id(self) -> &'static str {
         match self {
-            Self::Devices => "profiles-view-devices",
-            Self::GlobalShortcuts => "profiles-view-global-shortcuts",
-            Self::ChromaStudio => "profiles-view-chroma-studio",
-            Self::Macro => "profiles-view-macro",
-            Self::LinkedGames => "profiles-view-linked-games",
-        }
-    }
-    fn label(self) -> String {
-        match self {
-            Self::Devices => i18n::t_or("PROFILES", "配置文件"),
-            Self::GlobalShortcuts => i18n::t_or("GLOBAL_SHORTCUT_HEADER", "通用快捷键"),
-            Self::ChromaStudio => i18n::t_or("CHROMA_STUDIO", "幻彩控制室"),
-            Self::Macro => i18n::t_or("MACRO", "宏"),
-            Self::LinkedGames => i18n::t_or("LINKED_GAMES", "已关联的游戏"),
-        }
-    }
-    fn description(self) -> &'static str {
-        match self {
-            Self::Devices => {
-                "原版按 `/devices/<设备号>/` 展示该设备的配置文件设置（本地/云配置文件、导入导出）。本地未接入配置文件数据，故不显示任何配置文件。"
-            }
-            Self::GlobalShortcuts => {
-                "原版 `/globalShortcuts/` 展示通用快捷键列表；本地未接入通用快捷键数据。"
-            }
-            Self::ChromaStudio => "原版 `/chromaStudio/` 打开幻彩控制室；本地未接入该应用。",
-            Self::Macro => "原版 `/macro/` 打开宏应用；本地宏窗口见标签栏里的「宏」。",
-            Self::LinkedGames => {
-                "原版 `/linkedGames/` 就是本窗口的已关联游戏视图：`.list-box` 里一张张 `.linked-game-tile`，末尾固定跟一张 `.add-new` 虚线磁贴。本地未接入已关联游戏数据。"
-            }
+            Self::Games => "profiles-games",
+            Self::Devices => "profiles-devices",
         }
     }
 }
+
+pub(super) struct ProfilesPage {
+    focus: FocusHandle,
+    view: ProfilesView,
+    history: Vec<ProfilesView>,
+    history_index: usize,
+    filter: Entity<SelectState<Vec<Choice>>>,
+    sort: Entity<SelectState<Vec<Choice>>>,
+    search: Entity<InputState>,
+    searching: bool,
+    add_dialog: Option<Entity<AddGameDialog>>,
+    devices: Vec<Entity<ProductWorkspace>>,
+    device_subscriptions: Vec<Subscription>,
+    device_dialog: Option<Entity<devices::DeviceGamesDialog>>,
+    locale: String,
+    _subscriptions: Vec<Subscription>,
+}
+
+fn choices(keys: &[&str]) -> Vec<Choice> {
+    keys.iter()
+        .map(|key| Choice::new(*key, i18n::t(key)))
+        .collect()
+}
+
 impl ProfilesPage {
-    pub(super) fn new(cx: &mut Context<Self>) -> Self {
+    pub(super) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let filter = cx
+            .new(|cx| SelectState::new(choices(&FILTER_KEYS), Some(IndexPath::new(0)), window, cx));
+        let sort =
+            cx.new(|cx| SelectState::new(choices(&SORT_KEYS), Some(IndexPath::new(0)), window, cx));
+        let search = cx.new(|cx| InputState::new(window, cx));
+        let subscriptions = vec![
+            cx.observe(&filter, |_, _, cx| cx.notify()),
+            cx.observe(&sort, |_, _, cx| cx.notify()),
+            cx.observe(&search, |_, _, cx| cx.notify()),
+        ];
         Self {
             focus: cx.focus_handle(),
-            status: String::new(),
-            view: ProfilesView::LinkedGames,
-            history: vec![ProfilesView::LinkedGames],
+            view: ProfilesView::Games,
+            history: vec![ProfilesView::Games],
             history_index: 0,
-            history_navigation: false,
+            filter,
+            sort,
+            search,
+            searching: false,
+            add_dialog: None,
+            devices: Vec::new(),
+            device_subscriptions: Vec::new(),
+            device_dialog: None,
+            locale: i18n::locale(),
+            _subscriptions: subscriptions,
         }
     }
-    pub(super) fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.focus.focus(window, cx);
+
+    pub(super) fn set_devices(&mut self, devices: Vec<Entity<ProductWorkspace>>, cx: &mut Context<Self>) {
+        self.device_subscriptions = devices.iter().map(|device| cx.observe(device, |_, _, cx| cx.notify())).collect();
+        self.devices = devices;
         cx.notify();
     }
-    /// `/linkedGames/` 视图的正文：源码里 `.list-box` + 末尾固定一张 `.add-new`
-    /// 虚线磁贴；本地没有已关联游戏数据，所以只有这张磁贴。
-    fn view_body(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let mut children = Vec::new();
-        if self.view == ProfilesView::LinkedGames {
-            children.push(game_tile::list_box([game_tile::add_new_tile(
-                "linked-games-add-new",
-                game_tile::add_new_label(),
-                cx.listener(|this, _, _, cx| {
-                    this.status = "游戏扫描与选择弹层尚未接入。".into();
-                    cx.notify();
-                }),
-                cx,
-            )]));
-        }
-        if !self.status.is_empty() {
-            children.push(surface::note(self.status.clone(), cx).into_any_element());
-        }
-        children
+
+    pub(super) fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.focus.focus(window, cx);
+        self.refresh_locale(window, cx);
+        cx.notify();
     }
-    fn set_view(&mut self, view: ProfilesView, cx: &mut Context<Self>) {
-        if self.view == view {
+
+    pub(super) fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let locale = i18n::locale();
+        if self.locale == locale {
+            return;
+        }
+        self.locale = locale;
+        for (state, keys) in [
+            (&self.filter, FILTER_KEYS.as_slice()),
+            (&self.sort, SORT_KEYS.as_slice()),
+        ] {
+            state.update(cx, |state, cx| state.set_items(choices(keys), window, cx));
+        }
+        cx.notify();
+    }
+
+    pub(super) fn has_previous_page(&self) -> bool {
+        self.history_index > 0
+    }
+    pub(super) fn has_next_page(&self) -> bool {
+        self.history_index + 1 < self.history.len()
+    }
+    pub(super) fn history_blocked(&self, cx: &App) -> bool {
+        self.add_dialog.as_ref().is_some_and(|dialog| dialog.read(cx).open)
+            || self.device_dialog.as_ref().is_some_and(|dialog| dialog.read(cx).open)
+    }
+    pub(super) fn step_history(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if forward && self.has_next_page() {
+            self.history_index += 1;
+        } else if !forward && self.has_previous_page() {
+            self.history_index -= 1;
+        } else {
+            return;
+        }
+        self.view = self.history[self.history_index];
+        self.reset_search(window, cx);
+        cx.notify();
+    }
+    fn set_view(&mut self, view: ProfilesView, window: &mut Window, cx: &mut Context<Self>) {
+        if view == self.view {
             return;
         }
         self.view = view;
-        if std::mem::take(&mut self.history_navigation) {
-            // 历史回放：索引已在 step_history 里改好。
-        } else {
-            self.history.truncate(self.history_index + 1);
-            self.history.push(view);
-            self.history_index = self.history.len() - 1;
-        }
+        self.history.truncate(self.history_index + 1);
+        self.history.push(view);
+        self.history_index = self.history.len() - 1;
+        self.reset_search(window, cx);
         cx.notify();
     }
-    fn can_step_history(&self, forward: bool) -> bool {
-        if forward {
-            self.history_index + 1 < self.history.len()
-        } else {
-            self.history_index > 0
+    fn reset_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.searching = false;
+        self.search
+            .update(cx, |state, cx| state.set_value("", window, cx));
+        // Ba replaces the mounted view, so a fresh Games instance resets these.
+        for state in [&self.filter, &self.sort] {
+            state.update(cx, |state, cx| {
+                state.set_selected_index(Some(IndexPath::new(0)), window, cx)
+            });
         }
     }
-    fn step_history(&mut self, forward: bool, cx: &mut Context<Self>) {
-        if !self.can_step_history(forward) {
-            return;
+    pub(super) fn refresh(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.add_dialog = None;
+        self.device_dialog = None;
+        self.reset_search(window, cx);
+        self.focus.focus(window, cx);
+        cx.notify();
+    }
+    fn open_add(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let dialog = cx.new(|cx| AddGameDialog::new(window, cx));
+        self._subscriptions
+            .push(cx.observe(&dialog, |_, _, cx| cx.notify()));
+        self.add_dialog = Some(dialog);
+        cx.notify();
+    }
+    fn navigation(&self, cx: &mut Context<Self>) -> AnyElement {
+        h_flex()
+            .id("profiles-navs")
+            .justify_center()
+            .gap(surface::css(20.))
+            .children(ProfilesView::ALL.into_iter().map(|view| {
+                surface::navigation_button(view.id(), i18n::t(view.key()), view == self.view, cx)
+                    .disabled(self.history_blocked(cx))
+                    .role(Role::Tab)
+                    .on_click(
+                        cx.listener(move |this, _, window, cx| this.set_view(view, window, cx)),
+                    )
+            }))
+            .into_any_element()
+    }
+    fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
+        let disabled = self.history_blocked(cx);
+        let mut left = h_flex().flex_1().min_w_0().gap(surface::css(10.));
+        if self.view == ProfilesView::Games {
+            left = left
+                .child(
+                    icon_button(
+                        "profiles-add",
+                        "synapse/profiles-add.svg",
+                        "ADD_GAME_AND_PROGRAM",
+                        cx,
+                    )
+                    .disabled(disabled)
+                    .on_click(cx.listener(|this, _, window, cx| this.open_add(window, cx))),
+                )
+                // Original scan is initiateGameScan; no service result is synthesized.
+                .child(
+                    icon_button(
+                        "profiles-scan",
+                        "synapse/profiles-scan.svg",
+                        "SCAN_FOR_GAMES",
+                        cx,
+                    )
+                    .disabled(true),
+                );
+            left = if self.searching {
+                left.child(search_field(
+                    "profiles-search-field",
+                    &self.search,
+                    disabled,
+                    cx,
+                ))
+            } else {
+                left.child(
+                    icon_button(
+                        "profiles-search",
+                        "synapse/profiles-search.svg",
+                        "SEARCH",
+                        cx,
+                    )
+                    .disabled(disabled)
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.searching = true;
+                        this.search.update(cx, |input, cx| input.focus(window, cx));
+                        cx.notify();
+                    })),
+                )
+            };
         }
-        let index = if forward {
-            self.history_index + 1
-        } else {
-            self.history_index - 1
-        };
-        let view = self.history[index];
-        self.history_index = index;
-        self.history_navigation = true;
-        self.set_view(view, cx);
+        let mut right = h_flex().flex_1().min_w_0().justify_end();
+        if self.view == ProfilesView::Games {
+            for (id, label, state, keys) in [
+                (
+                    "profiles-filter",
+                    "VIEWS",
+                    &self.filter,
+                    FILTER_KEYS.as_slice(),
+                ),
+                ("profiles-sort", "ORDER", &self.sort, SORT_KEYS.as_slice()),
+            ] {
+                right = right.child(
+                    h_flex()
+                        .gap(surface::css(10.))
+                        .ml(surface::css(10.))
+                        .child(div().text_size(surface::css(14.)).child(i18n::t(label)))
+                        .child(
+                            surface::select(state)
+                                .id(id)
+                                .items(choices(keys))
+                                .accessibility_label(i18n::t(label))
+                                .disabled(disabled)
+                                .w(surface::css(160.)),
+                        ),
+                );
+            }
+        }
+        h_flex()
+            .id("profiles-main-nav")
+            .w_full()
+            .flex_shrink_0()
+            .p(surface::css(11.))
+            .h(surface::css(50.))
+            .when(disabled, |row| row.opacity(0.3))
+            .border_b_2()
+            .border_color(cx.theme().title_bar)
+            .child(left)
+            .child(self.navigation(cx))
+            .child(right)
+            .into_any_element()
+    }
+    fn add_tile(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let state = window.use_keyed_state("profiles-add-hover", cx, |_, _| false);
+        let border = motion::transition(
+            "profiles-add-border",
+            if *state.read(cx) {
+                cx.theme().primary
+            } else {
+                cx.theme().border
+            },
+            Transition::new(Duration::from_millis(200)).easing(Easing::Ease),
+            window,
+            cx,
+        );
+        // `.game-tile`: 290x220, body 150, footer 70. The embedded profile
+        // assignment surface's 240x190 `.linked-game-tile` is a different class.
+        BaseButton::new("profiles-add-game-tile")
+            .accessibility_label(i18n::t("ADD_GAME_TITLE"))
+            .flex()
+            .flex_col()
+            .items_stretch()
+            .justify_start()
+            .p_0()
+            .w(surface::css(290.))
+            .h(surface::css(220.))
+            .m(surface::css(10.))
+            .flex_shrink_0()
+            .border_2()
+            .border_dashed()
+            .border_color(border)
+            .rounded(surface::css(5.))
+            .bg(cx.theme().transparent)
+            .focus_visible(|s| s.border_color(cx.theme().primary))
+            .on_hover(window.listener_for(&state, |value, hovered, _, cx| {
+                *value = *hovered;
+                cx.notify();
+            }))
+            .active(|s| s.border_color(cx.theme().primary))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .h(surface::css(150.))
+                    .flex_shrink_0()
+                    .child(img("synapse/dashboard-add.svg").size(surface::css(40.))),
+            )
+            .child(
+                div()
+                    .h(surface::css(70.))
+                    .flex_shrink_0()
+                    .px(surface::css(35.))
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(16.))
+                    .text_center()
+                    .text_color(cx.theme().foreground)
+                    .child(format!(
+                        "{} {}\n{}",
+                        i18n::t("CLICK_TO_ADD"),
+                        i18n::t("GAME_PROGRAM"),
+                        i18n::t("DRAG_AND_DROP_HERE")
+                    )),
+            )
+            .on_click(cx.listener(|this, _, window, cx| this.open_add(window, cx)))
+            .into_any_element()
     }
 }
+
 impl Render for ProfilesPage {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let removed = self
+            .filter
+            .read(cx)
+            .selected_value()
+            .is_some_and(|s| s == "REMOVED_GAMES");
+        let mut grid = h_flex()
+            .id("profiles-grid")
+            .items_start()
+            .flex_wrap()
+            .min_w(surface::css(900.))
+            .px(surface::css(20.))
+            .pb(surface::css(80.));
+        if self.view == ProfilesView::Devices {
+            grid = grid.children(self.device_tiles(cx));
+        } else if !removed {
+            grid = grid.child(self.add_tile(window, cx));
+        }
         v_flex()
             .id("profiles-window")
             .size_full()
+            .min_h_0()
+            .overflow_hidden()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    if this.search.read(cx).value().is_empty() {
+                        this.searching = false;
+                        cx.notify();
+                    }
+                }),
+            )
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .track_focus(&self.focus)
+            .child(self.toolbar(cx))
             .child(
-                h_flex()
-                    .id("profiles-header")
-                    .flex_shrink_0()
-                    .h(surface::css(48.))
-                    .items_center()
-                    .px(surface::css(20.))
-                    .border_b_1()
-                    .border_color(cx.theme().border)
-                    // 源码 `Xt` 导航栏的最左边是 `.nav.back` / `.nav.forward`
-                    // （`background-image` 分别是 nav_back_arrow / nav_fwd_arrow，
-                    // 到边界时 `.nav.disabled{opacity:.3}`）。
-                    .child(
-                        surface::nav_arrow_button(
-                            "profiles-back",
-                            false,
-                            self.can_step_history(false),
-                            cx,
-                        )
-                        .ml(surface::css(20.))
-                        .on_click(cx.listener(|this, _, _, cx| this.step_history(false, cx))),
-                    )
-                    .child(
-                        surface::nav_arrow_button(
-                            "profiles-forward",
-                            true,
-                            self.can_step_history(true),
-                            cx,
-                        )
-                        .ml(surface::css(20.))
-                        .on_click(cx.listener(|this, _, _, cx| this.step_history(true, cx))),
-                    )
-                    // `.navs-wrapper{display:flex;font-size:12px;justify-content:center}`：
-                    // 视图标签之间 20px（`.nav-tabs .nav{margin-right:20px}`）。
-                    .child(
-                        h_flex()
-                            .id("profiles-navs")
-                            .flex()
-                            .items_center()
-                            .gap(surface::css(20.))
-                            .ml(surface::css(20.))
-                            .children(ProfilesView::ALL.into_iter().map(|view| {
-                                surface::navigation_button(
-                                    SharedString::from(view.id()),
-                                    view.label(),
-                                    view == self.view,
-                                    cx,
-                                )
-                                .role(Role::Tab)
-                                .on_click(
-                                    cx.listener(move |this, _, _, cx| this.set_view(view, cx)),
-                                )
-                            })),
-                    ),
-            )
-            .child(
-                // 源码把视图容器标成 `.razer-profiles`
-                // （`.razer-profiles{overflow:hidden!important;padding:0!important}`），
-                // 即这一层不滚动也不留内边距，间距由各视图自己给。
-                v_flex()
+                div()
                     .id("profiles-body")
                     .flex_1()
                     .min_h_0()
-                    .overflow_hidden()
-                    .p_0()
-                    // `.razer-profiles` 这一层不留内边距；真实视图各自管自己的
-                    // 间距，本地这些说明文字统一放进一个有内边距的内层容器。
+                    .scrollable_both()
+                    .child(grid),
+            )
+            .children(self.add_dialog.clone())
+            .children(self.device_dialog.clone())
+    }
+}
+
+fn icon_button(id: &'static str, icon: &'static str, label: &'static str, cx: &App) -> BaseButton {
+    let hover = icon.replace(".svg", "-hover.svg");
+    BaseButton::new(id)
+        .accessibility_label(i18n::t(label))
+        .size(surface::css(26.))
+        .group(id)
+        .p_0()
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .when(!icon.ends_with("scan.svg"), |button| {
+            button.active(|s| s.opacity(0.7))
+        })
+        .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
+        .child(
+            div()
+                .relative()
+                .size(surface::css(20.))
+                .child(img(icon).size_full())
+                .child(
+                    img(SharedString::from(hover))
+                        .absolute()
+                        .inset_0()
+                        .size_full()
+                        .opacity(0.)
+                        .group_hover(id, |s| s.opacity(1.)),
+                ),
+        )
+}
+
+fn search_field(
+    id: &'static str,
+    state: &Entity<InputState>,
+    disabled: bool,
+    cx: &App,
+) -> AnyElement {
+    let clear = state.clone();
+    div()
+        .id(id)
+        .relative()
+        .w(surface::css(133.))
+        .h(surface::css(20.))
+        .bg(cx.theme().primary_foreground)
+        .border_1()
+        .border_color(cx.theme().border)
+        .hover(|s| s.border_color(cx.theme().primary))
+        .active(|s| s.border_color(cx.theme().primary))
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .child(
+            Input::new(state)
+                .appearance(false)
+                .disabled(disabled)
+                .w_full()
+                .h_full()
+                .p_0()
+                .pl(surface::css(27.))
+                .text_size(surface::css(14.))
+                .line_height(surface::css(17.))
+                .bg(cx.theme().primary_foreground)
+                .border_0(),
+        )
+        .child(
+            img("synapse/profiles-search-grey.svg")
+                .absolute()
+                .left(surface::css(3.))
+                .top(surface::css(2.))
+                .size(surface::css(20.)),
+        )
+        .when(!state.read(cx).value().is_empty(), |view| {
+            view.child(
+                icon_button(
+                    "profiles-search-clear",
+                    "synapse/profiles-clear.svg",
+                    "CLEAR",
+                    cx,
+                )
+                .absolute()
+                .right_0()
+                .top_0()
+                .size(surface::css(25.))
+                .disabled(disabled)
+                .on_click(move |_, window, cx| {
+                    clear.update(cx, |state, cx| {
+                        state.set_value("", window, cx);
+                        state.focus(window, cx);
+                    })
+                }),
+            )
+        })
+        .into_any_element()
+}
+
+// Module 3137 / 5529: the installed-program list is empty until its service
+// supplies a response. Search and dismissal are local, scan/add are deferred.
+struct AddGameDialog {
+    open: bool,
+    focus: FocusHandle,
+    return_focus: Option<FocusHandle>,
+    search: Entity<InputState>,
+    searching: bool,
+    from_device: bool,
+    _search_subscription: Subscription,
+}
+impl AddGameDialog {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let focus = cx.focus_handle();
+        let return_focus = window.focused(cx);
+        focus.focus(window, cx);
+        let search = cx.new(|cx| InputState::new(window, cx));
+        let search_subscription = cx.observe(&search, |_, _, cx| cx.notify());
+        Self {
+            open: true,
+            focus,
+            return_focus,
+            search,
+            searching: false,
+            from_device: false,
+            _search_subscription: search_subscription,
+        }
+    }
+    fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.open = false;
+        if let Some(focus) = self.return_focus.take() {
+            focus.focus(window, cx);
+        }
+        cx.notify();
+    }
+}
+impl Render for AddGameDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.open {
+            return div().into_any_element();
+        }
+        let opacity = Presence::new(
+            (ElementId::from(("profiles-add", cx.entity_id())), "opacity"),
+            true,
+        )
+        .transition(Transition::new(Duration::from_millis(100)).easing(Easing::Linear))
+        .sample(window, cx)
+        .progress;
+        // Ua mounts both popups and switches them using .no-popup.
+        let opacity = if self.from_device { 1. } else { opacity };
+        let progress = Presence::new(
+            (
+                ElementId::from(("profiles-add", cx.entity_id())),
+                "position",
+            ),
+            true,
+        )
+        .transition(Transition::new(Duration::from_millis(300)).easing(Easing::Ease))
+        .sample(window, cx)
+        .progress;
+        let progress = if self.from_device { 1. } else { progress };
+        let viewport = window.viewport_size();
+        // The fixed backdrop uses the application viewport, below the 42px host.
+        // Preserve @media conditions: max-width 800 only at <=900px.
+        // The device popup is outside .profiles-link-games, and does not match
+        // its margin-top 89/min-height 650/top 20 overrides.
+        let unit = window.rem_size() / 16.;
+        let app_height = viewport.height - unit * 42.;
+        let backdrop_top = unit * (42. + if self.from_device { 0. } else { 89. });
+        let popup_top = if self.from_device { 100. } else { 20. };
+        let container_height = if self.from_device { app_height } else { app_height.max(unit * 650.) };
+        let top = backdrop_top + unit * (110. + popup_top);
+        let start = backdrop_top + unit * 110. + container_height;
+        let animated_top = start + (top - start) * progress;
+        let css_width = f32::from(viewport.width / unit);
+        let width = unit * popup_width(css_width, self.from_device);
+        let height = (container_height - unit * (110. + popup_top))
+            .min(app_height - unit * 110.)
+            .max(px(0.));
+        let mut nav = h_flex()
+            .w_full()
+            .mb(surface::css(10.))
+            .gap(surface::css(10.))
+            .child(
+                icon_button(
+                    "profiles-program-refresh",
+                    "synapse/profiles-refresh.svg",
+                    "REFRESH",
+                    cx,
+                )
+                .disabled(true),
+            );
+        nav = if self.searching {
+            nav.child(search_field(
+                "profiles-program-search-field",
+                &self.search,
+                false,
+                cx,
+            ))
+        } else {
+            nav.child(
+                icon_button(
+                    "profiles-program-search",
+                    "synapse/profiles-search.svg",
+                    "SEARCH",
+                    cx,
+                )
+                .on_click(cx.listener(|this, _, window, cx| {
+                    this.searching = true;
+                    this.search.update(cx, |input, cx| input.focus(window, cx));
+                    cx.notify();
+                })),
+            )
+        };
+        nav = nav.child(
+            h_flex()
+                .flex_1()
+                .justify_end()
+                .mr(surface::css(15.))
+                .gap(surface::css(10.))
+                .child(i18n::t("STILL_DONT_SEE_YOUR_GAME"))
+                .child(
+                    BaseButton::new("profiles-program-browse")
+                        .disabled(true)
+                        .p_0()
+                        .child(i18n::t("BROWSE")),
+                ),
+        );
+        gpui_kit::base::Dialog::new(cx)
+            .focus_handle(self.focus.clone())
+            .close_on_backdrop_press(false)
+            .on_ok(|_, _, _| false)
+            .on_close(cx.listener(|this, _, window, cx| this.close(window, cx)))
+            .backdrop(
+                div()
+                    .absolute()
+                    .left_0()
+                    .right_0()
+                    .top(backdrop_top)
+                    .bottom_0()
+                    .bg(cx.theme().title_bar.opacity((128. / 255.) * opacity)),
+            )
+            .popup(
+                v_flex()
+                    .id("profiles-add-dialog")
+                    .absolute()
+                    .left((viewport.width - width) / 2.)
+                    .top(animated_top)
+                    .w(width)
+                    .h(height)
+                    .pb(surface::css(if self.from_device { 0. } else { 90. }))
+                    .occlude()
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            if this.search.read(cx).value().is_empty() {
+                                this.searching = false;
+                                cx.notify();
+                            }
+                        }),
+                    )
+                    .bg(cx.theme().background)
+                    .rounded_t(surface::css(5.))
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .text_color(cx.theme().foreground)
+                    .child(
+                        h_flex()
+                            .relative()
+                            .h(surface::css(36.))
+                            .flex_shrink_0()
+                            .justify_center()
+                            .overflow_hidden()
+                            .pt(surface::css(20.))
+                            .pb(surface::css(10.))
+                            .px(surface::css(50.))
+                            .font_family("RazerF5")
+                            .text_size(surface::css(16.))
+                            .line_height(surface::css(19.))
+                            .text_color(cx.theme().muted_foreground)
+                            .child(i18n::t("ADD_GAME_TITLE").to_uppercase())
+                            .when(self.from_device, |head| head.child(
+                                BaseButton::new("profiles-add-back").absolute().top_0().left_0().size(surface::css(36.)).p_0()
+                                    .accessibility_label(i18n::t("BACK"))
+                                    .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
+                                    .child(img("synapse/profiles-back.svg").size(surface::css(20.)))
+                                    .on_click(cx.listener(|this, _, window, cx| this.close(window, cx)))
+                            ))
+                            .child(
+                                BaseButton::new("profiles-add-close")
+                                    .accessibility_label(i18n::t("CLOSE"))
+                                    .absolute()
+                                    .top_0()
+                                    .right_0()
+                                    .size(surface::css(36.))
+                                    .p_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
+                                    .active(|s| s.bg(gpui_kit::rgba(0x0000001a)))
+                                    .child(
+                                        img("synapse/profiles-close.svg").size(surface::css(20.)),
+                                    )
+                                    .on_click(
+                                        cx.listener(|this, _, window, cx| this.close(window, cx)),
+                                    ),
+                            ),
+                    )
                     .child(
                         v_flex()
-                            .id("profiles-view")
-                            .size_full()
-                            .gap(surface::css(12.))
-                            .p(surface::css(20.))
+                            .flex_1()
+                            .min_h_0()
+                            .pt(surface::css(20.))
+                            .pl(surface::css(25.))
+                            .pb(surface::css(42.))
+                            .child(nav)
                             .child(
-                        div()
-                            .text_size(surface::css(10.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child(self.view.route()),
-                    )
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child(self.view.description()),
-                    )
-                    .child(
-                        div()
-                            .text_size(surface::css(12.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child("窗口名 profiles · /synapse/profiles/ · policy=3,shouldFocus=1,tab_visible=1"),
-                    )
-                            .children(self.view_body(cx)),
+                                div()
+                                    .id("profiles-installed-programs")
+                                    .flex_1()
+                                    .min_h_0()
+                                    .scrollable_y(),
+                            ),
                     ),
             )
+            .into_any_element()
     }
 }

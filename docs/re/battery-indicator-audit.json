@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "scanner_sha256": "3be429ef83d91940c99c2da8464aff2219ac89010c24f8f1564117698180185c",
+  "schema_version": 2,
+  "scanner_sha256": "639f30601c78f17f9d35c23c8dc8c5c54abc0b5f8feb013d0dd8a30c7b0fac2b",
   "state_machine": {
     "source": ".ref/devices/104/static/js/main.9b94769e.js",
     "offset": 4275658,
@@ -12,7 +12,7 @@
       "no_charge_battery_full": "bucket(level)",
       "warning": "batt batt-warning",
       "paused": "bucket(level, paused)  // ReachChargingLimit",
-      "default": "bucket(100)"
+      "default": "bucket(100); BATTERY_PERCENT interpolates actual level"
     },
     "bucket": "10 === level ? 10 : (level > 10 && level < 20) ? 20 : 10 * floor(level / 10)",
     "disconnected": "level <= 0 → batt batt-disconnected"
@@ -23,7 +23,7 @@
     "lowBatt": ".battery .low-batt{color:#c8323c}",
     "iconBox": ".nav-tabs .batt,.nav-tabs .warn,.nav-tabs .warnRestart{background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;margin:0 10px;width:26px}",
     "iconDefault": ".nav-tabs .batt{background-image:url(../../static/media/icon_battery_100.b00b88f9.svg);margin:0 5px}",
-    "warningTooltip": ".nav-tabs .batt.batt-warning[tooltip]:before{color:#ccc;font:normal normal normal 14px/16px Roboto,sans-serif;height:auto;letter-spacing:0;margin-right:16px;opacity:1;text-align:left;white-space:inherit;width:352px}",
+    "unusedAttributeTooltip": ".nav-tabs .batt.batt-warning[tooltip]:before{color:#ccc;font:normal normal normal 14px/16px Roboto,sans-serif;height:auto;letter-spacing:0;margin-right:16px;opacity:1;text-align:left;white-space:inherit;width:352px}",
     "icons": {
       "0": [
         "icon_battery_0.d600fc0a.svg",
@@ -206,7 +206,12 @@
   },
   "rust_table": {
     "source": "src/ui/battery.rs",
-    "sha256": "a2db26705b3a37e711c86d0ad71323414dae6a1f8e082b2eb86cd4e2e91b5054"
+    "sha256": "88a6444b533ab0132ec0d2605c4d212add7ba886a8bb47ffde4119afbaeb693c"
   },
+  "mounted_header_audit": "docs/re/device-tabs-audit.json",
+  "limitations": [
+    "Icon/string table verification only; current parent layout and mounted tooltip are checked by audit-device-tabs.cjs.",
+    "No rendered pixel or hardware behavior validation."
+  ],
   "problems": []
 }

@@ -4,6 +4,7 @@ use crate::{
     i18n,
     ui::{surface, theme::TrayColors},
 };
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::*;
 use gpui_kit::*;
 use serde_json::Value;
@@ -91,6 +92,9 @@ struct TrayPopup {
     blur_task: Option<Task<()>>,
     show_task: Option<Task<()>>,
     _activation: Subscription,
+    login_hovered: bool,
+    launcher_hovered: bool,
+    launcher_pressed: bool,
 }
 impl TrayPopup {
     fn new(
@@ -119,6 +123,9 @@ impl TrayPopup {
             blur_task: None,
             show_task: None,
             _activation: activation,
+            login_hovered: false,
+            launcher_hovered: false,
+            launcher_pressed: false,
         }
     }
     fn command(&self, id: &str) {
@@ -126,7 +133,61 @@ impl TrayPopup {
     }
 }
 impl Render for TrayPopup {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // systrayv2 554 CSS: header bg/text, launcher bg/title are .1s
+        // ease-in-out; the pressed launch icon fades with .1s linear.
+        let transition = || Transition::new(Duration::from_millis(100)).easing(Easing::EaseInOut);
+        let login_bg = motion::transition(
+            "tray-login-background",
+            if self.login_hovered {
+                TrayColors::border()
+            } else {
+                TrayColors::surface()
+            },
+            transition(),
+            window,
+            cx,
+        );
+        let login_text = motion::transition(
+            "tray-login-foreground",
+            if self.login_hovered {
+                TrayColors::hover_text()
+            } else {
+                TrayColors::text()
+            },
+            transition(),
+            window,
+            cx,
+        );
+        let launcher_bg = motion::transition(
+            "tray-launcher-background",
+            if self.launcher_hovered {
+                TrayColors::border()
+            } else {
+                TrayColors::launcher()
+            },
+            transition(),
+            window,
+            cx,
+        );
+        let launcher_text = motion::transition(
+            "tray-launcher-foreground",
+            if self.launcher_hovered {
+                TrayColors::hover_text()
+            } else {
+                TrayColors::muted()
+            },
+            transition(),
+            window,
+            cx,
+        );
+        let icon_opacity = motion::transition(
+            "tray-launcher-icon-opacity",
+            if self.launcher_pressed { 0.3_f32 } else { 1. },
+            Transition::new(Duration::from_millis(100)).easing(Easing::Linear),
+            window,
+            cx,
+        );
         // Re: no user.item.id => header-2 + launchers, without navbar/widgets.
         // Do not invent an authenticated account, devices or notifications.
         v_flex()
@@ -156,10 +217,12 @@ impl Render for TrayPopup {
                     .justify_center()
                     .px(surface::css(20.))
                     .pb(surface::css(1.))
-                    .hover(|s| {
-                        s.bg(TrayColors::border())
-                            .text_color(TrayColors::hover_text())
-                    })
+                    .bg(login_bg)
+                    .text_color(login_text)
+                    .on_hover(cx.listener(|this, hovered, _, cx| {
+                        this.login_hovered = *hovered;
+                        cx.notify();
+                    }))
                     .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
                     .child(text("popup", "TEXT_LOG_IN_TO_GET_STARTED"))
                     .on_click(cx.listener(|this, _, _, _| this.command("login"))),
@@ -177,21 +240,45 @@ impl Render for TrayPopup {
                     .px(surface::css(10.))
                     .border_t_1()
                     .border_color(TrayColors::surface())
-                    .bg(TrayColors::launcher())
+                    .bg(launcher_bg)
                     .text_size(surface::css(12.))
-                    .text_color(TrayColors::muted())
+                    .text_color(launcher_text)
                     .gap(surface::css(10.))
-                    .hover(|s| {
-                        s.bg(TrayColors::border())
-                            .text_color(TrayColors::hover_text())
-                    })
+                    .on_hover(cx.listener(|this, hovered, _, cx| {
+                        this.launcher_hovered = *hovered;
+                        if !hovered {
+                            this.launcher_pressed = false;
+                        }
+                        cx.notify();
+                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.launcher_pressed = true;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.launcher_pressed = false;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.launcher_pressed = false;
+                            cx.notify();
+                        }),
+                    )
                     .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
                     .child(
                         img("synapse/tray-synapse.svg")
                             .size(surface::css(32.))
-                            .group_active("tray-launcher", |s| s.opacity(0.3)),
+                            .opacity(icon_opacity),
                     )
-                    .child(text("host", "RAZER_SYNAPSE").to_uppercase())
+                    .child(text("host", "RAZER_SYNAPSE"))
                     .on_click(cx.listener(|this, _, _, _| this.command("synapse"))),
             )
     }

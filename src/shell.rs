@@ -94,6 +94,15 @@ fn save_continuation(
         SaveContinuation::Idle
     }
 }
+enum HistoryTarget {
+    Device(Entity<ProductWorkspace>),
+    Profiles(Entity<profiles_page::ProfilesPage>),
+    Alexa(Entity<alexa_page::AlexaPage>),
+    Macro(Entity<macro_page::MacroPage>),
+    Armory(Entity<armory_page::ArmoryPage>),
+    Shell(usize),
+}
+
 pub struct AppShell {
     #[cfg(target_os = "windows")]
     main_window: AnyWindowHandle,
@@ -275,6 +284,9 @@ impl AppShell {
                     }
                     for device in &this.devices {
                         device.update(cx, |device, cx| device.refresh_locale(window, cx));
+                    }
+                    if let Some(page) = &this.profiles_page {
+                        page.update(cx, |page, cx| page.refresh_locale(window, cx));
                     }
                     cx.refresh_windows();
                 }
@@ -516,6 +528,9 @@ impl AppShell {
                 .open(host_tabs::HostTab::Device(entity.read(cx).identity(cx)), cx);
         }
         self.devices.push(entity);
+        if let Some(page) = &self.profiles_page {
+            page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
+        }
         self.sync_app_picker(window, cx);
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
@@ -716,7 +731,11 @@ impl AppShell {
             }
             if next == Location::Profiles {
                 if self.profiles_page.is_none() {
-                    self.profiles_page = Some(cx.new(profiles_page::ProfilesPage::new));
+                    let page = cx.new(|cx| profiles_page::ProfilesPage::new(window, cx));
+                    page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
+                    self.subscriptions
+                        .push(cx.observe(&page, |_, _, cx| cx.notify()));
+                    self.profiles_page = Some(page);
                 }
                 self.profiles_page
                     .as_ref()
@@ -725,7 +744,10 @@ impl AppShell {
             }
             if next == Location::Armory {
                 if self.armory_page.is_none() {
-                    self.armory_page = Some(cx.new(armory_page::ArmoryPage::new));
+                    let page = cx.new(armory_page::ArmoryPage::new);
+                    self.subscriptions
+                        .push(cx.observe(&page, |_, _, cx| cx.notify()));
+                    self.armory_page = Some(page);
                 }
                 self.armory_page
                     .as_ref()
@@ -734,7 +756,10 @@ impl AppShell {
             }
             if next == Location::Macro {
                 if self.macro_page.is_none() {
-                    self.macro_page = Some(cx.new(macro_page::MacroPage::new));
+                    let page = cx.new(|cx| macro_page::MacroPage::new(window, cx));
+                    self.subscriptions
+                        .push(cx.observe(&page, |_, _, cx| cx.notify()));
+                    self.macro_page = Some(page);
                 }
                 self.macro_page
                     .as_ref()
@@ -752,28 +777,124 @@ impl AppShell {
             cx.notify();
         }
     }
-    fn move_history(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
-        if self.location == Location::Alexa {
-            if let Some(page) = &self.alexa {
-                page.update(cx, |page, cx| {
-                    if delta < 0 {
-                        page.go_back(window, cx);
-                    } else {
-                        page.go_forward(window, cx);
-                    }
-                });
+    // Resolve once for both disabled presentation and activation. Internal page
+    // history takes precedence; at its boundary, use recorded shell navigation.
+    fn history_target(&self, forward: bool, cx: &App) -> Option<HistoryTarget> {
+        match &self.location {
+            Location::Device(key) => {
+                if let Some(device) = self
+                    .devices
+                    .iter()
+                    .find(|d| d.read(cx).identity(cx) == *key)
+                    .filter(|d| d.read(cx).can_step_history(forward, cx))
+                {
+                    return Some(HistoryTarget::Device(device.clone()));
+                }
             }
+            Location::Profiles => {
+                if self.profiles_page.as_ref().is_some_and(|page| page.read(cx).history_blocked(cx)) {
+                    return None;
+                }
+                if let Some(page) = self.profiles_page.as_ref().filter(|page| {
+                    let page = page.read(cx);
+                    if forward {
+                        page.has_next_page()
+                    } else {
+                        page.has_previous_page()
+                    }
+                }) {
+                    return Some(HistoryTarget::Profiles(page.clone()));
+                }
+            }
+            Location::Alexa => {
+                // A modal lock is not the boundary of the application's history.
+                // Preserve it instead of falling through to shell navigation.
+                if self
+                    .alexa
+                    .as_ref()
+                    .is_some_and(|page| page.read(cx).history_blocked())
+                {
+                    return None;
+                }
+                if let Some(page) = self.alexa.as_ref().filter(|page| {
+                    let page = page.read(cx);
+                    if forward {
+                        page.has_next_page()
+                    } else {
+                        page.has_previous_page()
+                    }
+                }) {
+                    return Some(HistoryTarget::Alexa(page.clone()));
+                }
+            }
+            Location::Macro => {
+                if let Some(page) = self.macro_page.as_ref().filter(|page| {
+                    let page = page.read(cx);
+                    if forward {
+                        page.has_next_page()
+                    } else {
+                        page.has_previous_page()
+                    }
+                }) {
+                    return Some(HistoryTarget::Macro(page.clone()));
+                }
+            }
+            Location::Armory => {
+                if let Some(page) = self.armory_page.as_ref().filter(|page| {
+                    let page = page.read(cx);
+                    if forward {
+                        page.has_next_page()
+                    } else {
+                        page.has_previous_page()
+                    }
+                }) {
+                    return Some(HistoryTarget::Armory(page.clone()));
+                }
+            }
+            _ => {}
+        }
+        // Closing a host tab can leave equal entries adjacent. Skip those
+        // retained entries instead of disabling an otherwise usable history.
+        let index = if forward {
+            (self.history_index.saturating_add(1)..self.history.len())
+                .find(|index| self.history[*index] != self.location)
+        } else {
+            (0..self.history_index)
+                .rev()
+                .find(|index| self.history[*index] != self.location)
+        };
+        index.map(HistoryTarget::Shell)
+    }
+    fn move_history(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
+        let forward = delta > 0;
+        let Some(target) = self.history_target(forward, cx) else {
             return;
+        };
+        match target {
+            HistoryTarget::Device(device) => device.update(cx, |device, cx| {
+                device.step_page_history(forward, window, cx)
+            }),
+            HistoryTarget::Profiles(page) => {
+                page.update(cx, |page, cx| page.step_history(forward, window, cx))
+            }
+            HistoryTarget::Alexa(page) => page.update(cx, |page, cx| {
+                if forward {
+                    page.go_forward(window, cx);
+                } else {
+                    page.go_back(window, cx);
+                }
+            }),
+            HistoryTarget::Macro(page) => {
+                page.update(cx, |page, cx| page.step_history(forward, window, cx))
+            }
+            HistoryTarget::Armory(page) => {
+                page.update(cx, |page, cx| page.step_history(forward, window, cx))
+            }
+            HistoryTarget::Shell(index) => {
+                self.request_navigation(self.history[index].clone(), Some(index), window, cx)
+            }
         }
-        let target = self.history_index as isize + delta;
-        if target >= 0 && target < self.history.len() as isize {
-            self.request_navigation(
-                self.history[target as usize].clone(),
-                Some(target as usize),
-                window,
-                cx,
-            );
-        }
+        cx.notify();
     }
     fn discard_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.save_task.is_some() {
@@ -1118,27 +1239,15 @@ impl AppShell {
             Location::FirmwareUpdate => "固件更新".into(),
             Location::ProfileMigration => crate::i18n::t("PROFILE_MIGRATION").into(),
             // 原版窗口名就是 `macro`（Dashboard 模块 69937 的 `O="macro"`）。
-            Location::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
+            Location::Macro => crate::i18n::t("MACRO_SOURCE.TEXT_PROFILE_BAR_MACRO").into(),
             // 原版标题取 `isExchangeEnabled ? DASHBOARD_EXCHANGE : DASHBOARD_WORKSHOP`，
             // 两个 key 在 zh-CN 语言包里都是「互换」。
-            Location::Armory => crate::i18n::t_or("DASHBOARD_WORKSHOP", "互换"),
+            Location::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
             // 模块表把 `linkedGames` 指向 profiles 窗口，标题用它的文案 key。
             Location::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
         };
-        let (has_previous, has_next) = if self.location == Location::Alexa {
-            self.alexa.as_ref().map_or((false, false), |page| {
-                let page = page.read(cx);
-                (page.has_previous_page(), page.has_next_page())
-            })
-        } else if self.location == Location::ProfileMigration {
-            // Migration OD passes an empty tabNavigations list to its toolbar.
-            (false, false)
-        } else {
-            (
-                self.history_index > 0,
-                self.history_index + 1 < self.history.len(),
-            )
-        };
+        let has_previous = self.history_target(false, cx).is_some();
+        let has_next = self.history_target(true, cx).is_some();
         h_flex()
             .id("app-toolbar")
             .h(rems(2.375))
@@ -1150,58 +1259,40 @@ impl AppShell {
                     .min_w_0()
                     .h_full()
                     .child(
-                        surface::asset_button(
-                            "history-back",
-                            "synapse/history-back.svg",
-                            "后退",
-                            cx,
-                        )
-                        .w(surface::css(40.))
-                        .h_full()
-                        .rounded(ButtonRounded::None)
-                        .custom(
-                            ButtonCustomVariant::new(cx)
-                                .color(cx.theme().transparent)
-                                .hover(cx.theme().secondary_hover)
-                                .active(cx.theme().secondary_hover),
-                        )
-                        .disabled(!has_previous)
-                        .on_click(
+                        surface::history_button("history-back", false, has_previous, cx).on_click(
                             cx.listener(|this, _, window, cx| this.move_history(-1, window, cx)),
                         ),
                     )
                     .child(
-                        surface::asset_button(
-                            "history-forward",
-                            "synapse/history-forward.svg",
-                            "前进",
-                            cx,
-                        )
-                        .w(surface::css(40.))
-                        .h_full()
-                        .rounded(ButtonRounded::None)
-                        .custom(
-                            ButtonCustomVariant::new(cx)
-                                .color(cx.theme().transparent)
-                                .hover(cx.theme().secondary_hover)
-                                .active(cx.theme().secondary_hover),
-                        )
-                        .disabled(!has_next)
-                        .on_click(
+                        surface::history_button("history-forward", true, has_next, cx).on_click(
                             cx.listener(|this, _, window, cx| this.move_history(1, window, cx)),
                         ),
                     )
                     .when(
-                        matches!(self.location, Location::Alexa | Location::ProfileMigration),
+                        matches!(
+                            self.location,
+                            Location::Alexa
+                                | Location::ProfileMigration
+                                | Location::Profiles
+                                | Location::Macro
+                        ),
                         |navigation| {
                             navigation.child(
                                 surface::asset_button(
                                     if self.location == Location::Alexa {
                                         "alexa-refresh"
+                                    } else if self.location == Location::Profiles {
+                                        "profiles-refresh"
+                                    } else if self.location == Location::Macro {
+                                        "macro-refresh"
                                     } else {
                                         "migration-refresh"
                                     },
-                                    "synapse/alexa-refresh.svg",
+                                    if self.location == Location::Profiles {
+                                        "synapse/profiles-refresh.svg"
+                                    } else {
+                                        "synapse/alexa-refresh.svg"
+                                    },
                                     crate::i18n::t("REFRESH"),
                                     cx,
                                 )
@@ -1218,6 +1309,18 @@ impl AppShell {
                                     |this, _, window, cx| {
                                         if this.location == Location::Alexa {
                                             if let Some(page) = &this.alexa {
+                                                page.update(cx, |page, cx| {
+                                                    page.refresh(window, cx)
+                                                });
+                                            }
+                                        } else if this.location == Location::Profiles {
+                                            if let Some(page) = &this.profiles_page {
+                                                page.update(cx, |page, cx| {
+                                                    page.refresh(window, cx)
+                                                });
+                                            }
+                                        } else if this.location == Location::Macro {
+                                            if let Some(page) = &this.macro_page {
                                                 page.update(cx, |page, cx| {
                                                     page.refresh(window, cx)
                                                 });
@@ -1315,7 +1418,7 @@ impl AppShell {
             )
             .into_any_element()
     }
-    fn main_page(&self, page: Tab, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+    fn main_page(&self, page: Tab, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         if page == Tab::Setting {
             return self.settings.clone().into_any_element();
         }
@@ -1340,6 +1443,33 @@ impl AppShell {
             Tab::Shortcuts => self.shortcuts_page(cx),
             _ => div().into_any_element(),
         };
+        let available = f32::from(window.viewport_size().width) * 16.
+            / f32::from(window.rem_size())
+            - surface::NAV_MORE_WIDTH
+            - surface::NAV_MORE_MARGIN
+            - 10.;
+        let (visible, hidden) =
+            surface::split_navs(&Tab::MAIN, |tab| tab.label(), available, window);
+        let overflow = if hidden.is_empty() {
+            None
+        } else {
+            let owner = cx.entity().downgrade();
+            let items = hidden
+                .iter()
+                .map(|tab| (tab.label(), *tab == page))
+                .collect();
+            Some(surface::nav_overflow(
+                "main-nav-overflow",
+                items,
+                move |index, window, cx| {
+                    let _ = owner.update(cx, |this, cx| {
+                        this.navigate(Location::Main(hidden[index]), window, cx)
+                    });
+                },
+                window,
+                cx,
+            ))
+        };
         v_flex()
             .size_full()
             .when(page != Tab::Setting, |this| {
@@ -1354,7 +1484,7 @@ impl AppShell {
                         .gap(surface::css(20.))
                         .border_b_2()
                         .border_color(cx.theme().title_bar)
-                        .children(Tab::MAIN.map(|tab| {
+                        .children(visible.into_iter().map(|tab| {
                             let button = surface::navigation_button(
                                 SharedString::from(format!("main-tab-{}", tab.id())),
                                 tab.label(),
@@ -1381,7 +1511,8 @@ impl AppShell {
                             } else {
                                 button.into_any_element()
                             }
-                        })),
+                        }))
+                        .children(overflow),
                 )
             })
             .child(

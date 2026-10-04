@@ -280,6 +280,9 @@ impl AlexaPage {
     pub(super) fn has_previous_page(&self) -> bool {
         self.history_index > 0 && self.modal.is_none()
     }
+    pub(super) fn history_blocked(&self) -> bool {
+        self.modal.is_some()
+    }
     pub(super) fn has_next_page(&self) -> bool {
         self.history_index + 1 < self.history.len() && self.modal.is_none()
     }

@@ -1,5 +1,8 @@
 # 宏应用界面当前源码审计
 
+**2026-10-04 更正：下面的资源/语言缺失结论已失效。**宏应用229个SVG已按manifest准备，palette的11个图标均存在。专用中文并非公共trans包：`1250.ba9a498a.chunk.js`模块81250包含新建宏、文件夹、搜索和真实空态等文案。十个专用字典已定位，正在沿加载链复核并接入。旧脚本的unresolved_keys只反映其搜索范围不足，不可作为无源码的证明。当前UI仍在实施，资源存在不表示完成。
+
+
 > 来源：当前 Synapse 包 `.ref/applications/synapse/macro/`。结论由 [extract-macro-app-ui.cjs](../../tools/extract-macro-app-ui.cjs) 静态提取，逐条带文件、偏移与 SHA-256 收据；没有执行任何下载的 JavaScript。机器可读收据：[macro-app-ui-audit.json](macro-app-ui-audit.json)。
 
 ## 窗口与外框

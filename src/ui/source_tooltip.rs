@@ -21,6 +21,8 @@ pub(crate) enum SourceTooltipKind {
     ProfileWarning,
     /// pR overrides `.lock .tip` with fixed icon-left/top + 20px on mouseover.
     LockedProfile,
+    /// `.tooltip-razer.bottom-left`: 300px main, intrinsic wrapper, +5px below.
+    Battery,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -76,7 +78,16 @@ impl RenderOnce for SourceTooltip {
         let anchor = state.read(cx).bounds.clone();
         // Both CSS paths retain opacity while hidden, including on reversal.
         let opacity = Presence::new((self.id.clone(), "tip-opacity"), hovered)
-            .transition(Transition::new(Duration::from_millis(300)).easing(Easing::Linear))
+            .transition(
+                Transition::new(Duration::from_millis(
+                    if self.kind == SourceTooltipKind::Battery {
+                        100
+                    } else {
+                        300
+                    },
+                ))
+                .easing(Easing::Linear),
+            )
             .sample(window, cx)
             .progress;
         let visible = if self.kind == SourceTooltipKind::DropTips {
@@ -212,6 +223,9 @@ impl Element for TipOverlay {
             text,
             source_size.width,
         )
+        .when(self.kind == SourceTooltipKind::Battery, |tip| {
+            tip.w_auto().max_w(source_size.width)
+        })
         .when(
             !self.hovered && self.kind == SourceTooltipKind::DropTips,
             |tip| tip.h(source_size.height),
@@ -220,6 +234,9 @@ impl Element for TipOverlay {
             .id((self.id.clone(), "tip-popup"))
             .test_support()
             .opacity(self.opacity)
+            .when(self.kind == SourceTooltipKind::Battery, |view| {
+                view.w(width).flex().justify_end()
+            })
             .when(!self.visible, |view| view.invisible())
             .when(
                 self.visible && self.kind == SourceTooltipKind::ProfileWarning,
@@ -262,6 +279,16 @@ impl Element for TipOverlay {
             SourceTooltipKind::ProfileWarning => trigger.bottom_left(),
             SourceTooltipKind::LockedProfile => {
                 trigger.origin + point(window.rem_size() * 1.25, window.rem_size() * 1.25)
+            }
+            SourceTooltipKind::Battery => {
+                let margin = window.rem_size() * (8. / 16.);
+                let left = (trigger.right() - layout.source_size.width)
+                    .max(margin)
+                    .min(
+                        (window.viewport_size().width - margin - layout.source_size.width)
+                            .max(margin),
+                    );
+                point(left, trigger.bottom() + window.rem_size() * (5. / 16.))
             }
         };
         let position = if self.kind == SourceTooltipKind::DropTips {

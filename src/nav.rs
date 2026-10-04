@@ -61,10 +61,10 @@ impl Tab {
     }
     pub fn label(self) -> String {
         let (key, fallback) = match self {
-            Self::Home => ("DASHBOARD", "仪表盘"),
-            Self::GamerRoom => ("GAMER_ROOM", "Gamer Room"),
-            Self::Modules => ("DEVICES_AND_MODULES", "设备与模块"),
-            Self::Shortcuts => ("GLOBAL_SHORTCUTS", "全局快捷键"),
+            Self::Home => ("DASHBOARD_HEADER", "控制板"),
+            Self::GamerRoom => ("GAMER_ROOM_HEADER", "GAMER ROOM"),
+            Self::Modules => ("DEVICES_AND_MODULES_HEADER", "设备和模块"),
+            Self::Shortcuts => ("GLOBAL_SHORTCUT_HEADER", "通用快捷键"),
             Self::Customize => ("TAB_CUSTOMIZE", "自定义"),
             Self::Performance => ("TAB_PERFORMANCE", "性能"),
             Self::Power => ("TAB_POWER", "电源"),

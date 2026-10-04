@@ -1,5 +1,9 @@
 # Armory 窗口（`/synapse/armory/`）依据与实现
 
+> 2026-10-04 更正：以下四页签常显和正文说明是旧实现，已撤销。当前已重新读取模块29770根、20540导航reducer、77989功能hook、60094开关取值及3026/95889介绍横幅。没有功能数据时各能力缺省false；加载结束后根切到Browse，guest=true时只显示Browse与MyDownloads。本地现按这个已稳定下来的默认分支呈现，补内部历史并接入壳工具栏。横幅使用原AVIF/关闭SVG、24px RazerF5标题及14/17 Roboto正文，去掉源码键和技术说明。收据见[armory-default-source.json](armory-default-source.json)，维护工具为[audit-armory-default.cjs](../../tools/audit-armory-default.cjs)。
+>
+> 仍缺搜索、筛选、已启用能力分支、详情/分享弹层和服务数据。横幅关闭仅保留在当前页面实体；原localStorage持久化未接入。未复现启动时的短暂加载状态，也未运行实窗像素验收，不能将本次默认分支修正认定为完整Armory。
+
 2026-10-03。机器可读依据见 [armory-app-current-audit.json](armory-app-current-audit.json)，抽取脚本 [tools/audit-armory-app.cjs](../../tools/audit-armory-app.cjs)（`--check` 失败即报错）。
 
 ## 窗口契约（全部取自当前源码）

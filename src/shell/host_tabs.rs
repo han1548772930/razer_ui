@@ -388,9 +388,9 @@ impl AppShell {
                     HostTab::FirmwareUpdate => "固件更新".into(),
                     HostTab::ProfileMigration => "PROFILE MIGRATION".into(),
                     // 原版这个窗口名是 `macro`，模块盒名是 `MACRO`。
-                    HostTab::Macro => crate::i18n::t_or("TEXT_PROFILE_BAR_MACRO", "宏"),
+                    HostTab::Macro => crate::i18n::t("MACRO_SOURCE.TEXT_PROFILE_BAR_MACRO"),
                     // 原版标题 key 为 DASHBOARD_WORKSHOP / DASHBOARD_EXCHANGE，中文都是「互换」。
-                    HostTab::Armory => crate::i18n::t_or("DASHBOARD_WORKSHOP", "互换"),
+                    HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
                     HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
                 };
                 let label = label.to_uppercase();

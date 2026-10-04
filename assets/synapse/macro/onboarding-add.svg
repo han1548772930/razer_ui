@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 23.0.3, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="260px" height="48.5px" viewBox="0 0 260 48.5" style="enable-background:new 0 0 260 48.5;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;}
+	.st1{fill:#FF00FF;fill-opacity:0;}
+	.st2{fill:#707070;}
+	.st3{fill:none;stroke:#707070;stroke-dasharray:4,4;}
+	.st4{fill:#CCCCCC;}
+</style>
+<path id="curve" class="st0" d="M0,0c58.1-33.4,65.6-33.5,117,0"/>
+<path id="arrow" class="st4" d="M159,12.5c-8.1-7.7-18.8-12-30-12c-11.6,0-21.8,4.5-30,12.8l2.1,2.1c7.6-7.6,17.1-11.9,27.9-11.9
+	c10.4,0,20.4,4,27.9,11.1l-3.9,3.9h10v-10L159,12.5z"/>
+<rect id="Rectangle_2871" y="0.5" class="st1" width="260" height="48"/>
+<g id="rectangle" transform="translate(0 -16)">
+	<g>
+		<path id="startrec" class="st2" d="M47,44.5h50c2.8,0,5,2.2,5,5v10c0,2.8-2.2,5-5,5H47c-2.8,0-5-2.2-5-5v-10
+			C42,46.7,44.2,44.5,47,44.5z"/>
+		<animateMotion id="curveanim" dur="1s" keyTimes="0;1" 
+			keySplines="
+			.61,.05,.36,.8;
+			" 
+			calcMode="spline" begin="0s; fadeoutanim.end + 0.5s" fill="freeze">
+			<mpath xlink:href="#curve"></mpath>
+		</animateMotion>
+		<animate id="fadeoutanim" dur="0.3s" attributeName="fill-opacity" begin="curveanim.end + 1s" values="1;0" fill="freeze"/>  
+		<set id="opacity_reset" attributeName="fill-opacity" to="1" dur="1s" begin="curveanim.begin" fill="freeze"/>	
+	</g>
+	<g>
+	<path id="startrec2" class="st2" d="M47,44.5h50c2.8,0,5,2.2,5,5v10c0,2.8-2.2,5-5,5H47c-2.8,0-5-2.2-5-5v-10C42,46.7,44.2,44.5,47,44.5z"/>
+		<animate id="fadeinanim" dur="0.3s" attributeName="fill-opacity" begin="fadeoutanim.begin" values="0;1" fill="freeze"/>
+		<animate id="hiderecanim" dur="0.01s" attributeName="fill-opacity" begin="curveanim.begin" values="1;0" fill="freeze"/>
+	</g>
+	<g id="endrec" transform="translate(437 332)">
+		<path class="st0" d="M-273-287.5h50c2.8,0,5,2.2,5,5v10c0,2.8-2.2,5-5,5h-50c-2.8,0-5-2.2-5-5v-10
+			C-278-285.3-275.8-287.5-273-287.5z"/>
+		<path class="st3" d="M-273-287h50c2.5,0,4.5,2,4.5,4.5v10c0,2.5-2,4.5-4.5,4.5h-50c-2.5,0-4.5-2-4.5-4.5v-10
+			C-277.5-285-275.5-287-273-287z"/>
+	</g>
+</g>
+
+</svg>

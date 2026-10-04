@@ -861,6 +861,86 @@ for manifest_path in [OUT / "keyboard-product-manifest.json", ROOT / "docs/re/mo
                 metadata["width"], metadata["height"] = artwork.size
         assert not any(existing["output"] == metadata["output"] for existing in records), output
         records.append(metadata)
+# Profiles' own toolbar and popup imports, including hover variants.
+profiles_media = ROOT / ".ref/applications/synapse/profiles/static/media"
+for name, original in {
+    "profiles-add.svg": "icon_addnotgrey.f73db7b6.svg",
+    "profiles-add-hover.svg": "icon_add.green.db605256.svg",
+    "profiles-scan.svg": "icon_refresh_gamelibrary.5f8edb51.svg",
+    "profiles-scan-hover.svg": "icon_refresh_gamelibrary.green.66e2a41e.svg",
+    "profiles-search.svg": "icon_search.b84dee08.svg",
+    "profiles-search-hover.svg": "icon_search.green.f5e350b7.svg",
+    "profiles-search-grey.svg": "icon_search.grey.7c0cb7bb.svg",
+    "profiles-refresh.svg": "icon_refresh.80aa16c3.svg",
+    "profiles-refresh-hover.svg": "icon_refresh.green.10a444da.svg",
+    "profiles-clear.svg": "icon_close_enclosed.6056b667.svg",
+    "profiles-clear-hover.svg": "icon_close_enclosed_a.83aff4bb.svg",
+    "profiles-close.svg": "icon_close.55fe41f1.svg",
+    "profiles-back.svg": "icon_back_arrow.b39e4841.svg",
+    "profiles-glow.svg": "background_glow.43f70cb2.svg",
+}.items():
+    src, dst = profiles_media / original, OUT / name
+    shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/profiles/static/media/" + original)
+macro_media = ROOT / ".ref/applications/synapse/macro/static/media"
+macro_out = OUT / "macro"
+macro_out.mkdir(exist_ok=True)
+for name, original in {
+    "delay.svg": "icon_delay_g.5050a3f7.svg",
+    "keyboard.svg": "icon_config_keyboard_a.7051c99b.svg",
+    "mouse.svg": "icon_config_mouse_o.8a44fbe7.svg",
+    "macro.svg": "icon_macro_a.7e1bc94f.svg",
+    "launch.svg": "icon_config_launch_p.482fbff5.svg",
+    "command.svg": "icon_runcmd_b.10c00024.svg",
+    "text.svg": "icon_config_text_b.bc93ac89.svg",
+    "loop.svg": "icon_refresh-1_r.ff48f955.svg",
+    "drag.svg": "icon_draggable_g.695879f5.svg",
+    "new.svg": "icon_new_marco.6edec51b.svg",
+    "new-hover.svg": "icon_new_marco-hover.47953e67.svg",
+    "new-active.svg": "icon_new_marco-pressed.0faeaad4.svg",
+    "folder-add.svg": "icon_addfolder-1.3c65591c.svg",
+    "folder-add-hover.svg": "icon_addfolder-hover.a804c680.svg",
+    "folder-add-active.svg": "icon_addfolder-pressed.aa5ec3ce.svg",
+    "folder.svg": "icon_folder_close-2.523e657a.svg",
+    "folder-open.svg": "icon_folder_open.076142a3.svg",
+    "file.svg": "icon_macro-file.2f24e5a0.svg",
+    "file-active.svg": "icon_marco-file-hover.0e086ddd.svg",
+    "onboarding-record.svg": "Onboarding_Step2.8d4382a1.svg",
+    "onboarding-add.svg": "Onboarding_Step3.ad2907e8.svg",
+    "indicator.svg": "indicator_animated.b7ce7af4.svg",
+    "warning.svg": "icon_warning.6c0cd78b.svg",
+    "add.svg": "icon_add.a38ffd57.svg",
+    "undo.svg": "icon_undo.638cc83d.svg",
+    "undo-enable.svg": "icon_undo_enable.dc068f5b.svg",
+    "undo-hover.svg": "icon_undo_hover.e7a454de.svg",
+    "redo.svg": "icon_redo.6df14b75.svg",
+    "redo-enable.svg": "icon_redo_enable.9fb6a098.svg",
+    "redo-hover.svg": "icon_redo_hover.d651f41e.svg",
+    "record.svg": "icon_record.9183ffe6.svg",
+    "record-expand.svg": "icon_expand_d.0cbe4fcf.svg",
+    "record-expand-hover.svg": "icon_expand_d.3.2a1d50df.svg",
+    "tree-more-hover.svg": "icon_more-pressed.f7f8588b.svg",
+    "tree-more-active.svg": "icon_more-hover.aa4fe640.svg",
+    "drag-folder.svg": "icon_folder_g.220b24b0.svg",
+    "drag-file.svg": "icon_layer.0c20e889.svg",
+}.items():
+    src, dst = macro_media / original, macro_out / name
+    shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/macro/static/media/" + original)
+armory_media = ROOT / ".ref/applications/synapse/armory/static/media"
+for name, original in {
+    "armory-introduction.png": "Dissmissible-banner-image-x2.c6eaaf4b.avif",
+    "armory-banner-close.svg": "icon_close.cb2e944c.svg",
+}.items():
+    src, dst = armory_media / original, OUT / name
+    metadata = {}
+    if src.suffix == ".avif":
+        with Image.open(src) as artwork:
+            artwork.save(dst, optimize=True)
+            metadata.update(width=artwork.width, height=artwork.height)
+    else:
+        shutil.copyfile(src, dst)
+    record(src, dst, source_url="https://apps.razer.com/synapse/armory/static/media/" + original, **metadata)
 records.extend(prepare_tray(ROOT, OUT))
 (OUT/"manifest.json").write_text(json.dumps(dict(version=1,entries=records),indent=2),encoding="utf-8")
 (OUT/"embedded.rs").write_text(

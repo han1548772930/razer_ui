@@ -8,7 +8,6 @@ use crate::{
     ui::source_alert::{AlertAction, AlertPlacement, SourceAlert},
     ui::surface,
 };
-use gpui_kit::base::Popover;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     color_picker::{ColorPickerEvent, ColorPickerState},
@@ -39,6 +38,7 @@ pub(super) enum Continue {
     DeleteProfile(String),
     ResetProfile { id: String, bindings_only: bool },
     Page(Tab),
+    HistoryPage { page: Tab, index: usize },
     Profile(String),
     Input(String),
     DrawerInput(String),
@@ -62,7 +62,6 @@ pub struct DeviceWorkspace {
     page_history: Vec<Tab>,
     page_history_index: usize,
     /// 由历史前进/后退触发的页切换不再重复写入历史。
-    history_navigation: bool,
     pub(super) controls: Controls,
     pub(super) sensitivity_controls: super::sensitivity::SensitivityControls,
     pub(super) keyboard_controls: super::keyboard_controls::KeyboardControls,
@@ -113,6 +112,13 @@ mod sensitivity_tests;
 #[path = "workspace_tests.rs"]
 mod tests;
 impl DeviceWorkspace {
+    pub(super) fn change_profile_metadata(&mut self, id: &str, change: super::product_workspace::ProfileMetadata, window: &mut Window, cx: &mut Context<Self>) {
+        if super::product_workspace::edit_profile_metadata(&mut self.device, id, change) {
+            self.refresh_profile_choices(window, cx);
+            self.changed(cx);
+            cx.notify();
+        }
+    }
     pub fn new(
         mut device: Device,
         intro_seen: bool,
@@ -228,7 +234,6 @@ impl DeviceWorkspace {
             page,
             page_history: vec![page],
             page_history_index: 0,
-            history_navigation: false,
             controls: Controls {
                 sliders: BTreeMap::new(),
                 profile,
@@ -450,15 +455,20 @@ impl DeviceWorkspace {
         self.page_history.push(page);
         self.page_history_index = self.page_history.len() - 1;
     }
-    fn can_step_history(&self, forward: bool) -> bool {
+    pub(crate) fn can_step_history(&self, forward: bool) -> bool {
         if forward {
             self.page_history_index + 1 < self.page_history.len()
         } else {
             self.page_history_index > 0
         }
     }
-    /// `.nav.back` / `.nav.forward` 的行为：按历史索引前进/后退一页。
-    fn step_page_history(&mut self, forward: bool, window: &mut Window, cx: &mut Context<Self>) {
+    /// Source toolbar `.arrow.back/.forward`: replay this product's tab history.
+    pub(crate) fn step_page_history(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if !self.can_step_history(forward) {
             return;
         }
@@ -468,9 +478,14 @@ impl DeviceWorkspace {
             self.page_history_index - 1
         };
         let target = self.page_history[index];
-        self.page_history_index = index;
-        self.history_navigation = true;
-        self.continue_with(Continue::Page(target), window, cx);
+        self.continue_with(
+            Continue::HistoryPage {
+                page: target,
+                index,
+            },
+            window,
+            cx,
+        );
     }
 
     pub(super) fn settings(&self) -> &ProfileSettings {
@@ -831,7 +846,7 @@ impl DeviceWorkspace {
         // Re-activating the current target must not discard a mapping draft
         // or ask for a decision when no navigation will take place.
         let unchanged = match &next {
-            Continue::Page(page) => self.page == *page,
+            Continue::Page(page) | Continue::HistoryPage { page, .. } => self.page == *page,
             Continue::Profile(id) => self.device.active_profile == *id,
             Continue::Layer(layer) => self.hypershift == *layer,
             Continue::Drawer(open) => self.customize_drawer.open == *open,
@@ -941,11 +956,12 @@ impl DeviceWorkspace {
             }
             Continue::Page(page) => {
                 self.page = page;
-                if std::mem::take(&mut self.history_navigation) {
-                    // 历史回放：索引已在 step_page_history 里改好。
-                } else {
-                    self.record_page(page);
-                }
+                self.record_page(page);
+            }
+            Continue::HistoryPage { page, index } => {
+                self.page = page;
+                // Apply only after the unsaved mapping decision is accepted.
+                self.page_history_index = index;
             }
             Continue::Profile(id) => {
                 if self.device.profiles.iter().any(|p| p.id == id) {
@@ -1015,102 +1031,20 @@ impl DeviceWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let active_hidden = hidden.contains(&self.page);
-        let current = self.page;
-        let focus = self.workspace_focus.clone();
-        let workspace = cx.entity().downgrade();
-        let more_state = window.use_keyed_state(
-            (ElementId::from("device-nav-more"), "hover-border-state"),
+        let owner = cx.entity().downgrade();
+        let items = hidden
+            .iter()
+            .map(|page| (page.label(), *page == self.page))
+            .collect();
+        surface::nav_overflow(
+            "device-nav-overflow",
+            items,
+            move |index, window, cx| {
+                let _ = owner.update(cx, |this, cx| this.set_page(hidden[index], window, cx));
+            },
+            window,
             cx,
-            |_, _| surface::HoverBorderState::default(),
-        );
-        let more_border = surface::hover_border_color("device-nav-more", &more_state, window, cx);
-        let trigger_state = more_state.clone();
-        Popover::new("device-nav-overflow")
-            .track_focus(&focus)
-            .trigger_with(move |_open, _, cx| {
-                // `.hover-border.dots3`：`:hover` 换底色与图标，当前页被收进溢出时
-                // 整块转绿并换 active 图标。
-                surface::hover_border_button(
-                    "device-nav-more",
-                    if active_hidden {
-                        "synapse/nav-more-active.svg".into()
-                    } else if trigger_state.read(cx).hovered {
-                        "synapse/nav-more-hover.svg".into()
-                    } else {
-                        "synapse/nav-more-default.svg".into()
-                    },
-                    "更多页面",
-                    more_border,
-                    active_hidden,
-                    surface::NAV_MORE_WIDTH,
-                    trigger_state.clone(),
-                )
-                .mr(surface::css(surface::NAV_MORE_MARGIN))
-                .into_any_element()
-            })
-            .on_open_change({
-                let more_state = more_state.clone();
-                move |open, _, cx| {
-                    more_state.update(cx, |state, cx| {
-                        state.open = *open;
-                        cx.notify();
-                    });
-                }
-            })
-            .content(move |_, _window, cx| {
-                let workspace = workspace.clone();
-                // 源码 `menuClass:"profile-act"`：溢出菜单就是 `.profile-act` 面板
-                // （`background:#000;border:1px solid #5d5d5d;min-width:155px;
-                //  max-width:280px;top:26px;left:-1px`），行是 `act action uppercase`。
-                v_flex()
-                    .id("device-nav-overflow-menu")
-                    .bg(gpui_kit::rgb(0x000000))
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .min_w(surface::css(155.))
-                    .max_w(surface::css(280.))
-                    .children(hidden.iter().map(|page| {
-                        let page = *page;
-                        let selected = page == current;
-                        let workspace = workspace.clone();
-                        Button::new(SharedString::from(format!(
-                            "device-nav-overflow-{}",
-                            page.id()
-                        )))
-                        .label(page.label().to_uppercase())
-                        // `.act` 在 182 包里只有颜色/字号，没有行高与内边距；
-                        // 这里沿用同一栏 `.profile-act .action{padding:5px 6px;
-                        // line-height:17px}` 的 27px 行（见审计文档的说明）。
-                        .h(surface::css(27.))
-                        .px(surface::css(6.))
-                        .text_size(surface::css(14.))
-                        .text_color(if selected {
-                            cx.theme().primary
-                        } else {
-                            cx.theme().foreground
-                        })
-                        .bg(if selected {
-                            gpui_kit::rgb(0x000000).into()
-                        } else {
-                            cx.theme().transparent
-                        })
-                        .hover(|button| {
-                            button.bg(gpui_kit::rgb(0x1a1a1a)).text_color(if selected {
-                                cx.theme().primary
-                            } else {
-                                cx.theme().foreground
-                            })
-                        })
-                        .on_click(move |_, window, cx| {
-                            _ = workspace.update(cx, |this, cx| {
-                                this.set_page(page, window, cx);
-                            });
-                        })
-                    }))
-                    .into_any_element()
-            })
-            .into_any_element()
+        )
     }
 
     fn toolbar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -1124,9 +1058,10 @@ impl DeviceWorkspace {
         } else {
             surface::PROFILE_BAR_WIDTH
         };
-        let available = f32::from(window.viewport_size().width)
+        let available = f32::from(window.viewport_size().width) * 16.
+            / f32::from(window.rem_size())
             - profile_bar_width
-            - surface::DEVICE_RIGHT_WIDTH
+            - surface::device_right_width(&self.device, true, window)
             - (surface::NAV_MORE_WIDTH + surface::NAV_MORE_MARGIN)
             - 10.;
         let navs = Tab::for_product(self.device.product_id);
@@ -1141,42 +1076,17 @@ impl DeviceWorkspace {
             .border_b_2()
             .border_color(cx.theme().title_bar)
             .child(
-                h_flex()
-                    .flex_1()
-                    .min_w_0()
+                surface::nav_left()
                     .children(show_profile_bar.then(|| self.profile_toolbar(window, cx))),
             )
             .child(
                 gpui_kit::base::Tabs::new("device-tabs")
                     .flex()
                     .items_center()
+                    .justify_center()
+                    .flex_grow(1.)
                     .flex_shrink_0()
                     .gap(surface::css(20.))
-                    // 源码标签栏最左边是 `.nav.back` / `.nav.forward`：
-                    // `background-image` 用 `nav_back_arrow` / `nav_fwd_arrow`，
-                    // 没有可走的页时套 `.nav.disabled{opacity:.3}`。
-                    .child(
-                        surface::nav_arrow_button(
-                            "device-tab-back",
-                            false,
-                            self.can_step_history(false),
-                            cx,
-                        )
-                        .on_click(
-                            cx.listener(|this, _, w, cx| this.step_page_history(false, w, cx)),
-                        ),
-                    )
-                    .child(
-                        surface::nav_arrow_button(
-                            "device-tab-forward",
-                            true,
-                            self.can_step_history(true),
-                            cx,
-                        )
-                        .on_click(
-                            cx.listener(|this, _, w, cx| this.step_page_history(true, w, cx)),
-                        ),
-                    )
                     .child(
                         // `.nav-tabs .navs-wrapper{display:flex;font-family:Roboto,
                         //  sans-serif;font-size:12px}`，可见标签放这里。
@@ -1205,31 +1115,29 @@ impl DeviceWorkspace {
                     ),
             )
             .child(
-                // 顶栏右侧电量：原版 `.right` 把 `.battery` 放在帮助图标之前
-                // （依据见 src/ui/battery.rs 顶部）。没有 `powerStatus` 时不渲染。
-                h_flex()
-                    .items_center()
-                    .children(crate::ui::battery::element(&self.device, cx)),
-            )
-            .child(
-                h_flex().flex_1().min_w_0().justify_end().child(
-                    surface::asset_button(
-                        "device-help",
-                        if self.page == Tab::Help {
-                            "synapse/help-active.svg"
-                        } else {
-                            "synapse/help-default.svg"
-                        },
-                        "帮助",
-                        cx,
-                    )
-                    .size(surface::css(24.))
-                    .mr(surface::css(10.))
-                    .selected(self.page == Tab::Help)
-                    .on_click(
-                        cx.listener(|this, _, window, cx| this.set_page(Tab::Help, window, cx)),
+                // Mounted source `.right` contains battery and help together.
+                surface::nav_right()
+                    .id("device-navigation-right")
+                    .min_w_0()
+                    .children(crate::ui::battery::element(&self.device, cx))
+                    .child(
+                        surface::asset_button(
+                            "device-help",
+                            if self.page == Tab::Help {
+                                "synapse/help-active.svg"
+                            } else {
+                                "synapse/help-default.svg"
+                            },
+                            "帮助",
+                            cx,
+                        )
+                        .size(surface::css(24.))
+                        .mr(surface::css(10.))
+                        .selected(self.page == Tab::Help)
+                        .on_click(
+                            cx.listener(|this, _, window, cx| this.set_page(Tab::Help, window, cx)),
+                        ),
                     ),
-                ),
             )
             .into_any_element()
     }

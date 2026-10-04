@@ -35,45 +35,39 @@ pub(crate) fn stacked_device_columns(viewport_width: f32, root_font_size: f32) -
     viewport_width * 16. / root_font_size.max(1.) <= COLUMN_STACK_MAX_WIDTH
 }
 
+/// Current source `.nav-tabs .nav`, including the more specific
+/// `.nav-tabs .nav.active:hover` rule. Base Button owns input and focus.
 pub(crate) fn navigation_button(
     id: impl Into<ElementId>,
     label: impl Into<SharedString>,
     selected: bool,
     cx: &App,
-) -> Button {
-    // 依据 182 `.nav-tabs .nav`：
-    // `border-radius:14px;color:#999;line-height:14px;margin-right:20px;padding:7px 10px;
-    //  text-align:center;text-transform:uppercase`；
-    // `:hover{background-color:#2d2d2d;color:#ccc}`；
-    // `:active{background-color:#3cbf27;color:#111}`；
-    // `.nav.active{background-color:#44d62c;color:#111}`。
-    // 选中态背景 `#44d62c` = `primary`，文字 `#111` = `primary_foreground`；
-    // 悬停底色 `#2d2d2d` = `secondary_hover`，悬停文字 `#ccc` = `foreground`；
-    // 按下底色是比选中态更深的 `#3cbf27`。
+) -> gpui_kit::base::Button {
     let label = label.into().to_uppercase();
-    Button::new(id)
-        .xsmall()
-        .label(label)
+    gpui_kit::base::Button::new(id)
+        .accessibility_label(label.clone())
         .selected(selected)
-        .custom(
-            ButtonCustomVariant::new(cx)
-                .color(if selected {
-                    cx.theme().primary
-                } else {
-                    cx.theme().transparent
-                })
-                .foreground(if selected {
-                    cx.theme().primary_foreground
-                } else {
-                    cx.theme().muted_foreground
-                })
-                .hover(if selected {
-                    cx.theme().primary
-                } else {
-                    cx.theme().secondary_hover
-                })
-                .active(gpui_kit::rgb(0x3cbf27).into()),
-        )
+        .h(css(28.))
+        .px(css(10.))
+        .py(css(7.))
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_size(css(12.))
+        .line_height(css(14.))
+        .rounded(css(14.))
+        .border_0()
+        .bg(if selected {
+            cx.theme().primary
+        } else {
+            cx.theme().transparent
+        })
+        .text_color(if selected {
+            cx.theme().primary_foreground
+        } else {
+            cx.theme().muted_foreground
+        })
         .hover(|style| {
             style
                 .bg(if selected {
@@ -81,16 +75,22 @@ pub(crate) fn navigation_button(
                 } else {
                     cx.theme().secondary_hover
                 })
-                .text_color(cx.theme().foreground)
+                .text_color(if selected {
+                    cx.theme().primary_foreground
+                } else {
+                    cx.theme().foreground
+                })
         })
-        // 按下时的文字色源码是 `#111`；`Button` 只暴露 `.hover`，按下态文字色要像
-        // `keymap_close_button` 那样自持状态才能插值，这里先用变体的按下底色。
-        .h(css(28.))
-        .px(css(10.))
-        .py_0()
-        .text_size(css(12.))
-        .rounded(cx.theme().font_size * (14. / 16.))
-        .border_0()
+        .when(!selected, |button| {
+            button.active(|style| {
+                style
+                    .bg(super::theme::NavigationColors::pressed())
+                    .text_color(cx.theme().primary_foreground)
+            })
+        })
+        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
+        .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
+        .child(label)
 }
 
 /// `.profile-bar` 的宽度：源码 `.nav-tabs .profile-bar{width:auto}`，实测布局里
@@ -98,8 +98,43 @@ pub(crate) fn navigation_button(
 /// （`has_obm` 时才多出 OBM 的 32px：26 + 10 外边距 − 4px 重叠。）
 pub(crate) const PROFILE_BAR_WIDTH: f32 = 322.;
 pub(crate) const PROFILE_BAR_WIDTH_OBM: f32 = 354.;
-/// 顶栏右侧区：电量 `icon box 26 + 左右各 10` + 帮助按钮 24 + 右边距 10。
-pub(crate) const DEVICE_RIGHT_WIDTH: f32 = 46. + 24. + 10.;
+/// CSS pixels used by an optional battery (text + 26px icon + 2*5px margin)
+/// and a help item (24px + 10px margin). Text measurement is normalized to rem.
+pub(crate) fn device_right_width(
+    device: &crate::model::Device,
+    has_help: bool,
+    window: &Window,
+) -> f32 {
+    let battery = if device.has_battery {
+        device.power_status.as_ref().map_or(0., |power| {
+            let text = if power.level >= 0 {
+                format!("{} %", power.level)
+            } else {
+                "-".into()
+            };
+            label_width(&text, 14., window) + 26. + 10.
+        })
+    } else {
+        0.
+    };
+    battery + if has_help { 24. + 10. } else { 0. }
+}
+
+pub(crate) fn nav_left() -> Div {
+    gpui_kit::component::h_flex()
+        .flex_grow(1.)
+        .flex_shrink(0.)
+        .flex_basis(relative(0.25))
+}
+
+pub(crate) fn nav_right() -> Div {
+    gpui_kit::component::h_flex()
+        .flex_grow(1.)
+        .flex_shrink(1.)
+        .flex_basis(relative(0.25))
+        .items_center()
+        .justify_end()
+}
 
 /// `.hover-border` 方框（26×26、`border:1px solid #222`、圆角 13、20px 图标、
 /// `margin-right:10px`）的悬停/按下状态：源码带
@@ -118,6 +153,97 @@ pub(crate) struct HoverBorderState {
 /// border:1px solid #222;border-radius:13px;background-size:20px;margin-right:10px}`。
 pub(crate) const NAV_MORE_WIDTH: f32 = 26.;
 pub(crate) const NAV_MORE_MARGIN: f32 = 10.;
+
+/// Mounted NavBarDropdown: .profile-act with .act.action.uppercase rows.
+pub(crate) fn nav_overflow(
+    id: &'static str,
+    items: Vec<(String, bool)>,
+    on_select: impl Fn(usize, &mut Window, &mut App) + 'static,
+    window: &mut Window,
+    cx: &mut App,
+) -> AnyElement {
+    let active_hidden = items.iter().any(|(_, selected)| *selected);
+    let more = window.use_keyed_state((ElementId::from(id), "more-state"), cx, |_, _| {
+        HoverBorderState::default()
+    });
+    let border = hover_border_color(id, &more, window, cx);
+    let trigger = more.clone();
+    let on_select = std::rc::Rc::new(on_select);
+    gpui_kit::base::Popover::new(id)
+        .trigger_with(move |_, _, cx| {
+            hover_border_button(
+                id,
+                if active_hidden {
+                    "synapse/nav-more-active.svg"
+                } else if trigger.read(cx).hovered {
+                    "synapse/nav-more-hover.svg"
+                } else {
+                    "synapse/nav-more-default.svg"
+                }
+                .into(),
+                "More",
+                border,
+                active_hidden,
+                NAV_MORE_WIDTH,
+                trigger.clone(),
+            )
+            // `.navs-wrapper .dots3` overrides the shared hover-border border.
+            .border_0()
+            .bg(if active_hidden {
+                cx.theme().primary
+            } else if trigger.read(cx).hovered {
+                cx.theme().secondary_hover
+            } else {
+                cx.theme().transparent
+            })
+            .mr(css(NAV_MORE_MARGIN))
+            .into_any_element()
+        })
+        .on_open_change(move |open, _, cx| {
+            more.update(cx, |state, cx| {
+                state.open = *open;
+                cx.notify();
+            })
+        })
+        .content(move |_, _, cx| {
+            let popup = cx.entity().downgrade();
+            gpui_kit::component::v_flex()
+                .bg(rgb(0x000000))
+                .border_1()
+                .border_color(cx.theme().border)
+                .min_w(css(155.))
+                .max_w(css(280.))
+                .children(items.iter().enumerate().map(|(index, (label, selected))| {
+                    let foreground = if *selected {
+                        cx.theme().primary
+                    } else {
+                        cx.theme().foreground
+                    };
+                    let on_select = on_select.clone();
+                    let popup = popup.clone();
+                    gpui_kit::base::Button::new((id, index))
+                        .accessibility_label(label.clone())
+                        .child(label.to_uppercase())
+                        .flex()
+                        .items_center()
+                        .justify_start()
+                        .h(css(27.))
+                        .px(css(6.))
+                        .py(css(5.))
+                        .text_size(css(14.))
+                        .line_height(css(17.))
+                        .text_color(foreground)
+                        .bg(rgb(0x000000))
+                        .hover(move |s| s.bg(rgb(0x1a1a1a)).text_color(foreground))
+                        .on_click(move |_, window, cx| {
+                            let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
+                            on_select(index, window, cx);
+                        })
+                }))
+                .into_any_element()
+        })
+        .into_any_element()
+}
 
 /// 设备页标签溢出：源码 `renderNavs()` 用「窗口宽 − profile 栏宽 − 右侧区宽 −
 /// `.dots3` 宽 − 10」得到可用宽度，再按每个标签「文字宽（Roboto 12px）+ 20 内边距
@@ -148,7 +274,12 @@ pub(crate) fn split_navs<T: Copy>(
 
 /// `getTextWidth(i18n(name), "normal 12px Roboto")`：12px = 0.75rem。
 fn nav_label_width(label: &str, window: &Window) -> f32 {
+    label_width(label, 12., window)
+}
+
+fn label_width(label: &str, font_size: f32, window: &Window) -> f32 {
     let mut font = window.text_style().font();
+    font.family = "Roboto".into();
     font.weight = gpui_kit::gpui::FontWeight::NORMAL;
     let run = gpui_kit::gpui::TextRun {
         len: label.len(),
@@ -163,41 +294,13 @@ fn nav_label_width(label: &str, window: &Window) -> f32 {
             .text_system()
             .shape_line(
                 label.to_owned().into(),
-                window.rem_size() * 0.75,
+                window.rem_size() * (font_size / 16.),
                 &[run],
                 None,
             )
             .width,
-    )
-}
-
-/// 设备页标签栏最左边的返回/前进按钮：源码里的 `.nav.back` / `.nav.forward`
-/// （`.nav-tabs .nav` 的 28px 高、14px 圆角、`padding:7px 10px`，
-/// `background-image` 分别是 `nav_back_arrow` / `nav_fwd_arrow`，没有文字标签），
-/// 不可用时套 `.nav.disabled{opacity:.3;pointer-events:none}`。
-pub(crate) fn nav_arrow_button(id: &'static str, forward: bool, enabled: bool, cx: &App) -> Button {
-    let (asset, label) = if forward {
-        ("synapse/nav-fwd-arrow.svg", "前进")
-    } else {
-        ("synapse/nav-back-arrow.svg", "后退")
-    };
-    Button::new(id)
-        .accessibility_label(label)
-        .disabled(!enabled)
-        .flex()
-        .items_center()
-        .justify_center()
-        .h(css(28.))
-        .px(css(10.))
-        .py_0()
-        .rounded(cx.theme().font_size * (14. / 16.))
-        .border_0()
-        .bg(cx.theme().transparent)
-        .when(enabled, |button| {
-            button.hover(|style| style.bg(cx.theme().secondary_hover))
-        })
-        .when(!enabled, |button| button.opacity(0.3))
-        .child(img(asset).size(css(9.)))
+    ) * 16.
+        / f32::from(window.rem_size())
 }
 
 /// `.hover-border.dots3` 的边框色：常态 `#222`（`theme.background`）、悬停
@@ -358,6 +461,41 @@ pub(crate) fn asset_button(
                             .group_active(id, |s| s.opacity(1.)),
                     )
                 }),
+        )
+}
+
+/// The source toolbar arrows are 40x38, with a 20px image and opacity .3
+/// when disabled. Use one Base activation handler for mouse and keyboard.
+pub(crate) fn history_button(
+    id: &'static str,
+    forward: bool,
+    enabled: bool,
+    cx: &App,
+) -> gpui_kit::base::Button {
+    // Dashboard 96776:l -> 54693:IUp/OXp; Profiles 43:r -> 4693.
+    let label = crate::i18n::t(if forward { "FORWARD" } else { "BACK" });
+    gpui_kit::base::Button::new(id)
+        .accessibility_label(label.clone())
+        .disabled(!enabled)
+        .occlude()
+        .w(css(40.))
+        .h(css(38.))
+        .p_0()
+        .flex_shrink_0()
+        .bg(cx.theme().transparent)
+        .when(enabled, |button| {
+            button.hover(|style| style.bg(cx.theme().secondary_hover))
+        })
+        .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
+        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
+        .tooltip(move |window, cx| tooltip::Tooltip::new(label.clone()).build(window, cx))
+        .child(
+            img(if forward {
+                "synapse/history-forward.svg"
+            } else {
+                "synapse/history-back.svg"
+            })
+            .size(css(20.)),
         )
 }
 

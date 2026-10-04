@@ -8,6 +8,41 @@ enum Body {
     Existing(Entity<DeviceWorkspace>),
     Source(Entity<SourceProductWorkspace>),
 }
+
+/// Local metadata changes made by the Profiles application. They do not select
+/// an active hardware profile or replace a product's source settings.
+pub(super) enum ProfileMetadata {
+    Rename(String),
+    LinkGame { name: String, executable: String, linked: bool },
+}
+
+pub(super) fn edit_profile_metadata(device: &mut Device, id: &str, change: ProfileMetadata) -> bool {
+    let Some(index) = device.profiles.iter().position(|profile| profile.id == id) else { return false; };
+    match change {
+        ProfileMetadata::Rename(name) => {
+            let name = name.trim();
+            if name.is_empty() || name.encode_utf16().count() > 32
+                || device.profiles.iter().any(|p| p.name == name && p.id != id)
+                || device.profiles[index].name == name { return false; }
+            device.profiles[index].name = name.into();
+        }
+        ProfileMetadata::LinkGame { name, executable, linked } => {
+            let key = |value: &str| value.replace('/', "\\").to_lowercase();
+            let requested = key(&executable);
+            // Source linkedDeviceToGame assigns at most one profile per device.
+            for profile in &mut device.profiles {
+                if let Some(settings) = &mut profile.settings {
+                    settings.linked_games.retain(|game| key(&game.executable) != requested);
+                }
+            }
+            if linked {
+                device.profiles[index].settings.get_or_insert_with(|| super::settings::ProfileSettings::for_product(device.product_id))
+                    .linked_games.push(super::settings::LinkedGame { name, executable });
+            }
+        }
+    }
+    true
+}
 pub(crate) struct ProductWorkspace {
     body: Body,
     _subscription: Subscription,
@@ -65,6 +100,25 @@ impl ProductWorkspace {
     pub(crate) fn snapshot(&self, cx: &App) -> Device {
         self.device(cx).clone()
     }
+    /// Existing local profile associations; no executable is launched or scanned.
+    pub(crate) fn profile_linked_games(&self, profile: &str, cx: &App) -> Vec<(String, String)> {
+        self.device(cx).profiles.iter().find(|entry| entry.id == profile)
+            .and_then(|entry| entry.settings.as_ref())
+            .map(|settings| settings.linked_games.iter().map(|game| (game.name.clone(), game.executable.clone())).collect())
+            .unwrap_or_default()
+    }
+    pub(crate) fn rename_profile(&mut self, profile: &str, name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.change_profile_metadata(profile, ProfileMetadata::Rename(name), window, cx);
+    }
+    pub(crate) fn link_profile_game(&mut self, profile: &str, name: String, executable: String, linked: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.change_profile_metadata(profile, ProfileMetadata::LinkGame { name, executable, linked }, window, cx);
+    }
+    fn change_profile_metadata(&mut self, profile: &str, change: ProfileMetadata, window: &mut Window, cx: &mut Context<Self>) {
+        match &self.body {
+            Body::Existing(entity) => entity.update(cx, |value, cx| value.change_profile_metadata(profile, change, window, cx)),
+            Body::Source(entity) => entity.update(cx, |value, cx| value.change_profile_metadata(profile, change, window, cx)),
+        }
+    }
     pub(crate) fn saved_snapshot(&self, cx: &App) -> Device {
         match &self.body {
             Body::Existing(e) => e.read(cx).saved_snapshot(),
@@ -116,6 +170,24 @@ impl ProductWorkspace {
         match &self.body {
             Body::Existing(e) => e.update(cx, |v, cx| v.set_page(page, window, cx)),
             Body::Source(e) => e.update(cx, |v, cx| v.set_page_key(page.id(), window, cx)),
+        }
+        cx.notify();
+    }
+    pub(crate) fn can_step_history(&self, forward: bool, cx: &App) -> bool {
+        match &self.body {
+            Body::Existing(e) => e.read(cx).can_step_history(forward),
+            Body::Source(e) => e.read(cx).can_step_history(forward),
+        }
+    }
+    pub(crate) fn step_page_history(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match &self.body {
+            Body::Existing(e) => e.update(cx, |v, cx| v.step_page_history(forward, window, cx)),
+            Body::Source(e) => e.update(cx, |v, cx| v.step_page_history(forward, window, cx)),
         }
         cx.notify();
     }

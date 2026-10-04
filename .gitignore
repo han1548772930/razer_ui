@@ -88,3 +88,14 @@
 !/tools/validate-automation.py
 !/tools/audit-receiver-header.cjs
 !/tools/audit-product-profile-bars.cjs
+!/tools/webpack-source.cjs
+!/tools/audit-profiles-app.cjs
+!/tools/audit-device-tabs.cjs
+!/tools/extract-macro-app-ui.cjs
+!/tools/audit-battery-indicator.cjs
+!/tools/validate-embedded-json.py
+!/tools/audit-armory-default.cjs
+!/tools/extract-macro-locales.cjs
+!/tools/audit-resource-usage.py
+!/tools/css-source.cjs
+!/tools/extract-macro-metadata.cjs

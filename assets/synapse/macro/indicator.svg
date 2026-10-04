@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 23.0.2, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Indicator" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 50 50" style="enable-background:new 0 0 50 50;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FD8611;transform-origin: 50% 50%;}
+	#Circle_2,#Circle_3{opacity:0;}
+
+</style>
+<path id="Circle_3" class="st0" d="M25,0c13.8,0,25,11.2,25,25S38.8,50,25,50S0,38.8,0,25S11.2,0,25,0z"/>
+<path id="Circle_2" class="st0" d="M25,0c13.8,0,25,11.2,25,25S38.8,50,25,50S0,38.8,0,25S11.2,0,25,0z"/>
+<path id="Circle_1" class="st0" d="M25,0c13.8,0,25,11.2,25,25S38.8,50,25,50S0,38.8,0,25S11.2,0,25,0z"/>
+<path id="Static_Small" class="st0" d="M25,20c2.8,0,5,2.2,5,5s-2.2,5-5,5s-5-2.2-5-5S22.2,20,25,20z"/>
+
+<animateTransform id="Circle_1S" xlink:href="#Circle_1" attributeName="transform" type="scale" from="0 0" to="1 1" begin="0s;Circle_2S.end" dur="2s" fill="freeze" />
+<animate id="Circle_1O" xlink:href="#Circle_1" attributeName="opacity" from="1" to="0" dur="2s" begin="0s;Circle_2S.end" fill="freeze"/>
+
+<animateTransform id="Circle_2S" xlink:href="#Circle_2" attributeName="transform" type="scale" from="0 0" to="1 1" begin="1s;Circle_3S.end" dur="2s" fill="freeze" />
+<animate id="Circle_2O" xlink:href="#Circle_2" attributeName="opacity" from="1" to="0" dur="2s" begin="1s;Circle_3S.end" fill="freeze"/>
+
+<animateTransform id="Circle_3S" xlink:href="#Circle_3" attributeName="transform" type="scale" from="0 0" to="1 1" begin="2s;Circle_1S.end" dur="2s" fill="freeze" />
+<animate id="Circle_3O" xlink:href="#Circle_3" attributeName="opacity" from="1" to="0" dur="2s" begin="2s;Circle_1S.end" fill="freeze"/>
+
+</svg>

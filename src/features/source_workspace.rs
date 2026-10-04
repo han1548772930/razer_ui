@@ -34,6 +34,8 @@ pub(crate) struct SourceProductWorkspace {
     device: Device,
     saved: Device,
     page: Option<ProductPageId>,
+    page_history: Vec<ProductPageId>,
+    page_history_index: usize,
     body: FamilyBody,
     help: Entity<super::source_help::SourceHelp>,
     supplement: Option<Entity<super::source_controls::SourceControls>>,
@@ -45,6 +47,13 @@ pub(crate) struct SourceProductWorkspace {
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(super) fn change_profile_metadata(&mut self, id: &str, change: super::product_workspace::ProfileMetadata, window: &mut Window, cx: &mut Context<Self>) {
+        if super::product_workspace::edit_profile_metadata(&mut self.device, id, change) {
+            self.profile.update(cx, |state, cx| state.set_items(self.device.profiles.iter().map(|p| Choice::new(&p.id, &p.name)).collect(), window, cx));
+            cx.emit(WorkspaceEvent::Changed);
+            cx.notify();
+        }
+    }
     pub(crate) fn keyboard_preview_page(
         &self,
     ) -> Option<Entity<crate::features::keyboard_products::KeyboardProductWorkspace>> {
@@ -245,6 +254,8 @@ impl SourceProductWorkspace {
             saved: device.clone(),
             device,
             page,
+            page_history: page.into_iter().collect(),
+            page_history_index: 0,
             body,
             help,
             supplement,
@@ -274,7 +285,7 @@ impl SourceProductWorkspace {
                 .iter()
                 .zip(&self.saved.profiles)
                 .any(|(a, b)| {
-                    a.id != b.id || a.name != b.name || a.source_settings != b.source_settings
+                    a.id != b.id || a.name != b.name || a.source_settings != b.source_settings || a.settings != b.settings
                 })
     }
     pub(crate) fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
@@ -551,8 +562,41 @@ impl SourceProductWorkspace {
         {
             return;
         }
+        if self.page == Some(page) {
+            return;
+        }
+        self.page_history.truncate(self.page_history_index + 1);
+        self.page_history.push(page);
+        self.page_history_index = self.page_history.len() - 1;
         self.page = Some(page);
         self.select_body_page(window, cx);
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+    }
+    pub(crate) fn can_step_history(&self, forward: bool) -> bool {
+        if forward {
+            self.page_history_index + 1 < self.page_history.len()
+        } else {
+            self.page_history_index > 0
+        }
+    }
+    pub(crate) fn step_page_history(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.can_step_history(forward) {
+            return;
+        }
+        if forward {
+            self.page_history_index += 1;
+        } else {
+            self.page_history_index -= 1;
+        }
+        self.page = Some(self.page_history[self.page_history_index]);
+        self.select_body_page(window, cx);
+        cx.emit(WorkspaceEvent::Changed);
         cx.notify();
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
@@ -617,9 +661,45 @@ impl SourceProductWorkspace {
     }
 }
 impl Render for SourceProductWorkspace {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let registered = product::registered(self.device.product_id);
         let navigation = registered.and_then(|p| p.primary_navigation());
+        let pages: Vec<_> = navigation
+            .into_iter()
+            .flat_map(|n| n.pages())
+            .filter(|page| page.role() != ProductPageRole::Help)
+            .collect();
+        let has_help = navigation
+            .into_iter()
+            .flat_map(|n| n.pages())
+            .any(|page| page.role() == ProductPageRole::Help);
+        let available = f32::from(window.viewport_size().width) * 16.
+            / f32::from(window.rem_size())
+            - if self.profile_bar_visible() { 286. } else { 0. }
+            - surface::device_right_width(&self.device, has_help, window)
+            - surface::NAV_MORE_WIDTH
+            - surface::NAV_MORE_MARGIN
+            - 10.;
+        let (visible, hidden) = surface::split_navs(&pages, |page| page.label(), available, window);
+        let overflow = if hidden.is_empty() {
+            None
+        } else {
+            let owner = cx.entity().downgrade();
+            let items = hidden
+                .iter()
+                .map(|page| (page.label(), self.page == Some(page.id())))
+                .collect();
+            Some(surface::nav_overflow(
+                "source-nav-overflow",
+                items,
+                move |index, window, cx| {
+                    let _ =
+                        owner.update(cx, |this, cx| this.set_page(hidden[index].id(), window, cx));
+                },
+                window,
+                cx,
+            ))
+        };
         let is_help = self
             .current_page()
             .is_some_and(|page| page.role() == ProductPageRole::Help);
@@ -665,74 +745,68 @@ impl Render for SourceProductWorkspace {
                     .flex_shrink_0()
                     .border_b_2()
                     .border_color(cx.theme().title_bar)
-                    .child(h_flex().flex_1().min_w_0().child(self.profile_bar(cx)))
+                    .child(surface::nav_left().child(self.profile_bar(cx)))
                     .child(
                         gpui_kit::base::Tabs::new("source-product-navigation")
                             .flex()
                             .items_center()
+                            .justify_center()
+                            .flex_grow(1.)
+                            .flex_shrink_0()
                             .gap(surface::css(20.))
+                            .children(visible.into_iter().map(|page| {
+                                let id = page.id();
+                                surface::navigation_button(
+                                    SharedString::from(format!("product-page-{}", id.key())),
+                                    page.label(),
+                                    self.page == Some(id),
+                                    cx,
+                                )
+                                .role(Role::Tab)
+                                .on_click(cx.listener(
+                                    move |this, _, window, cx| this.set_page(id, window, cx),
+                                ))
+                            }))
+                            .children(overflow),
+                    )
+                    .child(
+                        surface::nav_right()
+                            .id("source-navigation-right")
+                            .min_w_0()
+                            .children(crate::ui::battery::element(&self.device, cx))
                             .children(
                                 navigation
                                     .into_iter()
                                     .flat_map(|n| n.pages())
-                                    .filter(|p| p.role() != ProductPageRole::Help)
+                                    .filter(|p| p.role() == ProductPageRole::Help)
                                     .map(|page| {
                                         let id = page.id();
-                                        surface::navigation_button(
-                                            SharedString::from(format!(
-                                                "product-page-{}",
+                                        div()
+                                            .id(SharedString::from(format!(
+                                                "source-help-{}",
                                                 id.key()
-                                            )),
-                                            page.label(),
-                                            self.page == Some(id),
-                                            cx,
-                                        )
-                                        .role(Role::Tab)
-                                        .on_click(
-                                            cx.listener(move |this, _, window, cx| {
-                                                this.set_page(id, window, cx)
-                                            }),
-                                        )
+                                            )))
+                                            .child(
+                                                surface::asset_button(
+                                                    "source-product-help",
+                                                    if self.page == Some(id) {
+                                                        "synapse/help-active.svg"
+                                                    } else {
+                                                        "synapse/help-default.svg"
+                                                    },
+                                                    page.label(),
+                                                    cx,
+                                                )
+                                                .size(surface::css(24.))
+                                                .mr(surface::css(10.))
+                                                .on_click(cx.listener(
+                                                    move |this, _, window, cx| {
+                                                        this.set_page(id, window, cx)
+                                                    },
+                                                )),
+                                            )
                                     }),
                             ),
-                    )
-                    .child(
-                        // 原版把电量放在 `.right` 里、帮助图标之前（见 ui/battery.rs 顶部依据）。
-                        h_flex()
-                            .items_center()
-                            .children(crate::ui::battery::element(&self.device, cx)),
-                    )
-                    .child(
-                        h_flex().flex_1().min_w_0().justify_end().children(
-                            navigation
-                                .into_iter()
-                                .flat_map(|n| n.pages())
-                                .filter(|p| p.role() == ProductPageRole::Help)
-                                .map(|page| {
-                                    let id = page.id();
-                                    div()
-                                        .id(SharedString::from(format!("source-help-{}", id.key())))
-                                        .child(
-                                            surface::asset_button(
-                                                "source-product-help",
-                                                if self.page == Some(id) {
-                                                    "synapse/help-active.svg"
-                                                } else {
-                                                    "synapse/help-default.svg"
-                                                },
-                                                page.label(),
-                                                cx,
-                                            )
-                                            .size(surface::css(24.))
-                                            .mr(surface::css(10.))
-                                            .on_click(
-                                                cx.listener(move |this, _, window, cx| {
-                                                    this.set_page(id, window, cx)
-                                                }),
-                                            ),
-                                        )
-                                }),
-                        ),
                     ),
             )
             .child(

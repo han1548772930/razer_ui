@@ -34,8 +34,9 @@
 //!    取自雷云语言包（`locales/*.json`），与源码里的 key 同名。
 use crate::i18n;
 use crate::model::Device;
+use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use crate::ui::surface;
-use gpui_kit::component::{ActiveTheme as _, h_flex, tooltip::Tooltip};
+use gpui_kit::component::{ActiveTheme as _, h_flex};
 use gpui_kit::*;
 
 /// 一格电量的类名、图标与提示文案。
@@ -46,7 +47,8 @@ pub(crate) struct BatteryBadge {
     pub(crate) icon: &'static str,
     pub(crate) tip: String,
     pub(crate) level: i32,
-    /// `.batt.batt-warning` 的工具提示在原版是 352px、`pre-wrap` 的长文本。
+    /// Battery error state; shares the mounted tooltip-razer portal.
+    #[cfg(test)]
     pub(crate) warning: bool,
 }
 
@@ -67,7 +69,7 @@ fn percent_tip(level: i32) -> String {
 
 /// 电量档位 → `battName` + 图标 + 提示文案（原版 `qe(payload)` 的等价实现）。
 pub(crate) fn badge(level: i32, charging_status: &str) -> BatteryBadge {
-    let (class, icon, tip, warning) = match charging_status {
+    let (class, icon, tip, _warning) = match charging_status {
         "off" => (
             "batt batt-off",
             "synapse/battery-off.svg",
@@ -99,7 +101,7 @@ pub(crate) fn badge(level: i32, charging_status: &str) -> BatteryBadge {
         _ => (
             "batt batt-100",
             "synapse/battery-100.svg",
-            percent_tip(100),
+            percent_tip(level),
             false,
         ),
     };
@@ -108,7 +110,8 @@ pub(crate) fn badge(level: i32, charging_status: &str) -> BatteryBadge {
         icon,
         tip,
         level,
-        warning,
+        #[cfg(test)]
+        warning: _warning,
     }
 }
 
@@ -153,8 +156,11 @@ fn bucket_badge(level: i32, paused: bool) -> (&'static str, &'static str, String
 /// 设备页顶栏右侧的电量块。设备没有 `powerStatus` 时返回 `None`
 /// （原版此时 `batteryState === undefined`，整块不渲染）。
 pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
+    if !device.has_battery {
+        return None;
+    }
     let power = device.power_status.as_ref()?;
-    let level = i32::from(power.level);
+    let level = power.level;
     let badge = badge(level, power.charging_status.as_str());
     let level = badge.level;
     let low = (0..=10).contains(&level);
@@ -171,53 +177,39 @@ pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
         "-".to_string()
     };
     let tip = badge.tip.clone();
-    let warning = badge.warning;
     Some(
-        h_flex()
-            // 元素 id 直接用原版类名（`batt batt-40` 等），便于对照源码排查状态。
-            .id(SharedString::from(format!(
-                "device-battery:{}",
-                badge.class
-            )))
-            .h(surface::css(46.))
-            .items_center()
-            .justify_center()
-            .text_size(surface::css(14.))
-            .text_color(color)
-            .tooltip(move |window, cx| {
-                if warning {
-                    // `.nav-tabs .batt.batt-warning[tooltip]:before`
-                    // `{color:#ccc;font:normal normal normal 14px/16px Roboto;width:352px;
-                    //  height:auto;white-space:inherit;text-align:left}`
-                    let text = tip.clone();
-                    Tooltip::element(move |_, _| {
-                        div()
-                            .w(surface::css(352.))
-                            .text_size(surface::css(14.))
-                            .line_height(surface::css(16.))
-                            .child(text.clone())
-                    })
-                    .build(window, cx)
-                } else {
-                    Tooltip::new(tip.clone()).build(window, cx)
-                }
-            })
-            .child(text)
-            .child(
-                // `.nav-tabs .batt{background-size:20px;height:26px;margin:0 5px;width:26px}`
-                div()
-                    .w(surface::css(26.))
-                    .h(surface::css(26.))
-                    .mx(surface::css(5.))
-                    .flex()
+        SourceTooltip::new("battery-level-tips", tip, 300.)
+            .kind(SourceTooltipKind::Battery)
+            .trigger(move |_, _, _| {
+                h_flex()
+                    // 元素 id 直接用原版类名（`batt batt-40` 等），便于对照源码排查状态。
+                    .id(SharedString::from(format!(
+                        "device-battery:{}",
+                        badge.class
+                    )))
+                    .h(surface::css(46.))
                     .items_center()
                     .justify_center()
+                    .text_size(surface::css(14.))
+                    .text_color(color)
+                    .child(text)
                     .child(
-                        img(SharedString::from(badge.icon))
-                            .w(surface::css(20.))
-                            .h(surface::css(20.)),
-                    ),
-            )
+                        // `.nav-tabs .batt{background-size:20px;height:26px;margin:0 5px;width:26px}`
+                        div()
+                            .w(surface::css(26.))
+                            .h(surface::css(26.))
+                            .mx(surface::css(5.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                img(SharedString::from(badge.icon))
+                                    .w(surface::css(20.))
+                                    .h(surface::css(20.)),
+                            ),
+                    )
+                    .into_any_element()
+            })
             .into_any_element(),
     )
 }

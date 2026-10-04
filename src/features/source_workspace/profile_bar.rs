@@ -3,7 +3,7 @@
 use super::*;
 
 impl SourceProductWorkspace {
-    fn profile_bar_visible(&self) -> bool {
+    pub(super) fn profile_bar_visible(&self) -> bool {
         match self.device.product_id {
             179 | 769 => false,
             164 | 241 | 778 | 784 | 3871 | 3884 | 3886 | 3946 => true,

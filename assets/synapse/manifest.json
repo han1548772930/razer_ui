@@ -15168,6 +15168,337 @@
       "sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa"
     },
     {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_addnotgrey.f73db7b6.svg",
+      "output": "assets/synapse/profiles-add.svg",
+      "source_sha256": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71",
+      "sha256": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_addnotgrey.f73db7b6.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_add.green.db605256.svg",
+      "output": "assets/synapse/profiles-add-hover.svg",
+      "source_sha256": "1f777d6922ad393ca104113006ac304a8b237709d998bb0d7f4d45452d3c3642",
+      "sha256": "1f777d6922ad393ca104113006ac304a8b237709d998bb0d7f4d45452d3c3642",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_add.green.db605256.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_refresh_gamelibrary.5f8edb51.svg",
+      "output": "assets/synapse/profiles-scan.svg",
+      "source_sha256": "1ae95d8056fabf2eb3a5704e11738d89692e8c851769c7632292bd27ea7576a9",
+      "sha256": "1ae95d8056fabf2eb3a5704e11738d89692e8c851769c7632292bd27ea7576a9",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_refresh_gamelibrary.5f8edb51.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_refresh_gamelibrary.green.66e2a41e.svg",
+      "output": "assets/synapse/profiles-scan-hover.svg",
+      "source_sha256": "91e0da122f87d4e5a2321ecdf806b12f0d5f72235db18a320daf23107874f47a",
+      "sha256": "91e0da122f87d4e5a2321ecdf806b12f0d5f72235db18a320daf23107874f47a",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_refresh_gamelibrary.green.66e2a41e.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_search.b84dee08.svg",
+      "output": "assets/synapse/profiles-search.svg",
+      "source_sha256": "2dfb538fb7d85f1e1d86481cc3f457c33ebbb330fad3c6e7769fbd6a7f1d45a5",
+      "sha256": "2dfb538fb7d85f1e1d86481cc3f457c33ebbb330fad3c6e7769fbd6a7f1d45a5",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_search.b84dee08.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_search.green.f5e350b7.svg",
+      "output": "assets/synapse/profiles-search-hover.svg",
+      "source_sha256": "2f395af949710a5aa353dccf761a64a1b63be4ffd3c92e86331f40a028d1a391",
+      "sha256": "2f395af949710a5aa353dccf761a64a1b63be4ffd3c92e86331f40a028d1a391",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_search.green.f5e350b7.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_search.grey.7c0cb7bb.svg",
+      "output": "assets/synapse/profiles-search-grey.svg",
+      "source_sha256": "c801f345f5f2a95e21b6ab2889b0e98f5734a427a96f0b21d79705a0588e00bb",
+      "sha256": "c801f345f5f2a95e21b6ab2889b0e98f5734a427a96f0b21d79705a0588e00bb",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_search.grey.7c0cb7bb.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_refresh.80aa16c3.svg",
+      "output": "assets/synapse/profiles-refresh.svg",
+      "source_sha256": "b78569e26ef2eef49e571b1a03089da3345f7722ff12fc127d504357de73c074",
+      "sha256": "b78569e26ef2eef49e571b1a03089da3345f7722ff12fc127d504357de73c074",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_refresh.80aa16c3.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_refresh.green.10a444da.svg",
+      "output": "assets/synapse/profiles-refresh-hover.svg",
+      "source_sha256": "7011c5eaa56d9bbb598a6d024fc9ab367c9e70e0e5835247409fa9353e20a46c",
+      "sha256": "7011c5eaa56d9bbb598a6d024fc9ab367c9e70e0e5835247409fa9353e20a46c",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_refresh.green.10a444da.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_close_enclosed.6056b667.svg",
+      "output": "assets/synapse/profiles-clear.svg",
+      "source_sha256": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f",
+      "sha256": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_close_enclosed.6056b667.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_close_enclosed_a.83aff4bb.svg",
+      "output": "assets/synapse/profiles-clear-hover.svg",
+      "source_sha256": "5b789a132a0c7468397a4f758e00c414e5a83a38de8ca718bc81974f6cb76451",
+      "sha256": "5b789a132a0c7468397a4f758e00c414e5a83a38de8ca718bc81974f6cb76451",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_close_enclosed_a.83aff4bb.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/profiles/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/profiles-close.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "source_url": "https://apps.razer.com/synapse/profiles/static/media/icon_close.55fe41f1.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_delay_g.5050a3f7.svg",
+      "output": "assets/synapse/macro/delay.svg",
+      "source_sha256": "1583896befa623e3365ea1fa9a8ee15de5aa58f36018dea742f57639814c6ad0",
+      "sha256": "1583896befa623e3365ea1fa9a8ee15de5aa58f36018dea742f57639814c6ad0",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_delay_g.5050a3f7.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_keyboard_a.7051c99b.svg",
+      "output": "assets/synapse/macro/keyboard.svg",
+      "source_sha256": "76caf7c16ab72f4c0b32472bface5da779a7c517ecb03eaa6c2aacd26f7b0cb9",
+      "sha256": "76caf7c16ab72f4c0b32472bface5da779a7c517ecb03eaa6c2aacd26f7b0cb9",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_keyboard_a.7051c99b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_mouse_o.8a44fbe7.svg",
+      "output": "assets/synapse/macro/mouse.svg",
+      "source_sha256": "1fd5593b525c2a66097dbba2c69d04aff9ca3484b2083e77ce0f3487611e0521",
+      "sha256": "1fd5593b525c2a66097dbba2c69d04aff9ca3484b2083e77ce0f3487611e0521",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_mouse_o.8a44fbe7.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_macro_a.7e1bc94f.svg",
+      "output": "assets/synapse/macro/macro.svg",
+      "source_sha256": "23e37045e593465d6ac711b5ae422d31a8d51404e82b4ba4a84c02ee3e91a3c8",
+      "sha256": "23e37045e593465d6ac711b5ae422d31a8d51404e82b4ba4a84c02ee3e91a3c8",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_macro_a.7e1bc94f.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_launch_p.482fbff5.svg",
+      "output": "assets/synapse/macro/launch.svg",
+      "source_sha256": "a61cf24445c687cc4b24ebb7e9b8489535ecd7fca7347b0815c87c748a82d5a3",
+      "sha256": "a61cf24445c687cc4b24ebb7e9b8489535ecd7fca7347b0815c87c748a82d5a3",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_launch_p.482fbff5.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_runcmd_b.10c00024.svg",
+      "output": "assets/synapse/macro/command.svg",
+      "source_sha256": "37a2394fb6980581c6827bdd61897f05440a8df486ff99360c93c3f7cae2318b",
+      "sha256": "37a2394fb6980581c6827bdd61897f05440a8df486ff99360c93c3f7cae2318b",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_runcmd_b.10c00024.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_text_b.bc93ac89.svg",
+      "output": "assets/synapse/macro/text.svg",
+      "source_sha256": "aace7b2ef9ee0486dd8f617c3a93d8340a64059c1652f1b0bd5adea06907a353",
+      "sha256": "aace7b2ef9ee0486dd8f617c3a93d8340a64059c1652f1b0bd5adea06907a353",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_text_b.bc93ac89.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_refresh-1_r.ff48f955.svg",
+      "output": "assets/synapse/macro/loop.svg",
+      "source_sha256": "613c38b8dba5e15c3f57a1c83577e3d94e5ca55fc3dba9773401d8f45d146a85",
+      "sha256": "613c38b8dba5e15c3f57a1c83577e3d94e5ca55fc3dba9773401d8f45d146a85",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_refresh-1_r.ff48f955.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_draggable_g.695879f5.svg",
+      "output": "assets/synapse/macro/drag.svg",
+      "source_sha256": "4898d7243773a9177fe6ad3932bc1951baf0ff01fb9cce00f524953e4c4a3b60",
+      "sha256": "4898d7243773a9177fe6ad3932bc1951baf0ff01fb9cce00f524953e4c4a3b60",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_draggable_g.695879f5.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_new_marco.6edec51b.svg",
+      "output": "assets/synapse/macro/new.svg",
+      "source_sha256": "4a562092f2b4383249b89d188d36a9a0e7ac54fa1bb002491eaffb239e776bcc",
+      "sha256": "4a562092f2b4383249b89d188d36a9a0e7ac54fa1bb002491eaffb239e776bcc",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_new_marco.6edec51b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_new_marco-hover.47953e67.svg",
+      "output": "assets/synapse/macro/new-hover.svg",
+      "source_sha256": "575a6c0268af7d98b0554652f4a4fb74fb4a0498cb5719038b2ad40816275a10",
+      "sha256": "575a6c0268af7d98b0554652f4a4fb74fb4a0498cb5719038b2ad40816275a10",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_new_marco-hover.47953e67.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_new_marco-pressed.0faeaad4.svg",
+      "output": "assets/synapse/macro/new-active.svg",
+      "source_sha256": "86b8a94049d4a4f1b50517ad432c02ebc275d944da3a25485b043ea2c22b373d",
+      "sha256": "86b8a94049d4a4f1b50517ad432c02ebc275d944da3a25485b043ea2c22b373d",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_new_marco-pressed.0faeaad4.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_addfolder-1.3c65591c.svg",
+      "output": "assets/synapse/macro/folder-add.svg",
+      "source_sha256": "9c97812722bfe48337d2631fdfce23014ee1e9ae479a14af5fa6a9da5f1a4ac7",
+      "sha256": "9c97812722bfe48337d2631fdfce23014ee1e9ae479a14af5fa6a9da5f1a4ac7",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_addfolder-1.3c65591c.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_addfolder-hover.a804c680.svg",
+      "output": "assets/synapse/macro/folder-add-hover.svg",
+      "source_sha256": "d123946e06ed756e2b580632e99f42712d93f5b91ac56db9a88570d85778c740",
+      "sha256": "d123946e06ed756e2b580632e99f42712d93f5b91ac56db9a88570d85778c740",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_addfolder-hover.a804c680.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_addfolder-pressed.aa5ec3ce.svg",
+      "output": "assets/synapse/macro/folder-add-active.svg",
+      "source_sha256": "a6b68817d731ce5ee63e16ee11818affab7be8717630ace605f7c454f9c238ee",
+      "sha256": "a6b68817d731ce5ee63e16ee11818affab7be8717630ace605f7c454f9c238ee",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_addfolder-pressed.aa5ec3ce.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_folder_close-2.523e657a.svg",
+      "output": "assets/synapse/macro/folder.svg",
+      "source_sha256": "8563107128e9617be648c2bb32fcf2dd0b8de7300a1e7f51344d17d0a732a01e",
+      "sha256": "8563107128e9617be648c2bb32fcf2dd0b8de7300a1e7f51344d17d0a732a01e",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_folder_close-2.523e657a.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_folder_open.076142a3.svg",
+      "output": "assets/synapse/macro/folder-open.svg",
+      "source_sha256": "a88ed46e16d310a69d07a22f893b2bbc27699bf1cb22e649577e8ad74d01f6fe",
+      "sha256": "a88ed46e16d310a69d07a22f893b2bbc27699bf1cb22e649577e8ad74d01f6fe",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_folder_open.076142a3.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_macro-file.2f24e5a0.svg",
+      "output": "assets/synapse/macro/file.svg",
+      "source_sha256": "1f75c3a600261b6246e8534048cc00bb089c6580603ceb19c4d6ce07970dfa8e",
+      "sha256": "1f75c3a600261b6246e8534048cc00bb089c6580603ceb19c4d6ce07970dfa8e",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_macro-file.2f24e5a0.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_marco-file-hover.0e086ddd.svg",
+      "output": "assets/synapse/macro/file-active.svg",
+      "source_sha256": "fffb6f2787d76944a350191e0da5229e419dc807e857938df75dc4a60bb9e7f5",
+      "sha256": "fffb6f2787d76944a350191e0da5229e419dc807e857938df75dc4a60bb9e7f5",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_marco-file-hover.0e086ddd.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/Onboarding_Step2.8d4382a1.svg",
+      "output": "assets/synapse/macro/onboarding-record.svg",
+      "source_sha256": "2208aa630026b07cb09b7159898fdd71797d11f9dd6cb3d9f55035db24bd771d",
+      "sha256": "2208aa630026b07cb09b7159898fdd71797d11f9dd6cb3d9f55035db24bd771d",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/Onboarding_Step2.8d4382a1.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/Onboarding_Step3.ad2907e8.svg",
+      "output": "assets/synapse/macro/onboarding-add.svg",
+      "source_sha256": "5882601b9db7be49e47225e9a75dde62ae13537be6f6e5f781548c6d2a75194c",
+      "sha256": "5882601b9db7be49e47225e9a75dde62ae13537be6f6e5f781548c6d2a75194c",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/Onboarding_Step3.ad2907e8.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/indicator_animated.b7ce7af4.svg",
+      "output": "assets/synapse/macro/indicator.svg",
+      "source_sha256": "9751f4948dc36f31ae82dbf617cf804437d3c87cc2c19f4672160f71cb4169c0",
+      "sha256": "9751f4948dc36f31ae82dbf617cf804437d3c87cc2c19f4672160f71cb4169c0",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/indicator_animated.b7ce7af4.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_warning.6c0cd78b.svg",
+      "output": "assets/synapse/macro/warning.svg",
+      "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_warning.6c0cd78b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_add.a38ffd57.svg",
+      "output": "assets/synapse/macro/add.svg",
+      "source_sha256": "894180059a7f80f392fcd61fa95a630ab334a7f3d50f56584a342b2eac867d47",
+      "sha256": "894180059a7f80f392fcd61fa95a630ab334a7f3d50f56584a342b2eac867d47",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_add.a38ffd57.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_undo.638cc83d.svg",
+      "output": "assets/synapse/macro/undo.svg",
+      "source_sha256": "f681c0dff2389bfac89524620c51ce23f0e3e6308ae23361d7e15812c5d990ae",
+      "sha256": "f681c0dff2389bfac89524620c51ce23f0e3e6308ae23361d7e15812c5d990ae",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_undo.638cc83d.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_undo_enable.dc068f5b.svg",
+      "output": "assets/synapse/macro/undo-enable.svg",
+      "source_sha256": "7a1de677bbc16577f5e1a7409b524bd410419c8c3892f09c6e1c32bd0048a601",
+      "sha256": "7a1de677bbc16577f5e1a7409b524bd410419c8c3892f09c6e1c32bd0048a601",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_undo_enable.dc068f5b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_undo_hover.e7a454de.svg",
+      "output": "assets/synapse/macro/undo-hover.svg",
+      "source_sha256": "935d0e5c1b6543583fdf1e4fcde5b3042145021bf5652621f7338e006c43c406",
+      "sha256": "935d0e5c1b6543583fdf1e4fcde5b3042145021bf5652621f7338e006c43c406",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_undo_hover.e7a454de.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_redo.6df14b75.svg",
+      "output": "assets/synapse/macro/redo.svg",
+      "source_sha256": "3c49a5dcb8d174de49dd45b760611c144604a3b4bbaea5bd5831e96a6b6b5408",
+      "sha256": "3c49a5dcb8d174de49dd45b760611c144604a3b4bbaea5bd5831e96a6b6b5408",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_redo.6df14b75.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_redo_enable.9fb6a098.svg",
+      "output": "assets/synapse/macro/redo-enable.svg",
+      "source_sha256": "17900148c1b4f17fd935c0473e77cbe59c4da26a1474a7211303449e4c5e28a4",
+      "sha256": "17900148c1b4f17fd935c0473e77cbe59c4da26a1474a7211303449e4c5e28a4",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_redo_enable.9fb6a098.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_redo_hover.d651f41e.svg",
+      "output": "assets/synapse/macro/redo-hover.svg",
+      "source_sha256": "70a155eaab96b186d919fc6051e166d7b223fb9a37557bb291deaa0e8a37f641",
+      "sha256": "70a155eaab96b186d919fc6051e166d7b223fb9a37557bb291deaa0e8a37f641",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_redo_hover.d651f41e.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_record.9183ffe6.svg",
+      "output": "assets/synapse/macro/record.svg",
+      "source_sha256": "a0049ffbdbd338594d01c69994b2943e1f2371fc0d4216c3e2de0594373e600f",
+      "sha256": "a0049ffbdbd338594d01c69994b2943e1f2371fc0d4216c3e2de0594373e600f",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_record.9183ffe6.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_expand_d.0cbe4fcf.svg",
+      "output": "assets/synapse/macro/record-expand.svg",
+      "source_sha256": "93fe6aea122cf8c1a5202badbfa61c43cb2fb6654a3be088a4a8303429fec877",
+      "sha256": "93fe6aea122cf8c1a5202badbfa61c43cb2fb6654a3be088a4a8303429fec877",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_expand_d.0cbe4fcf.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_expand_d.3.2a1d50df.svg",
+      "output": "assets/synapse/macro/record-expand-hover.svg",
+      "source_sha256": "727b653101d36847baa2663e4600b2040111d3056d2a769f567b261819c224bf",
+      "sha256": "727b653101d36847baa2663e4600b2040111d3056d2a769f567b261819c224bf",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_expand_d.3.2a1d50df.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/armory/static/media/Dissmissible-banner-image-x2.c6eaaf4b.avif",
+      "output": "assets/synapse/armory-introduction.png",
+      "source_sha256": "2236c46b33e6947b7b73c1632fcc2806b148c004262f6253d8feb6a2a35bfd55",
+      "sha256": "9fb79133c44204813320183358ce98c5c6e6fba5932aa960b429df1913ae179f",
+      "source_url": "https://apps.razer.com/synapse/armory/static/media/Dissmissible-banner-image-x2.c6eaaf4b.avif",
+      "width": 2440,
+      "height": 300
+    },
+    {
+      "source": ".ref/applications/synapse/armory/static/media/icon_close.cb2e944c.svg",
+      "output": "assets/synapse/armory-banner-close.svg",
+      "source_sha256": "658ae30f9d51519ce387e739b3274f2c31a058b7c73cc792642e8c2b0562d0f0",
+      "sha256": "658ae30f9d51519ce387e739b3274f2c31a058b7c73cc792642e8c2b0562d0f0",
+      "source_url": "https://apps.razer.com/synapse/armory/static/media/icon_close.cb2e944c.svg"
+    },
+    {
       "source": ".ref/host-4.0.827/electron/resources/images/rzAppEngine.ico",
       "output": "assets/synapse/tray-icon-16.rgba",
       "source_sha256": "941bffcecac64b116098726e19a3007f3166a314238ea223ecf4dcc4b3fde33c",

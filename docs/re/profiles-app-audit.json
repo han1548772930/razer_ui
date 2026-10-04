@@ -1,64 +1,2415 @@
 {
-  "schema_version": 1,
-  "scanner_sha256": "9ca24055ed7dc40b6608e43dc0e5d6a25ea97b797de188e4859508f23b7495dc",
-  "source": {
-    "path": ".ref/applications/synapse/profiles/static/js/main.776df2b1.js",
-    "sha256": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2"
-  },
-  "nav_chunk": {
-    "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
-    "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3"
-  },
-  "view_container": "overflow:hidden!important;padding:0!important",
+  "schema_version": 2,
+  "method": "Acorn module-local bindings and explicit webpack export getters; no reference code execution",
   "window": {
     "name": "profiles",
     "url": "/synapse/profiles/",
     "open_param": "policy=3,shouldFocus=1,tab_visible=1"
   },
-  "state_keys": {
-    "tabNavigations": true,
-    "currentTabNavigation": true
-  },
-  "routes": [
+  "navigation": [
     {
-      "view": "Devices",
-      "symbol": "H",
-      "regex": "/\\/devices\\/\\d+\\//"
+      "id": 1,
+      "key": "GAMES_HEADER",
+      "component": "(0,p.jsx)(re,{})",
+      "receipt": {
+        "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+        "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+        "offset": 198844,
+        "end": 198888,
+        "source": "{id:1,name:r.ey1,component:(0,p.jsx)(re,{})}"
+      }
     },
     {
-      "view": "GlobalShortcuts",
-      "symbol": "b",
-      "regex": "/\\/globalShortcuts\\//"
-    },
-    {
-      "view": "ChromaStudio",
-      "symbol": "F",
-      "regex": "/\\/chromaStudio\\//"
-    },
-    {
-      "view": "Macro",
-      "symbol": "B",
-      "regex": "/\\/macro\\//"
-    },
-    {
-      "view": "LinkedGames",
-      "symbol": "k",
-      "regex": "/\\/linkedGames\\//"
+      "id": 2,
+      "key": "DEVICE",
+      "component": "(0,p.jsx)(Ga,{})",
+      "receipt": {
+        "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+        "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+        "offset": 198889,
+        "end": 198933,
+        "source": "{id:2,name:r.db_,component:(0,p.jsx)(Ga,{})}"
+      }
     }
   ],
-  "labels": [
-    "PROFILES",
-    "GLOBAL_SHORTCUT_HEADER",
-    "CHROMA_STUDIO",
-    "MACRO",
-    "LINKED_GAMES"
+  "default_view": "GAMES_HEADER",
+  "title": "LINKED_GAMES",
+  "components": [
+    {
+      "name": "Ba",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 197107,
+      "end": 199676,
+      "source": "class Ba extends l.Component{constructor(e){super(e),this.loadPageName=()=>{const e=this.props.t(r.L$3);document.title=e.toLocaleUpperCase()},this.addNavigationToStorage=()=>{this.setState(e=>({tabNavigation:[...e.tabNavigation,this.state.active_view],currentTabNavigation:e.tabNavigation.length}))},this.changeView=e=>{this.view=e,this.props.isMappingChanged?console.log(\"mapping changed\",this.view,this.state.active_view):this.updateView()},this.updateView=()=>{if(this.view===this.state.active_view)return;const e=this.state,t=e.tabNavigation,s=e.currentTabNavigation;s+1!==t.length&&t.splice(s+1),this.setState({active_view:this.view},()=>{this.addNavigationToStorage(),this.props.changeSelectedTab(this.view)})},this.navigateBack=()=>{this.view=this.state.tabNavigation[this.state.currentTabNavigation-1],this.currentTabNavigation=this.state.currentTabNavigation-1,this.props.isMappingChanged?this.setDisplaySaveAlert(this.updateNavigationView):this.updateNavigationView()},this.navigateForward=()=>{this.view=this.state.tabNavigation[this.state.currentTabNavigation+1],this.currentTabNavigation=this.state.currentTabNavigation+1,this.props.isMappingChanged?this.setDisplaySaveAlert(this.updateNavigationView):this.updateNavigationView()},this.updateNavigationView=()=>{this.setState({currentTabNavigation:this.currentTabNavigation,active_view:this.view},()=>{this.props.changeSelectedTab(this.state.active_view)})},this.renderView=e=>{let t=this.state.nav.find(e=>e.name===this.state.active_view).component;return c().cloneElement(t,{renderNavbar:e})},this.renderNavbar=()=>(0,p.jsx)(zn,{navs:this.state.nav,activeView:this.state.active_view,changeView:this.changeView,currentTabNavigation:this.state.currentTabNavigation});let t=[{id:1,name:r.ey1,component:(0,p.jsx)(re,{})},{id:2,name:r.db_,component:(0,p.jsx)(Ga,{})}];const s=JSON.parse(sessionStorage.getItem(\"\".concat(S.sJv,\"_dashboard\")))||[],i=JSON.parse(sessionStorage.getItem(\"\".concat(S.XPM,\"_dashboard\")))||0,n=s[i]||t[0].name;this.state={nav:t,active_view:n,tabNavigation:s,currentTabNavigation:i,showLinkedGame:!1}}componentDidMount(){this.addNavigationToStorage(),this.loadPageName()}componentDidUpdate(e){e.lang!==this.props.lang&&this.loadPageName()}render(){return(0,p.jsxs)(ce,{children:[(0,p.jsx)(Xt,{tabNavigations:this.state.tabNavigation,title:this.props.t(r.L$3),navigateBack:this.navigateBack,navigateForward:this.navigateForward,currentTabNavigation:this.state.currentTabNavigation}),(0,p.jsx)(u,{extraClass:\"no-scroll razer-profiles\",children:this.renderView(this.renderNavbar())})]})}}"
+    },
+    {
+      "name": "oe",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 21322,
+      "end": 27167,
+      "source": "class oe extends l.Component{constructor(e){var t;super(e),t=this,this._handleShowGames=()=>{let e=this.sortGameList(this.filterGameList(this.state.filterType));return e=e.filter(e=>-1!==e.name.toLowerCase().indexOf(this.state.searchKey)),e},this.closeAddGame=()=>{this.setState({addGameOpen:!1})},this.openAddGame=()=>{this.setState({addGameOpen:!0})},this.clickedGameTile=e=>{this.props.selectedGameData(e)},this.addNewApp=e=>{console.log(\"addNewApp\",e);for(const t of e)this.props.addGame(t.path)},this.removeGameSelected=()=>{this.props.selectedGameData(null)},this.onSearch=function(){let e=(arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\").toLowerCase().trim(),s=t.filterGameList(t.state.filterType).filter(t=>t.name.toLowerCase().indexOf(e)>-1);s=t.sortGameList(s),t.setState({filtered:s,searchKey:e})},this.onFilter=e=>{this.setState({filterType:e})},this.onSort=e=>{this.setState({sortType:e})},this.onRefresh=()=>{this.props.initiateGameScan(),this.props.setSyncing(!0)},this.filterGameList=e=>{switch(e){case 0:default:return this.props.gameList;case 1:{let e=[];return this.props.linkedGames&&this.props.linkedGames.forEach(t=>{let s=t.devices.find(e=>e.isVisible),i=this.props.gameList.findIndex(e=>e.id===t.gameID);-1!==i&&t.devices.length&&s&&e.push(this.props.gameList[i])}),e}case 2:return this.props.removedGames}},this.sortGameList=e=>{let t=JSON.parse(JSON.stringify(e))||[];return t.sort((e,t)=>{switch(this.state.sortMode[this.state.sortType].key){case se:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s<i)return-1;if(s>i)return 1;if(s===i)return 0}break;case ie:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case ne:{let s=new Date(O()(e,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\")),i=new Date(O()(t,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\"));if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case ae:{let s=O()(e,\"gameSettings.ATT_UserTotalGameplayCount\",0);return O()(t,\"gameSettings.ATT_UserTotalGameplayCount\",0)-s}default:return}return!1}),t},this.filterLinkedDeviceByGameID=e=>{let t=[];if(!this.state.linkedGames)return;let s=this.state.linkedGames.find(t=>t.gameID===e);return s&&s.devices&&(t=s.devices.filter(e=>e.isVisible)),t},this.state={addGameOpen:!1,gameList:this.props.gameList||[],linkedGames:this.translateDevicesName(this.props.linkedGames||[]),filtered:[],filterType:0,sortType:0,searchKey:\"\",sortMode:[{name:r.HyJ,key:\"ASCENDING\"},{name:r.H9v,key:\"DESCENDING\"},{name:r.LdO,key:\"LAST_PLAYED\"},{name:r.w9W,key:\"MOST_PLAYED\"}]}}translateDevicesName(e){const t=JSON.parse(window.localStorage.getItem(\"connectedDeviceInfo\")||\"[]\");return null!==e&&void 0!==e&&e.length?e.map(e=>(e.devices=e.devices.map(e=>{if(\"chroma-studio\"===e.pid)e.name=\"zh-cn\"===this.props.lang.toLowerCase()?\"幻彩控制室 (CHROMA STUDIO)\":\"CHROMA STUDIO\";else{const s=t.find(t=>t.productId===e.pid);if(!s)return e;const i=Object.keys(s.productName).find(e=>e.toLowerCase()===this.props.lang.toLowerCase());e.name=s.productName[i||\"en\"]}return(0,n.A)({},e)}),e)):[]}componentDidMount(){let e=this._handleShowGames();this.setState({filtered:e,gameList:this.props.gameList,linkedGames:this.translateDevicesName(this.props.linkedGames)})}componentDidUpdate(e,t){let s=this._handleShowGames();if(t.sortType===this.state.sortType&&t.filterType===this.state.filterType||this.setState({filtered:s}),JSON.stringify(this.props.gameList)!==JSON.stringify(this.state.gameList)&&(this.props.removedGames.forEach(e=>{this.props.deleteGame(e.id,{isLocal:e.isLocalGameList,isMissing:e.isMissing},!0)}),this.setState({filtered:s,gameList:this.props.gameList})),this.props.linkedGames!==e.linkedGames&&this.setState({filtered:s,linkedGames:this.translateDevicesName(this.props.linkedGames)}),this.props.lang!==e.lang&&this.setState({linkedGames:this.translateDevicesName(this.props.linkedGames)}),JSON.stringify(this.props.gameList)!==JSON.stringify(e.gameList)&&this.props.linkedGames.length){let t=[];e.gameList.forEach(e=>{let s=!1;this.props.gameList.forEach(t=>{e.id===t.id&&(s=!0)}),s||t.push(e)}),t.length&&t.forEach(e=>{this.props.deleteGame(e.id,{},!0)})}}render(){let e=\"content-wrapper\";return this.state.addGameOpen?e+=\" add-game-popup-showing\":this.props.gameSelected&&(e+=\" device-linked-showing\"),(0,p.jsxs)(\"div\",{className:\"profiles-link-games\",children:[(0,p.jsx)(ee.A,{renderNavbar:this.props.renderNavbar,add:this.openAddGame,search:this.onSearch,filter:this.onFilter,refresh:this.onRefresh,isSyncing:this.props.isSyncing,addGameOpen:this.state.addGameOpen,sort:this.onSort,sortMode:this.state.sortMode}),(0,p.jsxs)(\"div\",{className:e,children:[(0,p.jsx)(H.A,{dropEnd:this.addNewApp,children:(0,p.jsxs)(\"div\",{className:\"list-box\",children:[this.state.filtered.map(e=>(0,p.jsx)(Q,{game:e,onChoose:()=>{2===this.state.filterType?this.openAddGame():this.clickedGameTile(e)},linkedDevices:this.filterLinkedDeviceByGameID(e.id),deleteGame:()=>this.props.deleteGame(e.gameSignature,{isLocal:e.isLocalGameList,isMissing:e.isMissing}),isRemovedGame:2===this.state.filterType},e.id)),2!==this.state.filterType&&(0,p.jsxs)(\"div\",{className:\"game-tile add-new \".concat(this.props.isSyncing?\"disabled\":\"\"),onClick:this.openAddGame,children:[(0,p.jsx)(\"div\",{className:\"game-body\",children:(0,p.jsx)(\"div\",{className:\"plus-icon\"})}),(0,p.jsx)(\"div\",{className:\"game-footer\",children:(0,p.jsxs)(\"label\",{children:[(0,p.jsx)(M.A,{text:r.rVC}),\" \",(0,p.jsx)(M.A,{text:r.YNT}),(0,p.jsx)(\"br\",{}),(0,p.jsx)(M.A,{text:r.CpJ})]})})]},\"add-new\")]})}),this.props.gameSelected&&(0,p.jsx)(F,{isOpen:!0,close:this.removeGameSelected}),(0,p.jsx)(te.wi,{$name:this.state.addGameOpen.toString(),children:{true:(0,p.jsx)(te.kg,{lazy:()=>Promise.resolve().then(s.bind(s,3137)),show:this.state.addGameOpen,close:this.closeAddGame})}})]})]})}}"
+    },
+    {
+      "name": "Ga",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 195566,
+      "end": 197106,
+      "source": "e=>{let t=e.renderNavbar;const s=(0,d.useSelector)(e=>e.profileLinkedGamesReducer).devices,i=(0,d.useSelector)(e=>e.linkedGamesReducer),a=i.gameSelected,o=i.linkedGames,r=(0,l.useState)(!1),c=(0,E.A)(r,2),h=c[0],u=c[1],m=(0,l.useState)({devicePID:null,serialNumber:null}),v=(0,E.A)(m,2),g=v[0],S=v[1],f=e=>{u(!0),S(e)};return(0,p.jsxs)(\"div\",{className:\"listDevices_wrapper\",children:[t,(0,p.jsx)(\"div\",{className:\"content-wrapper\",children:(0,p.jsx)(\"div\",{className:\"linked-device-list\",children:(0,p.jsx)(\"div\",{className:\"list-device\",children:(0,p.jsx)(p.Fragment,{children:(()=>{let e=null;return!!s&&s.map(t=>{let s=!1;const i=t.activeProfile,r=t.profiles,l=t.subDevices,c=t.category;let d=o&&o.find(e=>e.gameID===(null===a||void 0===a?void 0:a.id));const h=(l||[]).find(e=>e.isShownOnUI);if(d&&(e=d.devices.find(e=>{let s;return s=h&&\"IOT\"===c?e.pid===h.productId:e.serialNumber?e.serialNumber===t.serialNumber:!e.deviceContainerId||e.deviceContainerId===t.deviceContainerId,e.pid===t.productId&&s}),e&&(s=!0)),h&&\"IOT\"===c){const e=t.src,i=t.srcSet,o=t.category,r=t.subCategory,l=t.name,c=t.editionName;return(0,p.jsx)($n,{active:s,deviceInfo:(0,n.A)((0,n.A)({},h),{},{src:e,srcSet:i,category:o,subCategory:r,name:l,editionName:c}),selectedGame:null===a||void 0===a?void 0:a.id,openPopup:f},h.serialNumber)}return!(!i||!r)&&(0,p.jsx)($n,{active:s,deviceInfo:t,selectedGame:null===a||void 0===a?void 0:a.id,openPopup:f},t.serialNumber)})})()})})})}),h&&(0,p.jsx)(Ua,{setOpen:u,devicePid:g.devicePID,serialNumber:g.serialNumber})]})}"
+    },
+    {
+      "name": "Kn",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 131600,
+      "end": 139328,
+      "source": "class Kn extends l.Component{constructor(e){super(e),this.filterNotHelpNavs=()=>this.props.navs.filter(e=>e.name&&e.name.toUpperCase()!==r._$r),this.changeView=e=>{this.state.activeView!==e&&this.props.changeView(e)},this.handleLocalStorage=e=>{e.key===S.c6S&&\"true\"===e.newValue&&this.props.setShowTutorial(!0)},this.onClickHelp=()=>{this.changeView(r._$r)},this.setOutputDevice=()=>{\"function\"===typeof this.props.setOutputDevice&&this.props.setOutputDevice()},this.restart=()=>{L.A.restartWorkstation()},this.renderStereoWarning=()=>!this.props.hasStereoWarning||this.props.isStereo?null:(0,p.jsx)(\"div\",{className:\"thx-wrapper\",children:(0,p.jsx)(ss,{content:r.VfJ,deviceName:this.props.deviceName})}),this.renderRestartWarning=()=>this.props.restartRequired?(0,p.jsx)(\"div\",{className:\"thx-wrapper\",children:(0,p.jsx)(rs,{productCategory:this.props.category,subCategory:this.props.subCategory,restart:this.restart,thxDefault:this.props.isTHXDefault,thxDeviceName:this.props.thxDeviceName})}):null,this.getElWidth=e=>e?0===(null===e||void 0===e?void 0:e.children.length)?e.clientWidth:Array.from(e.childNodes).reduce((e,t)=>e+t.clientWidth,0):0,this.renderNavs=()=>{const e=this.filterNotHelpNavs(),t=window.innerWidth-this.getElWidth(this.profileEl.current)-this.getElWidth(this.rightEl.current)-this.getElWidth(document.querySelector(\".navs-wrapper .dots3\"))-10;let s=0,i=0;const n=e.reduce((n,o,r)=>{if(1===s)return n;if(!this.cacheNavWidth[o.name]){const t=(0,pe.q_)((0,a.getTextItem)(o.name),\"normal 12px Roboto\")+20+(r!==e.length-1?20:0);this.cacheNavWidth[o.name]=t}return i+=this.cacheNavWidth[o.name],i<t?n.push(o):s=1,n},[]);((e,t)=>{if(e.length!==t.length)return!0;for(let s=0;s<e.length;s++)if(e[s].extraClass!==t[s].extraClass)return!0;return!1})(n,this.state.visibleNavs)&&this.setState({visibleNavs:n})},this.renderDropdownNavs=()=>this.filterNotHelpNavs().filter(e=>e.name&&!this.state.visibleNavs.find(t=>t.name===e.name)).map(e=>(0,n.A)((0,n.A)({},e),{},{action:e.name,active:e.name===this.state.activeView})),this.menuClick=e=>{this.changeView(e)},this.handleResetAllSettings=e=>{e.preventDefault(),\"function\"===typeof this.props.setIsResetSetting&&this.props.setIsResetSetting(!0)},this.onKeyDown=e=>{this.state.activeView!==r._$r&&\"Enter\"===e.code&&this.changeView(r._$r)},this.checkBatteryCallback=()=>{var e;this.props.batteryValue<0&&(null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"CHECK_BATTERY_STATUS\",payload:{}}))},this.getBatteryLevel=e=>{let t=this.props.earbudBatteries.right<=0||this.props.earbudBatteries.right>100?\"-\":\"\".concat(this.props.earbudBatteries.right,\"%\");return e?(t=this.props.earbudBatteries.left<=0||this.props.earbudBatteries.left>100?\"-\":\"\".concat(this.props.earbudBatteries.left,\"%\"),\"\".concat((0,a.getTextItem)(\"L\"),\" \").concat(t)):\"\".concat((0,a.getTextItem)(\"R\"),\" \").concat(t)},this.createBatteryTip=()=>{const e=this.props,t=e.batteryTips,s=e.batteryValue,i=e.earbudBatteries,n=e.hideBattValue;if(this.props.hasBattery&&void 0!==this.props.batteryState&&!n)return i?(0,p.jsxs)(\"div\",{className:\"battery-tooltip\",children:[(0,p.jsxs)(\"div\",{className:\"flex\",children:[(0,p.jsx)(\"span\",{className:\"battery-value\",children:this.getBatteryLevel(!0)}),\" \",(0,p.jsx)(\"span\",{className:this.props.earbudBatteryState.left})]}),(0,p.jsxs)(\"div\",{className:\"flex\",children:[(0,p.jsx)(\"span\",{className:\"battery-value\",children:this.getBatteryLevel(!1)}),\" \",(0,p.jsx)(\"span\",{className:this.props.earbudBatteryState.right})]})]}):(0,a.getTextItem)(t,{level:s})},this.getBatteryState=()=>{if(this.props.earbudBatteries){const e=this.props.earbudBatteries,t=e.left,s=e.right;if(t>0&&t<=s)return this.props.earbudBatteryState.left;if(s>0)return this.props.earbudBatteryState.right}return this.props.batteryState},this.state={activeView:this.props.activeView,visibleNavs:this.filterNotHelpNavs(),showBatteryTooltip:!1},this.navs=this.filterNotHelpNavs(),this.profileEl=(0,l.createRef)(),this.rightEl=(0,l.createRef)(),this.cacheNavWidth={}}componentDidMount(){this.renderNavs(),window.addEventListener(\"resize\",this.renderNavs),window.addEventListener(\"storage\",this.handleLocalStorage)}componentWillUnmount(){window.removeEventListener(\"resize\",this.renderNavs)}componentDidUpdate(e){const t=this.props.activeView;t!==e.activeView&&this.setState({activeView:t}),this.props.navs!==e.navs&&this.setState({visibleNavs:this.filterNotHelpNavs()}),this.props.lang!==e.lang&&(this.cacheNavWidth=Object.create(null),this.renderNavs()),this.props.batteryValue!==e.batteryValue&&this.props.batteryValue<0&&this.checkBatteryCallback()}render(){const e=this.renderDropdownNavs(),t=e.find(e=>e.name===this.state.activeView),i=this.props.showHelp||this.props.navs.find(e=>e.name.toUpperCase()===r._$r),n=this.state.activeView===r._$r,o=this.props.extendedOptionComponent,l=this.props.externalPowerConnected,c=this.props.dynamicModeTips,d=this.props.batteryValue,h=this.createBatteryTip();return d<0&&this.checkBatteryCallback(),(0,p.jsxs)(p.Fragment,{children:[(0,p.jsxs)(\"div\",{style:this.props.extraStyle,className:(0,pe.xW)({\"nav-tabs\":!0,\"keymapbar-enabled\":this.props.renderKeyMapBar&&this.props.displayKeyMapBar,disabled:this.props.showLinkedGames}),children:[(0,p.jsxs)(\"div\",{className:\"profile-wrapper\",ref:this.profileEl,children:[this.props.renderProfileBar&&this.props.renderProfileBar(),this.props.hasDynamicMode&&this.props.activeDynamicMode&&(0,p.jsx)(us,{dynamicModeTips:c,className:\"profile-tips\"}),this.props.renderKeyMapBar&&(0,p.jsx)(\"div\",{className:\"profile-wrapper\",children:this.props.renderKeyMapBar()})]}),(0,p.jsxs)(\"div\",{className:\"navs-wrapper\",role:\"tabs\",children:[this.state.visibleNavs.map(e=>(0,p.jsx)(es,{ariaAttributes:{ariaSelected:this.state.activeView===e.name,ariaRoledescription:\"Local Tab Item\",ariaCurrent:e.name},ariaRole:\"tab\",name:e.name,active:this.state.activeView===e.name,changeView:this.changeView,extraClass:e.extraClass},e.id)),e.length>0&&(0,p.jsx)(p.Fragment,{children:(0,p.jsx)(ds,{menu:e,toggleClass:\"dots3 hover-border \"+(t?\"has-actived-option\":\"\"),menuClass:\"profile-act\",menuClick:this.menuClick,disabledItems:[],gameItems:[],elementId:\"NavBarDropdown\"})})]}),(0,p.jsxs)(\"div\",{className:\"right\",ref:this.rightEl,role:\"tablist\",children:[\"disabled\"===this.props.displayMode&&(0,p.jsx)(kn,{}),this.props.hasTutorial?(0,p.jsx)(te.kg,{lazy:()=>s.e(8906).then(s.bind(s,9283))}):null,this.renderRestartWarning(),this.renderStereoWarning(),this.props.renderFilteringBar&&this.props.renderFilteringBar(),this.props.hasBattery&&void 0!==this.props.batteryState&&(0,p.jsxs)(\"div\",{role:\"img\",id:\"battery-level-tips\",\"aria-roledescription\":\"battery status\",className:\"battery \"+(this.props.hideBattValue?\"hideBattValue\":\"\"),onMouseEnter:()=>this.setState({showBatteryTooltip:!0}),onMouseLeave:()=>this.setState({showBatteryTooltip:!1}),children:[!this.props.hideBattValue&&!l&&(0,p.jsx)(\"span\",{\"aria-hidden\":\"true\",className:null!=d&&d>=0&&d<=10?\"low-batt\":\"\",children:null!=d&&d>=0?\"\".concat(d,\" %\"):\"-\"}),(0,p.jsx)(\"div\",{className:this.getBatteryState()}),!this.props.hideBattValue&&(0,p.jsx)(Hn,{position:\"bottom-left\",isMounted:this.state.showBatteryTooltip&&void 0!==h,target:\"battery-level-tips\",children:h})]}),this.props.extendedOptionComponent?(0,p.jsx)(o,{}):null,i&&(0,p.jsx)(\"div\",{onKeyDown:this.onKeyDown,\"aria-selected\":n,role:\"tab\",\"aria-roledescription\":\"Local Tab Item\",\"aria-label\":r._$r,className:\"help \".concat(n?\"active\":\"\"),children:(0,p.jsx)(\"div\",{tooltip:(0,a.getTextItem)(r._$r,{_lang:this.props.lang}),className:\"help-icon\",onClick:this.onClickHelp})})]})]}),(0,p.jsx)(hn,{}),this.props.hasTutorial&&this.props.isShowTutorial&&(0,p.jsx)(te.kg,{lazy:()=>s.e(7853).then(s.bind(s,4210))})]})}}"
+    },
+    {
+      "name": "Zt",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 68348,
+      "end": 72113,
+      "source": "class Zt extends l.Component{constructor(e){super(e),this.renderTitle=()=>this.props.title?\"Dashboard\"===this.props.title?(0,p.jsx)(\"div\",{className:\"img-razer-wordmark\"}):this.props.title:null,this.clickSetting=async()=>{if(\"function\"===typeof this.props.openSetting)return void this.props.openSetting();let e={name:\"settings-synapse\",url:\"/synapse/settings/\"};\"chroma-app\"===this.props.currentApp&&(e={name:\"settings-chroma\",url:\"/chroma-app/settings/\"}),qe(e.url,e.name,ze,Je)},this.refresh=()=>{this.props.handleCustomRefresh?this.props.handleCustomRefresh():((0,pe.EP)(!0),xe.A.set(S.HEU,!1),this.props.hasUnsavedChanges||window.location.reload())},this.checkDevicePage=()=>window.location.href.includes(\"products\"),this.state={showOffline:!1,showProfileMigration:!1}}componentDidMount(){const e=xe.A.get(S.PkL);if(this.setState({showProfileMigration:!(!1===e)}),window.addEventListener(\"storage\",e=>{\"isOnline\"===e.key?this.setState({showOffline:\"false\"===e.newValue}):e.key===S.PkL&&this.setState({showProfileMigration:!(\"false\"===e.newValue)})}),\"undefined\"!==typeof this.props.isOnline)return void this.setState({showOffline:!this.props.isOnline});const t=xe.A.get(\"isOnline\");this.setState({showOffline:!1===t}),window.addEventListener(\"beforeunload\",()=>{document.querySelector(\"body\").style.display=\"none\"})}componentDidUpdate(e){const t=this.props,s=t.currentTabNavigation,i=t.tabNavigations,n=t.isDashboard;if(e.currentTabNavigation!==s||e.tabNavigations!==i){let e=S.sJv,t=S.XPM;n&&(e=\"\".concat(e,\"_dashboard\"),t=\"\".concat(t,\"_dashboard\")),sessionStorage.setItem(e,JSON.stringify(i)),sessionStorage.setItem(t,JSON.stringify(s))}\"undefined\"!==typeof this.props.isOnline&&this.props.isOnline!==e.isOnline&&this.setState({showOffline:!this.props.isOnline})}render(){var e;const t=this.props,s=t.currentTabNavigation,i=t.tabNavigations,n=t.ariaRole,o=t.isRefreshDisable;return(0,p.jsxs)(\"div\",{className:\"toolbar flex \".concat(this.props.showLinkedGames?\"disabled\":\"\"),children:[(0,p.jsxs)(\"div\",{role:n,className:\"navigation\",children:[(0,p.jsx)(\"div\",{className:\"arrow back \".concat(i.length>0&&s>0?\"\":\"disabled\"),onClick:this.props.navigateBack,tooltip:(0,a.getTextItem)(r.IUp,{_lang:this.props.lang}),role:\"button\",\"aria-disabled\":!(i.length>0&&s>0),\"aria-roledescription\":\"navigate backward\"}),(0,p.jsx)(\"div\",{className:\"arrow forward \".concat(i.length>0&&s<i.length-1?\"\":\"disabled\"),onClick:this.props.navigateForward,tooltip:(0,a.getTextItem)(r.OXp,{_lang:this.props.lang}),role:\"button\",\"aria-disabled\":!(i.length>0&&s<i.length-1),\"aria-roledescription\":\"navigate forward\"}),(0,p.jsx)(\"div\",{\"aria-roledescription\":\"reload page\",role:\"button\",className:\"arrow icon-refresh \".concat(o?\"disabled\":\"\"),onClick:this.refresh,tooltip:(0,a.getTextItem)(r.aIK,{_lang:this.props.lang})})]}),(0,p.jsx)(\"div\",{className:\"title\",children:this.renderTitle()}),(0,p.jsxs)(\"div\",{className:\"right\",children:[(0,p.jsx)(Bt,{}),(0,p.jsx)(Fe,{ariaAttributes:{ariaLabel:\"Update Latest Synapse Version\"},ariaRole:\"button\"}),this.state.showOffline&&(0,p.jsx)(we,{}),(0,p.jsx)(Ve,{}),(0,p.jsx)(Rt,{}),this.props.isSupportResetOLED&&(0,p.jsx)(Yt,{title:this.props.title}),this.props.isShowProfileMigrationIcon&&(0,p.jsx)(qt,{}),(0,p.jsx)(Ne,{currentApp:this.props.currentApp}),(0,p.jsx)(\"div\",{className:\"setting\",onClick:this.clickSetting,tooltip:null===(e=(0,a.getTextItem)(r.cnI,{_lang:this.props.lang}))||void 0===e?void 0:e.toLowerCase(),role:\"button\",\"aria-label\":\"go to setting page\"}),(0,p.jsxs)(Dt,{appName:this.props.currentApp,children:[(0,p.jsx)(It,{openFeedback:this.props.openFeedback,currentApp:this.props.currentApp,exitApp:this.props.exitApp,callback:this.props.callback}),(0,p.jsx)(_t,{})]})]}),this.props.showOfflineWarning?(0,p.jsx)(Ut,{}):null]})}}"
+    },
+    {
+      "name": "$n",
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 140836,
+      "end": 142489,
+      "source": "e=>{var t,s,i,n,a,o;let r=e.deviceInfo,c=e.openPopup;const h=(0,l.useState)([]),u=(0,E.A)(h,2),m=u[0],v=u[1],g=(0,d.useSelector)(e=>e.languageReducer).lang,S=(0,d.useSelector)(e=>e.linkedGamesReducer),f=S.linkedGames,D=S.gameList;(0,l.useEffect)(()=>(f.forEach(e=>{if(void 0!==e.devices.find(e=>e.pid===r.productId)){let t=D.find(t=>t.id===e.gameID);v(e=>[...e,t])}}),()=>v([])),[f]);return(0,p.jsxs)(\"div\",{onClick:()=>{(0,Ht.updateDeviceInfo)(r),c({devicePID:r.productId,serialNumber:r.serialNumber})},className:\"device-tile\",children:[(0,p.jsx)(\"div\",{className:\"device-image  \".concat(\"chromastudio\"===r.type?\"chromastudio\":\"\".concat(r.category)),style:{backgroundImage:\"url(\".concat(r.src)}}),(0,p.jsxs)(\"div\",{className:\"device-info\",children:[(0,p.jsx)(\"div\",{className:\"device-name\",children:null===(t=(null===r||void 0===r||null===(s=r.name)||void 0===s?void 0:s[g.toLowerCase()])||(null===r||void 0===r||null===(i=r.name)||void 0===i?void 0:i.en)||\"\")||void 0===t?void 0:t.toUpperCase()}),(0,p.jsx)(\"div\",{className:\"device-edition\",children:null===(n=(null===r||void 0===r||null===(a=r.editionName)||void 0===a?void 0:a[g.toLowerCase()])||(null===r||void 0===r||null===(o=r.editionName)||void 0===o?void 0:o.en)||\"\")||void 0===n?void 0:n.toUpperCase()}),(0,p.jsx)(\"div\",{className:\"device-icon\",children:0!==m.length?(0,p.jsxs)(\"div\",{className:\"linked-games\",children:[m.map((e,t)=>t>3&&m.length>5||!e?(0,p.jsx)(p.Fragment,{}):(0,p.jsx)(\"img\",{src:\"Microsoft Solitaire Collection\"!==e.name?e.icon:Zn,style:{width:\"20px\",paddingRight:\"6px\",opacity:e.isMissing?.3:1},alt:\"\"},e.id)),m.length>5?(0,p.jsx)(\"img\",{src:Xn,alt:\"\"}):\"\"]}):\"\"})]})]})}"
+    },
+    {
+      "name": "filtering_toolbar",
+      "path": ".ref/applications/synapse/profiles/static/js/9473.f9ed3133.chunk.js",
+      "sha256": "ed7876b57a439cd399d92798479ebadd509fcaabc3aa4fd811cbbf79d250714b",
+      "offset": 58759,
+      "end": 62297,
+      "source": "class m extends n.Component{constructor(e){super(e),this.filterChange=e=>{this.openSearch=!0,this.setState(()=>({fillType:e}),this.props.filter(e))},this.sortChange=e=>{this.openSearch=!0,this.setState(()=>({sortType:e}),this.props.sort(e))},this.handleClick=e=>{if(this.state.searching){var t,a;if(this.navRef&&null!==(t=this.navRef.current)&&void 0!==t&&t.contains(e.target)||this.searchRef&&null!==(a=this.searchRef.current)&&void 0!==a&&a.contains(e.target))return;if(this.state.searchKey)return;if(this.openSearch&&this.state.searchKey)return void(this.openSearch=!1);this.setState({searching:!1,searchKey:\"\"},()=>this.props.search())}},this.handleChange=e=>{this.setState({searchKey:e.target.value},()=>this.props.search(this.state.searchKey))},this.removeSearchResult=()=>{this.setState({searchKey:\"\",searching:!1},()=>this.props.search(this.state.searchKey))},this.state={fillType:0,sortType:0,fillModes:[{name:p.yyX},{name:p.L$3},{name:p.rQG}],sortMode:this.props.sortMode||h,searching:!1,isClosed:this.props.isClosed||!1,searchKey:\"\"},this.searchRef=r().createRef(),this.navRef=r().createRef(),this.openSearch=!1}componentDidMount(){window.addEventListener(\"click\",this.handleClick)}componentDidUpdate(){\"undefined\"!==typeof this.props.isClosed&&this.props.isClosed!==this.state.isClosed&&this.setState({isClosed:this.props.isClosed,searching:!1},()=>this.props.search())}render(){const e=this.state.searching;return(0,C.jsxs)(\"div\",{className:\"main-nav home \".concat(this.props.isSyncing||this.props.addGameOpen?\"disabled\":\"\"),children:[this.props.renderProfileBar?this.props.renderProfileBar:(0,C.jsxs)(C.Fragment,{children:[(0,C.jsxs)(\"ul\",{children:[(0,C.jsx)(\"li\",{children:(0,C.jsx)(\"div\",{className:\"add not-grey\",onClick:this.props.add,children:(0,C.jsx)(\"div\",{className:\"tooltip\",children:(0,C.jsx)(l.A,{text:p.wYq})})})}),(0,C.jsx)(\"li\",{children:this.props.isSyncing?(0,C.jsx)(\"div\",{className:\"syncing_games\"}):(0,C.jsx)(\"div\",{className:\"refresh_games\",onClick:this.props.refresh,children:(0,C.jsx)(\"div\",{className:\"tooltip\",children:(0,C.jsx)(l.A,{text:p.ETF})})})}),(0,C.jsx)(\"li\",{children:e?(0,C.jsxs)(\"div\",{className:\"search-wrapper\",ref:this.searchRef,children:[(0,C.jsx)(\"input\",{className:\"search-input\",type:\"text\",autoFocus:!0,onChange:e=>this.handleChange(e)}),\"\"!==this.state.searchKey?(0,C.jsx)(\"i\",{className:\"remove-text-search\",onClick:this.removeSearchResult,id:\"remove-icon\"}):null,(0,C.jsx)(\"span\",{})]}):(0,C.jsx)(\"div\",{className:\"search\",onClick:()=>this.setState({searching:!0}),children:(0,C.jsx)(\"div\",{className:\"tooltip\",children:(0,C.jsx)(l.A,{text:p.Dnh})})})})]}),this.props.renderNavbar]}),(0,C.jsxs)(\"div\",{className:\"dropdown-block\",style:{marginLeft:\"auto\"},ref:this.navRef,children:[(0,C.jsxs)(\"div\",{className:\"custom-dropdown\",children:[(0,C.jsx)(\"div\",{style:{display:\"flex\",alignItems:\"center\",height:\"26px\"},children:(0,C.jsx)(\"span\",{children:(0,C.jsx)(l.A,{text:p.VwY})})}),(0,C.jsx)(i.A,{name:(0,o.getTextItem)(p.VwY),dataSet:this.state.fillModes.map(e=>({name:(0,d._capitalizeStr)(this.props.t(e.name))})),value:this.state.fillType,selectOption:this.filterChange})]}),(0,C.jsxs)(\"div\",{className:\"custom-dropdown\",children:[(0,C.jsx)(\"div\",{style:{display:\"flex\",alignItems:\"center\",height:\"26px\"},children:(0,C.jsx)(\"span\",{children:(0,C.jsx)(l.A,{text:p.NDl})})}),(0,C.jsx)(i.A,{name:(0,o.getTextItem)(p.NDl),dataSet:this.state.sortMode.map(e=>(0,s.A)((0,s.A)({},e),{},{name:this.props.t(e.name)})),value:this.state.sortType,selectOption:this.sortChange})]})]})]})}}"
+    },
+    {
+      "name": "add_game_dialog",
+      "path": ".ref/applications/synapse/profiles/static/js/9473.f9ed3133.chunk.js",
+      "sha256": "ed7876b57a439cd399d92798479ebadd509fcaabc3aa4fd811cbbf79d250714b",
+      "offset": 13735,
+      "end": 17924,
+      "source": "class f extends o.Component{constructor(e){super(e),this.handleGetInstalledApp=async()=>{await this.getInstalledApps()},this.handleClick=e=>{if(this.state.searching){if(this.searchRef&&this.searchRef.current.contains(e.target))return;if(this.state.searchText)return;this.setState({searching:!1},()=>this.onSearch())}},this.getInstalledApps=async()=>{var e;let t=await I.A.getInstalledApplicationList();if(!t)return;let a=JSON.parse(t),s=null!==(e=null===a||void 0===a?void 0:a.map(e=>e.path))&&void 0!==e?e:[];if(!s.length)return;const n=await I.A.getApplicationIcons(JSON.stringify(s),80,80),r=JSON.parse(n);let i=[];a.forEach(e=>{r.forEach(t=>{if(e.path===t.path){const a=document.createElement(\"img\");a.src=\"\"!==t.image?t.image:\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjxyZWN0Lz4KPC9zdmc+\";const s={path:e.path,name:e.name,logo:a.src};i.push(s)}})}),i=i.reduce((e,t)=>(e.some(e=>e.name===t.name&&e.path===t.path)||e.push(t),e),[]),this.setState({appList:i}),this.props.setInstalledApplicationList(i),this.state.refresh&&(this.timeout=setTimeout(()=>this.setState({refresh:!1}),300))},this.browseGame=async e=>{e.preventDefault();const t=await I.A.showFileOpenDialog(\"Open\",!0,[v.U0?\"app\":\"exe\",\"url\"]);if(!t)return;let a=JSON.parse(t);Array.isArray(a)&&0!==a.length&&a.forEach(e=>{this.addApp(e)})},this.refresh=async()=>{console.log(\"refreshing list\"),this.setState({refresh:!0,searching:!1,searchText:\"\"},()=>{this.getInstalledApps()})},this.onSearch=e=>{let t=e&&e.target.value||\"\";t=t.toLowerCase().trim();let a=this.state.installedAppList.filter(e=>-1!==e.name.toLowerCase().indexOf(t));this.setState({filteredAppList:a,searchText:t})},this.removeSearch=()=>{this.setState({searchText:\"\"},()=>this.onSearch())},this.renderNav=()=>{const e=this.state.searching;return(0,C.jsxs)(\"div\",{className:\"main-nav\",children:[(0,C.jsxs)(\"ul\",{children:[(0,C.jsx)(\"li\",{onClick:this.refresh,children:this.state.refresh?(0,C.jsx)(\"div\",{className:\"loader show\"}):(0,C.jsx)(\"div\",{className:\"refresh\"})}),(0,C.jsx)(\"li\",{children:e?(0,C.jsxs)(\"div\",{className:\"search-wrapper\",ref:this.searchRef,children:[(0,C.jsx)(\"input\",{className:\"search-input\",type:\"text\",autoFocus:!0,onChange:e=>this.onSearch(e)}),\"\"!==this.state.searchText?(0,C.jsx)(\"i\",{className:\"remove-text-search\",onClick:()=>this.removeSearch(),id:\"remove-icon\"}):null,(0,C.jsx)(\"span\",{})]}):(0,C.jsx)(\"div\",{className:\"search\",onClick:()=>this.setState({searching:!0})})})]}),(0,C.jsxs)(\"div\",{className:\"action-block\",children:[(0,C.jsx)(\"label\",{children:(0,C.jsx)(d.A,{text:i.gnB})}),(0,C.jsx)(\"a\",{draggable:\"false\",href:\"/#\",onClick:this.browseGame,children:(0,C.jsx)(d.A,{text:i.jcG})})]})]})},this.closePopup=()=>{this.setState({searching:!1,searchKey:\"\"},()=>{this.onSearch(),this.props.close()})},this.addApp=e=>{const t=this;this.props.addGame(e).then(()=>{t.setState({searching:!1,searchKey:\"\"},()=>{t.onSearch(),t.props.close()})}).catch(e=>{console.log(e.message||e.toString())})},this.renderAppRows=()=>[...this.state.filteredAppList].sort((e,t)=>e.name.toUpperCase().localeCompare(t.name.toUpperCase())).map((e,t)=>(0,C.jsx)(m,{name:e.name,location:e.path,logo:e.logo,addApp:()=>this.addApp(e.path)},t)),this.state={show:this.props.show,close:this.props.close,refresh:!1,searching:!1,installedAppList:[],filteredAppList:[],searchText:\"\"},this.searchRef=p().createRef()}componentDidMount(){this.handleGetInstalledApp(),window.addEventListener(\"click\",this.handleClick,!1)}componentWillUnmount(){window.removeEventListener(\"click\",this.handleClick,!1),this.timeout&&clearTimeout(this.timeout)}componentDidUpdate(){this.state.installedAppList!==this.props.installedAppList&&this.setState({installedAppList:this.props.installedAppList,filteredAppList:this.props.installedAppList})}render(){return(0,C.jsx)(\"div\",{className:\"add-game\",children:(0,C.jsxs)(u.A,{name:this.props.t(i.II$),show:this.props.show,onClose:this.closePopup,extraStyleForMat:{maxHeight:\"98vh\"},extraClass:this.props.extraClass,children:[(0,C.jsx)(\"div\",{className:\"fixed-header\",children:this.renderNav()}),(0,C.jsx)(\"div\",{className:\"content\",children:this.renderAppRows()})]})})}}"
+    },
+    {
+      "name": "popup_widget",
+      "path": ".ref/applications/synapse/profiles/static/js/9473.f9ed3133.chunk.js",
+      "sha256": "ed7876b57a439cd399d92798479ebadd509fcaabc3aa4fd811cbbf79d250714b",
+      "offset": 19035,
+      "end": 19933,
+      "source": "class r extends s.Component{constructor(){super(...arguments),this.clickedGoBack=()=>{void 0!==this.props.onClose&&this.props.goBack()},this.clickedClose=()=>{this.props.onClose()}}render(){return(0,n.jsx)(\"div\",{className:\"popup-widget\",children:(0,n.jsx)(\"div\",{className:\"backdrop \".concat(this.props.extraClass?this.props.extraClass:\"\",\" \").concat(this.props.show?\"show\":\"\"),children:(0,n.jsxs)(\"div\",{className:\"choose-a-mat linked-games-popup\",style:this.props.extraStyleForMat,children:[(0,n.jsxs)(\"div\",{className:\"head\",children:[void 0!==this.props.goBack?(0,n.jsx)(\"div\",{className:\"back\",onClick:this.clickedGoBack}):\"\",this.props.name,(0,n.jsx)(\"div\",{className:\"close\",onClick:this.clickedClose})]}),(0,n.jsx)(\"div\",{id:\"transparent-scrollbar\",className:\"body \".concat(this.props.notScrollable?\"\":\"scrollable\"),style:this.props.extraStyle||null,children:this.props.children})]})})})}}"
+    }
   ],
-  "local_view_ids": [
-    "devices",
-    "global-shortcuts",
-    "chroma-studio",
-    "macro",
-    "linked-games"
+  "locales": [
+    {
+      "locale": "de",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-de.c445aa83.chunk.js",
+      "sha256": "ce2d1410c1c5f09fb0065e9765fa067d1730ee8514d6483841a2956982dcf3d6",
+      "values": {
+        "GAMES_HEADER": "Spiele",
+        "DEVICE": "Geräte",
+        "LINKED_GAMES": "Verknüpfte Spiele",
+        "VIEWS": "Aufrufe",
+        "ORDER": "Befehl",
+        "ALL_GAMES": "Alle Spiele",
+        "REMOVED_GAMES": "Entfernte Spiele",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "Zuletzt gespielt",
+        "MOST_PLAYED": "Am häufigsten gespielt",
+        "CLICK_TO_ADD": "PER KLICK",
+        "GAME_PROGRAM": "SPIEL/PROGRAMM",
+        "DRAG_AND_DROP_HERE": "HINZUFÜGEN ODER HIERHER ZIEHEN",
+        "ADD_GAME_TITLE": "SPIEL/PROGRAMM HINZUFÜGEN",
+        "STILL_DONT_SEE_YOUR_GAME": "Spiel immer noch nicht gefunden?",
+        "BROWSE": "Durchsuchen",
+        "SCAN_FOR_GAMES": "Nach Spielen suchen",
+        "SEARCH": "Suchen",
+        "REFRESH": "Aktualisieren",
+        "ADD": "Hinzufügen"
+      }
+    },
+    {
+      "locale": "en",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-en.a9476d2a.chunk.js",
+      "sha256": "07d9a78ffea92d9b00d43ea4e504c622e096b1be891670221f3388b86dbda5be",
+      "values": {
+        "GAMES_HEADER": "Games",
+        "DEVICE": "Devices",
+        "LINKED_GAMES": "Linked Games",
+        "VIEWS": "Views",
+        "ORDER": "Order",
+        "ALL_GAMES": "All games",
+        "REMOVED_GAMES": "Removed games",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "Last played",
+        "MOST_PLAYED": "Most played",
+        "CLICK_TO_ADD": "ADD",
+        "GAME_PROGRAM": "A GAME/PROGRAM",
+        "DRAG_AND_DROP_HERE": "OR DRAG AND DROP HERE",
+        "ADD_GAME_TITLE": "ADD A GAME/PROGRAM",
+        "STILL_DONT_SEE_YOUR_GAME": "Still don't see your game?",
+        "BROWSE": "Browse",
+        "SCAN_FOR_GAMES": "Scan for Games",
+        "SEARCH": "Search",
+        "REFRESH": "Refresh",
+        "ADD": "Add"
+      }
+    },
+    {
+      "locale": "es",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-es.88c46505.chunk.js",
+      "sha256": "109913d9ef13d8464b0639bc473b1479358afc9333601dc24e64b2b08ad2b9c5",
+      "values": {
+        "GAMES_HEADER": "Juegos",
+        "DEVICE": "Dispositivos",
+        "LINKED_GAMES": "Juegos vinculados",
+        "VIEWS": "Ver",
+        "ORDER": "Orden",
+        "ALL_GAMES": "Todos los juegos",
+        "REMOVED_GAMES": "Juegos eliminados",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "Jugadoi por última vez",
+        "MOST_PLAYED": "Más horas jugadas",
+        "CLICK_TO_ADD": "HAZ CLICK PARA AÑADIR",
+        "GAME_PROGRAM": "UN JUEGO/PROGRAMA",
+        "DRAG_AND_DROP_HERE": "O ARRASTRA Y SUELTA AQUÍ",
+        "ADD_GAME_TITLE": "AÑADIR UN JUEGO/PROGRAMA",
+        "STILL_DONT_SEE_YOUR_GAME": "¿Aún no ves tu juego?",
+        "BROWSE": "Explorar",
+        "SCAN_FOR_GAMES": "Buscar juegos",
+        "SEARCH": "Buscar",
+        "REFRESH": "Actualizar",
+        "ADD": "Añadir"
+      }
+    },
+    {
+      "locale": "fr",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-fr.ab9b2d2f.chunk.js",
+      "sha256": "7577d41d96cd25c8286a645f5cf697dca109fae1ff7dff7985c2e352c23286a8",
+      "values": {
+        "GAMES_HEADER": "Jeux",
+        "DEVICE": "Appareils",
+        "LINKED_GAMES": "Jeux associés",
+        "VIEWS": "Vues",
+        "ORDER": "Ordre",
+        "ALL_GAMES": "Tous les jeux",
+        "REMOVED_GAMES": "Jeux supprimés",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "Dernier jeu exécuté",
+        "MOST_PLAYED": "Jeu le plus joué",
+        "CLICK_TO_ADD": "CLIQUER POUR AJOUTER",
+        "GAME_PROGRAM": "UN JEU/PROGRAMME",
+        "DRAG_AND_DROP_HERE": "OU GLISSER-DÉPOSER ICI",
+        "ADD_GAME_TITLE": "AJOUTER UN JEU/PROGRAMME",
+        "STILL_DONT_SEE_YOUR_GAME": "Votre jeu n’apparaît toujours pas ?",
+        "BROWSE": "Parcourir",
+        "SCAN_FOR_GAMES": "Rechercher des jeux",
+        "SEARCH": "Rechercher",
+        "REFRESH": "Actualiser",
+        "ADD": "Ajouter"
+      }
+    },
+    {
+      "locale": "ja",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-ja.4aed06f1.chunk.js",
+      "sha256": "2f2e2924687302220f2558a3eca399afc3d3bbfae3a7aea19f7522886801125c",
+      "values": {
+        "GAMES_HEADER": "ゲーム",
+        "DEVICE": "デバイス",
+        "LINKED_GAMES": "リンクされたゲーム",
+        "VIEWS": "表示",
+        "ORDER": "順番",
+        "ALL_GAMES": "すべてのゲーム",
+        "REMOVED_GAMES": "削除済みゲーム",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "最後のプレイ時間順",
+        "MOST_PLAYED": "プレイ時間順",
+        "CLICK_TO_ADD": "ゲームやプログラムを追加するには",
+        "GAME_PROGRAM": "クリックするか",
+        "DRAG_AND_DROP_HERE": "ここにドラッグ＆ドロップします",
+        "ADD_GAME_TITLE": "ゲーム/プログラムの追加",
+        "STILL_DONT_SEE_YOUR_GAME": "ゲームが表示されない場合？",
+        "BROWSE": "参照",
+        "SCAN_FOR_GAMES": "ゲームをスキャ",
+        "SEARCH": "検索",
+        "REFRESH": "更新",
+        "ADD": "追加"
+      }
+    },
+    {
+      "locale": "kr",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-kr.4e3188f3.chunk.js",
+      "sha256": "9c33ee21abaaaff70f1d6198c7f08f8624a96dd01578e98e778c782bb5577de0",
+      "values": {
+        "GAMES_HEADER": "게임",
+        "DEVICE": "기기",
+        "LINKED_GAMES": "연결된 게임",
+        "VIEWS": "보기",
+        "ORDER": "순서",
+        "ALL_GAMES": "모든 게임",
+        "REMOVED_GAMES": "제거된 게임",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "최근 플레이",
+        "MOST_PLAYED": "최다 시간 플레이",
+        "CLICK_TO_ADD": "게임/프로그램을",
+        "GAME_PROGRAM": "추가하려면 클릭하세요",
+        "DRAG_AND_DROP_HERE": "또는 여기에 드래그 앤 드롭하세요",
+        "ADD_GAME_TITLE": "게임/프로그램 추가",
+        "STILL_DONT_SEE_YOUR_GAME": "여전히 게임이 안 보이나요?",
+        "BROWSE": "찾아보기",
+        "SCAN_FOR_GAMES": "게임 스캔",
+        "SEARCH": "검색",
+        "REFRESH": "새로 고침",
+        "ADD": "추가"
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-pt-BR.12012673.chunk.js",
+      "sha256": "603141f597aeab009e13466a9c7c5f788914ba2f97afe071ad723de0a6990f1d",
+      "values": {
+        "GAMES_HEADER": "Jogos",
+        "DEVICE": "Dispositivos",
+        "LINKED_GAMES": "Jogos vinculados",
+        "VIEWS": "Visualizações",
+        "ORDER": "Ordem",
+        "ALL_GAMES": "Todos os jogos",
+        "REMOVED_GAMES": "Jogos removidos",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "Jogado recentemente",
+        "MOST_PLAYED": "Jogado durante mais tempo",
+        "CLICK_TO_ADD": "CLIQUE PARA ADICIONAR",
+        "GAME_PROGRAM": "UM JOGO/PROGRAMA",
+        "DRAG_AND_DROP_HERE": "OU ARRASTE E SOLTE AQUI",
+        "ADD_GAME_TITLE": "ADICIONAR UM JOGO/PROGRAMA",
+        "STILL_DONT_SEE_YOUR_GAME": "Ainda não está vendo seu jogo?",
+        "BROWSE": "Procurar",
+        "SCAN_FOR_GAMES": "Procurar Jogos",
+        "SEARCH": "Procurar",
+        "REFRESH": "Atualizar",
+        "ADD": "Adicionar"
+      }
+    },
+    {
+      "locale": "ru",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-ru.57ee1128.chunk.js",
+      "sha256": "9ed7505cedf9548b090ad8616b03bb4b8179d07d88c6247d4dfba9f08eaa566c",
+      "values": {
+        "GAMES_HEADER": "Игры",
+        "DEVICE": "устройства",
+        "LINKED_GAMES": "Привязанные игры",
+        "VIEWS": "Вид",
+        "ORDER": "Порядок",
+        "ALL_GAMES": "Все игры",
+        "REMOVED_GAMES": "Снова добавить удаленную игру.",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "По дате запуска",
+        "MOST_PLAYED": "По времени в игре",
+        "CLICK_TO_ADD": "ЩЕЛКНИТЕ, ЧТОБЫ ДОБАВИТЬ",
+        "GAME_PROGRAM": "ИГРУ/ПРОГРАММУ",
+        "DRAG_AND_DROP_HERE": "ИЛИ ПЕРЕТАЩИТЕ СЮДА",
+        "ADD_GAME_TITLE": "ДОБАВИТЬ ИГРУ/ПРОГРАММУ",
+        "STILL_DONT_SEE_YOUR_GAME": "Игра все еще не отображается?",
+        "BROWSE": "Обзор",
+        "SCAN_FOR_GAMES": "Сканировать на наличие игр",
+        "SEARCH": "Поиск",
+        "REFRESH": "Обновить",
+        "ADD": "Добавить"
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-zh-CN.af19599c.chunk.js",
+      "sha256": "2a7a7f9ee0e42014f6954b53f03d5091527e8a194cc42ba1ab5e30c8e40792a6",
+      "values": {
+        "GAMES_HEADER": "游戏",
+        "DEVICE": "设备",
+        "LINKED_GAMES": "已关联的游戏",
+        "VIEWS": "查看",
+        "ORDER": "顺序",
+        "ALL_GAMES": "所有游戏",
+        "REMOVED_GAMES": "删除的游戏",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "最后游戏时间",
+        "MOST_PLAYED": "最多游戏时间",
+        "CLICK_TO_ADD": "点击添加",
+        "GAME_PROGRAM": "游戏/程序",
+        "DRAG_AND_DROP_HERE": "或拖放至此处",
+        "ADD_GAME_TITLE": "添加游戏/程序",
+        "STILL_DONT_SEE_YOUR_GAME": "仍未看见你的游戏？",
+        "BROWSE": "浏览",
+        "SCAN_FOR_GAMES": "扫描游戏",
+        "SEARCH": "搜索",
+        "REFRESH": "刷新",
+        "ADD": "添加"
+      }
+    },
+    {
+      "locale": "zh-TW",
+      "path": ".ref/applications/synapse/profiles/static/js/trans-zh-TW.4c9f3e8c.chunk.js",
+      "sha256": "2b23a50542fdd2ecaa9cf7967fed35d108bdff47ebb61ed23bf64b8e0b7148bf",
+      "values": {
+        "GAMES_HEADER": "遊戲",
+        "DEVICE": "裝置",
+        "LINKED_GAMES": "連結的遊戲",
+        "VIEWS": "檢視模式",
+        "ORDER": "順序",
+        "ALL_GAMES": "全部遊戲",
+        "REMOVED_GAMES": "已移除的遊戲",
+        "NAME_A_TO_Z": "Name (A - Z)",
+        "NAME_Z_TO_A": "Name (Z - A)",
+        "LAST_PLAYED": "最後遊戲時間",
+        "MOST_PLAYED": "最多遊戲時間",
+        "CLICK_TO_ADD": "按一下即可新增",
+        "GAME_PROGRAM": "遊戲 / 程式",
+        "DRAG_AND_DROP_HERE": "或者也可拖放遊戲",
+        "ADD_GAME_TITLE": "新增遊戲 / 程式",
+        "STILL_DONT_SEE_YOUR_GAME": "還是找不到你的遊戲？",
+        "BROWSE": "瀏覽",
+        "SCAN_FOR_GAMES": "掃描是否有遊戲",
+        "SEARCH": "搜尋",
+        "REFRESH": "更新",
+        "ADD": "新增"
+      }
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 12524,
+      "selector": ".backdrop",
+      "declarations": "background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 12718,
+      "selector": ".backdrop,.backdrop.glow",
+      "declarations": "background-position:bottom;background-repeat:no-repeat"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 12798,
+      "selector": ".backdrop.glow",
+      "declarations": "background-image:url(../../static/media/background_glow.43f70cb2.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 12883,
+      "selector": ".backdrop.show",
+      "declarations": "opacity:1;visibility:visible;z-index:106"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 12939,
+      "selector": ".backdrop.show .choose-a-mat",
+      "declarations": "top:100px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20575,
+      "selector": ".nav-tabs",
+      "declarations": "display:flex"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20598,
+      "selector": ".nav-tabs .profile-wrapper",
+      "declarations": "display:flex;flex:1 0 25%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20651,
+      "selector": ".nav-tabs .profile-wrapper .profile-del",
+      "declarations": "left:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20701,
+      "selector": ".nav-tabs .right",
+      "declarations": "flex:1 1 25%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20731,
+      "selector": ".nav-tabs .navs-wrapper",
+      "declarations": "flex:1 0 max-content"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20776,
+      "selector": ".nav-tabs.keymapbar-enabled .keymap-bar",
+      "declarations": "color:#ccc;justify-content:left;margin:0 0 0 20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20866,
+      "selector": ".nav-tabs.keymapbar-enabled .profile-wrapper",
+      "declarations": "display:flex"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20924,
+      "selector": ".nav-tabs.keymapbar-enabled .navs-wrapper",
+      "declarations": "flex:1 1 auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 20980,
+      "selector": ".nav-tabs.keymapbar-enabled .keymap-bar-name",
+      "declarations": "display:none"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21038,
+      "selector": ".nav-tabs.keymapbar-enabled .profile-wrapper,.nav-tabs.keymapbar-enabled .right",
+      "declarations": "flex:1 1 25%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21131,
+      "selector": ".nav-tabs .profile-bar",
+      "declarations": "color:#ccc;justify-content:normal;margin:0;width:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21208,
+      "selector": ".nav-tabs .profile-bar .loader",
+      "declarations": "margin-left:10px;margin-right:0;z-index:105"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21283,
+      "selector": ".nav-tabs .help",
+      "declarations": "align-items:center;border-radius:5px;display:flex;height:24px;justify-content:center;margin-right:10px;width:24px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21413,
+      "selector": ".nav-tabs .help .help-icon",
+      "declarations": "background-color:#0000!important;background-image:url(../../static/media/icon_help.377359c3.svg#default);height:24px;width:24px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21568,
+      "selector": ".nav-tabs .help.active .help-icon",
+      "declarations": "background-image:url(../../static/media/icon_help.377359c3.svg#active)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21673,
+      "selector": ".nav-tabs .help:not(.active):hover .help-icon",
+      "declarations": "background-image:url(../../static/media/icon_help.377359c3.svg#hover)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21789,
+      "selector": ".nav-tabs .thx-wrapper",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21830,
+      "selector": ".nav-tabs .thx-wrapper .warn-tip",
+      "declarations": "left:auto;right:15px;top:30px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21893,
+      "selector": ".nav-tabs .thx-wrapper .warn-pop",
+      "declarations": "left:auto;right:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 21946,
+      "selector": ".nav-tabs .thx-wrapper .hover-border.show",
+      "declarations": "border:1px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22013,
+      "selector": ".nav-tabs .navs-wrapper",
+      "declarations": "display:flex;font-family:Roboto,sans-serif;font-size:12px;justify-content:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22118,
+      "selector": ".nav-tabs .navs-wrapper .dots3",
+      "declarations": "background-image:url(../../static/media/icon_more_default.eb7284c1.svg);border:none;border-radius:13px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22252,
+      "selector": ".nav-tabs .navs-wrapper .dots3:hover",
+      "declarations": "background-color:#2d2d2d;background-image:url(../../static/media/icon_more.fb688d78.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22378,
+      "selector": ".nav-tabs .navs-wrapper .dots3 .act.action.uppercase",
+      "declarations": "text-transform:uppercase"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22456,
+      "selector": ".nav-tabs .navs-wrapper .dots3 .act.action.active",
+      "declarations": "background-color:#000;color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22542,
+      "selector": ".nav-tabs .navs-wrapper .dots3 .act.action.active:hover",
+      "declarations": "background-color:#1a1a1a;color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22637,
+      "selector": ".nav-tabs .navs-wrapper .dots3 .act",
+      "declarations": "color:#ccc;font-size:14px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22699,
+      "selector": ".nav-tabs .navs-wrapper .dots3 .act:hover",
+      "declarations": "background-color:#1a1a1a"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22766,
+      "selector": ".nav-tabs .navs-wrapper .dots3.has-actived-option",
+      "declarations": "background-color:#44d62c;background-image:url(../../static/media/icon_more_active.8e04906f.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 22912,
+      "selector": ".nav-tabs .nav",
+      "declarations": "background-repeat:no-repeat;border-radius:14px;color:#999;line-height:14px;margin-right:20px;padding:7px 10px;text-align:center;text-transform:uppercase;transition:background-color .3s,color,.1s;white-space:nowrap;will-change:background-color,color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23176,
+      "selector": ".nav-tabs .nav:last-child",
+      "declarations": "margin-right:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23265,
+      "selector": ".nav-tabs .batt,.nav-tabs .warn,.nav-tabs .warnRestart",
+      "declarations": "background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;margin:0 10px;width:26px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23430,
+      "selector": ".nav-tabs .warn",
+      "declarations": "background-image:url(../../static/media/warning.ad3f47f8.svg);margin:0 5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23521,
+      "selector": ".nav-tabs .restartWarn,.nav-tabs .restartWarn-wrapper",
+      "declarations": "align-items:center;display:flex"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23607,
+      "selector": ".nav-tabs .restartWarn",
+      "declarations": "justify-content:center;margin:0 5px;position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23684,
+      "selector": ".nav-tabs .restartWarn:after",
+      "declarations": "background-image:url(../../static/media/icon_addon_error.5a00577f.svg);content:\"\";height:20px;position:absolute;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23836,
+      "selector": ".nav-tabs .batt",
+      "declarations": "background-image:url(../../static/media/icon_battery_100.b00b88f9.svg);margin:0 5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23936,
+      "selector": ".nav-tabs .batt[tooltip]:before",
+      "declarations": "white-space:pre-wrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 23989,
+      "selector": ".nav-tabs .batt.batt-warning",
+      "declarations": "background-image:url(../../static/media/icon_battery_error.44052666.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24091,
+      "selector": ".nav-tabs .batt.batt-warning[tooltip]:before",
+      "declarations": "color:#ccc;font:normal normal normal 14px/16px Roboto,sans-serif;height:auto;letter-spacing:0;margin-right:16px;opacity:1;text-align:left;white-space:inherit;width:352px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24415,
+      "selector": ".nav-tabs .arrow",
+      "declarations": "background-position:50%;background-size:9px 18px;height:48px;max-width:40px;padding:0;width:40px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24529,
+      "selector": ".nav-tabs .nav.active:hover",
+      "declarations": "background-color:#44d62c;color:#111"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24593,
+      "selector": ".nav-tabs .nav:hover",
+      "declarations": "background-color:#2d2d2d;color:#ccc"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24650,
+      "selector": ".nav-tabs .nav:active",
+      "declarations": "background-color:#3cbf27;color:#111"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 24753,
+      "selector": ".nav-tabs .user.disabled:hover,.nav.disabled:hover",
+      "declarations": "background-color:#0000;cursor:default"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 25002,
+      "selector": ".nav-tabs .right",
+      "declarations": "align-items:center;display:flex;justify-content:flex-end"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 25076,
+      "selector": ".nav-tabs .right .help-icon[tooltip]:before",
+      "declarations": "right:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27147,
+      "selector": ".main-nav",
+      "declarations": "display:inline-flex;height:auto;margin-right:10px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27218,
+      "selector": ".main-nav li .tooltip",
+      "declarations": "display:none"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27253,
+      "selector": ".main-nav li:hover .tooltip",
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;display:block;font-size:14px;margin-left:15px;margin-top:30px;padding:8px 10px;position:absolute;width:-webkit-max-content;width:max-content;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27479,
+      "selector": ".main-nav .add",
+      "declarations": "background-color:#0000;background-image:url(../../static/media/icon_add.c95a8d74.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;transition:background-color .2s;width:26px;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27737,
+      "selector": ".main-nav .add:hover",
+      "declarations": "background-image:url(../../static/media/icon_add.green.db605256.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27827,
+      "selector": ".main-nav .not-grey",
+      "declarations": "background-image:url(../../static/media/icon_addnotgrey.f73db7b6.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 27917,
+      "selector": ".main-nav .syncing_games",
+      "declarations": "background:url(../../static/media/preloader.ef2d0235.svg) no-repeat 50%/26px;height:26px;width:26px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28042,
+      "selector": ".main-nav .refresh_games",
+      "declarations": "background:url(../../static/media/icon_refresh_gamelibrary.5f8edb51.svg) no-repeat 50%/20px;height:26px;width:26px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28182,
+      "selector": ".main-nav .refresh_games:hover",
+      "declarations": "background-image:url(../../static/media/icon_refresh_gamelibrary.green.66e2a41e.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28298,
+      "selector": ".main-nav .refresh",
+      "declarations": "background-color:#0000;background-image:url(../../static/media/icon_refresh.80aa16c3.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;opacity:1;transition:background-color .2s;visibility:visible;width:26px;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28593,
+      "selector": ".main-nav .refresh:hover",
+      "declarations": "background-image:url(../../static/media/icon_refresh.green.10a444da.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28691,
+      "selector": ".main-nav .search",
+      "declarations": "background-color:#0000;background-image:url(../../static/media/icon_search.b84dee08.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;transition:background-color .2s;width:26px;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 28955,
+      "selector": ".main-nav .search:hover",
+      "declarations": "background-image:url(../../static/media/icon_search.green.f5e350b7.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29051,
+      "selector": ".main-nav .search-wrapper",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29095,
+      "selector": ".main-nav .search-wrapper .search-input",
+      "declarations": "background:#111;border:1px solid #5d5d5d;color:#ccc;height:20px;line-height:17px;padding-left:27px;text-align:left;width:133px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29262,
+      "selector": ".main-nav .search-wrapper .search-input:active,.main-nav .search-wrapper .search-input:hover",
+      "declarations": "border-color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29376,
+      "selector": ".main-nav .search-wrapper span:before",
+      "declarations": "background-image:url(../../static/media/icon_search.grey.7c0cb7bb.svg);background-repeat:no-repeat;content:\"\";height:20px;left:3px;position:absolute;top:2px;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29582,
+      "selector": ".main-nav .search-wrapper #remove-icon",
+      "declarations": "background-image:url(../../static/media/icon_close_enclosed.6056b667.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;display:none;display:block;height:25px;position:absolute;right:0;top:0;transition:background-image .2s;width:25px;will-change:background-image"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 29911,
+      "selector": ".main-nav .search-wrapper #remove-icon:hover",
+      "declarations": "background-image:url(../../static/media/icon_close_enclosed_a.83aff4bb.svg);cursor:pointer"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30047,
+      "selector": ".main-nav .add:active,.main-nav .refresh:active,.main-nav .search:active",
+      "declarations": "opacity:.7"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30131,
+      "selector": ".main-nav .loader",
+      "declarations": "height:26px;margin:0;width:26px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30181,
+      "selector": ".main-nav .dropdown-block",
+      "declarations": "display:-webkit-box;margin-right:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30244,
+      "selector": ".main-nav .dropdown-block .custom-dropdown",
+      "declarations": "display:-webkit-box;line-height:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30321,
+      "selector": ".main-nav .dropdown-block .custom-dropdown .dropdown-area,.main-nav .dropdown-block .custom-dropdown .dropdown-area .s3-options",
+      "declarations": "max-width:160px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30465,
+      "selector": ".main-nav .dropdown-block .custom-dropdown span",
+      "declarations": "font-size:14px;line-height:1;vertical-align:-webkit-baseline-middle"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30581,
+      "selector": ".main-nav .dropdown-block .custom-dropdown:last-child .dropdown-area",
+      "declarations": "margin-right:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30665,
+      "selector": ".main-nav .icon-button:hover svg",
+      "declarations": "fill:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30711,
+      "selector": ".main-nav .icon-button:active",
+      "declarations": "fill:#44d62c;opacity:.7"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30765,
+      "selector": ".main-nav ul",
+      "declarations": "align-items:center;display:flex;list-style:none;margin:0 10px 0 0;padding:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30854,
+      "selector": ".main-nav ul li",
+      "declarations": "float:left;margin-right:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30899,
+      "selector": ".main-nav ul li img",
+      "declarations": "width:18px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 30930,
+      "selector": ".main-nav ul li:last-child",
+      "declarations": "margin:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 184267,
+      "selector": ".backdrop",
+      "declarations": "height:100%!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 370601,
+      "selector": ".plus-icon",
+      "declarations": "background-image:url(../../static/media/icon_add.c95a8d74.svg);background-size:40px;height:40px;margin:50px auto;width:40px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 370772,
+      "selector": ".choose-a-mat",
+      "declarations": "background-color:#222;border-radius:5px 5px 0 0;bottom:0;left:50%;max-height:95vh;max-width:1050px;min-width:800px;position:absolute;top:100%;transform:translate(-50%);transition:top .3s;will-change:top"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371059,
+      "selector": ".choose-a-mat .head .close",
+      "declarations": "background-image:url(../../static/media/icon_close.55fe41f1.svg);right:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371159,
+      "selector": ".choose-a-mat .head .back,.choose-a-mat .head .close",
+      "declarations": "background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;top:0;transition:background-color .2s;width:36px;will-change:background-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371416,
+      "selector": ".choose-a-mat .head .back",
+      "declarations": "background-image:url(../../static/media/icon_back_arrow.b39e4841.svg);left:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371519,
+      "selector": ".choose-a-mat .head",
+      "declarations": "box-shadow:0 1px 0 0 #5d5d5d;color:#999;font-family:RazerF5;font-size:16px;height:36px;line-height:19px;padding:9px 0 8px;position:relative;text-align:center;text-transform:uppercase;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371732,
+      "selector": ".choose-a-mat .head .back:hover,.choose-a-mat .head .close:hover",
+      "declarations": "background-color:#ffffff1a"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371824,
+      "selector": ".choose-a-mat .head .back:active,.choose-a-mat .head .close:active",
+      "declarations": "background-color:#0000001a"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 371918,
+      "selector": ".choose-a-mat .body.scrollable",
+      "declarations": "max-height:calc(100% - 36px);overflow-y:scroll;padding:20px 0 30px 25px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 372021,
+      "selector": ".choose-a-mat .body .desc",
+      "declarations": "color:#ccc;font-size:14px;line-height:17px;margin-bottom:10px;text-align:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 372481,
+      "selector": ".choose-a-mat",
+      "declarations": "width:1050px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 372567,
+      "selector": ".choose-a-mat.popup-calibration",
+      "declarations": "width:800px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 372648,
+      "selector": ".choose-a-mat.popup-calibration",
+      "declarations": "min-width:546px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 373836,
+      "selector": ".choose-a-mat .body .illust,.illust-inverted",
+      "declarations": "height:340px;margin:20px auto;width:500px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 373923,
+      "selector": ".choose-a-mat .body .step-1 .illust",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_1.f0c7bbe8.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 374033,
+      "selector": ".choose-a-mat .body .step-1 .illust-inverted",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_1_inverted.defc1125.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 374161,
+      "selector": ".choose-a-mat .body .step-2 .illust",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_2.518758cc.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 374271,
+      "selector": ".choose-a-mat .body .step-2 .illust-inverted",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_2_inverted.8ce2cf1f.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 374399,
+      "selector": ".choose-a-mat .body .complete .illust",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_complete.0fcb4d53.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 374518,
+      "selector": ".choose-a-mat .body .error .illust",
+      "declarations": "background-image:url(../../static/media/mouse_calibration_error.a227b74c.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 378616,
+      "selector": ".choose-a-mat .body .span",
+      "declarations": "animation:blink 2s linear infinite;color:#fff;font-family:cursive;font-size:26px;text-align:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379184,
+      "selector": ".razer-profiles",
+      "declarations": "overflow:hidden!important;padding:0!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379246,
+      "selector": ".profiles-link-games",
+      "declarations": "bottom:0;left:0;overflow:hidden;position:absolute;right:0;top:38px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379345,
+      "selector": ".profiles-link-games .show .choose-a-mat",
+      "declarations": "opacity:1;padding-bottom:90px;top:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379425,
+      "selector": ".profiles-link-games .choose-a-mat",
+      "declarations": "min-width:0;opacity:0;width:calc(100vw - 40px)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379507,
+      "selector": ".profiles-link-games .choose-a-mat .head",
+      "declarations": "background:#222;border-radius:5px 5px 0 0;overflow:hidden;padding-left:50px;padding-right:50px;text-overflow:ellipsis;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379685,
+      "selector": ".profiles-link-games .choose-a-mat .body",
+      "declarations": "height:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379738,
+      "selector": ".profiles-link-games .backdrop",
+      "declarations": "height:0;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379789,
+      "selector": ".profiles-link-games .backdrop.show",
+      "declarations": "height:auto;margin-top:89px;min-height:650px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379870,
+      "selector": ".profiles-link-games .backdrop .body.scrollable",
+      "declarations": "overflow-y:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 379934,
+      "selector": ".profiles-link-games .backdrop #transparent-scrollbar::-webkit-scrollbar-track",
+      "declarations": "background-color:#0000!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380046,
+      "selector": ".profiles-link-games .list-box",
+      "declarations": "display:flex;flex-wrap:wrap;padding:0 20px 80px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380125,
+      "selector": ".profiles-link-games .list-box .linked-device",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380189,
+      "selector": ".profiles-link-games>.main-nav",
+      "declarations": "border-bottom:2px solid #000;display:flex;justify-content:space-between;left:0;margin-right:0;padding:11px;position:absolute;right:0;top:0;z-index:2;z-index:10"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380380,
+      "selector": ".profiles-link-games>.main-nav .nav-tabs",
+      "declarations": "background-color:#0000;border-bottom:none;min-height:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380479,
+      "selector": ".profiles-link-games>.main-nav.home",
+      "declarations": "width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380526,
+      "selector": ".profiles-link-games>.main-nav ul",
+      "declarations": "max-width:33.3333%;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 380590,
+      "selector": ".profiles-link-games>.main-nav .dropdown-block",
+      "declarations": "display:flex;justify-content:end;margin-right:0;max-width:33.3333%;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381299,
+      "selector": ".content-wrapper",
+      "declarations": "height:calc(100vh - 88px);left:0;overflow:auto;position:absolute;right:0;top:50px;z-index:9"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381408,
+      "selector": ".content-wrapper.add-game-popup-showing .add-game .popup-widget",
+      "declarations": "display:block"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381486,
+      "selector": ".content-wrapper.add-game-popup-showing .add-game .popup-widget .fixed-header>.main-nav .loader.show",
+      "declarations": "background-image:url(../../static/media/preloader.ef2d0235.svg)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381651,
+      "selector": ".content-wrapper.device-linked-showing .device_linked_game .popup-widget",
+      "declarations": "display:block"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381762,
+      "selector": ".content-wrapper.device-linked-showing",
+      "declarations": "height:calc(100vh - 77px)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381923,
+      "selector": ".choose-a-mat",
+      "declarations": "width:1050px!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 381961,
+      "selector": ".profiles-link-games .drag-area",
+      "declarations": "height:calc(100% - 6px);min-width:900px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 382033,
+      "selector": ".profiles-link-games .main-nav ul",
+      "declarations": "margin-right:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 382779,
+      "selector": ".device_to_linked_game .drag-area,.profiles-link-games .drag-area",
+      "declarations": "display:block"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 382859,
+      "selector": ".device_to_linked_game .drag-area .dragging,.profiles-link-games .drag-area .dragging",
+      "declarations": "inset:20px 22px 22px 30px;margin:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 382980,
+      "selector": ".device_to_linked_game .drag-area .dragging.no-event>*,.profiles-link-games .drag-area .dragging.no-event>*",
+      "declarations": "pointer-events:none"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css",
+      "sha256": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+      "offset": 383108,
+      "selector": ".device_to_linked_game .drag-area .dragging.hover,.profiles-link-games .drag-area .dragging.hover",
+      "declarations": "border-color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 4739,
+      "selector": ".backdrop",
+      "declarations": "height:100%!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 5259,
+      "selector": ".popup-widget",
+      "declarations": "bottom:0;display:none;left:0;position:absolute;right:0;top:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6351,
+      "selector": ".popup-widget .backdrop",
+      "declarations": "height:100%;overflow:hidden;position:fixed"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6418,
+      "selector": ".popup-widget .backdrop .choose-a-mat",
+      "declarations": "border-radius:5px 5px 0 0;margin-top:110px;max-height:calc(100vh - 110px)!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6540,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar::-webkit-scrollbar-track",
+      "declarations": "background:#0000"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6643,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar",
+      "declarations": "height:100%;overflow-y:hidden;padding:20px 0 42px 25px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6759,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .drag-area",
+      "declarations": "padding-bottom:25px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6851,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content",
+      "declarations": "height:calc(100% - 10px);overflow-y:scroll"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 6964,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp",
+      "declarations": "grid-gap:8px;display:grid;gap:8px;grid-template-columns:repeat(3,33%);height:calc(100% - 10px);overflow-x:hidden;overflow-y:scroll;padding:0 32px 20px 0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7194,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app",
+      "declarations": "align-items:center;color:#ccc;display:flex;flex-direction:column;font-size:14px;justify-content:center;line-height:17px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7408,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .no-available",
+      "declarations": "margin-bottom:10px;text-align:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7553,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .add-app-description>span",
+      "declarations": "color:#44d62c;cursor:pointer;margin-right:3px;text-decoration:underline"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7745,
+      "selector": ".popup-widget .backdrop .choose-a-mat .head",
+      "declarations": "padding:20px 0 10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7809,
+      "selector": ".popup-widget .backdrop.no-popup,.popup-widget .backdrop.no-popup .choose-a-mat",
+      "declarations": "transition:none 0s ease 0s;transition:initial;-webkit-transition:unset;will-change:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 7977,
+      "selector": ".popup-widget .app_row",
+      "declarations": "margin-right:15px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8018,
+      "selector": ".popup-widget .main-nav",
+      "declarations": "font-size:14px;line-height:17px;margin-bottom:10px;padding:0;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8114,
+      "selector": ".popup-widget .main-nav .action-block",
+      "declarations": "align-items:flex-end;display:flex;justify-content:flex-end;margin-right:15px;text-align:right;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8257,
+      "selector": ".popup-widget .main-nav .action-block input[type=file]",
+      "declarations": "opacity:0;position:absolute"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8340,
+      "selector": ".popup-widget .main-nav .action-block.browser",
+      "declarations": "align-items:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8405,
+      "selector": ".popup-widget .main-nav .dropdown-block",
+      "declarations": "margin-right:18px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8463,
+      "selector": ".popup-widget .main-nav a",
+      "declarations": "color:#fff"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8500,
+      "selector": ".popup-widget .main-nav a:hover",
+      "declarations": "color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8546,
+      "selector": ".popup-widget .main-nav a:active",
+      "declarations": "opacity:.7"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8590,
+      "selector": ".popup-widget .main-nav label",
+      "declarations": "margin-right:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8638,
+      "selector": ".popup-widget .main-nav .filter-nav",
+      "declarations": "display:flex;justify-content:space-between;margin:12px 0 0 10px;width:245px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8750,
+      "selector": ".popup-widget .main-nav .filter-nav .added",
+      "declarations": "margin-left:130px;position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8829,
+      "selector": ".popup-widget .main-nav .filter-nav .razer-presets",
+      "declarations": "margin-left:15px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 8897,
+      "selector": ".popup-widget .gradient-fillter:after",
+      "declarations": "background-image:linear-gradient(180deg,#e6e6e661,#222 40%);border-radius:5px 5px 0 0;content:\"\";height:100%;left:0;position:fixed;top:0;width:100%;z-index:-1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9094,
+      "selector": ".popup-widget .game-profile",
+      "declarations": "display:flex;height:auto;margin-bottom:25px;margin-right:5px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9194,
+      "selector": ".popup-widget .game-profile .game-info",
+      "declarations": "display:flex;flex-direction:column;font-size:14px;line-height:17px;max-width:calc(100% - 310px);position:relative;text-align:left"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9363,
+      "selector": ".popup-widget .game-profile .game-info .location",
+      "declarations": "margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9489,
+      "selector": ".popup-widget .game-profile .game-info .missing-game",
+      "declarations": "color:#c8323c;flex:1 1;opacity:0;visibility:hidden"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9593,
+      "selector": ".popup-widget .game-profile .game-info .missing-game p",
+      "declarations": "margin:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9657,
+      "selector": ".popup-widget .game-profile .game-info .missing-game.show",
+      "declarations": "opacity:1;visibility:visible"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9744,
+      "selector": ".popup-widget .game-profile .game-info .remove-button",
+      "declarations": "text-decoration:underline;text-transform:capitalize;width:-webkit-max-content;width:max-content"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9894,
+      "selector": ".popup-widget .game-profile .game-info .remove-button:hover",
+      "declarations": "color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 9968,
+      "selector": ".popup-widget .game-profile .game-info .remove-button:active",
+      "declarations": "opacity:.7"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 10040,
+      "selector": ".popup-widget .linked-device-list",
+      "declarations": "line-height:17px;text-align:center;width:calc(100% + 8px)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 10132,
+      "selector": ".popup-widget .linked-device-list .title",
+      "declarations": "font-size:14px;line-height:17px;margin-bottom:10px;text-transform:uppercase"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 10249,
+      "selector": ".popup-widget .list-box",
+      "declarations": "display:flex;flex-wrap:wrap;margin-right:-5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11107,
+      "selector": ".game-tile",
+      "declarations": "background-color:#111;border:2px solid #0000;border-radius:5px;height:220px;margin:10px;position:relative;text-align:center;width:290px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11254,
+      "selector": ".game-tile:hover",
+      "declarations": "border-color:#44d62c4d"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11294,
+      "selector": ".game-tile:active",
+      "declarations": "border-color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11333,
+      "selector": ".game-tile:active .remove-link,.game-tile:hover .remove-link",
+      "declarations": "display:block!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11418,
+      "selector": ".game-tile.undetected",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11458,
+      "selector": ".game-tile.undetected .missing-wrapper",
+      "declarations": "left:0;position:absolute;right:0;top:30%;z-index:100"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11550,
+      "selector": ".game-tile.undetected .missing-wrapper img",
+      "declarations": "pointer-events:none;width:40px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11624,
+      "selector": ".game-tile.undetected .missing-wrapper .remove-link",
+      "declarations": "display:none;text-decoration:underline"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11715,
+      "selector": ".game-tile.undetected .missing-wrapper .remove-link:hover",
+      "declarations": "color:red"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11783,
+      "selector": ".game-tile.undetected .game-body",
+      "declarations": "align-items:center;display:flex;justify-content:center;opacity:.1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11882,
+      "selector": ".game-tile .icon-wrapper",
+      "declarations": "padding:5px;position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 11937,
+      "selector": ".game-tile .icon-wrapper .tooltip",
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;left:50%;opacity:0;padding:8px 10px;position:absolute;text-align:left;top:90%;visibility:hidden;width:-webkit-max-content;width:max-content;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12168,
+      "selector": ".game-tile .icon-wrapper:hover .tooltip",
+      "declarations": "opacity:1;visibility:visible"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12237,
+      "selector": ".game-tile .icon-wrapper p",
+      "declarations": "font-size:14px;margin:0;padding-bottom:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12308,
+      "selector": ".game-tile .icon-wrapper p:last-child",
+      "declarations": "padding:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12356,
+      "selector": ".game-tile .game-body",
+      "declarations": "background-position:50%;background-repeat:no-repeat;background-size:cover;border-radius:5px 5px 0 0;height:150px;position:relative;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12520,
+      "selector": ".game-tile .game-body.ico-image",
+      "declarations": "background-size:60px 60px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12578,
+      "selector": ".game-tile .device-profile-name",
+      "declarations": "color:#ccc;font-family:Roboto,sans-serif;font-size:14px;margin:0;white-space:pre-wrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12696,
+      "selector": ".game-tile .game-footer",
+      "declarations": "height:70px;padding:10px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12756,
+      "selector": ".game-tile .game-footer .name",
+      "declarations": "color:#ccc;display:block;font-size:14px;line-height:19px;margin-bottom:3px;overflow:hidden;text-align:center;text-overflow:ellipsis;text-transform:capitalize;white-space:nowrap;width:155px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 12975,
+      "selector": ".game-tile .game-footer .device-icon",
+      "declarations": "display:flex;justify-content:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13048,
+      "selector": ".game-tile .game-footer .device-icon .more-devices",
+      "declarations": "align-items:center;display:flex;font-size:14px;height:30px;justify-content:center;width:30px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13192,
+      "selector": ".game-tile .game-footer .device-icon img",
+      "declarations": "height:20px;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13256,
+      "selector": ".game-tile.add-new",
+      "declarations": "background-color:#0000!important;border:2px dashed #5d5d5d;font-size:14px;line-height:16px;transition:border-color .2s;will-change:border-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13419,
+      "selector": ".game-tile.add-new .plus-icon",
+      "declarations": "left:50%;margin:auto;position:absolute;top:50%;transform:translate(-50%,-50%)"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13527,
+      "selector": ".game-tile.add-new .game-footer",
+      "declarations": "padding:0 35px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13574,
+      "selector": ".game-tile.add-new:active,.game-tile.add-new:hover",
+      "declarations": "border-color:#44d62c;box-shadow:none"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13662,
+      "selector": ".game-tile .check-item",
+      "declarations": "left:10px;position:absolute;top:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13722,
+      "selector": ".game-tile .check-item.indent:before",
+      "declarations": "border-bottom:1px solid #707070;border-left:1px solid #707070;content:\"\";display:inline-block;height:14px;left:9px;margin-right:11px;position:relative;top:-10px;width:13px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 13931,
+      "selector": ".game-tile .indeterminate label:before",
+      "declarations": "background-color:#44d62c;height:2px;left:4px;top:8px;transform:rotate(0deg);width:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14057,
+      "selector": ".game-tile .indeterminate .check-box",
+      "declarations": "background:#000"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14110,
+      "selector": ".game-tile .indeterminate label:after",
+      "declarations": "background-color:#0000;height:0;width:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14188,
+      "selector": ".game-tile .check-box",
+      "declarations": "background-color:#111"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14232,
+      "selector": ".game-tile .game-body",
+      "declarations": "border-top-left-radius:5px;border-top-right-radius:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14346,
+      "selector": ".game-tile .game-tile:nth-of-type(4n+4)",
+      "declarations": "margin-right:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 14401,
+      "selector": ".game-tile .game-tile:nth-of-type(n)",
+      "declarations": "margin-left:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 54546,
+      "selector": ".listDevices_wrapper .content-wrapper",
+      "declarations": "position:relative;top:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 54608,
+      "selector": ".listDevices_wrapper .content-wrapper .drag-area",
+      "declarations": "height:auto"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 54669,
+      "selector": ".listDevices_wrapper .nav-tabs",
+      "declarations": "align-items:center;display:flex;justify-content:space-between;min-height:auto;padding:11px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 54791,
+      "selector": ".listDevices_wrapper .nav-tabs .profile-wrapper,.listDevices_wrapper .nav-tabs .right",
+      "declarations": "min-height:28px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 54893,
+      "selector": ".listDevices_wrapper .nav-tabs .navs-wrapper,.listDevices_wrapper .nav-tabs .profile-wrapper,.listDevices_wrapper .nav-tabs .right",
+      "declarations": "max-width:33.333333%;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55056,
+      "selector": ".listDevices_wrapper .list-device",
+      "declarations": "display:flex;flex-wrap:wrap;padding:0 20px 80px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55138,
+      "selector": ".listDevices_wrapper .list-device .device-tile",
+      "declarations": "align-items:center;background-color:#111;border:2px solid #0000;border-radius:5px;display:flex;flex-direction:column;height:220px;margin:10px;padding-top:10px;position:relative;text-align:center;width:290px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55392,
+      "selector": ".listDevices_wrapper .list-device .device-tile:hover",
+      "declarations": "border-color:#44d62c4d"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55468,
+      "selector": ".listDevices_wrapper .list-device .device-tile:active",
+      "declarations": "border-color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55543,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-image",
+      "declarations": "background-position:50%;background-repeat:no-repeat;background-size:contain;border-radius:5px 5px 0 0;height:140px;position:relative;width:250px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55749,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-image.NANOLEAF",
+      "declarations": "background-image:url(../../static/media/logo_nanoleaf.0e61b1d9.svg)!important;background-size:80px 80px!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 55933,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info",
+      "declarations": "height:70px;padding:10px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56029,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-name",
+      "declarations": "display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56189,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-edition",
+      "declarations": "color:#707070;display:block;font-size:12px;min-height:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56382,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-icon",
+      "declarations": "display:flex;justify-content:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56491,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-icon .more-devices",
+      "declarations": "align-items:center;display:flex;font-size:14px;height:30px;justify-content:center;width:30px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56671,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-icon img",
+      "declarations": "height:20px;padding:5px;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56783,
+      "selector": ".listDevices_wrapper .list-device .device-tile .device-info .device-icon svg",
+      "declarations": "padding:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 56872,
+      "selector": ".listDevices_wrapper .list-device .device-tile .chromastudio",
+      "declarations": "background-size:80px 80px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57247,
+      "selector": ".device_to_linked_game .linked-game-tile",
+      "declarations": "background-color:#111;border:1px solid #111;border-radius:5px;margin:10px 5px 0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57368,
+      "selector": ".device_to_linked_game .linked-game-tile,.device_to_linked_game .linked-game-tile.undetected",
+      "declarations": "height:190px;position:relative;width:240px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57504,
+      "selector": ".device_to_linked_game .linked-game-tile.undetected .game-body,.device_to_linked_game .linked-game-tile.undetected .game-footer",
+      "declarations": "opacity:.3"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57643,
+      "selector": ".device_to_linked_game .linked-game-tile.undetected .game-footer .device-icon .icon-wrapper",
+      "declarations": "left:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57742,
+      "selector": ".device_to_linked_game .linked-game-tile.undetected .icon-wrapper",
+      "declarations": "left:0;position:absolute;right:0;text-align:center;top:20%;z-index:100"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57879,
+      "selector": ".device_to_linked_game .linked-game-tile.undetected .icon-wrapper:hover .tooltip",
+      "declarations": "opacity:1;visibility:visible"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 57989,
+      "selector": ".device_to_linked_game .linked-game-tile.undetected img",
+      "declarations": "pointer-events:none;width:40px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58076,
+      "selector": ".device_to_linked_game .linked-game-tile .icon-wrapper .tooltip",
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;font-size:14px;max-width:155px;opacity:0;padding:8px 10px;position:absolute;text-align:left;visibility:hidden;width:-webkit-max-content;width:max-content;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58351,
+      "selector": ".device_to_linked_game .linked-game-tile .icon-wrapper .tooltip:hover .tooltip",
+      "declarations": "opacity:1;visibility:visible"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58459,
+      "selector": ".device_to_linked_game .linked-game-tile .linked-profile",
+      "declarations": "background:#11111180;border-radius:5px 5px 0 0;height:40px;position:absolute;width:100%;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58614,
+      "selector": ".device_to_linked_game .linked-game-tile .linked-profile-name",
+      "declarations": "color:#44d62c;font-size:14px;left:40px;line-height:17px;max-width:80%;overflow:hidden;position:absolute;text-overflow:ellipsis;top:12px;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58831,
+      "selector": ".device_to_linked_game .linked-game-tile .linked-profile .disabled",
+      "declarations": "opacity:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58908,
+      "selector": ".device_to_linked_game .linked-game-tile.active",
+      "declarations": "border:2px solid #44d62c!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 58991,
+      "selector": ".device_to_linked_game .linked-game-tile.active:active",
+      "declarations": "border:1px solid #44d62c!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59081,
+      "selector": ".device_to_linked_game .linked-game-tile.active:active .check-item .check-box",
+      "declarations": "background-color:#2f941e!important;border-color:#2f941e!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59225,
+      "selector": ".device_to_linked_game .linked-game-tile.active:hover .check-item .check-box",
+      "declarations": "background-color:#7ce26c;border-color:#7ce26c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59348,
+      "selector": ".device_to_linked_game .linked-game-tile:hover",
+      "declarations": "border:1px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59420,
+      "selector": ".device_to_linked_game .linked-game-tile:hover .game-footer .name",
+      "declarations": "color:#44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59500,
+      "selector": ".device_to_linked_game .linked-game-tile:hover .check-item label",
+      "declarations": "border:1px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59590,
+      "selector": ".device_to_linked_game .linked-game-tile:active",
+      "declarations": "border:2px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59663,
+      "selector": ".device_to_linked_game .linked-game-tile:active .indeterminate label.check-box",
+      "declarations": "background:#2f941e;border:1px solid #2f941e"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59786,
+      "selector": ".device_to_linked_game .linked-game-tile:active .check-item .check-box",
+      "declarations": "background:#44d62c;border:1px solid #44d62c"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 59901,
+      "selector": ".device_to_linked_game .linked-game-tile.add-new",
+      "declarations": "background:#0000;border:2px dashed #5d5d5d;transition:border-color .2s;will-change:border-color"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60046,
+      "selector": ".device_to_linked_game .linked-game-tile.add-new:active,.device_to_linked_game .linked-game-tile.add-new:hover",
+      "declarations": "border-color:#44d62c;box-shadow:none"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60194,
+      "selector": ".device_to_linked_game .linked-game-tile.add-new .game-footer",
+      "declarations": "font-size:14px;line-height:16px;padding:0;text-align:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60316,
+      "selector": ".device_to_linked_game .linked-game-tile .game-body",
+      "declarations": "align-items:center;background-position:50%;background-repeat:no-repeat;background-size:cover;border-radius:5px 5px 0 0;display:flex;height:120px;justify-content:center;position:relative;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60565,
+      "selector": ".device_to_linked_game .linked-game-tile .game-body.ico-image",
+      "declarations": "background-size:60px 60px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60653,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer",
+      "declarations": "height:70px;padding:10px;width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60743,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .name",
+      "declarations": "color:#ccc;font-size:14px;line-height:19px;margin-bottom:3px;overflow:hidden;text-align:center;text-overflow:ellipsis;text-transform:capitalize;white-space:nowrap"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 60966,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon",
+      "declarations": "display:flex;justify-content:center"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61069,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .icon-wrapper",
+      "declarations": "position:relative"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61168,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .icon-wrapper .tooltip",
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;left:50%;opacity:0;padding:8px 10px;position:absolute;top:90%;visibility:hidden;width:-webkit-max-content;width:max-content;z-index:10"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61440,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .icon-wrapper:hover .tooltip",
+      "declarations": "opacity:1;visibility:visible"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61565,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .icon-wrapper p",
+      "declarations": "font-size:14px;margin:0;padding-bottom:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61692,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .icon-wrapper p:last-child",
+      "declarations": "padding:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61796,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon .more-devices",
+      "declarations": "align-items:center;display:flex;font-size:14px;height:30px;justify-content:center;width:30px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 61970,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon img",
+      "declarations": "height:20px;padding:5px;width:20px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62076,
+      "selector": ".device_to_linked_game .linked-game-tile .game-footer .device-icon svg",
+      "declarations": "padding:5px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62159,
+      "selector": ".device_to_linked_game .linked-game-tile .check-item",
+      "declarations": "height:20px;left:10px;position:absolute;top:10px;width:20px;z-index:1"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62282,
+      "selector": ".device_to_linked_game .linked-game-tile .check-item.indent:before",
+      "declarations": "border-bottom:1px solid #707070;border-left:1px solid #707070;content:\"\";display:inline-block;height:14px;left:9px;margin-right:11px;position:relative;top:-10px;width:13px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62521,
+      "selector": ".device_to_linked_game .linked-game-tile .indeterminate label:before",
+      "declarations": "background-color:#44d62c;height:2px;left:4px;top:8px;transform:rotate(0deg);width:10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62677,
+      "selector": ".device_to_linked_game .linked-game-tile .indeterminate .check-box",
+      "declarations": "background:#000"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62760,
+      "selector": ".device_to_linked_game .linked-game-tile .indeterminate label:after",
+      "declarations": "background-color:none;height:0;width:0"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 62867,
+      "selector": ".device_to_linked_game .linked-game-tile .check-box",
+      "declarations": "background-color:#111"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63273,
+      "selector": ".app_row",
+      "declarations": "padding:10px 20px 10px 10px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63310,
+      "selector": ".app_row,.app_row .app_info",
+      "declarations": "align-items:center;display:flex"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63370,
+      "selector": ".app_row .app_info",
+      "declarations": "width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63400,
+      "selector": ".app_row .app_info .logo",
+      "declarations": "height:40px;margin-right:20px;width:40px"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63466,
+      "selector": ".app_row .app_info .logo img",
+      "declarations": "width:100%"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63506,
+      "selector": ".app_row .app_info .text-wrapper",
+      "declarations": "display:flex;flex-direction:column"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63574,
+      "selector": ".app_row .app_info .text-wrapper .location",
+      "declarations": "color:#707070"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63631,
+      "selector": ".app_row .app_info .text-wrapper label",
+      "declarations": "line-height:17px;max-width:750px;overflow:hidden;text-align:left;text-overflow:ellipsis;white-space:nowrap;word-break:break-word"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 63799,
+      "selector": ".app_row .add_button",
+      "declarations": "background:#44d62c;border-radius:3px;color:#212121;line-height:27px;min-width:110px;text-align:center;text-transform:uppercase;transition:opacity .3s;visibility:hidden;will-change:opacity"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 64008,
+      "selector": ".app_row .add_button:active",
+      "declarations": "cursor:pointer;opacity:.6!important"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 64072,
+      "selector": ".app_row .add_button:hover",
+      "declarations": "cursor:pointer;opacity:.8"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 64125,
+      "selector": ".app_row:hover",
+      "declarations": "background:#ffffff1a"
+    },
+    {
+      "path": ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css",
+      "sha256": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+      "offset": 64161,
+      "selector": ".app_row:hover .add_button",
+      "declarations": "visibility:visible"
+    }
+  ],
+  "corrections": [
+    "The five shared route regexes do not define mounted navigation: Ba mounts Games and Devices only.",
+    "The initial view is nav[0], Games, unless session history selects another tab.",
+    "Xt is the application toolbar, not a second pair of arrows in the page navigation.",
+    "The main grid uses .game-tile (290x220, body 150); .linked-game-tile (240x190) belongs to a separate embedded surface.",
+    "All ten application locales exist; short minified symbols resolve through module 4693 export getters."
+  ],
+  "limitations": [
+    "Static contracts do not establish rendered pixel equivalence or hardware/service behavior."
   ],
   "problems": []
 }
