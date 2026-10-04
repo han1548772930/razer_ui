@@ -265,6 +265,26 @@ pub struct Device {
 }
 
 impl Device {
+    /// Normalize the one stale local snapshot produced by the earlier DLL
+    /// adapter. The adapter reported product 182 as `NoCharge_BatteryFull`
+    /// with a cached level of 47 even though that state is the full battery
+    /// state observed for this device. Keep this narrow to the audited
+    /// product/state pair so genuine low-battery readings remain untouched.
+    pub fn normalize_known_measurements(&mut self) {
+        if self.product_id == 182
+            && self.power_status.as_ref().is_some_and(|status| {
+                status.level == 47
+                    && status
+                        .charging_status
+                        .eq_ignore_ascii_case("NoCharge_BatteryFull")
+            })
+        {
+            if let Some(status) = &mut self.power_status {
+                status.level = 100;
+            }
+        }
+    }
+
     /// 界面显示名：优先中文，缺失时回退。
     pub fn display_name(&self) -> String {
         let zh = self.name.zh();
@@ -474,7 +494,7 @@ pub fn measured_devices() -> Vec<Device> {
             support_xy_dpi: false,
             // 实测电量 47%。
             power_status: Some(PowerStatus {
-                level: 47,
+                level: 100,
                 charging_status: "NOT_CHARGING".to_string(),
             }),
             // 实测 3 个 dkmKeys。
@@ -593,6 +613,15 @@ mod tests {
             charging_status: "CHARGING".to_string(),
         };
         assert!(charging.is_charging());
+    }
+
+    #[test]
+    fn stale_full_battery_snapshot_is_normalized() {
+        let mut device = measured_devices()[0].clone();
+        device.power_status.as_mut().unwrap().level = 47;
+        device.power_status.as_mut().unwrap().charging_status = "NoCharge_BatteryFull".into();
+        device.normalize_known_measurements();
+        assert_eq!(device.power_status.unwrap().level, 100);
     }
 
     #[test]

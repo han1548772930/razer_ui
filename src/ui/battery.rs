@@ -69,41 +69,52 @@ fn percent_tip(level: i32) -> String {
 
 /// 电量档位 → `battName` + 图标 + 提示文案（原版 `qe(payload)` 的等价实现）。
 pub(crate) fn badge(level: i32, charging_status: &str) -> BatteryBadge {
-    let (class, icon, tip, _warning) = match charging_status {
-        "off" => (
+    // The dashboard normally sends the title-cased enum values above, while
+    // lower-level payloads have also been observed with all-caps values
+    // (`OFF`, `CHARGING`, ...). Keep the source spelling for unknown states,
+    // but make the known branches case-insensitive so those payloads do not
+    // silently fall back to the 100% icon.
+    let (class, icon, tip, _warning) = if charging_status.eq_ignore_ascii_case("off") {
+        (
             "batt batt-off",
             "synapse/battery-off.svg",
             i18n::t("BATTERY_OFF"),
             false,
-        ),
-        "Charging" if level >= 99 => (
+        )
+    } else if charging_status.eq_ignore_ascii_case("charging") && level >= 99 {
+        (
             "batt charging100",
             "synapse/battery-charging-100.svg",
             i18n::t("BATTERY_CHARGED_FULL"),
             false,
-        ),
-        "Charging" => (
+        )
+    } else if charging_status.eq_ignore_ascii_case("charging") {
+        (
             "batt charging",
             "synapse/battery-charging.svg",
             i18n::t("BATTERY_CHARGING"),
             false,
-        ),
-        "NoCharge_BatteryFull" => bucket_badge(level, false),
+        )
+    } else if charging_status.eq_ignore_ascii_case("NoCharge_BatteryFull") {
+        bucket_badge(level, false)
         // `pV.PAUSED_CHARGING` 的字面值是 `ReachChargingLimit`（充电到上限后暂停）。
-        "ReachChargingLimit" => bucket_badge(level, true),
-        "batt-warning" => (
+    } else if charging_status.eq_ignore_ascii_case("ReachChargingLimit") {
+        bucket_badge(level, true)
+    } else if charging_status.eq_ignore_ascii_case("batt-warning") {
+        (
             "batt batt-warning",
             "synapse/battery-error.svg",
             i18n::t("BATTERY_ERROR_TIPS"),
             true,
-        ),
+        )
         // default 分支：`Sa(100)`，文案同样取 `BATTERY_PERCENT`。
-        _ => (
+    } else {
+        (
             "batt batt-100",
             "synapse/battery-100.svg",
             percent_tip(level),
             false,
-        ),
+        )
     };
     BatteryBadge {
         class,

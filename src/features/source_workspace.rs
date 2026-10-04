@@ -272,6 +272,15 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
+                 _: Entity<super::source_controls::SourceControls>,
+                 _: &super::source_controls::SourceControlsPairingRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::PairingRequested(this.device.clone()));
+                },
+            ));
             FamilyBody::Controls(body)
         } else {
             FamilyBody::Pending
@@ -289,6 +298,15 @@ impl SourceProductWorkspace {
                  _: &super::source_controls::SourceControlsChanged,
                  cx| {
                     this.capture_supplement(controls.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &controls,
+                |this: &mut Self,
+                 _: Entity<super::source_controls::SourceControls>,
+                 _: &super::source_controls::SourceControlsPairingRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::PairingRequested(this.device.clone()));
                 },
             ));
             Some(controls)
@@ -324,16 +342,21 @@ impl SourceProductWorkspace {
             InputState::new(window, cx)
                 .validate(move |value, _| value.encode_utf16().count() <= name_limit)
         });
-        subscriptions.push(cx.subscribe_in(&profile_name, window, |this: &mut Self, _, event, window, cx| {
-            if matches!(event, InputEvent::PressEnter { .. } | InputEvent::Blur) {
-                this.finish_profile_rename(window, cx);
-                if matches!(event, InputEvent::PressEnter { .. }) {
-                    this.profile.update(cx, |state, cx| state.focus(window, cx));
+        subscriptions.push(cx.subscribe_in(
+            &profile_name,
+            window,
+            |this: &mut Self, _, event, window, cx| {
+                if matches!(event, InputEvent::PressEnter { .. } | InputEvent::Blur) {
+                    this.finish_profile_rename(window, cx);
+                    if matches!(event, InputEvent::PressEnter { .. }) {
+                        this.profile.update(cx, |state, cx| state.focus(window, cx));
+                    }
                 }
-            }
-        }));
+            },
+        ));
         let owner = cx.entity().downgrade();
-        let profile_menu = cx.new(|cx| ListState::new(profile_menu::ProfileCommands::new(owner), window, cx));
+        let profile_menu =
+            cx.new(|cx| ListState::new(profile_menu::ProfileCommands::new(owner), window, cx));
         let help = cx.new(|cx| super::source_help::SourceHelp::new(device.clone(), cx));
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));

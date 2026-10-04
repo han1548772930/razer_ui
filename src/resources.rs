@@ -342,4 +342,14 @@ mod tests {
         assert!(resolve_device_image(12345, 0, 1, DeviceImage::Product).is_none());
         assert!(device_image(12345, 0, 999, DeviceImage::Product).is_none());
     }
+
+    #[test]
+    fn accessory_179_has_embedded_product_and_dashboard_images() {
+        let product = embedded_image(179, 0, 0, DeviceImage::Product);
+        assert_eq!(product.asset, "synapse/product-179-prd-1x.c84b6fdf.png");
+        assert_eq!(
+            dashboard_image(179, 0, 0),
+            Some("synapse/dashboard-179-0-0.png")
+        );
+    }
 }

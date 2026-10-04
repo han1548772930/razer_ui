@@ -31,6 +31,13 @@ fn status_mapping_matches_source() {
     assert_eq!(charging.class, "batt charging");
     assert_eq!(charging.icon, "synapse/battery-charging.svg");
 
+    // Lower-level payloads can use all-caps enum values; they map to the same
+    // source badge instead of falling through to the default 100% icon.
+    let charging_upper = badge(50, "CHARGING");
+    assert_eq!(charging_upper.class, "batt charging");
+    let off_upper = badge(50, "OFF");
+    assert_eq!(off_upper.class, "batt batt-off");
+
     let full = badge(99, "Charging");
     assert_eq!(full.class, "batt charging100");
     assert_eq!(full.icon, "synapse/battery-charging-100.svg");

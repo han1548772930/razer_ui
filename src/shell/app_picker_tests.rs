@@ -12,7 +12,11 @@ use gpui_kit::{
 #[test]
 fn bundled_pages_open_without_external_installation_or_download_state() {
     let catalog = AppPickerCatalog::new(PickerApp::Synapse)
-        .bundled_modules([PickerModule::Alexa, PickerModule::ProfileMigration])
+        .bundled_modules([
+            PickerModule::Alexa,
+            PickerModule::Feedback,
+            PickerModule::ProfileMigration,
+        ])
         .uninstalling_modules(["alexa"])
         .module_order(["profile-migration"]);
     assert!(catalog.status_unknown());
@@ -23,7 +27,7 @@ fn bundled_pages_open_without_external_installation_or_download_state() {
         .iter()
         .find(|section| section.id == "modules")
         .unwrap();
-    assert_eq!(modules.items.len(), 2);
+    assert_eq!(modules.items.len(), 3);
     assert!(
         modules
             .items
@@ -33,6 +37,10 @@ fn bundled_pages_open_without_external_installation_or_download_state() {
     assert!(modules.items.iter().any(|item| matches!(
         &item.target,
         super::PickerRequest::Open(PickerTarget::Module(PickerModule::Alexa))
+    )));
+    assert!(modules.items.iter().any(|item| matches!(
+        &item.target,
+        super::PickerRequest::Open(PickerTarget::Module(PickerModule::Feedback))
     )));
     assert!(!sections.iter().any(|section| section.id == "recommended"));
 }

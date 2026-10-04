@@ -11,10 +11,12 @@ use crate::{
     resources,
     ui::{scroll::SourceScrollable as _, surface::css},
 };
-use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::{Button as BaseButton, Switch};
 use gpui_kit::component::{
+    checkbox::Checkbox,
     input::{Input, InputState},
     select::{Select, SelectEvent, SelectState},
+    tooltip::Tooltip,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -170,6 +172,9 @@ impl ChromaPage {
             .collect();
         cx.notify();
     }
+    pub(super) fn focus(&self, window: &mut Window, cx: &mut App) {
+        self.focus.focus(window, cx);
+    }
     pub(super) fn activate_apps(&mut self, cx: &mut Context<Self>) {
         self.navigate(ChromaTab::Apps, cx);
     }
@@ -224,7 +229,11 @@ impl ChromaPage {
                     .p_0()
                     .disabled(!self.can_step_history(false))
                     .accessibility_label(tr("BACK"))
-                    .child(Icon::default().path("synapse/history-back.svg").size(css(16.)))
+                    .child(
+                        Icon::default()
+                            .path("synapse/history-back.svg")
+                            .size(css(16.)),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| this.step_history(false, cx))),
             )
             .child(
@@ -233,7 +242,11 @@ impl ChromaPage {
                     .p_0()
                     .disabled(!self.can_step_history(true))
                     .accessibility_label(tr("FORWARD"))
-                    .child(Icon::default().path("synapse/history-forward.svg").size(css(16.)))
+                    .child(
+                        Icon::default()
+                            .path("synapse/history-forward.svg")
+                            .size(css(16.)),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| this.step_history(true, cx))),
             )
             .child(
@@ -300,8 +313,14 @@ impl ChromaPage {
                     .gap(css(10.))
                     .text_size(css(14.))
                     .child(
-                        Icon::default().path("synapse/expand.svg").transform(Transformation::rotate(radians(if collapsed { -std::f32::consts::FRAC_PI_2 } else { 0. })))
-                        .size(css(10.)),
+                        Icon::default()
+                            .path("synapse/expand.svg")
+                            .transform(Transformation::rotate(radians(if collapsed {
+                                -std::f32::consts::FRAC_PI_2
+                            } else {
+                                0.
+                            })))
+                            .size(css(10.)),
                     )
                     .child(title.to_uppercase())
                     .hover(|s| s.text_color(rgb(0xffffff)))
@@ -339,7 +358,11 @@ impl ChromaPage {
                     .size(css(24.))
                     .p_0()
                     .accessibility_label(tr("CLOSE"))
-                    .child(Icon::default().path("synapse/host-close.svg").size(css(20.)))
+                    .child(
+                        Icon::default()
+                            .path("synapse/host-close.svg")
+                            .size(css(20.)),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.preferences.introduction = false;
                         this.preferences.save();
@@ -428,7 +451,7 @@ impl ChromaPage {
                     && !device
                         .power_status
                         .as_ref()
-                        .is_some_and(|s| s.charging_status == "off");
+                        .is_some_and(|s| s.charging_status.eq_ignore_ascii_case("off"));
                 let name = device.display_name();
                 let target = entity.clone();
                 let snapshot = chroma_product::lighting_snapshot(workspace, cx);
@@ -451,7 +474,9 @@ impl ChromaPage {
                         .active(|s| s.border_color(rgb(0x44d62c)))
                         .accessibility_label(name.clone())
                         .when(!available, |b| {
-                            b.tooltip("此设备的 Chroma 灯光页尚未接入。")
+                            b.tooltip(|window, cx| {
+                                Tooltip::new("此设备的 Chroma 灯光页尚未接入。").build(window, cx)
+                            })
                         })
                         .child(div().w(css(250.)).h(css(140.)).flex_shrink_0().when_some(
                             resources::dashboard_image(
@@ -537,7 +562,10 @@ impl ChromaPage {
                     .gap(css(4.))
                     .disabled(!supported)
                     .accessibility_label(tr(preset.key()))
-                    .tooltip(tr(preset.key()))
+                    .tooltip({
+                        let tip = tr(preset.key());
+                        move |window, cx| Tooltip::new(tip.clone()).build(window, cx)
+                    })
                     .rounded(css(5.))
                     .bg(rgb(0x111111))
                     .border_1()
@@ -558,7 +586,7 @@ impl ChromaPage {
                     .bg(rgb(0x111111))
                     .rounded(css(5.))
                     .accessibility_label(tr("CHROMA_APPS"))
-                    .tooltip(tr("CHROMA_APPS"))
+                    .tooltip(|window, cx| Tooltip::new(tr("CHROMA_APPS")).build(window, cx))
                     .child(img("synapse/chroma-dashboard_chromaapps.svg").size(css(54.)))
                     .on_click(cx.listener(|this, _, _, cx| this.activate_apps(cx))),
             )
@@ -696,7 +724,11 @@ impl ChromaPage {
                     .size(css(20.))
                     .p_0()
                     .accessibility_label(tr("CLOSE"))
-                    .child(Icon::default().path("synapse/host-close.svg").size(css(16.)))
+                    .child(
+                        Icon::default()
+                            .path("synapse/host-close.svg")
+                            .size(css(16.)),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.preferences.onboard = false;
                         this.preferences.save();
@@ -728,9 +760,9 @@ impl ChromaPage {
                             ),
                     )
                     .child(
-                        Icon::default().path("synapse/onboard-help.svg")
-                            .size(css(14.))
-                            .tooltip(tr("TEXT_CHROMA_APPS_TIPS")),
+                        Icon::default()
+                            .path("synapse/onboard-help.svg")
+                            .size(css(14.)),
                     ),
             )
             .child(
@@ -900,7 +932,11 @@ impl ChromaPage {
                                         .size(css(36.))
                                         .p_0()
                                         .accessibility_label(tr("CLOSE"))
-                                        .child(Icon::default().path("synapse/host-close.svg").size(css(20.)))
+                                        .child(
+                                            Icon::default()
+                                                .path("synapse/host-close.svg")
+                                                .size(css(20.)),
+                                        )
                                         .on_click(cx.listener(|this, _, window, cx| {
                                             this.close_dialog(window, cx)
                                         })),
@@ -938,7 +974,7 @@ impl Render for ChromaPage {
             .bg(rgb(0x222222))
             .text_color(rgb(0xcccccc))
             .track_focus(&self.focus)
-            .on_key_down(cx.listener(|this, event, window, cx| {
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" && this.dialog.is_some() {
                     this.close_dialog(window, cx);
                     cx.stop_propagation();

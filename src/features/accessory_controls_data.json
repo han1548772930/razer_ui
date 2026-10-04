@@ -22,6 +22,24 @@
         "key": "TAB_LIGHTING",
         "sections": [
           {
+            "title": "HYPERPOLLING_WIRELESS",
+            "controls": [
+              {
+                "kind": "action",
+                "key": "179:hyperpolling-pairing",
+                "label": "OPEN_PAIRING_UTILITY",
+                "renderer": "hyperpolling-pairing",
+                "path": "/runtime/indicatorLedStatus",
+                "source": {
+                  "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+                  "offset": 4103119,
+                  "end": 4108441
+                }
+              }
+            ],
+            "description": "HYPERPOLLING_WIRELESS"
+          },
+          {
             "title": "BRIGHTNESS_HEADER",
             "controls": [
               {
@@ -429,6 +447,7 @@
   },
   {
     "product_id": 179,
+    "layout": "accessory",
     "profile": {
       "guid": "",
       "name": "",
@@ -447,19 +466,23 @@
                 "kind": "options",
                 "key": "179:indicator-mode",
                 "label": "INDICATOR_LED",
+                "renderer": "indicator-radio",
                 "path": "/runtime/indicatorLedStatus",
                 "options": [
                   {
                     "label": "CONNECTION_STATUS",
-                    "value": 1
+                    "value": 1,
+                    "description": "POWER_INDICATOR_CONNECTION_STATUS_DESC"
                   },
                   {
                     "label": "BATTERY_STATUS",
-                    "value": 2
+                    "value": 2,
+                    "description": "BATTERY_STATUS_DESC"
                   },
                   {
                     "label": "BATTERY_WARNING_ONLY",
-                    "value": 3
+                    "value": 3,
+                    "description": "POWER_INDICATOR_BATTERY_WARNING_ONLY_DESC"
                   }
                 ],
                 "source": {

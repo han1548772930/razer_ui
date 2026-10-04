@@ -206,7 +206,7 @@
   },
   "rust_table": {
     "source": "src/ui/battery.rs",
-    "sha256": "bd6666b3b6b952b7a17fe1bdc397699001f428f23bf2a1cf91cdd5932efe6967"
+    "sha256": "d526c17a89c654312cc97914a4a00279a24fa75ac3fb19cef9daeb6183a49e73"
   },
   "mounted_header_audit": "docs/re/device-tabs-audit.json",
   "limitations": [

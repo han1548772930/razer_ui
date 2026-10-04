@@ -90,6 +90,9 @@ impl ProductWorkspace {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
+                    WorkspaceEvent::PairingRequested(device) => {
+                        WorkspaceEvent::PairingRequested(device)
+                    }
                 });
                 cx.notify();
             });
@@ -104,6 +107,9 @@ impl ProductWorkspace {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
+                    WorkspaceEvent::PairingRequested(device) => {
+                        WorkspaceEvent::PairingRequested(device)
+                    }
                 });
                 cx.notify();
             });

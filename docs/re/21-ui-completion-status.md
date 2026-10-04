@@ -76,7 +76,7 @@ build、测试、安装器、下载的 JavaScript/WASM 或 DLL；全产品完成
 
 本轮把宏窗口从「安装门控」变成可打开的本地页面：新增 `Location::Macro` 与 `HostTab::Macro`（标签 id 就用原版窗口名 `macro`，图标复用已打包的 `synapse/module-macro.svg`），模块目录里 `MACRO` 盒现在直接打开它；宏服务与宏数据仍未连接，页面按原版外框（`MacroContainer_my_macro__jCmj8` 只有 `position:static`，`setup_svgs` 是 `display:none` 的图标预载容器）与两个导航标签（`TEXT_NAV_TAB_MY_MACROS` 我的宏、`TEXT_NAV_TAB_KEY_BINDS` 按键绑定）呈现，并显式写明宏服务未连接、不把未知安装状态写成已安装。功能面板（palette）的 11 个条目已从模块 81021 逐条提取（类型、图标文件、文案 key），但宏应用在当前源码包里没有 `static/media`，这 11 个图标全部缺失，因此面板尚未绘制、也没有拿别的图标顶替；部分文案 key 在两个 `trans-zh-CN` 分块里都不存在，同样不臆造。收据见[宏应用界面审计](macro-app-ui-audit.md)。
 
-模块目录也按这份证据对齐了行为：每一行现在带原版的盒名、它聚焦的窗口名与地址（Alexa→`alexa`、宏→`macro`、已关联的游戏→`profiles`、反馈→`feedback-synapse`、工坊→`armory`、配置文件迁移→`syn3-profile-migration`、介绍导览→`synapse-introduction`），本地已实现对应窗口的四行（Alexa、宏、配置文件迁移、介绍导览）直接显示「打开」并进入本地页面，其余显示安装状态未读取并注明原版窗口——原版点击模块盒本来就是 `focusTab(windowName)`，未安装时才先打开 `/installer/#type=module&id=<id>&location=<path>`。
+模块目录也按这份证据对齐了行为：每一行现在带原版的盒名、它聚焦的窗口名与地址（Alexa→`alexa`、宏→`macro`、已关联的游戏→`profiles`、反馈→`feedback-synapse`、工坊→`armory`、配置文件迁移→`syn3-profile-migration`、介绍导览→`synapse-introduction`）。这些具名窗口在本地均有对应页面，目录和 App Picker 都直接打开本地实现；只有没有本地页面的外部模块才保留安装状态边界。原版点击模块盒本来就是 `focusTab(windowName)`，未安装时才先打开 `/installer/#type=module&id=<id>&location=<path>`。
 
 本轮把「宏窗口的打开点」查清了，结论修正了之前的实现计划。宏在原件里是一个**独立应用**（`.ref/applications/synapse/macro/`，72 个分块 7.5 MB，与 `alexa`、`armory`、`profiles`、`settings`、`update-fw`、`introduction-tour` 并列），窗口名就叫 `macro`，地址 `/synapse/macro/`，打开标志 `policy=3,tab_visible=1`；Dashboard 的模块表在同一处登记它（模块 54420），常量表在模块 69937（`O="macro"`），模块盒名在模块 54693，点击盒子走 `focusTab(windowName)`，未安装时先开 `/installer/#type=module&id=macro&location=synapse/macro` 再 `autoOpen`；映射界面里也有 `openMacro`（命中已开窗口则激活）。而 **`displayMode=macro` 不是第二个产品窗口**：它是宏应用「绑定到设备」弹层里的 **iframe**，`src` 带 `displayMode=macro&macro=<id>&containerId=…&deviceEditionInfo=…&serialNumber=…`，标题 `MouseBind`。同样地，`chromaApp` 在当前 Dashboard 里出现 0 次——它属于独立 Chroma 应用窗口。Macro、Armory、Profiles 的本地窗口接入与服务未连接边界见[独立模块窗口审计](independent-module-window-audit.md)；收据与清单见[宏应用审计](macro-app-current-audit.md)、[窗口打开契约](display-window-contract.md)（新增 `named_windows`：11 个具名窗口、2 个隐藏、5 个模块窗口、8 条模块盒去向）与[displayMode 审计](display-mode-audit.md)（新增「各模式由谁打开」）。
 
@@ -99,3 +99,8 @@ build、测试、安装器、下载的 JavaScript/WASM 或 DLL；全产品完成
 ## 2026-10-04 UI follow-up
 
 Macro action rows now support source-shaped drag reordering, including the 100px trailing drop area, page-scoped drag payloads, green insertion borders, and undo/redo state updates. The local event editor covers Delay, Keyboard, Mouse, Loop, Text, Command, and Launch values. Armory static receipts now include content card, lazy list, detail popup, and upload/share modules (27588, 86024, 13476, 66517) plus their CSS selectors; service payloads remain unavailable. These additions are static UI evidence and do not imply recording, device transfer, account, or remote content services are connected.
+
+2026-10-04 receiver follow-up:
+- Product 182 battery snapshot corrected from stale 47% to 100%; old workspaces normalize only the confirmed full-state 47% record.
+- Product 179 Dashboard PluginImages and current `prd-1x` preview are embedded.
+- Product 179 host Tab uses `.ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg`, matching the current ACCESSORY source category.

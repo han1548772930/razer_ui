@@ -6,6 +6,7 @@ use crate::ui::surface;
 use gpui_kit::component::{
     button::Button,
     checkbox::Checkbox,
+    radio::Radio,
     select::{Select, SelectEvent, SelectState},
     slider::{Slider, SliderEvent, SliderState},
     *,
@@ -25,6 +26,8 @@ struct OptionSpec {
     disabled_on_ble: bool,
     #[serde(default)]
     image: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
 }
 #[derive(Deserialize)]
 struct ConditionSpec {
@@ -42,6 +45,9 @@ struct ControlSpec {
     key: String,
     label: String,
     path: String,
+    /// Source-specific renderer selected by the audited product descriptor.
+    #[serde(default)]
+    renderer: Option<String>,
     #[serde(default)]
     hide_label: bool,
     #[serde(default)]
@@ -178,6 +184,7 @@ pub(crate) fn supports_page(pid: u32, key: &str) -> bool {
         })
 }
 pub(crate) struct SourceControlsChanged;
+pub(crate) struct SourceControlsPairingRequested;
 pub(crate) struct SourceControls {
     spec: &'static ProductSpec,
     page: String,
@@ -208,6 +215,7 @@ struct PanTiltDrag {
     right: f32,
 }
 impl EventEmitter<SourceControlsChanged> for SourceControls {}
+impl EventEmitter<SourceControlsPairingRequested> for SourceControls {}
 impl SourceControls {
     pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let spec = specs()
@@ -1190,7 +1198,13 @@ impl SourceControls {
         }
         let key = control.key.clone();
         let label = crate::i18n::t(&control.label);
+        if control.renderer.as_deref() == Some("hyperpolling-pairing") {
+            return self.render_hyperpolling_pairing(cx);
+        }
         let disabled = self.disabled(control);
+        if control.renderer.as_deref() == Some("indicator-radio") {
+            return self.render_indicator_radio(control, disabled, cx);
+        }
         match control.kind.as_str() {
             "oled_presets" => self.render_oled_presets(disabled, cx),
             // `.preset-container .preset-item`: 50px grid columns, 27px tall
@@ -1584,6 +1598,71 @@ impl SourceControls {
         column.into_any_element()
     }
 
+    /// The audited accessory indicator renderer uses the shared radio-item
+    /// contract. Generic source-options buttons do not match that renderer.
+    fn render_indicator_radio(
+        &self,
+        control: &ControlSpec,
+        disabled: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let key = control.key.clone();
+        v_flex()
+            .gap(surface::css(10.))
+            .children(control.options.iter().map(|option| {
+                let value = option.value.clone();
+                let selected = self.value(control) == Some(&value);
+                let option_key = key.clone();
+                let description = option.description.clone();
+                v_flex()
+                    .gap(surface::css(4.))
+                    .child(
+                        Radio::new(SharedString::from(format!("{option_key}:{value}")))
+                            .label(crate::i18n::t(&option.label))
+                            .checked(selected)
+                            .disabled(disabled)
+                            .on_change(cx.listener(move |this, _, window, cx| {
+                                this.edit(&option_key, value.clone(), window, cx)
+                            })),
+                    )
+                    .when_some(description, |view, text| {
+                        view.child(div().ml(surface::css(30.)).child(crate::i18n::t(&text)))
+                    })
+            }))
+            .when(disabled, |view| view.opacity(0.3))
+            .into_any_element()
+    }
+
+    /// Current product sources mount the same empty HyperPolling utility row:
+    /// a 44px pairing glyph and an underlined `OPEN_PAIRING_UTILITY` action.
+    /// The descriptor selects this renderer; no product id is consulted here.
+    fn render_hyperpolling_pairing(&self, cx: &mut Context<Self>) -> AnyElement {
+        div()
+            .id("source-hyperpolling-pairing")
+            .flex()
+            .items_center()
+            .gap(surface::css(10.))
+            .cursor_pointer()
+            .on_click(cx.listener(|_, _, _, cx| {
+                cx.emit(SourceControlsPairingRequested);
+            }))
+            .child(
+                img("synapse/hyperpolling-icon-multidevicepairing2.svg")
+                    .w(surface::css(44.))
+                    .h(surface::css(44.)),
+            )
+            .child(
+                div()
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(44.))
+                    .text_color(gpui_kit::rgb(0xcccccc))
+                    .underline()
+                    .hover(|view| view.text_color(gpui_kit::rgb(0x44d62c)))
+                    .child(crate::i18n::t("OPEN_PAIRING_UTILITY")),
+            )
+            .into_any_element()
+    }
+
     /// Legacy Kiyo roots (3587/3589/3590) mount the shared Customize widget,
     /// whose audited source still includes `.camera_setting .main_preview`.
     /// The source frame is 520px wide by 292px high with a `#222` surface.
@@ -1740,6 +1819,12 @@ impl Render for SourceControls {
             .mx_auto()
             .p(surface::css(20.))
             .gap(surface::css(20.));
+        // Accessory descriptors whose current renderer mounts the shared
+        // product-image module declare this layout explicitly. Keep the same
+        // 250px product-art contract; other descriptors retain their layouts.
+        if self.spec.layout.as_deref() == Some("accessory") && self.page != "HELP" {
+            view = view.child(surface::product_banner(self.spec.product_id, 0, 0, cx));
+        }
         if self.page == "HELP" {
             if let Some(url) = &self.spec.support {
                 let url = url.clone();

@@ -1,5 +1,7 @@
 // Generated from original Webpack contexts by tools/prepare-resources.py.
 &[
+    // Product 179 accessory preview from the current source prd-1x artwork.
+    (179, 0, 0, DeviceImage::Product, "synapse/product-179-prd-1x.c84b6fdf.png"),
     (182, 0, 0, DeviceImage::MouseBottom, "synapse/mouse-182-bottom.png"),
     (182, 0, 0, DeviceImage::Product, "synapse/mouse-182.png"),
     (182, 128, 0, DeviceImage::MouseBottom, "synapse/product-182-litat1-profile-button-3x.19382cc9.png"),

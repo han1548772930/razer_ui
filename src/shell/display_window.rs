@@ -25,6 +25,10 @@ pub(super) enum DisplayMode {
     MultiDevicePairing,
 }
 
+/// Independent Chroma host-window icon from the current Chroma application
+/// contract. This is distinct from the Dashboard `chromaIcon` flag below.
+pub(super) const CHROMA_APP_WINDOW_ICON_PATH: &str = "ChromaApp\\window.ico";
+
 impl DisplayMode {
     pub(super) fn key(self) -> &'static str {
         match self {
@@ -39,7 +43,7 @@ impl DisplayMode {
     /// 来源值；不拿别的图标冒充，也不在窗口上画自造图标。
     pub(super) fn icon(self) -> &'static str {
         match self {
-            Self::ChromaApp => "app_icon_path=ChromaApp/icon.ico",
+            Self::ChromaApp => "app_icon_path=ChromaApp\\window.ico",
             Self::Macro | Self::Armory | Self::MultiDevicePairing => {
                 "app_icon_path=Synapse/icon.ico"
             }
@@ -204,8 +208,9 @@ mod tests {
         assert_eq!(DisplayMode::MultiDevicePairing.key(), "multiDevicePairing");
         assert_eq!(
             DisplayMode::ChromaApp.icon(),
-            "app_icon_path=ChromaApp/icon.ico"
+            "app_icon_path=ChromaApp\\window.ico"
         );
+        assert_eq!(CHROMA_APP_WINDOW_ICON_PATH, "ChromaApp\\window.ico");
         assert_eq!(WindowPolicy::Same.flag(), "policy=3");
         assert_eq!(WindowPolicy::Different.flag(), "policy=5");
         assert_eq!(WindowPolicy::DifferentSingleProcess.flag(), "policy=7");

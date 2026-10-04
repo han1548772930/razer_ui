@@ -33,7 +33,7 @@ navs: [{id: i.ftd, name: i.ftd},   // SPOTLIGHT_HEADER   精选推荐
 
 - 页面：[src/shell/armory_page.rs](../../src/shell/armory_page.rs)：源码顺序的导航标签、左侧搜索入口、Browse/My Downloads 的筛选/排序静态控件、介绍横幅和内部历史（Armory 资料分享服务未接入，不显示任何资料数据）。搜索输入只维护本地查询壳与防抖边界，不把本地文本当作远端结果。
 - 窗口接线：`Location::Armory`（标题「互换」）、`HostTab::Armory`（窗口 id `armory`、图标 `synapse/module-armory.svg`）。
-- 模块目录：`armory` 盒从「安装门控」改为**直接打开**本地窗口（`ModulePage::Armory`）。当前 7 行里已有 6 行直接打开：Alexa、宏、Profiles、Armory、配置文件迁移、介绍导览；`feedback` 仍缺独立应用源码。顶部 App Picker 的 Macro、linkedGames、Armory 也直接调用具名窗口打开器。
+- 模块目录：`armory` 盒从「安装门控」改为**直接打开**本地窗口（`ModulePage::Armory`）。当前 7 行的具名窗口均已接入本地页面：Alexa、宏、Profiles、Armory、反馈、配置文件迁移、介绍导览。顶部 App Picker 的 Macro、linkedGames、Armory、Feedback 也直接调用具名窗口打开器；当前源码的 `feedback-synapse` 契约见 [反馈应用审计](feedback-app-current-audit.md)。
 
 ## 图标
 

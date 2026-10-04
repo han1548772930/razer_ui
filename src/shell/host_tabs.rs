@@ -40,6 +40,7 @@ pub(super) enum HostTab {
     ProfileMigration,
     Macro,
     Armory,
+    Chroma,
     Profiles,
     Feedback,
 }
@@ -53,6 +54,7 @@ impl HostTab {
             Self::ProfileMigration => Location::ProfileMigration,
             Self::Macro => Location::Macro,
             Self::Armory => Location::Armory,
+            Self::Chroma => Location::Chroma,
             Self::Profiles => Location::Profiles,
             Self::Feedback => Location::Feedback,
         }
@@ -68,6 +70,7 @@ impl HostTab {
             Self::Macro => "macro".into(),
             // 原版窗口名常量就是 `armory`。
             Self::Armory => "armory".into(),
+            Self::Chroma => "chroma-studio".into(),
             // 模块表里这个窗口就叫 `profiles`。
             Self::Profiles => "profiles".into(),
             Self::Feedback => "feedback-synapse".into(),
@@ -82,6 +85,7 @@ impl HostTab {
             Location::ProfileMigration => Some(Self::ProfileMigration),
             Location::Macro => Some(Self::Macro),
             Location::Armory => Some(Self::Armory),
+            Location::Chroma => Some(Self::Chroma),
             Location::Profiles => Some(Self::Profiles),
             Location::Feedback => Some(Self::Feedback),
             _ => None,
@@ -398,6 +402,7 @@ impl AppShell {
                     HostTab::Macro => crate::i18n::t("MACRO_SOURCE.TEXT_PROFILE_BAR_MACRO"),
                     // 原版标题 key 为 DASHBOARD_WORKSHOP / DASHBOARD_EXCHANGE，中文都是「互换」。
                     HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
+                    HostTab::Chroma => crate::i18n::t_or("CHROMA_STUDIO", "Chroma Studio"),
                     HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
                     HostTab::Feedback => crate::i18n::t("FEEDBACK"),
                 };
@@ -538,6 +543,7 @@ impl AppShell {
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
             Some(HostTab::Macro) => "synapse/module-macro.svg",
             Some(HostTab::Armory) => "synapse/module-armory.svg",
+            Some(HostTab::Chroma) => "synapse/module-chroma-studio.svg",
             // 模块目录里 linkedGames 与 armory 共用同一套模块图标资源目录。
             Some(HostTab::Profiles) => "synapse/module-linked-games.svg",
             Some(HostTab::Feedback) => "synapse/module-feedback.svg",
@@ -549,6 +555,9 @@ impl AppShell {
             {
                 Some(653) => "synapse/host-category-keyboard.svg",
                 Some(777) => "synapse/host-category-audio.svg",
+                // Product 179 is ACCESSORY in the current Dashboard source;
+                // use the shared current-source ACCESSORY favicon.
+                Some(179) => "synapse/host-category-accessory.svg",
                 Some(pid) if crate::product::audited_mouse_mat(pid).is_some() => {
                     "synapse/host-category-mousemat.svg"
                 }

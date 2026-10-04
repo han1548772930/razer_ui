@@ -23,6 +23,7 @@ pub enum WorkspaceEvent {
     Changed,
     IntroDismissed,
     ShareProfile,
+    PairingRequested(crate::model::Device),
 }
 pub(super) struct MappingDraft {
     pub(super) input: String,

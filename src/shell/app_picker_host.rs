@@ -35,7 +35,7 @@ impl AppShell {
                     device
                         .power_status
                         .as_ref()
-                        .is_some_and(|power| power.charging_status == "off"),
+                        .is_some_and(|power| power.charging_status.eq_ignore_ascii_case("off")),
                 )
                 .section_position(position)
                 .launchable(crate::features::has_product_workspace(device.product_id));
@@ -55,17 +55,28 @@ impl AppShell {
                 PickerModule::Macro,
                 PickerModule::LinkedGames,
                 PickerModule::Armory,
+                // The Dashboard's FEEDBACK box targets the named
+                // `feedback-synapse` window.  The local shell now has the
+                // same page, so keep it visible and launchable without
+                // waiting for the external installer/service state.
+                PickerModule::Feedback,
                 PickerModule::ProfileMigration,
             ])
+            // Chroma is a separately named local application. Keep it in the
+            // picker as an installed/launchable app so its entry opens the
+            // policy=5 `chroma-app` window without an installer service.
+            .installed_modules([PickerApp::Chroma.key()])
+            .native_apps([PickerApp::Chroma])
             .launchable_modules([
                 PickerModule::Alexa,
                 PickerModule::AddWifi,
                 PickerModule::Macro,
                 PickerModule::LinkedGames,
                 PickerModule::Armory,
+                PickerModule::Feedback,
                 PickerModule::ProfileMigration,
             ])
-            .launchable_apps([PickerApp::Synapse]);
+            .launchable_apps([PickerApp::Synapse, PickerApp::Chroma]);
         self.app_picker
             .update(cx, |picker, cx| picker.set_catalog(catalog, window, cx));
     }
@@ -108,6 +119,12 @@ impl AppShell {
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Armory)) => {
                 self.open_module_tab(service_pages::ModulePage::Armory, window, cx);
             }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::Feedback)) => {
+                self.open_module_tab(service_pages::ModulePage::Feedback, window, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::ChromaStudio)) => {
+                self.navigate(Location::Chroma, window, cx);
+            }
             AppPickerEvent::AddWifiDevice
             | AppPickerEvent::Open(PickerTarget::Module(PickerModule::AddWifi)) => {
                 self.iot_popup = Some(iot_popup::open(iot_popup::DeviceKind::General, window, cx));
@@ -115,6 +132,9 @@ impl AppShell {
             }
             AppPickerEvent::Open(PickerTarget::App(PickerApp::Synapse)) => {
                 self.navigate(Location::Main(Tab::Home), window, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::App(PickerApp::Chroma)) => {
+                self.open_chroma_window(cx);
             }
             AppPickerEvent::Open(_) => {
                 self.status = "此应用的窗口服务尚未连接。".into();

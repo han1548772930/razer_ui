@@ -126,6 +126,13 @@
       "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg"
     },
     {
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c",
+      "sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg"
+    },
+    {
       "source": ".ref/devices/182/static/media/prd-3x.674b18f0.avif",
       "output": "assets/synapse/mouse-182.png",
       "source_sha256": "f9ad5bc36e124e0ede11637f8db420dbd4ff371070322f2a7425e60001b0a1db",
@@ -15985,6 +15992,206 @@
       "height": 16,
       "format": "rgba8",
       "conversion": "exact-png"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_apps.deedf28a.svg",
+      "output": "assets/synapse/chroma-icon_chromaapps_apps.svg",
+      "source_sha256": "e91cafc9094af2444717006b35f0ba9573ca7bd9813bcc4035a1d77b98db7cbe",
+      "sha256": "e91cafc9094af2444717006b35f0ba9573ca7bd9813bcc4035a1d77b98db7cbe"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_games.f96fda10.svg",
+      "output": "assets/synapse/chroma-icon_chromaapps_games.svg",
+      "source_sha256": "cbc5bfe2280be4beb05633656d62c25477aff563f13073d82133dc3d49abf4a2",
+      "sha256": "cbc5bfe2280be4beb05633656d62c25477aff563f13073d82133dc3d49abf4a2"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_profiles.7ecd0ae5.svg",
+      "output": "assets/synapse/chroma-icon_chromaapps_profiles.svg",
+      "source_sha256": "df18c231d26c4eb6118d5e92ed8f8f02dc0ce944f1d5839dd5c9ab8af2d586a1",
+      "sha256": "df18c231d26c4eb6118d5e92ed8f8f02dc0ce944f1d5839dd5c9ab8af2d586a1"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_spectrumcycling.0d6db5ed.svg",
+      "output": "assets/synapse/chroma-dashboard_spectrumcycling.svg",
+      "source_sha256": "38f718787dec188704dad87c56bffc97c9468dd53a75d63681c14c23b4c0c79d",
+      "sha256": "38f718787dec188704dad87c56bffc97c9468dd53a75d63681c14c23b4c0c79d"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_static_green.4084d29c.svg",
+      "output": "assets/synapse/chroma-dashboard_static_green.svg",
+      "source_sha256": "2a47bbf7296fc23a2a773f9a747eeb1ed9acf9f2f87a244c92d59ee579cc87f8",
+      "sha256": "2a47bbf7296fc23a2a773f9a747eeb1ed9acf9f2f87a244c92d59ee579cc87f8"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_breathing_green.1aafb08b.svg",
+      "output": "assets/synapse/chroma-dashboard_breathing_green.svg",
+      "source_sha256": "b65a4cba7f8a74081d7c865c6cc4b8dccb319ced4da47d0ce110cbe725741d98",
+      "sha256": "b65a4cba7f8a74081d7c865c6cc4b8dccb319ced4da47d0ce110cbe725741d98"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wave.e42212c8.svg",
+      "output": "assets/synapse/chroma-dashboard_wave.svg",
+      "source_sha256": "7668d8ec3ec4163d8341202673395beb1b06486d8d0e19d704db504dcd06e130",
+      "sha256": "7668d8ec3ec4163d8341202673395beb1b06486d8d0e19d704db504dcd06e130"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_fire.c1f6de61.svg",
+      "output": "assets/synapse/chroma-dashboard_fire.svg",
+      "source_sha256": "9c4f44c9d27cd4390cfe8f1519b36d823d2dca5d2d0f84dfe1b066b4caec286a",
+      "sha256": "9c4f44c9d27cd4390cfe8f1519b36d823d2dca5d2d0f84dfe1b066b4caec286a"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_starlight.370ba9e2.svg",
+      "output": "assets/synapse/chroma-dashboard_starlight.svg",
+      "source_sha256": "7c1ff5d6d8a0a47811442c3949e44c2e692f36b471ccab5d403994879d742cbd",
+      "sha256": "7c1ff5d6d8a0a47811442c3949e44c2e692f36b471ccab5d403994879d742cbd"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wheel.6bc8ad9d.svg",
+      "output": "assets/synapse/chroma-dashboard_wheel.svg",
+      "source_sha256": "02ae09f60bd633070848fb72c6f1bbc602862771df0c7b1b36851430f997566b",
+      "sha256": "02ae09f60bd633070848fb72c6f1bbc602862771df0c7b1b36851430f997566b"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/dashboard_chromaapps.3b5c3715.svg",
+      "output": "assets/synapse/chroma-dashboard_chromaapps.svg",
+      "source_sha256": "a166f33c1a56c901f68bbb51e73712bc6917a91252c4b8840e412595dd1fd13d",
+      "sha256": "a166f33c1a56c901f68bbb51e73712bc6917a91252c4b8840e412595dd1fd13d"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/big_synapse_4.69474e71.svg",
+      "output": "assets/synapse/chroma-big_synapse_4.svg",
+      "source_sha256": "cde119ddee56ec413ad471ac3e4421d450b0a905c45aa5fc374764032aadacc9",
+      "sha256": "cde119ddee56ec413ad471ac3e4421d450b0a905c45aa5fc374764032aadacc9"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/split_arrow.61fe5435.svg",
+      "output": "assets/synapse/chroma-split_arrow.svg",
+      "source_sha256": "a26ab35d4c2f6c1f2a1dcc2c3095376fc14bba824663603df068ee3bc7149b1e",
+      "sha256": "a26ab35d4c2f6c1f2a1dcc2c3095376fc14bba824663603df068ee3bc7149b1e"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/icon_device_brightness_100.0ab35951.svg",
+      "output": "assets/synapse/chroma-icon_device_brightness_100.svg",
+      "source_sha256": "6af4d59905e1c9a8c5cf8c7122ae5783b2827715ce5fe3d3aaa663e28a7e4be9",
+      "sha256": "6af4d59905e1c9a8c5cf8c7122ae5783b2827715ce5fe3d3aaa663e28a7e4be9"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/introduction_background.f3dc376c.avif",
+      "output": "assets/synapse/chroma-introduction_background.png",
+      "source_sha256": "4c59db30eea138a3060781a8feec7af9e14f0659f239ebfbd69665108c835ee7",
+      "sha256": "2609bcb9440a586b26cf45b897863865cbbdb46534771bc355a7c395972df25c",
+      "width": 1220,
+      "height": 531,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/services_store_placeholder.9f5d3c9a.avif",
+      "output": "assets/synapse/chroma-services_store_placeholder.png",
+      "source_sha256": "4382c7ac5887de425f914cbd291dca63f295d68c2829172b2c2d885ee543b0c0",
+      "sha256": "dda4377f37529b78bc1d52c3a81c739dd631399b1cccb97138e4047e7cae286e",
+      "width": 290,
+      "height": 140,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/services_support_placeholder.62c592fb.avif",
+      "output": "assets/synapse/chroma-services_support_placeholder.png",
+      "source_sha256": "48ff935df09baae6ea4e8463fad4408f6df9352a35b78b33719f6963a3e1ff72",
+      "sha256": "0259516989ba66ccc3ac5dfa750384b82e0e4b0303af319889a2b44e41d1d3b4",
+      "width": 290,
+      "height": 145,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/services_community_placeholder.50541baa.avif",
+      "output": "assets/synapse/chroma-services_community_placeholder.png",
+      "source_sha256": "9b1474c0cfc037fb55c1a6284addbd31d876ca368d20abdfc31f47f65302158d",
+      "sha256": "4ae31e229611915438641ec465d61e488fdc9f7335b03e68036fecbb359f368a",
+      "width": 290,
+      "height": 140,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/media/service_gold_and_silver.12f2d9c9.avif",
+      "output": "assets/synapse/chroma-service_gold_and_silver.png",
+      "source_sha256": "69c1bb2b550296bb4f38d5cc9ef2874de34eeb66a2dadcef08a6da8b72a0d42a",
+      "sha256": "881338db681465d1071ab7e203474e3f18b3cf7fd2f332f625681b10a68921f9",
+      "width": 580,
+      "height": 280,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/chroma-app/dashboard/static/css/9700.ff0493ac.chunk.css",
+      "output": "assets/synapse/chroma-introduction-logo.png",
+      "source_sha256": "95c9c73fab2c94f6f2d0243d42b0479990b1212ff692583712f8990d2590f9e9",
+      "sha256": "503762a50fd3d297d961026191c983e6940015242da8a4c212f29461af90db22",
+      "width": 100,
+      "height": 100,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "output": "assets/synapse/automation-delete-action.svg",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "source_kind": "inline_svg",
+      "source_symbol": "vM",
+      "source_offset": 6734463,
+      "source_end": 6735586,
+      "source_view_box": "0 0 10 12",
+      "supplied_dimensions": [
+        24,
+        24
+      ],
+      "sha256": "dd282ead206dce6701199c0e9fc58e0bf1a38f9ebc4b892e947de59a9676f964"
+    },
+    {
+      "source": ".ref/devices/3946/static/media/icon_folder_grey.220b24b0.svg",
+      "output": "assets/synapse/source-transfer-folder.svg",
+      "source_sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+      "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_folder_grey.220b24b0.svg",
+      "sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f"
+    },
+    {
+      "source": ".ref/devices/3946/static/media/icon_cone.7bf8041f.svg",
+      "output": "assets/synapse/source-transfer-cone.svg",
+      "source_sha256": "63a494b66617e37e640171cf63ccbe43d578be35d0ca75dcc7d0f49e1eb2b6e7",
+      "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_cone.7bf8041f.svg",
+      "sha256": "63a494b66617e37e640171cf63ccbe43d578be35d0ca75dcc7d0f49e1eb2b6e7"
+    },
+    {
+      "source": "assets/synapse/dashboard-179-0-0-source.avif",
+      "output": "assets/synapse/dashboard-179-0-0.png",
+      "source_sha256": "f8e9e365c3e928f95ac7947155284a16740943b6a8dd43472a2b575ec2476436",
+      "sha256": "9fe2dfa2e701c011d27d72a93d94e4a343232f23e9964057fdb8764cf9f95d72",
+      "width": 750,
+      "height": 420,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/179_0/PluginImages/179_0_0_dashboard3x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": "assets/synapse/dashboard-179-0-0-dashboard1x-source.avif",
+      "output": "assets/synapse/dashboard-179-0-0-1x.png",
+      "source_sha256": "ea4bd1403d9cfa02fd7ec6c28ebd9c3d0569400c55af5455ad72cb8a908ec0f2",
+      "sha256": "782263d496af9b19937348db77635b93dd90c8fd3a8f954c7b5a94504550d987",
+      "width": 250,
+      "height": 140,
+      "mode": "RGBA",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/179_0/PluginImages/179_0_0_dashboard1x.avif",
+      "source_kind": "downloaded_static_asset",
+      "purpose": "Original PluginImages Dashboard/pairing card artwork"
+    },
+    {
+      "source": ".ref/devices/179/static/media/prd-1x.c84b6fdf.avif",
+      "output": "assets/synapse/product-179-prd-1x.c84b6fdf.png",
+      "source_sha256": "6092e217a7bf1acb5c7d1aadad3b57032916937facf2d30003c97b4ed974ce82",
+      "sha256": "00867f86e77fccd590d1799ac76239353abc333dae120d1d9141a34be3cb7f4e",
+      "width": 325,
+      "height": 250,
+      "mode": "RGBA"
     }
   ]
 }

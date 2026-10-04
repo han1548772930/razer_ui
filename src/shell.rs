@@ -25,6 +25,8 @@ mod alexa_page;
 mod app_picker;
 mod app_picker_host;
 mod armory_page;
+mod chroma_page;
+mod chroma_window;
 mod display_window;
 mod feedback_page;
 mod firmware_update;
@@ -56,6 +58,7 @@ enum Location {
     ProfileMigration,
     Macro,
     Armory,
+    Chroma,
     Profiles,
     Feedback,
 }
@@ -102,6 +105,7 @@ enum HistoryTarget {
     Alexa(Entity<alexa_page::AlexaPage>),
     Macro(Entity<macro_page::MacroPage>),
     Armory(Entity<armory_page::ArmoryPage>),
+    Chroma(Entity<chroma_page::ChromaPage>),
     Shell(usize),
 }
 
@@ -136,6 +140,7 @@ pub struct AppShell {
     profile_migration: Option<Entity<profile_migration::MigrationPage>>,
     macro_page: Option<Entity<macro_page::MacroPage>>,
     armory_page: Option<Entity<armory_page::ArmoryPage>>,
+    chroma_page: Entity<chroma_page::ChromaPage>,
     profiles_page: Option<Entity<profiles_page::ProfilesPage>>,
     feedback_page: Option<Entity<feedback_page::FeedbackPage>>,
     tour_trigger: FocusHandle,
@@ -152,39 +157,50 @@ pub struct AppShell {
 }
 impl AppShell {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let (devices, intro, shortcuts, preferences, custom_colors, host_order, dashboard, error) =
-            match store::read_workspace(&store::store_path()) {
-                Ok(Some(file)) => (
-                    file.devices,
-                    file.tracking_intro_seen,
-                    file.shortcuts,
-                    file.preferences,
-                    file.custom_colors,
-                    file.host_tab_order,
-                    file.dashboard,
-                    None,
-                ),
-                Ok(None) => (
-                    crate::model::measured_devices(),
-                    false,
-                    vec![],
-                    Default::default(),
-                    [None; 16],
-                    vec![],
-                    Default::default(),
-                    None,
-                ),
-                Err(error) => (
-                    crate::model::measured_devices(),
-                    false,
-                    vec![],
-                    Default::default(),
-                    [None; 16],
-                    vec![],
-                    Default::default(),
-                    Some(error.to_string()),
-                ),
-            };
+        let (
+            mut devices,
+            intro,
+            shortcuts,
+            preferences,
+            custom_colors,
+            host_order,
+            dashboard,
+            error,
+        ) = match store::read_workspace(&store::store_path()) {
+            Ok(Some(file)) => (
+                file.devices,
+                file.tracking_intro_seen,
+                file.shortcuts,
+                file.preferences,
+                file.custom_colors,
+                file.host_tab_order,
+                file.dashboard,
+                None,
+            ),
+            Ok(None) => (
+                crate::model::measured_devices(),
+                false,
+                vec![],
+                Default::default(),
+                [None; 16],
+                vec![],
+                Default::default(),
+                None,
+            ),
+            Err(error) => (
+                crate::model::measured_devices(),
+                false,
+                vec![],
+                Default::default(),
+                [None; 16],
+                vec![],
+                Default::default(),
+                Some(error.to_string()),
+            ),
+        };
+        for device in &mut devices {
+            device.normalize_known_measurements();
+        }
         cx.set_global(CustomColors::new(custom_colors));
         let shortcuts =
             cx.new(|cx| crate::features::shortcuts::Shortcuts::new(shortcuts, window, cx));
@@ -223,6 +239,7 @@ impl AppShell {
             profile_migration: None,
             macro_page: None,
             armory_page: None,
+            chroma_page: cx.new(|cx| chroma_page::ChromaPage::new(window, cx)),
             profiles_page: None,
             feedback_page: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
@@ -254,6 +271,15 @@ impl AppShell {
             &this.app_picker,
             window,
             |this, _, event, window, cx| this.handle_app_picker(event, window, cx),
+        ));
+        this.subscriptions.push(cx.subscribe_in(
+            &this.chroma_page,
+            window,
+            |this, _, event: &chroma_page::ChromaPageEvent, window, cx| match event {
+                chroma_page::ChromaPageEvent::OpenSettings => {
+                    this.navigate(Location::Main(Tab::Setting), window, cx)
+                }
+            },
         ));
         this.subscriptions.push(cx.subscribe_in(
             &this.account_menu,
@@ -542,6 +568,14 @@ impl AppShell {
                         .update(cx, |settings, cx| settings.tutorial_viewed(cx));
                     this.save_auxiliary_preferences(cx);
                 }
+                WorkspaceEvent::PairingRequested(device) => {
+                    let payload = serde_json::json!({
+                        "productId": device.product_id,
+                        "deviceContainerId": device.device_container_id,
+                        "serialNumber": device.serial_number,
+                    });
+                    this.open_product_pairing_window(&payload, cx);
+                }
             },
         ));
         if crate::features::has_product_workspace(entity.read(cx).device(cx).product_id) {
@@ -555,6 +589,8 @@ impl AppShell {
         if let Some(page) = &self.macro_page {
             page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
         }
+        self.chroma_page
+            .update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
         self.sync_app_picker(window, cx);
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
@@ -606,6 +642,27 @@ impl AppShell {
             })
         {
             eprintln!("无法打开配对窗口：{error}");
+        }
+    }
+    /// Dashboard `chromaApp` uses policy=5: a named independent Chroma window.
+    pub(super) fn open_chroma_window(&mut self, cx: &mut Context<Self>) {
+        let owner = cx.entity().downgrade();
+        let devices = self.devices.clone();
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::centered(size(px(1280.), px(720.)), cx)),
+            window_min_size: Some(size(px(600.), px(500.))),
+            ..TitleBar::window_options()
+        };
+        if let Err(error) = display_window::open_or_focus(
+            cx,
+            "chroma-app".into(),
+            display_window::WindowPolicy::Different,
+            options,
+            move |window, cx| {
+                cx.new(|cx| chroma_window::ChromaWindow::new(owner, devices, window, cx))
+            },
+        ) {
+            eprintln!("无法打开 Chroma 窗口：{error}");
         }
     }
     /// Dashboard modules use policy=3: a named tab in the current host window.
@@ -826,6 +883,10 @@ impl AppShell {
                     .unwrap()
                     .update(cx, |page, cx| page.focus(window, cx));
             }
+            if next == Location::Chroma {
+                self.chroma_page
+                    .update(cx, |page, cx| page.focus(window, cx));
+            }
             if let Some(index) = history_index {
                 self.history_index = index;
             } else {
@@ -915,6 +976,11 @@ impl AppShell {
                     return Some(HistoryTarget::Armory(page.clone()));
                 }
             }
+            Location::Chroma => {
+                if self.chroma_page.read(cx).can_step_history(forward) {
+                    return Some(HistoryTarget::Chroma(self.chroma_page.clone()));
+                }
+            }
             _ => {}
         }
         // Closing a host tab can leave equal entries adjacent. Skip those
@@ -953,6 +1019,9 @@ impl AppShell {
             }
             HistoryTarget::Armory(page) => {
                 page.update(cx, |page, cx| page.step_history(forward, window, cx))
+            }
+            HistoryTarget::Chroma(page) => {
+                page.update(cx, |page, cx| page.step_history(forward, cx))
             }
             HistoryTarget::Shell(index) => {
                 self.request_navigation(self.history[index].clone(), Some(index), window, cx)
@@ -1307,6 +1376,7 @@ impl AppShell {
             // 原版标题取 `isExchangeEnabled ? DASHBOARD_EXCHANGE : DASHBOARD_WORKSHOP`，
             // 两个 key 在 zh-CN 语言包里都是「互换」。
             Location::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
+            Location::Chroma => crate::i18n::t_or("CHROMA_STUDIO", "Chroma Studio").into(),
             // 模块表把 `linkedGames` 指向 profiles 窗口，标题用它的文案 key。
             Location::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
             Location::Feedback => crate::i18n::t("FEEDBACK"),
@@ -1641,6 +1711,7 @@ impl Render for AppShell {
                 .as_ref()
                 .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
+            Location::Chroma => self.chroma_page.clone().into_any_element(),
             Location::Profiles => self
                 .profiles_page
                 .as_ref()

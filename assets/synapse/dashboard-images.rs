@@ -1,5 +1,6 @@
 // Generated from downloaded PluginImages sources; never substitute Customize artwork.
 &[
+    (179, 0, 0, "synapse/dashboard-179-0-0.png"),
     (182, 0, 0, "synapse/dashboard-182.png"),
     (182, 128, 0, "synapse/dashboard-182-128-0.png"),
     (182, 129, 0, "synapse/dashboard-182-129-0.png"),

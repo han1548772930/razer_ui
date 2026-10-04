@@ -33,7 +33,7 @@ for name in ("minimize", "maximize", "restore", "close", "close-original",
     shutil.copyfile(src, dst)
     record(src, dst)
 
-for category in ("MOUSE", "KEYBOARD", "AUDIO", "MOUSEMAT"):
+for category in ("MOUSE", "KEYBOARD", "AUDIO", "MOUSEMAT", "ACCESSORY"):
     src = ROOT / ".ref/applications/synapse/dashboard/shared-favicon" / (category + ".svg")
     dst = OUT / ("host-category-" + category.lower() + ".svg")
     shutil.copyfile(src, dst)

@@ -3,6 +3,16 @@
   "url_rule_source": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
   "requests": [
     {
+      "product_id": 179,
+      "edition_id": 0,
+      "layout_id": 0,
+      "source": "assets/synapse/dashboard-179-0-0-source.avif",
+      "source_sha256": "f8e9e365c3e928f95ac7947155284a16740943b6a8dd43472a2b575ec2476436",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/179_0/PluginImages/179_0_0_dashboard3x.avif",
+      "asset": "synapse/dashboard-179-0-0.png",
+      "output": "assets/synapse/dashboard-179-0-0.png"
+    },
+    {
       "product_id": 182,
       "edition_id": 0,
       "layout_id": 0,

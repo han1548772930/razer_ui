@@ -2,6 +2,18 @@
   "version": 1,
   "requests": [
     {
+      "product_id": 179,
+      "edition_id": 0,
+      "request": "./179_0/img_prods/prd-1x.png",
+      "module": 1398,
+      "context": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "context_sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "module_file": ".ref/devices/179/static/js/398.56c864c3.chunk.js",
+      "module_sha256": "eaeb224120b4b2f25ac5ffe4a6e5d3d75ea498bb7fb2a82295593875fe6e9cfe",
+      "source": ".ref/devices/179/static/media/prd-1x.c84b6fdf.avif",
+      "output": "assets/synapse/product-179-prd-1x.c84b6fdf.png"
+    },
+    {
       "product_id": 182,
       "edition_id": 0,
       "request": "./182_0/img_prods/litat1-profile-button-1x.png",
@@ -1587,6 +1599,13 @@
     }
   ],
   "resolved": [
+    {
+      "product_id": 179,
+      "edition_id": 0,
+      "layout_id": 0,
+      "part": "Product",
+      "asset": "synapse/product-179-prd-1x.c84b6fdf.png"
+    },
     {
       "product_id": 182,
       "edition_id": 0,
