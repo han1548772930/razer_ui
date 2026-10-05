@@ -1,0 +1,1132 @@
+{
+  "method": "Manifest-scoped Acorn/CSS static parsing, no vendor execution",
+  "components": {
+    "Nn": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1338879,
+      "end": 1339300,
+      "source": "(0,Se.connect)(e=>({lightingProfile:e.macroList.lightingProfile,macroList:e.macroList.macroList,selectedMacro:e.macroList.currentProfile}))(e=>{const{item:t,itemIndex:n}=e;return(0,Ne.jsx)(\"div\",{className:`${_n} customInput`,style:{position:4===t.Type||3===t.Type?\"initial\":\"relative\"},onClick:e=>{e.stopPropagation()},draggable:\"true\",onDragStart:e=>{e.preventDefault()},children:(0,Ne.jsx)(yn,{itemIndex:n,item:t})})})"
+    },
+    "yn": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1335696,
+      "end": 1338875,
+      "source": "e=>{const{item:t,itemIndex:n}=e,r=(0,Se.useDispatch)(),i=(0,a.useRef)(),s=(0,a.useRef)(),c=(0,a.useRef)(),[l,d]=(0,a.useState)(t.KeyEvent.Makecode),[_,E]=(0,a.useState)(t.KeyEvent.State),[u,m]=(0,a.useState)(t.KeyEvent.Type),[h,A]=(0,a.useState)(\"\"),S=(0,Se.useSelector)(e=>e.commonReducer.systemKeyboardLayout)||C.Z7.UnitedStates,I=`changeMacroKeyEvent_${t.Id}`,D=(0,a.useCallback)(e=>{console.log(t,e.detail),e.detail.type===t.Type&&e.detail.id===t.Id&&e.detail.index!==n&&(d(e.detail.value),E(e.detail.flag),m(e.detail.keyType),A(e.detail.inputID))},[t]),T=(0,a.useCallback)(e=>{clearTimeout(s.current),console.log(\"exit event\"),e.type!==C.uM&&c.current&&i.current&&(e.type===C.uM||!i.current.contains(e.target)&&\"block\"===i.current.style.display||\"blur\"===e.type&&i.current.contains(e.target))&&M.A.lock().then(()=>{r({type:o.Lt,updateValue:l,flag:_,index:n,keyType:u}),c.current&&(c.current.style.display=\"block\"),i.current&&(i.current.style.display=\"none\",i.current.children[0].blur()),Dn.A.enableMapping(),Dn.A.enableGlobalShortcut()})},[l,_,u]),g=(0,a.useMemo)(()=>{if(0===l)return\"\";const e=_-_%2||0;let n=K.Rk.find(n=>{const a=n.outputFlag||n.flag;return(+n.keyCode===l&&a===e||+n.virtualKey===l&&a===e)&&n.type===u||((null===t||void 0===t?void 0:t.ScanCode)===n.scancode&&n.virtualKey===`${l}`||!(S===C.Z7.UnitedStates||!h||n.inputID!==h))});if(n||(n=K.Rk.find(n=>{const a=n.outputFlag||n.flag;return S!==C.Z7.UnitedStates?+n.scancode===t.ScanCode&&a===e:+n.keyCode===l&&a===e||+n.virtualKey===l&&a===e})),!n){const e=N.xJ.EXTENDED_MAKECODE_TO_INPUT_ID[l];e&&(n=K.Rk.find(t=>t.inputID===e))}return n||{name:l}},[l,_,u,h,S]),p=(0,a.useMemo)(()=>{const e=g.inputID;if(!e)return(0,Ne.jsx)(\"span\",{style:{color:\"#707070\"},children:g.name});const t=(0,ae.A)(S,e);return t||g.name},[g,S]);return(0,a.useEffect)(()=>(window.addEventListener(I,D),window.addEventListener(\"click\",T),window.addEventListener(C.uM,T),()=>{window.removeEventListener(\"click\",T),window.removeEventListener(C.uM,T),window.removeEventListener(I,D,!1)}),[T,D]),(0,a.useEffect)(()=>{d(t.KeyEvent.Makecode),E(t.KeyEvent.State),m(t.KeyEvent.Type)},[t.KeyEvent.Makecode]),(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:mn,onClick:e=>{r({type:o.oA,payload:!0}),(0,Ke.th)(e,c.current),c.current.style.display=\"none\",i.current.style.display=\"block\",i.current.children[0].focus(),i.current.children[0].click(),Dn.A.disableMapping(),Dn.A.disableGlobalShortcut()},ref:c,children:l?p:(0,Ne.jsx)(\"span\",{children:(0,Ne.jsx)(Ie.A,{text:R.bAs})})},n),(0,Ne.jsx)(\"div\",{className:un,ref:i,onBlur:T,children:(0,Ne.jsx)(pn,{inputId:g.inputID,onChange:e=>{const a=K.Rk.find(t=>t.inputID===e),i=a?+a.keyCode:0,c=a?a.outputFlag||a.flag:null,l=a?a.type:null,_=\"number\"===typeof c?c+t.flag%2:null,u=\"number\"===typeof _?_%2?_-1:_+1:null;let h={type:t.Type,id:t.Id,value:i,index:n,flag:u,keyType:l,scanCode:a.scancode,inputID:a.inputID};d(i),E(_),m(l),null!==a&&void 0!==a&&a.inputID&&A(a.inputID),(e=>{let t=new CustomEvent(I,{detail:e});window.dispatchEvent(t)})(h),clearTimeout(s.current),s.current=setTimeout(()=>{M.A.lock().then(()=>{r({type:o.Lt,updateValue:i,flag:_,index:n,keyType:l})})},150)}})})]})}"
+    },
+    "pn": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1332172,
+      "end": 1335692,
+      "source": "e=>{const{inputId:t=\"\",placeholder:n,onChange:r}=e,o=(0,a.useRef)(null),[i,s]=(0,a.useState)(!1),c=(0,a.useRef)(i),[l,d]=(0,a.useState)(!1),[_,E]=(0,a.useState)(!1),u=(0,Se.useSelector)(e=>e.commonReducer.validDevices),m=(0,a.useRef)(null);m.current=u;const h=(0,Se.useSelector)(e=>e.commonReducer.systemKeyboardLayout),A=async()=>{const e=await(new Tn.TL).getRazerDevices(),t=(()=>{const e=JSON.parse(localStorage.getItem(\"duallink-devices\")||\"{}\"),t=Object.values(e);return Object.values(t).map(e=>e.master.dongleId)})();e.forEach(e=>{t.includes(e.productId)||((e,t)=>{const n=t.find(t=>t.deviceContainerId===e.deviceContainerId);return!!n&&[Cn.Su.MOUSE,Cn.Su.MOUSEPLUSMAT].includes(n.category)})(e,m.current)||Dn.A.enableInputRedirect(e)})},S=async()=>{(await(new Tn.TL).getRazerDevices()).forEach(e=>{Dn.A.disableInputRedirect(e)})},{onInputRedirectEvent:I,onWindowFocus:D,onWindowBlur:T}=(0,a.useMemo)(()=>({onInputRedirectEvent:function(e){const t=JSON.parse(e.input);if(!gn.includes(t.type))return;const n=K.Rk.find(e=>{const n=\"number\"===typeof e.outputFlag?e.outputFlag:e.flag;return t.scancode==e.scancode&&n===t.flag});n&&(E(n.inputID),\"function\"===typeof r&&r(n.inputID))},onWindowFocus:function(){d(!0),Dn.A.disableMapping(),A()},onWindowBlur:function(){d(!1),Dn.A.enableMapping(),S()}}),[]),C=()=>{d(!1),s(!1),c.current=!1,Dn.A.enableMapping(),S(),Dn.A.off(\"inputredirect\",I),window.removeEventListener(\"focus\",D),window.removeEventListener(\"blur\",T),window.apiElectron.doElectronAction({action:\"unRegisterNoBrowserInputHandler\"})},g=(0,a.useCallback)(e=>{o.current&&o.current.contains(e.target)||!i||!l||C()},[i,l]),p=(0,a.useCallback)(e=>{if(!i||!l)return;e.preventDefault();let t=e.keyCode;92===t&&(t=91);let n=K.Rk.find(e=>`${t}`===e.keyCode);n&&(13===t&&\"Enter\"===e.code&&(n=K.Rk.find(e=>\"KEY_ENTER\"===e.inputID)),16===t&&\"ShiftRight\"===e.code&&(n=K.Rk.find(e=>\"KEY_RIGHT_SHIFT\"===e.inputID)),E(n.inputID),\"function\"===typeof r&&r(n.inputID))},[i,l]),y=(0,a.useCallback)(e=>{if(!i||!l&&\"PrintScreen\"!==e.code)return;e.preventDefault();let t=K.Rk.find(t=>`${e.keyCode}`===t.keyCode);t&&(13===e.keyCode&&\"Enter\"===e.code&&(t=K.Rk.find(e=>\"KEY_ENTER\"===e.inputID)),16===e.keyCode&&\"ShiftRight\"===e.code&&(t=K.Rk.find(e=>\"KEY_RIGHT_SHIFT\"===e.inputID)),E(t.inputID),\"function\"===typeof r&&r(t.inputID))},[i,l]);(0,a.useEffect)(()=>(window.addEventListener(\"keydown\",p,!0),window.addEventListener(\"keyup\",y,!0),()=>{window.removeEventListener(\"keydown\",p,!0),window.removeEventListener(\"keyup\",y,!0)}),[p,y]),(0,a.useEffect)(()=>(window.addEventListener(\"click\",g),()=>{window.removeEventListener(\"click\",g,!1)}),[g]);const N=(0,a.useMemo)(()=>{if(!_)return(0,Ne.jsx)(\"span\",{style:{color:\"#707070\"},children:n});const e=(0,ae.A)(h,_);return e||_},[_,h]);return(0,a.useEffect)(()=>()=>{c.current&&(Dn.A.enableMapping(),S(),Dn.A.off(\"inputredirect\",I),window.removeEventListener(\"focus\",D),window.removeEventListener(\"blur\",T),window.apiElectron.doElectronAction({action:\"unRegisterNoBrowserInputHandler\"}))},[]),(0,a.useEffect)(()=>{E(t)},[t]),(0,Ne.jsxs)(\"div\",{className:`${hn} ${An} ${i?Sn:\"\"}`,onClick:()=>{i||(d(!0),s(!0),c.current=!0,Dn.A.disableMapping(),A(),Dn.A.on(\"inputredirect\",I),window.addEventListener(\"focus\",D),window.addEventListener(\"blur\",T),window.apiElectron.doElectronAction({action:\"registerNoBrowserInputHandler\"}))},ref:o,tabIndex:-1,onBlur:C,children:[N,t&&(0,Ne.jsx)(\"div\",{className:In,onClick:e=>{e.stopPropagation(),\"function\"===typeof r&&r(\"\")},style:{display:\"block\"}})]})}"
+    },
+    "va": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1348739,
+      "end": 1355568,
+      "source": "(0,Se.connect)(e=>({activeRecord:e.macroList.activeRecord,activeSettingWindow:e.page.activeSettingWindow,lastAction:e.macroList.lastAction,macroList:e.macroList.macroList,currentProfile:e.macroList.currentProfile}))(e=>{const{macroList:t,currentProfile:n,item:r,itemIndex:i}=e,[s,c]=(0,a.useState)(!1),l=(0,Se.useDispatch)(),d=(0,a.useMemo)(()=>(0,De.Rk)(t,n),[t,n]),_=(0,nt.A)(),E=d?d.macroEvents:[];let u=!!E[i]&&E[i].selected;const m=(0,a.useCallback)(cn()(function(e){e.stopPropagation(),y.A.init().then(e=>{fa(e),M.A.lock().then(()=>{l({type:o.HH,index:i,data:r})})})},200,{leading:!0}),[i,r]),h=()=>{e.mouseLeave&&e.mouseLeave(),ve.forEach(e=>{clearTimeout(e)})},A=(0,a.useRef)(),S=e=>{var t,n;(\"boolean\"===typeof e?e:!u)?(l({type:o.tn,index:i}),null===(t=A.current)||void 0===t||t.classList.add(vn)):(l({type:o.wL,index:i}),null===(n=A.current)||void 0===n||n.classList.remove(vn))};(0,a.useLayoutEffect)(()=>{document.getElementById(\"item_editor\").offsetHeight<document.getElementById(\"item_editor\").scrollHeight?A.current&&A.current.classList.add(Qn):A.current&&A.current.classList.contains(Qn)&&A.current.classList.remove(Qn)},[]),(0,a.useEffect)(()=>h,[]);let I=`${On} ${Un} ${u?vn:\"\"} ${r.isPairing?qn:\"\"}`,D=`mr10 ${fn} ${e.activeRecord?Wn:\"\"}`,T=null,g=(0,Ne.jsx)(ke,{id:`fi_${i}`,active:u,onCheck:S,name:\"\",extraClass:D,disabled:e.activeSettingWindow});switch(r.Type){case x.RG:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:Q.A,alt:\"delay icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.Jr:{const e=r.KeyEvent.State%2===1;T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:q.A,alt:\"keyboard icon\",draggable:!1}),null===r.KeyEvent.State?null:(0,Ne.jsx)(\"img\",{className:\"mr10\",src:e?ee.A:Z.A,alt:\"navigator icon\"}),(0,Ne.jsx)(Nn,{itemIndex:i,item:r})]});break}case x.lk:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:te.A,alt:\"mouse icon\",draggable:!1}),null===r.MouseEvent.State||void 0===r.MouseEvent.State?null:(0,Ne.jsx)(\"img\",{className:\"mr10\",src:1===r.MouseEvent.State?ee.A:Z.A,alt:\"navigation icon\"}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.m2:T=(0,Ne.jsx)(Da,{checkbox:g,itemIndex:i,item:r});break;case x.W1:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:Ea.A,alt:\"macro icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.P71})}),(0,Ne.jsx)(ia,{leave:h,itemIndex:i,item:r})]});break;case x.HP:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ca,alt:\"device profile icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.oE:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:da,alt:\"lighting icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.MAc})}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.xs:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:la.A,alt:\"launch icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.Jt:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:sa.A,alt:\"command icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.qAC})}),(0,Ne.jsx)(Ia,{index:i,item:r})]});break;case x.bt:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ua,alt:\"multimedia icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.KPs})}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.HL:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ma.A,alt:\"text icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",style:{minWidth:\"42px\"},children:(0,Ne.jsx)(Ie.A,{text:R.N4v})}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.gL:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:_a.A,alt:\"loop icon\",draggable:!1}),(0,Ne.jsxs)(\"span\",{className:\"mr10\",children:[0===r.LoopEvent.State?_(R.I0I):_(R.nQC),\":\"]}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;default:return null}const p=()=>{c(!s)};return(0,Ne.jsxs)(Aa,{className:I,active:u,pairing:r.isPairing,onClick:S,ref:A,onMouseEnter:()=>{e.mouseEnter&&e.mouseEnter()},onMouseLeave:h,onDragOver:e=>{var t,n;F(i),e.stopPropagation(),null!==(t=document.getElementById(\"drag-image\"))&&void 0!==t&&t.classList.contains(\"no-allow\")?(A.current.classList.add(Vn),e.preventDefault()):e.preventDefault(),A.current.classList.contains(Bn)||A.current.classList.add(Bn),null!==(n=document.getElementById(\"drag-image\"))&&void 0!==n&&n.classList.contains(\"no-allow\")?A.current.classList.add(Vn):A.current.classList.contains(Vn)&&A.current.classList.remove(Vn)},onDragLeave:e=>{e.stopPropagation(),A.current.classList.remove(Bn)},onDrop:e=>{e.stopPropagation();const t=e.dataTransfer.getData(\"name\"),n=e.dataTransfer.getData(\"dragType\"),a=e.dataTransfer.getData(\"index\"),r=parseInt(a);y.A.init().then(e=>{fa(e),A.current.classList.remove(Bn);const a=document.getElementById(`${C.zV}`);a&&a.remove(),\"move\"===t?!A.current.classList.contains(Vn)&&M.A.lock().then(()=>{l({type:o.T9,index:i,dragType:n,indexMoveItem:r})}):M.A.lock().then(()=>{l({type:o.dt,name:t,index:i,action:\"drop\"})})})},draggable:!0,onDragEnd:k,onDragStart:e=>{let t=[];A.current.classList.remove(wn);let n={},a=[];if(E[i].selected)E.forEach((e,n)=>{if(n>0&&e.selected){a.push({index:n});const o=Rn()(e,La[r.Type],0),i=(0,Ke.cf)(E,e);if(-1===i||E[i].selected)return;t.push({state:o,index:i,bound:{top:i>n?0:i,bottom:i>n?i-1:1e9}})}});else{a.push({index:i});const e=Rn()(r,La[r.Type],0),n=(0,Ke.cf)(E,r);n>-1&&t.push({state:e,index:n,bound:{top:n>i?0:n,bottom:n>i?n-1:1e9}})}n.count=a.length,n.itemIndex=i,n.type=r.Type,n.listPairItem=t,n.dropBound=t.reduce((e,t)=>(t.bound.top>e.top&&(e.top=t.bound.top),t.bound.bottom<e.bottom&&(e.bottom=t.bound.bottom),e),{top:0,bottom:1e9}),E[i].selected?H(e,n):H(e,n,\"unselected\",i)},onDrag:e=>{e.persist(),e.stopPropagation(),b(e)},children:[T,(0,Ne.jsx)(\"div\",{className:$n,style:{justifyContent:\"flex-end\"},children:(0,Ne.jsxs)(\"div\",{className:Ln,children:[r.Type===x.Jt&&(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"span\",{id:\"TYPE_COMMAND\",onMouseEnter:p,onMouseLeave:p,className:`${jn} ${zn} ${Jn}`}),(0,Ne.jsx)(Oa,{isMounted:s,target:\"TYPE_COMMAND\",children:_(R.B1e)})]}),(0,Ne.jsx)(\"span\",{className:`${jn} ${Xn} ${Jn}`,onClick:m,\"data-tooltip\":_(R.KUz)}),(0,Ne.jsx)(\"span\",{className:`${jn} ${Yn} ${Jn}`,onClick:e=>{e.stopPropagation(),y.A.init().then(e=>{fa(e),M.A.lock().then(()=>{l({type:o.Xg,index:i})})})},\"data-tooltip\":_(R.Ci7)}),(0,Ne.jsx)(\"span\",{className:ea})]})}),(0,Ne.jsx)(\"div\",{})]})})"
+    }
+  },
+  "mutations": {
+    "O": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 139140,
+      "end": 140032,
+      "source": "(e,t)=>{switch(e){case\"delay\":return[a.Ay.delay];case\"keyboard\":{let e;if(1===t)return b++,e=D(a.Ay.keyboard),e.Id=b,[e];b++;let n=D(a.Ay.keyboard);return n.KeyEvent.State=0,n.flag=0,n.Id=b,e=D(a.Ay.keyboard),e.KeyEvent.State=1,e.flag=1,e.Id=b,[n,e]}case\"mouse\":{let e;if(1===t)return b++,e=D(a.Ay.mouse),e.Id=b,[e];b++;let n=D(a.Ay.mouse);return n.MouseEvent.State=0,n.flag=0,n.Id=b,e=D(a.Ay.mouse),e.MouseEvent.State=1,e.flag=1,e.Id=b,[n,e]}case\"mousemovement\":return[a.Ay.mousemovement];case\"macro\":return[a.Ay.macro];case\"switch_profile\":return[a.Ay.deviceprofile];case\"switch_lighting\":return[a.Ay.lighting];case\"command\":return[a.Ay.command];case\"multimedia\":return[a.Ay.multimedia];case\"launch\":return[a.Ay.launch];case\"text\":return[a.Ay.text];case\"loop\":{b++;let e=D(a.Ay.loop);e.LoopEvent.State=0,e.flag=0,e.Id=b;let t=D(a.Ay.loop);return t.LoopEvent.State=1,t.flag=1,t.Id=b,[e,t]}}}"
+    },
+    "C": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 144810,
+      "end": 146645,
+      "source": "(e,t,n,o,r,i)=>{let a=e[n]?e[n]:{Type:3};switch(a.Type){case d.RG:return a.Number=t,e;case d.Jr:{if(a.KeyEvent.Makecode=t,a.KeyEvent.Type=i,null===a.KeyEvent.State)return e;const o=e.findIndex((e,t)=>e.KeyEvent&&a.Id===e.Id&&t!==n);if(!(o>=0))return e;const s=e[o];if(s.KeyEvent.Makecode=t,s.KeyEvent.Type=i,\"number\"===typeof r){const{keydownFlag:e,keyupFlag:t}=(e=>{const t=e-e%2;return{keydownFlag:t,keyupFlag:t+1}})(r),n=r%2===0;a.flag=n?e:t,a.KeyEvent.State=a.flag,s.flag=n?t:e,s.KeyEvent.flag=s.flag,s.KeyEvent.State=s.flag}return e}case d.lk:if(a.MouseEvent.MouseButton<6){a.MouseEvent.MouseButton=t;const o=e.find((e,t)=>!!e.MouseEvent&&(a.Id===e.Id&&t!==n));return t>=6?(a.MouseEvent.State=null,o&&e.splice(e.indexOf(o),1),e):(o&&(o.MouseEvent.MouseButton=t),e)}if(a.MouseEvent.MouseButton=t,t<6){a.MouseEvent.State=1;const t=D(a);return t.MouseEvent.State=0,e.splice(e.indexOf(a),0,t),e}return e;case d.m2:if(\"object\"!==typeof t){if(0!==+t){const e=+(t/a.Number).toFixed(5);console.log(\"rate\",e),a.MouseEvent.Buffer.forEach(t=>{let n=t.time*e,o=Math.round(100*n)/100;t.time=o}),a.Number=t}}else{let n=e.slice().reverse().find(e=>3===e.Type);a=e[e.indexOf(n)],a.MouseEvent.Buffer=t,a.Number=t.length>0?parseFloat((t[t.length-1].timeStamp-t[0].timeStamp)/1e3).toFixed(3):0}return e;case d.HL:return a.Text=t.Text,e;case d.Jt:return a.TextCommand=t,e;case d.gL:{a.Number=t;const o=e.find((e,t)=>a.Id===e.Id&&t!==n);return o&&(o.Number=t),e}case d.W1:return a.MPIndex=t,a.guid=o.macroList[t].guid,e;case d.HP:return a.DPIndex=t.DPIndex,a.RadioIndex=t.RadioIndex,a.Option.PIndex=t.PIndex,a.Option.EffectIndex=t.EffectIndex,a.Option.Switch=t.Switch,a.name=t.deviceName,a.guid=t.guid,e;case d.bt:return a.MIndex=t,e;case d.xs:return a.RadioIndex=t.RadioIndex,a.Content0=t.Content0,a.Content1=t.Content1,e;case d.oE:return a.LId=t,e}}"
+    },
+    "R": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 144101,
+      "end": 144807,
+      "source": "e=>{switch(e.Type){case 1:{b++;let t=D(e);const n=e.KeyEvent.State-e.KeyEvent.State%2||0;return t.Id=b,t.KeyEvent.State=n,t.flag=n,t.selected=!1,t.isPairing=!1,[t,{...t,KeyEvent:{...t.KeyEvent,State:n+1},flag:n+1}]}case 2:{b++;let t=D(e);return 6===e.MouseEvent.MouseButton||7===e.MouseEvent.MouseButton||8===e.MouseEvent.MouseButton||9===e.MouseEvent.MouseButton?(t.Id=b,t.selected=!1,t.isPairing=!1,[t]):(t.MouseEvent.State=0,t.Id=b,t.selected=!1,t.isPairing=!1,[t,{...t,MouseEvent:{...t.MouseEvent,State:1},flag:1}])}case 6:{b++;let t=D(e);return t.LoopEvent.State=0,t.Id=b,t.isPairing=!1,t.selected=!1,[t,{...t,LoopEvent:{...t.LoopEvent,State:1},flag:1}]}default:{let t=D(e);return t.selected=!1,[t]}}}"
+    },
+    "M": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 146648,
+      "end": 147577,
+      "source": "(e,t,n)=>{let o=A(e,n).macroEvents,r=o[t];switch(null===r||void 0===r?void 0:r.Type){case 1:{if(null===r.KeyEvent.State)return e;const t=1===r.KeyEvent.State?0:1,n=o.find(e=>{var n;return!!e.KeyEvent&&(r.Id===e.Id&&t===(null===(n=e.KeyEvent)||void 0===n?void 0:n.State))});return n&&(n.selected||r.selected?(r.isPairing=!0,n.isPairing=!0):(r.isPairing=!1,n.isPairing=!1)),e}case 2:{if(null===r.MouseEvent.State)return e;const t=1===r.MouseEvent.State?0:1,n=o.find(e=>{var n;return!!e.MouseEvent&&(r.Id===e.Id&&t===(null===(n=e.MouseEvent)||void 0===n?void 0:n.State))});return n&&(n.selected||r.selected?(r.isPairing=!0,n.isPairing=!0):(r.isPairing=!1,n.isPairing=!1)),e}case 6:{const t=1===r.LoopEvent.State?0:1,n=o.find(e=>{var n;return r.Id===e.Id&&t===(null===(n=e.LoopEvent)||void 0===n?void 0:n.State)});return n&&(n.selected||r.selected?(r.isPairing=!0,n.isPairing=!0):(r.isPairing=!1,n.isPairing=!1)),e}default:return e}}"
+    },
+    "P": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 147580,
+      "end": 148200,
+      "source": "(e,t,n)=>{let o=A(e,n).macroEvents,r=o[t];switch(r&&r.Type){case 1:{if(null===r.KeyEvent.State)return e;const t=1===r.KeyEvent.State?0:1,n=o.find(e=>{var n;return r.Id===e.Id&&t===(null===(n=e.KeyEvent)||void 0===n?void 0:n.State)});return n&&(n.isPairing=!1),e}case 2:{if(null===r.MouseEvent.State)return e;const t=1===r.MouseEvent.State?0:1,n=o.find(e=>{var n;return r.Id===e.Id&&t===(null===(n=e.MouseEvent)||void 0===n?void 0:n.State)});return n&&(n.isPairing=!1),e}case 6:{const t=1===r.LoopEvent.State?0:1,n=o.find(e=>e.LoopEvent&&r.Id===e.Id&&t===e.LoopEvent.State);return n&&(n.isPairing=!1),e}default:return e}}"
+    }
+  },
+  "catalogue": {
+    "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+    "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+    "offset": 382517,
+    "end": 401808,
+    "source": "[{name:\"A\",inputID:\"KEY_A\",type:\"Alphanumeric\",scancode:parseInt(\"1E\",16),virtualKey:\"65\",keyCode:\"65\",flag:0,pageID:\"7\",HID:\"4\"},{name:\"B\",inputID:\"KEY_B\",type:\"Alphanumeric\",scancode:parseInt(\"30\",16),virtualKey:\"66\",keyCode:\"66\",flag:0,pageID:\"7\",HID:\"5\"},{name:\"C\",inputID:\"KEY_C\",type:\"Alphanumeric\",scancode:parseInt(\"2E\",16),virtualKey:\"67\",keyCode:\"67\",flag:0,pageID:\"7\",HID:\"6\"},{name:\"D\",inputID:\"KEY_D\",type:\"Alphanumeric\",scancode:parseInt(\"20\",16),virtualKey:\"68\",keyCode:\"68\",flag:0,pageID:\"7\",HID:\"7\"},{name:\"E\",inputID:\"KEY_E\",type:\"Alphanumeric\",scancode:parseInt(\"12\",16),virtualKey:\"69\",keyCode:\"69\",flag:0,pageID:\"7\",HID:\"8\"},{name:\"F\",inputID:\"KEY_F\",type:\"Alphanumeric\",scancode:parseInt(\"21\",16),virtualKey:\"70\",keyCode:\"70\",flag:0,pageID:\"7\",HID:\"9\"},{name:\"G\",inputID:\"KEY_G\",type:\"Alphanumeric\",scancode:parseInt(\"22\",16),virtualKey:\"71\",keyCode:\"71\",flag:0,pageID:\"7\",HID:\"10\"},{name:\"H\",inputID:\"KEY_H\",type:\"Alphanumeric\",scancode:parseInt(\"23\",16),virtualKey:\"72\",keyCode:\"72\",flag:0,pageID:\"7\",HID:\"11\"},{name:\"I\",inputID:\"KEY_I\",type:\"Alphanumeric\",scancode:parseInt(\"17\",16),virtualKey:\"73\",keyCode:\"73\",flag:0,pageID:\"7\",HID:\"12\"},{name:\"J\",inputID:\"KEY_J\",type:\"Alphanumeric\",scancode:parseInt(\"24\",16),virtualKey:\"74\",keyCode:\"74\",flag:0,pageID:\"7\",HID:\"13\"},{name:\"K\",inputID:\"KEY_K\",type:\"Alphanumeric\",scancode:parseInt(\"25\",16),virtualKey:\"75\",keyCode:\"75\",flag:0,pageID:\"7\",HID:\"14\"},{name:\"L\",inputID:\"KEY_L\",type:\"Alphanumeric\",scancode:parseInt(\"26\",16),virtualKey:\"76\",keyCode:\"76\",flag:0,pageID:\"7\",HID:\"15\"},{name:\"M\",inputID:\"KEY_M\",type:\"Alphanumeric\",scancode:parseInt(\"32\",16),virtualKey:\"77\",keyCode:\"77\",flag:0,pageID:\"7\",HID:\"16\"},{name:\"N\",inputID:\"KEY_N\",type:\"Alphanumeric\",scancode:parseInt(\"31\",16),virtualKey:\"78\",keyCode:\"78\",flag:0,pageID:\"7\",HID:\"17\"},{name:\"O\",inputID:\"KEY_O\",type:\"Alphanumeric\",scancode:parseInt(\"18\",16),virtualKey:\"79\",keyCode:\"79\",flag:0,pageID:\"7\",HID:\"18\"},{name:\"P\",inputID:\"KEY_P\",type:\"Alphanumeric\",scancode:parseInt(\"19\",16),virtualKey:\"80\",keyCode:\"80\",flag:0,pageID:\"7\",HID:\"19\"},{name:\"Q\",inputID:\"KEY_Q\",type:\"Alphanumeric\",scancode:parseInt(\"10\",16),virtualKey:\"81\",keyCode:\"81\",flag:0,pageID:\"7\",HID:\"20\"},{name:\"R\",inputID:\"KEY_R\",type:\"Alphanumeric\",scancode:parseInt(\"13\",16),virtualKey:\"82\",keyCode:\"82\",flag:0,pageID:\"7\",HID:\"21\"},{name:\"S\",inputID:\"KEY_S\",type:\"Alphanumeric\",scancode:parseInt(\"1F\",16),virtualKey:\"83\",keyCode:\"83\",flag:0,pageID:\"7\",HID:\"22\"},{name:\"T\",inputID:\"KEY_T\",type:\"Alphanumeric\",scancode:parseInt(\"14\",16),virtualKey:\"84\",keyCode:\"84\",flag:0,pageID:\"7\",HID:\"23\"},{name:\"U\",inputID:\"KEY_U\",type:\"Alphanumeric\",scancode:parseInt(\"16\",16),virtualKey:\"85\",keyCode:\"85\",flag:0,pageID:\"7\",HID:\"24\"},{name:\"V\",inputID:\"KEY_V\",type:\"Alphanumeric\",scancode:parseInt(\"2F\",16),virtualKey:\"86\",keyCode:\"86\",flag:0,pageID:\"7\",HID:\"25\"},{name:\"W\",inputID:\"KEY_W\",type:\"Alphanumeric\",scancode:parseInt(\"11\",16),virtualKey:\"87\",keyCode:\"87\",flag:0,pageID:\"7\",HID:\"26\"},{name:\"X\",inputID:\"KEY_X\",type:\"Alphanumeric\",scancode:parseInt(\"2D\",16),virtualKey:\"88\",keyCode:\"88\",flag:0,pageID:\"7\",HID:\"27\"},{name:\"Y\",inputID:\"KEY_Y\",type:\"Alphanumeric\",scancode:parseInt(\"15\",16),virtualKey:\"89\",keyCode:\"89\",flag:0,pageID:\"7\",HID:\"28\"},{name:\"Z\",inputID:\"KEY_Z\",type:\"Alphanumeric\",scancode:parseInt(\"2C\",16),virtualKey:\"90\",keyCode:\"90\",flag:0,pageID:\"7\",HID:\"29\"},{name:\"0\",inputID:\"KEY_0\",type:\"Alphanumeric\",scancode:parseInt(\"0B\",16),virtualKey:\"48\",keyCode:\"48\",flag:0,pageID:\"7\",HID:\"39\"},{name:\"1\",inputID:\"KEY_1\",type:\"Alphanumeric\",scancode:parseInt(\"02\",16),virtualKey:\"49\",keyCode:\"49\",flag:0,pageID:\"7\",HID:\"30\"},{name:\"2\",inputID:\"KEY_2\",type:\"Alphanumeric\",scancode:parseInt(\"03\",16),virtualKey:\"50\",keyCode:\"50\",flag:0,pageID:\"7\",HID:\"31\"},{name:\"3\",inputID:\"KEY_3\",type:\"Alphanumeric\",scancode:parseInt(\"04\",16),virtualKey:\"51\",keyCode:\"51\",flag:0,pageID:\"7\",HID:\"32\"},{name:\"4\",inputID:\"KEY_4\",type:\"Alphanumeric\",scancode:parseInt(\"05\",16),virtualKey:\"52\",keyCode:\"52\",flag:0,pageID:\"7\",HID:\"33\"},{name:\"5\",inputID:\"KEY_5\",type:\"Alphanumeric\",scancode:parseInt(\"06\",16),virtualKey:\"53\",keyCode:\"53\",flag:0,pageID:\"7\",HID:\"34\"},{name:\"6\",inputID:\"KEY_6\",type:\"Alphanumeric\",scancode:parseInt(\"07\",16),virtualKey:\"54\",keyCode:\"54\",flag:0,pageID:\"7\",HID:\"35\"},{name:\"7\",inputID:\"KEY_7\",type:\"Alphanumeric\",scancode:parseInt(\"08\",16),virtualKey:\"55\",keyCode:\"55\",flag:0,pageID:\"7\",HID:\"36\"},{name:\"8\",inputID:\"KEY_8\",type:\"Alphanumeric\",scancode:parseInt(\"09\",16),virtualKey:\"56\",keyCode:\"56\",flag:0,pageID:\"7\",HID:\"37\"},{name:\"9\",inputID:\"KEY_9\",type:\"Alphanumeric\",scancode:parseInt(\"0A\",16),virtualKey:\"57\",keyCode:\"57\",flag:0,pageID:\"7\",HID:\"38\"},{name:\"F1\",inputID:\"KEY_F1\",type:\"Function\",scancode:parseInt(\"3B\",16),virtualKey:\"112\",keyCode:\"112\",flag:0,pageID:\"7\",HID:\"58\"},{name:\"F2\",inputID:\"KEY_F2\",type:\"Function\",scancode:parseInt(\"3C\",16),virtualKey:\"113\",keyCode:\"113\",flag:0,pageID:\"7\",HID:\"59\"},{name:\"F3\",inputID:\"KEY_F3\",type:\"Function\",scancode:parseInt(\"3D\",16),virtualKey:\"114\",keyCode:\"114\",flag:0,pageID:\"7\",HID:\"60\"},{name:\"F4\",inputID:\"KEY_F4\",type:\"Function\",scancode:parseInt(\"3E\",16),virtualKey:\"115\",keyCode:\"115\",flag:0,pageID:\"7\",HID:\"61\"},{name:\"F5\",inputID:\"KEY_F5\",type:\"Function\",scancode:parseInt(\"3F\",16),virtualKey:\"116\",keyCode:\"116\",flag:0,pageID:\"7\",HID:\"62\"},{name:\"F6\",inputID:\"KEY_F6\",type:\"Function\",scancode:parseInt(\"40\",16),virtualKey:\"117\",keyCode:\"117\",flag:0,pageID:\"7\",HID:\"63\"},{name:\"F7\",inputID:\"KEY_F7\",type:\"Function\",scancode:parseInt(\"41\",16),virtualKey:\"118\",keyCode:\"118\",flag:0,pageID:\"7\",HID:\"64\"},{name:\"F8\",inputID:\"KEY_F8\",type:\"Function\",scancode:parseInt(\"42\",16),virtualKey:\"119\",keyCode:\"119\",flag:0,pageID:\"7\",HID:\"65\"},{name:\"F9\",inputID:\"KEY_F9\",type:\"Function\",scancode:parseInt(\"43\",16),virtualKey:\"120\",keyCode:\"120\",flag:0,pageID:\"7\",HID:\"66\"},{name:\"F10\",inputID:\"KEY_F10\",type:\"Function\",scancode:parseInt(\"44\",16),virtualKey:\"121\",keyCode:\"121\",flag:0,pageID:\"7\",HID:\"67\"},{name:\"F11\",inputID:\"KEY_F11\",type:\"Function\",scancode:parseInt(\"57\",16),virtualKey:\"122\",keyCode:\"122\",flag:0,pageID:\"7\",HID:\"68\"},{name:\"F12\",inputID:\"KEY_F12\",type:\"Function\",scancode:parseInt(\"58\",16),virtualKey:\"123\",keyCode:\"123\",flag:0,pageID:\"7\",HID:\"69\"},{name:\"F13\",inputID:\"KEY_F13\",type:\"Function\",scancode:parseInt(\"64\",16),virtualKey:\"124\",keyCode:\"124\",flag:0},{name:\"F14\",inputID:\"KEY_F14\",type:\"Function\",scancode:parseInt(\"65\",16),virtualKey:\"125\",keyCode:\"125\",flag:0},{name:\"F15\",inputID:\"KEY_F15\",type:\"Function\",scancode:parseInt(\"66\",16),virtualKey:\"126\",keyCode:\"126\",flag:0},{name:\"F16\",inputID:\"KEY_F16\",type:\"Function\",scancode:parseInt(\"67\",16),virtualKey:\"127\",keyCode:\"127\",flag:0},{name:\"F17\",inputID:\"KEY_F17\",type:\"Function\",scancode:parseInt(\"68\",16),virtualKey:\"128\",keyCode:\"128\",flag:0},{name:\"F18\",inputID:\"KEY_F18\",type:\"Function\",scancode:parseInt(\"69\",16),virtualKey:\"129\",keyCode:\"129\",flag:0},{name:\"F19\",inputID:\"KEY_F19\",type:\"Function\",scancode:parseInt(\"6A\",16),virtualKey:\"130\",keyCode:\"130\",flag:0},{name:\"F20\",inputID:\"KEY_F20\",type:\"Function\",scancode:parseInt(\"6B\",16),virtualKey:\"131\",keyCode:\"131\",flag:0},{name:\"F21\",inputID:\"KEY_F21\",type:\"Function\",scancode:parseInt(\"6C\",16),virtualKey:\"132\",keyCode:\"132\",flag:0},{name:\"F22\",inputID:\"KEY_F22\",type:\"Function\",scancode:parseInt(\"6D\",16),virtualKey:\"133\",keyCode:\"133\",flag:0},{name:\"F23\",inputID:\"KEY_F23\",type:\"Function\",scancode:parseInt(\"6E\",16),virtualKey:\"134\",keyCode:\"134\",flag:0},{name:\"F24\",inputID:\"KEY_F24\",type:\"Function\",scancode:parseInt(\"76\",16),virtualKey:\"135\",keyCode:\"135\",flag:0},{name:\"Num Lock\",inputID:\"KEY_NUMPAD_NUM_LOCK\",type:\"Numpad\",scancode:parseInt(\"45\",16),virtualKey:\"144\",keyCode:\"144\",flag:0,pageID:\"7\",HID:\"83\",ExtendedKey:\"Extended_00\"},{name:\"Num 0\",inputID:\"KEY_NUMPAD_0\",type:\"Numpad\",scancode:parseInt(\"52\",16),virtualKey:\"96\",keyCode:\"96\",flag:0,pageID:\"7\",HID:\"98\"},{name:\"Num 1\",inputID:\"KEY_NUMPAD_1\",type:\"Numpad\",scancode:parseInt(\"4F\",16),virtualKey:\"97\",keyCode:\"97\",flag:0,pageID:\"7\",HID:\"89\"},{name:\"Num 2\",inputID:\"KEY_NUMPAD_2\",type:\"Numpad\",scancode:parseInt(\"50\",16),virtualKey:\"98\",keyCode:\"98\",flag:0,pageID:\"7\",HID:\"90\"},{name:\"Num 3\",inputID:\"KEY_NUMPAD_3\",type:\"Numpad\",scancode:parseInt(\"51\",16),virtualKey:\"99\",keyCode:\"99\",flag:0,pageID:\"7\",HID:\"91\"},{name:\"Num 4\",inputID:\"KEY_NUMPAD_4\",type:\"Numpad\",scancode:parseInt(\"4B\",16),virtualKey:\"100\",keyCode:\"100\",flag:0,pageID:\"7\",HID:\"92\"},{name:\"Num 5\",inputID:\"KEY_NUMPAD_5\",type:\"Numpad\",scancode:parseInt(\"4C\",16),virtualKey:\"101\",keyCode:\"101\",flag:0,pageID:\"7\",HID:\"93\"},{name:\"Num 6\",inputID:\"KEY_NUMPAD_6\",type:\"Numpad\",scancode:parseInt(\"4D\",16),virtualKey:\"102\",keyCode:\"102\",flag:0,pageID:\"7\",HID:\"94\"},{name:\"Num 7\",inputID:\"KEY_NUMPAD_7\",type:\"Numpad\",scancode:parseInt(\"47\",16),virtualKey:\"103\",keyCode:\"103\",flag:0,pageID:\"7\",HID:\"95\"},{name:\"Num 8\",inputID:\"KEY_NUMPAD_8\",type:\"Numpad\",scancode:parseInt(\"48\",16),virtualKey:\"104\",keyCode:\"104\",flag:0,pageID:\"7\",HID:\"96\"},{name:\"Num 9\",inputID:\"KEY_NUMPAD_9\",type:\"Numpad\",scancode:parseInt(\"49\",16),virtualKey:\"105\",keyCode:\"105\",flag:0,pageID:\"7\",HID:\"97\"},{name:\"Num /\",inputID:\"KEY_NUMPAD_SLASH\",type:\"Numpad\",scancode:parseInt(\"35\",16),virtualKey:\"111\",keyCode:\"111\",flag:0,outputFlag:2,pageID:\"7\",HID:\"84\",ExtendedKey:\"Extended_00\"},{name:\"Num *\",inputID:\"KEY_NUMPAD_ASTERISK\",type:\"Numpad\",scancode:parseInt(\"37\",16),virtualKey:\"106\",keyCode:\"106\",flag:0,pageID:\"7\",HID:\"85\"},{name:\"Num -\",inputID:\"KEY_NUMPAD_DASH\",type:\"Numpad\",scancode:parseInt(\"4A\",16),virtualKey:\"109\",keyCode:\"109\",flag:0,pageID:\"7\",HID:\"86\"},{name:\"Num +\",inputID:\"KEY_NUMPAD_PLUS\",type:\"Numpad\",scancode:parseInt(\"4E\",16),virtualKey:\"107\",keyCode:\"107\",flag:0,pageID:\"7\",HID:\"87\"},{name:\"Num .\",inputID:\"KEY_NUMPAD_PERIOD\",type:\"Numpad\",scancode:parseInt(\"53\",16),virtualKey:\"46\",keyCode:\"110\",flag:0,pageID:\"7\",HID:\"99\"},{name:\"Num Enter\",inputID:\"KEY_NUMPAD_ENTER\",type:\"Numpad\",scancode:parseInt(\"1C\",16),virtualKey:\"13\",keyCode:\"13\",flag:1,outputFlag:2,pageID:\"7\",HID:\"88\",ExtendedKey:\"Extended_00\"},{name:\"Up\",inputID:\"KEY_UP_ARROW\",type:\"Navigation\",scancode:parseInt(\"48\",16),virtualKey:\"38\",keyCode:\"38\",flag:0,outputFlag:2,pageID:\"7\",HID:\"82\",ExtendedKey:\"Extended_00\"},{name:\"Down\",inputID:\"KEY_DOWN_ARROW\",type:\"Navigation\",scancode:parseInt(\"50\",16),virtualKey:\"40\",keyCode:\"40\",flag:0,outputFlag:2,pageID:\"7\",HID:\"81\",ExtendedKey:\"Extended_00\"},{name:\"Left\",inputID:\"KEY_LEFT_ARROW\",type:\"Navigation\",scancode:parseInt(\"4B\",16),virtualKey:\"37\",keyCode:\"37\",flag:0,outputFlag:2,pageID:\"7\",HID:\"80\",ExtendedKey:\"Extended_00\"},{name:\"Right\",inputID:\"KEY_RIGHT_ARROW\",type:\"Navigation\",scancode:parseInt(\"4D\",16),virtualKey:\"39\",keyCode:\"39\",flag:0,outputFlag:2,pageID:\"7\",HID:\"79\",ExtendedKey:\"Extended_00\"},{name:\"Page Up\",inputID:\"KEY_PAGE_UP\",type:\"Navigation\",scancode:parseInt(\"49\",16),virtualKey:\"33\",keyCode:\"33\",flag:0,outputFlag:2,pageID:\"7\",HID:\"75\",ExtendedKey:\"Extended_00\"},{name:\"Page Down\",inputID:\"KEY_PAGE_DOWN\",type:\"Navigation\",scancode:parseInt(\"51\",16),virtualKey:\"34\",keyCode:\"34\",flag:0,outputFlag:2,pageID:\"7\",HID:\"78\",ExtendedKey:\"Extended_00\"},{name:\"Backspace\",inputID:\"KEY_BACKSPACE\",type:\"Navigation\",scancode:parseInt(\"0E\",16),virtualKey:\"8\",keyCode:\"8\",flag:0,pageID:\"7\",HID:\"42\"},{name:\"Tab\",inputID:\"KEY_TAB\",type:\"Navigation\",scancode:parseInt(\"0F\",16),virtualKey:\"9\",keyCode:\"9\",flag:0,pageID:\"7\",HID:\"43\"},{name:\"Space\",inputID:\"KEY_SPACEBAR\",type:\"Navigation\",scancode:parseInt(\"39\",16),virtualKey:\"32\",keyCode:\"32\",flag:0,pageID:\"7\",HID:\"44\"},{name:\"Enter\",inputID:\"KEY_ENTER\",type:\"Navigation\",scancode:parseInt(\"1C\",16),virtualKey:\"13\",keyCode:\"13\",flag:0,pageID:\"7\",HID:\"40\"},{name:\"Esc\",inputID:\"KEY_ESC\",type:\"Navigation\",scancode:parseInt(\"01\",16),virtualKey:\"27\",keyCode:\"27\",flag:0,pageID:\"7\",HID:\"41\"},{name:\"Insert\",inputID:\"KEY_INSERT\",type:\"Navigation\",scancode:parseInt(\"52\",16),virtualKey:\"45\",keyCode:\"45\",flag:0,outputFlag:2,pageID:\"7\",HID:\"73\",ExtendedKey:\"Extended_00\"},{name:\"Home\",inputID:\"KEY_HOME\",type:\"Navigation\",scancode:parseInt(\"47\",16),virtualKey:\"36\",keyCode:\"36\",flag:0,outputFlag:2,pageID:\"7\",HID:\"74\",ExtendedKey:\"Extended_00\"},{name:\"Delete\",inputID:\"KEY_DELETE\",type:\"Navigation\",scancode:parseInt(\"53\",16),virtualKey:\"46\",keyCode:\"46\",flag:0,outputFlag:2,pageID:\"7\",HID:\"76\",ExtendedKey:\"Extended_00\"},{name:\"End\",inputID:\"KEY_END\",type:\"Navigation\",scancode:parseInt(\"4F\",16),virtualKey:\"35\",keyCode:\"35\",flag:0,outputFlag:2,pageID:\"7\",HID:\"77\",ExtendedKey:\"Extended_00\"},{name:\"Print Screen\",inputID:\"KEY_PRINT_SCREEN\",type:\"Navigation\",scancode:parseInt(\"37\",16),virtualKey:\"44\",keyCode:\"44\",flag:0,outputFlag:2,pageID:\"7\",HID:\"70\",ExtendedKey:\"Extended_00\"},{name:\"Pause\",inputID:\"KEY_PAUSE\",type:\"Navigation\",scancode:parseInt(\"1D\",16),virtualKey:\"19\",keyCode:\"19\",flag:0,outputFlag:4,pageID:\"7\",HID:\"72\"},{name:\"Invalid/cancel\",inputID:\"KEY_CANCEL\",type:\"\",scancode:parseInt(\"46\",16),virtualKey:\"70\",keyCode:\"3\",flag:0,outputFlag:2,pageID:\"\",HID:\"\"},{name:\"Menu\",inputID:\"KEY_APPLICATION\",type:\"Navigation\",scancode:parseInt(\"5D\",16),virtualKey:\"93\",keyCode:\"93\",flag:0,outputFlag:2,pageID:\"7\",HID:\"101\",ExtendedKey:\"Extended_00\"},{name:\"Ctrl\",inputID:\"KEY_LEFT_CTRL\",type:\"Modifiers\",scancode:parseInt(\"1D\",16),virtualKey:\"162\",keyCode:\"17\",flag:0,pageID:\"7\",HID:\"224\"},{name:\"Right Ctrl\",inputID:\"KEY_RIGHT_CTRL\",type:\"Modifiers\",scancode:parseInt(\"1D\",16),virtualKey:\"163\",keyCode:\"17\",flag:2,pageID:\"7\",HID:\"228\",ExtendedKey:\"Extended_00\"},{name:\"Shift\",inputID:\"KEY_LEFT_SHIFT\",type:\"Modifiers\",scancode:parseInt(\"2A\",16),virtualKey:\"160\",keyCode:\"16\",flag:0,pageID:\"7\",HID:\"225\"},{name:\"Right Shift\",inputID:\"KEY_RIGHT_SHIFT\",type:\"Modifiers\",scancode:parseInt(\"36\",16),virtualKey:\"161\",keyCode:\"16\",flag:2,outputFlag:0,pageID:\"7\",HID:\"229\"},{name:\"Alt\",inputID:\"KEY_LEFT_ALT\",type:\"Modifiers\",scancode:parseInt(\"38\",16),virtualKey:\"164\",keyCode:\"18\",flag:0,pageID:\"7\",HID:\"226\"},{name:\"Right Alt\",inputID:\"KEY_RIGHT_ALT\",type:\"Modifiers\",scancode:parseInt(\"38\",16),virtualKey:\"165\",keyCode:\"18\",flag:2,pageID:\"7\",HID:\"230\",ExtendedKey:\"Extended_00\"},{name:\"Windows\",inputID:\"KEY_LEFT_GUI\",type:\"Modifiers\",scancode:parseInt(\"5B\",16),virtualKey:\"91\",keyCode:\"91\",flag:0,outputFlag:2,HID:\"227\",ExtendedKey:\"Extended_00\"},{name:\"Caps Lock\",inputID:\"KEY_CAPS_LOCK\",type:\"Modifiers\",scancode:parseInt(\"3A\",16),virtualKey:\"20\",keyCode:\"20\",flag:0,pageID:\"7\",HID:\"57\"},{name:\"Scroll Lock\",inputID:\"KEY_SCROLL_LOCK\",type:\"Modifiers\",scancode:parseInt(\"46\",16),virtualKey:\"145\",keyCode:\"145\",flag:0,pageID:\"7\",HID:\"71\"},{name:\"Num Lock\",inputID:\"KEY_NUMPAD_NUM_LOCK\",type:\"Modifiers\",scancode:parseInt(\"45\",16),virtualKey:\"144\",keyCode:\"144\",flag:0,pageID:\"7\",HID:\"83\",ExtendedKey:\"Extended_00\"},{name:\"`\",inputID:\"KEY_TILDE\",type:\"Symbols\",scancode:parseInt(\"29\",16),virtualKey:\"192\",keyCode:\"192\",flag:0,pageID:\"7\",HID:\"53\"},{name:\"~\",type:\"Symbols\",scancode:parseInt(\"29\",16),virtualKey:\"192\",keyCode:\"192\",flag:0,modifier:\"16\"},{name:\"!\",type:\"Symbols\",scancode:parseInt(\"02\",16),virtualKey:\"49\",keyCode:\"49\",flag:0,modifier:\"16\"},{name:\"@\",type:\"Symbols\",scancode:parseInt(\"03\",16),virtualKey:\"50\",keyCode:\"50\",flag:0,modifier:\"16\"},{name:\"#\",inputID:\"KEY_NON_US_POUND\",type:\"Symbols\",scancode:parseInt(\"2B\",16),virtualKey:\"51\",keyCode:\"51\",flag:0,modifier:\"16\",pageID:\"7\",HID:\"50\"},{name:\"$\",type:\"Symbols\",scancode:parseInt(\"05\",16),virtualKey:\"52\",keyCode:\"52\",flag:0,modifier:\"16\"},{name:\"%\",type:\"Symbols\",scancode:parseInt(\"06\",16),virtualKey:\"53\",keyCode:\"53\",flag:0,modifier:\"16\"},{name:\"^\",type:\"Symbols\",scancode:parseInt(\"07\",16),virtualKey:\"54\",keyCode:\"54\",flag:0,modifier:\"16\"},{name:\"&\",type:\"Symbols\",scancode:parseInt(\"08\",16),virtualKey:\"55\",keyCode:\"55\",flag:0,modifier:\"16\"},{name:\"*\",type:\"Symbols\",scancode:parseInt(\"09\",16),virtualKey:\"56\",keyCode:\"56\",flag:0,modifier:\"16\"},{name:\"(\",type:\"Symbols\",scancode:parseInt(\"0A\",16),virtualKey:\"57\",keyCode:\"57\",flag:0,modifier:\"16\"},{name:\")\",type:\"Symbols\",scancode:parseInt(\"0B\",16),virtualKey:\"48\",keyCode:\"48\",flag:0,modifier:\"16\"},{name:\"-\",inputID:\"KEY_HYPEN\",type:\"Symbols\",scancode:parseInt(\"0C\",16),virtualKey:\"189\",keyCode:\"189\",flag:0,pageID:\"7\",HID:\"45\"},{name:\"=\",inputID:\"KEY_EQUAL\",type:\"Symbols\",scancode:parseInt(\"0D\",16),virtualKey:\"187\",keyCode:\"187\",flag:0,pageID:\"7\",HID:\"46\"},{name:\"_\",type:\"Symbols\",scancode:parseInt(\"0C\",16),virtualKey:\"189\",keyCode:\"189\",flag:0,modifier:\"16\"},{name:\"+\",type:\"Symbols\",scancode:parseInt(\"0D\",16),virtualKey:\"187\",keyCode:\"187\",flag:0,modifier:\"16\"},{name:\"[\",inputID:\"KEY_OPEN_SQUARE_BRACKET\",type:\"Symbols\",scancode:parseInt(\"1A\",16),virtualKey:\"219\",keyCode:\"219\",flag:0,pageID:\"7\",HID:\"47\"},{name:\"]\",inputID:\"KEY_CLOSE_SQUARE_BRACKET\",type:\"Symbols\",scancode:parseInt(\"1B\",16),virtualKey:\"221\",keyCode:\"221\",flag:0,pageID:\"7\",HID:\"48\"},{name:\"\\\\\",inputID:\"KEY_BACKSLASH\",type:\"Symbols\",scancode:parseInt(\"2B\",16),virtualKey:\"220\",keyCode:\"220\",flag:0,pageID:\"7\",HID:\"49\"},{name:\"{\",type:\"Symbols\",scancode:parseInt(\"1A\",16),virtualKey:\"219\",keyCode:\"219\",flag:0,modifier:\"16\"},{name:\"}\",type:\"Symbols\",scancode:parseInt(\"1B\",16),virtualKey:\"221\",keyCode:\"221\",flag:0,modifier:\"16\"},{name:\"|\",type:\"Symbols\",scancode:parseInt(\"2B\",16),virtualKey:\"220\",keyCode:\"220\",flag:0,modifier:\"16\"},{name:\";\",inputID:\"KEY_SEMICOLON\",type:\"Symbols\",scancode:parseInt(\"27\",16),virtualKey:\"186\",keyCode:\"186\",flag:0,pageID:\"7\",HID:\"51\"},{name:\"'\",type:\"Symbols\",inputID:\"KEY_APOSTROPHE\",scancode:parseInt(\"28\",16),virtualKey:\"222\",keyCode:\"222\",flag:0,pageID:\"7\",HID:\"52\"},{name:\":\",type:\"Symbols\",scancode:parseInt(\"27\",16),virtualKey:\"186\",keyCode:\"186\",flag:0,modifier:\"16\"},{name:'\"',type:\"Symbols\",scancode:parseInt(\"28\",16),virtualKey:\"222\",keyCode:\"222\",flag:0,modifier:\"16\"},{name:\",\",inputID:\"KEY_COMMA\",type:\"Symbols\",scancode:parseInt(\"33\",16),virtualKey:\"188\",keyCode:\"188\",flag:0,pageID:\"7\",HID:\"54\"},{name:\".\",type:\"Symbols\",inputID:\"KEY_PERIOD\",scancode:parseInt(\"34\",16),virtualKey:\"190\",keyCode:\"190\",flag:0,pageID:\"7\",HID:\"55\"},{name:\"/\",inputID:\"KEY_SLASH\",type:\"Symbols\",scancode:parseInt(\"35\",16),virtualKey:\"191\",keyCode:\"191\",flag:0,pageID:\"7\",HID:\"56\"},{name:\"<\",type:\"Symbols\",scancode:parseInt(\"33\",16),virtualKey:\"188\",keyCode:\"188\",flag:0,modifier:\"16\",pageID:\"7\",HID:\"100\"},{name:\">\",type:\"Symbols\",scancode:parseInt(\"34\",16),virtualKey:\"190\",keyCode:\"190\",flag:0,modifier:\"16\"},{name:\"?\",type:\"Symbols\",scancode:parseInt(\"35\",16),virtualKey:\"191\",keyCode:\"191\",flag:0,modifier:\"16\"},{name:\"KEY_YEN\",inputID:\"KEY_YEN\",type:\"\",scancode:parseInt(\"7d\",16),virtualKey:\"\",keyCode:\"\",flag:0,pageID:\"7\",HID:\"137\"},{name:\"KEY_BEFORE_LEFT_SHIFT\",inputID:\"KEY_RO\",type:\"\",scancode:parseInt(\"73\",16),virtualKey:\"\",keyCode:\"\",flag:0,pageID:\"7\",HID:\"135\"},{name:\"KEY_BEFORE_SPACE\",inputID:\"KEY_MUHENKAN\",type:\"\",scancode:parseInt(\"7b\",16),virtualKey:\"235\",keyCode:\"\",flag:0,pageID:\"7\",HID:\"139\"},{name:\"KEY_AFTER_SPACE\",inputID:\"KEY_HENKAN\",type:\"\",scancode:parseInt(\"79\",16),virtualKey:\"255\",keyCode:\"\",flag:0,pageID:\"7\",HID:\"138\"},{name:\"KEY_BEFORE_RIGHT_ALT\",inputID:\"KEY_KATAKANA_HIRAGANA\",type:\"\",scancode:parseInt(\"70\",16),virtualKey:\"255\",keyCode:\"\",flag:0,pageID:\"7\",HID:\"136\"},{name:\"\\\\\",inputID:\"KEY_NON_US_BACKSLASH\",type:\"\",scancode:parseInt(\"56\",16),virtualKey:\"226\",keyCode:\"226\",flag:0,pageID:\"7\",HID:\"100\"}]"
+  },
+  "display": {
+    "path": ".ref/applications/synapse/macro/static/js/857.03446d9c.chunk.js",
+    "sha256": "3d4b1ba4786bc9333147dd0e58a0e03d2e8998a04ab1d6b96d51a4caabd9514d",
+    "offset": 66843,
+    "end": 67024,
+    "source": "(_,E,K,F)=>{const A=(Y[_]||Y.default)[E];if(!A)return Y.default[E][F]||Y.default[E].DEFAULT||Y.default[E]||E;if(\"string\"===typeof A)return A;let N=A[F]||A[K]||A.DEFAULT;return N||E}"
+  },
+  "templates": [
+    {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 69845,
+      "end": 69932,
+      "source": "{Type:1,Id:null,KeyEvent:{Makecode:null,State:null},flag:null,selected:!1,isPairing:!1}",
+      "value": {
+        "Type": 1,
+        "Id": null,
+        "KeyEvent": {
+          "Makecode": null,
+          "State": null
+        },
+        "flag": null,
+        "selected": false,
+        "isPairing": false
+      }
+    },
+    {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 403452,
+      "end": 403539,
+      "source": "{Type:1,Id:null,KeyEvent:{Makecode:null,State:null},flag:null,selected:!1,isPairing:!1}",
+      "value": {
+        "Type": 1,
+        "Id": null,
+        "KeyEvent": {
+          "Makecode": null,
+          "State": null
+        },
+        "flag": null,
+        "selected": false,
+        "isPairing": false
+      }
+    }
+  ],
+  "css": [
+    {
+      "file": ".ref/applications/synapse/macro/static/css/main.9ea5d7e7.css",
+      "sha256": "570aa52da8c8d56ed6ee0a607d2e00b48d720f8b34df07f84666d629f10506ce",
+      "rules": [
+        {
+          "offset": 3695,
+          "selector": ".mr10",
+          "conditions": [],
+          "declarations": "margin-right:10px",
+          "properties": [
+            {
+              "property": "margin-right",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+      "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911",
+      "rules": [
+        {
+          "offset": 18254,
+          "selector": ".CustomInput_custom_input__NZX3A",
+          "conditions": [],
+          "declarations": "font-size:14px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18302,
+          "selector": ".InputKey_kbf__7nfWR",
+          "conditions": [],
+          "declarations": "background-color:#111;display:none;height:27px;width:160px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "160px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18382,
+          "selector": ".InputKey_kbf__7nfWR>div",
+          "conditions": [],
+          "declarations": "margin:0;width:inherit",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "inherit",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18430,
+          "selector": ".InputKey_text__KZBEA",
+          "conditions": [],
+          "declarations": "text-transform:capitalize",
+          "properties": [
+            {
+              "property": "text-transform",
+              "value": "capitalize",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18478,
+          "selector": ".InputKey_text__KZBEA span",
+          "conditions": [],
+          "declarations": "color:#707070;text-transform:none",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18539,
+          "selector": ".InputKey_text__KZBEA:hover,.InputKey_text__KZBEA:hover span",
+          "conditions": [],
+          "declarations": "color:#44d62c;cursor:url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18690,
+          "selector": ".ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36",
+          "conditions": [],
+          "declarations": "position:relative;text-align:left;transition:border-color .2s;width:100%;will-change:border-color",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "border-color .2s",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "border-color",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 18856,
+          "selector": ".ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36.ShortcutKey_active__gRR8z,.ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36:hover",
+          "conditions": [],
+          "declarations": "border-color:#44d62c;cursor:pointer",
+          "properties": [
+            {
+              "property": "border-color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19060,
+          "selector": ".ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36:focus",
+          "conditions": [],
+          "declarations": "outline:none",
+          "properties": [
+            {
+              "property": "outline",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19147,
+          "selector": ".ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36 .ShortcutKey_remove__rddji",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_close_enclosed.6056b667.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;display:none;height:25px;position:absolute;right:0;top:0;transition:background-image .2s;width:25px;will-change:background-image",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_close_enclosed.6056b667.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "25px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "background-image .2s",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "25px",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "background-image",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19518,
+          "selector": ".ShortcutKey_display_name__vBIhj.ShortcutKey_keyboard_listen__Vyr36.ShortcutKey_can_remove__g\\+MdK .ShortcutKey_remove__rddji",
+          "conditions": [],
+          "declarations": "display:block",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19658,
+          "selector": ".ShortcutKey_display_name__vBIhj",
+          "conditions": [],
+          "declarations": "border:1px solid #5d5d5d;color:#ccc;font-size:13.5px;line-height:17px;margin-top:5px;min-height:27px;padding:5px;text-align:center;text-transform:capitalize;width:210px",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "13.5px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "capitalize",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "210px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19860,
+          "selector": ".MacroItem_control_action__\\+Y41x,.MacroItem_functional_item__4Sh5o .MacroItem_check_item__XKo28",
+          "conditions": [],
+          "declarations": "opacity:0;transition:opacity .2s",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 19990,
+          "selector": ".MacroItem_check_item__XKo28,.MacroItem_functional_item__4Sh5o.MacroItem_active__QqwG4 .MacroItem_check_item__XKo28,.MacroItem_functional_item__4Sh5o.MacroItem_hover__UAuBd .MacroItem_check_item__XKo28,.MacroItem_functional_item__4Sh5o.MacroItem_hover__UAuBd .MacroItem_control_action__\\+Y41x,.MacroItem_functional_item__4Sh5o.MacroItem_notAction_bar__bDiu9:hover .MacroItem_check_item__XKo28,.MacroItem_functional_item__4Sh5o.MacroItem_notAction_bar__bDiu9:hover .MacroItem_control_action__\\+Y41x",
+          "conditions": [],
+          "declarations": "opacity:1;transition:opacity .2s",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 20588,
+          "selector": ".MacroItem_action_bar__k8DNj,.MacroItem_functional_item__4Sh5o",
+          "conditions": [],
+          "declarations": "align-items:center;border-bottom:1px solid #222;display:flex;height:54px;padding:12px 10px;width:inherit",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "border-bottom",
+              "value": "1px solid #222",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "54px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "12px 10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "inherit",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 20756,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_notAction_bar__bDiu9:hover",
+          "conditions": [],
+          "declarations": "border:1px solid #44d62c",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 20852,
+          "selector": ".MacroItem_flex_container__TkEbO",
+          "conditions": [],
+          "declarations": "align-items:center;display:flex;width:33.33%",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "33.33%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 20930,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_undo__hiseE",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_undo.638cc83d.svg);background-position:50%;background-repeat:no-repeat;margin-right:16px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_undo.638cc83d.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "16px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21120,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_undo__hiseE.MacroItem_enable__p-b4l",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_undo_enable.dc068f5b.svg);pointer-events:all",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_undo_enable.dc068f5b.svg)",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "all",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21290,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_undo__hiseE.MacroItem_enable__p-b4l:hover",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_undo_hover.e7a454de.svg);cursor:pointer",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_undo_hover.e7a454de.svg)",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21461,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_redo__dblI3",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_redo.6df14b75.svg);background-repeat:no-repeat;flex:auto",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_redo.6df14b75.svg)",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21619,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_redo__dblI3.MacroItem_enable__p-b4l",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_redo_enable.9fb6a098.svg);pointer-events:all",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_redo_enable.9fb6a098.svg)",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "all",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21789,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_redo__dblI3.MacroItem_enable__p-b4l:hover",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_redo_hover.d651f41e.svg);cursor:pointer",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_redo_hover.d651f41e.svg)",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 21960,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_redo__dblI3,.MacroItem_flex_container__TkEbO .MacroItem_undo__hiseE",
+          "conditions": [],
+          "declarations": "height:20px;pointer-events:none;position:relative;width:20px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 22133,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_redo__dblI3:active,.MacroItem_flex_container__TkEbO .MacroItem_undo__hiseE:active",
+          "conditions": [],
+          "declarations": "opacity:.7",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".7",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 22270,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_save_button__xXZvq",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#44d62c;border:1px solid #0000004d;border-radius:3px;color:#000;display:flex;font-size:12px;height:27px;justify-content:center;line-height:14px;margin:0 10px 0 0;min-width:100px;text-transform:capitalize",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px 0 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "100px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "capitalize",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 22573,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_save_button__xXZvq.MacroItem_disable__6p2hN",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 22692,
+          "selector": ".MacroItem_flex_container__TkEbO .MacroItem_save_button__xXZvq:hover",
+          "conditions": [],
+          "declarations": "background-color:#7ce26c",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#7ce26c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 23092,
+          "selector": ".MacroItem_action_bar__k8DNj .MacroItem_flex_container__TkEbO span[data-tooltip]",
+          "conditions": [],
+          "declarations": "height:20px;position:relative",
+          "properties": [
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 23203,
+          "selector": ".MacroItem_action_bar__k8DNj .MacroItem_flex_container__TkEbO span[data-tooltip]:before",
+          "conditions": [],
+          "declarations": "display:block;position:absolute;right:-45px;top:30px;width:auto",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "-45px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "30px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25137,
+          "selector": ".MacroItem_functional_item__4Sh5o",
+          "conditions": [],
+          "declarations": "background-color:#111;border:1px solid;border-color:#0000 #0000 #222;height:42px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid",
+              "important": false
+            },
+            {
+              "property": "border-color",
+              "value": "#0000 #0000 #222",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "42px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25252,
+          "selector": ".MacroItem_functional_item__4Sh5o .MacroItem_flex_container__TkEbO",
+          "conditions": [],
+          "declarations": "width:70%",
+          "properties": [
+            {
+              "property": "width",
+              "value": "70%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25329,
+          "selector": ".MacroItem_functional_item__4Sh5o .MacroItem_flex_container__TkEbO img",
+          "conditions": [],
+          "declarations": "height:20px;width:20px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25423,
+          "selector": ".MacroItem_functional_item__4Sh5o .MacroItem_flex_container__TkEbO span",
+          "conditions": [],
+          "declarations": "font-size:14px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25510,
+          "selector": ".MacroItem_functional_item__4Sh5o .MacroItem_flex_container__TkEbO:nth-child(2n)",
+          "conditions": [],
+          "declarations": "width:30%",
+          "properties": [
+            {
+              "property": "width",
+              "value": "30%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25601,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_scrollable__prWFO",
+          "conditions": [],
+          "declarations": "width:592px",
+          "properties": [
+            {
+              "property": "width",
+              "value": "592px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25675,
+          "selector": ".MacroItem_functional_item__4Sh5o .MacroItem_text__RG4Jb:hover",
+          "conditions": [],
+          "declarations": "color:#44d62c;cursor:url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25828,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_hover__UAuBd",
+          "conditions": [],
+          "declarations": "border:1px solid #44d62c",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25910,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_active__QqwG4,.MacroItem_functional_item__4Sh5o.MacroItem_pairing__19W2e",
+          "conditions": [],
+          "declarations": "background-color:#44d62c33",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#44d62c33",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26054,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_dragging__hL3i9",
+          "conditions": [],
+          "declarations": "border-bottom:1px solid #44d62c",
+          "properties": [
+            {
+              "property": "border-bottom",
+              "value": "1px solid #44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26146,
+          "selector": ".MacroItem_functional_item__4Sh5o.MacroItem_dragging__hL3i9.MacroItem_no_drop__Zs0Ou",
+          "conditions": [],
+          "declarations": "border-bottom:1px solid #c8323c",
+          "properties": [
+            {
+              "property": "border-bottom",
+              "value": "1px solid #c8323c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26263,
+          "selector": ".MacroItem_functional_item__4Sh5o:hover .dropdown-area",
+          "conditions": [],
+          "declarations": "border:none",
+          "properties": [
+            {
+              "property": "border",
+              "value": "none",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": ".ref/applications/synapse/macro/static/css/1700.1adda236.chunk.css",
+      "sha256": "189324740c03f21ecebac8d95d972777e558ac3818826d2a66908aaba627f49c",
+      "rules": []
+    }
+  ],
+  "placeholder": "TEXT_NO_KEY_SET",
+  "data": {
+    "path": "src/shell/macro_page/keyboard_data.json",
+    "sha256": "75fb1df67439dd277c4876df85befd73d4f86cd772401763c03b506a953665c2",
+    "keys": 144,
+    "layouts": 20
+  },
+  "asset": {
+    "original": ".ref/applications/synapse/macro/static/media/icon_close_enclosed.6056b667.svg",
+    "asset": "assets/synapse/shortcuts-search-clear.svg",
+    "byte_equal": true,
+    "sha256": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f"
+  },
+  "directionAssets": [
+    {
+      "original": ".ref/applications/synapse/macro/static/media/icon_key_down.4d5fb90e.svg",
+      "asset": "assets/synapse/macro/key-down.svg",
+      "sha256": "04ac103ca4708215a7c391e827210815d81be50fbf28be61396a637e2531a231",
+      "module": {
+        "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+        "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+        "offset": 53307,
+        "end": 53410,
+        "source": "(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const o=n.p+\"static/media/icon_key_down.4d5fb90e.svg\"}"
+      }
+    },
+    {
+      "original": ".ref/applications/synapse/macro/static/media/icon_key_up.5fe01d07.svg",
+      "asset": "assets/synapse/macro/key-up.svg",
+      "sha256": "2b9bf3df42e5cb9e610fe0f468e99e1ca84cab0cce5dd01f36b2f97020a20bb0",
+      "module": {
+        "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+        "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+        "offset": 512275,
+        "end": 512376,
+        "source": "(e,t,n)=>{\"use strict\";n.d(t,{A:()=>o});n(41594);const o=n.p+\"static/media/icon_key_up.5fe01d07.svg\"}"
+      }
+    }
+  ],
+  "contract": {
+    "capture": "Single key; both down/up; keydown 92->91 only; Enter versus NumpadEnter and ShiftRight override; 150ms debounce; outside/blur immediate commit.",
+    "pair": "Standard/Phased create down/up sharing a local event identity; Sequence creates one null-state event. Updates propagate by identity, preserving row parity; lone rows retain their old state as in 25572.C.",
+    "clear": "pn passes empty inputID, yn dereferences the missing entry before updates. Native clear preserves this no-change result without reproducing the exception.",
+    "boundary": "Windows current-thread/current-window message capture only; no Razer inputredirect, device mappings or global-shortcut service. Unknown systemKeyboardLayout is not fabricated: outer US fallback and inner default names. Non-Windows raw capture unavailable."
+  },
+  "native": {
+    "verification": "Source review and file fingerprints, not runtime verification",
+    "files": {
+      "src/features/macro_library.rs": "9094029f604ee7abc7eeefddde5b8238ecbd8883a85b83eaf0e7ec4c475f216b",
+      "src/shell/macro_page.rs": "680cec750941c65079c83c8d304abb3f5e7855979e77dc0d91cb5614d77e40e0",
+      "src/shell/macro_page/state.rs": "25672ef7780d25f7b46c134cbb9e338511e5bcd764741645b8c79ee6006d2189",
+      "src/shell/macro_page/body.rs": "7727d3f7dd73db0f650d1c5b9449bc2366449aa34cf30c8854f1750c2765c77c",
+      "src/shell/macro_page/unsaved.rs": "0b0771a89bbeb61a99e677de51680062aea67d6f37daff1b0aaf0555fc4876de",
+      "src/shell/macro_page/keyboard.rs": "975c7378049a070d98680fd446195c4582fcc5bb678dc858d10935e5a11ae628",
+      "src/shell/macro_page/keyboard_windows.rs": "2c624e7788df41edfa998c01555eeb201128299bf2f8c4d5eb641933d380c06a"
+    }
+  }
+}

@@ -17,6 +17,7 @@ use serde_json::Value;
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 mod oled_presets;
+mod receiver;
 
 #[derive(Deserialize)]
 struct OptionSpec {
@@ -204,6 +205,7 @@ pub(crate) struct SourceControls {
     pan_tilt_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// 原版白框按下后记录的抓取偏移（`left/top/bottom/right`）。
     pan_tilt_drag: Option<PanTiltDrag>,
+    receiver: receiver::ReceiverState,
 }
 /// 原版 `white box` 的 onMouseDown 状态：光标相对白框四条边的距离。
 #[derive(Clone)]
@@ -237,6 +239,7 @@ impl SourceControls {
             listening: None,
             pan_tilt_bounds: Rc::new(Cell::new(None)),
             pan_tilt_drag: None,
+            receiver: receiver::ReceiverState::default(),
         };
         for control in spec
             .pages
@@ -801,6 +804,7 @@ impl SourceControls {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let previous_indicator = self.draft.pointer("/runtime/indicatorLedStatus").cloned();
         self.draft = self.spec.profile.clone();
         self.staged.clear();
         if let Some(value) = value {
@@ -808,11 +812,19 @@ impl SourceControls {
             self.restore_oled_custom_presets(value);
         }
         self.normalize();
+        if self.spec.product_id == 179
+            && previous_indicator.as_ref() != self.draft.pointer("/runtime/indicatorLedStatus")
+        {
+            self.receiver.restart_indicator();
+        }
         self.sync(window, cx);
         cx.notify();
     }
     pub(crate) fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            if self.spec.product_id == 179 {
+                self.receiver.restart_indicator();
+            }
             self.staged.clear();
             self.sync(window, cx);
         }
@@ -1796,7 +1808,10 @@ fn merge_known(target: &mut Value, saved: &Value) {
     }
 }
 impl Render for SourceControls {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.spec.product_id == 179 && self.page == "TAB_CUSTOMIZE" {
+            return self.render_receiver(window, cx);
+        }
         if self.spec.layout.as_deref() == Some("camera") && self.page != "HELP" {
             if let Some(page) = self
                 .spec

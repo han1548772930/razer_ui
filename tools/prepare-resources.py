@@ -14,6 +14,8 @@ from keyboard_geometry import geometry_for
 from gamer_room_assets import prepare as prepare_gamer_room_devices
 from pairing_assets import prepare as prepare_pairing
 from tray_assets import prepare as prepare_tray
+from macro_assets import prepare as prepare_macro
+from receiver_tab_assets import prepare as prepare_receiver_tabs
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/"assets"/"synapse"
@@ -33,11 +35,7 @@ for name in ("minimize", "maximize", "restore", "close", "close-original",
     shutil.copyfile(src, dst)
     record(src, dst)
 
-for category in ("MOUSE", "KEYBOARD", "AUDIO", "MOUSEMAT", "ACCESSORY"):
-    src = ROOT / ".ref/applications/synapse/dashboard/shared-favicon" / (category + ".svg")
-    dst = OUT / ("host-category-" + category.lower() + ".svg")
-    shutil.copyfile(src, dst)
-    record(src, dst, source_url="https://apps.razer.com/synapse/assets/imgs/favicon/" + category + ".svg")
+records.extend(prepare_receiver_tabs(ROOT, OUT))
 
 images={
     "mouse-182.png": (182,"prd-3x.674b18f0.avif"),
@@ -908,54 +906,7 @@ for name, original in {
     src, dst = profiles_media / original, OUT / name
     shutil.copyfile(src, dst)
     record(src, dst, source_url="https://apps.razer.com/synapse/profiles/static/media/" + original)
-macro_media = ROOT / ".ref/applications/synapse/macro/static/media"
-macro_out = OUT / "macro"
-macro_out.mkdir(exist_ok=True)
-for name, original in {
-    "delay.svg": "icon_delay_g.5050a3f7.svg",
-    "keyboard.svg": "icon_config_keyboard_a.7051c99b.svg",
-    "mouse.svg": "icon_config_mouse_o.8a44fbe7.svg",
-    "macro.svg": "icon_macro_a.7e1bc94f.svg",
-    "launch.svg": "icon_config_launch_p.482fbff5.svg",
-    "command.svg": "icon_runcmd_b.10c00024.svg",
-    "text.svg": "icon_config_text_b.bc93ac89.svg",
-    "loop.svg": "icon_refresh-1_r.ff48f955.svg",
-    "close.svg": "close.1d7eff2a.svg",
-    "binding-more.svg": "icon_more_g.32e1e984.svg",
-    "binding-close.svg": "icon_close.4f578909.svg",
-    "drag.svg": "icon_draggable_g.695879f5.svg",
-    "new.svg": "icon_new_marco.6edec51b.svg",
-    "new-hover.svg": "icon_new_marco-hover.47953e67.svg",
-    "new-active.svg": "icon_new_marco-pressed.0faeaad4.svg",
-    "folder-add.svg": "icon_addfolder-1.3c65591c.svg",
-    "folder-add-hover.svg": "icon_addfolder-hover.a804c680.svg",
-    "folder-add-active.svg": "icon_addfolder-pressed.aa5ec3ce.svg",
-    "folder.svg": "icon_folder_close-2.523e657a.svg",
-    "folder-open.svg": "icon_folder_open.076142a3.svg",
-    "file.svg": "icon_macro-file.2f24e5a0.svg",
-    "file-active.svg": "icon_marco-file-hover.0e086ddd.svg",
-    "onboarding-record.svg": "Onboarding_Step2.8d4382a1.svg",
-    "onboarding-add.svg": "Onboarding_Step3.ad2907e8.svg",
-    "indicator.svg": "indicator_animated.b7ce7af4.svg",
-    "warning.svg": "icon_warning.6c0cd78b.svg",
-    "add.svg": "icon_add.a38ffd57.svg",
-    "undo.svg": "icon_undo.638cc83d.svg",
-    "undo-enable.svg": "icon_undo_enable.dc068f5b.svg",
-    "undo-hover.svg": "icon_undo_hover.e7a454de.svg",
-    "redo.svg": "icon_redo.6df14b75.svg",
-    "redo-enable.svg": "icon_redo_enable.9fb6a098.svg",
-    "redo-hover.svg": "icon_redo_hover.d651f41e.svg",
-    "record.svg": "icon_record.9183ffe6.svg",
-    "record-expand.svg": "icon_expand_d.0cbe4fcf.svg",
-    "record-expand-hover.svg": "icon_expand_d.3.2a1d50df.svg",
-    "tree-more-hover.svg": "icon_more-pressed.f7f8588b.svg",
-    "tree-more-active.svg": "icon_more-hover.aa4fe640.svg",
-    "drag-folder.svg": "icon_folder_g.220b24b0.svg",
-    "drag-file.svg": "icon_layer.0c20e889.svg",
-}.items():
-    src, dst = macro_media / original, macro_out / name
-    shutil.copyfile(src, dst)
-    record(src, dst, source_url="https://apps.razer.com/synapse/macro/static/media/" + original)
+records.extend(prepare_macro(ROOT, OUT))
 armory_media = ROOT / ".ref/applications/synapse/armory/static/media"
 for name, original in {
     "armory-introduction.png": "Dissmissible-banner-image-x2.c6eaaf4b.avif",

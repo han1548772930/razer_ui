@@ -250,3 +250,15 @@ Remaining Macro scope includes source emoji categories/character-map launch, rea
 ## 2026-10-04 local Key Binds flow
 
 The binding add card now opens the current-source device chooser over real local ProductWorkspace entities, then a native product input view. Selecting a real input supports a session association with an existing profile, Standard/Hypershift layer and playback parameters; binding cards can remove it. Product 182 uses the audited 1368 physical groupList and KP diagram, while keyboard shapes reuse current static catalogs. No hardware assignment, service discovery or recording is fabricated. See [the current binding audit](macro-bindings-current-audit.md) for the verified subset and remaining product, service and visual scope; the 174 product roots are not all complete.
+
+## 2026-10-05 文本续接
+
+Text/emoji 已按当前 Macro 自身模块接入分类、搜索、变体、字符面板和 UTF-16 限制；弹层 Save 与文档 Save 分开，源 clear-search/CSS 缺陷保留。具体行为和仍缺内容见 [macro-text-current-audit.md](macro-text-current-audit.md)。
+
+## 2026-10-05 Launch 续接
+
+Launch 已接入 null 初始模式、文件选择器、独立草稿、异步基线检查和 100px／−300px 源定位阈值；网站保持原始文本。见 [macro-launch-current-audit.md](macro-launch-current-audit.md)。
+
+## 2026-10-05 Keyboard 续接
+
+Keyboard 已从自由文本改为当前窗口原始键码捕获，保留 Enter/Escape、右 Shift 与两类 Enter 的源匹配；接入 150ms 提交、成对状态与本地持久字段。原方向图标已加入，旧文本不推断为实体键。完整来源、线程/窗口输入范围、源清除缺陷和未完成部分见 [macro-keyboard-current-audit.md](macro-keyboard-current-audit.md)。整体 Macro 仍未完成。

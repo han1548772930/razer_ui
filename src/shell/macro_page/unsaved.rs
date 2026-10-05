@@ -17,6 +17,7 @@ pub(super) enum PendingAction {
 
 impl MacroPage {
     pub(super) fn stash_current_draft(&mut self) {
+        self.finish_keyboard_editor();
         if let Some(id) = self.actions_for.filter(|id| Some(*id) == self.current) {
             self.inactive_drafts.insert(
                 id,
@@ -31,7 +32,9 @@ impl MacroPage {
     }
 
     pub(super) fn finish_pending_edits(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         self.finish_action_edit(window, cx);
+        self.cancel_launch_editor();
         self.finish_randomized_range(false, window, cx);
         self.finish_rename(cx);
     }
@@ -50,6 +53,7 @@ impl MacroPage {
             self.selector_open = false;
             self.more_open = false;
             self.tree_menu = None;
+            self.choice_action = None;
             self.suspended_action = Some(action);
             self.unsaved_return_focus = window.focused(cx);
             self.unsaved_focus.focus(window, cx);

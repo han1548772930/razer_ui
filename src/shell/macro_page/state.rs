@@ -18,13 +18,15 @@ impl ActionItem {
         };
         let state = match kind {
             ActionKind::Loop => "start".to_string(),
-            ActionKind::Launch => "program".to_string(),
+            // Current source template starts with RadioIndex:null.
+            ActionKind::Launch => String::new(),
             ActionKind::Delay => "fixed".to_string(),
             _ => String::new(),
         };
         Self {
             kind,
             macro_id: None,
+            keyboard: None,
             value,
             secondary_value: String::new(),
             number_min: if kind == ActionKind::Delay {
@@ -285,8 +287,7 @@ impl MacroPage {
                 entry.open = !entry.open;
             } else if self.current != Some(id) {
                 self.editing_action = None;
-                self.launch_open = None;
-                self.launch_is_website = false;
+                self.cancel_launch_editor();
                 self.randomized_open = None;
                 self.choice_action = None;
                 self.current = Some(id);

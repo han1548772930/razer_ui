@@ -21,10 +21,16 @@ mod bindings;
 mod body;
 mod chrome;
 mod editors;
+mod keyboard;
+mod keyboard_windows;
+mod launch;
 mod nested;
 mod nested_overlay;
 mod palette;
 mod state;
+mod text;
+mod text_emoji;
+mod text_overlay;
 mod tree;
 mod unsaved;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial};
@@ -116,9 +122,10 @@ pub(super) struct MacroPage {
     name: Entity<InputState>,
     action_editor: Entity<InputState>,
     text_editor: Entity<TextareaState>,
-    launch_program: Entity<InputState>,
+    text_ui: text::TextUi,
     launch_website: Entity<InputState>,
-    launch_is_website: bool,
+    launch_ui: launch::LaunchUi,
+    keyboard_ui: keyboard::KeyboardUi,
     delay_min_editor: Entity<InputState>,
     delay_max_editor: Entity<InputState>,
     randomized_open: Option<usize>,
@@ -161,7 +168,8 @@ impl MacroPage {
         let text_editor = cx.new(|cx| {
             TextareaState::new(window, cx).placeholder(tr("TEXT_TEXT_FUNCTION_PLACEHOLDER"))
         });
-        let launch_program = cx.new(|cx| InputState::new(window, cx));
+        let text_search =
+            cx.new(|cx| InputState::new(window, cx).placeholder(tr("TEXT_SEARCH_EMOJI")));
         let launch_website = cx.new(|cx| InputState::new(window, cx));
         let delay_min_editor = cx.new(|cx| {
             InputState::new(window, cx).validate(|value, _| editors::valid_randomized_draft(value))
@@ -169,9 +177,17 @@ impl MacroPage {
         let delay_max_editor = cx.new(|cx| {
             InputState::new(window, cx).validate(|value, _| editors::valid_randomized_draft(value))
         });
+        let keyboard_focus = cx.focus_handle();
         let subscriptions = vec![
-            cx.observe(&launch_program, |_, _, cx| cx.notify()),
-            cx.observe(&launch_website, |_, _, cx| cx.notify()),
+            cx.on_blur(&keyboard_focus, window, |this, _, cx| {
+                this.finish_keyboard_editor();
+                cx.notify();
+            }),
+            cx.subscribe(&launch_website, |this, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.launch_website_changed(cx);
+                }
+            }),
             cx.subscribe_in(&delay_min_editor, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Change) {
                     this.update_randomized_range(DelayBound::Min, window, cx);
@@ -214,14 +230,16 @@ impl MacroPage {
                     this.finish_action_edit(window, cx);
                 }
             }),
-            cx.subscribe_in(&text_editor, window, |_, editor, event, window, cx| {
+            cx.subscribe_in(&text_editor, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Change) {
-                    let value = editor.read(cx).value().to_string();
-                    if value.encode_utf16().count() > 250 {
-                        editor.update(cx, |input, cx| {
-                            input.set_value(truncate_utf16(&value, 250), window, cx);
-                        });
-                    }
+                    this.text_input_changed(window, cx);
+                }
+            }),
+            cx.subscribe(&text_search, |this, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.text_search_changed(cx);
+                }
+                if matches!(event, InputEvent::Focus | InputEvent::Blur) {
                     cx.notify();
                 }
             }),
@@ -259,9 +277,10 @@ impl MacroPage {
             name,
             action_editor,
             text_editor,
-            launch_program,
+            text_ui: text::TextUi::new(text_search),
             launch_website,
-            launch_is_website: false,
+            launch_ui: Default::default(),
+            keyboard_ui: keyboard::KeyboardUi::new(keyboard_focus),
             delay_min_editor,
             delay_max_editor,
             randomized_open: None,
@@ -393,9 +412,11 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
+        self.finish_keyboard_editor();
         self.editing_action = None;
-        self.launch_open = None;
-        self.launch_is_website = false;
+        self.text_ui.emoji_open = false;
+        self.text_ui.hovered_emoji = None;
+        self.cancel_launch_editor();
         self.randomized_open = None;
         self.choice_action = None;
     }
@@ -415,8 +436,12 @@ impl MacroPage {
             self.undo.clear();
             self.redo.clear();
         }
+        self.finish_keyboard_editor();
+        let Some(items) = self.new_action_items(kind) else {
+            return;
+        };
         self.undo.push(self.actions.clone());
-        self.actions.push(ActionItem::new(kind));
+        self.actions.extend(items);
         self.clear_action_editors();
         self.selected_actions.clear();
         self.redo.clear();
@@ -435,16 +460,13 @@ impl MacroPage {
     }
     fn can_save_with_pending(&self, cx: &App) -> bool {
         self.can_save()
+            || self.keyboard_pending()
             || self
                 .editing_action
                 .and_then(|index| self.actions().get(index))
                 .is_some_and(|item| {
-                    let value = if item.kind == ActionKind::Text {
-                        self.text_editor.read(cx).value().to_string()
-                    } else {
-                        self.action_editor.read(cx).value().trim().to_string()
-                    };
-                    value != item.value
+                    item.kind != ActionKind::Text
+                        && self.action_editor.read(cx).value().trim() != item.value
                 })
             || self
                 .randomized_open
@@ -461,11 +483,28 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self
+            .actions()
+            .get(index)
+            .is_some_and(|item| item.kind == ActionKind::Keyboard)
+        {
+            self.open_keyboard_editor(index, window, cx);
+            return;
+        }
+        self.finish_keyboard_editor();
+        if self
+            .actions()
+            .get(index)
+            .is_some_and(|item| item.kind == ActionKind::Text)
+        {
+            self.open_text_editor(index, window, cx);
+            return;
+        }
         if self.editing_action.is_some() {
             self.finish_action_edit(window, cx);
         }
         self.finish_randomized_range(false, window, cx);
-        self.launch_open = None;
+        self.cancel_launch_editor();
         let Some(item) = self.actions().get(index).cloned() else {
             return;
         };
@@ -478,19 +517,11 @@ impl MacroPage {
         }
         let value = item.value;
         self.editing_action = Some(index);
-        if kind == ActionKind::Text {
-            self.text_editor.update(cx, |input, cx| {
-                input.set_value(value, window, cx);
-                input.focus(window, cx);
-                input.select_all(window, cx);
-            });
-        } else {
-            self.action_editor.update(cx, |input, cx| {
-                input.set_value(value, window, cx);
-                input.focus(window, cx);
-                input.select_all(window, cx);
-            });
-        }
+        self.action_editor.update(cx, |input, cx| {
+            input.set_value(value, window, cx);
+            input.focus(window, cx);
+            input.select_all(window, cx);
+        });
         cx.notify();
     }
 
@@ -502,11 +533,15 @@ impl MacroPage {
             return;
         }
         let kind = self.actions[index].kind;
-        let raw = if kind == ActionKind::Text {
-            truncate_utf16(&self.text_editor.read(cx).value(), 250)
-        } else {
-            self.action_editor.read(cx).value().trim().to_string()
-        };
+        if kind == ActionKind::Text {
+            // dn's outside/close path discards its modal draft. Only its own
+            // Save dispatches updateMacroItem; an outer Save must not commit it.
+            self.text_ui.emoji_open = false;
+            self.text_ui.hovered_emoji = None;
+            cx.notify();
+            return;
+        }
+        let raw = self.action_editor.read(cx).value().trim().to_string();
         let value = match kind {
             ActionKind::Delay => raw
                 .parse::<f64>()
@@ -530,60 +565,6 @@ impl MacroPage {
         self.actions[index].value = value;
         self.redo.clear();
         window.blur(cx);
-        cx.notify();
-    }
-
-    pub(super) fn open_launch_editor(
-        &mut self,
-        index: usize,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if self.editing_action.is_some() {
-            self.finish_action_edit(window, cx);
-        }
-        self.finish_randomized_range(false, window, cx);
-        let Some(item) = self.actions.get(index).cloned() else {
-            return;
-        };
-        if item.kind != ActionKind::Launch {
-            return;
-        }
-        self.launch_open = Some(index);
-        self.launch_is_website = item.state == "website";
-        self.launch_program.update(cx, |input, cx| {
-            input.set_value(item.value, window, cx);
-        });
-        self.launch_website.update(cx, |input, cx| {
-            input.set_value(item.secondary_value, window, cx);
-        });
-        cx.notify();
-    }
-
-    pub(super) fn save_launch_editor(&mut self, cx: &mut Context<Self>) {
-        let Some(index) = self.launch_open.take() else {
-            return;
-        };
-        let Some(item) = self.actions.get(index) else {
-            return;
-        };
-        if item.kind != ActionKind::Launch || self.actions_for != self.current {
-            return;
-        }
-        let program = self.launch_program.read(cx).value().to_string();
-        let website = self.launch_website.read(cx).value().to_string();
-        let state = if self.launch_is_website {
-            "website"
-        } else {
-            "program"
-        };
-        if item.value != program || item.secondary_value != website || item.state != state {
-            self.undo.push(self.actions.clone());
-            self.actions[index].value = program;
-            self.actions[index].secondary_value = website;
-            self.actions[index].state = state.to_string();
-            self.redo.clear();
-        }
         cx.notify();
     }
 
@@ -628,7 +609,7 @@ impl MacroPage {
         if self.randomized_open != Some(index) {
             self.finish_randomized_range(false, window, cx);
         }
-        self.launch_open = None;
+        self.cancel_launch_editor();
         self.randomized_open = Some(index);
         self.delay_min_editor.update(cx, |input, cx| {
             input.set_value(item.number_min, window, cx);
@@ -777,15 +758,20 @@ impl MacroPage {
             self.undo.clear();
             self.redo.clear();
         }
+        self.finish_keyboard_editor();
+        let Some(items) = self.new_action_items(kind) else {
+            return;
+        };
         self.undo.push(self.actions.clone());
-        self.actions
-            .insert(index.min(self.actions.len()), ActionItem::new(kind));
+        let index = index.min(self.actions.len());
+        self.actions.splice(index..index, items);
         self.clear_action_editors();
         self.selected_actions.clear();
         self.redo.clear();
         cx.notify();
     }
     pub(super) fn save_actions(&mut self, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         if !self.can_save() {
             return;
         }
@@ -805,6 +791,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn undo_action(&mut self, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         if let Some(previous) = self.undo.pop() {
             self.redo.push(self.actions.clone());
             self.actions = previous;
@@ -814,6 +801,7 @@ impl MacroPage {
         }
     }
     pub(super) fn redo_action(&mut self, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         if let Some(next) = self.redo.pop() {
             self.undo.push(self.actions.clone());
             self.actions = next;
@@ -839,6 +827,7 @@ impl MacroPage {
     }
 
     pub(super) fn delete_selected_actions(&mut self, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         if self.selected_actions.is_empty() || self.actions_for != self.current {
             return;
         }
@@ -859,6 +848,7 @@ impl MacroPage {
     /// The source editor inserts before the target row; removing an earlier
     /// source first therefore shifts the destination one slot to the left.
     pub(super) fn move_action(&mut self, source: usize, target: usize, cx: &mut Context<Self>) {
+        self.finish_keyboard_editor();
         if self.actions_for != self.current
             || source >= self.actions.len()
             || target > self.actions.len()
@@ -896,20 +886,6 @@ impl MacroPage {
     }
 }
 
-fn truncate_utf16(value: &str, max_units: usize) -> String {
-    let mut units = 0;
-    let mut end = 0;
-    for (index, character) in value.char_indices() {
-        let next = character.len_utf16();
-        if units + next > max_units {
-            break;
-        }
-        units += next;
-        end = index + character.len_utf8();
-    }
-    value[..end].to_string()
-}
-
 fn parse_delay(value: &str) -> f64 {
     value
         .parse::<f64>()
@@ -927,6 +903,12 @@ impl Render for MacroPage {
         if self.locale != i18n::locale() {
             self.locale = i18n::locale();
             self.update_search_placeholder(window, cx);
+            self.text_editor.update(cx, |input, cx| {
+                input.set_placeholder(tr("TEXT_TEXT_FUNCTION_PLACEHOLDER"), window, cx)
+            });
+            self.text_ui.search.update(cx, |input, cx| {
+                input.set_placeholder(tr("TEXT_SEARCH_EMOJI"), window, cx)
+            });
             if let Some(dialog) = &self.binding_dialog {
                 dialog.update(cx, |dialog, cx| dialog.refresh_locale(window, cx));
             }

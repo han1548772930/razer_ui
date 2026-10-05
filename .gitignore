@@ -146,3 +146,15 @@
 !/tools/audit-shortcuts-macro-contract.cjs
 !/tools/audit-shortcuts-stepper.cjs
 !/tools/audit-automation-quick-menu.cjs
+!/tools/audit-macro-text.cjs
+!/tools/audit-macro-launch.cjs
+!/tools/audit-macro-keyboard.cjs
+!/tools/fetch-app-favicons.py
+!/tools/host_tab_ico.py
+!/tools/macro_assets.py
+!/tools/prepare-macro-assets.py
+!/tools/audit-receiver-current.cjs
+!/tools/audit-host-device-favicons.py
+!/tools/receiver_tab_assets.py
+!/tools/prepare-receiver-tab-assets.py
+!/tools/audit-host-tab-icons.cjs

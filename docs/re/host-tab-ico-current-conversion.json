@@ -1,0 +1,38 @@
+{
+  "method": "Static ICO32 BGRA frame extraction and PNG encoding; host pixels match existing tray-app.rgba; no resampling",
+  "entries": [
+    {
+      "source": ".ref/host-4.0.827/electron/resources/images/rzAppEngine.ico",
+      "output": "assets/synapse/host-default-tab.png",
+      "source_sha256": "941bffcecac64b116098726e19a3007f3166a314238ea223ecf4dcc4b3fde33c",
+      "sha256": "915eee341e15d3cb3d0526018ebe0f11085a8f992ecda3d19da71fcb6dd248ff",
+      "width": 20,
+      "height": 20,
+      "mode": "RGBA",
+      "conversion": "ico-bgra32-to-png",
+      "rgba_sha256": "f979021796dfd3420213fdd6a5f5283f0b0aec13c765668f8ada88c18c4c85f7",
+      "ico_frame": {
+        "offset": 213060,
+        "bytes": 1720,
+        "frame_sha256": "fd0c067250aeae36325012d155ab0fa0c207893654b762629869a4a5986b02bb"
+      }
+    },
+    {
+      "source": ".ref/applications/synapse/alexa/favicon.ico",
+      "output": "assets/synapse/host-alexa-favicon.png",
+      "source_sha256": "99fbeba08c5afeff562b17ad8d7c70ac17699f5b0a42b342949202f43a537940",
+      "sha256": "65cef6203d915595b29868a549bb4e9caaf03ca312ac336ac4be450c4ba547d4",
+      "width": 63,
+      "height": 63,
+      "mode": "RGBA",
+      "conversion": "ico-bgra32-to-png",
+      "rgba_sha256": "8fca98ac7f33d6814f17b2000cbddc1cdfdd51e4121b60bae97c526512e44b18",
+      "ico_frame": {
+        "offset": 22,
+        "bytes": 16420,
+        "frame_sha256": "d5526e7e849be658fc888a666c0a21ca39129ab4b24f6df170c1b0772aab9390"
+      },
+      "source_url": "https://apps.razer.com/synapse/alexa/favicon.ico"
+    }
+  ]
+}

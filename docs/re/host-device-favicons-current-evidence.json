@@ -1,0 +1,3316 @@
+{
+  "generator_sha256": "107be3676ba102118a89f59bf783c00c1301103a3be097e20fd238edc88d8401",
+  "method": "Current HTML shortcut icon to current host TabUI.changeTabIcon; static SVG only",
+  "products": [
+    {
+      "product_id": 100,
+      "html": ".ref/devices/100/index.html",
+      "html_sha256": "32a99e44c563294b10952f0e0a4fa8700095289771aab2af870d68c43f97cd44",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 101,
+      "html": ".ref/devices/101/index.html",
+      "html_sha256": "ed743a0290d601ff310ea2110b51b2defaadee997ed3b42fe309238c17a68fcd",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 103,
+      "html": ".ref/devices/103/index.html",
+      "html_sha256": "6bca183e7a3ebf1f9de2173bb651ecde222a2b579ef71fa02ed7598ce93d881e",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 104,
+      "html": ".ref/devices/104/index.html",
+      "html_sha256": "8bcff746b5325b9be580b8e7f7555320974acc10a0f16e6f48a3e4fbba59f3e5",
+      "href": "/synapse/assets/imgs/favicon/MOUSEPLUSMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEPLUSMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEPLUSMAT.svg",
+      "output": "assets/synapse/host-category-mouseplusmat.svg",
+      "source_sha256": "e23b2207c8cc77a8132f6b2e24cc02a494f2982efbd9ea91d38e818399415a02"
+    },
+    {
+      "product_id": 105,
+      "html": ".ref/devices/105/index.html",
+      "html_sha256": "d5a1a588b246309e891a606a08c3c2f9c0b7e766345d5a4aaa84415206b747b8",
+      "href": "/synapse/assets/imgs/favicon/MOUSEPLUSMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEPLUSMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEPLUSMAT.svg",
+      "output": "assets/synapse/host-category-mouseplusmat.svg",
+      "source_sha256": "e23b2207c8cc77a8132f6b2e24cc02a494f2982efbd9ea91d38e818399415a02"
+    },
+    {
+      "product_id": 106,
+      "html": ".ref/devices/106/index.html",
+      "html_sha256": "3234a59e26ac650e2792f7e852ed4c63a6fbffa004198284ab9bfabd1872695b",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 107,
+      "html": ".ref/devices/107/index.html",
+      "html_sha256": "40cf96af32ac8cbc3c8b9d02835d4ca55777d040771c34beeda2034031b4aafc",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 108,
+      "html": ".ref/devices/108/index.html",
+      "html_sha256": "6633a0c9a568297e093a443b2b4c8a086a7ed44eba795afd3584ae0740320802",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 110,
+      "html": ".ref/devices/110/index.html",
+      "html_sha256": "de15e419d7f7f0aeae0c40d315d192c6fabced040b2cd3710fbb957f60a9a9f5",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 112,
+      "html": ".ref/devices/112/index.html",
+      "html_sha256": "2903c8b371f09bc9595430074399da30e56f03796babc24a7593361e7f5cffdd",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 113,
+      "html": ".ref/devices/113/index.html",
+      "html_sha256": "bec62551ee0bff3c6f359a9eff68c688133db13a9d933e2b02b09851604ec924",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 115,
+      "html": ".ref/devices/115/index.html",
+      "html_sha256": "bf83e3e2c1baf9cfd5fb8b2332eb89814dfcfa95b21c0ff79f8ae12d4f9ec8e2",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 116,
+      "html": ".ref/devices/116/index.html",
+      "html_sha256": "cdf4f676d187be48e4015dfdea492cb85683e73081a4b72e12fdc8ff4f1c93ea",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 117,
+      "html": ".ref/devices/117/index.html",
+      "html_sha256": "6a73324ececdd30d316885f137b707d67eb9204e3bbf31cd995204294c111923",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 120,
+      "html": ".ref/devices/120/index.html",
+      "html_sha256": "de72b1311a16e8287f90ee4fdb589c7acd7cd01becca5741393b8422e6ac5401",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 122,
+      "html": ".ref/devices/122/index.html",
+      "html_sha256": "1a4a24974dec9cf68a833075cbe90dbc8e3d87cfbfccc578b44d64b3e9b6385a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 124,
+      "html": ".ref/devices/124/index.html",
+      "html_sha256": "49e071f9012bc7704c7afe378950ef659dd19187c75323ba7bde66fb7e3fcf3c",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 126,
+      "html": ".ref/devices/126/index.html",
+      "html_sha256": "30e1c0d81c4fa50802e8bfb549a74c29e85901413d2348c9001bcc01e119c25a",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 128,
+      "html": ".ref/devices/128/index.html",
+      "html_sha256": "4a31c9a1427d5122129e611cae9815979cfc8e6d67aaef0f0fd89f527397b74e",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1303,
+      "html": ".ref/devices/1303/index.html",
+      "html_sha256": "5a21555ca913d0e15c556f12c7d3d1eda027df8d35bfd50d7dfd05b3557402df",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1304,
+      "html": ".ref/devices/1304/index.html",
+      "html_sha256": "f1a19e884f1bb929a10f2110bbc0c2020b7074ddc8942a942c4d39f2810fcf7e",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1306,
+      "html": ".ref/devices/1306/index.html",
+      "html_sha256": "333eff27115ad34ab03c713fb3bdb9cf3c6f8e70bca0b9ee073b0bccd5e08b0b",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1308,
+      "html": ".ref/devices/1308/index.html",
+      "html_sha256": "55656f457681f4768f1f7979dfb12aa05d9ff70b362f257044c8c9d9b8f2fd8f",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 131,
+      "html": ".ref/devices/131/index.html",
+      "html_sha256": "e6ca70750a835c743424bcdc166774c4827f274a9e3dea5dfb7b649a95e74579",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1310,
+      "html": ".ref/devices/1310/index.html",
+      "html_sha256": "021e75def7106c92dd106769df8eecb5508e4d1a3ba9eb1cd9d42b1e74b61a7d",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1312,
+      "html": ".ref/devices/1312/index.html",
+      "html_sha256": "ac4fe2a793c93ee3bf4e2a21c687f6c7cd6ab714b834f4258e03aebf281d3def",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1313,
+      "html": ".ref/devices/1313/index.html",
+      "html_sha256": "7e729404e1392449ad4e4f841bc08276b92d7f2942dfded83c0045d95947bd8a",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1318,
+      "html": ".ref/devices/1318/index.html",
+      "html_sha256": "07c76b7031b3bc6dd55a77da3e728621845fb96dae038c34d125d4871f598b03",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1319,
+      "html": ".ref/devices/1319/index.html",
+      "html_sha256": "3f86f632e8d44d467fc5e76ebaae760aa291c98bbd77082f08ecc3c0964014d2",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 132,
+      "html": ".ref/devices/132/index.html",
+      "html_sha256": "3b45db20984020e9ec60e28e5378064fb46023f2963ef5cc7568561f85d8bb07",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1320,
+      "html": ".ref/devices/1320/index.html",
+      "html_sha256": "05f2c7dac84658c74f2c8507b5bf83705469a716c6114d08ee1cabd762435c80",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1321,
+      "html": ".ref/devices/1321/index.html",
+      "html_sha256": "943ef830abeb856a109ee1a57192684bfff4ef1e3634b5da1b813534ca3e636d",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1325,
+      "html": ".ref/devices/1325/index.html",
+      "html_sha256": "e0a819d0e4d75bd9ecad4370dfdb5f075c6834b6ec074c5cd67ed166f2b39eb6",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1328,
+      "html": ".ref/devices/1328/index.html",
+      "html_sha256": "42d369d54c811cf5a728691948f51ae02d0b1aee8b4d71f4850fb2651507cc26",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 133,
+      "html": ".ref/devices/133/index.html",
+      "html_sha256": "d229056e5b963d9da92bd6fb37c0202707c504092fd50e3e8ab014cce624e5ee",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1330,
+      "html": ".ref/devices/1330/index.html",
+      "html_sha256": "af2d145cf3ab4bae1b9fcd994f09d6e65d7cb66a10cd6aaee26a8ca16e40f04a",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1331,
+      "html": ".ref/devices/1331/index.html",
+      "html_sha256": "828e6ee023fe197e7c7c4f1a05251f90c5e4a3cc01149595463c285190936b65",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1332,
+      "html": ".ref/devices/1332/index.html",
+      "html_sha256": "11ccb36400bd5d6d68eb809cb555a76df9f5d7d485016a4bb0d843ede57f5c08",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1335,
+      "html": ".ref/devices/1335/index.html",
+      "html_sha256": "6a390a45094523395af10664e211562308919631b43b0de21b7f37d119333934",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1337,
+      "html": ".ref/devices/1337/index.html",
+      "html_sha256": "913d7f560d4791b80d5d38705e3cd87e7db213622e9701cc6f93b0d1b74a4215",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1339,
+      "html": ".ref/devices/1339/index.html",
+      "html_sha256": "2159667d3f024b0b2119d5487ad392efd0be2bb40244f9f674ce688f6c568f5d",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 134,
+      "html": ".ref/devices/134/index.html",
+      "html_sha256": "71eae2692fbcaf42ae1b9f49704414adcf9ba0b49d7a4cd828441c880240dbfa",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1342,
+      "html": ".ref/devices/1342/index.html",
+      "html_sha256": "b54d04c8c453e12472b8313cfba214ee5bb5da41838d812c348d4520f5c597af",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_MIXER_AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_MIXER_AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_MIXER_AUDIO.svg",
+      "output": "assets/synapse/host-category-audio_mixer_audio.svg",
+      "source_sha256": "3344bc0d1cf5e13acf7b0017d3444041a8bc997e90933e5c7e3fadf591797f8f"
+    },
+    {
+      "product_id": 1346,
+      "html": ".ref/devices/1346/index.html",
+      "html_sha256": "ba067f72ec96c8fca73368d065dc92527de1a2975c85a7f901dec0eb016be51c",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 1347,
+      "html": ".ref/devices/1347/index.html",
+      "html_sha256": "5de59c848d7c11c8b3518ec59c7fd601313c8eb3e9e527d884abf2e412c1c78f",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 1352,
+      "html": ".ref/devices/1352/index.html",
+      "html_sha256": "f4a930f0fe12f8e2a17bf7a5091e7102611bd3a158d6b4fcb5faf96abee7d5d7",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1353,
+      "html": ".ref/devices/1353/index.html",
+      "html_sha256": "70bdeae0ec430dda101d5cfd39a1afa2961bc2998f70893e7678b601e6d69a09",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1354,
+      "html": ".ref/devices/1354/index.html",
+      "html_sha256": "81337f11a90597c1748dd6069f4ccb57ad211c9b4650a098e370c30dd525918e",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1364,
+      "html": ".ref/devices/1364/index.html",
+      "html_sha256": "0fa8de5769f55cf55906538e179bacca5c66f700055466113debb4b3c1b2e9ae",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1365,
+      "html": ".ref/devices/1365/index.html",
+      "html_sha256": "74c9eb34262e67f6eb1825457186e6deb8196b0ac7ae88ee40087d11d4e876dd",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1370,
+      "html": ".ref/devices/1370/index.html",
+      "html_sha256": "33a899cdf412f43071cec72edc2fb602d39269935b5ddc247e18e442b1df182a",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1372,
+      "html": ".ref/devices/1372/index.html",
+      "html_sha256": "29aca99af4570d36bca541277d828934e7c22631460c0e7b836e9a89aaa16565",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1374,
+      "html": ".ref/devices/1374/index.html",
+      "html_sha256": "2e2724a6aa4977653eb549c0a85ad1c5819d979bd67b3cf68129d343449d4d2c",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1376,
+      "html": ".ref/devices/1376/index.html",
+      "html_sha256": "b528276dd2cf0f96bea12c56498e133e8ec7d7d4aec8d88da8d7dec88cc3a17a",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1378,
+      "html": ".ref/devices/1378/index.html",
+      "html_sha256": "496f1989fb0eb99932323f9bba4f4fc9b7addb1e766fdd9b7354850d0d610c8d",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 138,
+      "html": ".ref/devices/138/index.html",
+      "html_sha256": "3d391a829cb86c6e4a2fc99e2775613252f9d3032c9efd72fd357ce1ebf20d4d",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1382,
+      "html": ".ref/devices/1382/index.html",
+      "html_sha256": "6ea8abbf1f71f04bcaea07c58cc82672a57b41df0bff8946ab0bd67f6d420ad7",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 1383,
+      "html": ".ref/devices/1383/index.html",
+      "html_sha256": "27223c469352eee8e393a834d1b1529eec7105468f30df8397ffbe3ffc30f830",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1386,
+      "html": ".ref/devices/1386/index.html",
+      "html_sha256": "8cdbe567b44f7786bb9378435355a307ce6e42e584a443dd580b049a24755d83",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 1387,
+      "html": ".ref/devices/1387/index.html",
+      "html_sha256": "a279a65c5ce4b199ceea8f510656cdf0bdd561ed596efe7d77ff3baa2ad2e66f",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1389,
+      "html": ".ref/devices/1389/index.html",
+      "html_sha256": "3f963b99bc4c29ea4ba4a769dc2c8b247c5309aaebb20f95c381ccce65a75023",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1390,
+      "html": ".ref/devices/1390/index.html",
+      "html_sha256": "e91800043ae3a5c3629c13c51f2dd32b360d326b7eb3c9bddca8df59bbfbe9f9",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1391,
+      "html": ".ref/devices/1391/index.html",
+      "html_sha256": "767637cfe5fa1a9093432a54d4b12be92da79a901b76ea58038dc5e488b72b1d",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 1392,
+      "html": ".ref/devices/1392/index.html",
+      "html_sha256": "b05189c19aa6496ef02cbaa065546ee1adf88364b42eaad2def57879d4d02086",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER_HEAD_CUSHION.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER_HEAD_CUSHION.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER_HEAD_CUSHION.svg",
+      "output": "assets/synapse/host-category-audio_speaker_head_cushion.svg",
+      "source_sha256": "73a868eeca3ce79f38451847e7e282c96b487daf7c7757265de180825cac8265"
+    },
+    {
+      "product_id": 1396,
+      "html": ".ref/devices/1396/index.html",
+      "html_sha256": "2a4318cb2cbf7d9653b0ee8ba04b682cca57429101668ead522dcb2488b4a773",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1398,
+      "html": ".ref/devices/1398/index.html",
+      "html_sha256": "a52c43da7af09b6c26f0aff78d6468021e029ce7aa7f0f6118fdd5354c522ce1",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 140,
+      "html": ".ref/devices/140/index.html",
+      "html_sha256": "55ed80883419b2e8985be254a3199566037e078b345618064c2fb57b92e84a38",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1401,
+      "html": ".ref/devices/1401/index.html",
+      "html_sha256": "df140bc99a7b84eb6a1f5cc2c1e1ab60f3741f0bb802c42955d19ed82a1254e4",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1404,
+      "html": ".ref/devices/1404/index.html",
+      "html_sha256": "ef3cfc70b97e8f813a06923dab1cefd93c3b4fc48b0f1b1f70606d6fcd275f92",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1406,
+      "html": ".ref/devices/1406/index.html",
+      "html_sha256": "39abdd76bc69596a5c4921b4b4cbd9360a326899135861584ef39fcc40a50be1",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1407,
+      "html": ".ref/devices/1407/index.html",
+      "html_sha256": "a7f93259029eebf0399de4ff9f373c8f4166a9f0a4a4fd03b199f5659a4bbd4b",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 141,
+      "html": ".ref/devices/141/index.html",
+      "html_sha256": "f1791e1e0840f818be73552969181bc565892b25fb76414f371a49aac1e3d3c8",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1411,
+      "html": ".ref/devices/1411/index.html",
+      "html_sha256": "28ae4c3330675f69373805822e549ce2348eaf14dd1f45541a2f38fb1b520437",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1412,
+      "html": ".ref/devices/1412/index.html",
+      "html_sha256": "8cf0c1765ebf831c58a13914cdd43384466f56ba2c3e1d29ed6245d9116f1936",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1415,
+      "html": ".ref/devices/1415/index.html",
+      "html_sha256": "b7b445ec866fcd691a219f77d3163649bff64f7dad82672ee8cbf81498859ba0",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1420,
+      "html": ".ref/devices/1420/index.html",
+      "html_sha256": "78cd4035931cf71a0c79a0b9720f81678fba33f9a84483b1f61f4d53618e83c1",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1422,
+      "html": ".ref/devices/1422/index.html",
+      "html_sha256": "dd24831ab7045a3254925fd0aa926bd6e1c9539ce08dd9813edc2e9a549e5192",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 1427,
+      "html": ".ref/devices/1427/index.html",
+      "html_sha256": "9fe5d4f13e3e1c3d9a17321c78f4e67bad50dba3c450cfd023240849629691af",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 143,
+      "html": ".ref/devices/143/index.html",
+      "html_sha256": "1f70945bf74a7fc180bc02004c0d30416cd8962fd12accf2b0db6e3caf02fae3",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1439,
+      "html": ".ref/devices/1439/index.html",
+      "html_sha256": "9cd0e2c0355109affd1e49bf2cfd68b0400792268bda0848cd4af314a2b22317",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1442,
+      "html": ".ref/devices/1442/index.html",
+      "html_sha256": "5f7a02502341966dbb20bd42bc349ec3725c9f9c98dcbf747337cb32dfb0ba47",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER_HEAD_CUSHION_CLIO_X.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER_HEAD_CUSHION_CLIO_X.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER_HEAD_CUSHION_CLIO_X.svg",
+      "output": "assets/synapse/host-category-audio_speaker_head_cushion_clio_x.svg",
+      "source_sha256": "b06d75c8e99d9f6d3a8afc4c9ff85122c54d8b24b02664f17501939303106312"
+    },
+    {
+      "product_id": 1443,
+      "html": ".ref/devices/1443/index.html",
+      "html_sha256": "9aedb735b8a790a62b2d52bd839833e104abd0423dbba2e7792d9c0c33450102",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1446,
+      "html": ".ref/devices/1446/index.html",
+      "html_sha256": "8401d561573f60cf99d0d65102a177c0a9388025c2a9d168d5037d9a329e0b3b",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 145,
+      "html": ".ref/devices/145/index.html",
+      "html_sha256": "b323a854555edcce462af4d37a2e34d7e9b9392908e813da63a99ca235c908de",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 1453,
+      "html": ".ref/devices/1453/index.html",
+      "html_sha256": "34b400e976dfa3685f14c5a530fe3313406e7bd618640720346f253bdf294894",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_SPEAKER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_SPEAKER.svg",
+      "output": "assets/synapse/host-category-audio_speaker.svg",
+      "source_sha256": "8645fb646fba91d5345bb6963e5611cf8c38045a807378154d82e233502086e3"
+    },
+    {
+      "product_id": 1462,
+      "html": ".ref/devices/1462/index.html",
+      "html_sha256": "f61870db0a2e3051e8425ad6a96a10d7e72fe456fd489b56ef9695f022993bb7",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 1465,
+      "html": ".ref/devices/1465/index.html",
+      "html_sha256": "0e6f5b433f39a68d7fb97dc3c1934f50f28f1866b1a61928723706151bcf179f",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARPHONES.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARPHONES.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARPHONES.svg",
+      "output": "assets/synapse/host-category-audio_earphones.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 147,
+      "html": ".ref/devices/147/index.html",
+      "html_sha256": "ea7ed360e1a438edd3a1e5ef2e2a71ff6fbc694647418de1664d3a9e973d7407",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 148,
+      "html": ".ref/devices/148/index.html",
+      "html_sha256": "e2d38acef6e777c5e7cd31425a723cbb56ea73c659d10a9057a1ed2b47d56c50",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 150,
+      "html": ".ref/devices/150/index.html",
+      "html_sha256": "d57136d969436c625b887475c8c5dbd0ba3d60749d7cf94764d04f2bdbe6fe9c",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 152,
+      "html": ".ref/devices/152/index.html",
+      "html_sha256": "2f2e65f25a48d8c870dcbc081f239b29a919afee930d3128c2d3deda4a172516",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 153,
+      "html": ".ref/devices/153/index.html",
+      "html_sha256": "ddc1de3e6e55122fae041261d2e281b6689e2b481e1c57ddd7a33ba4fd2967af",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 154,
+      "html": ".ref/devices/154/index.html",
+      "html_sha256": "93a012b7dcb200ffe2801a18f252ff82efdd205f6bbf62a3f8d10eb919e99522",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 156,
+      "html": ".ref/devices/156/index.html",
+      "html_sha256": "9b77083b22ee315f695497472dcf78fab623ab2d448553e871845b69bf5069cf",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 158,
+      "html": ".ref/devices/158/index.html",
+      "html_sha256": "c9d199e89c25af89ba04f9251420fe58a78890c054b5a92431474cfac82d525c",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 161,
+      "html": ".ref/devices/161/index.html",
+      "html_sha256": "affe797e507b6719094c4bd6972bc8c2e1d0b659d7fc40138b28b500d6badc84",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 162,
+      "html": ".ref/devices/162/index.html",
+      "html_sha256": "d94dd5c57839c011a428d5533b4d5fd51662a700753a5f43817c1f1877486827",
+      "href": "./productCategoryIcon.svg",
+      "source": ".ref/devices/162/productCategoryIcon.svg",
+      "source_url": "https://apps.razer.com/synapse/products/162/ui/productCategoryIcon.svg",
+      "output": "assets/synapse/host-device-162-favicon.svg",
+      "source_sha256": "5fdf85d07b40a5e1625dfea7ccb4e20fe18398483ba708da7f8b30bffd2ae665"
+    },
+    {
+      "product_id": 163,
+      "html": ".ref/devices/163/index.html",
+      "html_sha256": "d3003fc3eba664fa9d7073bbd7be540947cab21e004e527fb4ca135e7ac78728",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 164,
+      "html": ".ref/devices/164/index.html",
+      "html_sha256": "439757f628e070ea3124053d7fe23e0c24a8dbbda05aba784676a6fbf07a23e3",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 165,
+      "html": ".ref/devices/165/index.html",
+      "html_sha256": "4f8f1b8520c39c90b897e88ef972c05d7098a61dd8a71a3ab4a3c85e4d0cb638",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 167,
+      "html": ".ref/devices/167/index.html",
+      "html_sha256": "f43971db1ae2516298d41c24231fd3a4a14203ff82ec24f43a1e2b8b09975420",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 170,
+      "html": ".ref/devices/170/index.html",
+      "html_sha256": "596c9f8a95ece69b5bfce3a75e3b74dc7571208139d6012bfa23efa203e7861e",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 175,
+      "html": ".ref/devices/175/index.html",
+      "html_sha256": "25f4d4c55a7ab03e97fea752538ae9bd33a167960b464f4aeed3180861f0252d",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 178,
+      "html": ".ref/devices/178/index.html",
+      "html_sha256": "e347f3b8b37221d9e3336110141451f5253869f06202740cea96f48dffd36025",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 179,
+      "html": ".ref/devices/179/index.html",
+      "html_sha256": "3c4f96c51811e8f910f985b54ff3b1d67601100db4dfac4761cc7941ec1a86d8",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 180,
+      "html": ".ref/devices/180/index.html",
+      "html_sha256": "75e40aeba6e4c83f76b4eb660c68d81070720cd81db75524b311cf3ea6735935",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 182,
+      "html": ".ref/devices/182/index.html",
+      "html_sha256": "7a5b75c10ce99520f6c83c36fc2a3b6c57511507f22ab49f648029a8b2d4112a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 184,
+      "html": ".ref/devices/184/index.html",
+      "html_sha256": "add9d57a52923fd4f4c26b12c3059170bb9b17d8e96b3d150375e7d663d13360",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 185,
+      "html": ".ref/devices/185/index.html",
+      "html_sha256": "6393624e4189a9654c215acf52a97d9b58c8d54dd4120a1a23fb90521113ee49",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 190,
+      "html": ".ref/devices/190/index.html",
+      "html_sha256": "c6a0c9af8af0c9d222292d3d6f012d4ea9b14d306c46aa65760267fecc5aedfa",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 192,
+      "html": ".ref/devices/192/index.html",
+      "html_sha256": "5efbb1a7a29c85b496ecddae636bb0f70b084643c51b63956ac0ae1a23324564",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 194,
+      "html": ".ref/devices/194/index.html",
+      "html_sha256": "39de72eb286e5d553329c4aa18391883a80bd60261cfad8b9221178d324b6acb",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 196,
+      "html": ".ref/devices/196/index.html",
+      "html_sha256": "01fe68a4275004c51cef666c329d7dc62976cc8d4540755c77c54aca83d4d925",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 199,
+      "html": ".ref/devices/199/index.html",
+      "html_sha256": "6bee44a631816d1b9d84c753f0f088570d799d8b08879bdfb7411cda9a467c12",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 203,
+      "html": ".ref/devices/203/index.html",
+      "html_sha256": "4c743b2b4bb0cab446809bdf13f44f270b84e5d493305c8df3415bca850bc2a1",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 204,
+      "html": ".ref/devices/204/index.html",
+      "html_sha256": "5bac911a72fda2de095fa39e8c7e634d20f77b362d58be2e3b85a1dde333233c",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 207,
+      "html": ".ref/devices/207/index.html",
+      "html_sha256": "c6269ae1f57bec929bc7382e680e2b05ca0c0fed9c4d4fda2f96c540aa51ef52",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 208,
+      "html": ".ref/devices/208/index.html",
+      "html_sha256": "3564d7a8feff1df96b627662767f940d90e8aec13cc0e668e0cae7d0dd91f13a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 211,
+      "html": ".ref/devices/211/index.html",
+      "html_sha256": "4d182866fc55092e18e271582878c0f8d01b29f108b99856c3d8095ef9bead8c",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 214,
+      "html": ".ref/devices/214/index.html",
+      "html_sha256": "e7d95108dbaa45cdc1484127a0cd48f4c0d729d543d54ab3c48f66f97fb5599a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 218,
+      "html": ".ref/devices/218/index.html",
+      "html_sha256": "cb1d22d623d714b878d010ae36d0da17b3769ddaf849ee62499d7afb5a914640",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 221,
+      "html": ".ref/devices/221/index.html",
+      "html_sha256": "9211c2f9a59722610528d4448ca9ee11de038bccf785c88e9d080172cfb6f460",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 222,
+      "html": ".ref/devices/222/index.html",
+      "html_sha256": "7e18d8be604c055ca68d8da86814e4383a37952490edb71d538ee5cd42bd1065",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 224,
+      "html": ".ref/devices/224/index.html",
+      "html_sha256": "0e96b45ad69649dcf9195d69aa96dfec66d9796bf5b594b32d299a7214710e6a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 226,
+      "html": ".ref/devices/226/index.html",
+      "html_sha256": "1c83e18efe81c718e375d316d960fb46820d0905c7b2e89c887d046aa52c7ccf",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 229,
+      "html": ".ref/devices/229/index.html",
+      "html_sha256": "55932de3668b490cc373d44676d6b6c05b79ac2dfd00b2c6729758d965cf6055",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 231,
+      "html": ".ref/devices/231/index.html",
+      "html_sha256": "e553afd63860b19228c20e20b84c5f722cca7c5646ff847892ab793f2560daf1",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 235,
+      "html": ".ref/devices/235/index.html",
+      "html_sha256": "71b17f2797d9b155c49fd7e26bfec67e29f433f583609be4b19b931fa3f4779a",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 239,
+      "html": ".ref/devices/239/index.html",
+      "html_sha256": "ec127350e7492595cebbfd8f63377eec829e251ee0441a2a2107b7408d9b3e83",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 241,
+      "html": ".ref/devices/241/index.html",
+      "html_sha256": "2879f105466a413d287db1e96de4f42684f8e0072c95142c867574d97a59daa1",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 2594,
+      "html": ".ref/devices/2594/index.html",
+      "html_sha256": "8c5dc824977614155e14c5e927a25d040701d8b53450b42c6786ccddcfbda8df",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 2595,
+      "html": ".ref/devices/2595/index.html",
+      "html_sha256": "e6d0bf4ea6193f3e837f979ecb9846abf2f668f630956b926d8b811e009ab469",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 2596,
+      "html": ".ref/devices/2596/index.html",
+      "html_sha256": "efed1dc233a1952ab972ce3a4a5de9e3ad991d0a193275255cd2dfd80d3bf4ef",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 2629,
+      "html": ".ref/devices/2629/index.html",
+      "html_sha256": "af4767fa922f6e6e78d0fe23162abd8b5107c1474cd02d58db731068b1b0efff",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2636,
+      "html": ".ref/devices/2636/index.html",
+      "html_sha256": "0ab11babd44143ce409f689d9c42371ed8572964714be9b7bd0489ae590ece50",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2638,
+      "html": ".ref/devices/2638/index.html",
+      "html_sha256": "6aed43c15971e6df6173752e211d5da8102243b2a5b4cff849e2cd50df7b0d63",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 2641,
+      "html": ".ref/devices/2641/index.html",
+      "html_sha256": "ba7aa371be4f2bd0bc7de17f6481e7de53c2c82cac1166b71369e462213190a8",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 2644,
+      "html": ".ref/devices/2644/index.html",
+      "html_sha256": "37e6c8ad1234d701815f32a25849f2ccced9d44622f7764f4f5398520b9afbd4",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 2647,
+      "html": ".ref/devices/2647/index.html",
+      "html_sha256": "f74334fb7519d0eabedb556b059ce6a2f39eff082911fabfc6c0c083354fa643",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2650,
+      "html": ".ref/devices/2650/index.html",
+      "html_sha256": "4fdd63b442ac7c8af634e593ee5b72664105f0b2a62c9d0f1340f8b0bab06bff",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2657,
+      "html": ".ref/devices/2657/index.html",
+      "html_sha256": "6dd30e03425bd758a498e2f0c3c1705d23e78f1e81c96eae222fbf293444f2a1",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARBUDS.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "output": "assets/synapse/host-category-audio_earbuds.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 2660,
+      "html": ".ref/devices/2660/index.html",
+      "html_sha256": "3609c578b57ab38def2b2396ad789981d410a033ba69467c5ed8a8f90257b248",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARBUDS.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "output": "assets/synapse/host-category-audio_earbuds.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 2664,
+      "html": ".ref/devices/2664/index.html",
+      "html_sha256": "589144bc4f6d03abba0ae801ba3a9d0f1fe10f0bbd0681bddd7987e0f659de9a",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARBUDS.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "output": "assets/synapse/host-category-audio_earbuds.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 2668,
+      "html": ".ref/devices/2668/index.html",
+      "html_sha256": "81cf369390ca45234bc4836034d9033541a8aaf656fc010a1b2eb1d3719c2266",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARBUDS.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "output": "assets/synapse/host-category-audio_earbuds.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 2676,
+      "html": ".ref/devices/2676/index.html",
+      "html_sha256": "c7d55371028507cd5ea60ff58c3bdabe8b474cb5ac43a26cf825753c39215f30",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2684,
+      "html": ".ref/devices/2684/index.html",
+      "html_sha256": "aabbc4d5c0ad5b707f7e9ab7c61ca9b25135055aeca9f76921c06a830c843b18",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 2689,
+      "html": ".ref/devices/2689/index.html",
+      "html_sha256": "e9b726c4f242f4b31777b21d8f3c675dff217034c0de72279fd4452e6312beb6",
+      "href": "/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO_EARBUDS.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO_EARBUDS.svg",
+      "output": "assets/synapse/host-category-audio_earbuds.svg",
+      "source_sha256": "56dc1042459ca3e57690b45da6559e0c3e90edf8b23e972118cf6be9307ac874"
+    },
+    {
+      "product_id": 3072,
+      "html": ".ref/devices/3072/index.html",
+      "html_sha256": "ded8df846d2edeb08652fac2ff428ab568bbc9d2247f41e0cae441a0ab8659d8",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3073,
+      "html": ".ref/devices/3073/index.html",
+      "html_sha256": "0b88b405fd16fd2883c434d4af43d35ca04c0552f47b70f12df9e31d9df01c7e",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3074,
+      "html": ".ref/devices/3074/index.html",
+      "html_sha256": "a39cd78edb969beb3b227241a9e8c9cbf08f8a9aa9e9e7d8a4d9937bc3912b2c",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3076,
+      "html": ".ref/devices/3076/index.html",
+      "html_sha256": "b1c2b10d293b3ffcac739c304f5d545f730687ea56444e755d281e93f6a22d8a",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3077,
+      "html": ".ref/devices/3077/index.html",
+      "html_sha256": "4bdb859c65458d7278fde24f24f0a7bab7aba82f9631e7f8fe66cfb6f34fc897",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3078,
+      "html": ".ref/devices/3078/index.html",
+      "html_sha256": "33b5e52073d3956264df9268881859a5d4487dad561f5d47936f9b41e24ddc85",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3080,
+      "html": ".ref/devices/3080/index.html",
+      "html_sha256": "bcdd7ee6c545c8845cec5a5f5cc89b70daa26561da3def637647f20757eb007c",
+      "href": "/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSEMAT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSEMAT.svg",
+      "output": "assets/synapse/host-category-mousemat.svg",
+      "source_sha256": "4964b84ba366eeb1db4239787d9bdb1776bbee391077b633adb494dd7510c86e"
+    },
+    {
+      "product_id": 3331,
+      "html": ".ref/devices/3331/index.html",
+      "html_sha256": "99d51e50606354aacb3dac175583e0dd956025c63273461d0ea28643a9c5566f",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_GAME_CAPTURE_CARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_GAME_CAPTURE_CARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_GAME_CAPTURE_CARD.svg",
+      "output": "assets/synapse/host-category-broadcaster_game_capture_card.svg",
+      "source_sha256": "20d35e21e1f12c544cf61c602e707c4f2a6c4dabd810b2d6a83e3151bb12266c"
+    },
+    {
+      "product_id": 3334,
+      "html": ".ref/devices/3334/index.html",
+      "html_sha256": "77984bea0189cb19129bf41c4690aba59a4d7bd2570ec13429db8e7e95c8b94a",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-broadcaster_stream_controller.svg",
+      "source_sha256": "0a611da67659989e25f004cb64a8207e0ac449e7af6ec2e6cac2c45b1b78bd2a"
+    },
+    {
+      "product_id": 3337,
+      "html": ".ref/devices/3337/index.html",
+      "html_sha256": "d2f8d06bb928d8bc55a62ea5f3d5ccbcb386d54ead71350512828720d77d67b4",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_STREAM_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-broadcaster_stream_controller.svg",
+      "source_sha256": "0a611da67659989e25f004cb64a8207e0ac449e7af6ec2e6cac2c45b1b78bd2a"
+    },
+    {
+      "product_id": 3587,
+      "html": ".ref/devices/3587/index.html",
+      "html_sha256": "7e3a81ce5066b5fb27ddfc700c9ee5ec3dcfa42a4887e014b81d70e51c63f1af",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3589,
+      "html": ".ref/devices/3589/index.html",
+      "html_sha256": "a28a82ee52ca5ab4bf1b515f6175199b2afbada7d4ff3c4d4414cbec8804f003",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3590,
+      "html": ".ref/devices/3590/index.html",
+      "html_sha256": "c1fe0c589e02aec590b561d8b1935f5b606a73c035218e7a8c539b8a43730eaa",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3592,
+      "html": ".ref/devices/3592/index.html",
+      "html_sha256": "a1335330a310aee0f1bbbe2fc1e6926190df5285b3586af2f6d1166a1b025347",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3594,
+      "html": ".ref/devices/3594/index.html",
+      "html_sha256": "20d97ad9e0c2475b1aa57fe81c02a2e337fc07bd37bfc6886c9eb7bfa90c04cc",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3595,
+      "html": ".ref/devices/3595/index.html",
+      "html_sha256": "48b8be74d1004758e7b707c202b9ee240f89673dd8f7d28161d7238818b2756a",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3596,
+      "html": ".ref/devices/3596/index.html",
+      "html_sha256": "3f2928d13339b32da7da0091b204ee5fc61ac7a41282629b84e6aea013f48b4e",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_CAMERA.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_CAMERA.svg",
+      "output": "assets/synapse/host-category-broadcaster_camera.svg",
+      "source_sha256": "bd048862019d5e4a8d50a31c95dd5c414034900ae0bcc0784e79e06db9bc311f"
+    },
+    {
+      "product_id": 3848,
+      "html": ".ref/devices/3848/index.html",
+      "html_sha256": "016c85cd828914f6022755d189e56420c7f4cb2dafa944f46fd62044f89f598b",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3849,
+      "html": ".ref/devices/3849/index.html",
+      "html_sha256": "ddca5f5df3d238d2d899d0d50b02a49e1bc563adf31f925c34c0048e10cc0a36",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3853,
+      "html": ".ref/devices/3853/index.html",
+      "html_sha256": "2f2b8eee06d8dc9f2da57426d8e98427db0e5e5f91dfab92f9f68da398ff61ca",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3858,
+      "html": ".ref/devices/3858/index.html",
+      "html_sha256": "fd8879319d6c5090db912bf4341cd1a6e36d24747f5757d04be7b02a4986d2ec",
+      "href": "/synapse/assets/imgs/favicon/MONITOR.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MONITOR.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MONITOR.svg",
+      "output": "assets/synapse/host-category-monitor.svg",
+      "source_sha256": "b69623b62f361fdca53fbb502c30956f63d5e97de0ccf405705f77c176fdf2b0"
+    },
+    {
+      "product_id": 3859,
+      "html": ".ref/devices/3859/index.html",
+      "html_sha256": "8f376157359b4c3bfda4fc6881bdf99c2010513a5e21434ab5302e53862a1675",
+      "href": "/synapse/assets/imgs/favicon/CASE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/CASE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/CASE.svg",
+      "output": "assets/synapse/host-category-case.svg",
+      "source_sha256": "10aa38e181fc04be4310217e3cb66f7be0f97034bfe50c3eccaa695c0589d794"
+    },
+    {
+      "product_id": 3863,
+      "html": ".ref/devices/3863/index.html",
+      "html_sha256": "8ac785658d43a829249afdb821f05bd2f3ad7524c40914beeca9353082f4a2f4",
+      "href": "/synapse/assets/imgs/favicon/CASE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/CASE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/CASE.svg",
+      "output": "assets/synapse/host-category-case.svg",
+      "source_sha256": "10aa38e181fc04be4310217e3cb66f7be0f97034bfe50c3eccaa695c0589d794"
+    },
+    {
+      "product_id": 3866,
+      "html": ".ref/devices/3866/index.html",
+      "html_sha256": "5a181992f10a09ba5f66372194f4226b3f5a0bc6f8caff7049b58846e88c5d8b",
+      "href": "/synapse/assets/imgs/favicon/EGPU.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/EGPU.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/EGPU.svg",
+      "output": "assets/synapse/host-category-egpu.svg",
+      "source_sha256": "6745bda0beac43941e7db779fa6ff54a254c08050d1f70805b41268477ee48a6"
+    },
+    {
+      "product_id": 3867,
+      "html": ".ref/devices/3867/index.html",
+      "html_sha256": "9cc17b15d0e4fd91d0250b2dc3a6cb7b27b9bbaad1b79b0aafc0d4e8c4127c32",
+      "href": "/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/BROADCASTER_MICROPHONE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/BROADCASTER_MICROPHONE.svg",
+      "output": "assets/synapse/host-category-broadcaster_microphone.svg",
+      "source_sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+    },
+    {
+      "product_id": 3869,
+      "html": ".ref/devices/3869/index.html",
+      "html_sha256": "676993e65a5d849e8b03d10f7910fb1331886281c07ba4159dce38445a43c866",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3871,
+      "html": ".ref/devices/3871/index.html",
+      "html_sha256": "96c40f257de167e28034255258ebe5451468f757752fd931f8755bd74fb75a66",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-accessory_argb_controller.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3872,
+      "html": ".ref/devices/3872/index.html",
+      "html_sha256": "066073fbbf64c7fe924f6288dc284b90fb5e42edbd7f766e5d88c8be1af0be7f",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3873,
+      "html": ".ref/devices/3873/index.html",
+      "html_sha256": "f90d272109083ebf6a3e4ee61bb071760529f70e5373f704f3d88a4e58f402c0",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3878,
+      "html": ".ref/devices/3878/index.html",
+      "html_sha256": "54d19f97abddce0be3ee1fc1189b68ea21a475462d0b39fd60f310216bcf0748",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3879,
+      "html": ".ref/devices/3879/index.html",
+      "html_sha256": "088438a1e9456c1e6bc5fbf97269d48d436ef574e49ba351d19dea93674211a2",
+      "href": "/synapse/assets/imgs/favicon/CASE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/CASE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/CASE.svg",
+      "output": "assets/synapse/host-category-case.svg",
+      "source_sha256": "10aa38e181fc04be4310217e3cb66f7be0f97034bfe50c3eccaa695c0589d794"
+    },
+    {
+      "product_id": 3880,
+      "html": ".ref/devices/3880/index.html",
+      "html_sha256": "d3f9f090a3ee6306f5afc2e4f5eaf2bc8065bf81813996d3d24bfd6aa4d19f90",
+      "href": "/synapse/assets/imgs/favicon/MONITOR.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MONITOR.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MONITOR.svg",
+      "output": "assets/synapse/host-category-monitor.svg",
+      "source_sha256": "b69623b62f361fdca53fbb502c30956f63d5e97de0ccf405705f77c176fdf2b0"
+    },
+    {
+      "product_id": 3883,
+      "html": ".ref/devices/3883/index.html",
+      "html_sha256": "768851f6cf05607074bac852def312dacca47be39cb5c03936a7d026922db882",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3884,
+      "html": ".ref/devices/3884/index.html",
+      "html_sha256": "a5e3c6501f6c08afe6d9a3de5e9ace1d99df24ebc8633f7cba475c302654d647",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_ARGB_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-accessory_argb_controller.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3886,
+      "html": ".ref/devices/3886/index.html",
+      "html_sha256": "e5b4305ded033bb1a43acaaa8626768aa91a76d9cb1b9da18072e0238cf4c61b",
+      "href": "./productCategoryIcon.svg",
+      "source": ".ref/devices/3886/productCategoryIcon.svg",
+      "source_url": "https://apps.razer.com/synapse/products/3886/ui/productCategoryIcon.svg",
+      "output": "assets/synapse/host-device-3886-favicon.svg",
+      "source_sha256": "b7e00bf4a82a334e9a6e0dd8fda97ab379f03400249ae8cafe308af305d9bd63"
+    },
+    {
+      "product_id": 3893,
+      "html": ".ref/devices/3893/index.html",
+      "html_sha256": "e48bdceffeb2966a1b1e8aad2cd9dde3c62d4ee82a8d63229b6c13847434bd31",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_LIQUID_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_LIQUID_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_LIQUID_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-accessory_liquid_controller.svg",
+      "source_sha256": "6f079f55cae033b7ad8413b62aa74ef328e7b16fe0b3467f010e080d950674fe"
+    },
+    {
+      "product_id": 3894,
+      "html": ".ref/devices/3894/index.html",
+      "html_sha256": "046d2cf339dcac0708549b7fd72088f7591ad9dae1f5331d6e9f5512e4c82c9e",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3900,
+      "html": ".ref/devices/3900/index.html",
+      "html_sha256": "d95e8ec0f495f524a9f823514678dbed59297f5a0e770dd67d700c3e370eae61",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_FAN_CONTROLLER.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_FAN_CONTROLLER.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_FAN_CONTROLLER.svg",
+      "output": "assets/synapse/host-category-accessory_fan_controller.svg",
+      "source_sha256": "f343d28fcf86edbe37c680c4947c4f3758c253de7bc70168ee375c6ccc6d4ca9"
+    },
+    {
+      "product_id": 3907,
+      "html": ".ref/devices/3907/index.html",
+      "html_sha256": "58c4d1c8d4b3e44c620f712835da0cf30102b64e9d693de3f9f1dfe3fea1f9eb",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3909,
+      "html": ".ref/devices/3909/index.html",
+      "html_sha256": "ba97734608a35053251b6d84249d9e780d5a22e0339fbb55a3910bf32a574e3b",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3921,
+      "html": ".ref/devices/3921/index.html",
+      "html_sha256": "36d5bb15894794e9426ff03d750c239448416465e0dd1400ad2657c4185c680a",
+      "href": "/synapse/assets/imgs/favicon/EGPU.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/EGPU.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/EGPU.svg",
+      "output": "assets/synapse/host-category-egpu.svg",
+      "source_sha256": "6745bda0beac43941e7db779fa6ff54a254c08050d1f70805b41268477ee48a6"
+    },
+    {
+      "product_id": 3922,
+      "html": ".ref/devices/3922/index.html",
+      "html_sha256": "eca65752f07ba198a1963ca08b5475b90546517475fb300ded1b5cd108f3d9f9",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3929,
+      "html": ".ref/devices/3929/index.html",
+      "html_sha256": "834ed0c8f638ba1c9db4b24dbca447f08f03472640d9a49322db4d7537a5b81d",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3932,
+      "html": ".ref/devices/3932/index.html",
+      "html_sha256": "93fd8fd8cb536f20b838121853f92aba32ce97be30ff17e1f3a0c7e15afd8845",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3940,
+      "html": ".ref/devices/3940/index.html",
+      "html_sha256": "c6883af5dfc63eea6f6f06f7d5e90a0a8ae216c8a3b77ec1c83b482709afda6a",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_CHAIR.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "output": "assets/synapse/host-category-accessory_chair.svg",
+      "source_sha256": "b22e04fa55a4e034045d5ee7300986e48f05e18abc2c4eafa8957a37f0169b5a"
+    },
+    {
+      "product_id": 3942,
+      "html": ".ref/devices/3942/index.html",
+      "html_sha256": "4fdea8db2b01ddb0d853ce2ac25358d32841a29b8a6f21c74b425817a4cb8342",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_CHAIR.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "output": "assets/synapse/host-category-accessory_chair.svg",
+      "source_sha256": "b22e04fa55a4e034045d5ee7300986e48f05e18abc2c4eafa8957a37f0169b5a"
+    },
+    {
+      "product_id": 3946,
+      "html": ".ref/devices/3946/index.html",
+      "html_sha256": "45e7ac7bfe7b8bcf4cf784458b095e01535654e4326ddc7dc137966b6745edfe",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY.svg",
+      "output": "assets/synapse/host-category-accessory.svg",
+      "source_sha256": "f567967093bf016272c1ca4572f881d5dc9267142267411403a2a74e909e154c"
+    },
+    {
+      "product_id": 3949,
+      "html": ".ref/devices/3949/index.html",
+      "html_sha256": "d2c87e391086ed308c92a6e230600ab4b0f496277427f7bd0a423f31d291d4e8",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_CHAIR.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_CHAIR.svg",
+      "output": "assets/synapse/host-category-accessory_chair.svg",
+      "source_sha256": "b22e04fa55a4e034045d5ee7300986e48f05e18abc2c4eafa8957a37f0169b5a"
+    },
+    {
+      "product_id": 4115,
+      "html": ".ref/devices/4115/index.html",
+      "html_sha256": "c6edd8e2837c7606ab77b469ff564bad8aa0b48433da807fb5bca5350d0aff08",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 4124,
+      "html": ".ref/devices/4124/index.html",
+      "html_sha256": "e22065acef33693f592920098c557f8a8603a388bbe544ddad43977ce1f5c373",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 4126,
+      "html": ".ref/devices/4126/index.html",
+      "html_sha256": "786eda5bbf401223c225f0dc35ce4298ec684a9d34f8a24dfc6be313dca71841",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 4130,
+      "html": ".ref/devices/4130/index.html",
+      "html_sha256": "6b6392b2226aa2aa82b577324a4e0f98ff48a282427805f841997dbe5c160721",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 4133,
+      "html": ".ref/devices/4133/index.html",
+      "html_sha256": "591899fd32da3183888e408dbdc01ca8828824e3ae1ea57ed097c63243eec09d",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 4144,
+      "html": ".ref/devices/4144/index.html",
+      "html_sha256": "913a930df64b1648bffc999b9532e350c9e446c3bc505ea3241d9a1fa7209be8",
+      "href": "/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/GAMEPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/GAMEPAD.svg",
+      "output": "assets/synapse/host-category-gamepad.svg",
+      "source_sha256": "30e5ae82c08a102cbfe4f67aa8bb4eba2b866c5678e1527d277e8af9392c100c"
+    },
+    {
+      "product_id": 45066,
+      "html": ".ref/devices/45066/index.html",
+      "html_sha256": "072aef230e39cbaf1e9c0381841396b3694aeae4082cfeca94af9279efac01fb",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 515,
+      "html": ".ref/devices/515/index.html",
+      "html_sha256": "e45b4d08c4a28ccdf1a6becac676ea2a0dd3a92f6dd6eb00613852982d700b63",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 521,
+      "html": ".ref/devices/521/index.html",
+      "html_sha256": "d5d5d1ac2e452c9bb39f162e807984a657742efdec0e46e62b0631b41beffc7b",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 529,
+      "html": ".ref/devices/529/index.html",
+      "html_sha256": "0c5641b2f92d419447d0930951c2a33d9473ea0297a77689713a9c1e0940031f",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 534,
+      "html": ".ref/devices/534/index.html",
+      "html_sha256": "261cbb7c74529a9194dfad8053e80910acf543c9b6e042f54e87e96e01d28732",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 542,
+      "html": ".ref/devices/542/index.html",
+      "html_sha256": "6842fe5ee87829f37245f4867fe68dd498430f07828d1f8a1e879f8056a37113",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 545,
+      "html": ".ref/devices/545/index.html",
+      "html_sha256": "cc99e2add82aaa54385e157eb8c80cb227b370ecc86d9d7c6d7332084251f458",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 550,
+      "html": ".ref/devices/550/index.html",
+      "html_sha256": "f3cee4853cca2baf97c63c3e99739c4647607a6783f6adf7721ea69779a4861f",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 551,
+      "html": ".ref/devices/551/index.html",
+      "html_sha256": "a19d6539669592bc44a86dc11258d6c21bdcdca0b98b700c593ab9664be4aa1e",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 552,
+      "html": ".ref/devices/552/index.html",
+      "html_sha256": "46959b3253f47e0f3b95c870290655f74b9b7ed894f85c123c32693a62effa69",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 554,
+      "html": ".ref/devices/554/index.html",
+      "html_sha256": "939476a2a95f38b7ecd81fbdb6d300733fb498c2f568c3db02a0ad7046476322",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 555,
+      "html": ".ref/devices/555/index.html",
+      "html_sha256": "2952ae7c9542cdb310205cc752d426b68f7e1ce5af4bb9cf22acdd7cb0895427",
+      "href": "/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "output": "assets/synapse/host-category-keypad.svg",
+      "source_sha256": "c160b5db5ab8da04d499057ef03bfbb446c09a8f1afab020612e06a5f097fdfd"
+    },
+    {
+      "product_id": 556,
+      "html": ".ref/devices/556/index.html",
+      "html_sha256": "f7c8e75004ffbad461c6c11bef335278de192aa31d7bf540c2a351d998b96496",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 563,
+      "html": ".ref/devices/563/index.html",
+      "html_sha256": "819d5e9b6c1a08ee12bcf8e47d40980d0cf643671b2152658e44383b475b8d82",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 564,
+      "html": ".ref/devices/564/index.html",
+      "html_sha256": "eac5cd5627bb0d3ab8608314baf0d0fdca32c3c469aa323fbe8315c7872b7b94",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 565,
+      "html": ".ref/devices/565/index.html",
+      "html_sha256": "5f3c81d4de1f229c92540d4cd2d5f6e60fbf551c9cb8067c5efc706800947ce2",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 567,
+      "html": ".ref/devices/567/index.html",
+      "html_sha256": "922ed020ce2f2f1f83514d5ea019e5084374416f0d5a1cb62f9dfdbe22fae28f",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 569,
+      "html": ".ref/devices/569/index.html",
+      "html_sha256": "3b848f5d447eb450c4d074ab4b0ea18e27e3cdff6d56c258aebcb796ffbf9b2d",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 570,
+      "html": ".ref/devices/570/index.html",
+      "html_sha256": "2ae514f84e1b47e3265ffe77cbed005a5c4eab0f2994dfe1edda5000182440b5",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 571,
+      "html": ".ref/devices/571/index.html",
+      "html_sha256": "b6b4e74fa510a910f14917d9cc470f6059c8594c2adfda05671a179329e351ae",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 574,
+      "html": ".ref/devices/574/index.html",
+      "html_sha256": "e9c79865232704c8f2534a1f79f2aa241583e7ec06c50d9a7faef801959673ef",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 575,
+      "html": ".ref/devices/575/index.html",
+      "html_sha256": "3daf306871b52fba06b05905dbd0b67c40fbe98086df0d59578fd422eccb5814",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 576,
+      "html": ".ref/devices/576/index.html",
+      "html_sha256": "c8121571f5d592871221480f38ce1bc148609f04cbd2bbd79ab5f113399a4635",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 577,
+      "html": ".ref/devices/577/index.html",
+      "html_sha256": "0902651c9bad2f305519922277d057212195b21fd74c2583f725e055628117ca",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 579,
+      "html": ".ref/devices/579/index.html",
+      "html_sha256": "ed133ca67522c5a78da8ca25453b9b7d29651af95b5736b8ccc891aabe68f0ae",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 580,
+      "html": ".ref/devices/580/index.html",
+      "html_sha256": "16d572efae588d55c83a2162bd8b2469c58743c19946161e85a43390a06dba40",
+      "href": "/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "output": "assets/synapse/host-category-keypad.svg",
+      "source_sha256": "c160b5db5ab8da04d499057ef03bfbb446c09a8f1afab020612e06a5f097fdfd"
+    },
+    {
+      "product_id": 581,
+      "html": ".ref/devices/581/index.html",
+      "html_sha256": "9090f1a6959c5e3339ac1b199a5c0e799f2a34da1593742763d80b2e88d633f8",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 582,
+      "html": ".ref/devices/582/index.html",
+      "html_sha256": "927d11790011daf2e77c96a2aa32593b21dcfb0b79e71c284342d056a36fab19",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 585,
+      "html": ".ref/devices/585/index.html",
+      "html_sha256": "3b3f80282eef74442849498145185ac72d4e5616ccbe39c8d5f64bb70de93dea",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 586,
+      "html": ".ref/devices/586/index.html",
+      "html_sha256": "ecef72a79b426c3238a6de833e51563a14e893322f4a0f7efcd40cc54d0c931a",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 587,
+      "html": ".ref/devices/587/index.html",
+      "html_sha256": "f26f41a3e678eea8815ca3c2f3e1738fe3ba2b9af34db60da9b73f8ea14a5fb7",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 588,
+      "html": ".ref/devices/588/index.html",
+      "html_sha256": "9eec2a704a5e8044a4808e096e92019a48750ea823ff3bc729cff554ae23b15b",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 589,
+      "html": ".ref/devices/589/index.html",
+      "html_sha256": "1ef36bc0c1832be339303f7e69a18c3b0c7804330f5f4ee763457266eddf79da",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 590,
+      "html": ".ref/devices/590/index.html",
+      "html_sha256": "352aae5796608b179da9c054bf9fd8cab17e3fa304ab6ab8c96154e050b5faac",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 591,
+      "html": ".ref/devices/591/index.html",
+      "html_sha256": "63a31af90dfc22cd5935f313e6f681760c2cbedf0d21a70bfec6a5e2a6cfb304",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 592,
+      "html": ".ref/devices/592/index.html",
+      "html_sha256": "535fc72215814a861cc4f6f7d0fe07630bcf78453b104898ecba0caced592d3e",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 593,
+      "html": ".ref/devices/593/index.html",
+      "html_sha256": "8cd075c32407c47ae5edc069051034b36a69a6b9a4a85d0e020f603ae9f57453",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 594,
+      "html": ".ref/devices/594/index.html",
+      "html_sha256": "e71dd82a9573a116a18b23ad0abc2e3550b472973a9d3bc3668d0b788228c048",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 595,
+      "html": ".ref/devices/595/index.html",
+      "html_sha256": "ee7857b7f3942ba7caf7e3335d88dc877c86d98f3d4b2f4f1efe65577679ee26",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 597,
+      "html": ".ref/devices/597/index.html",
+      "html_sha256": "c0051953746e079b7aa60a9e5f74a6897cec32b61cdcb2771d951630c2f73d66",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 598,
+      "html": ".ref/devices/598/index.html",
+      "html_sha256": "3a8a75000167654dbf79fe2f93cd26b106154028c15ca9d2392b15ecdd0d0c97",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 599,
+      "html": ".ref/devices/599/index.html",
+      "html_sha256": "1a3b021b2b4851a20128f35f0d32217b955c8a76a7912b927c7debb4df747526",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 600,
+      "html": ".ref/devices/600/index.html",
+      "html_sha256": "7039a274d29bbc9c2ee11cce96985dcbea52fa5934bddfef0909c3e45a42ca70",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 601,
+      "html": ".ref/devices/601/index.html",
+      "html_sha256": "339a6fc7fb7aa45032a7f4f26d2373246903d1537f04ae0a2bc524a52982381c",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 602,
+      "html": ".ref/devices/602/index.html",
+      "html_sha256": "dab70496628480cd943368dffcdc382ca751c695fdbf441a42d6323447d5e775",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 605,
+      "html": ".ref/devices/605/index.html",
+      "html_sha256": "94286c0f4b32429c786b0de29fbf5882c4f29f1859f963518919671f3dcba5d6",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 606,
+      "html": ".ref/devices/606/index.html",
+      "html_sha256": "8297d57720b0b36c4cc25377c8db1856e23373f0f7609f5dc34c25d36db033ee",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 614,
+      "html": ".ref/devices/614/index.html",
+      "html_sha256": "1e67d4e552f6dbd002a3ab6264c765efc89e52cd283a70c84fdd818b7394e5b4",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 616,
+      "html": ".ref/devices/616/index.html",
+      "html_sha256": "e92976fb82a087c5d7a3814d1959bd11a39c1a53a2dec5a2486a6fa7c910fbab",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 617,
+      "html": ".ref/devices/617/index.html",
+      "html_sha256": "c9c3f07141b08595f366470dbe7fd6d36c2c7cddcb8bd57eb3f97c70bb5d6500",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 618,
+      "html": ".ref/devices/618/index.html",
+      "html_sha256": "1699bc6065eaf48679dee2f9a9b9c8537816f37c15810d46d9a03a920b64b6ef",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 619,
+      "html": ".ref/devices/619/index.html",
+      "html_sha256": "808ad8f750b0b5bebced4fe3317c4d8baf8211555fb4cb90886da1827dadf610",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 620,
+      "html": ".ref/devices/620/index.html",
+      "html_sha256": "87d5a39ef3f45bb5f8b0759da0e56e461674f9e4941f9b43c541d63b70081f5c",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 621,
+      "html": ".ref/devices/621/index.html",
+      "html_sha256": "7c2e2d147acee2650a1ab6b43691e2e3e9114214c22a345decd2af42f92f1afa",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 622,
+      "html": ".ref/devices/622/index.html",
+      "html_sha256": "5225bdd376baed06212f10da1083cb38f90fbbd4efc0768fd5113cf4a0bfaa09",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 623,
+      "html": ".ref/devices/623/index.html",
+      "html_sha256": "6730fbd0ed8d26dae17c35fab9af441f547fa459163612ae3bb3540dc449fc9d",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 624,
+      "html": ".ref/devices/624/index.html",
+      "html_sha256": "6c59e9327e7037ee2cbcf08d832147f4ed4208f00d5c7a8b58ea91f508d3017d",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 630,
+      "html": ".ref/devices/630/index.html",
+      "html_sha256": "f80ce1e1dc9606bb6ae839c9fef542dc1f91b6beaeab1adcdf52344df47d2409",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 631,
+      "html": ".ref/devices/631/index.html",
+      "html_sha256": "d079c333874a10c62514c9e55fdd4fafd65211a5bbd9d2b36460023ace7a7172",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 633,
+      "html": ".ref/devices/633/index.html",
+      "html_sha256": "62d5dd3ebbb75c6b7f72f54479ea307c2084bb52310ad9833350ff3f72e8d0f9",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 634,
+      "html": ".ref/devices/634/index.html",
+      "html_sha256": "4df6d2c608125c0a8600ce45a5dacbd713bdc9d0de97b87445ecb0651777ef79",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 642,
+      "html": ".ref/devices/642/index.html",
+      "html_sha256": "97238bdd7d6dc2df53aa9ff338ce57302e72ff4230a1bf315bd66ba63f64a848",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 647,
+      "html": ".ref/devices/647/index.html",
+      "html_sha256": "b52752a95f3934d10c7ebeaa690197d05e84b5b13a172bc6888c4662a32728c1",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 650,
+      "html": ".ref/devices/650/index.html",
+      "html_sha256": "66d0e5dc790693afb28ace068c5ce52a6c6325c30869cab01acbe562473dae3d",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 651,
+      "html": ".ref/devices/651/index.html",
+      "html_sha256": "914028e743dc408417c7d77d71e1a97b9c205719460f93b621336a86bcd2e45a",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 652,
+      "html": ".ref/devices/652/index.html",
+      "html_sha256": "cd7b450cbbbff2110221c39de188a971c800238305859e044ccf0dfc7425d1dd",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 653,
+      "html": ".ref/devices/653/index.html",
+      "html_sha256": "2fa09c5c64918dae9c2b8373fffbfafed0eb8488a6e3a4e47bf6d5ddc231f7b6",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 654,
+      "html": ".ref/devices/654/index.html",
+      "html_sha256": "49957db0d741093a43d0e81328d9d210b5d78d02e40852646eb8dae733d46de7",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 655,
+      "html": ".ref/devices/655/index.html",
+      "html_sha256": "b9adf6cdc71a2e9b6919d71d4b0eb8afb481ffaef071c299f71f24a825d957c2",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 658,
+      "html": ".ref/devices/658/index.html",
+      "html_sha256": "41c1978b0e02af24837be4a52baf86b5bfdcc5499616c85fe77f3d294cde4176",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 659,
+      "html": ".ref/devices/659/index.html",
+      "html_sha256": "25ed5e6b77b6a6e68acd393ba2ce0e6320b6d059922c948a469710ea0bed1b61",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 660,
+      "html": ".ref/devices/660/index.html",
+      "html_sha256": "c73f11de082655bcb3c113d821a5c55b3d991c2dd6883cce0869baa259e9a4fe",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 661,
+      "html": ".ref/devices/661/index.html",
+      "html_sha256": "a416eba0658241d7a6b221e444b87fda7515530d25e05d5ca051cb0164bd5df3",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 664,
+      "html": ".ref/devices/664/index.html",
+      "html_sha256": "faf4f276a067c341828db20973b4898a3e480b7e7ceeec14e0326b36bae578c9",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 669,
+      "html": ".ref/devices/669/index.html",
+      "html_sha256": "a843bf4a5502740a424581873717f14d7d87eb29754da513ced367b18004ad8d",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 670,
+      "html": ".ref/devices/670/index.html",
+      "html_sha256": "46b86e304c487557ac0698e94aac7a79865da95a32c22d15c619da401e32330b",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 671,
+      "html": ".ref/devices/671/index.html",
+      "html_sha256": "9002a165c05e671cd409d7a3087d2351d8c195fd5cf77c4fb7ac9cf9b8614bc3",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 672,
+      "html": ".ref/devices/672/index.html",
+      "html_sha256": "dce6f44cf9e4c441e86913a8fe9b25715930c1fde291fb333b2223aeffd54bf9",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 673,
+      "html": ".ref/devices/673/index.html",
+      "html_sha256": "e5c270a01971f3d55075b28a8541cd50a9a40b32e8ced6aeb9b5c55a1cca2f53",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 674,
+      "html": ".ref/devices/674/index.html",
+      "html_sha256": "4b08560eed42cbd75fc0887474ff1234a872eb0ac52abb65496ee9f0cbb724d7",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 675,
+      "html": ".ref/devices/675/index.html",
+      "html_sha256": "56f4037e66126027aa8fc3c17f9fb280d70e210937395db9c3b347fd0b5236db",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 677,
+      "html": ".ref/devices/677/index.html",
+      "html_sha256": "069de4726e35c5bb49281c0c35896f0d7606f3d63220032464735058ff8caf59",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 678,
+      "html": ".ref/devices/678/index.html",
+      "html_sha256": "1c74802135bdc1a7903e817f5a6dfcbf05dc677e5f18d914791c14357dfc8e1d",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 679,
+      "html": ".ref/devices/679/index.html",
+      "html_sha256": "7aa5b7b79eba514549cbce51291b0c26a6445b4812046fb533e10f372d3db778",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 688,
+      "html": ".ref/devices/688/index.html",
+      "html_sha256": "99d322fec76162d4bf0b801b99b31dfe42b504079ca66565d276e8cac97d5002",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 689,
+      "html": ".ref/devices/689/index.html",
+      "html_sha256": "bcb87becdd9716af1be84b867274a23e5a20d855ec20d80bb7f3dabbe3a32fd7",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 691,
+      "html": ".ref/devices/691/index.html",
+      "html_sha256": "36f61f76d3e853fe0d249e9e2b6f6178957a92ab4528f9e36ddbe8cf1a856e76",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 694,
+      "html": ".ref/devices/694/index.html",
+      "html_sha256": "96a2cb6353f34198da6bd03b64f70d66c63a8b0ff867e240b373fd25c42cf2f3",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 695,
+      "html": ".ref/devices/695/index.html",
+      "html_sha256": "6845b9933f26880aa625305c77b5a4fbf1fa91331c88577cf50f7d2736797f3e",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 696,
+      "html": ".ref/devices/696/index.html",
+      "html_sha256": "4b182299ac686390c57e24ec4673c9ad360be5271ec67d2071a3241e21ca4d12",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 697,
+      "html": ".ref/devices/697/index.html",
+      "html_sha256": "8fb5a44c0e031b8e88666f7edd82c1363abb6885ff95e6f3331e4253f74cb94f",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 70,
+      "html": ".ref/devices/70/index.html",
+      "html_sha256": "a921c90813e2898af401caeefd0dd3b72292982e3c6838d7e284ec28daa3a6fa",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 708,
+      "html": ".ref/devices/708/index.html",
+      "html_sha256": "e680bd469dfe60529108289fed74218468c25d16a2094691ab78ac225c1b35ef",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 709,
+      "html": ".ref/devices/709/index.html",
+      "html_sha256": "ef4f26f64c1a2881007c580c713b3ea39a0955349761150e33da220adc2b6585",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 710,
+      "html": ".ref/devices/710/index.html",
+      "html_sha256": "04170409a40b562fd7035c535270e2e3bd07f4874766f803285ab0be7120eef0",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 711,
+      "html": ".ref/devices/711/index.html",
+      "html_sha256": "aa0e006a59d347f14d7b35bd53c88c8f3f2ed1342a903475258702e770f4bdc1",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 716,
+      "html": ".ref/devices/716/index.html",
+      "html_sha256": "d202f0a6a9ed95add58135144f2c70649adc00bf8d9baf7af77f087b579a460b",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 717,
+      "html": ".ref/devices/717/index.html",
+      "html_sha256": "be72a4977000ef73d914497366a865bc267b53734faca155653627963c385958",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 719,
+      "html": ".ref/devices/719/index.html",
+      "html_sha256": "733969e3fbeb63af06793792376af130e3c940fb351c64d2b479296a2b00cba4",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 720,
+      "html": ".ref/devices/720/index.html",
+      "html_sha256": "73f64e25221147c6bba16ec8013192b209d5c05cf486cc6959f6c412f17f3ef3",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 721,
+      "html": ".ref/devices/721/index.html",
+      "html_sha256": "7be76e9d35351b64f2fdf62777bab987009a16d54bf2f0a1ce8621a08c9d7e4a",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 724,
+      "html": ".ref/devices/724/index.html",
+      "html_sha256": "48ca7e7f02580a0b7b54567e9cdc15f6d92d617fe5f3f116162f48a81e8d5f0f",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 727,
+      "html": ".ref/devices/727/index.html",
+      "html_sha256": "077d6734bd9c6d7c6dfa449cb57380d41749e9e4ddff68886d7e9c11f7580a25",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 728,
+      "html": ".ref/devices/728/index.html",
+      "html_sha256": "bc6ebade28397cd374220c110ae947f667df69ee86e8dbdb3fd09feaa0a2ec30",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 736,
+      "html": ".ref/devices/736/index.html",
+      "html_sha256": "6404666b00f25a33cac78e6a98f2d622079d9039f853622617a06c471196bfd2",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 737,
+      "html": ".ref/devices/737/index.html",
+      "html_sha256": "2dd4460a81edc6baadb84b70703a6a6396678d97560cee4a145ec5aba36449c7",
+      "href": "/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/SYSTEM.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/SYSTEM.svg",
+      "output": "assets/synapse/host-category-system.svg",
+      "source_sha256": "37f29c0d98e1e6855cd1f4102caea2c9be784a03421eab6538a6be74a352f08f"
+    },
+    {
+      "product_id": 739,
+      "html": ".ref/devices/739/index.html",
+      "html_sha256": "30ce0c0107e1d2955e2c9d9c6ffd53ee2e22a82d02f9829edcc1cb79876eecf5",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 740,
+      "html": ".ref/devices/740/index.html",
+      "html_sha256": "cad03c4673158f6ea841581a51208448008f3a102f26497d932c60c84334f863",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 741,
+      "html": ".ref/devices/741/index.html",
+      "html_sha256": "be7a7df29247094803cf96684700e059bf47a73362b1ea66c66ddfaad84b6bc4",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 742,
+      "html": ".ref/devices/742/index.html",
+      "html_sha256": "753fbec65d7d40997efc24042a47049bfd580b350f3dfbb13859e4ccebd18704",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 746,
+      "html": ".ref/devices/746/index.html",
+      "html_sha256": "ebc810442f0442e235ff7c5e3fcf6b942f021a7c481849b58cfd7b737e9c92a6",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 747,
+      "html": ".ref/devices/747/index.html",
+      "html_sha256": "83ae64a7f601af697322cc154ee4f5c5a8e8b6a6d80d1b8daa6b5ba1dbe4f5c4",
+      "href": "/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYPAD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYPAD.svg",
+      "output": "assets/synapse/host-category-keypad.svg",
+      "source_sha256": "c160b5db5ab8da04d499057ef03bfbb446c09a8f1afab020612e06a5f097fdfd"
+    },
+    {
+      "product_id": 752,
+      "html": ".ref/devices/752/index.html",
+      "html_sha256": "c734436166104841b57478aacceeb902c4386de4c0e6062304b01a057711b814",
+      "href": "/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/KEYBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/KEYBOARD.svg",
+      "output": "assets/synapse/host-category-keyboard.svg",
+      "source_sha256": "a5c665f592beae2b7cab277af9c1ffc01784f2240497425d2d33841541e51811"
+    },
+    {
+      "product_id": 769,
+      "html": ".ref/devices/769/index.html",
+      "html_sha256": "a2166355bb03fc025d8f05ecdf8b05df21fec6ee943d63f010958c2a0903548f",
+      "href": "/synapse/assets/imgs/favicon/HUE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/HUE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/HUE.svg",
+      "output": "assets/synapse/host-category-hue.svg",
+      "source_sha256": "84c8be4d3b5f95e80bfb5ad49b0caa322ada2ed6a1711a4a59f010e65ac69bb3"
+    },
+    {
+      "product_id": 777,
+      "html": ".ref/devices/777/index.html",
+      "html_sha256": "3495b016e73ccc248d1f4e0eb18d0e7b92673c1068a35f70b8641459bcb30ce4",
+      "href": "/synapse/assets/imgs/favicon/AUDIO.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/AUDIO.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/AUDIO.svg",
+      "output": "assets/synapse/host-category-audio.svg",
+      "source_sha256": "096360fa5030a9b04d3e2d62cb0774c1ddcd1bcaea93a6174b10ac506800c867"
+    },
+    {
+      "product_id": 778,
+      "html": ".ref/devices/778/index.html",
+      "html_sha256": "3a5b476dd0f617c0f3b3ae822363dfaf76969ccf2f6fefc6cbb9f376e3fc0f22",
+      "href": "/synapse/assets/imgs/favicon/ACCESSORY_MAINBOARD.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/ACCESSORY_MAINBOARD.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/ACCESSORY_MAINBOARD.svg",
+      "output": "assets/synapse/host-category-accessory_mainboard.svg",
+      "source_sha256": "59b4e86fd4936b8f663ac463116b95f506a48edb05b7ec3ba1fcbb9d55a8e417"
+    },
+    {
+      "product_id": 780,
+      "html": ".ref/devices/780/index.html",
+      "html_sha256": "d66280d1b14d2e777955ea0963e782bb59b26d15b390a4ad4d9e9a877400d28e",
+      "href": "/synapse/assets/imgs/favicon/IOT_KEY_LIGHT.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_KEY_LIGHT.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_KEY_LIGHT.svg",
+      "output": "assets/synapse/host-category-iot_key_light.svg",
+      "source_sha256": "8d990cac4849532dd081f9161e371714805495403e43867bd0f5a6fafe65f8b9"
+    },
+    {
+      "product_id": 781,
+      "html": ".ref/devices/781/index.html",
+      "html_sha256": "97b52f65c8d566b0b56ed54bbf4d1c7d197e4e7b8f79b2fb307a6dfc824cd2b1",
+      "href": "/synapse/assets/imgs/favicon/IOT_LAMP.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_LAMP.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_LAMP.svg",
+      "output": "assets/synapse/host-category-iot_lamp.svg",
+      "source_sha256": "73246b762e36d592a6e3e7c09e811e910299322d21115df6fda8b33be05308aa"
+    },
+    {
+      "product_id": 782,
+      "html": ".ref/devices/782/index.html",
+      "html_sha256": "f6244fa3617b624d17bcb69b6a8875fbbe7c6136af67fb3d06f0fcaf9247a17e",
+      "href": "/synapse/assets/imgs/favicon/IOT_LAMP.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_LAMP.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_LAMP.svg",
+      "output": "assets/synapse/host-category-iot_lamp.svg",
+      "source_sha256": "73246b762e36d592a6e3e7c09e811e910299322d21115df6fda8b33be05308aa"
+    },
+    {
+      "product_id": 783,
+      "html": ".ref/devices/783/index.html",
+      "html_sha256": "a99cabfa5c0690613104a15b51eaccb54b1bd0e0ee191dd90b0d822e71bc8455",
+      "href": "/synapse/assets/imgs/favicon/IOT_BULB.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_BULB.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_BULB.svg",
+      "output": "assets/synapse/host-category-iot_bulb.svg",
+      "source_sha256": "2761ba0b1c30d94974c06be5bbca1ffc6e1a399f5aed77e83c9d69108a088652"
+    },
+    {
+      "product_id": 784,
+      "html": ".ref/devices/784/index.html",
+      "html_sha256": "6855995378d764b3d8f22f540ad5c8ae803a12e0b5181a3c86250ec9abfa295c",
+      "href": "/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_STRIP.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "output": "assets/synapse/host-category-iot_strip.svg",
+      "source_sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42"
+    },
+    {
+      "product_id": 790,
+      "html": ".ref/devices/790/index.html",
+      "html_sha256": "41957808379b17fa7b1d128b59971d2be80bd77d67b71d35560c9d5e4d10f202",
+      "href": "/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_STRIP.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "output": "assets/synapse/host-category-iot_strip.svg",
+      "source_sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42"
+    },
+    {
+      "product_id": 791,
+      "html": ".ref/devices/791/index.html",
+      "html_sha256": "89faf3db4515240a4787ea541b75f6540bffc0b87e35ed5dacfd40b8a9dad5d5",
+      "href": "/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/IOT_STRIP.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_STRIP.svg",
+      "output": "assets/synapse/host-category-iot_strip.svg",
+      "source_sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42"
+    },
+    {
+      "product_id": 80,
+      "html": ".ref/devices/80/index.html",
+      "html_sha256": "cda624cc657cf94adea6ad568242bd9831ed517cd7fd2f4f1a62c600e9403246",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 83,
+      "html": ".ref/devices/83/index.html",
+      "html_sha256": "b5e14a318f95069f5f211e8ee6e99c307528e984d8fde64f6a2ab9708bf5821e",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 89,
+      "html": ".ref/devices/89/index.html",
+      "html_sha256": "c2b44ccc1775770c0a3cf8be8578219551fb4ffe5b956574a0c35314a5926a37",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 92,
+      "html": ".ref/devices/92/index.html",
+      "html_sha256": "b419fb18ee895be99a6e8f0cd9fb30ca770dda6073e1c2331391a6e3e33b9fac",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 96,
+      "html": ".ref/devices/96/index.html",
+      "html_sha256": "5fc48c944dda34787633cf515806db1b8a027e0b350da4337a739ef0c0b3ef85",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 98,
+      "html": ".ref/devices/98/index.html",
+      "html_sha256": "8a44f09b327600e9205136ee597679f74239a28200a5766f30a05d1596fb1a66",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    },
+    {
+      "product_id": 99,
+      "html": ".ref/devices/99/index.html",
+      "html_sha256": "7d09173d320de74c6975a0e6ef71d380f57733391f4f1e75252df79222efef21",
+      "href": "/synapse/assets/imgs/favicon/MOUSE.svg",
+      "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/MOUSE.svg",
+      "output": "assets/synapse/host-category-mouse.svg",
+      "source_sha256": "7abd0c47857cd07599ad3ac1dd4da90421b72b051278f71bd4aa266d69b28580"
+    }
+  ]
+}

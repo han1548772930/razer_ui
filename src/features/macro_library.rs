@@ -1,7 +1,7 @@
 //! Shared local Macro documents and their persisted baseline.
 //!
-//! Actions retain the existing editor's display-text draft fields. They are
-//! not a native macro file, recorded hardware events, GUIDs or service data.
+//! Actions retain local editor drafts and optional source-shaped key fields.
+//! They are not a native macro file, device GUIDs or hardware service data.
 //! IDs are local persistent identities; allocation must retain `next_id` as a
 //! high-water mark even when entries are deleted. Nothing here sends them to
 //! a device.
@@ -32,11 +32,26 @@ pub(crate) struct ActionItem {
     /// Older display-only rows remain unassigned; names are not identities.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) macro_id: Option<u64>,
+    /// Source-shaped key data. Missing on legacy text-only rows; text must not
+    /// be interpreted as a recorded physical key or an event identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) keyboard: Option<KeyboardEvent>,
     pub(crate) value: String,
     pub(crate) secondary_value: String,
     pub(crate) number_min: String,
     pub(crate) number_max: String,
     pub(crate) state: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct KeyboardEvent {
+    /// Local document-scoped pairing identity, never a device GUID.
+    pub(crate) pair_id: Option<u64>,
+    pub(crate) makecode: Option<u16>,
+    pub(crate) state: Option<u8>,
+    pub(crate) flag: Option<u8>,
+    pub(crate) key_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,7 +143,20 @@ impl MacroLibraryFile {
             }
         }
         for entry in &self.entries {
+            let mut key_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
+                if let Some(key) = &action.keyboard {
+                    if action.kind != ActionKind::Keyboard || key.pair_id == Some(0) {
+                        return Err(format!("Invalid keyboard metadata in {}", entry.id));
+                    }
+                    if let Some(id) = key.pair_id {
+                        let count = key_pairs.entry(id).or_default();
+                        *count += 1;
+                        if *count > 2 {
+                            return Err(format!("Ambiguous keyboard pair {id} in {}", entry.id));
+                        }
+                    }
+                }
                 if let Some(id) = action.macro_id {
                     if action.kind != ActionKind::Macro || id == 0 || id >= self.next_id {
                         return Err(format!(

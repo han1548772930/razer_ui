@@ -336,7 +336,7 @@
       "programContent": "Content0",
       "websiteContent": "Content1",
       "mode": "RadioIndex",
-      "programPicker": "showFileOpenDialog; native/service boundary"
+      "programPicker": "showFileOpenDialog(\"Select Launch App\", false), default types []; local single-file picker and draft guards audited separately in macro-launch-current-evidence.json"
     }
   }
 }

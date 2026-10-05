@@ -12,7 +12,6 @@ pub(super) struct NestedDropdownState {
     pub(super) upward: Rc<Cell<Option<bool>>>,
 }
 
-#[derive(IntoElement)]
 pub(super) struct NestedMenuOverlay {
     pub(super) content: AnyElement,
     pub(super) trigger: Rc<Cell<Bounds<Pixels>>>,
@@ -21,8 +20,15 @@ pub(super) struct NestedMenuOverlay {
     pub(super) final_height: Pixels,
 }
 
+impl IntoElement for NestedMenuOverlay {
+    type Element = Self;
+    fn into_element(self) -> Self::Element {
+        self
+    }
+}
+
 impl Element for NestedMenuOverlay {
-    type RequestLayoutState = Size<Pixels>;
+    type RequestLayoutState = gpui_kit::Size<Pixels>;
     type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {

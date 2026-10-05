@@ -70,7 +70,10 @@ fn source_shortcuts() -> &'static SourceShortcutData {
 
 /// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,
 /// keeping the existing suffix when a paste or IME replacement exceeds 250.
-fn limit_shortcut_text(previous: &str, current: &str) -> Option<(std::ops::Range<usize>, String)> {
+pub(crate) fn limit_shortcut_text(
+    previous: &str,
+    current: &str,
+) -> Option<(std::ops::Range<usize>, String)> {
     if current.encode_utf16().count() <= 250 {
         return None;
     }

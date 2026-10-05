@@ -1,0 +1,1909 @@
+{
+  "method": "Current manifest-scoped Acorn and CSS parsing; no vendor execution",
+  "components": {
+    "rt": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1238617,
+      "end": 1244464,
+      "source": "e=>{const{item:t,itemIndex:n,dataList:r,placeholder:i,contentList:s,disabled:c,dpIndex:l}=e,d=(0,nt.A)(),_=(0,Se.useDispatch)(),E=(0,Se.useSelector)(e=>e.macroList.lightingProfile),u=(0,Se.useSelector)(e=>e.macroList.currentProfile),m=(0,Se.useSelector)(e=>{var t;return null===(t=e.macroList.macroList.find(e=>e.guid===u))||void 0===t?void 0:t.macroType}),[h,A]=(0,a.useState)(l||0===l?r[l].profiles:[]),[S]=(0,a.useState)(Y),[I,D]=(0,a.useState)(!1),[T,g]=(0,a.useState)(l),[p,N]=(0,a.useState)(t.RadioIndex),[O,f]=(0,a.useState)(t.Option?t.Option.PIndex:null),[L,v]=(0,a.useState)(t.Option?t.Option.Switch:null),[w,U]=(0,a.useState)(t.Option?t.Option.EffectIndex:null),[P,$]=(0,a.useState)(t.Content0),[G,H]=(0,a.useState)(t.Content1),b=(0,a.useRef)(),F=(0,a.useRef)(),k=n=>{switch(t.Type){case 8:g(e.dpIndex),N(t.RadioIndex),f(t.Option.PIndex),v(t.Option.Switch),U(t.Option.EffectIndex);break;case 10:N(t.RadioIndex),$(t.Content0),H(t.Content1)}j(n)},B=e=>{I&&y.A.init().then(a=>{switch(at(a),t.Type){case 8:M.A.lock().then(()=>{_({type:o.Lt,updateValue:{RadioIndex:p,DPIndex:T,PIndex:O,Switch:L,EffectIndex:w,deviceName:r[T].name,guid:h.length&&(O||0===O)?h[O].guid:null},index:n})});break;case 10:M.A.lock().then(()=>{_({type:o.Lt,updateValue:{RadioIndex:p,Content0:P,Content1:G},index:n})})}j(e)})},V=e=>{let t=e.target.value;H(t)},x=e=>{N(e||0)},K=()=>{v(!L)},W=e=>{const t=m===C.CK.PHASED?6:4;let n=e;for(let o=0;o<t;o++)n=n.parentNode;const a=e.parentNode.parentNode.parentNode,r=n.clientHeight-a.offsetTop;e.style.cssText=r>100?\"display:block\":\"display:block;top:-300px\"},j=(0,a.useCallback)(e=>{(e.type!==C.uM||F.current&&b.current)&&(F.current&&F.current.classList.remove(\"active\"),b.current.style.display=\"none\",_({type:o.oA,payload:!0}),D(!1))},[_]),z=async e=>{e.preventDefault(),e.stopPropagation();let t=await ge.A.showFileOpenDialog(\"Select Launch App\",!1);t=\"string\"===typeof t?JSON.parse(t,\"array\"):t,t.length&&$(t[0]),t.length&&D(!0)};(0,a.useLayoutEffect)(()=>(window.addEventListener(\"click\",k),window.addEventListener(C.uM,k),()=>{window.removeEventListener(\"click\",k),window.removeEventListener(C.uM,k)})),(0,a.useEffect)(()=>{D(!(!G||1!==p)||!(!P||0!==p))},[G,P,p]),(0,a.useEffect)(()=>{(p||0===p)&&D(!0)},[p]),(0,a.useEffect)(()=>{l!==T&&g(l)},[l,T]),(0,a.useEffect)(()=>{(T||0===T)&&A(r[T].profiles)},[T,r]);const X=8===t.Type?()=>{let e=\"\"===t.name?i:t.name,n=\"\";return null!==t.RadioIndex&&(n=4===t.RadioIndex?n.concat(` - ${h[t.Option.PIndex].name}, ${S[t.Option.EffectIndex].name}`):n.concat(` - ${s[t.RadioIndex].name}`)),e+n}:10===t.Type?()=>{if(\"number\"!==typeof t.RadioIndex)return i;let e=`${d(R.Qei)} \"${G}\"`;return 0===t.RadioIndex&&(e=`${d(R.zUM)} \"${P.substring(P.lastIndexOf(\"\\\\\")+1)}\"`),(0,Ne.jsxs)(\"div\",{className:ze.macro_launch,children:[(0,Ne.jsxs)(\"div\",{className:ze.text_prefix,children:[d(R.oeC),\":\"]}),(0,Ne.jsx)(\"div\",{className:ze.text,children:e})]})}:()=>null;let J=s?s.map((e,t)=>{const a=!!(null===T||4===t&&r[T].disabled);switch(e.type){case\"radio\":return(0,Ne.jsx)(tt,{name:d(e.name),id:e.id+n,active:p===t,disabled:a,onCheck:x,value:t},t);case\"radioInput\":return(0,Ne.jsxs)(\"div\",{children:[(0,Ne.jsx)(tt,{name:d(e.name),id:e.id+t+n,active:p===t,onCheck:x,value:t}),(0,Ne.jsxs)(\"div\",{style:{position:\"relative\"},children:[\"program\"===e.id?(0,Ne.jsx)(\"input\",{type:\"file\",id:`${e.id}${n}`,className:`${ze.input} ${e.id}`,disabled:p!==t,onChange:V,onClick:z}):(0,Ne.jsx)(\"input\",{type:\"text\",id:`${e.id}${n}`,className:`${ze.input} ${e.id}`,disabled:p!==t,onChange:V,value:G}),\"program\"===e.id?(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"span\",{className:ze.folder}),(0,Ne.jsx)(\"span\",{className:`${ze.input} ${e.id}`,onClick:()=>{document.getElementById(`${e.id}${n}`).click()},children:P.substring(P.lastIndexOf(\"\\\\\")+1)})]}):null]})]},t);default:return null}}):null;var Q=\"thx-btn map-save \"+(I?\"\":\"disabled\");let q=null;switch(t.Type){case 8:q=(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:ze.close,onClick:k}),(0,Ne.jsx)(\"div\",{className:ze.heading,children:(0,Ne.jsx)(Ie.A,{text:i})}),(0,Ne.jsx)(We.A,{dataSet:r,selectOption:g,defaultValue:T,value:T,placeholder:d(R.sUC)}),c&&\"\"!==t.name&&e.dataList[T].disabled?(0,Ne.jsx)(\"div\",{className:`${ze.text} ${ze.disabled}`,children:\"Device is not connected\"}):null,J,4===p?(0,Ne.jsxs)(\"div\",{className:ze.specific_profile,children:[(0,Ne.jsx)(We.A,{dataSet:h,selectOption:f,value:O}),(0,Ne.jsx)(Fe,{id:\"checkLighting\",active:L,onCheck:K,name:d(R.GyO)}),(0,Ne.jsx)(We.A,{dataSet:E,selectOption:U,value:w,extraStyle:{zIndex:98}})]}):null,(0,Ne.jsxs)(\"div\",{className:\"flex keymap-action\",children:[(0,Ne.jsx)(\"div\",{className:\"thx-btn map-cancel test\",onClick:k,children:(0,Ne.jsx)(Ie.A,{text:R.F5E})}),(0,Ne.jsx)(\"div\",{className:Q,onClick:B,children:(0,Ne.jsx)(Ie.A,{text:R.wnR})})]})]});break;case 10:q=(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:ze.close,onClick:k}),(0,Ne.jsx)(\"div\",{className:ze.heading,children:(0,Ne.jsx)(Ie.A,{text:R.oeC})}),J,(0,Ne.jsxs)(\"div\",{className:\"flex keymap-action\",children:[(0,Ne.jsx)(\"div\",{className:\"thx-btn map-cancel test\",onClick:k,children:(0,Ne.jsx)(Ie.A,{text:R.rE$})}),(0,Ne.jsx)(\"div\",{className:Q,onClick:B,children:(0,Ne.jsx)(Ie.A,{text:R.a_Y})})]})]})}let Z=null;return Z=8===t.Type?\"\"===t.name?`${ze.text} ${ze.placeholder} keep-text`:c?`${ze.text} ${ze.disabled} keep-text`:`${ze.text} keep-text`:10===t.Type?t[\"Content\"+t.RadioIndex]?`${ze.text} keep-text`:`${ze.text} ${ze.placeholder} keep-text`:t.Text?`${ze.text} keep-text`:`${ze.text} ${ze.placeholder} keep-text`,(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"div\",{className:Z,ref:F,onClick:e=>{_({type:o.oA,payload:!1}),(0,Ke.th)(e,F.current),F.current&&F.current.classList.add(\"active\"),W(b.current)},children:X()}),(0,Ne.jsx)(\"div\",{className:ze.custom_modal,ref:b,children:q})]})}"
+    },
+    "et": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1237738,
+      "end": 1238558,
+      "source": "class et extends a.Component{constructor(e){super(e),this.checkMe=()=>{this.props.value?this.props.onCheck(this.props.value):this.props.onCheck()};const{active:t,disabled:n}=this.props;this.state={active:t,disabled:n}}componentDidUpdate(e){const{active:t,disabled:n}=this.props;t!==e.active&&this.setState({active:t}),n!==e.disabled&&this.setState({disabled:n})}render(){const{id:e,name:t,extraClass:n,ico:a}=this.props,{active:r,disabled:o}=this.state,{checkMe:i}=this;var s=`radio-item ${n||\"\"} ${o?\"disabled\":\"\"}`;return(0,Ne.jsxs)(\"div\",{className:s,children:[(0,Ne.jsx)(\"input\",{type:\"radio\",id:e,checked:r,onChange:i}),(0,Ne.jsxs)(\"label\",{className:\"radio-label\",htmlFor:e,children:[a&&(0,Ne.jsx)(\"img\",{src:a,className:`icon ${n}`,alt:\"\"}),(0,Ne.jsx)(Ze.A,{text:t})]}),this.props.beta?(0,Ne.jsx)(qe,{}):null]})}}"
+    },
+    "z": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1217170,
+      "end": 1217289,
+      "source": "R.E7b,R.GI6,R.n8$,R.SvU,R.Xb_,[{name:R.zUM,id:\"program\",type:\"radioInput\"},{name:R.Qei,id:\"website\",type:\"radioInput\"}]"
+    },
+    "En": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1330111,
+      "end": 1331904,
+      "source": "(0,Se.connect)(e=>({lightingProfile:e.macroList.lightingProfile,macroList:e.macroList.macroList,selectedMacro:e.macroList.currentProfile}))(e=>{const{item:t,itemIndex:n,leave:r,macroList:o,selectedMacro:i}=e,[s]=(0,a.useState)(z),[c]=(0,a.useState)(X),l=(0,nt.A)(),d=(0,a.useMemo)(()=>{const e=new Map(o.map(e=>[e.guid,e])),t=function(n){let a=arguments.length>1&&void 0!==arguments[1]?arguments[1]:[];const r=e.get(n);if(!r||!r.macroEvents)return a;return r.macroEvents.reduce((e,t)=>(7===t.Type&&t.guid&&e.push(t.guid),e),[]).forEach(e=>{a.push(e),t(e,a)}),a},n=o.map(e=>t(e.guid,[e.guid]));return o.map(e=>({...e,disabled:n.some(t=>t.includes(i)&&t[0]===e.guid)}))},[i,o.length]);let _=null;switch(t.Type){case x.RG:_=(0,Ne.jsx)(St,{itemIndex:n,item:t,type:\"delay\"});break;case x.lk:_=(0,Ne.jsx)(je,{leave:r,dataList:W.map(e=>({name:l(e.name)})),itemIndex:n,item:t,placeholder:l(R.oof)});break;case x.m2:_=(0,Ne.jsx)(ct,{itemIndex:n,item:t});break;case x.HL:_=(0,Ne.jsx)(dn,{placeholder:l(R.bYY),itemIndex:n,item:t});break;case x.Jt:_=(0,Ne.jsx)(Ot,{placeholder:l(R.sxb),itemIndex:n,item:t});break;case x.gL:_=(0,Ne.jsx)(yt,{itemIndex:n,item:t,type:\"loop\"});break;case x.W1:_=(0,Ne.jsx)(je,{leave:r,dataList:d,itemIndex:n,item:t,placeholder:l(R.Adr),selectedMacro:e.selectedMacro});break;case x.bt:_=(0,Ne.jsx)(je,{leave:r,dataList:c,itemIndex:n,item:t,placeholder:l(R.nGM)});break;case x.xs:_=(0,Ne.jsx)(rt,{contentList:s,placeholder:l(R.H7L),itemIndex:n,item:t});break;case x.oE:_=(0,Ne.jsx)(je,{leave:r,dataList:e.lightingProfile,itemIndex:n,item:t,placeholder:l(R.eRF)})}return(0,Ne.jsx)(\"div\",{className:`${_n} customInput`,style:{position:4===t.Type||3===t.Type?\"initial\":\"relative\"},onClick:e=>{e.stopPropagation()},draggable:\"true\",onDragStart:e=>{e.preventDefault()},children:_})})"
+    },
+    "va": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1348739,
+      "end": 1355568,
+      "source": "(0,Se.connect)(e=>({activeRecord:e.macroList.activeRecord,activeSettingWindow:e.page.activeSettingWindow,lastAction:e.macroList.lastAction,macroList:e.macroList.macroList,currentProfile:e.macroList.currentProfile}))(e=>{const{macroList:t,currentProfile:n,item:r,itemIndex:i}=e,[s,c]=(0,a.useState)(!1),l=(0,Se.useDispatch)(),d=(0,a.useMemo)(()=>(0,De.Rk)(t,n),[t,n]),_=(0,nt.A)(),E=d?d.macroEvents:[];let u=!!E[i]&&E[i].selected;const m=(0,a.useCallback)(cn()(function(e){e.stopPropagation(),y.A.init().then(e=>{fa(e),M.A.lock().then(()=>{l({type:o.HH,index:i,data:r})})})},200,{leading:!0}),[i,r]),h=()=>{e.mouseLeave&&e.mouseLeave(),ve.forEach(e=>{clearTimeout(e)})},A=(0,a.useRef)(),S=e=>{var t,n;(\"boolean\"===typeof e?e:!u)?(l({type:o.tn,index:i}),null===(t=A.current)||void 0===t||t.classList.add(vn)):(l({type:o.wL,index:i}),null===(n=A.current)||void 0===n||n.classList.remove(vn))};(0,a.useLayoutEffect)(()=>{document.getElementById(\"item_editor\").offsetHeight<document.getElementById(\"item_editor\").scrollHeight?A.current&&A.current.classList.add(Qn):A.current&&A.current.classList.contains(Qn)&&A.current.classList.remove(Qn)},[]),(0,a.useEffect)(()=>h,[]);let I=`${On} ${Un} ${u?vn:\"\"} ${r.isPairing?qn:\"\"}`,D=`mr10 ${fn} ${e.activeRecord?Wn:\"\"}`,T=null,g=(0,Ne.jsx)(ke,{id:`fi_${i}`,active:u,onCheck:S,name:\"\",extraClass:D,disabled:e.activeSettingWindow});switch(r.Type){case x.RG:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:Q.A,alt:\"delay icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.Jr:{const e=r.KeyEvent.State%2===1;T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:q.A,alt:\"keyboard icon\",draggable:!1}),null===r.KeyEvent.State?null:(0,Ne.jsx)(\"img\",{className:\"mr10\",src:e?ee.A:Z.A,alt:\"navigator icon\"}),(0,Ne.jsx)(Nn,{itemIndex:i,item:r})]});break}case x.lk:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:te.A,alt:\"mouse icon\",draggable:!1}),null===r.MouseEvent.State||void 0===r.MouseEvent.State?null:(0,Ne.jsx)(\"img\",{className:\"mr10\",src:1===r.MouseEvent.State?ee.A:Z.A,alt:\"navigation icon\"}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.m2:T=(0,Ne.jsx)(Da,{checkbox:g,itemIndex:i,item:r});break;case x.W1:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:Ea.A,alt:\"macro icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.P71})}),(0,Ne.jsx)(ia,{leave:h,itemIndex:i,item:r})]});break;case x.HP:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ca,alt:\"device profile icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.oE:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:da,alt:\"lighting icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.MAc})}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.xs:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:la.A,alt:\"launch icon\",draggable:!1}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.Jt:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:sa.A,alt:\"command icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.qAC})}),(0,Ne.jsx)(Ia,{index:i,item:r})]});break;case x.bt:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ua,alt:\"multimedia icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",children:(0,Ne.jsx)(Ie.A,{text:R.KPs})}),(0,Ne.jsx)(En,{leave:h,itemIndex:i,item:r})]});break;case x.HL:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:ma.A,alt:\"text icon\",draggable:!1}),(0,Ne.jsx)(\"span\",{className:\"mr10\",style:{minWidth:\"42px\"},children:(0,Ne.jsx)(Ie.A,{text:R.N4v})}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;case x.gL:T=(0,Ne.jsxs)(\"div\",{className:$n,children:[g,(0,Ne.jsx)(\"img\",{className:\"mr10\",src:_a.A,alt:\"loop icon\",draggable:!1}),(0,Ne.jsxs)(\"span\",{className:\"mr10\",children:[0===r.LoopEvent.State?_(R.I0I):_(R.nQC),\":\"]}),(0,Ne.jsx)(En,{itemIndex:i,item:r})]});break;default:return null}const p=()=>{c(!s)};return(0,Ne.jsxs)(Aa,{className:I,active:u,pairing:r.isPairing,onClick:S,ref:A,onMouseEnter:()=>{e.mouseEnter&&e.mouseEnter()},onMouseLeave:h,onDragOver:e=>{var t,n;F(i),e.stopPropagation(),null!==(t=document.getElementById(\"drag-image\"))&&void 0!==t&&t.classList.contains(\"no-allow\")?(A.current.classList.add(Vn),e.preventDefault()):e.preventDefault(),A.current.classList.contains(Bn)||A.current.classList.add(Bn),null!==(n=document.getElementById(\"drag-image\"))&&void 0!==n&&n.classList.contains(\"no-allow\")?A.current.classList.add(Vn):A.current.classList.contains(Vn)&&A.current.classList.remove(Vn)},onDragLeave:e=>{e.stopPropagation(),A.current.classList.remove(Bn)},onDrop:e=>{e.stopPropagation();const t=e.dataTransfer.getData(\"name\"),n=e.dataTransfer.getData(\"dragType\"),a=e.dataTransfer.getData(\"index\"),r=parseInt(a);y.A.init().then(e=>{fa(e),A.current.classList.remove(Bn);const a=document.getElementById(`${C.zV}`);a&&a.remove(),\"move\"===t?!A.current.classList.contains(Vn)&&M.A.lock().then(()=>{l({type:o.T9,index:i,dragType:n,indexMoveItem:r})}):M.A.lock().then(()=>{l({type:o.dt,name:t,index:i,action:\"drop\"})})})},draggable:!0,onDragEnd:k,onDragStart:e=>{let t=[];A.current.classList.remove(wn);let n={},a=[];if(E[i].selected)E.forEach((e,n)=>{if(n>0&&e.selected){a.push({index:n});const o=Rn()(e,La[r.Type],0),i=(0,Ke.cf)(E,e);if(-1===i||E[i].selected)return;t.push({state:o,index:i,bound:{top:i>n?0:i,bottom:i>n?i-1:1e9}})}});else{a.push({index:i});const e=Rn()(r,La[r.Type],0),n=(0,Ke.cf)(E,r);n>-1&&t.push({state:e,index:n,bound:{top:n>i?0:n,bottom:n>i?n-1:1e9}})}n.count=a.length,n.itemIndex=i,n.type=r.Type,n.listPairItem=t,n.dropBound=t.reduce((e,t)=>(t.bound.top>e.top&&(e.top=t.bound.top),t.bound.bottom<e.bottom&&(e.bottom=t.bound.bottom),e),{top:0,bottom:1e9}),E[i].selected?H(e,n):H(e,n,\"unselected\",i)},onDrag:e=>{e.persist(),e.stopPropagation(),b(e)},children:[T,(0,Ne.jsx)(\"div\",{className:$n,style:{justifyContent:\"flex-end\"},children:(0,Ne.jsxs)(\"div\",{className:Ln,children:[r.Type===x.Jt&&(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"span\",{id:\"TYPE_COMMAND\",onMouseEnter:p,onMouseLeave:p,className:`${jn} ${zn} ${Jn}`}),(0,Ne.jsx)(Oa,{isMounted:s,target:\"TYPE_COMMAND\",children:_(R.B1e)})]}),(0,Ne.jsx)(\"span\",{className:`${jn} ${Xn} ${Jn}`,onClick:m,\"data-tooltip\":_(R.KUz)}),(0,Ne.jsx)(\"span\",{className:`${jn} ${Yn} ${Jn}`,onClick:e=>{e.stopPropagation(),y.A.init().then(e=>{fa(e),M.A.lock().then(()=>{l({type:o.Xg,index:i})})})},\"data-tooltip\":_(R.Ci7)}),(0,Ne.jsx)(\"span\",{className:ea})]})}),(0,Ne.jsx)(\"div\",{})]})})"
+    },
+    "ha": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1341729,
+      "end": 1342045,
+      "source": "r().forwardRef((e,t)=>{let{active:n,pairing:r,onClick:o,...i}=e;const[s,c]=(0,a.useState)(n||!1);let l=`${On} ${Un} ${s?vn:\"\"} ${r?qn:\"\"}`;const d=(0,a.useCallback)(He()(e=>{o&&o(e)},200,{leading:!0}),[]);return(0,a.useEffect)(()=>c(n),[n]),(0,Ne.jsx)(\"div\",{...i,ref:t,className:l,onClick:()=>{c(e=>(d(!e),!e))}})})"
+    },
+    "ja": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1361495,
+      "end": 1365156,
+      "source": "(0,Se.connect)(e=>({macroList:e.macroList.macroList,currentProfile:e.macroList.currentProfile,firstTime:e.macroList.firstTime,recordProfile:e.macroList.recordProfile,isRecording:e.macroList.activeRecord}),null)(e=>{const t=(0,a.useMemo)(()=>{const t=(0,De.Rk)(e.macroList,e.currentProfile),n=(null===t||void 0===t?void 0:t.macroEvents)||[];return n.slice(1,n.length)},[e.macroList,e.currentProfile]),n=(0,a.useRef)(null),r=(0,a.useRef)({itemHeight:42,amount:Math.ceil(600/42),tolerance:5,minIndex:0,maxIndex:t.length-1,startIndex:0,viewportHeight:600}),o=(0,a.useMemo)(()=>(0,De.Rk)(e.macroList,e.currentProfile),[e.macroList,e.currentProfile]),[i,s]=(0,a.useState)(()=>{const e=r.current;return Wa(e)}),[c,l]=(0,a.useState)([null,null]),{activePhase:d,setActivePhase:_}=e,E=(0,a.useCallback)((e,n)=>{const a=r.current,o=[],i=Math.max(a.minIndex,e),s=Math.min(e+n-1,a.maxIndex);if(i<=s)for(let r=i;r<=s;r++)o.push({index:r,item:t[r]});return o.filter(e=>e.item)},[t]),u=(0,a.useCallback)(e=>{let{target:{scrollTop:t}}=e;window.ignoreEditorScrollEvent?window.ignoreEditorScrollEvent=!1:s(e=>{const{totalHeight:n,toleranceHeight:a,bufferedItems:r,settings:{itemHeight:o,minIndex:i}}=e,s=i+Math.floor((t-a)/o),c=E(s,r),l=Math.max((s-i)*o,0),d=Math.max(n-l-c.length*o,0);return{...e,topPaddingHeight:l,bottomPaddingHeight:d,data:c}})},[E]),m=e=>{const n=t[e],a=n?(0,Ke.cf)(t,n):-1;l(a>=0?[Math.min(e,a),Math.max(e,a)]:[null,null])},h=e=>{const t=Wa(e),a=n.current;if(a){const n=a.scrollTop;s(a=>{const{toleranceHeight:r,bufferedItems:o,totalHeight:i}=t,{minIndex:s,itemHeight:c}=e,l=s+Math.floor((n-r)/c),d=E(l,o),_=Math.max((l-s)*c,0),u=Math.max(i-_-d.length*c,0);return{...a,...t,topPaddingHeight:_,bottomPaddingHeight:u,data:d}})}},A=(0,a.useCallback)((0,wa.sg)(()=>{r.current.viewportHeight=Math.max(window.outerHeight-208,450),h(r.current)},400),[t]);(0,a.useEffect)(()=>{e.isRecording||(r.current.maxIndex=t.length-1,r.current.viewportHeight=Math.max(450,window.outerHeight-208),r.current.amount=Math.ceil(r.current.viewportHeight/r.current.itemHeight),h(r.current))},[t,t.length,e.isRecording]),(0,a.useEffect)(()=>{n.current.scrollTop=i.initialPosition,i.initialPosition||u({target:{scrollTop:0}})},[]),(0,a.useEffect)(()=>(window.addEventListener(\"resize\",A),()=>{window.removeEventListener(\"resize\",A)}),[A]),(0,a.useEffect)(()=>(n.current.addEventListener(\"scroll\",u),e.isRecording&&(u({target:{scrollTop:n.current.scrollTop}}),n.current.removeEventListener(\"scroll\",u)),()=>{n.current&&n.current.removeEventListener(\"scroll\",u)}),[e.isRecording,u]);const{viewportHeight:S,topPaddingHeight:I,bottomPaddingHeight:D,data:T}=i;return(0,Ne.jsx)(Ne.Fragment,{children:(null===o||void 0===o?void 0:o.macroType)!==C.CK.PHASED?(0,Ne.jsxs)(\"div\",{className:e.className,onDragOver:e.onDragOver,onDrop:e.onDrop,id:\"item_editor\",ref:n,style:{height:S,position:\"relative\"},children:[(0,Ne.jsx)(\"div\",{style:{height:I}}),T.map(t=>{let{index:n,item:a}=t;return(0,Ne.jsx)(va,{macroList:e.macroList,currentProfile:e.currentProfile,firstTime:e.firstTime,recordProfile:e.recordProfile,item:a,itemIndex:n+1,mouseEnter:()=>m(n),mouseLeave:()=>{l([null,null])}},`${a.Type}-${n}-${a.Id}`)}),(0,Ne.jsx)(\"div\",{style:{height:D+100},id:\"drop_space\",onDragOver:e.onDragOver,onDrop:e.onDrop}),(0,Ne.jsx)(Le,{startIndex:null===c||void 0===c?void 0:c[0],endIndex:null===c||void 0===c?void 0:c[1]})]}):(0,Ne.jsx)(Ka,{viewportElement:n,className:e.className,onDragOver:e.onDragOver,onDrop:e.onDrop,viewportHeight:S,macroEvents:t,activePhase:d,setActivePhase:_,data:t.map((e,t)=>({index:t,item:e})),setPairItem:l,onMouseEnterItem:m,deleteSpecificPhaseItem:e.deleteSpecificPhaseItem})})})"
+    }
+  },
+  "templates": [
+    {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 70232,
+      "end": 70293,
+      "source": "{Type:10,RadioIndex:null,Content0:\"\",Content1:\"\",selected:!1}",
+      "value": {
+        "Type": 10,
+        "RadioIndex": null,
+        "Content0": "",
+        "Content1": "",
+        "selected": false
+      }
+    },
+    {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 403839,
+      "end": 403900,
+      "source": "{Type:10,RadioIndex:null,Content0:\"\",Content1:\"\",selected:!1}",
+      "value": {
+        "Type": 10,
+        "RadioIndex": null,
+        "Content0": "",
+        "Content1": "",
+        "selected": false
+      }
+    }
+  ],
+  "picker": {
+    "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+    "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+    "offset": 251737,
+    "end": 252328,
+    "source": "async showFileOpenDialog(e,t){let n=arguments.length>2&&void 0!==arguments[2]?arguments[2]:[];const o=`showFileOpenDialog(title:${e}, isMultiSelection:${t}, typesList:${JSON.stringify(n)})`;console.log(`${this.name}.${o}`),e=void 0===e?\"\":e,t=void 0!==t&&t;const r=JSON.stringify(n);if(this.isElectron){const n={action:\"showFileOpenDialog\",payload:{title:e,isMultiSelection:t,types:r}},o=await this.callElectronAction(n);return o?JSON.stringify(o.filePaths):[]}if(this.isRzAppEngine){if(\"function\"!==typeof window.showFileOpenDialog)return;return await window.showFileOpenDialog(e,t?1:0,r)}}"
+  },
+  "css": [
+    {
+      "path": ".ref/applications/synapse/macro/static/css/main.9ea5d7e7.css",
+      "sha256": "570aa52da8c8d56ed6ee0a607d2e00b48d720f8b34df07f84666d629f10506ce",
+      "rules": [
+        {
+          "offset": 5216,
+          "selector": ".thx-btn",
+          "conditions": [],
+          "declarations": "background-color:#44d62c;border-radius:3px;color:#000;display:inline-block;padding:.5rem 1.5rem;text-align:center;text-transform:uppercase;transition:opacity .3s;-webkit-user-select:none;user-select:none;width:auto;will-change:opacity",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": ".5rem 1.5rem",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .3s",
+              "important": false
+            },
+            {
+              "property": "-webkit-user-select",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "user-select",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5460,
+          "selector": ".thx-btn:hover",
+          "conditions": [],
+          "declarations": "cursor:pointer;opacity:.8",
+          "properties": [
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".8",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5501,
+          "selector": ".thx-btn:active",
+          "conditions": [],
+          "declarations": "cursor:pointer;opacity:.6",
+          "properties": [
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".6",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5543,
+          "selector": ".thx-btn.sm",
+          "conditions": [],
+          "declarations": "line-height:11px;margin:20px auto auto;width:90px",
+          "properties": [
+            {
+              "property": "line-height",
+              "value": "11px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "20px auto auto",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "90px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5605,
+          "selector": ".thx-btn.inline,.thx-btn.sm",
+          "conditions": [],
+          "declarations": "display:block!important;font-size:12px;height:27px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": true
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5684,
+          "selector": ".thx-btn.inline",
+          "conditions": [],
+          "declarations": "line-height:12px;max-width:90px;padding:7px 0 6px",
+          "properties": [
+            {
+              "property": "line-height",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "7px 0 6px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5750,
+          "selector": ".thx-btn.inline,.thx-btn.test",
+          "conditions": [],
+          "declarations": "border:1px solid #0000004d;margin:auto",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5819,
+          "selector": ".thx-btn.test",
+          "conditions": [],
+          "declarations": "background-color:#707070;color:#fff;display:block!important",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "block",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 5893,
+          "selector": ".thx-btn.disabled,.thx-btn.disabled:hover",
+          "conditions": [],
+          "declarations": "cursor:default;opacity:.3",
+          "properties": [
+            {
+              "property": "cursor",
+              "value": "default",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5961,
+          "selector": ".thx-btn.secondary",
+          "conditions": [],
+          "declarations": "background-color:#707070;color:#fff;display:block!important;margin:auto",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "block",
+              "important": true
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 46956,
+          "selector": "[type=radio]:checked,[type=radio]:not(:checked)",
+          "conditions": [],
+          "declarations": "left:-9999px;position:absolute",
+          "properties": [
+            {
+              "property": "left",
+              "value": "-9999px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47035,
+          "selector": "[type=radio]:checked+label,[type=radio]:not(:checked)+label",
+          "conditions": [],
+          "declarations": "color:#ccc;cursor:pointer;display:inline-block;font-size:14px;line-height:20px;padding-left:30px;position:relative",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "30px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47210,
+          "selector": "[type=radio]:checked+label:before,[type=radio]:not(:checked)+label:before",
+          "conditions": [],
+          "declarations": "background:#0000;border:1px solid #737373;border-radius:100%;box-sizing:border-box;content:\"\";height:20px;left:0;position:absolute;top:0;width:20px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #737373",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "box-sizing",
+              "value": "border-box",
+              "important": false
+            },
+            {
+              "property": "content",
+              "value": "\"\"",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47432,
+          "selector": "[type=radio]:checked+label:after,[type=radio]:not(:checked)+label:after",
+          "conditions": [],
+          "declarations": "background:#44d62c;border-radius:100%;content:\"\";height:10px;left:5px;position:absolute;top:5px;transition:all .2s ease;width:10px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "content",
+              "value": "\"\"",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "all .2s ease",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47635,
+          "selector": "[type=radio]:not(:checked)+label:after",
+          "conditions": [],
+          "declarations": "opacity:0;transform:scale(0)",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "scale(0)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47703,
+          "selector": "[type=radio]:checked+label:after",
+          "conditions": [],
+          "declarations": "opacity:1;transform:scale(1)",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "scale(1)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47765,
+          "selector": ".radio-item",
+          "conditions": [],
+          "declarations": "display:flex;margin:0 20px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 47804,
+          "selector": ".radio-item .radio-label",
+          "conditions": [],
+          "declarations": "align-items:center!important;display:flex!important;gap:10px!important;line-height:17px!important",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": true
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": true
+            },
+            {
+              "property": "gap",
+              "value": "10px",
+              "important": true
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 47927,
+          "selector": ".radio-item .icon",
+          "conditions": [],
+          "declarations": "height:20px;width:20px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 91959,
+          "selector": ".keymap-action.flex>div.thx-btn",
+          "conditions": [],
+          "declarations": "border:1px solid #000;border-radius:3px;flex:0 0 auto;font-size:12px;height:27px;line-height:14px;margin:0 10px 0 0;min-width:100px;padding:6px 10px 7px;text-align:center",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #000",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px 0 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "100px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "6px 10px 7px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 95971,
+          "selector": ".key-config .body .radio-item",
+          "conditions": [],
+          "declarations": "margin-bottom:10px;margin-left:0",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 102924,
+          "selector": ".phased-macro-container .phase-header .radio-item",
+          "conditions": [],
+          "declarations": "margin:0",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 102983,
+          "selector": ".phased-macro-container .phase-header .radio-item.disabled .radio-label",
+          "conditions": [],
+          "declarations": "pointer-events:none",
+          "properties": [
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 103075,
+          "selector": ".phased-macro-container .phase-header .radio-item.disabled .radio-label:after,.phased-macro-container .phase-header .radio-item.disabled .radio-label:before",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 146235,
+          "selector": "#in-app-rating [type=radio]:checked+label:after,#in-app-rating [type=radio]:checked+label:before,#in-app-rating [type=radio]:not(:checked)+label:after,#in-app-rating [type=radio]:not(:checked)+label:before",
+          "conditions": [],
+          "declarations": "display:none",
+          "properties": [
+            {
+              "property": "display",
+              "value": "none",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+      "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911",
+      "rules": [
+        {
+          "offset": 2276,
+          "selector": ".CustomModal_folder__Q2AnN",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_folder.0ac33709.svg);height:16px;position:absolute;right:4px;top:5px;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_folder.0ac33709.svg)",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "4px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 2428,
+          "selector": ".CustomModal_custom_modal__WqzRG",
+          "conditions": [],
+          "declarations": "background-color:#111;border:1px solid #5d5d5d;border-radius:5px;box-shadow:0 0 20px 0 #000000b3;display:none;padding:20px;position:absolute;width:250px;z-index:100",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "box-shadow",
+              "value": "0 0 20px 0 #000000b3",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "250px",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 2626,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_heading__7mUyy",
+          "conditions": [],
+          "declarations": "color:#44d62c;font-family:RazerF5;font-size:16px;line-height:19px;margin-bottom:20px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "19px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 2797,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT",
+          "conditions": [],
+          "declarations": "background-color:#0000;background-image:url(../../static/media/close.1d7eff2a.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;right:0;top:0;transition:background-color .2s;width:36px;will-change:background-color",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/close.1d7eff2a.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "36px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "background-color .2s",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "36px",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "background-color",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3129,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT:hover",
+          "conditions": [],
+          "declarations": "background-color:#ffffff1a;cursor:pointer",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#ffffff1a",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3237,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_close__D\\+0JT:active",
+          "conditions": [],
+          "declarations": "background-color:#0000001a",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000001a",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3331,
+          "selector": ".CustomModal_custom_modal__WqzRG .dropdown-area",
+          "conditions": [],
+          "declarations": "margin:0 0 10px;width:210px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0 0 10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "210px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3407,
+          "selector": ".CustomModal_custom_modal__WqzRG .dropdown-area .selected.placeholder",
+          "conditions": [],
+          "declarations": "color:#707070",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#707070",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3491,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2",
+          "conditions": [],
+          "declarations": "padding-left:30px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3579,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .check-item,.CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .dropdown-area",
+          "conditions": [],
+          "declarations": "height:34px;margin-bottom:10px;width:180px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "34px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "180px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3789,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .check-item .check-text,.CustomModal_custom_modal__WqzRG .CustomModal_specific_profile__MqqX2 .dropdown-area .check-text",
+          "conditions": [],
+          "declarations": "width:150px",
+          "properties": [
+            {
+              "property": "width",
+              "value": "150px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3992,
+          "selector": ".CustomModal_custom_modal__WqzRG .radio-item",
+          "conditions": [],
+          "declarations": "display:block;margin:10px 0",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4065,
+          "selector": ".CustomModal_custom_modal__WqzRG .radio-item.disabled",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4150,
+          "selector": ".CustomModal_custom_modal__WqzRG .radio-item.disabled~span",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4220,
+          "selector": ".CustomModal_custom_modal__WqzRG textarea",
+          "conditions": [],
+          "declarations": "background-color:#111;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;font-family:Roboto;font-size:14px;height:96px;line-height:17px;min-width:210px;overflow-y:auto;padding:5px;resize:none;width:210px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "box-sizing",
+              "value": "border-box",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "96px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "210px",
+              "important": false
+            },
+            {
+              "property": "overflow-y",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "resize",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "210px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4473,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6",
+          "conditions": [],
+          "declarations": "border:1px solid #5d5d5d;display:block;margin-left:30px;padding-left:6px;padding-right:30px;width:142px",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "30px",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "6px",
+              "important": false
+            },
+            {
+              "property": "padding-right",
+              "value": "30px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "142px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4636,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6.website",
+          "conditions": [],
+          "declarations": "background-color:#111;color:#ccc;height:27px;margin-bottom:20px;padding:0 6px;width:164px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 6px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "164px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4793,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6:disabled",
+          "conditions": [],
+          "declarations": "border:1px solid #5d5d5d4d;color:#cccccc4d",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d4d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#cccccc4d",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 4904,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6:disabled+.CustomModal_folder__Q2AnN",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_folder_g.220b24b0.svg)",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_folder_g.220b24b0.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5067,
+          "selector": ".CustomModal_custom_modal__WqzRG .CustomModal_input__-Ilh6.program",
+          "conditions": [],
+          "declarations": "opacity:0",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5144,
+          "selector": ".CustomModal_custom_modal__WqzRG span.CustomModal_input__-Ilh6.program",
+          "conditions": [],
+          "declarations": "height:29px;line-height:27px;opacity:1;overflow:hidden;position:absolute;text-overflow:ellipsis;top:0;white-space:nowrap",
+          "properties": [
+            {
+              "property": "height",
+              "value": "29px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "text-overflow",
+              "value": "ellipsis",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "nowrap",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5336,
+          "selector": "input.CustomModal_input__-Ilh6:disabled~span.program",
+          "conditions": [],
+          "declarations": "border:1px solid #5d5d5d4d;color:#cccccc4d",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d4d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#cccccc4d",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5432,
+          "selector": ".CustomModal_text__WoUb-",
+          "conditions": [],
+          "declarations": "max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+          "properties": [
+            {
+              "property": "max-width",
+              "value": "350px",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "text-overflow",
+              "value": "ellipsis",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "nowrap",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5531,
+          "selector": ".CustomModal_text__WoUb-.CustomModal_placeholder__Tn6Xh",
+          "conditions": [],
+          "declarations": "color:#707070",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#707070",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5601,
+          "selector": ".CustomModal_text__WoUb-.active",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5647,
+          "selector": ".CustomModal_text__WoUb-.CustomModal_disabled__7EyhN",
+          "conditions": [],
+          "declarations": "color:#c8323c;font-size:14px",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#c8323c",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5729,
+          "selector": ".CustomModal_text__WoUb-.CustomModal_disabled__7EyhN:hover,.CustomModal_text__WoUb-.CustomModal_disabled__7EyhN:hover span",
+          "conditions": [],
+          "declarations": "color:#c8323c;cursor:auto",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#c8323c",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 5878,
+          "selector": ".CustomModal_text__WoUb-:hover,.CustomModal_text__WoUb-:hover span",
+          "conditions": [],
+          "declarations": "color:#44d62c;cursor:url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "url(../../static/media/icon_pen_edit_dark.ca1a84b7.svg) 0 12,pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6035,
+          "selector": ".CustomModal_emojiContainer__sJkol",
+          "conditions": [],
+          "declarations": "display:inline-flex;justify-content:space-between;padding:2px 0;width:100%",
+          "properties": [
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "space-between",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "2px 0",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6145,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_emoji__eKUtb",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_emoji.07a71bf8.svg);height:20px;position:relative;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_emoji.07a71bf8.svg)",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6312,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_emoji__eKUtb:hover",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_emoji-2.b1a4efad.svg)",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_emoji-2.b1a4efad.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6446,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_emoji__eKUtb:hover .CustomModal_tip__WyR4L",
+          "conditions": [],
+          "declarations": "bottom:-40px;opacity:1;visibility:visible",
+          "properties": [
+            {
+              "property": "bottom",
+              "value": "-40px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6579,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_emoji__eKUtb .CustomModal_tip__WyR4L",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:inline-flex;font-family:Roboto;font-size:14px;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:nowrap;width:auto;will-change:visibility,opacity;z-index:99",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "nowrap",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "99",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 6988,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_emoji_close__0F-T2,.CustomModal_emojiContainer__sJkol .CustomModal_emoji_close__0F-T2:hover",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_close.4f578909.svg)",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_close.4f578909.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 7193,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_character__Xgzwh",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_charactermap.025aae0b.svg);height:20px;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_charactermap.025aae0b.svg)",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 7353,
+          "selector": ".CustomModal_emojiContainer__sJkol .CustomModal_character__Xgzwh:hover",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_charactermap-10.3c3d7fb3.svg)",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_charactermap-10.3c3d7fb3.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 7499,
+          "selector": ".CustomModal_macro_launch__BhbZ3",
+          "conditions": [],
+          "declarations": "align-items:center;color:#fff;display:flex",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 7575,
+          "selector": ".CustomModal_macro_launch__BhbZ3 .CustomModal_text_prefix__rA1se",
+          "conditions": [],
+          "declarations": "margin-right:10px",
+          "properties": [
+            {
+              "property": "margin-right",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 7658,
+          "selector": ".CustomModal_macro_launch__BhbZ3:hover .CustomModal_text__WoUb-",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 38065,
+          "selector": ".DropdownItem_dropdown_item__wahwm .DropdownItem_content__wItbi .radio-item",
+          "conditions": [],
+          "declarations": "display:block;height:40px;margin:0;padding:10px 0;transition:opacity .2s;will-change:opacity",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "40px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "10px 0",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 38234,
+          "selector": ".DropdownItem_dropdown_item__wahwm .DropdownItem_content__wItbi .radio-item label",
+          "conditions": [],
+          "declarations": "height:20px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 38328,
+          "selector": ".DropdownItem_dropdown_item__wahwm .DropdownItem_content__wItbi .radio-item.disabled label",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 38450,
+          "selector": ".DropdownItem_dropdown_item__wahwm .DropdownItem_content__wItbi .radio-item.disabled~span",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/macro/static/css/1700.1adda236.chunk.css",
+      "sha256": "189324740c03f21ecebac8d95d972777e558ac3818826d2a66908aaba627f49c",
+      "rules": []
+    }
+  ],
+  "assets": [
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/icon_folder.0ac33709.svg",
+      "output": "assets/synapse/macro/launch-folder.svg",
+      "sha256": "1db068d128b199a623321e48a1dc8e841195f15bb627fc5734aab3901f3e09bd",
+      "byte_equal": true
+    },
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/icon_folder_g.220b24b0.svg",
+      "output": "assets/synapse/macro/drag-folder.svg",
+      "sha256": "5a167dae37b5df1c54cffe5fe45431e881c83e01a306f6945629ffea3b66aa6f",
+      "byte_equal": true
+    },
+    {
+      "reference": ".ref/applications/synapse/macro/static/media/close.1d7eff2a.svg",
+      "output": "assets/synapse/macro/close.svg",
+      "sha256": "d1658818e809b21249127ab364cfc5b71771869ed2324985e0a57144d96448b6",
+      "byte_equal": true
+    }
+  ],
+  "labels": {
+    "zUM": "TEXT_LAUNCH_PROGRAM",
+    "Qei": "TEXT_LAUNCH_WEBSITE",
+    "oeC": "TEXT_ADD_MENU_LAUNCH",
+    "rE$": "TEXT_LAUNCH_CANCEL",
+    "a_Y": "TEXT_LAUNCH_SAVE",
+    "H7L": "TEXT_PROGRAM_OR_WEBSITE"
+  },
+  "contract": {
+    "fields": "RadioIndex null/0/1; Content0 full program path; Content1 website text; displayed program name splits on backslash",
+    "selection": "showFileOpenDialog(\"Select Launch App\",false) with default types []; consume first returned path; cancel preserves draft; no URL validation or implicit launch",
+    "save": "Content changes recompute enabled from active nonempty content; the later mode effect arms any numeric RadioIndex even with empty content. Close disarms; cancel resets item fields and effects rerun only if their dependencies changed.",
+    "persistence": "Popup Save updates action; outer Macro Save persists document; local picker generation/document/index/baseline checks reject stale replies",
+    "placement": "rt.W climbs four parents to ja #item_editor; row.offsetTop is index * 42 and excludes scrollTop. Remaining height > 100 keeps static position after trigger, otherwise top:-300. Direction selected at opening; popup remains clipped by editor.",
+    "remaining": "Six-parent Phased hierarchy depends on the still-incomplete Phased editor; browser file-input baseline, DOM virtualization lifecycle and final pixels are not runtime-verified"
+  },
+  "native": {
+    "verification": "Reviewed file fingerprints, not runtime tests",
+    "files": {
+      "src/shell/macro_page/launch.rs": "a18972a2ce91b0e6808affd29774292a844645e2786df2a0fb7b558cd9f08ef0",
+      "src/shell/macro_page.rs": "680cec750941c65079c83c8d304abb3f5e7855979e77dc0d91cb5614d77e40e0",
+      "src/shell/macro_page/state.rs": "25672ef7780d25f7b46c134cbb9e338511e5bcd764741645b8c79ee6006d2189",
+      "src/shell/macro_page/body.rs": "7727d3f7dd73db0f650d1c5b9449bc2366449aa34cf30c8854f1750c2765c77c",
+      "src/shell/macro_page/text.rs": "f3a8492b0ce83f7a027153452a2cff1d4a762437f4dec4484fcac807be4c5d07",
+      "src/shell/macro_page/text_overlay.rs": "99decf640c8ca21d4892e45ddbd93cb05df5007246f28ca756ccc49178af9073",
+      "src/shell/macro_page/unsaved.rs": "0b0771a89bbeb61a99e677de51680062aea67d6f37daff1b0aaf0555fc4876de",
+      "tools/macro_assets.py": "2a98a0764a2c49a8bc5fcedbd6c8251adf98687176ea7b1a3b183c15560acd34",
+      "tools/prepare-macro-assets.py": "4a5dc8bc53f11218d6af8a1c19795b0267e4d272ccc709c393c8a97d3ca81d71"
+    }
+  }
+}

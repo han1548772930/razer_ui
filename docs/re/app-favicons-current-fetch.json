@@ -1,0 +1,96 @@
+{
+  "method": "Exact current HTML + manifest icon URLs; live asset download only; no code execution",
+  "entries": [
+    {
+      "route": "synapse/alexa",
+      "url": "https://apps.razer.com/synapse/alexa/favicon.ico",
+      "path": ".ref/applications/synapse/alexa/favicon.ico",
+      "html_sha256": "bc51b9bdee528cd2c9a55c2e4dbf1f9e0680104712ec4f326ff65744f48e74de",
+      "manifest_sha256": "895bba650efd869414ac46d0d003b3ff3ae14ecb62cb0fa7fed167a45d994c01",
+      "final_url": "https://apps.razer.com/synapse/alexa/favicon.ico",
+      "content_type": "image/vnd.microsoft.icon",
+      "etag": "\"f3543895d847c2d74ebc019cf6f7353a\"",
+      "sha256": "99fbeba08c5afeff562b17ad8d7c70ac17699f5b0a42b342949202f43a537940",
+      "bytes": 16442,
+      "fetched_utc": "2026-10-05T09:08:07.902865+00:00"
+    },
+    {
+      "route": "synapse/armory",
+      "url": "https://apps.razer.com/synapse/armory/favicon.svg",
+      "path": ".ref/applications/synapse/armory/favicon.svg",
+      "html_sha256": "0859e0421dca0ffc98011a92663eb206646fbec803be1f13e605b7dc918e95b7",
+      "manifest_sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28",
+      "final_url": "https://apps.razer.com/synapse/armory/favicon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"5dcaddb9d56868b54bdcb8d7a9bf0a05\"",
+      "sha256": "21fd3bd391af63239424c77160336a05a9f8a7f7884610a80ff05babc0d29eea",
+      "bytes": 500,
+      "fetched_utc": "2026-10-05T09:08:08.255099+00:00"
+    },
+    {
+      "route": "synapse/profiles",
+      "url": "https://apps.razer.com/synapse/profiles/favicon.svg",
+      "path": ".ref/applications/synapse/profiles/favicon.svg",
+      "html_sha256": "ef65eb04d6622c64c6e9e530a604ffbc1946c9dab5058366031c2358a27c854b",
+      "manifest_sha256": "e3c1bb337ac0fe27d4e1fc0445614db613d150988110763c8d1e97553fbe7ca6",
+      "final_url": "https://apps.razer.com/synapse/profiles/favicon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"487096eb540dcb2a803669382972e8fd\"",
+      "sha256": "1151db35205efd40630085ad6d80ebd40460dd836a5b7f5a93bc3f2fb8613b90",
+      "bytes": 1000,
+      "fetched_utc": "2026-10-05T09:08:08.377451+00:00"
+    },
+    {
+      "route": "feedback",
+      "url": "https://apps.razer.com/feedback/favicon.svg",
+      "path": ".ref/applications/feedback/favicon.svg",
+      "html_sha256": "b9e4f6c7c4e5f1f95861738db0cf249740990acd8563b10112845c0da1b0ef05",
+      "manifest_sha256": "ee198348cf297ad68f02d0a27542f6e51f489ad35ca77ef5f64e1c47567b737f",
+      "final_url": "https://apps.razer.com/feedback/favicon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"463eb5b6df8c5490decf5192c37ef3e8\"",
+      "sha256": "118933dfd53de42c70680b224fe0f841bc9ae8d911816f0d18de9b6e6bef46de",
+      "bytes": 547,
+      "fetched_utc": "2026-10-05T09:08:08.475677+00:00"
+    },
+    {
+      "route": "chroma-app/dashboard",
+      "url": "https://apps.razer.com/chroma-app/dashboard/icon.svg",
+      "path": ".ref/applications/chroma-app/dashboard/icon.svg",
+      "html_sha256": "d7869d53d675a3c49e10d2fbd83d4a9e0ac15cc2093dc76bf3bd946a54e68332",
+      "manifest_sha256": "6ef65f426d2f63f9fbd02d6304949c26e2214ae487b98eb5c85ff03702aa5fda",
+      "final_url": "https://apps.razer.com/chroma-app/dashboard/icon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"00b7b2f64fd8862f59e2f0fd0f0558bc\"",
+      "sha256": "ceb14ca48686034903a07d0780d0060a1d3ac818a3a33eed1cbbf1d1a0b80293",
+      "bytes": 1275127,
+      "fetched_utc": "2026-10-05T09:08:09.185655+00:00"
+    },
+    {
+      "route": "synapse/introduction-tour",
+      "url": "https://apps.razer.com/synapse/introduction-tour/favicon.svg",
+      "path": ".ref/applications/synapse/introduction-tour/favicon.svg",
+      "html_sha256": "5af7852676353e90875ec0bdf36787e324256a955197503fc6bb4a17ddf37214",
+      "manifest_sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973",
+      "final_url": "https://apps.razer.com/synapse/introduction-tour/favicon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"fc58ede256eb704408996364dff063a8\"",
+      "sha256": "6b953a71af091c43493b5d6d71eef1fc545c0b9c917353de02be7cf8c63e6ec0",
+      "bytes": 1509,
+      "fetched_utc": "2026-10-05T09:08:09.306943+00:00"
+    },
+    {
+      "route": "synapse/dashboard",
+      "url": "https://apps.razer.com/synapse/dashboard/favicon.svg",
+      "path": ".ref/applications/synapse/dashboard/favicon.svg",
+      "html_sha256": "5aaaaade8bec7ca72c4f3f8d1f2e971998f6d05ecc2943f1dea3452d21787a25",
+      "manifest_sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a",
+      "final_url": "https://apps.razer.com/synapse/dashboard/favicon.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"94ab882339447c137f3c5c03f5eca2d8\"",
+      "sha256": "76acb76f772f2696512943817219b912b3246c95a636876fe44dee835f711e14",
+      "bytes": 880,
+      "fetched_utc": "2026-10-05T09:08:06.833243+00:00"
+    }
+  ]
+}

@@ -49,7 +49,7 @@ const receipt = {
     launch: { modalWidth: 250, padding: 20, programInputWidth: 142,
       websiteInputWidth: 164, websiteInputHeight: 27,
       programContent: 'Content0', websiteContent: 'Content1', mode: 'RadioIndex',
-      programPicker: 'showFileOpenDialog; native/service boundary' }
+      programPicker: 'showFileOpenDialog("Select Launch App", false), default types []; local single-file picker and draft guards audited separately in macro-launch-current-evidence.json' }
   }
 };
 const target = path.join(root, 'docs/re/macro-editors-current-audit.json');

@@ -125,8 +125,10 @@ impl MacroPage {
         let selected_count = self.selected_actions.len();
         let page = cx.entity_id();
         let action_count = self.actions().len();
+        let editor_bounds = self.text_ui.editor_bounds.clone();
         v_flex()
             .id("macro-item-list")
+            .on_prepaint(move |bounds, _, _| editor_bounds.set(bounds))
             .w_full()
             .h(css(list_height))
             .min_h(css(420.))
@@ -206,9 +208,30 @@ impl MacroPage {
                             action.kind.icon()
                         )))
                         .size(css(20.))
-                        .mr(css(12.)),
+                        .mr(css(if kind == ActionKind::Keyboard {
+                            10.
+                        } else {
+                            12.
+                        })),
                     )
-                    .child(tr(kind.label()))
+                    .when_some(
+                        action.keyboard.as_ref().and_then(|key| key.state),
+                        |row, state| {
+                            row.child(
+                                img(if state % 2 == 0 {
+                                    "synapse/macro/key-down.svg"
+                                } else {
+                                    "synapse/macro/key-up.svg"
+                                })
+                                .size(css(20.))
+                                .mr(css(10.)),
+                            )
+                        },
+                    )
+                    .when(
+                        !matches!(kind, ActionKind::Launch | ActionKind::Keyboard),
+                        |row| row.child(tr(kind.label())),
+                    )
                     .child(self.action_value_editor(index, kind, window, cx))
                     .into_any_element()
             }))
@@ -291,7 +314,10 @@ impl MacroPage {
             return self.nested_macro_editor(index, &item, window, cx);
         }
         if kind == ActionKind::Launch {
-            return self.launch_value_popup(index, item, cx);
+            return self.launch_value_popup(index, item, window, cx);
+        }
+        if kind == ActionKind::Keyboard {
+            return self.keyboard_value_editor(index, &item, cx);
         }
         if matches!(kind, ActionKind::Delay | ActionKind::Loop)
             && self.editing_action == Some(index)
@@ -339,7 +365,7 @@ impl MacroPage {
             value
         };
         if kind == ActionKind::Text {
-            return self.text_value_popup(index, label, cx);
+            return self.text_value_popup(index, label, window, cx);
         }
         if kind == ActionKind::Mouse {
             let trigger = BaseButton::new(("macro-mouse-value", index))
@@ -604,298 +630,6 @@ impl MacroPage {
                     .child(value)
                     .child(v_flex().h(css(27.)).child(up).child(down)),
             )
-            .into_any_element()
-    }
-
-    fn launch_value_popup(
-        &self,
-        index: usize,
-        item: ActionItem,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        let website = item.state == "website";
-        let target = if website {
-            &item.secondary_value
-        } else {
-            &item.value
-        };
-        let label = if target.is_empty() {
-            tr("TEXT_PROGRAM_OR_WEBSITE")
-        } else {
-            target.clone()
-        };
-        let trigger = BaseButton::new(("macro-launch-target", index))
-            .min_w(css(200.))
-            .max_w(css(350.))
-            .h(css(27.))
-            .p_0()
-            .text_size(css(14.))
-            .text_color(if target.is_empty() {
-                rgb(0x707070)
-            } else {
-                rgb(0xcccccc)
-            })
-            .hover(|s| s.text_color(rgb(0x44d62c)))
-            .child(div().truncate().child(label));
-        let owner = cx.entity().downgrade();
-        gpui_kit::base::Popover::new(("macro-launch-popup", index))
-            .open(self.launch_open == Some(index))
-            .anchor(Anchor::TopLeft)
-            .trigger_with(move |_, _, _| trigger.into_any_element())
-            .on_open_change(cx.listener(move |this, open: &bool, window, cx| {
-                if *open {
-                    this.open_launch_editor(index, window, cx);
-                } else {
-                    this.launch_open = None;
-                    this.launch_is_website = false;
-                    cx.notify();
-                }
-            }))
-            .content(move |_, _, cx| {
-                owner
-                    .update(cx, |this, cx| {
-                        let is_website = this.launch_is_website;
-                        let active_radio = |active: bool| {
-                            div()
-                                .size(css(14.))
-                                .mr(css(8.))
-                                .rounded_full()
-                                .border_1()
-                                .border_color(if active { rgb(0x44d62c) } else { rgb(0x707070) })
-                                .bg(if active { rgb(0x44d62c) } else { rgb(0x111111) })
-                        };
-                        let program_radio = BaseButton::new(("macro-launch-program-radio", index))
-                            .w_full()
-                            .h(css(27.))
-                            .p_0()
-                            .justify_start()
-                            .child(active_radio(!is_website))
-                            .child(tr("TEXT_LAUNCH_PROGRAM"))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.launch_is_website = false;
-                                cx.notify();
-                            }));
-                        let website_radio = BaseButton::new(("macro-launch-website-radio", index))
-                            .w_full()
-                            .h(css(27.))
-                            .p_0()
-                            .justify_start()
-                            .child(active_radio(is_website))
-                            .child(tr("TEXT_LAUNCH_WEBSITE"))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.launch_is_website = true;
-                                cx.notify();
-                            }));
-                        let program = Input::new(&this.launch_program)
-                            .id(("macro-launch-program-input", index))
-                            .appearance(false)
-                            .ml(css(30.))
-                            .w(css(142.))
-                            .h(css(27.))
-                            .px(css(6.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x5d5d5d))
-                            .disabled(is_website)
-                            .text_size(css(13.));
-                        let website = Input::new(&this.launch_website)
-                            .id(("macro-launch-website-input", index))
-                            .appearance(false)
-                            .ml(css(30.))
-                            .w(css(164.))
-                            .h(css(27.))
-                            .px(css(6.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x5d5d5d))
-                            .disabled(!is_website)
-                            .text_size(css(13.));
-                        v_flex()
-                            .relative()
-                            .w(css(250.))
-                            .p(css(20.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x5d5d5d))
-                            .rounded(css(5.))
-                            .child(
-                                BaseButton::new(("macro-launch-close", index))
-                                    .absolute()
-                                    .right_0()
-                                    .top_0()
-                                    .size(css(36.))
-                                    .p_0()
-                                    .hover(|s| s.bg(rgba(0xffffff1a)))
-                                    .child(img("synapse/macro/close.svg").size(css(20.)))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.launch_open = None;
-                                        this.launch_is_website = false;
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(
-                                div()
-                                    .font_family("RazerF5")
-                                    .text_size(css(16.))
-                                    .line_height(css(19.))
-                                    .text_color(rgb(0x44d62c))
-                                    .mb(css(20.))
-                                    .child(tr("TEXT_ADD_MENU_LAUNCH").to_uppercase()),
-                            )
-                            .child(program_radio)
-                            .child(program)
-                            .child(website_radio)
-                            .child(website)
-                            .child(
-                                h_flex()
-                                    .w_full()
-                                    .justify_between()
-                                    .mt(css(20.))
-                                    .child(
-                                        BaseButton::new(("macro-launch-cancel", index))
-                                            .w(css(90.))
-                                            .h(css(27.))
-                                            .p_0()
-                                            .bg(rgb(0x555555))
-                                            .child(tr("TEXT_LAUNCH_CANCEL").to_uppercase())
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.launch_open = None;
-                                                this.launch_is_website = false;
-                                                cx.notify();
-                                            })),
-                                    )
-                                    .child(
-                                        BaseButton::new(("macro-launch-save", index))
-                                            .w(css(90.))
-                                            .h(css(27.))
-                                            .p_0()
-                                            .bg(rgb(0x44d62c))
-                                            .text_color(rgb(0x111111))
-                                            .child(tr("TEXT_LAUNCH_SAVE").to_uppercase())
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.save_launch_editor(cx);
-                                            })),
-                                    ),
-                            )
-                            .into_any_element()
-                    })
-                    .unwrap_or_else(|_| div().into_any_element())
-            })
-            .into_any_element()
-    }
-
-    fn text_value_popup(&self, index: usize, label: String, cx: &mut Context<Self>) -> AnyElement {
-        let trigger = BaseButton::new(("macro-text-value", index))
-            .max_w(css(350.))
-            .h(css(27.))
-            .p_0()
-            .text_size(css(14.))
-            .hover(|s| s.text_color(rgb(0x44d62c)))
-            .child(div().truncate().child(label));
-        let owner = cx.entity().downgrade();
-        gpui_kit::base::Popover::new(("macro-text-popup", index))
-            .open(self.editing_action == Some(index))
-            .anchor(Anchor::TopLeft)
-            .trigger_with(move |_, _, _| trigger.into_any_element())
-            .on_open_change(cx.listener(move |this, open: &bool, window, cx| {
-                if *open {
-                    this.begin_action_edit(index, window, cx);
-                } else if this.editing_action == Some(index) {
-                    this.editing_action = None;
-                    cx.notify();
-                }
-            }))
-            .content(move |_, _, cx| {
-                owner
-                    .update(cx, |this, cx| {
-                        let text = this.text_editor.clone();
-                        let count = text.read(cx).value().encode_utf16().count();
-                        v_flex()
-                            .relative()
-                            .w(css(250.))
-                            .p(css(20.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x5d5d5d))
-                            .rounded(css(5.))
-                            .child(
-                                BaseButton::new(("macro-text-close", index))
-                                    .absolute()
-                                    .right_0()
-                                    .top_0()
-                                    .size(css(36.))
-                                    .p_0()
-                                    .hover(|s| s.bg(rgba(0xffffff1a)))
-                                    .child(img("synapse/macro/close.svg").size(css(20.)))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.editing_action = None;
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(
-                                div()
-                                    .font_family("RazerF5")
-                                    .text_size(css(16.))
-                                    .line_height(css(19.))
-                                    .text_color(rgb(0x44d62c))
-                                    .mb(css(20.))
-                                    .child(tr("TEXT_TEXT_FUNCTION").to_uppercase()),
-                            )
-                            .child(
-                                Textarea::new(&text)
-                                    .appearance(false)
-                                    .w(css(210.))
-                                    .h(css(96.))
-                                    .p(css(5.))
-                                    .bg(rgb(0x111111))
-                                    .border_1()
-                                    .border_color(rgb(0x5d5d5d))
-                                    .text_size(css(14.)),
-                            )
-                            .child(
-                                div()
-                                    .w_full()
-                                    .text_right()
-                                    .text_size(css(14.))
-                                    .text_color(rgb(0x707070))
-                                    .mt(css(5.))
-                                    .mb(css(20.))
-                                    .child(format!("{count}/250")),
-                            )
-                            .child(
-                                h_flex()
-                                    .w_full()
-                                    .justify_between()
-                                    .child(
-                                        BaseButton::new(("macro-text-cancel", index))
-                                            .w(css(90.))
-                                            .h(css(27.))
-                                            .p_0()
-                                            .bg(rgb(0x555555))
-                                            .child(tr("TEXT_TEXT_FUNCTION_CANCEL").to_uppercase())
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.editing_action = None;
-                                                cx.notify();
-                                            })),
-                                    )
-                                    .child(
-                                        BaseButton::new(("macro-text-save", index))
-                                            .disabled(count == 0)
-                                            .w(css(90.))
-                                            .h(css(27.))
-                                            .p_0()
-                                            .bg(rgb(0x44d62c))
-                                            .text_color(rgb(0x111111))
-                                            .child(tr("TEXT_TEXT_FUNCTION_SAVE").to_uppercase())
-                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                this.finish_action_edit(window, cx);
-                                            })),
-                                    ),
-                            )
-                            .into_any_element()
-                    })
-                    .unwrap_or_else(|_| div().into_any_element())
-            })
             .into_any_element()
     }
 

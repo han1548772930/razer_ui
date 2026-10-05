@@ -1,5 +1,11 @@
 # 当前 UI 完成状态
 
+2026-10-05 Macro Keyboard 已替换自由文本输入，接入当前窗口原始键码捕获、150ms 提交、按下/松开配对更新与本地持久字段，并补原方向图标。见 [键盘专项记录](macro-keyboard-current-audit.md)。设备重定向、配对连线/拖拽细节和完整 Sequence/Phased 仍缺；整体复刻未完成。
+
+2026-10-05 Macro Launch 已接入 null 初始模式、文件选择器、分离草稿、源按钮状态和 100px／−300px 定位规则，见 [Launch 审计](macro-launch-current-audit.md)。Text/emoji 已按 `58190.dn/on/en` 接入分类、搜索、变体、UTF-16 限制与源 clear-search/CSS 缺陷，见 [文本审计](macro-text-current-audit.md)。两者均未做实际窗口验收。
+
+2026-10-05 嵌套宏菜单续接已补源三态切换、688px 定位阈值、选中项滚动、名称撑宽和展开时序，详情见 [后续记录](macro-nested-menu-followup-2026-10-05.md)。该范围仍无实际窗口验收，整体复刻仍未完成。
+
 2026-10-05 Macro 后续批次已接入共享持久文档库、独立动作草稿、未保存确认、快捷键 Macro 映射及分类型播放集合，并补 3946 类型菜单和重复次数 Stepper；继续接入嵌套宏选择、持久引用及活动图的循环候选检查。交付、验证与仍缺功能见 [Macro 集成记录](macro-library-integration-2026-10-05.md)。**整体复刻仍未完成**，以下记录按各自批次范围理解。
 
 2026-10-05 链接会话续接已补 Devices & Modules 正式服务行、快捷键文本/emoji 与时序、3946 quick macro 捕获会话、3907 独立 Armory 无遥测分支及曲线轴，并修复资源嵌入注册。当前 `cargo check --locked --all-targets`、格式化和专项静态校验通过；**整体复刻仍未完成**。准确交付、验证限制、下载故障和下一步见 [本批交接](continuation-followup-2026-10-05.md)，本页下面的旧批次记录保留为历史。

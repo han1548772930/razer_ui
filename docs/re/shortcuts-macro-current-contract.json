@@ -3,20 +3,25 @@
   "native": {
     "verification": "File fingerprints of reviewed integration, not semantic tests or rendered validation",
     "files": {
-      "src/features/macro_library.rs": "953e52fca0876d3711d5d7f33a25ea49767a229cba88a9885364c55f6911d03a",
+      "src/features/macro_library.rs": "9094029f604ee7abc7eeefddde5b8238ecbd8883a85b83eaf0e7ec4c475f216b",
       "src/store.rs": "c82fe391451dbd6f9013d9451e52fa6ba11cca118ee63ec40506d371977482ce",
       "src/shell.rs": "98eceed3f08e726e631a273fa18d2e7c0ff6fc896a2a24f419e3b72d7c8ef38f",
-      "src/features/shortcuts.rs": "24e564ecba892e05436f00639be226b5d1ab59549a7af08b0457b37153b7c5c8",
+      "src/features/shortcuts.rs": "274cde81be876e8157eec28134a2295721ec35320365d56a2e9b0d4f00783758",
       "src/features/shortcuts_macro.rs": "951cf453a7df9b8465f7bfb3286a8184550140c3aa5eaa23fea6d1bbdd64be48",
       "src/features/shortcuts_mapping.rs": "aa5112c444247d91e4a33888203665bd8ebafd6cba44ffe771a7beef3bc9b61f",
       "src/features/shortcut_engine.rs": "88787ddaa8095f7c8fb0f084d5f65d6aea2cf8a364580817d40043d18626e4a2",
-      "src/shell/macro_page.rs": "6188f77725d2acc4b56ed33497ca067d0553fc57ecf68d237cd820ba7272cf02",
-      "src/shell/macro_page/state.rs": "b28290c0294d88b2e764b2455917c2324e3adf460a08a6472e6801e37ceaf1a3",
-      "src/shell/macro_page/unsaved.rs": "b55467effa244d2433b324cc0e0a41bc1103fe74ce7e031fd193220688b7aea0",
-      "src/shell/macro_page/body.rs": "13ad85f1d0e256e2cf2324455bc2fe95939f89c611e3a4c5ef2e21b9e6a6ac6d",
+      "src/shell/macro_page.rs": "680cec750941c65079c83c8d304abb3f5e7855979e77dc0d91cb5614d77e40e0",
+      "src/shell/macro_page/state.rs": "25672ef7780d25f7b46c134cbb9e338511e5bcd764741645b8c79ee6006d2189",
+      "src/shell/macro_page/unsaved.rs": "0b0771a89bbeb61a99e677de51680062aea67d6f37daff1b0aaf0555fc4876de",
+      "src/shell/macro_page/body.rs": "7727d3f7dd73db0f650d1c5b9449bc2366449aa34cf30c8854f1750c2765c77c",
       "src/shell/macro_page/chrome.rs": "6b7ff6a2a01aea1e02335320cc1f4d7efad6a44a174eac14f4a5db4cb84afe49",
       "src/shell/macro_page/tree.rs": "1baef25a3c42f1b2f3c3662d71314df4eef2ffdffdf320df8012aef8b5c21a23",
-      "src/shell/macro_page/nested.rs": "69138e1b5a047301755891a4346095f170bc54ac3ae0815628f3a2a3ea6da464"
+      "src/shell/macro_page/nested.rs": "d3c6e5df5a9100692fd0f909cc23d174b165cee95edd2dccc2e7d735600e6e9d",
+      "src/shell/macro_page/nested_overlay.rs": "fb7f7ba0eed5b70693312c5939b7ec591b35984c0f3c74cb3b7d5c2487eb505c",
+      "src/shell/macro_page/text.rs": "f3a8492b0ce83f7a027153452a2cff1d4a762437f4dec4484fcac807be4c5d07",
+      "src/shell/macro_page/text_emoji.rs": "81a5820251fdba7fcc9afaac25149871fcd07331b5235f6fa6affaaf956b5ff2",
+      "src/shell/macro_page/text_overlay.rs": "99decf640c8ca21d4892e45ddbd93cb05df5007246f28ca756ccc49178af9073",
+      "src/shell/macro_page/launch.rs": "a18972a2ce91b0e6808affd29774292a844645e2786df2a0fb7b558cd9f08ef0"
     }
   },
   "dashboard": {
@@ -305,11 +310,29 @@
       "placeholder": {
         "Adr": "TEXT_SELECT_A_MACRO"
       },
+      "dismissEvent": {
+        "uM": "macroRecordingEvent"
+      },
+      "closeOtherEditors": {
+        "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+        "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+        "offset": 97896,
+        "end": 98792,
+        "source": "(e,t)=>{if(!e||!t)return;e.stopPropagation();const n=document.querySelectorAll(\".customInput\");for(const g of n){var o,r,a;if(g&&g.children&&0!==g.children.length)if(g.children[0]!==t)if(null!==(o=g.children[0])&&void 0!==o&&null!==(r=o.classList)&&void 0!==r&&r.contains(\"keep-text\"))g.children[0].classList.remove(\"active\"),null!==(a=g.children[1])&&void 0!==a&&a.style&&(g.children[1].style.display=\"none\");else if(g.children[1]){var s,c,u,l,p,d;const e=null===(s=(c=g.children[1]).getElementsByClassName)||void 0===s||null===(u=s.call(c,`${i.ab}`))||void 0===u?void 0:u[0];if(null!==e&&void 0!==e&&null!==(l=e.classList)&&void 0!==l&&l.contains(\"expand\"))try{e.click()}catch(y){console.warn(\"Error clicking dropdown:\",y)}null!==(p=g.children[0])&&void 0!==p&&p.style&&(g.children[0].style.display=\"block\"),null!==(d=g.children[1])&&void 0!==d&&d.style&&(g.children[1].style.display=\"none\")}}}"
+      },
       "action": {
         "Lt": "updateMacroItem"
       },
       "contract": "Exclude current document; disable candidates with a live path to current; assign guid from original macroList index; missing target renders placeholder; do not retarget copied nested references",
-      "localAdaptation": "Persistent local macro_id; recompute paths after edits with a visited set instead of source useMemo keyed only to current identity and list length; never infer identity from an old name-only row"
+      "localAdaptation": "Persistent local macro_id; recompute paths after edits with a visited set instead of source useMemo keyed only to current identity and list length; never infer identity from an old name-only row",
+      "menu": {
+        "state": "Text, visible editor with collapsed options, visible editor with expanded options are distinct. Selecting the same identity collapses options without restoring text; changing selection restores text.",
+        "direction": "At opening: trigger.bottom + 2 + min(180, 25 * rendered option count + 2) >= (wrapperH > 0 ? wrapperH : 688) selects up. Caller omits wrapperH. Direction persists while open.",
+        "offsets": "down top:27px plus margin-top:1px; up bottom:28px against a 27px parent",
+        "scroll": "scrollTo(0, selected.offsetTop) on each expansion; disabled selected candidates render inactive without a selected class",
+        "size": "160px editor; options min-width:100%, intrinsic nowrap names may widen it; max-height:180px",
+        "motion": "height 0/auto is discrete; max-height 0/180px uses 200ms ease; border-bottom 0/1px uses 100ms ease; rows unmount immediately when collapsed; editor display:none hides exit immediately"
+      }
     },
     "actions": {
       "XE": "add",

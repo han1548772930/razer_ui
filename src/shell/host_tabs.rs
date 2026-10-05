@@ -8,6 +8,7 @@ use gpui_kit::base::{
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
+mod icons;
 
 actions!(
     host_tabs,
@@ -537,33 +538,26 @@ impl AppShell {
         let middle_close = close.clone();
         let group = id.clone();
         let icon = match tab {
-            Some(HostTab::Tour(_)) => "synapse/tour-app-icon.svg",
-            Some(HostTab::Alexa) => "synapse/module-alexa.svg",
-            Some(HostTab::FirmwareUpdate) => "synapse/synapse.svg",
+            Some(HostTab::Tour(_)) => "synapse/host-app-tour.svg",
+            Some(HostTab::Alexa) => "synapse/host-alexa-favicon.png",
+            Some(HostTab::FirmwareUpdate) => "synapse/host-default-tab.png",
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
-            Some(HostTab::Macro) => "synapse/module-macro.svg",
-            Some(HostTab::Armory) => "synapse/module-armory.svg",
-            Some(HostTab::Chroma) => "synapse/module-chroma-studio.svg",
-            // 模块目录里 linkedGames 与 armory 共用同一套模块图标资源目录。
-            Some(HostTab::Profiles) => "synapse/module-linked-games.svg",
-            Some(HostTab::Feedback) => "synapse/module-feedback.svg",
-            Some(HostTab::Device(key)) => match self
-                .devices
+            Some(HostTab::Macro) => "synapse/host-category-keyboard.svg",
+            Some(HostTab::Armory) => "synapse/host-app-armory.svg",
+            Some(HostTab::Chroma) => "synapse/host-app-chroma.svg",
+            Some(HostTab::Profiles) => "synapse/host-app-profiles.svg",
+            Some(HostTab::Feedback) => "synapse/host-app-feedback.svg",
+            Some(HostTab::Device(_)) => "",
+            None => "synapse/host-app-dashboard.svg",
+        };
+        let icon = if let Some(HostTab::Device(key)) = tab {
+            self.devices
                 .iter()
                 .find(|device| device.read(cx).identity(cx) == *key)
-                .map(|device| device.read(cx).device(cx).product_id)
-            {
-                Some(653) => "synapse/host-category-keyboard.svg",
-                Some(777) => "synapse/host-category-audio.svg",
-                // Product 179 is ACCESSORY in the current Dashboard source;
-                // use the shared current-source ACCESSORY favicon.
-                Some(179) => "synapse/host-category-accessory.svg",
-                Some(pid) if crate::product::audited_mouse_mat(pid).is_some() => {
-                    "synapse/host-category-mousemat.svg"
-                }
-                _ => "synapse/host-category-mouse.svg",
-            },
-            None => "synapse/synapse.svg",
+                .and_then(|device| icons::device_favicon(device.read(cx).device(cx).product_id))
+                .or(Some("synapse/host-default-tab.png"))
+        } else {
+            Some(icon)
         };
         tab_frame(id.clone(), active)
             .when_some(
@@ -630,7 +624,12 @@ impl AppShell {
                     } else {
                         HostColors::inactive_text()
                     })
-                    .child(img(icon).size(surface::css(20.)).flex_shrink_0())
+                    .child(
+                        div()
+                            .size(surface::css(20.))
+                            .flex_shrink_0()
+                            .when_some(icon, |slot, icon| slot.child(img(icon).size_full())),
+                    )
                     .child(
                         div()
                             .ml(surface::css(10.))
