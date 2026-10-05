@@ -1,4 +1,4 @@
-//! HomePage's four routes have different render trees (4130 / 6505 / 9388 / 7282).
+//! Current HomePage route trees: 22534 / 44442 / 19388 / 94608.
 //! Service-dependent groups remain absent until their real data is available.
 use super::{AppShell, Location};
 use crate::{
@@ -9,6 +9,7 @@ use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 mod dashboard_cards;
+mod dashboard_device;
 mod dashboard_grid;
 mod dashboard_group;
 mod dashboard_tutorial;
@@ -17,7 +18,7 @@ pub(super) use dashboard_grid::{DashboardChanged, DashboardState};
 use dashboard_group::{CollapseIcon, DashboardGroupContent};
 pub(super) use dashboard_tutorial::{DashboardTutorial, DashboardTutorialEvent};
 
-/// 55 CSS's 1279/600 breakpoints plus Li.getMaxColumns' 290px cards / 20px gap.
+/// 55 CSS's 1279/600 breakpoints and current 22534/Pi.getMaxColumns.
 /// Normalize by our rem scale so larger text also causes the grid to reflow.
 pub(super) struct MainLayout {
     pub(super) gutter: f32,
@@ -82,8 +83,7 @@ fn dashboard_group_toggle(
 }
 
 fn dashboard_empty_devices(cx: &App) -> impl IntoElement {
-    // 4130's `ee` keeps both useful links in the empty device card. This is a
-    // local snapshot list, so its title must not claim a hardware scan result.
+    // Current 22534 ee keeps both useful links in the empty device card.
     v_flex()
         .w(surface::css(290.))
         .h(surface::css(220.))
@@ -102,7 +102,7 @@ fn dashboard_empty_devices(cx: &App) -> impl IntoElement {
             div()
                 .mt(surface::css(57.))
                 .mb(surface::css(67.))
-                .child("没有可显示的设备"),
+                .child(i18n::t("NO_DEVICE_FOUND").to_uppercase()),
         )
         .child(
             v_flex().items_center().gap(surface::css(10.)).children([
@@ -131,7 +131,7 @@ impl MainLayout {
         let width = viewport_width * 16. / rem_size.max(1.);
         let narrow = width < 1280.;
         let gutter = if narrow { 30. } else { 20. };
-        // Li.render adds .reflow when more than four devices are present. Its
+        // Pi.render adds .reflow when more than four devices are present. Its
         // higher-specificity max-width overrides the narrow .dashboard rule.
         let reflow = device_count > 4;
         let maximum: f32 = if reflow {
@@ -143,111 +143,33 @@ impl MainLayout {
         } else {
             1220.
         };
-        let available = (width - gutter * 2.).min(maximum);
-        let columns = ((available + 20.) / 310.).floor().max(1.);
+        // Keep the actual CSS container width independent of whole card slots.
+        // Pi's inline width:unset overrides the <=1260 width:min-content rule.
+        let minimum = if width <= 600. { 290. } else { 620. };
+        let available = (width - gutter * 2.).min(maximum).max(minimum);
         Self {
             gutter,
             body_max_width: if reflow { 2460. + gutter * 2. } else { 1260. },
-            dashboard_width: columns * 310. - 20.,
+            dashboard_width: available,
             narrow,
         }
     }
 }
 
+/// Exact current Pi.getMaxColumns arithmetic, including its extra-column
+/// condition. The source reads the actual .dashboard rectangle, not card width.
+fn dashboard_columns(width: f32) -> usize {
+    let measured = width.ceil() - 20.;
+    let mut count = (measured / 310.).floor();
+    if measured - 290. * count >= 310. {
+        count += 1.;
+    }
+    count.max(1.) as usize
+}
+
 impl AppShell {
-    pub(super) fn modules_page(&self, cx: &mut Context<Self>) -> AnyElement {
-        v_flex()
-            .id("devices-modules")
-            .w(surface::css(1220.))
-            .min_w(surface::css(1220.))
-            .flex_shrink_0()
-            .pb(surface::css(40.))
-            .child(
-                div()
-                    .font_family("RazerF5")
-                    .text_size(surface::css(24.))
-                    .text_color(cx.theme().primary)
-                    .mb(surface::css(10.))
-                    .child("设备"),
-            )
-            .children(self.devices.iter().map(|entity| {
-                let workspace = entity.read(cx);
-                let device = workspace.device(cx);
-                let key = workspace.identity(cx);
-                let supported = crate::features::has_product_workspace(device.product_id);
-                let detail_device = device.clone();
-                let catalog = self.module_catalog.clone();
-                h_flex()
-                    .id(SharedString::from(format!("module-device-{key}")))
-                    .w_full()
-                    .h(surface::css(80.))
-                    .mb(surface::css(1.))
-                    .pl(surface::css(20.))
-                    .pr(surface::css(30.))
-                    .bg(cx.theme().group_box)
-                    .child(dashboard_image(
-                        device.product_id,
-                        device.edition_id,
-                        device.layout_id,
-                        40.,
-                        40.,
-                    ))
-                    .child(
-                        div()
-                            .ml(surface::css(10.))
-                            .flex_basis(surface::css(500.))
-                            .flex_shrink_1()
-                            .min_w_0()
-                            .text_size(surface::css(16.))
-                            .text_ellipsis()
-                            .child(device.display_name()),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_size(surface::css(14.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child(if device.serial_number.starts_with("PREVIEW-") {
-                                "预览设备"
-                            } else {
-                                "本地快照"
-                            }),
-                    )
-                    .child(
-                        super::service_pages::module_detail_action(
-                            SharedString::from(format!("module-info-{key}")),
-                            "详情",
-                            cx,
-                        )
-                        .on_click(move |_, window, cx| {
-                            catalog.update(cx, |catalog, cx| {
-                                catalog.open_device_details(detail_device.clone(), window, cx)
-                            });
-                        }),
-                    )
-                    .child(
-                        super::service_pages::module_action(
-                            SharedString::from(format!("module-open-{key}")),
-                            "打开",
-                            false,
-                            !supported,
-                            cx,
-                        )
-                        .ml(surface::css(30.))
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.navigate(Location::Device(key.clone()), window, cx);
-                            },
-                        )),
-                    )
-            }))
-            .child(div().mt(surface::css(20.)).child(surface::note(
-                "尚未连接设备与模块服务，无法读取安装和固件更新状态。",
-                cx,
-            )))
-            .child(self.module_catalog.clone())
-            .into_any_element()
+    pub(super) fn modules_page(&self, _: &mut Context<Self>) -> AnyElement {
+        self.module_catalog.clone().into_any_element()
     }
 
     pub(super) fn gamer_room_page(&self, _: &mut Context<Self>) -> AnyElement {
@@ -297,12 +219,12 @@ mod tests {
         let below = MainLayout::new(1279., 16., 4);
         let above = MainLayout::new(1280., 16., 4);
         assert_eq!(small.dashboard_width, 290.);
-        assert_eq!(compact.dashboard_width, 600.);
+        assert_eq!(compact.dashboard_width, 620.);
         assert_eq!((below.gutter, below.dashboard_width), (30., 910.));
         assert_eq!((above.gutter, above.dashboard_width), (20., 1220.));
         assert_eq!(MainLayout::new(2560., 16., 4).dashboard_width, 1220.);
         assert_eq!(MainLayout::new(2560., 16., 5).dashboard_width, 2460.);
-        assert_eq!(MainLayout::new(1920., 16., 5).dashboard_width, 1840.);
+        assert_eq!(MainLayout::new(1920., 16., 5).dashboard_width, 1880.);
     }
 
     #[test]

@@ -18,6 +18,7 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod actuation;
 #[path = "keyboard_calibration.rs"]
 mod calibration;
+pub(super) use calibration::is_factory_profile;
 pub(crate) use calibration::open_preview as open_calibration_preview;
 
 #[derive(Deserialize)]
@@ -1180,7 +1181,7 @@ impl Render for KeyboardProductWorkspace {
                 .into_any_element(),
             "TAB_CUSTOMIZE" => self.customize(cx),
             "ACTUATION" => self.actuation_page(cx),
-            "TAB_CALIBRATION" => self.calibration_page(cx),
+            "TAB_CALIBRATION" => self.calibration_page(window, cx),
             "TAB_POWER" => self.power(cx),
             _ => surface::panel(t(&self.page), cx)
                 .child(self.spec.name.clone())

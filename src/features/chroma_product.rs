@@ -1,15 +1,18 @@
 //! Product-side `displayMode=chromaApp` root.
 //!
 //! The current bundles select this root in the same ternary chain that reads
-//! `searchParams.get("displayMode")` and only when the requested serial number
-//! matches the running device (`"chromaApp"===a&&_===this.state.serialNumber`),
-//! which is why the Chroma application opens it as a per-device popup. The root
+//! `searchParams.get("displayMode")`. The serial predicate is product-specific:
+//! 1303 compares with the running device; 1313 accepts a nonempty requested
+//! serial. The local Chroma application addresses the selected device workspace
+//! directly, so each popup retains that device's own profile state. The root
 //! mounts the product's lighting content without the normal product navigation
 //! and profile chrome, and Escape asks the parent window to close it
 //! (`window.postMessage("closePopup","*")`). See
 //! [display-mode audit](../../docs/re/display-mode-audit.md),
 //! [window contract](../../docs/re/display-window-contract.md) and
 //! [Chroma application evidence](../../docs/re/chroma-app-current-evidence.json).
+//! Audio root-to-page identity and differing body width overrides are recorded
+//! in [the product mode audit](../../docs/re/product-mode-integration-2026-10-05.md).
 //!
 //! The product id table is generated from the audited static scan by
 //! `tools/generate-display-mode-roots.cjs`; the branch content stays a product
@@ -81,6 +84,30 @@ impl ChromaPreset {
                 Effect::list(device.product_id, device.use_ble, device.use_ble)
                     .contains(&self.effect())
             })
+    }
+    /// 62296/bs only marks a quick effect active when the actual lighting
+    /// signature agrees across all device zones; a click alone is not proof.
+    pub(crate) fn matches(self, workspace: &ProductWorkspace, cx: &App) -> bool {
+        let Some(entity) = workspace.chroma_lighting_workspace(cx) else {
+            return false;
+        };
+        let lighting = &entity.read(cx).settings().lighting;
+        if lighting.advanced || lighting.effect != self.effect() {
+            return false;
+        }
+        let parameters = lighting.params();
+        match self {
+            Self::Spectrum | Self::Fire => true,
+            Self::StaticGreen => parameters.color1 == Some([0, 255, 0]),
+            Self::BreathingGreen | Self::Starlight => {
+                parameters.color1 == Some([0, 255, 0])
+                    && parameters.color2.is_none()
+                    && !parameters.random
+                    && (self != Self::Starlight || parameters.duration == 2)
+            }
+            Self::Wave => parameters.direction == 2,
+            Self::Wheel => parameters.direction == 1,
+        }
     }
     pub(crate) fn apply(self, workspace: &ProductWorkspace, window: &mut Window, cx: &mut App) {
         if !self.supported(workspace, cx) {

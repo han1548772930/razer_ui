@@ -1,0 +1,131 @@
+{
+  "ids": [
+    "alexa",
+    "macro",
+    "linkedGames",
+    "feedback",
+    "armory"
+  ],
+  "titles": {
+    "macro": {
+      "en": "Macro",
+      "zh-cn": "宏",
+      "de": "Makro",
+      "es": "Macro",
+      "fr": "Macro",
+      "ja": "マクロ",
+      "kr": "매크로",
+      "pt-br": "Macro",
+      "ru": "МАКРОСЫ",
+      "zh-tw": "巨集"
+    },
+    "linkedGames": {
+      "en": "Linked Games",
+      "zh-cn": "已关联的游戏",
+      "de": "Verknüpfte Spiele",
+      "es": "Juegos vinculados",
+      "fr": "Jeux associés",
+      "ja": "リンクされたゲーム",
+      "kr": "연결된 게임",
+      "pt-br": "Jogos vinculados",
+      "ru": "Привязанные игры",
+      "zh-tw": "連結的遊戲"
+    },
+    "alexa": {
+      "en": "Alexa",
+      "zh-cn": "Alexa",
+      "de": "Alexa",
+      "es": "Alexa",
+      "fr": "Alexa",
+      "ja": "Alexa",
+      "kr": "Alexa",
+      "pt-br": "Alexa",
+      "ru": "Alexa",
+      "zh-tw": "Alexa"
+    },
+    "feedback": {
+      "en": "Feedback",
+      "zh-cn": "反馈",
+      "de": "Feedback",
+      "es": "Comentarios",
+      "fr": "Commentaires",
+      "ja": "フィードバック",
+      "kr": "피드백",
+      "pt-br": "Feedback",
+      "ru": "Обратная связь",
+      "zh-tw": "回饋"
+    },
+    "feedback_beta": {
+      "en": "Feedback On Beta",
+      "zh-cn": "对测试版的反馈",
+      "de": "Feedback zur Beta",
+      "es": "Comentarios sobre Beta",
+      "fr": "Commentaires sur la version bêta",
+      "ja": "ベータ版フィードバック",
+      "kr": "베타에 대한 피드백",
+      "pt-br": "Feedback para Beta",
+      "ru": "Обратная связь по бета-версии",
+      "zh-tw": "測試版軟體意見回饋"
+    },
+    "armory_workshop": {
+      "en": "Workshop",
+      "zh-cn": "工坊",
+      "de": "Workshop",
+      "es": "Workshop",
+      "fr": "Workshop",
+      "ja": "Workshop",
+      "kr": "Workshop",
+      "pt-br": "Workshop",
+      "ru": "Workshop",
+      "zh-tw": "Workshop"
+    },
+    "armory_exchange": {
+      "en": "Exchange",
+      "zh-cn": "互换",
+      "de": "Exchange",
+      "es": "Exchange",
+      "fr": "Exchange",
+      "ja": "Exchange",
+      "kr": "Exchange",
+      "pt-br": "Exchange",
+      "ru": "Exchange",
+      "zh-tw": "Exchange"
+    }
+  },
+  "descriptions": {
+    "macro": {
+      "en": "Bring powerful macros to your favorite games with Macro module. Easily create a string of complex button presses, and then precisely execute game-winning combinations with a single press",
+      "es": "Crea potentes macros para tus juegos favoritos con el módulo Macro. Crea fácilmente una secuencia de pulsaciones de botones complejas para poder ejecutar combinaciones ganadoras con precisión pulsando una sola tecla.",
+      "de": "Hol dir mit dem Makro-Modul starke Makros für deine Lieblingsspiele. Erstelle dir ganz einfach eine Abfolge komplexer Tastenkombinationen und führe die Kombinationen, die dir zum Spielgewinn verhelfen, mit nur einem Tastendruck aus",
+      "fr": "Créez de puissantes macros pour vos jeux favoris avec le module Macro. Créez facilement une chaîne complexe de frappes de boutons et exécutez précisément des combinaisons gagnantes avec une simple pression",
+      "ja": "マクロ モジュールを活用してあなたのお気に入りのゲームで強力なマクロを使えるようにしましょう。複雑なボタンシーケンスを簡単に作成して、勝利につながるコンボをたった一つのキー操作で正確に実行できます",
+      "kr": "매크로 모듈을 통해 가장 좋아하는 게임들에서 강력한 매크로들을 활용해 보십시오. 복잡한 버튼 누름 문자열을 손쉽게 생성하여 단 한 번의 누름으로 게임에서 이길 수 있는 키 조합을 정확하게 실행하십시오",
+      "pt-br": "Adicione macros poderosas aos seus jogos favoritos com o módulo Macro. Crie facilmente uma série de pressionamentos de botões complexos e, em seguida, execute com precisão combinações vencedoras de jogos com um único pressionamento",
+      "ru": "Модуль Macro позволяет добавлять многофункциональные макросы в свои любимые игры. Вы можете без труда создавать последовательности сложных клавишных сочетаний, а затем выполнять победные комбинации всего одним нажатием.",
+      "zh-cn": "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的按键敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合",
+      "zh-tw": "使用「巨集」模組，讓你在喜愛的遊戲中使用強大的巨集功能。輕鬆打造一組複雜的按鈕順序，然後只要輕輕按一下，就能精確執行可扭轉戰局的組合"
+    },
+    "alexa": {
+      "en": "The Amazon Alexa module brings full Alexa Voice Service integration to Synapse for all Chroma enabled devices. Requires active microphone and Amazon Alexa account.",
+      "es": "El módulo Amazon Alexa ofrece una integración total con el Alexa Voice Service en Synapse y todos los dispositivos compatibles con Chroma. Requiere un micrófono activo y una cuenta Amazon Alexa.",
+      "de": "Das Amazon Alexa-Modul bietet volle Alexa Sprachedienst-Integration unter Razer Synapse für alle Geräte mit Razer Chroma-Unterstützung. Benötigt ein aktives Mikrofon und ein Amazon Alexa-Konto.",
+      "fr": "Le module Amazon Alexa permet d'intégrer complètement le Alexa Voice Service à Synapse pour tous les appareils compatibles avec Chroma. Requiert un microphone actif et un compte Amazon Alexa.",
+      "ja": "Amazon Alexa モジュールにより、すべての Chroma 対応デバイスで Synapse を Alexa Voice Service と完全統合することができます。アクティブマイクと Amazon Alexa アカウントが必要です。",
+      "kr": "Amazon Alexa 모듈은 모든 Chroma 기기를 지원하도록 Synapse와 Alexa Voice Service를 완벽하게 연동시켜 줍니다. 사용 가능한 마이크와 Amazon Alexa 계정이 필요합니다.",
+      "pt-br": "O módulo Amazon Alexa oferece uma integração completa do Alexa Voice Service com o Synapse para todos os dispositivos habilitados para Chroma. Exige um microfone ativo e uma conta Amazon Alexa.",
+      "ru": "Модуль Amazon Alexa обеспечивает полную интеграцию сервиса Alexa Voice Service с Synapse для всех устройств с поддержкой технологии Chroma. Требуется активный микрофон и учетная запись Amazon Alexa.",
+      "zh-cn": "对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云 中。需要有效的麦克风和 Amazon Alexa 账户。",
+      "zh-tw": "Amazon Alexa 模組將完整的 Alexa Voice Service 整合到 Synapse，可供所有支援 Chroma 的裝置使用。必須有可使用的麥克風與 Amazon Alexa 帳戶。"
+    },
+    "linkedGames": null
+  },
+  "details": {
+    "alexa": {
+      "size": 0,
+      "learnMoreURL": "https://www.razer.com/chroma/alexa"
+    },
+    "macro": {
+      "size": 0
+    }
+  }
+}

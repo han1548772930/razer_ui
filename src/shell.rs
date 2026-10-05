@@ -279,6 +279,9 @@ impl AppShell {
                 chroma_page::ChromaPageEvent::OpenSettings => {
                     this.navigate(Location::Main(Tab::Setting), window, cx)
                 }
+                chroma_page::ChromaPageEvent::OpenTour(kind) => {
+                    this.navigate(Location::Tour(*kind), window, cx)
+                }
             },
         ));
         this.subscriptions.push(cx.subscribe_in(
@@ -374,12 +377,85 @@ impl AppShell {
                 cx.notify();
             },
         ));
-        this.subscriptions.push(cx.subscribe(
+        this.subscriptions.push(cx.subscribe_in(
             &this.gamer_room,
-            |this, _, _: &service_pages::GamerRoomEvent, cx| {
-                this.settings
-                    .update(cx, |settings, cx| settings.tutorial_seen(true, cx));
-                this.save_auxiliary_preferences(cx);
+            window,
+            |this, _, event: &service_pages::GamerRoomEvent, window, cx| {
+                match event {
+                    service_pages::GamerRoomEvent::TutorialCompleted => {
+                        this.settings
+                            .update(cx, |settings, cx| settings.tutorial_seen(true, cx));
+                        this.save_auxiliary_preferences(cx);
+                    }
+                    service_pages::GamerRoomEvent::OpenDevice {
+                        product_id,
+                        serial_number,
+                        device_container_id,
+                    } => {
+                        let key = this.devices.iter().find_map(|workspace| {
+                            let workspace = workspace.read(cx);
+                            let device = workspace.device(cx);
+                            let matches = |pid: u32, container: &str, serial: &str| {
+                                pid == *product_id
+                                    && if !device_container_id.is_empty() {
+                                        container == device_container_id
+                                    } else {
+                                        !serial_number.is_empty() && serial == serial_number
+                                    }
+                            };
+                            let direct = matches(
+                                device.product_id,
+                                &device.device_container_id,
+                                &device.serial_number,
+                            );
+                            let child = device.sub_devices.as_ref().is_some_and(|items| {
+                                items.iter().any(|item| {
+                                    let pid = item
+                                        .get("productId")
+                                        .and_then(|v| v.as_u64())
+                                        .and_then(|n| u32::try_from(n).ok())
+                                        .unwrap_or(device.product_id);
+                                    let container = item
+                                        .get("deviceContainerId")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or(&device.device_container_id);
+                                    let serial = item
+                                        .get("serialNumber")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or(&device.serial_number);
+                                    matches(pid, container, serial)
+                                })
+                            });
+                            ((direct || child)
+                                && crate::features::has_product_workspace(device.product_id))
+                            .then(|| (workspace.identity(cx), !direct))
+                        });
+                        if let Some((key, child)) = key {
+                            this.navigate(Location::Device(key), window, cx);
+                            if child {
+                                this.status = "子设备切换服务尚未连接。".into();
+                            }
+                        }
+                    }
+                    service_pages::GamerRoomEvent::DeviceCommand {
+                        product_id,
+                        device_container_id,
+                        action,
+                        payload,
+                    } => {
+                        // Preserve the source command boundary. There is no IoT
+                        // transport response to justify changing observed power
+                        // or override state after the trailing click handler.
+                        if *product_id == 0
+                            || device_container_id.is_empty()
+                            || action.is_empty()
+                            || !payload.is_object()
+                        {
+                            return;
+                        }
+                        this.status = "IoT 设备服务尚未连接，请求未发送。".into();
+                    }
+                }
                 cx.notify();
             },
         ));
@@ -446,6 +522,25 @@ impl AppShell {
                     this.save_auxiliary_preferences(cx);
                 }
                 cx.notify();
+            },
+        ));
+        this.subscriptions.push(cx.subscribe_in(
+            &this.shortcuts,
+            window,
+            |this, _, event: &crate::features::shortcuts::ShortcutsOpenModule, window, cx| {
+                use crate::features::shortcuts::ShortcutsOpenModule;
+                match event {
+                    ShortcutsOpenModule::Macro => {
+                        this.open_module_tab(service_pages::ModulePage::Macro, window, cx)
+                    }
+                    ShortcutsOpenModule::ChromaStudio => this.handle_app_picker(
+                        &app_picker::AppPickerEvent::Open(app_picker::PickerTarget::Module(
+                            app_picker::PickerModule::ChromaStudio,
+                        )),
+                        window,
+                        cx,
+                    ),
+                }
             },
         ));
         for device in devices {
@@ -549,7 +644,10 @@ impl AppShell {
             &entity,
             window,
             |this, entity, event, window, cx| match event {
-                WorkspaceEvent::Changed => cx.notify(),
+                WorkspaceEvent::Changed => {
+                    this.sync_gamer_room(cx);
+                    cx.notify();
+                }
                 WorkspaceEvent::ShareProfile => {
                     let device = entity.read(cx).snapshot(cx);
                     this.open_module_tab(service_pages::ModulePage::Armory, window, cx);
@@ -603,7 +701,17 @@ impl AppShell {
         }
         self.chroma_page
             .update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
+        self.sync_gamer_room(cx);
         self.sync_app_picker(window, cx);
+    }
+    fn sync_gamer_room(&self, cx: &mut Context<Self>) {
+        let devices = self
+            .devices
+            .iter()
+            .map(|workspace| workspace.read(cx).snapshot(cx))
+            .collect::<Vec<_>>();
+        self.gamer_room
+            .update(cx, |page, cx| page.sync_devices(&devices, cx));
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
@@ -1671,7 +1779,11 @@ impl AppShell {
                     .child(
                         v_flex()
                             .w_full()
-                            .max_w(surface::css(layout.body_max_width))
+                            .max_w(surface::css(if page == Tab::Home {
+                                2540.
+                            } else {
+                                layout.body_max_width
+                            }))
                             .mx_auto()
                             .pt(surface::css(10.))
                             .px(surface::css(layout.gutter))

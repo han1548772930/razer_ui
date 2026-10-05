@@ -37,6 +37,18 @@ def prepare(root, out, record):
                transform="Static extraction of original SVG attributes; no JavaScript evaluation",
                **metadata)
 
+    offset, raw = component("class o extends", "var H=")
+    external = re.search(r'\(0,i\.jsx\)\("path",\{d:("(?:\\.|[^"\\])*"),fill:"#CCCCCC"\}', raw)
+    assert external, "Missing current Gamer Room external-link SVG"
+    svg = _svg(21, 20)
+    ET.SubElement(svg, "path", {"d": json.loads(external[1]), "fill": "#CCCCCC"})
+    save("gr-external-link.svg", svg, offset, "o.render")
+
+    help_source = root / ".ref/applications/synapse/dashboard/static/media/tooltip_questionmark.96138d2f.svg"
+    help_destination = out / "gr-help.svg"
+    help_destination.write_bytes(help_source.read_bytes())
+    record(help_source, help_destination, source_kind="current_css_url", transform="Byte-for-byte copy")
+
     offset, raw = component("const A=", "B=(0,r.forwardRef)(A)")
     mask_path = re.search(r'r\.createElement\("path",\{([^}]+)\}', raw)
     texture = re.search(r'xlinkHref:"(data:image/png;base64,[A-Za-z0-9+/=]+)"', raw)

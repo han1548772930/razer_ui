@@ -1,0 +1,28 @@
+{
+  "source_url": "https://apps.razer.com/synapse/products/3894/ui/3894_255/PluginImages/3894_255_0_dashboard3x.avif",
+  "final_url": "https://apps.razer.com/synapse/products/3894/ui/3894_255/PluginImages/3894_255_0_dashboard3x.avif",
+  "redirected": false,
+  "http_status": null,
+  "fetched_at_utc": "2026-10-05T04:09:14Z",
+  "content_type": null,
+  "last_modified": null,
+  "etag": null,
+  "result": "network_error",
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "bytes": 0,
+  "validation": null,
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at_utc": "2026-10-05T04:09:14Z",
+      "completed_at_utc": "2026-10-05T04:09:14Z",
+      "status": null,
+      "result": "network_error",
+      "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3894/ui/3894_255/PluginImages/3894_255_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001C9956E9A60>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+      "final_url": "https://apps.razer.com/synapse/products/3894/ui/3894_255/PluginImages/3894_255_0_dashboard3x.avif",
+      "redirect_chain": []
+    }
+  ],
+  "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3894/ui/3894_255/PluginImages/3894_255_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001C9956E9A60>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+  "body_file": "dashboard-3894-255-0-source.avif.response"
+}

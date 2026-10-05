@@ -13,6 +13,10 @@ mod lighting_input;
 pub(crate) mod macro_inputs;
 mod sensitivity;
 pub mod settings;
+// Keep the pure native encoder and its strict input validation available for
+// the eventual transport. The source UI has no standalone diagnostic button;
+// the removed local "apply" control was disabled and never sent a request.
+#[allow(dead_code)]
 pub(crate) mod shortcut_engine;
 pub(crate) mod shortcuts;
 mod workspace;
@@ -32,6 +36,7 @@ pub(crate) fn has_product_workspace(pid: u32) -> bool {
     !crate::nav::Tab::for_product(pid).is_empty() || crate::product::registered(pid).is_some()
 }
 
+mod armory_product;
 mod audio_products;
 
 mod system_products;

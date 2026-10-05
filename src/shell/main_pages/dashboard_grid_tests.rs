@@ -207,8 +207,11 @@ fn source_grid_uses_card_midpoints_and_clamps_the_incomplete_last_row() {
     assert_eq!(target_index(point(0., 109.), 3, 5), 0);
     assert_eq!(target_index(point(0., 110.), 3, 5), 3);
     assert_eq!(target_index(point(620., 240.), 3, 5), 4);
-    assert_eq!(clamp_position(point(-50., -50.), 3, 5), point(0., 0.));
-    assert_eq!(clamp_position(point(2000., 2000.), 3, 5), point(620., 240.));
+    assert_eq!(clamp_position(point(-50., -50.), 3, 5, 940.), point(0., 0.));
+    assert_eq!(
+        clamp_position(point(2000., 2000.), 3, 5, 940.),
+        point(650., 240.)
+    );
 }
 
 #[gpui_kit::test]

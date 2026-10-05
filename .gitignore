@@ -20,6 +20,8 @@
 !/tools/validate-resources.py
 !/tools/keyboard_geometry.py
 !/tools/gamer_room_assets.py
+!/tools/audit-gamer-room-current.cjs
+!/tools/extract-gamer-room-hotspot.py
 !/tools/requirements-resources.txt
 !/tools/extract-dashboard-locales.cjs
 !/tools/extract-firmware-locales.cjs
@@ -124,3 +126,13 @@
 !/tools/audit-display-mode-roots.cjs
 !/tools/audit-page-coverage.py
 !/tools/audit-locale-keys.py
+!/tools/audit-keyboard-calibration-modal.cjs
+!/tools/audit-ui-source-review.cjs
+!/tools/extract-product-mode-components.cjs
+!/tools/audit-app-introduction-banner.cjs
+!/tools/audit-shortcuts-current.cjs
+!/tools/extract-devices-modules-catalog.cjs
+!/tools/audit-dashboard-device.cjs
+!/tools/recover-current-media.cjs
+!/tools/audit-chroma-review.cjs
+!/tools/audit-armory-product-roots.cjs

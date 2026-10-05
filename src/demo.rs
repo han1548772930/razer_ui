@@ -49,6 +49,8 @@ pub(crate) fn registered_preview(pid: u32) -> Option<Device> {
     ]);
     let profile_id = format!("preview-profile-{pid}");
     Some(Device {
+        dashboard: Default::default(),
+        sub_devices: None,
         source_device_settings: None,
         serial_number: format!("PREVIEW-{pid}"),
         product_id: pid,
@@ -96,6 +98,8 @@ pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
     ]);
     let profile_id = format!("preview-profile-{pid}");
     Some(Device {
+        dashboard: Default::default(),
+        sub_devices: None,
         source_device_settings: None,
         serial_number: format!("PREVIEW-{pid}"),
         product_id: pid,
@@ -160,6 +164,8 @@ pub fn demo_keyboard() -> Device {
     )];
 
     Device {
+        dashboard: Default::default(),
+        sub_devices: None,
         source_device_settings: None,
         serial_number: "DEMO-KEYBOARD-0001".to_string(),
         product_id: DEMO_PRODUCT_ID,

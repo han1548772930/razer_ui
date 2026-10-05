@@ -1,0 +1,182 @@
+{
+  "method": "Offline recovery using the current manifest MD4-prefix content fingerprint, calibrated against existing current SVG bytes; candidate SHA-256 and full MD4 retained. Not an independent live-download byte comparison.",
+  "manifest": {
+    "path": ".ref/applications/chroma-app/dashboard/asset-manifest.json",
+    "sha256": "6ef65f426d2f63f9fbd02d6304949c26e2214ae487b98eb5c85ff03702aa5fda"
+  },
+  "calibration": [
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wheel.6bc8ad9d.svg",
+      "sha256": "02ae09f60bd633070848fb72c6f1bbc602862771df0c7b1b36851430f997566b",
+      "md4": "6bc8ad9da4d84bec65fb0a81b5521b87",
+      "fingerprint": "6bc8ad9d"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_chromaapps.3b5c3715.svg",
+      "sha256": "a166f33c1a56c901f68bbb51e73712bc6917a91252c4b8840e412595dd1fd13d",
+      "md4": "3b5c37152622464f22f4383e3528438d",
+      "fingerprint": "3b5c3715"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_fire.c1f6de61.svg",
+      "sha256": "9c4f44c9d27cd4390cfe8f1519b36d823d2dca5d2d0f84dfe1b066b4caec286a",
+      "md4": "c1f6de61153c1ce76542afe9321a52aa",
+      "fingerprint": "c1f6de61"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wave.e42212c8.svg",
+      "sha256": "7668d8ec3ec4163d8341202673395beb1b06486d8d0e19d704db504dcd06e130",
+      "md4": "e42212c8dfb9a2a8adc747a0061aeef6",
+      "fingerprint": "e42212c8"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_spectrumcycling.0d6db5ed.svg",
+      "sha256": "38f718787dec188704dad87c56bffc97c9468dd53a75d63681c14c23b4c0c79d",
+      "md4": "0d6db5edd6da084cbc9d22291d98635a",
+      "fingerprint": "0d6db5ed"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_apps.deedf28a.svg",
+      "sha256": "e91cafc9094af2444717006b35f0ba9573ca7bd9813bcc4035a1d77b98db7cbe",
+      "md4": "deedf28a99cba23ee1e9273ccbd7f3a9",
+      "fingerprint": "deedf28a"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_breathing_green.1aafb08b.svg",
+      "sha256": "b65a4cba7f8a74081d7c865c6cc4b8dccb319ced4da47d0ce110cbe725741d98",
+      "md4": "1aafb08b41a5b9647bed594138aaec06",
+      "fingerprint": "1aafb08b"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/big_synapse_4.69474e71.svg",
+      "sha256": "cde119ddee56ec413ad471ac3e4421d450b0a905c45aa5fc374764032aadacc9",
+      "md4": "69474e71101fa8eed6bdf30330a90c66",
+      "fingerprint": "69474e71"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_starlight.370ba9e2.svg",
+      "sha256": "7c1ff5d6d8a0a47811442c3949e44c2e692f36b471ccab5d403994879d742cbd",
+      "md4": "370ba9e2bc414904098c87cab9d39ae8",
+      "fingerprint": "370ba9e2"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_games.f96fda10.svg",
+      "sha256": "cbc5bfe2280be4beb05633656d62c25477aff563f13073d82133dc3d49abf4a2",
+      "md4": "f96fda100b6a6515a88771a9c0aaf9e9",
+      "fingerprint": "f96fda10"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/dashboard_static_green.4084d29c.svg",
+      "sha256": "2a47bbf7296fc23a2a773f9a747eeb1ed9acf9f2f87a244c92d59ee579cc87f8",
+      "md4": "4084d29ca187394bab5b36e0c5ffa799",
+      "fingerprint": "4084d29c"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/icon_chromaapps_profiles.7ecd0ae5.svg",
+      "sha256": "df18c231d26c4eb6118d5e92ed8f8f02dc0ce944f1d5839dd5c9ab8af2d586a1",
+      "md4": "7ecd0ae5d22e73a3411599e0b97ae030",
+      "fingerprint": "7ecd0ae5"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/split_arrow.61fe5435.svg",
+      "sha256": "a26ab35d4c2f6c1f2a1dcc2c3095376fc14bba824663603df068ee3bc7149b1e",
+      "md4": "61fe543524a0714b3140c23bb3767829",
+      "fingerprint": "61fe5435"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/media/icon_device_brightness_100.0ab35951.svg",
+      "sha256": "6af4d59905e1c9a8c5cf8c7122ae5783b2827715ce5fe3d3aaa663e28a7e4be9",
+      "md4": "0ab35951c94d9447efda6775fa3786fd",
+      "fingerprint": "0ab35951"
+    }
+  ],
+  "references": [
+    {
+      "module": 62296,
+      "name": "bs",
+      "path": ".ref/applications/chroma-app/dashboard/static/js/9700.0a3ca923.chunk.js",
+      "sha256": "1367e97196b128d6657132058611b7de76d3c194e578850b5557fb301b821ac3",
+      "offset": 96603,
+      "end": 100360,
+      "source": "e=>{let{title:t,effect:s,icon:i,syncSnapshot:o,pendingSyncEffect:n,immersiveMode:r,onApplyQuickEffect:c,onClearImmersiveMode:d,cancelPendingQuickEffectSync:h,scheduleQuickEffectSync:p}=e;const[u,m]=(0,a.useState)(!1),[g,f]=(0,a.useState)(!1),[x,C]=(0,a.useState)(!1),[w,y]=(0,a.useState)(0),[A,D]=(0,a.useState)([]),{isEnabled:I,allAppsInfo:N}=(0,l.useSelector)(e=>{let{chromaSDKConnect:t}=e;return t}),j=(0,l.useSelector)(e=>e.commonReducer.validDevices),T=(0,l.useSelector)(e=>e.languageReducer.lang),{isChromaEnabled:R,isOtherAppRunningEnabled:O}=(0,l.useSelector)(e=>{let{lightingEffectsReducer:t}=e;return t}),M=(0,l.useDispatch)(),P=(0,a.useRef)(null),k=(0,a.useRef)(null),L=(0,a.useRef)(null),B=()=>{N.every(e=>{let{enable:t,running:s}=e;return!t||!s})&&(m(!0),clearTimeout(P.current),P.current=setTimeout(()=>m(!1),3e3))};(0,a.useEffect)(()=>{setTimeout(()=>{C(!0)},\"5500\")},[]),(0,a.useEffect)(()=>{const e=j.filter(e=>e.isChromaDevice),t=null===e||void 0===e?void 0:e.filter(e=>vs(null===e||void 0===e?void 0:e.supportEffects,null===s||void 0===s?void 0:s.selectedEffectId));t&&D(t)},[j,null===s||void 0===s?void 0:s.selectedEffectId]),(0,a.useEffect)(()=>{w&&(g&&f(!1),B())},[w]),(0,a.useEffect)(()=>{g&&f(!1)},[O]);const{iconGray:H,containerActive:V}=(e=>{var t;let{title:s,effect:i,syncSnapshot:o,isChromaEnabled:n,isOtherAppRunningEnabled:a,immersiveMode:r=null,pendingSyncEffect:l=null}=e;if(a)return{iconGray:s!==b.CHROMA_APPS,containerActive:s===b.CHROMA_APPS};if(r)return{iconGray:s!==b.CHROMA_APPS,containerActive:s===b.CHROMA_APPS};if(n)return{iconGray:s!==b.ADVANCED_EFFECTS,containerActive:s===b.ADVANCED_EFFECTS};if(s===b.ADVANCED_EFFECTS||s===b.CHROMA_APPS||!i)return gs;const c=null!==(t=null===o||void 0===o?void 0:o.zones)&&void 0!==t?t:null===o||void 0===o?void 0:o.entities,{isUnified:d,unifiedSignature:h}=o||{};if(null===c||void 0===c||!c.length)return gs;const p=us(i),u=l?us(l):null;return u?p&&p===u?xs:gs:d&&p&&h&&p===h?xs:fs})({title:t,effect:s,syncSnapshot:o,isChromaEnabled:R,isOtherAppRunningEnabled:O,immersiveMode:r,pendingSyncEffect:n});return(0,v.jsxs)(\"div\",{className:\"apply-effect\"+(V?\" is-sync-active\":\"\"),ref:L,onMouseMove:e=>{if(!s)return;const t=L.current.getBoundingClientRect();k.current.style.top=e.clientY-t.top+\"px\",k.current.style.left=e.clientX-t.left+\"px\"},onClick:()=>{if(O){if(t===b.CHROMA_APPS)return;f(!0),setTimeout(()=>{ss.Pe.chromaSDKApps_enableApps(!1)},1500)}if(t===b.CHROMA_APPS)I?B():(f(!0),ss.Pe.chromaSDKApps_enableApps(!0),setTimeout(()=>y(e=>e+1),1e3));else if(t===b.ADVANCED_EFFECTS){if(h(),null===d||void 0===d||d(),!R){const e=ve.A.get(S.XG4);if(Array.isArray(e)){const t=ve.A.get(\"currentUserId\",!0);let s=e.find(e=>{let{userId:s}=e;return s===t});s&&(s.enabled=!0,ve.A.set(S.XG4,e),M((0,ts.setChromaEnabled)(!0)),M(nt(!0)))}}}else{if(R){const e=ve.A.get(S.XG4);if(Array.isArray(e)){const t=ve.A.get(\"currentUserId\",!0);let s=e.find(e=>{let{userId:s}=e;return s===t});s&&(s.enabled=!1,ve.A.set(S.XG4,e),M((0,ts.setChromaEnabled)(!1)),M(nt(!1)))}}s&&(null===c||void 0===c||c(s),M(pt(s))),p(s,x?100:1400)}},children:[s?(0,v.jsxs)(\"div\",{className:\"apply-effect--tip \",ref:k,children:[(0,v.jsx)(\"p\",{children:(0,v.jsx)(rs,{text:_.CLe})}),(0,v.jsx)(\"ul\",{children:A.length>0?A.map(e=>{var t;const s=(null===e||void 0===e?void 0:e.productName)||{en:`Unknown Device (${e.productId})`};return(0,v.jsx)(\"li\",{children:null!==(t=s[T.toLowerCase()])&&void 0!==t?t:s.en},\"sd\"+e.productId)}):(0,v.jsx)(rs,{text:_.Nl0})})]}):null,(0,v.jsx)(\"div\",{className:`effect-icon ${i||t} ${H?\"gray\":\"\"} ${g?\"show-spinner\":\"\"}`}),(0,v.jsx)(\"p\",{children:(0,v.jsx)(E.A,{text:t})}),t===b.CHROMA_APPS&&(0,v.jsx)(\"div\",{className:\"chroma-apps-warning \"+(u?\"show\":\"\"),children:(0,v.jsx)(rs,{text:_.F6u})})]})}"
+    }
+  ],
+  "recovered": [],
+  "missing": [
+    {
+      "key": "static/media/dashboard_chromastudio_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_chromastudio_gray.612baff0.svg",
+      "fingerprint": "612baff0"
+    },
+    {
+      "key": "static/media/dashboard_wheel_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wheel_animated.e852536b.svg",
+      "fingerprint": "e852536b"
+    },
+    {
+      "key": "static/media/dashboard_chromaapps_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_chromaapps_gray.4fb0dee5.svg",
+      "fingerprint": "4fb0dee5"
+    },
+    {
+      "key": "static/media/dashboard_fire_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_fire_animated.bd05b761.svg",
+      "fingerprint": "bd05b761"
+    },
+    {
+      "key": "static/media/dashboard_wheel_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wheel_gray.a288590c.svg",
+      "fingerprint": "a288590c"
+    },
+    {
+      "key": "static/media/dashboard_spectrumcycling_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_spectrumcycling_animated.d84eaab4.svg",
+      "fingerprint": "d84eaab4"
+    },
+    {
+      "key": "static/media/dashboard_fire_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_fire_gray.9947eee1.svg",
+      "fingerprint": "9947eee1"
+    },
+    {
+      "key": "static/media/dashboard_wave_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wave_animated.d11bfcd9.svg",
+      "fingerprint": "d11bfcd9"
+    },
+    {
+      "key": "static/media/dashboard_breathing_green_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_breathing_green_animated.d5edd951.svg",
+      "fingerprint": "d5edd951"
+    },
+    {
+      "key": "static/media/dashboard_spectrumcycling_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_spectrumcycling_gray.b62441c1.svg",
+      "fingerprint": "b62441c1"
+    },
+    {
+      "key": "static/media/dashboard_starlight_animated.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_starlight_animated.e002b474.svg",
+      "fingerprint": "e002b474"
+    },
+    {
+      "key": "static/media/dashboard_breathing_green_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_breathing_green_gray.0450fd38.svg",
+      "fingerprint": "0450fd38"
+    },
+    {
+      "key": "static/media/dashboard_wave_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_wave_gray.9d18952a.svg",
+      "fingerprint": "9d18952a"
+    },
+    {
+      "key": "static/media/dashboard_starlight_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_starlight_gray.0cdcfd3e.svg",
+      "fingerprint": "0cdcfd3e"
+    },
+    {
+      "key": "static/media/dashboard_static_green_gray.svg",
+      "target": ".ref/applications/chroma-app/dashboard/static/media/dashboard_static_green_gray.e05bed8d.svg",
+      "fingerprint": "e05bed8d"
+    }
+  ]
+}

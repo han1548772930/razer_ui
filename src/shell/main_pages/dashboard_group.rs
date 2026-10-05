@@ -31,10 +31,16 @@ impl RenderOnce for CollapseIcon {
             window,
             cx,
         );
-        Icon::default()
-            .path("synapse/expand.svg")
+        div()
             .size(surface::css(10.))
-            .transform(Transformation::rotate(radians(angle)))
+            .text_color(rgb(0x999999))
+            .group_hover(self.id, |icon| icon.text_color(rgb(0xffffff)))
+            .child(
+                Icon::default()
+                    .path("synapse/expand.svg")
+                    .size(surface::css(10.))
+                    .transform(Transformation::rotate(radians(angle))),
+            )
     }
 }
 
@@ -59,8 +65,8 @@ impl DashboardGroupContent {
         count: usize,
         child: impl IntoElement,
     ) -> Self {
-        // bi.moveItems fixes listRef height to 220 + (rows - 1) * 240.
-        let columns = ((width + 20.) / 310.).round().max(1.) as usize;
+        // Current xi.moveItems fixes listRef height to 220 + (rows - 1) * 240.
+        let columns = super::dashboard_columns(width);
         let rows = count.max(1).div_ceil(columns);
         Self {
             id,

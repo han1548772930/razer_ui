@@ -43,17 +43,17 @@ assert(table.generator_sha256 === digest(read('tools/generate-display-mode-roots
 // 2. Which modes have a local root, and where that root is documented.
 const implementations = {
   chromaApp: {
-    status: 'implemented',
+    status: 'partial-ui',
     local: [
       'src/features/chroma_product.rs (popup root, table-driven selection)',
       'src/features/product_workspace.rs (chroma_device_page / has_chroma_device_page)',
       'src/shell/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)',
     ],
-    rule: 'product has a root chromaApp branch AND a local lighting page (adapter tab set or a source TAB_LIGHTING page in a family renderer)',
-    boundary: 'audio/accessory families and products without a local lighting page keep the explicit unavailable state',
+    rule: 'product has a root chromaApp branch AND a local lighting page; 28 Audio products additionally require the generated root-to-own-Lighting component match (including the LIGHTING key of 1465)',
+    boundary: 'accessory families and unaudited Audio roots remain unavailable; connected Audio bodies retain the known incomplete controls listed in product-mode-integration-2026-10-05.md',
   },
   multiDevicePairing: {
-    status: 'implemented',
+    status: 'entry-wired-service-unconnected',
     local: [
       'src/shell/display_window.rs (named window + policy flags)',
       'src/shell/pairing_window.rs (root view)',
@@ -63,24 +63,25 @@ const implementations = {
     boundary: 'keep as the audited second-window exception; device services stay unconnected',
   },
   macro: {
-    status: 'implemented-elsewhere',
+    status: 'entry-elsewhere-product-bodies-unreviewed',
     local: ['src/shell/macro_page.rs (macro application window)'],
     rule: 'the product-side macro branch only appears inside the macro application iframe, so the same page is opened there',
     boundary: 'macro service, recording and device binding remain unconnected',
   },
   armory: {
-    status: 'implemented',
+    status: 'partial-ui',
     local: [
       'src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)',
       'src/features/product_workspace.rs (armory_device_page / has_armory_device_page)',
+      'src/features/armory_product.rs (independently audited 1303/1304/1313/3893 roots and category-limited 3894 root)',
       'src/shell/armory_page/device_root.rs (device panel, iframe height by device type)',
       'src/shell.rs (share entry opens the device panel next to the share form)',
     ],
     rule:
-      'product has a root armory branch AND a local mapping page (adapter Customize tab or a source TAB_CUSTOMIZE page in a family renderer)',
+      'product has a root armory branch AND either a local mapping page or the independently audited armory_product renderer; 3894 requires Accessory/Mousepad category',
     boundary:
       'the panel message handshake is recorded but not exchanged (both sides run in this process); ' +
-      'audio/accessory families and products without a local mapping page keep the entry closed',
+      'other audio/accessory roots remain unimplemented; five independent roots still lack original product artwork, and 3894 DEFAULT / 3907 remain closed',
   },
 };
 for (const [mode, ids] of Object.entries(table.modes)) {
@@ -104,6 +105,17 @@ assert(
 const workspace = read('src/features/product_workspace.rs');
 assert(/has_chroma_app_root\(device\.product_id\)/.test(workspace), 'workspace does not consult the chromaApp table');
 assert(/supports_lighting_page\(\)/.test(workspace), 'workspace no longer requires a local lighting page');
+const audioChroma = JSON.parse(read('src/features/audio_chroma_modes.json'));
+const audioModeEvidence = JSON.parse(read('docs/re/product-mode-current-components.json'));
+assert(audioChroma.length === 28, 'audio chroma root-to-page scope changed without a new audit');
+for (const route of audioChroma) {
+  const evidence = audioModeEvidence.products.find(product => product.product_id === route.product_id);
+  assert(evidence?.mounts_normal_lighting && evidence.normal_lighting.key === route.page
+    && evidence.body_min_width === route.body_min_width,
+    `audio chroma route ${route.product_id} does not match its component/CSS receipt`);
+}
+assert(/supports_chroma_lighting_page\(self\.device\.product_id\)/.test(read('src/features/source_workspace.rs')),
+  'audio mode selection no longer checks the audited product list');
 const chromaPage = read('src/shell/chroma_page.rs');
 assert(/has_chroma_device_page\(cx\)/.test(chromaPage), 'chroma device card does not use the page capability');
 assert(
@@ -145,6 +157,7 @@ const receipt = {
   root_table_sha256: digest(read(tablePath)),
   generator: 'tools/generate-display-mode-roots.cjs',
   generator_sha256: table.generator_sha256,
+  count_meaning: 'root_products counts branches found in source, not completed local UIs or per-product fidelity checks. Status describes shared entry coverage only.',
   modes: Object.fromEntries(
     Object.entries(table.modes).map(([mode, ids]) => [
       mode,
@@ -167,6 +180,6 @@ if (check) {
 }
 console.log(
   Object.entries(receipt.modes)
-    .map(([mode, entry]) => `${mode}: ${entry.root_products} products, ${entry.status}`)
+    .map(([mode, entry]) => `${mode}: ${entry.root_products} source roots; ${entry.status} (not a completed-product count)`)
     .join('; ')
 );

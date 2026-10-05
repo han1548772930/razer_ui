@@ -6,33 +6,35 @@
   "root_table_sha256": "0087e1ada4be09688ac285b98640042dbafdcb7ed2ab263fb260432b32432e53",
   "generator": "tools/generate-display-mode-roots.cjs",
   "generator_sha256": "1d24e504a61c4df53ae7ef5e5869dec3cae63247f859c913d1c9c9f58f7cb3a5",
+  "count_meaning": "root_products counts branches found in source, not completed local UIs or per-product fidelity checks. Status describes shared entry coverage only.",
   "modes": {
     "armory": {
       "root_products": 226,
-      "status": "implemented",
+      "status": "partial-ui",
       "local": [
         "src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)",
         "src/features/product_workspace.rs (armory_device_page / has_armory_device_page)",
+        "src/features/armory_product.rs (independently audited 1303/1304/1313/3893 roots and category-limited 3894 root)",
         "src/shell/armory_page/device_root.rs (device panel, iframe height by device type)",
         "src/shell.rs (share entry opens the device panel next to the share form)"
       ],
-      "rule": "product has a root armory branch AND a local mapping page (adapter Customize tab or a source TAB_CUSTOMIZE page in a family renderer)",
-      "boundary": "the panel message handshake is recorded but not exchanged (both sides run in this process); audio/accessory families and products without a local mapping page keep the entry closed"
+      "rule": "product has a root armory branch AND either a local mapping page or the independently audited armory_product renderer; 3894 requires Accessory/Mousepad category",
+      "boundary": "the panel message handshake is recorded but not exchanged (both sides run in this process); other audio/accessory roots remain unimplemented; five independent roots still lack original product artwork, and 3894 DEFAULT / 3907 remain closed"
     },
     "chromaApp": {
       "root_products": 212,
-      "status": "implemented",
+      "status": "partial-ui",
       "local": [
         "src/features/chroma_product.rs (popup root, table-driven selection)",
         "src/features/product_workspace.rs (chroma_device_page / has_chroma_device_page)",
         "src/shell/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)"
       ],
-      "rule": "product has a root chromaApp branch AND a local lighting page (adapter tab set or a source TAB_LIGHTING page in a family renderer)",
-      "boundary": "audio/accessory families and products without a local lighting page keep the explicit unavailable state"
+      "rule": "product has a root chromaApp branch AND a local lighting page; 28 Audio products additionally require the generated root-to-own-Lighting component match (including the LIGHTING key of 1465)",
+      "boundary": "accessory families and unaudited Audio roots remain unavailable; connected Audio bodies retain the known incomplete controls listed in product-mode-integration-2026-10-05.md"
     },
     "macro": {
       "root_products": 174,
-      "status": "implemented-elsewhere",
+      "status": "entry-elsewhere-product-bodies-unreviewed",
       "local": [
         "src/shell/macro_page.rs (macro application window)"
       ],
@@ -41,7 +43,7 @@
     },
     "multiDevicePairing": {
       "root_products": 30,
-      "status": "implemented",
+      "status": "entry-wired-service-unconnected",
       "local": [
         "src/shell/display_window.rs (named window + policy flags)",
         "src/shell/pairing_window.rs (root view)",

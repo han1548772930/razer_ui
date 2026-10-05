@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-10-04T10:06:57Z",
+  "generated_at_utc": "2026-10-05T03:47:32Z",
   "summary": {
-    "routes": 23,
+    "routes": 24,
     "html_found": 21,
     "manifest_code_complete": 21,
     "code_results": {
@@ -5039,6 +5039,106 @@
       ],
       "skipped": [],
       "manifest_code_complete": true
+    },
+    {
+      "route": "/synapse/chroma-studio/",
+      "evidence": [
+        {
+          "source": ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
+          "offset": 9036,
+          "literal": "/synapse/chroma-studio/",
+          "sha256": "421b5d6900421a99c0520e1fe63d4a83072799ac4bb45d848fa0e8170bf70716"
+        }
+      ],
+      "endpoints": {
+        "index.html": {
+          "source_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
+          "final_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
+          "redirected": false,
+          "http_status": null,
+          "fetched_at_utc": "2026-10-05T03:47:32Z",
+          "content_type": null,
+          "last_modified": null,
+          "etag": null,
+          "result": "network_error",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "validation": null,
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-05T03:47:31Z",
+              "completed_at_utc": "2026-10-05T03:47:32Z",
+              "status": null,
+              "result": "network_error",
+              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/index.html (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9D00>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "final_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
+              "redirect_chain": []
+            }
+          ],
+          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/index.html (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9D00>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+          "body_file": "index.html.response"
+        },
+        "manifest.json": {
+          "source_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
+          "final_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
+          "redirected": false,
+          "http_status": null,
+          "fetched_at_utc": "2026-10-05T03:47:32Z",
+          "content_type": null,
+          "last_modified": null,
+          "etag": null,
+          "result": "network_error",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "validation": null,
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-05T03:47:31Z",
+              "completed_at_utc": "2026-10-05T03:47:32Z",
+              "status": null,
+              "result": "network_error",
+              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D99A0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "final_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D99A0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+          "body_file": "manifest.json.response"
+        },
+        "asset-manifest.json": {
+          "source_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
+          "final_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
+          "redirected": false,
+          "http_status": null,
+          "fetched_at_utc": "2026-10-05T03:47:32Z",
+          "content_type": null,
+          "last_modified": null,
+          "etag": null,
+          "result": "network_error",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "validation": null,
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at_utc": "2026-10-05T03:47:31Z",
+              "completed_at_utc": "2026-10-05T03:47:32Z",
+              "status": null,
+              "result": "network_error",
+              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/asset-manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9B50>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "final_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
+              "redirect_chain": []
+            }
+          ],
+          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/asset-manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9B50>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+          "body_file": "asset-manifest.json.response"
+        }
+      },
+      "files": [],
+      "skipped": [],
+      "manifest_code_complete": false
     },
     {
       "route": "/synapse/dashboard/",

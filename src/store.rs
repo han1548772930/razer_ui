@@ -110,7 +110,8 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
         );
         file
     };
-    crate::features::shortcuts::validate_shortcuts(&file.shortcuts).map_err(anyhow::Error::msg)?;
+    crate::features::shortcuts::validate_stored_shortcuts(&file.shortcuts)
+        .map_err(anyhow::Error::msg)?;
     file.preferences.validate().map_err(anyhow::Error::msg)?;
     Ok(file)
 }
@@ -126,7 +127,8 @@ pub(crate) fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Resu
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
         Err(error) => return Err(error.into()),
     };
-    crate::features::shortcuts::validate_shortcuts(&file.shortcuts).map_err(anyhow::Error::msg)?;
+    crate::features::shortcuts::validate_stored_shortcuts(&file.shortcuts)
+        .map_err(anyhow::Error::msg)?;
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)?;
     }

@@ -1,4 +1,4 @@
-//! 4130 bi/be: source card geometry, short-drag actions and per-group order.
+//! Current 22534/xi + xe: card geometry, short-drag actions and per-group order.
 //! GPUI owns drag capture/release, focus, keyboard activation and hit testing.
 use crate::{preferences::DashboardPreferences, ui::surface::css};
 use gpui_kit::base::{
@@ -49,6 +49,14 @@ impl DashboardState {
             .copied()
             .unwrap_or(false)
     }
+    pub(in crate::shell) fn banner_open(&self) -> bool {
+        self.preferences.is_banner_open.unwrap_or(true)
+    }
+    pub(in crate::shell) fn close_banner(&mut self, cx: &mut Context<Self>) {
+        self.preferences.is_banner_open = Some(false);
+        cx.emit(DashboardChanged);
+        cx.notify();
+    }
     pub(in crate::shell) fn toggle(&mut self, group: &str, cx: &mut Context<Self>) {
         self.preferences
             .groups_collapsed
@@ -81,6 +89,7 @@ impl DashboardState {
             press.initial + point(f32::from(delta.x), f32::from(delta.y)),
             metrics.columns,
             metrics.items.len(),
+            f32::from(metrics.bounds.size.width) / scale,
         );
         if (next.x - press.initial.x).abs() > 10. || (next.y - press.initial.y).abs() > 10. {
             press.short = false;
@@ -178,9 +187,9 @@ fn slot(index: usize, columns: usize) -> Point<f32> {
         (index / columns) as f32 * 240.,
     )
 }
-fn clamp_position(position: Point<f32>, columns: usize, count: usize) -> Point<f32> {
+fn clamp_position(position: Point<f32>, columns: usize, count: usize, width: f32) -> Point<f32> {
     point(
-        position.x.clamp(0., (columns - 1) as f32 * 310.),
+        position.x.clamp(0., (width - 290.).max(0.)),
         position
             .y
             .clamp(0., (count.max(1).div_ceil(columns) - 1) as f32 * 240.),
@@ -270,7 +279,7 @@ impl DashboardGrid {
         Self {
             group,
             state: state.clone(),
-            columns: ((width + 20.) / 310.).round().max(1.) as usize,
+            columns: super::dashboard_columns(width),
             cards,
         }
     }
@@ -436,8 +445,7 @@ impl RenderOnce for DashboardGrid {
                     .w(css(290.))
                     .h(css(220.))
                     .rounded(css(5.))
-                    .cursor_default()
-                    .bg(cx.theme().group_box);
+                    .cursor_default();
                 if !card.draggable {
                     return div()
                         .id(id)
@@ -445,6 +453,9 @@ impl RenderOnce for DashboardGrid {
                         .child(card.content)
                         .into_any_element();
                 }
+                // Current 55 CSS gives only .box-item a black background;
+                // .box-no-device must show the Dashboard body through it.
+                let style = style.bg(cx.theme().group_box);
                 let action = card.action.clone();
                 let frame = if let Some(url) = card.url {
                     let link = gpui_kit::base::Link::new(id.clone())

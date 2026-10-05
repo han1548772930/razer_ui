@@ -1,0 +1,225 @@
+{
+  "source_date": "2026-10-05",
+  "method": "Current manifest-listed 6505/44442 declarations parsed as Acorn data. Feedback host-beta branches retained separately; Armory feature condition remains runtime data.",
+  "generator_sha256": "5a24b164f1749e5bef1d5bb2f35ef18d46dc8e5ba3e92af264c045d55418f8e6",
+  "contracts": [
+    {
+      "symbol": "ae",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 35240,
+      "end": 40987,
+      "source": "(0,r.connect)(e=>({deviceManifest:e.devicesAndModules.deviceManifest,cachedDeviceInfo:e.devicesAndModules.cachedDeviceInfo,installedDevices:e.devicesAndModules.installedDevices,hasUpdateDevices:e.devicesAndModules.hasUpdateDevices,installedModules:e.devicesAndModules.installedModules,hasUpdateModules:e.devicesAndModules.hasUpdateModules,availableModules:e.devicesAndModules.availableModules,deviceRuntimeData:e.commonReducer.validDevices,connectedDevices:e.deviceReducer.devices,uninstallingDevices:e.devicesAndModules.uninstallingDevices,uninstallingModules:e.devicesAndModules.uninstallingModules,firmwareUpdateDevices:e.fwReducer.devices}))(e=>{let{installedDevices:t,installedModules:n,connectedDevices:i,deviceRuntimeData:r,deviceManifest:o,cachedDeviceInfo:l,uninstallingDevices:c,uninstallingModules:d,firmwareUpdateDevices:u}=e;const[m,p]=s().useState([]),{isExchangeEnabled:h}=(0,re.A)(),f=e=>{var t;let n=ne[e.name];\"armory\"===e.name&&(n=ie(h)),console.log(\"matchData\",n);if((0,se.Xx)()||\"armory\"!==(null===(t=n)||void 0===t?void 0:t.id))return n?{...n.detail||{},...e,...n,type:\"module\",id:e.name}:void 0},v=e=>{let t=[];const n=r.filter(e=>{let{category:t}=e;return\"IOT\"===t});let s=r.filter(t=>e.productId===t.productId&&t.serialNumber&&(!e.serialNumber||e.serialNumber===t.serialNumber));const a=i.filter(t=>{let{productId:n}=t;return n===e.productId}).length>0&&1===s.length;return 0!==s.length||e.serialNumber||(s=l.filter(t=>e.productId===t.productId&&0!==(null===t||void 0===t?void 0:t.serialNumber.length))),s.forEach(s=>{let l={connected:!0},c={};if(!s)return null;{var d,u;const{subDevices:m}=n.find(e=>{let{productId:t}=e;return t===s.productId})||{};if(Array.isArray(m)){c=(m||[]).find(e=>{let{serialNumber:t,productId:n}=e;return s.serialNumber===t&&n===s.productId})||{};const{isPowerOn:e,isLocked:t,isOnline:n}=c,i=!e||t||!n;l.status=i?\"disconnected\":\"connected\",l.removable=i}else c=r.find(e=>e.productId===s.productId&&e.serialNumber===s.serialNumber&&(!s.deviceContainerId||e.deviceContainerId===s.deviceContainerId)),l.status=c?\"connected\":\"disconnected\",[\"MONITOR\",\"IOT\"].includes(s.category)?l.removable=!c:l.removable=!c&&!a;l.srcImage=`/synapse/products/${s.productId}/ui/${s.productId}_${s.editionId}/PluginImages/${s.productId}_${s.editionId}_${s.layoutId}_dashboard1x.png`,l.title=s.productName,l.icon=s.category,l.type=\"device\",l.subCategory=null!==(d=s.subCategory)&&void 0!==d?d:\"\",l.isSamePIDConnected=!c&&i.filter(e=>{let{productId:t}=e;return t===s.productId}).length>0,l.deviceContainerId=null===(u=c)||void 0===u?void 0:u.deviceContainerId;const p=o.find(t=>{let{name:n}=t;return e.productId==n});p&&(l.size=p.size,l.description=p.description),t.push({...s,...l,id:e.productId,uniqueId:`${e.productId}-${s.serialNumber}`})}}),t=t.filter((e,t,n)=>{if(!e.serialNumber||\"NOSERIALNUMBER\"===e.serialNumber){var i;if(\"off\"===(null===(i=e.powerStatus)||void 0===i?void 0:i.chargingStatus)||\"off\"===e.devicePowerState||null==e.powerStatus){if(n.some(t=>{var n;return t.productId===e.productId&&t.deviceContainerId!==e.deviceContainerId&&t.serialNumber&&\"off\"!==(null===(n=t.powerStatus)||void 0===n?void 0:n.chargingStatus)&&\"off\"!==t.devicePowerState}))return!1}}return!0}),t},{newDeviceItems:g=[],newModulesItems:x={},hasUpdateItems:w=[],noUpdateItems:y=[],uninstallingDevices:A=[],uninstallingModules:j=[],installerStatus:M={}}=(()=>{const e=t.map(e=>{let{productId:t}=e;return t}),s=n.map(e=>{let{moduleName:t}=e;return t}),a={...ne,armory:ie(h)},o=Object.values(a).filter(e=>{let{id:t}=e;return!s.includes(t)});let l=i.filter(t=>{let{productId:n}=t;return!e.includes(n)});l=l.reduce((e,t)=>{const n=v(t);return n&&(e=e.concat(n)),e},[]);let u=e.reduce((e,n,i)=>{let s=v({productId:n});const r=t[i];return s&&!c.includes(n)&&(s=s.map(e=>(e.lastUpdated=r.installedDate,e)),e=e.concat(s)),e},[]);u.sort((e,t)=>\"connected\"===e.status&&\"connected\"!==t.status?-1:\"connected\"!==e.status&&\"connected\"===t.status?1:0);let m=c.reduce((e,t)=>{let n=v({productId:t});return n&&(n=n.map(e=>(e.status=\"uninstalling\",e)),e=e.concat(n)),e},[]),p=d.reduce((e,t)=>{const n=f({name:t});return n&&e.push({...n,status:\"uninstalling\"}),e},[]),g=s.reduce((e,t,i)=>{const s=f({name:t}),r=n[i];return!s||s.invalid||d.includes(t)||e.push({...s,lastUpdated:r.installedDate}),e},[]);const x=r.reduce((e,t)=>(e[t.productId]=t.setupStatus,e),{});return{uninstallingDevices:m,uninstallingModules:p,newDeviceItems:l,newModulesItems:o,hasUpdateItems:[],noUpdateItems:[...u,...g],installerStatus:x}})();return s().useEffect(()=>{(async()=>{await(async e=>{const t=(e||[]).filter(e=>e.needsUpgrade);console.log(\"DevicesAndModules - has firmware Upgradeable device (check from in-app feature) :\",t);const n=r.reduce((e,t)=>{if(t.firmwareUpdateInfo){let n=v({productId:t.productId,serialNumber:t.serialNumber});n&&n.length>0&&e.push({...t,...n[0]})}return e},[]);console.log(\"DevicesAndModules - has firmware Upgradeable device (check from external feature) :\",n);const i=n.filter(e=>!t.find(t=>t.productId===e.productId&&t.serialNumber===e.serialNumber));console.log(\"DevicesAndModules - filtered firmware Upgradeable device (exclude in-app feature) :\",i);const s=[...t,...i];console.log(\"DevicesAndModules - final firmware Upgradeable device :\",s),p(s)})(u)})()},[u,r,i,l]),console.log(\"DevicesAndModules tab data\",{newDeviceItems:g,newModulesItems:x,hasUpdateItems:w,noUpdateItems:y,uninstallingDevices:A,uninstallingModules:j,hasFirmwareUpdate:m}),(0,b.jsxs)(\"div\",{children:[(0,b.jsx)(H,{title:a.D58,items:m,hasFWUpdate:m.length>0}),(0,b.jsx)(H,{title:a.jLf,items:g,showDescription:!0,installerStatus:M}),(0,b.jsx)(H,{title:a.QgG,showDescription:!0,items:x}),null,(0,b.jsx)(H,{noProgressBar:!0,title:a.hmK,items:[...A,...j,...y]})]})})"
+    },
+    {
+      "symbol": "H",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 29116,
+      "end": 29851,
+      "source": "e=>{const{noProgressBar:t,title:n,items:i,showItemCount:r,hasFWUpdate:a,...l}=e;if(!i.length)return null;s().useEffect(()=>{if(!a)return;var e;\"true\"===sessionStorage.getItem(F.nw)&&(sessionStorage.removeItem(F.nw),null===(e=document.querySelector(\".item.firmware\"))||void 0===e||e.scrollIntoView({behavior:\"smooth\"}))},[]);return(0,b.jsxs)(\"div\",{className:\"items\",children:[(0,b.jsx)(\"div\",{className:\"item-header\",children:(0,b.jsxs)(\"div\",{className:\"header-title\",children:[(0,b.jsx)(o.A,{text:n}),r?` (${i.length})`:\"\"]})}),a?i.map(e=>(0,b.jsx)(L,{showDesc:!1,item:e,group:n,...l},e.uniqueId||e.id)):t?i.map(e=>(0,b.jsx)(O,{item:e,group:n,...l},e.uniqueId||e.id)):i.map(e=>(0,b.jsx)(w,{item:e,group:n,...l},e.uniqueId||e.id))]})}"
+    },
+    {
+      "symbol": "w",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 12624,
+      "end": 17620,
+      "source": "(0,r.connect)(e=>({lang:e.languageReducer.lang,isOnline:e.connection.isOnline,installerStatus:e.devicesAndModules.installerStatus}))(e=>{const{installerStatus:t,item:n,isOnline:s,showDescription:r,showChangeLog:w}=e,y=e.lang.toLowerCase(),[A,j]=(0,i.useState)(!1),[M,I]=(0,i.useState)(!1),{downloadedPercent:N,installedFiles:D,phase:S,totalFiles:$}=t[n.id]||{},k=()=>{const e=new BroadcastChannel(`installation_${n.type}_${n.id}`);e.postMessage({msg:\"install-cancel\"}),e.close()},C=()=>{if(\"device\"===n.type){const e=new BroadcastChannel(`usb_5426_${n.id}_${n.deviceContainerId}_mw`);e.postMessage({msgName:\"crossPageRequest\",msgData:{action:\"retryInstall\"}}),e.close()}else\"macro\"===n.id&&(window.open(\"/installer/#type=module&id=macro&location=synapse/macro\",\"synapse_install_macro\",\"policy=7,tab_visible=0,browser_visible=0\"),x.A.userOpen(g.zI[0])),\"alexa\"===n.id&&(window.open(\"/installer/#type=module&id=alexa&location=synapse/alexa\",\"synapse_install_alexa\",\"policy=7,tab_visible=0,browser_visible=0\"),x.A.userOpen(g.zI[1])),\"feedback\"===n.id&&window.open(\"/installer/#type=module&id=feedback&location=feedback\",\"synapse_install_feedback\",\"policy=7,tab_visible=0,browser_visible=0\")};let _=0,T=100;\"downloading\"===S&&(_=N),\"installing\"===S&&(_=D,T=$),\"completed\"===S&&(_=$,T=$);const[E,z]=(0,f.p7)(_||0,T,{phase:S,installData:{size:n.size}}),O=()=>I(!0),U=\"device\"===n.type?(0,v.U)({category:n.icon,subCategory:n.subCategory}):(0,b.jsx)(\"img\",{src:n.icon}),Y=y.toLowerCase(),V=void 0!==n.title[Y]?n.title[Y]:n.title.en;return(0,b.jsxs)(\"div\",{className:\"item\",children:[(0,b.jsxs)(\"div\",{className:\"item-main-content connected\",children:[(0,b.jsx)(\"div\",{className:\"item-icon\",children:U}),(0,b.jsx)(\"div\",{className:\"item-name\",children:V}),(0,b.jsxs)(\"div\",{className:\"to-left\",children:[(r||w)&&(0,b.jsx)(\"div\",{className:\"info-text link\",onClick:()=>j(!A),children:(0,b.jsx)(\"div\",{className:\"link\",children:n.detail?A?(0,b.jsx)(o.A,{text:a.Ndl}):(0,b.jsx)(o.A,{text:a.pmk}):null})}),(0,b.jsx)(\"div\",{className:\"second-from-left info-text last-update-time\",children:(()=>{let e;switch(S){case\"installing\":e=`${(0,l.getTextItem)(a.Uxl)}...`;break;case\"downloading\":e=100===E?`${(0,l.getTextItem)(a.HST)}...`:`${(0,l.getTextItem)(a.FHr)} ${z}`;break;case\"error\":e=(0,l.getTextItem)(a.jA5);break;default:e=`${(0,l.getTextItem)(a.uEA)}...`}return[\"downloading\",\"installing\"].includes(S)?(0,b.jsxs)(\"div\",{className:\"progress-bar-wrapper\",children:[(0,b.jsx)(p.A,{progress:E,extraStyle:{width:200,height:8}}),(0,b.jsx)(\"div\",{className:\"progress-bar-info\",children:e})]}):\"error\"===S?(0,b.jsx)(\"span\",{className:\"error\",children:e}):null})()}),(()=>{const e=s?\"\":\" disabled no-internet\",t=100===E?\" disabled\":\"\",i=s?\"\":\" disabled\";if(n.underMaintenance)return(0,b.jsxs)(\"div\",{className:\"item-action under-maintenance\",children:[(0,b.jsx)(\"i\",{className:\"cone-icon\"}),(0,b.jsx)(\"span\",{children:(0,b.jsx)(o.A,{text:a.mcz})})]});let r;switch(S){case\"installing\":r=(0,b.jsx)(\"div\",{className:\"item-action btn btn-gray disabled\",children:(0,b.jsx)(o.A,{text:a.bOp})});break;case\"downloading\":r=(0,b.jsx)(\"div\",{className:\"item-action btn btn-gray \"+t,onClick:k,children:(0,b.jsx)(o.A,{text:a.bOp})});break;case\"error\":r=(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.p6C})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]});break;case\"canceled\":r=s?(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]}):(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+i,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})});break;default:r=s?(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})}):(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,children:(0,b.jsx)(o.A,{text:a.gF2})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]})}return r})()]})]}),A?(0,b.jsxs)(\"div\",{className:\"item-moreInfo item-description\",children:[(0,b.jsx)(\"img\",{className:\"item-description-image\",src:M?h:n.detail.srcImage,alt:c(n.detail.title,y),onError:O}),(0,b.jsxs)(\"div\",{className:\"item-description-info\",children:[(0,b.jsx)(\"div\",{className:\"item-description-content\",dangerouslySetInnerHTML:{__html:d(n.detail.description,y)}}),(0,b.jsxs)(\"div\",{className:\"item-description-extra-info\",children:[n.detail.learnMoreURL&&(0,b.jsx)(\"div\",{className:\"link\",children:(0,b.jsx)(m.A,{href:n.detail.learnMoreURL,onClick:()=>!1,children:(0,b.jsx)(o.A,{text:a.HkB})})}),(0,b.jsxs)(\"div\",{className:\"item-description-extra-info-fileSize\",children:[(0,b.jsx)(o.A,{text:a.SKL}),`: ${u(n.detail.size).size}`]}),n.detail.restartRequired?(0,b.jsx)(o.A,{text:a.kVo}):null]})]})]}):null]})})"
+    },
+    {
+      "symbol": "O",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 20291,
+      "end": 23250,
+      "source": "(0,r.connect)(e=>({lang:e.languageReducer.lang,canRemoveMacro:e.devicesAndModules.canRemoveMacro}))(e=>{let{lang:t,item:n,canRemoveMacro:r,group:c}=e;const[d,u]=(0,i.useState)(!1),[m,p]=(0,i.useState)(!1),h=()=>{setTimeout(()=>{u(!0)},100)},f=e=>{if(u(!1),p(!1),e){if(\"IOT\"===n.category&&(()=>{const{deviceContainerId:e,productId:t}=n;(0,T.G)(t,e,\"ON_REMOVE_IOT\")})(),\"number\"===typeof n.id&&\"device\"===n.type){new BroadcastChannel(\"background-manager\").postMessage({msgName:\"uninstallDevice\",msgData:{productId:n.id,serialNumber:n.serialNumber,isSamePIDConnected:n.isSamePIDConnected}})}\"module\"===n.type&&k(n.id,m)}},g=t.toLowerCase();let x=M()(new Date(n.lastUpdated)).format(\"DD/MM/YYYY\");\"en\"===g&&(x=M()(new Date(n.lastUpdated)).format(\"MMM DD YYYY\")),\"ja\"===g&&(x=M()(new Date(n.lastUpdated)).format(\"YYYY年 MM月 DD日\")),\"kr\"===g&&(x=M()(new Date(n.lastUpdated)).format(\"YYYY년 MM월 DD일\")),\"ru\"===g&&(x=M()(new Date(n.lastUpdated)).format(\"DD.MM.YYYY\")),\"zh-cn\"!==g&&\"zh-tw\"!==g||(x=M()(new Date(n.lastUpdated)).format(\"YYYY年 MM月 DD日\"));const w=\"device\"===n.type?(0,v.U)({category:n.icon,subCategory:n.subCategory}):(0,b.jsx)(\"img\",{src:n.icon}),j=n.title?void 0!==n.title[g]?n.title[g]:n.title.en:\"\",D=\"disconnected\"===n.status,S=\"module\"===n.type&&n.removable?(()=>{const e=n.id.toUpperCase().replace(\"-\",\"_\");return E[`REMOVE_${e}_SETTINGS`]})():\"\";return s().useEffect(()=>{d&&\"disconnected\"!==n.status&&u(!1)},[n]),(0,b.jsxs)(\"div\",{className:\"item\",children:[(0,b.jsxs)(\"div\",{className:`item-main-content ${c.toLowerCase()} ${D?\"disconnected\":\"connected\"}`,children:[(0,b.jsx)(\"div\",{className:\"item-icon \"+(D?\"disabled\":\"\"),children:w}),(0,b.jsx)(\"div\",{className:\"item-name \"+(D?\"disabled\":\"\"),children:`${j} ${D?`(${(0,l.getTextItem)(a._NJ)})`:\"\"} `}),(0,b.jsxs)(\"div\",{className:\"to-left\",children:[\"uninstalling\"!==n.status&&(0,b.jsx)(\"div\",{className:\"second-from-left info-text last-update-time\",children:`${(0,l.getTextItem)(a.BPZ)}: ${x}`}),(()=>{if(\"uninstalling\"===n.status)return(0,b.jsxs)(\"div\",{className:\"item-action info-text\",style:{display:\"flex\",alignItems:\"center\"},children:[(0,b.jsx)(\"div\",{className:\"loader show\",style:{backgroundImage:`url(${N.A})`,marginRight:\"5px\"}}),(0,b.jsx)(o.A,{text:a.eM3}),(0,b.jsx)(\"img\",{src:I.A})]});let e=!n.removable;return n.removable&&\"module\"===n.type&&\"macro\"===n.id&&(e=!r),(0,b.jsx)(\"div\",{className:\"item-action info-text remove-link  \"+(e?\"disabled\":\"\"),onClick:h,children:(0,b.jsx)(o.A,{text:a.t20})})})()]})]}),\"macro\"!==n.id&&(0,b.jsx)(A.A,{active:d,confirmDel:f,title:\"device\"===n.type?a.tCr:a.jU4,deleteMsg:(0,l.getTextItem)(\"device\"===n.type?a.s2b:a.IvZ,{title:n.title&&n.title[g]}),children:\"module\"===n.type&&n.removable&&(0,b.jsx)(y.A,{id:`clear-settings-${n.id}`,active:m,onCheck:()=>p(e=>!e),name:S})}),d&&\"macro\"===n.id&&\"module\"===n.type&&(0,b.jsx)(A.A,{className:\"custom-macro-alert\",active:d,confirmDel:f,title:\"device\"===n.type?a.tCr:a.jU4,children:(0,b.jsx)(z,{})})]})})"
+    },
+    {
+      "symbol": "L",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 23655,
+      "end": 29092,
+      "source": "(0,r.connect)(e=>({lang:\"unknown\"===e.languageReducer.lang?\"en\":e.languageReducer.lang}))(e=>{let{lang:t,item:n}=e;const[i,r]=s().useState(!1),c=\"SDK\"===n.upgradeMode,{warningText:d,isEntryEnabled:p}=s().useMemo(()=>c?(e=>{const{connectType:t}=e;let n=\"\",i=!0;var s,r;return t===V?(e.isSlaveDevice||e.supportDongle&&!1===(null===(s=e.supportUpgradeConnection)||void 0===s?void 0:s.dongle))&&(i=!1,!1!==(null===(r=e.supportUpgradeConnection)||void 0===r?void 0:r.usb)&&(n=a.Lw$)):t===R&&(i=!1,n=a.gcx),{warningText:n,isEntryEnabled:i}})(n):{warningText:\"\",isEntryEnabled:!0},[n.connectType,n.isSlaveDevice,n.supportDongle,n.supportUpgradeConnection,c]),h=n.firmwareUpdateInfo,f=s().useCallback(async e=>{try{const{productId:t,serialNumber:n}=e;await w(e);const i=(e=>U.stringify({productId:e}))(t),s=window.location.origin+g.Yb.url+`?${i}`;window.open(s,((e,t)=>g.Yb.windowName+`_${e}_${t}`)(t,n),g.Yb.openParam)}catch(t){console.warn(\"[openFirmwareUpdate] error:\",t)}},[]),x=s().useCallback(async e=>{var t;console.log(\"Opening online firmware update guide for device:\",e.productId,e.firmwareUpdateInfo),D.A.openExternalWindow(null===(t=e.firmwareUpdateInfo)||void 0===t?void 0:t.guide),console.log(\"View Online clicked and handled over.\")},[]),w=s().useCallback(async e=>{try{const t=await D.A.getWindowStorageItem(\"fw-upgrade\"),n=t?JSON.parse(t):[];let i=[];if(Array.isArray(n)&&n.length>0){const e=n.find(e=>e.windowName.includes(window.location.href));i=(null===e||void 0===e?void 0:e.value)||[]}i=i.filter(t=>t.serialNumber!==e.serialNumber||t.productId!==e.productId),i.push(e),await D.A.setWindowStorageItem(\"fw-upgrade\",i).finally(()=>{console.log(\"FirmwareUpdate Entry updateWindowStorage - Updated fw-upgrade data:\",JSON.stringify(i))})}catch(t){console.warn(\"[updateWindowStorage] error:\",t)}},[]),y=t.toLowerCase(),{releaseDate:A,releaseNotes:j,size:M,severity:I,targetVersion:N}=((e,t)=>{var n,i,s,r,a,o,l,c,d,u;const m={releaseDate:\"\",releaseNotes:[],size:0,severity:\"\",targetVersion:\"\"};let p=e.connectType===V?null===(n=e.firmwareUpdateInfo)||void 0===n?void 0:n.dongle:e.firmwareUpdateInfo;if(e.connectType!==V||null!==(i=e.firmwareUpdateInfo)&&void 0!==i&&null!==(s=i.dongle)&&void 0!==s&&s.targetFWVersion&&(null===(r=e.firmwareUpdateInfo)||void 0===r||null===(a=r.dongle)||void 0===a?void 0:a.targetFWVersion)!==(null===(o=e.firmwareInfo)||void 0===o?void 0:o.currentDongleFWVersion)||(e.supportUsb&&e.firmwareUpdateInfo.targetFWVersion!==e.firmwareInfo.currentFWVersion?p=e.firmwareUpdateInfo:console.warn(\"[getReleaseInfo] No valid firmware update info found for device:\",e.productId)),!p)return{...m,releaseDate:W(\"\",t)};const h={releaseDate:p.releaseDate,releaseNotes:null!==(l=p.releaseNotes)&&void 0!==l?l:m.releaseNotes,size:(null===(c=p)||void 0===c?void 0:c.size)||m.size,severity:(null===(d=p)||void 0===d?void 0:d.severity)||m.severity,targetVersion:(null===(u=p)||void 0===u?void 0:u.targetFWVersion)||m.targetVersion};return{...h,releaseDate:W(h.releaseDate,t)}})(n,y);console.log(\"FirmwareUpdateItem - Device:\",n.productId,\"FWInfo:\",JSON.stringify(h||{})),console.log(\"Warning text for device:\",n.productId,\"isEntryEnabled:\",p,\"warningText:\",d);const S=(0,v.U)({category:n.category||n.icon,subCategory:n.subCategory}),$=((e,t)=>{if(e.productName){if(\"string\"===typeof e.productName)return e.productName;if(\"object\"===typeof e.productName)return e.productName[t]||e.productName.en||\"\"}if(e.title){if(\"string\"===typeof e.title)return e.title;if(\"object\"===typeof e.title)return e.title[t]||e.title.en||\"\"}return\"\"})(n,y),k=!p&&d?(0,b.jsxs)(\"div\",{className:\"warning-box\",children:[(0,b.jsx)(\"span\",{className:\"warning-icon\",children:(0,b.jsx)(Y.h,{})}),(0,b.jsx)(\"span\",{className:\"firmware-warning-text\",children:(0,b.jsx)(o.A,{text:d})})]}):null,C=a.q8m,_=\"warning\"===I;return(0,b.jsxs)(\"div\",{className:\"item firmware\",children:[(0,b.jsxs)(\"div\",{className:\"item-main-content \"+(_?\"updateWarning\":\"\"),children:[(0,b.jsx)(\"div\",{className:\"item-icon\",children:S}),(0,b.jsx)(\"div\",{className:\"item-name\",children:`${$} ${_?` (${T=(0,l.getTextItem)(a.Inm),T.toLowerCase().split(\" \").map(e=>e.charAt(0).toUpperCase()+e.substring(1)).join(\" \")})`:\"\"}`}),(0,b.jsxs)(\"div\",{className:\"to-left\",children:[(0,b.jsx)(\"div\",{className:\"info-text link firmware-upgrade-info-text\",children:(0,b.jsx)(\"div\",{className:\"link\",onClick:()=>r(!i),children:i?(0,b.jsx)(o.A,{text:a.Ndl}):(0,b.jsx)(o.A,{text:a.pmk})})}),(0,b.jsx)(\"div\",{className:\"second-from-left info-text last-update-time\",children:k}),(0,b.jsx)(\"button\",{className:\"item-action btn btn-gray firmware-upgrade-btn \"+(p?\"\":\"disabled\"),onClick:()=>c?f(n):x(n),disabled:!p,children:(0,b.jsx)(o.A,{text:C})})]})]}),i&&(0,b.jsxs)(\"div\",{className:\"firmwareDescription\",children:[(0,b.jsxs)(\"div\",{className:\"leftContent\",children:[(0,b.jsxs)(\"p\",{children:[\" \",(0,b.jsx)(o.A,{text:a.xMD,data:{version:N}})]}),(0,b.jsxs)(\"p\",{children:[\" \",` ${(0,l.getTextItem)(a.iB1)}: ${A}`]}),c?(0,b.jsx)(\"p\",{}):(0,b.jsxs)(\"p\",{children:[\" \",`${(0,l.getTextItem)(a.SKL)}: `,`${u(M).size}`]})]}),(0,b.jsxs)(\"div\",{className:\"rightContent\",children:[(0,b.jsx)(m.A,{href:h.guide,onClick:()=>!1,children:(0,b.jsx)(o.A,{text:\"SYSTEM\"===n.icon?a.Pvt:a.zek,data:{deviceName:$,version:N}})}),(0,b.jsx)(\"ul\",{children:j.map(e=>{const n=e[t]||e[y]||e.en;return String(null!==n&&void 0!==n?n:\"\").trim()}).filter(Boolean).map((e,t)=>(0,b.jsx)(\"li\",{children:e},t))})]})]})]});var T})"
+    },
+    {
+      "symbol": "ne",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 34632,
+      "end": 35118,
+      "source": "{alexa:{title:ee.alexa,id:\"alexa\",icon:q.A,detail:{srcImage:P,description:te.alexa,size:0,learnMoreURL:\"https://www.razer.com/chroma/alexa\"},underMaintenance:!1,removable:!0},macro:{title:ee.macro,id:\"macro\",icon:B.A,detail:{srcImage:J,description:te.macro,size:0},removable:!0},linkedGames:{title:ee.linkedGames,id:\"linkedGames\",icon:G.A,removable:!1},feedback:{title:ee.feedback,id:\"feedback\",icon:Z.A,removable:!1},armory:{title:ee.armory_workshop,id:\"armory\",icon:K.A,removable:!1}}"
+    },
+    {
+      "symbol": "te",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 31248,
+      "end": 34628,
+      "source": "{macro:{en:\"Bring powerful macros to your favorite games with Macro module. Easily create a string of complex button presses, and then precisely execute game-winning combinations with a single press\",es:\"Crea potentes macros para tus juegos favoritos con el módulo Macro. Crea fácilmente una secuencia de pulsaciones de botones complejas para poder ejecutar combinaciones ganadoras con precisión pulsando una sola tecla.\",de:\"Hol dir mit dem Makro-Modul starke Makros für deine Lieblingsspiele. Erstelle dir ganz einfach eine Abfolge komplexer Tastenkombinationen und führe die Kombinationen, die dir zum Spielgewinn verhelfen, mit nur einem Tastendruck aus\",fr:\"Créez de puissantes macros pour vos jeux favoris avec le module Macro. Créez facilement une chaîne complexe de frappes de boutons et exécutez précisément des combinaisons gagnantes avec une simple pression\",ja:\"マクロ モジュールを活用してあなたのお気に入りのゲームで強力なマクロを使えるようにしましょう。複雑なボタンシーケンスを簡単に作成して、勝利につながるコンボをたった一つのキー操作で正確に実行できます\",kr:\"매크로 모듈을 통해 가장 좋아하는 게임들에서 강력한 매크로들을 활용해 보십시오. 복잡한 버튼 누름 문자열을 손쉽게 생성하여 단 한 번의 누름으로 게임에서 이길 수 있는 키 조합을 정확하게 실행하십시오\",\"pt-br\":\"Adicione macros poderosas aos seus jogos favoritos com o módulo Macro. Crie facilmente uma série de pressionamentos de botões complexos e, em seguida, execute com precisão combinações vencedoras de jogos com um único pressionamento\",ru:\"Модуль Macro позволяет добавлять многофункциональные макросы в свои любимые игры. Вы можете без труда создавать последовательности сложных клавишных сочетаний, а затем выполнять победные комбинации всего одним нажатием.\",\"zh-cn\":\"通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的按键敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合\",\"zh-tw\":\"使用「巨集」模組，讓你在喜愛的遊戲中使用強大的巨集功能。輕鬆打造一組複雜的按鈕順序，然後只要輕輕按一下，就能精確執行可扭轉戰局的組合\"},alexa:{en:\"The Amazon Alexa module brings full Alexa Voice Service integration to Synapse for all Chroma enabled devices. Requires active microphone and Amazon Alexa account.\",es:\"El módulo Amazon Alexa ofrece una integración total con el Alexa Voice Service en Synapse y todos los dispositivos compatibles con Chroma. Requiere un micrófono activo y una cuenta Amazon Alexa.\",de:\"Das Amazon Alexa-Modul bietet volle Alexa Sprachedienst-Integration unter Razer Synapse für alle Geräte mit Razer Chroma-Unterstützung. Benötigt ein aktives Mikrofon und ein Amazon Alexa-Konto.\",fr:\"Le module Amazon Alexa permet d'intégrer complètement le Alexa Voice Service à Synapse pour tous les appareils compatibles avec Chroma. Requiert un microphone actif et un compte Amazon Alexa.\",ja:\"Amazon Alexa モジュールにより、すべての Chroma 対応デバイスで Synapse を Alexa Voice Service と完全統合することができます。アクティブマイクと Amazon Alexa アカウントが必要です。\",kr:\"Amazon Alexa 모듈은 모든 Chroma 기기를 지원하도록 Synapse와 Alexa Voice Service를 완벽하게 연동시켜 줍니다. 사용 가능한 마이크와 Amazon Alexa 계정이 필요합니다.\",\"pt-br\":\"O módulo Amazon Alexa oferece uma integração completa do Alexa Voice Service com o Synapse para todos os dispositivos habilitados para Chroma. Exige um microfone ativo e uma conta Amazon Alexa.\",ru:\"Модуль Amazon Alexa обеспечивает полную интеграцию сервиса Alexa Voice Service с Synapse для всех устройств с поддержкой технологии Chroma. Требуется активный микрофон и учетная запись Amazon Alexa.\",\"zh-cn\":\"对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云 中。需要有效的麦克风和 Amazon Alexa 账户。\",\"zh-tw\":\"Amazon Alexa 模組將完整的 Alexa Voice Service 整合到 Synapse，可供所有支援 Chroma 的裝置使用。必須有可使用的麥克風與 Amazon Alexa 帳戶。\"},linkedGames:null}"
+    },
+    {
+      "symbol": "ee",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 30034,
+      "end": 31244,
+      "source": "{macro:{en:\"Macro\",\"zh-cn\":\"宏\",de:\"Makro\",es:\"Macro\",fr:\"Macro\",ja:\"マクロ\",kr:\"매크로\",\"pt-br\":\"Macro\",ru:\"МАКРОСЫ\",\"zh-tw\":\"巨集\"},linkedGames:{en:\"Linked Games\",\"zh-cn\":\"已关联的游戏\",de:\"Verknüpfte Spiele\",es:\"Juegos vinculados\",fr:\"Jeux associés\",ja:\"リンクされたゲーム\",kr:\"연결된 게임\",\"pt-br\":\"Jogos vinculados\",ru:\"Привязанные игры\",\"zh-tw\":\"連結的遊戲\"},alexa:{en:\"Alexa\",\"zh-cn\":\"Alexa\",de:\"Alexa\",es:\"Alexa\",fr:\"Alexa\",ja:\"Alexa\",kr:\"Alexa\",\"pt-br\":\"Alexa\",ru:\"Alexa\",\"zh-tw\":\"Alexa\"},feedback:{en:X.Vb?\"Feedback On Beta\":\"Feedback\",\"zh-cn\":X.Vb?\"对测试版的反馈\":\"反馈\",de:X.Vb?\"Feedback zur Beta\":\"Feedback\",es:X.Vb?\"Comentarios sobre Beta\":\"Comentarios\",fr:X.Vb?\"Commentaires sur la version bêta\":\"Commentaires\",ja:X.Vb?\"ベータ版フィードバック\":\"フィードバック\",kr:X.Vb?\"베타에 대한 피드백\":\"피드백\",\"pt-br\":X.Vb?\"Feedback para Beta\":\"Feedback\",ru:X.Vb?\"Обратная связь по бета-версии\":\"Обратная связь\",\"zh-tw\":X.Vb?\"測試版軟體意見回饋\":\"回饋\"},armory_workshop:{en:\"Workshop\",\"zh-cn\":\"工坊\",de:\"Workshop\",es:\"Workshop\",fr:\"Workshop\",ja:\"Workshop\",kr:\"Workshop\",\"pt-br\":\"Workshop\",ru:\"Workshop\",\"zh-tw\":\"Workshop\"},armory_exchange:{en:\"Exchange\",\"zh-cn\":\"互换\",de:\"Exchange\",es:\"Exchange\",fr:\"Exchange\",ja:\"Exchange\",kr:\"Exchange\",\"pt-br\":\"Exchange\",ru:\"Exchange\",\"zh-tw\":\"Exchange\"}}"
+    },
+    {
+      "symbol": "ie",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 35122,
+      "end": 35202,
+      "source": "e=>({...ne.armory,title:e?ee.armory_exchange:ee.armory_workshop,icon:e?Q.A:K.A})"
+    },
+    {
+      "symbol": "u",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 12168,
+      "end": 12459,
+      "source": "function u(e,t){let n=!(arguments.length>2&&void 0!==arguments[2])||arguments[2];if(0===e)return{i:0,size:\"< 1 MB\"};t||(t=parseInt(Math.floor(Math.log(e)/Math.log(1024))));const i=Math.round(e/Math.pow(1024,t),2);return{i:t,value:i,size:`${i}${n?` ${[\"Bytes\",\"KB\",\"MB\",\"GB\",\"TB\"][t]}`:\"\"}`}}"
+    }
+  ],
+  "armory_features": {
+    "path": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+    "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a",
+    "offset": 89052,
+    "end": 90749,
+    "source": "()=>{const[e,t]=(0,s.useState)(!1),[a,i]=(0,s.useState)(!1),[o,r]=(0,s.useState)(!1),[l,d]=(0,s.useState)(!1),[c,p]=(0,s.useState)(!1),[u,h]=(0,s.useState)(!1),[m,S]=(0,s.useState)(!1),[g,v]=(0,s.useState)(!0),[C,_]=(0,s.useState)(null);return(0,s.useEffect)(()=>((async()=>{try{var e,a,s,o;console.log(\"[useArmoryFeatures] Starting to load Armory feature flags...\"),v(!0),_(null);const[l,c]=await Promise.all([(0,n.kR)(),(0,n.$j)()]),u=null!==(e=null===l||void 0===l?void 0:l.profileSharing)&&void 0!==e&&e,g=null!==(a=null===l||void 0===l?void 0:l.macroSharing)&&void 0!==a&&a,C=null!==(s=null===l||void 0===l?void 0:l.armoryNameChangeToWorkshop)&&void 0!==s&&s,E=null!==(o=null===c||void 0===c?void 0:c.chromaSharing)&&void 0!==o&&o,f=u&&g&&C,w=E,M=!u&&!g&&!E||!C;t(u),i(g),r(C),d(E),p(f),h(w),S(M),console.log(\"[useArmoryFeatures] Feature flags loaded successfully:\",{phase1:{profileSharing:u,macroSharing:g,armoryNameChangeToWorkshop:C,isPhase1FeaturesEnabled:f},phase2:{chromaSharing:E,isPhase2FeaturesEnabled:w},isExchangeEnabled:m})}catch(l){console.warn(\"[useArmoryFeatures] Failed to load Armory feature flags\",l),console.error(\"[useArmoryFeatures] Error details:\",{message:null===l||void 0===l?void 0:l.message,stack:null===l||void 0===l?void 0:l.stack,error:l}),_(l instanceof Error?l:new Error(\"Unknown error\"))}finally{v(!1),console.log(\"[useArmoryFeatures] Loading completed. isLoading:\",!1)}})(),()=>{console.log(\"[useArmoryFeatures] Hook unmounting, cleaning up...\")}),[]),{isPhase1FeaturesEnabled:c,isPhase2FeaturesEnabled:u,isProfileSharingEnabled:e,isMacroSharingEnabled:a,isArmoryNameChangeToWorkshopEnabled:o,isChromaSharingEnabled:l,isExchangeEnabled:m,isLoading:g,error:C}}"
+  },
+  "data": {
+    "ids": [
+      "alexa",
+      "macro",
+      "linkedGames",
+      "feedback",
+      "armory"
+    ],
+    "titles": {
+      "macro": {
+        "en": "Macro",
+        "zh-cn": "宏",
+        "de": "Makro",
+        "es": "Macro",
+        "fr": "Macro",
+        "ja": "マクロ",
+        "kr": "매크로",
+        "pt-br": "Macro",
+        "ru": "МАКРОСЫ",
+        "zh-tw": "巨集"
+      },
+      "linkedGames": {
+        "en": "Linked Games",
+        "zh-cn": "已关联的游戏",
+        "de": "Verknüpfte Spiele",
+        "es": "Juegos vinculados",
+        "fr": "Jeux associés",
+        "ja": "リンクされたゲーム",
+        "kr": "연결된 게임",
+        "pt-br": "Jogos vinculados",
+        "ru": "Привязанные игры",
+        "zh-tw": "連結的遊戲"
+      },
+      "alexa": {
+        "en": "Alexa",
+        "zh-cn": "Alexa",
+        "de": "Alexa",
+        "es": "Alexa",
+        "fr": "Alexa",
+        "ja": "Alexa",
+        "kr": "Alexa",
+        "pt-br": "Alexa",
+        "ru": "Alexa",
+        "zh-tw": "Alexa"
+      },
+      "feedback": {
+        "en": "Feedback",
+        "zh-cn": "反馈",
+        "de": "Feedback",
+        "es": "Comentarios",
+        "fr": "Commentaires",
+        "ja": "フィードバック",
+        "kr": "피드백",
+        "pt-br": "Feedback",
+        "ru": "Обратная связь",
+        "zh-tw": "回饋"
+      },
+      "feedback_beta": {
+        "en": "Feedback On Beta",
+        "zh-cn": "对测试版的反馈",
+        "de": "Feedback zur Beta",
+        "es": "Comentarios sobre Beta",
+        "fr": "Commentaires sur la version bêta",
+        "ja": "ベータ版フィードバック",
+        "kr": "베타에 대한 피드백",
+        "pt-br": "Feedback para Beta",
+        "ru": "Обратная связь по бета-версии",
+        "zh-tw": "測試版軟體意見回饋"
+      },
+      "armory_workshop": {
+        "en": "Workshop",
+        "zh-cn": "工坊",
+        "de": "Workshop",
+        "es": "Workshop",
+        "fr": "Workshop",
+        "ja": "Workshop",
+        "kr": "Workshop",
+        "pt-br": "Workshop",
+        "ru": "Workshop",
+        "zh-tw": "Workshop"
+      },
+      "armory_exchange": {
+        "en": "Exchange",
+        "zh-cn": "互换",
+        "de": "Exchange",
+        "es": "Exchange",
+        "fr": "Exchange",
+        "ja": "Exchange",
+        "kr": "Exchange",
+        "pt-br": "Exchange",
+        "ru": "Exchange",
+        "zh-tw": "Exchange"
+      }
+    },
+    "descriptions": {
+      "macro": {
+        "en": "Bring powerful macros to your favorite games with Macro module. Easily create a string of complex button presses, and then precisely execute game-winning combinations with a single press",
+        "es": "Crea potentes macros para tus juegos favoritos con el módulo Macro. Crea fácilmente una secuencia de pulsaciones de botones complejas para poder ejecutar combinaciones ganadoras con precisión pulsando una sola tecla.",
+        "de": "Hol dir mit dem Makro-Modul starke Makros für deine Lieblingsspiele. Erstelle dir ganz einfach eine Abfolge komplexer Tastenkombinationen und führe die Kombinationen, die dir zum Spielgewinn verhelfen, mit nur einem Tastendruck aus",
+        "fr": "Créez de puissantes macros pour vos jeux favoris avec le module Macro. Créez facilement une chaîne complexe de frappes de boutons et exécutez précisément des combinaisons gagnantes avec une simple pression",
+        "ja": "マクロ モジュールを活用してあなたのお気に入りのゲームで強力なマクロを使えるようにしましょう。複雑なボタンシーケンスを簡単に作成して、勝利につながるコンボをたった一つのキー操作で正確に実行できます",
+        "kr": "매크로 모듈을 통해 가장 좋아하는 게임들에서 강력한 매크로들을 활용해 보십시오. 복잡한 버튼 누름 문자열을 손쉽게 생성하여 단 한 번의 누름으로 게임에서 이길 수 있는 키 조합을 정확하게 실행하십시오",
+        "pt-br": "Adicione macros poderosas aos seus jogos favoritos com o módulo Macro. Crie facilmente uma série de pressionamentos de botões complexos e, em seguida, execute com precisão combinações vencedoras de jogos com um único pressionamento",
+        "ru": "Модуль Macro позволяет добавлять многофункциональные макросы в свои любимые игры. Вы можете без труда создавать последовательности сложных клавишных сочетаний, а затем выполнять победные комбинации всего одним нажатием.",
+        "zh-cn": "通过宏模块为你喜爱的游戏引入强大的宏功能。轻松创建一组复杂的按键敲击操作，然后只需轻轻一按，即可准确地执行致胜的按键组合",
+        "zh-tw": "使用「巨集」模組，讓你在喜愛的遊戲中使用強大的巨集功能。輕鬆打造一組複雜的按鈕順序，然後只要輕輕按一下，就能精確執行可扭轉戰局的組合"
+      },
+      "alexa": {
+        "en": "The Amazon Alexa module brings full Alexa Voice Service integration to Synapse for all Chroma enabled devices. Requires active microphone and Amazon Alexa account.",
+        "es": "El módulo Amazon Alexa ofrece una integración total con el Alexa Voice Service en Synapse y todos los dispositivos compatibles con Chroma. Requiere un micrófono activo y una cuenta Amazon Alexa.",
+        "de": "Das Amazon Alexa-Modul bietet volle Alexa Sprachedienst-Integration unter Razer Synapse für alle Geräte mit Razer Chroma-Unterstützung. Benötigt ein aktives Mikrofon und ein Amazon Alexa-Konto.",
+        "fr": "Le module Amazon Alexa permet d'intégrer complètement le Alexa Voice Service à Synapse pour tous les appareils compatibles avec Chroma. Requiert un microphone actif et un compte Amazon Alexa.",
+        "ja": "Amazon Alexa モジュールにより、すべての Chroma 対応デバイスで Synapse を Alexa Voice Service と完全統合することができます。アクティブマイクと Amazon Alexa アカウントが必要です。",
+        "kr": "Amazon Alexa 모듈은 모든 Chroma 기기를 지원하도록 Synapse와 Alexa Voice Service를 완벽하게 연동시켜 줍니다. 사용 가능한 마이크와 Amazon Alexa 계정이 필요합니다.",
+        "pt-br": "O módulo Amazon Alexa oferece uma integração completa do Alexa Voice Service com o Synapse para todos os dispositivos habilitados para Chroma. Exige um microfone ativo e uma conta Amazon Alexa.",
+        "ru": "Модуль Amazon Alexa обеспечивает полную интеграцию сервиса Alexa Voice Service с Synapse для всех устройств с поддержкой технологии Chroma. Требуется активный микрофон и учетная запись Amazon Alexa.",
+        "zh-cn": "对于所有支持 Chroma 幻彩的设备，Amazon Alexa 模块将完整的 Alexa Voice Service 集成到 Synapse 雷云 中。需要有效的麦克风和 Amazon Alexa 账户。",
+        "zh-tw": "Amazon Alexa 模組將完整的 Alexa Voice Service 整合到 Synapse，可供所有支援 Chroma 的裝置使用。必須有可使用的麥克風與 Amazon Alexa 帳戶。"
+      },
+      "linkedGames": null
+    },
+    "details": {
+      "alexa": {
+        "size": 0,
+        "learnMoreURL": "https://www.razer.com/chroma/alexa"
+      },
+      "macro": {
+        "size": 0
+      }
+    }
+  }
+}

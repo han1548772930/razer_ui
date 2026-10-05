@@ -1,6 +1,7 @@
 //! Current Chroma Dashboard 23322/Ks, 62296/Wn and 77778/Se.
 //! This owns local view preferences; it does not invent SDK applications,
 //! firmware releases, installed modules, or immersive-engine capabilities.
+use super::{app_picker::PickerModule, introduction_tour::TourKind};
 use crate::{
     features::{
         ProductWorkspace,
@@ -9,7 +10,9 @@ use crate::{
     i18n,
     model::SetupStatus,
     resources,
-    ui::{scroll::SourceScrollable as _, surface::css},
+    ui::{
+        app_introduction_banner::AppIntroductionBanner, scroll::SourceScrollable as _, surface::css,
+    },
 };
 use gpui_kit::base::{Button as BaseButton, Switch};
 use gpui_kit::component::{
@@ -22,6 +25,9 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::PathBuf};
+
+mod presentation;
+use presentation::{CollapseIcon, GroupContent, NavigationButton, grid_height};
 
 fn tr(key: &str) -> String {
     i18n::t(&format!("CHROMA_SOURCE.{key}"))
@@ -44,6 +50,7 @@ impl ChromaTab {
 }
 pub(super) enum ChromaPageEvent {
     OpenSettings,
+    OpenTour(TourKind),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -268,28 +275,24 @@ impl ChromaPage {
     }
     fn navigation(&self, cx: &mut Context<Self>) -> AnyElement {
         h_flex()
-            .h(css(46.))
+            .h(css(48.))
             .w_full()
             .flex_shrink_0()
             .justify_center()
-            .gap(css(36.))
+            .gap(css(20.))
             .bg(rgb(0x222222))
             .border_b_2()
-            .border_color(rgb(0x111111))
+            .border_color(rgb(0x000000))
             .children(
                 [ChromaTab::Dashboard, ChromaTab::Modules, ChromaTab::Apps].map(|tab| {
-                    BaseButton::new(tab.key())
-                        .h_full()
-                        .p_0()
-                        .text_size(css(14.))
-                        .text_color(if self.tab == tab {
-                            rgb(0x44d62c)
-                        } else {
-                            rgb(0x999999)
-                        })
-                        .hover(|s| s.text_color(rgb(0x44d62c)))
-                        .child(tr(tab.key()).to_uppercase())
-                        .on_click(cx.listener(move |this, _, _, cx| this.navigate(tab, cx)))
+                    NavigationButton {
+                        id: tab.key(),
+                        selected: self.tab == tab,
+                        button: BaseButton::new(tab.key())
+                            .selected(self.tab == tab)
+                            .child(tr(tab.key()).to_uppercase())
+                            .on_click(cx.listener(move |this, _, _, cx| this.navigate(tab, cx))),
+                    }
                 }),
             )
             .into_any_element()
@@ -298,6 +301,7 @@ impl ChromaPage {
         &self,
         key: &'static str,
         title: String,
+        height: f32,
         children: AnyElement,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -306,136 +310,62 @@ impl ChromaPage {
             .w_full()
             .pb(css(20.))
             .child(
-                BaseButton::new(key)
-                    .h(css(18.))
-                    .p_0()
-                    .self_start()
-                    .gap(css(10.))
-                    .text_size(css(14.))
+                h_flex()
+                    .w_full()
+                    .items_start()
                     .child(
-                        Icon::default()
-                            .path("synapse/expand.svg")
-                            .transform(Transformation::rotate(radians(if collapsed {
-                                -std::f32::consts::FRAC_PI_2
+                        BaseButton::new(key)
+                            .group(key)
+                            .h(css(if key == "chroma-apply-effects" {
+                                17.
                             } else {
-                                0.
-                            })))
-                            .size(css(10.)),
+                                18.
+                            }))
+                            .p_0()
+                            .self_start()
+                            .gap(css(10.))
+                            .text_size(css(14.))
+                            .child(CollapseIcon { id: key, collapsed })
+                            .child(title.to_uppercase())
+                            .hover(|s| s.text_color(rgb(0xffffff)))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                if !this.preferences.collapsed.remove(key) {
+                                    this.preferences.collapsed.insert(key.into());
+                                }
+                                this.preferences.save();
+                                cx.notify();
+                            })),
                     )
-                    .child(title.to_uppercase())
-                    .hover(|s| s.text_color(rgb(0xffffff)))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if !this.preferences.collapsed.remove(key) {
-                            this.preferences.collapsed.insert(key.into());
-                        }
-                        this.preferences.save();
-                        cx.notify();
-                    })),
+                    .when(key == "chroma-apply-effects", |row| {
+                        row.child(div().ml(css(8.)).mt(css(1.)).child(
+                            crate::ui::surface::help_control(
+                                "chroma-apply-help",
+                                tr("TEXT_APPLY_EFFECTS_TIPS"),
+                            ),
+                        ))
+                    }),
             )
-            .when(!collapsed, |v| v.child(div().mt(css(10.)).child(children)))
+            .child(GroupContent {
+                id: key,
+                collapsed,
+                height,
+                children,
+            })
             .into_any_element()
     }
     fn introduction(&self, cx: &mut Context<Self>) -> AnyElement {
-        v_flex()
-            .relative()
-            .w_full()
-            .min_w(css(1000.))
-            .min_h(css(531.))
-            .rounded(css(5.))
-            .mb(css(20.))
-            .child(
-                img("synapse/chroma-introduction_background.png")
-                    .absolute()
-                    .inset_0()
-                    .size_full()
-                    .object_fit(ObjectFit::Cover),
-            )
-            .child(
-                BaseButton::new("chroma-intro-close")
-                    .absolute()
-                    .top(css(10.))
-                    .right(css(10.))
-                    .size(css(24.))
-                    .p_0()
-                    .accessibility_label(tr("CLOSE"))
-                    .child(
-                        Icon::default()
-                            .path("synapse/host-close.svg")
-                            .size(css(20.)),
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.preferences.introduction = false;
-                        this.preferences.save();
-                        cx.notify();
-                    })),
-            )
-            .child(
-                div()
-                    .relative()
-                    .mt(css(20.))
-                    .px(css(30.))
-                    .font_family("RazerF5")
-                    .text_size(css(42.))
-                    .text_color(rgb(0x44d62c))
-                    .text_center()
-                    .child(tr("INTRODUCTION_BANNER_HEADING_1")),
-            )
-            .child(
-                div()
-                    .relative()
-                    .m(css(16.))
-                    .font_family("RazerF5")
-                    .text_size(css(24.))
-                    .text_center()
-                    .child(tr("INTRODUCTION_BANNER_HEADING_2")),
-            )
-            .child(
-                div()
-                    .relative()
-                    .mb(css(16.))
-                    .text_size(css(14.))
-                    .text_center()
-                    .child(tr("INTRODUCTION_BANNER_HEADING_3")),
-            )
-            .child(
-                h_flex()
-                    .relative()
-                    .justify_around()
-                    .items_start()
-                    .pb(css(30.))
-                    .children(
-                        [
-                            ("SYNAPSE", "synapse/chroma-big_synapse_4.svg"),
-                            ("CHROMA_APP", "synapse/chroma-introduction-logo.png"),
-                        ]
-                        .map(|(kind, image)| {
-                            v_flex()
-                                .w(css(360.))
-                                .items_center()
-                                .child(img(image).size(css(100.)).mt(css(27.)))
-                                .child(
-                                    div()
-                                        .mt(css(16.))
-                                        .font_family("RazerF5")
-                                        .text_size(css(16.))
-                                        .child(tr(&format!("INTRODUCTION_BANNER_{kind}_BODY_1"))),
-                                )
-                                .child(
-                                    div()
-                                        .my(css(10.))
-                                        .text_size(css(14.))
-                                        .child(tr(&format!("INTRODUCTION_BANNER_{kind}_BODY_2"))),
-                                )
-                                .child(
-                                    div()
-                                        .text_size(css(14.))
-                                        .text_center()
-                                        .child(tr(&format!("INTRODUCTION_BANNER_{kind}_BODY_3"))),
-                                )
-                        }),
-                    ),
-            )
-            .into_any_element()
+        AppIntroductionBanner::new(
+            "chroma-introduction-banner",
+            "CHROMA_SOURCE.",
+            cx.listener(|this, _, _, cx| {
+                this.preferences.introduction = false;
+                this.preferences.save();
+                cx.notify();
+            }),
+            cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenTour(TourKind::Synapse))),
+            cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenTour(TourKind::Chroma))),
+        )
+        .into_any_element()
     }
     fn devices(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         self.devices
@@ -453,6 +383,12 @@ impl ChromaPage {
                         .as_ref()
                         .is_some_and(|s| s.charging_status.eq_ignore_ascii_case("off"));
                 let name = device.display_name();
+                let edition = device
+                    .dashboard
+                    .edition_name
+                    .as_ref()
+                    .map(|text| text.get(&self.locale.to_lowercase()).to_owned())
+                    .filter(|text| !text.is_empty());
                 let target = entity.clone();
                 let snapshot = chroma_product::lighting_snapshot(workspace, cx);
                 Some(
@@ -500,13 +436,28 @@ impl ChromaPage {
                                 .child(
                                     // `.name-tag{display:inline-flex;flex-direction:column;
                                     // height:50px;justify-content:flex-end}`
-                                    v_flex().w_full().h(css(50.)).justify_end().child(
-                                        div()
-                                            .text_size(css(14.))
-                                            .line_height(css(16.))
-                                            .text_ellipsis()
-                                            .child(name.to_uppercase()),
-                                    ),
+                                    v_flex()
+                                        .w_full()
+                                        .h(css(50.))
+                                        .justify_end()
+                                        .child(
+                                            div()
+                                                .text_size(css(14.))
+                                                .line_height(css(16.))
+                                                .min_h(css(17.))
+                                                .max_h(css(33.))
+                                                .overflow_hidden()
+                                                .child(name.to_uppercase()),
+                                        )
+                                        .when_some(edition, |view, edition| {
+                                            view.child(
+                                                div()
+                                                    .text_size(css(12.))
+                                                    .line_height(css(14.))
+                                                    .text_color(rgb(0x707070))
+                                                    .child(edition.to_uppercase()),
+                                            )
+                                        }),
                                 )
                                 .when_some(snapshot, |view, state| {
                                     view.child(
@@ -546,14 +497,24 @@ impl ChromaPage {
             .collect()
     }
     fn presets(&self, cx: &mut Context<Self>) -> AnyElement {
+        let chroma_devices: Vec<_> = self
+            .devices
+            .iter()
+            .filter(|d| d.read(cx).device(cx).is_chroma_device)
+            .collect();
         h_flex()
             .flex_wrap()
             .gap(css(10.))
             .children(ChromaPreset::ALL.map(|preset| {
-                let supported = self
-                    .devices
+                let supported_names: Vec<_> = chroma_devices
                     .iter()
-                    .any(|d| preset.supported(d.read(cx), cx));
+                    .filter(|d| preset.supported(d.read(cx), cx))
+                    .map(|d| d.read(cx).device(cx).display_name())
+                    .collect();
+                let active = !chroma_devices.is_empty()
+                    && chroma_devices
+                        .iter()
+                        .all(|d| preset.matches(d.read(cx), cx));
                 let icon = match preset {
                     ChromaPreset::Spectrum => "spectrumcycling",
                     ChromaPreset::StaticGreen => "static_green",
@@ -564,56 +525,133 @@ impl ChromaPage {
                     ChromaPreset::Wheel => "wheel",
                 };
                 BaseButton::new(preset.key())
-                    .size(css(80.))
+                    .w(css(120.))
+                    .h(css(130.))
                     .p_0()
+                    .pt(css(20.))
+                    .px(css(10.))
+                    .flex_shrink_0()
                     .flex_col()
-                    .gap(css(4.))
-                    .disabled(!supported)
+                    .justify_start()
+                    .gap_0()
                     .accessibility_label(tr(preset.key()))
-                    .tooltip({
-                        let tip = tr(preset.key());
-                        move |window, cx| Tooltip::new(tip.clone()).build(window, cx)
+                    .tooltip(move |window, cx| {
+                        let names = if supported_names.is_empty() {
+                            tr("TEXT_NO_DEVICE")
+                        } else {
+                            supported_names.join("\n")
+                        };
+                        Tooltip::new(format!(
+                            "{}\n{}",
+                            tr("TEXT_APPLY_EFFECTS_SUPPORT_EFFECT_TIP"),
+                            names
+                        ))
+                        .build(window, cx)
                     })
                     .rounded(css(5.))
-                    .bg(rgb(0x111111))
+                    .bg(if active {
+                        rgb(0x111111)
+                    } else {
+                        rgba(0x00000000)
+                    })
                     .border_1()
-                    .border_color(rgb(0x111111))
-                    .hover(|s| s.border_color(rgb(0x44d62c)))
-                    .child(img(format!("synapse/chroma-dashboard_{icon}.svg")).size(css(54.)))
+                    .border_color(if active {
+                        rgb(0x5d5d5d)
+                    } else {
+                        rgba(0x00000000)
+                    })
+                    .hover(move |s| {
+                        s.bg(if active {
+                            rgb(0x111111)
+                        } else {
+                            rgba(0x00000099)
+                        })
+                        .border_color(rgba(0x44d62c4d))
+                    })
+                    .when(!active, |b| {
+                        b.active(|s| s.bg(rgba(0x00000099)).border_color(rgb(0x399c26)))
+                    })
+                    .child(
+                        img(format!("synapse/chroma-dashboard_{icon}.svg"))
+                            .size(css(48.))
+                            .flex_shrink_0(),
+                    )
+                    .child(
+                        div()
+                            .my(css(12.))
+                            .text_size(css(12.))
+                            .text_center()
+                            .text_color(rgb(0xcccccc))
+                            .child(tr(preset.key()).to_uppercase()),
+                    )
                     .on_click(cx.listener(move |this, _, window, cx| {
                         for entity in &this.devices {
-                            entity.update(cx, |workspace, cx| preset.apply(workspace, window, cx));
+                            if entity.read(cx).device(cx).is_chroma_device {
+                                entity.update(cx, |workspace, cx| {
+                                    preset.apply(workspace, window, cx)
+                                });
+                            }
                         }
                         cx.notify();
                     }))
             }))
             .child(
                 BaseButton::new("chroma-preset-apps")
-                    .size(css(80.))
+                    .w(css(120.))
+                    .h(css(130.))
                     .p_0()
-                    .bg(rgb(0x111111))
+                    .pt(css(20.))
+                    .px(css(10.))
+                    .flex_shrink_0()
+                    .flex_col()
+                    .justify_start()
+                    .gap_0()
                     .rounded(css(5.))
+                    .border_1()
+                    .border_color(rgba(0x00000000))
+                    .hover(|s| s.bg(rgba(0x00000099)).border_color(rgba(0x44d62c4d)))
+                    .active(|s| s.bg(rgba(0x00000099)).border_color(rgb(0x399c26)))
                     .accessibility_label(tr("CHROMA_APPS"))
-                    .tooltip(|window, cx| Tooltip::new(tr("CHROMA_APPS")).build(window, cx))
-                    .child(img("synapse/chroma-dashboard_chromaapps.svg").size(css(54.)))
+                    .child(
+                        img("synapse/chroma-dashboard_chromaapps.svg")
+                            .size(css(48.))
+                            .flex_shrink_0(),
+                    )
+                    .child(
+                        div()
+                            .my(css(12.))
+                            .text_size(css(12.))
+                            .text_center()
+                            .text_color(rgb(0xcccccc))
+                            .child(tr("CHROMA_APPS").to_uppercase()),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| this.activate_apps(cx))),
             )
             .into_any_element()
     }
-    fn dashboard(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn dashboard(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let devices = self.devices(cx);
-        let has_devices = !devices.is_empty();
-        v_flex()
+        let device_count = devices.len();
+        let has_devices = device_count > 0;
+        let viewport =
+            f32::from(window.viewport_size().width) * 16. / f32::from(window.rem_size()).max(1.);
+        let max_width: f32 = if viewport <= 1279. {
+            910.
+        } else if self.devices.len() > 4 {
+            2460.
+        } else {
+            1220.
+        };
+        let width = (viewport - 40.).max(290.).min(max_width);
+        let groups = v_flex()
             .w_full()
-            .max_w(css(1220.))
-            .mx_auto()
-            .pt(css(10.))
-            .when(self.preferences.introduction, |v| {
-                v.child(self.introduction(cx))
-            })
+            .max_w(css(max_width))
+            .when(viewport > 1279., |v| v.mx_auto())
+            .mt(css(20.))
             .child(self.group(
                 "chroma-apply-effects",
                 tr("APPLY_LIGHTING_EFFECTS"),
+                grid_height(width, 8, 120., 130., 10.),
                 self.presets(cx),
                 cx,
             ))
@@ -622,6 +660,7 @@ impl ChromaPage {
                     self.group(
                         "chroma-device-group",
                         tr("TEXT_RAZER_CHROMA_DEVICES"),
+                        grid_height(width, device_count, 290., 245., 20.),
                         h_flex()
                             .flex_wrap()
                             .gap(css(20.))
@@ -635,6 +674,7 @@ impl ChromaPage {
                 self.group(
                     "chroma-services",
                     tr("ONLINE_SERVICES_HEADER"),
+                    grid_height(width, 4, 290., 245., 20.),
                     h_flex()
                         .flex_wrap()
                         .gap(css(20.))
@@ -703,7 +743,13 @@ impl ChromaPage {
                         .into_any_element(),
                     cx,
                 ),
-            )
+            );
+        v_flex()
+            .w_full()
+            .when(self.preferences.introduction, |v| {
+                v.child(self.introduction(cx))
+            })
+            .child(groups)
             .into_any_element()
     }
     fn apps(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -896,6 +942,110 @@ impl ChromaPage {
             )
             .into_any_element()
     }
+    fn modules(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        // 65596/P5 is the current Modules allowlist. Service records such as
+        // createdAt, firmwareUpdateInfo, descriptions and sizes remain absent
+        // until actually supplied; this catalogue never fabricates them.
+        let viewport =
+            f32::from(window.viewport_size().width) * 16. / f32::from(window.rem_size()).max(1.);
+        let name_width = if viewport <= 720. {
+            150.
+        } else if viewport <= 1000. {
+            250.
+        } else if viewport <= 1160. {
+            400.
+        } else {
+            500.
+        };
+        let entries = [
+            (
+                PickerModule::ChromaConnect,
+                "Chroma Connect",
+                "DASHBOARD_CHROMA_CONNECT",
+                "synapse/module-chroma-connect.svg",
+            ),
+            (
+                PickerModule::ChromaStudio,
+                "Chroma Studio",
+                "DASHBOARD_CHROMA_STUDIO",
+                "synapse/module-chroma-studio.svg",
+            ),
+            (
+                PickerModule::AudioVisualizer,
+                "Chroma Visualizer",
+                "DASHBOARD_AUDIO_VISUALIZER",
+                "synapse/module-audio-visualizer.svg",
+            ),
+            (
+                PickerModule::SensaHd,
+                "Sensa HD Haptics",
+                "DASHBOARD_SENSA",
+                "synapse/module-sensa-hd.svg",
+            ),
+        ];
+        v_flex()
+            .w(css(1220.))
+            .mx_auto()
+            .mb(css(40.))
+            .child(
+                div()
+                    .font_family("RazerF5")
+                    .text_size(css(24.))
+                    .text_color(rgb(0x44d62c))
+                    .mb(css(10.))
+                    .child(tr("AVAILABLE_MODULES").to_uppercase()),
+            )
+            .children(entries.map(|(module, english, key, icon)| {
+                // 40554/k's current Chinese name overrides.
+                let name = if self.locale.eq_ignore_ascii_case("zh-CN") {
+                    match module {
+                        PickerModule::ChromaStudio => "幻彩控制室 (Chroma Studio)".to_string(),
+                        PickerModule::ChromaConnect => "幻彩互联 (Chroma Connect)".to_string(),
+                        PickerModule::AudioVisualizer => {
+                            "幻彩可视化工具 (Chroma Visualizer)".to_string()
+                        }
+                        PickerModule::SensaHd => {
+                            "Razer Sensa HD 触觉反馈技术 (Sensa HD Haptic)".to_string()
+                        }
+                        _ => unreachable!(),
+                    }
+                } else if self.locale.eq_ignore_ascii_case("en") {
+                    english.to_string()
+                } else {
+                    tr(key)
+                };
+                h_flex()
+                    .w_full()
+                    .h(css(80.))
+                    .mb(css(1.))
+                    .pl(css(20.))
+                    .pr(css(30.))
+                    .bg(rgb(0x111111))
+                    .child(img(icon).size(css(40.)).flex_shrink_0())
+                    .child(
+                        div()
+                            .ml(css(10.))
+                            .w(css(name_width))
+                            .flex_shrink_0()
+                            .text_size(css(16.))
+                            .text_ellipsis()
+                            .child(name),
+                    )
+                    .child(div().flex_1())
+                    .child(
+                        super::service_pages::module_action(
+                            module.key(),
+                            tr("INSTALL"),
+                            true,
+                            true,
+                            cx,
+                        )
+                        .w(css(90.))
+                        .ml(css(30.)),
+                    )
+            }))
+            .into_any_element()
+    }
     fn dialog(&self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         let (workspace, view) = self.dialog.as_ref()?;
         let name = workspace.read(cx).device(cx).display_name();
@@ -966,13 +1116,9 @@ impl Render for ChromaPage {
                 .update(cx, |s, cx| s.set_items(Self::filter_choices(), window, cx));
         }
         let content = match self.tab {
-            ChromaTab::Dashboard => self.dashboard(cx),
+            ChromaTab::Dashboard => self.dashboard(window, cx),
             ChromaTab::Apps => self.apps(cx),
-            // 40554/Z returns null for every empty group. No service inventory is fabricated.
-            ChromaTab::Modules => div()
-                .id("chroma-empty-module-groups")
-                .w_full()
-                .into_any_element(),
+            ChromaTab::Modules => self.modules(window, cx),
         };
         let dialog = self.dialog(window, cx);
         v_flex()
@@ -980,6 +1126,7 @@ impl Render for ChromaPage {
             .size_full()
             .min_h_0()
             .bg(rgb(0x222222))
+            .font_family("Roboto")
             .text_color(rgb(0xcccccc))
             .track_focus(&self.focus)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {

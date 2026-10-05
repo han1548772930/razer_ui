@@ -81,19 +81,37 @@ impl DeviceCategory {
 
 /// 设备的准备状态（实测字段 `setupStatus`）。
 ///
-/// 首页只显示 [`SetupStatus::Ready`] 的设备（`dashboard.rs` 里的过滤），
-/// 这条规则与雷云一致：未就绪的设备不出现在设备网格里。
+/// Current Dashboard 22534/z also renders waiting/install/error states.
+/// Legacy local Initializing/Unsupported values remain readable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SetupStatus {
     /// 就绪，可正常使用。
+    #[serde(alias = "ready")]
     Ready,
     /// 正在初始化 / 连接中。
     Initializing,
     /// 正在升级固件。
+    #[serde(alias = "updating")]
     Updating,
     /// 已连接但本实现不支持。
     Unsupported,
+    #[serde(alias = "unknown")]
+    Unknown,
+    #[serde(alias = "waiting")]
+    Waiting,
+    #[serde(alias = "downloading")]
+    Downloading,
+    #[serde(alias = "installing")]
+    Installing,
+    #[serde(alias = "syncing")]
+    Syncing,
+    #[serde(alias = "install_canceled")]
+    InstallCanceled,
+    #[serde(alias = "error")]
+    Error,
+    #[serde(alias = "restart-required")]
+    RestartRequired,
 }
 
 impl SetupStatus {
@@ -101,8 +119,15 @@ impl SetupStatus {
         match self {
             Self::Ready => "就绪",
             Self::Initializing => "正在初始化",
-            Self::Updating => "正在升级",
+            Self::Updating => "正在更新",
             Self::Unsupported => "不支持",
+            Self::Unknown => "",
+            Self::Waiting => "请稍候",
+            Self::Downloading => "正在下载",
+            Self::Installing => "正在安装",
+            Self::Syncing => "同步中",
+            Self::InstallCanceled | Self::Error => "安装失败",
+            Self::RestartRequired => "系统需要重启",
         }
     }
 }
@@ -215,11 +240,63 @@ impl PowerStatus {
     }
 }
 
+/// Optional device presentation values consumed by current Dashboard 22534/z,
+/// V and K. They remain absent for snapshots that never supplied them; edition
+/// names, service states and profile visibility are never inferred from a PID.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct DashboardDeviceMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_product_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edition_name: Option<LocalizedText>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub not_show_profile_name: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_show_profile_name_in_dashboard: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_switch: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inter_device_mapping_config: Option<InterDeviceMappingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_battery_value: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hide_battery_icon: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_battery_supported: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_external_batt: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_standby_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_power_state: Option<String>,
+    #[serde(rename = "isXBox", skip_serializing_if = "Option::is_none")]
+    pub is_xbox: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_playstation: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count: Option<u32>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InterDeviceMappingConfig {
+    pub is_supported: Option<bool>,
+}
+
 /// 一台设备。
 ///
 /// 字段与雷云运行日志里的 JSON 一一对应（见模块文档）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Device {
+    // Local storage groups optional source presentation fields explicitly.
+    // Do not flatten here: storage must still reject unknown top-level fields.
+    #[serde(default)]
+    pub dashboard: DashboardDeviceMetadata,
+    /// Raw current service sub-device records. Their schemas differ between
+    /// compound products and IoT; consumers statically decode only known keys.
+    #[serde(default, alias = "subDevices", skip_serializing_if = "Option::is_none")]
+    pub sub_devices: Option<Vec<serde_json::Value>>,
     /// Local mirror of source device settings, independent of profile selection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_device_settings: Option<serde_json::Value>,
@@ -455,6 +532,8 @@ pub fn region_label_zh(input_id: &str) -> String {
 pub fn measured_devices() -> Vec<Device> {
     vec![
         Device {
+            dashboard: DashboardDeviceMetadata::default(),
+            sub_devices: None,
             source_device_settings: None,
             serial_number: "PM2132H00000000".to_string(),
             product_id: 182,
@@ -523,6 +602,8 @@ pub fn measured_devices() -> Vec<Device> {
             features_initialized: true,
         },
         Device {
+            dashboard: DashboardDeviceMetadata::default(),
+            sub_devices: None,
             source_device_settings: None,
             serial_number: "HP10-0000000".to_string(),
             product_id: 179,

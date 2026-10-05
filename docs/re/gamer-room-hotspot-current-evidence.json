@@ -1,0 +1,284 @@
+{
+  "verification": "Static XML parsing and source/resource hash validation only.",
+  "source": {
+    "path": ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
+    "sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
+    "xml": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" preserveAspectRatio=\"xMidYMid meet\" width=\"36\" height=\"36\" viewBox=\"0 0 36 36\" style=\"width:100%;height:100%\"><defs><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_0_P_0\" fill=\"freeze\" attributeName=\"rx\" from=\"2\" to=\"17.5\" keyTimes=\"0;0.25;0.625;1\" values=\"2;10;17.5;17.5\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_0_P_0\" fill=\"freeze\" attributeName=\"ry\" from=\"2\" to=\"17.5\" keyTimes=\"0;0.25;0.625;1\" values=\"2;10;17.5;17.5\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_0_P_0\" fill=\"freeze\" attributeName=\"opacity\" from=\"1\" to=\"0\" keyTimes=\"0;0.25;0.625;1\" values=\"1;0.2;0;0\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_1_P_0\" fill=\"freeze\" attributeName=\"stroke-width\" from=\"2\" to=\"1\" keyTimes=\"0;0.25;0.625;1\" values=\"2;4;1;1\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_1_P_0\" fill=\"freeze\" attributeName=\"rx\" from=\"2\" to=\"17.5\" keyTimes=\"0;0.25;0.625;1\" values=\"2;10;17.5;17.5\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_1_P_0\" fill=\"freeze\" attributeName=\"ry\" from=\"2\" to=\"17.5\" keyTimes=\"0;0.25;0.625;1\" values=\"2;10;17.5;17.5\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate repeatCount=\"indefinite\" dur=\"1.3333333s\" begin=\"0s\" xlink:href=\"#_R_G_L_0_G_D_1_P_0\" fill=\"freeze\" attributeName=\"opacity\" from=\"1\" to=\"0\" keyTimes=\"0;0.25;0.625;1\" values=\"1;0.2;0;0\" keySplines=\"0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0\" calcMode=\"spline\"/><animate attributeType=\"XML\" attributeName=\"opacity\" dur=\"1s\" from=\"0\" to=\"1\" xlink:href=\"#time_group\"/></defs><g id=\"_R_G\"><g id=\"_R_G_L_0_G\" transform=\" translate(16.69, 17.643) translate(0, 0)\"><g id=\"_R_G_L_0_G_D_0_P_0_G_0_T_0\" transform=\" translate(1.31, 0.357) translate(0, 0)\"><ellipse id=\"_R_G_L_0_G_D_0_P_0\" fill=\"#ffffff\" fill-opacity=\"0\" fill-rule=\"nonzero\" cx=\"0\" cy=\"0\"/></g><g id=\"_R_G_L_0_G_D_1_P_0_G_0_T_0\" transform=\" translate(1.31, 0.357) translate(0, 0)\"><ellipse id=\"_R_G_L_0_G_D_1_P_0\" stroke=\"#ffffff\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" stroke-width=\"2\" stroke-opacity=\"1\" cx=\"0\" cy=\"0\"/></g></g></g><g id=\"time_group\"/></svg>"
+  },
+  "recovery": {
+    "path": "docs/re/current-media-offline-recovery.json",
+    "method": "Offline recovery using the current manifest MD4-prefix content fingerprint, calibrated against existing current SVG bytes; candidate SHA-256 and full MD4 retained. Not an independent live-download byte comparison.",
+    "manifest": {
+      "path": ".ref/applications/synapse/dashboard/asset-manifest.json",
+      "sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a"
+    },
+    "recovered": {
+      "key": "static/media/gamer_room_hotspot_animation.svg",
+      "target": ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
+      "fingerprint": "53dd5566",
+      "candidate": "assets/synapse/gr-hotspot-source.svg",
+      "sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
+      "md4": "53dd5566d963d7c28e53733c006c064e",
+      "candidates": [
+        "assets/synapse/gr-hotspot-source.svg"
+      ]
+    }
+  },
+  "transforms": [
+    {
+      "id": "_R_G_L_0_G_D_1_P_0_G_0_T_0",
+      "transform": " translate(1.31, 0.357) translate(0, 0)"
+    },
+    {
+      "id": "_R_G_L_0_G",
+      "transform": " translate(16.69, 17.643) translate(0, 0)"
+    }
+  ],
+  "animations": [
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_0_P_0",
+      "fill": "freeze",
+      "attributeName": "rx",
+      "from": "2",
+      "to": "17.5",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "2;10;17.5;17.5",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_0_P_0",
+      "fill": "freeze",
+      "attributeName": "ry",
+      "from": "2",
+      "to": "17.5",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "2;10;17.5;17.5",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_0_P_0",
+      "fill": "freeze",
+      "attributeName": "opacity",
+      "from": "1",
+      "to": "0",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "1;0.2;0;0",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_1_P_0",
+      "fill": "freeze",
+      "attributeName": "stroke-width",
+      "from": "2",
+      "to": "1",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "2;4;1;1",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_1_P_0",
+      "fill": "freeze",
+      "attributeName": "rx",
+      "from": "2",
+      "to": "17.5",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "2;10;17.5;17.5",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_1_P_0",
+      "fill": "freeze",
+      "attributeName": "ry",
+      "from": "2",
+      "to": "17.5",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "2;10;17.5;17.5",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "repeatCount": "indefinite",
+      "dur": "1.3333333s",
+      "begin": "0s",
+      "xlink:href": "#_R_G_L_0_G_D_1_P_0",
+      "fill": "freeze",
+      "attributeName": "opacity",
+      "from": "1",
+      "to": "0",
+      "keyTimes": "0;0.25;0.625;1",
+      "values": "1;0.2;0;0",
+      "keySplines": "0.333 0 0.833 1;0.167 0 0.833 1;0 0 0 0",
+      "calcMode": "spline"
+    },
+    {
+      "attributeType": "XML",
+      "attributeName": "opacity",
+      "dur": "1s",
+      "from": "0",
+      "to": "1",
+      "xlink:href": "#time_group"
+    }
+  ],
+  "inert_nodes": [
+    {
+      "id": "_R_G_L_0_G_D_0_P_0",
+      "reason": "fill-opacity stays 0 and there is no stroke; the animated fill ellipse is invisible"
+    },
+    {
+      "id": "time_group",
+      "reason": "The opacity animation targets an empty group, not the visible ellipse"
+    }
+  ],
+  "data": {
+    "source": ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
+    "source_sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
+    "recovery_receipt": "docs/re/current-media-offline-recovery.json",
+    "recovery_method": "Offline recovery using the current manifest MD4-prefix content fingerprint, calibrated against existing current SVG bytes; candidate SHA-256 and full MD4 retained. Not an independent live-download byte comparison.",
+    "width": 36.0,
+    "height": 36.0,
+    "view_box": [
+      0.0,
+      0.0,
+      36.0,
+      36.0
+    ],
+    "center": [
+      18.0,
+      18.0
+    ],
+    "stroke_rgb": [
+      255,
+      255,
+      255
+    ],
+    "stroke_opacity": 1.0,
+    "radius": {
+      "duration_seconds": 1.3333333,
+      "key_times": [
+        0.0,
+        0.25,
+        0.625,
+        1.0
+      ],
+      "values": [
+        2.0,
+        10.0,
+        17.5,
+        17.5
+      ],
+      "key_splines": [
+        [
+          0.333,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.167,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "stroke_width": {
+      "duration_seconds": 1.3333333,
+      "key_times": [
+        0.0,
+        0.25,
+        0.625,
+        1.0
+      ],
+      "values": [
+        2.0,
+        4.0,
+        1.0,
+        1.0
+      ],
+      "key_splines": [
+        [
+          0.333,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.167,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "opacity": {
+      "duration_seconds": 1.3333333,
+      "key_times": [
+        0.0,
+        0.25,
+        0.625,
+        1.0
+      ],
+      "values": [
+        1.0,
+        0.2,
+        0.0,
+        0.0
+      ],
+      "key_splines": [
+        [
+          0.333,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.167,
+          0.0,
+          0.833,
+          1.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    }
+  }
+}

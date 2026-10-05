@@ -1,4 +1,4 @@
-use super::{Shortcut, ShortcutOutput, Shortcuts, validate_shortcuts};
+use super::{Shortcut, ShortcutOutput, Shortcuts, validate_shortcuts, validate_stored_shortcuts};
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
@@ -23,6 +23,7 @@ fn shortcut_storage_rejects_invalid_or_duplicate_chords_without_losing_unicode()
     assert_eq!(decoded, original);
     assert!(validate_shortcuts(&[original.clone()]).is_ok());
     assert!(validate_shortcuts(&[original.clone(), shortcut("second")]).is_err());
+    assert!(validate_stored_shortcuts(&[original.clone(), shortcut("second")]).is_ok());
     let mut invalid = original.clone();
     invalid.modifiers.push("KEY_LEFT_CTRL".into());
     assert!(invalid.validate().is_err());
@@ -35,10 +36,16 @@ fn shortcut_storage_rejects_invalid_or_duplicate_chords_without_losing_unicode()
     };
     assert!(invalid.validate().is_err());
     assert!(serde_json::from_str::<Shortcut>(r#"{"id":"a","input":"KEY_K","modifiers":[],"hypershift":false,"output":{"kind":"future"}}"#).is_err());
+    let previous = format!("{}end", "a".repeat(240));
+    let changed = format!("{}{}end", "a".repeat(240), "🙂".repeat(5));
+    let (range, limited) = super::limit_shortcut_text(&previous, &changed).unwrap();
+    assert_eq!(range, 252..260);
+    assert_eq!(limited, format!("{}{}end", "a".repeat(240), "🙂".repeat(3)));
+    assert_eq!(limited.encode_utf16().count(), 249);
 }
 
 #[gpui_kit::test]
-fn captures_saves_and_duplicates_a_global_shortcut_through_real_controls(cx: &mut TestAppContext) {
+fn maps_an_output_then_records_and_duplicates_inline(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
         cx.set_reduce_motion(true);
@@ -54,75 +61,77 @@ fn captures_saves_and_duplicates_a_global_shortcut_through_real_controls(cx: &mu
         w.render_frame(cx);
         w.click("shortcut-add-card", cx);
         assert_eq!(w.find("shortcut-apply").disabled(), Some(true));
-        w.click("shortcut-record", cx);
-        w.press("ctrl-k", cx);
-        w.within("shortcut-kind").click("input", cx);
-        for _ in 0..4 {
-            w.press("down", cx);
-        }
-        w.press("enter", cx);
+        w.click("shortcut-category-TEXT_FUNCTION", cx);
+        w.click("shortcut-text", cx);
+        w.input("source shortcut", cx);
     })
     .unwrap();
     cx.run_until_parked();
     cx.update_window(handle.into(), |_, w, cx| {
-        w.click("shortcut-text", cx);
-        w.input("你好快捷键", cx);
         w.click("shortcut-apply", cx);
-        assert!(w.try_find("shortcut-editor").is_none());
     })
     .unwrap();
-    cx.run_until_parked();
     let id = cx.update(|cx| {
         let state = view.read(cx);
         assert_eq!(state.items.len(), 1);
-        assert_eq!(state.items[0].input, "KEY_K");
-        assert_eq!(state.items[0].modifiers, ["CTRL"]);
-        assert_eq!(
-            state.items[0].output,
-            ShortcutOutput::Text {
-                text: "你好快捷键".into()
-            }
-        );
+        assert!(state.items[0].input.is_empty());
+        assert!(validate_stored_shortcuts(&state.items).is_ok());
+        assert!(validate_shortcuts(&state.items).is_err());
         state.items[0].id.clone()
     });
     cx.update_window(handle.into(), |_, w, cx| {
-        w.click("shortcut-check", cx);
-        assert!(
-            w.find("shortcut-encoding-status")
-                .label()
-                .unwrap()
-                .contains("检查通过")
+        w.click(
+            gpui_kit::SharedString::from(format!("shortcut-record-{id}")),
+            cx,
         );
-        assert_eq!(w.find("shortcut-engine-apply").disabled(), Some(true));
+        // Drive the source 100ms registration boundary explicitly in this
+        // existing UI contract; no wall-clock sleep is needed.
+        view.update(cx, |state, _| {
+            state.recording_ready = Some(std::time::Instant::now())
+        });
+        w.press("ctrl-k", cx);
+        assert_eq!(view.read(cx).items[0].input, "KEY_K");
+        w.click(
+            gpui_kit::SharedString::from(format!("shortcut-more-{id}")),
+            cx,
+        );
         w.click(
             gpui_kit::SharedString::from(format!("shortcut-duplicate-{id}")),
             cx,
         );
-        assert!(w.try_find("shortcut-encoding-status").is_none());
-        assert_eq!(w.find("shortcut-check").disabled(), Some(true));
-        assert_eq!(w.find("shortcut-apply").disabled(), Some(true));
-        w.click("shortcut-record", cx);
-        w.press("ctrl-k", cx);
-        assert_eq!(w.find("shortcut-apply").disabled(), Some(true));
-        assert!(
-            w.find("shortcut-error")
-                .label()
-                .unwrap()
-                .contains("已经分配")
-        );
-        w.click("shortcut-close", cx);
-        w.click("shortcut-keep-editing", cx);
-        assert!(w.try_find("shortcut-editor").is_some());
-        w.click("shortcut-close", cx);
-        w.click("shortcut-discard", cx);
         assert!(w.try_find("shortcut-editor").is_none());
     })
     .unwrap();
-    cx.update(|cx| assert_eq!(view.read(cx).items.len(), 1));
+    let duplicate = cx.update(|cx| {
+        let state = view.read(cx);
+        assert_eq!(state.items.len(), 2);
+        assert_eq!(state.items[0].output, state.items[1].output);
+        assert!(state.items[1].input.is_empty());
+        state.items[1].id.clone()
+    });
+    cx.update_window(handle.into(), |_, w, cx| {
+        w.click(
+            gpui_kit::SharedString::from(format!("shortcut-record-{duplicate}")),
+            cx,
+        );
+        view.update(cx, |state, _| {
+            state.recording_ready = Some(std::time::Instant::now())
+        });
+        w.press("ctrl-k", cx);
+        assert!(
+            w.try_find(gpui_kit::SharedString::from(format!(
+                "shortcut-warning-{duplicate}"
+            )))
+            .is_some()
+        );
+        assert!(validate_stored_shortcuts(&view.read(cx).items).is_ok());
+        assert!(validate_shortcuts(&view.read(cx).items).is_err());
+    })
+    .unwrap();
 }
 
 #[gpui_kit::test]
-fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordings(
+fn recording_preserves_legacy_storage_until_input_and_defaults_empty_modifiers(
     cx: &mut TestAppContext,
 ) {
     cx.update(|cx| {
@@ -136,92 +145,40 @@ fn generic_controls_preserve_legacy_storage_until_edit_and_default_empty_recordi
         Root::new(view, w, cx)
     });
     let view = shortcuts.unwrap();
-    cx.update(|cx| {
-        assert_eq!(view.read(cx).snapshot()[0].modifiers, ["KEY_LEFT_CTRL"]);
-        assert!(view.read(cx).snapshot()[0].chord().contains("左 Ctrl"));
-        assert!(!view.read(cx).dirty());
-        assert!(!view.read(cx).committed_pending());
-    });
     cx.update_window(handle.into(), |_, w, cx| {
         w.render_frame(cx);
-        w.click("shortcut-edit-existing", cx);
-        w.click("shortcut-modifier-CTRL", cx);
-        w.click("shortcut-modifier-CTRL", cx);
-    })
-    .unwrap();
-    cx.update(|cx| {
-        assert_eq!(
-            view.read(cx).draft.as_ref().unwrap().value.modifiers,
-            ["CTRL"]
-        );
-        assert!(view.read(cx).draft_dirty());
+        assert_eq!(view.read(cx).snapshot()[0].modifiers, ["KEY_LEFT_CTRL"]);
+        w.click("shortcut-record-existing", cx);
         assert!(!view.read(cx).committed_pending());
-    });
-    cx.update_window(handle.into(), |_, w, cx| {
-        w.click("shortcut-record", cx);
+        view.update(cx, |state, _| {
+            state.recording_ready = Some(std::time::Instant::now())
+        });
         w.press("a", cx);
-        w.click("shortcut-apply", cx);
-    })
-    .unwrap();
-    cx.update(|cx| {
-        let value = &view.read(cx).items[0];
-        assert_eq!(value.input, "KEY_A");
-        assert_eq!(value.modifiers, ["CTRL", "SHIFT"]);
+        assert_eq!(view.read(cx).items[0].input, "KEY_A");
+        assert_eq!(view.read(cx).items[0].modifiers, ["CTRL", "SHIFT"]);
         assert!(view.read(cx).committed_pending());
-    });
-    cx.update_window(handle.into(), |_, w, cx| {
-        w.click("shortcut-edit-existing", cx);
-        w.click("shortcut-modifier-CTRL", cx);
-        w.click("shortcut-modifier-SHIFT", cx);
-        w.within("shortcut-mouse").click("input", cx);
-        w.press("down", cx);
-        w.press("enter", cx);
+        view.update(cx, |state, cx| {
+            state.record_input("ScrollButton".into(), gpui_kit::Modifiers::default(), cx)
+        });
+        assert_eq!(view.read(cx).items[0].input, "ScrollButton");
+        assert_eq!(view.read(cx).items[0].modifiers, ["CTRL", "SHIFT"]);
     })
     .unwrap();
-    cx.run_until_parked();
-    cx.update(|cx| {
-        assert_eq!(
-            view.read(cx).draft.as_ref().unwrap().value.modifiers,
-            ["CTRL", "SHIFT"]
-        )
-    });
 }
 
-#[gpui_kit::test]
-fn local_encoding_check_reports_native_dependency_without_mutating_saved_shortcuts(
-    cx: &mut TestAppContext,
-) {
-    cx.update(|cx| {
-        gpui_kit::init(cx);
-        cx.set_reduce_motion(true);
-    });
+#[test]
+fn pure_encoding_keeps_native_dependency_failures_out_of_the_ui() {
     let mut item = shortcut("copy");
     item.output = ShortcutOutput::Windows {
         action: "Copy".into(),
     };
-    let mut shortcuts = None;
-    let handle = cx.open_window(size(px(1000.), px(850.)), |w, cx| {
-        let view = cx.new(|cx| Shortcuts::new(vec![item.clone()], w, cx));
-        shortcuts = Some(view.clone());
-        Root::new(view, w, cx)
-    });
-    let view = shortcuts.unwrap();
-    cx.update_window(handle.into(), |_, w, cx| {
-        w.render_frame(cx);
-        w.click("shortcut-check", cx);
-        assert!(
-            w.find("shortcut-encoding-status")
-                .label()
-                .unwrap()
-                .contains("Turbo")
-        );
-        assert_eq!(w.find("shortcut-engine-apply").disabled(), Some(true));
-    })
-    .unwrap();
-    cx.update(|cx| {
-        assert_eq!(view.read(cx).snapshot(), [item]);
-        assert!(!view.read(cx).dirty());
-    });
+    let before = item.clone();
+    assert!(
+        super::super::shortcut_engine::encode_shortcuts(&[item.clone()])
+            .unwrap_err()
+            .contains("Turbo")
+    );
+    assert_eq!(item, before);
 }
 
 #[gpui_kit::test]
@@ -270,6 +227,7 @@ fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppConte
     let view = shortcuts.unwrap();
     cx.update_window(handle.into(), |_, w, cx| {
         w.render_frame(cx);
+        w.click("shortcut-more-existing", cx);
         w.click("shortcut-delete-existing", cx);
         let row = w.find("shortcut-row-existing").bounds();
         let popup = w.find("shortcut-delete-confirmation").bounds();
@@ -281,11 +239,15 @@ fn delete_confirmation_and_discard_restore_saved_shortcuts(cx: &mut TestAppConte
         assert!(w.try_find("shortcut-delete-confirmation").is_none());
         assert!(w.try_find("shortcut-row-existing").is_some());
         assert!(!view.read(cx).dirty());
+        w.click("shortcut-more-existing", cx);
         w.click("shortcut-delete-existing", cx);
         w.click("shortcut-delete-confirm", cx);
         assert!(w.try_find("shortcut-row-existing").is_none());
         assert!(view.read(cx).committed_pending());
-        w.click("shortcuts-discard-all", cx);
+        view.update(cx, |state, cx| {
+            state.items = state.saved.clone();
+            state.changed(cx);
+        });
         assert!(w.try_find("shortcut-row-existing").is_some());
     })
     .unwrap();
@@ -315,8 +277,10 @@ fn completing_an_older_shortcut_write_keeps_later_commits_and_drafts_pending(
         .update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             window.click("shortcut-edit-existing", cx);
-            window.click("shortcut-record", cx);
-            window.press("ctrl-a", cx);
+            view.update(cx, |state, cx| {
+                state.set_output_value("A".into());
+                state.changed(cx);
+            });
             assert!(view.read(cx).draft_dirty());
             assert!(!view.read(cx).committed_pending());
             assert_eq!(view.read(cx).snapshot(), [original]);
@@ -328,26 +292,33 @@ fn completing_an_older_shortcut_write_keeps_later_commits_and_drafts_pending(
     let second_write = cx
         .update_window(handle.into(), |_, window, cx| {
             window.click("shortcut-edit-existing", cx);
-            window.click("shortcut-record", cx);
-            window.press("ctrl-b", cx);
+            view.update(cx, |state, cx| {
+                state.set_output_value("B".into());
+                state.changed(cx);
+            });
             window.click("shortcut-apply", cx);
             view.update(cx, |state, cx| state.mark_saved(first_write, cx));
             assert!(view.read(cx).committed_pending());
-            assert_eq!(view.read(cx).saved_snapshot()[0].input, "KEY_A");
-            assert_eq!(view.read(cx).snapshot()[0].input, "KEY_B");
+            assert_eq!(view.read(cx).saved_snapshot()[0].output.value(), "A");
+            assert_eq!(view.read(cx).snapshot()[0].output.value(), "B");
             view.read(cx).snapshot()
         })
         .unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.click("shortcut-edit-existing", cx);
-        window.click("shortcut-record", cx);
-        window.press("ctrl-c", cx);
+        view.update(cx, |state, cx| {
+            state.set_output_value("C".into());
+            state.changed(cx);
+        });
         view.update(cx, |state, cx| state.mark_saved(second_write, cx));
         assert!(!view.read(cx).committed_pending());
         assert!(view.read(cx).draft_dirty());
         assert!(view.read(cx).dirty());
-        assert_eq!(view.read(cx).snapshot()[0].input, "KEY_B");
-        assert_eq!(view.read(cx).draft.as_ref().unwrap().value.input, "KEY_C");
+        assert_eq!(view.read(cx).snapshot()[0].output.value(), "B");
+        assert_eq!(
+            view.read(cx).draft.as_ref().unwrap().value.output.value(),
+            "C"
+        );
     })
     .unwrap();
 }

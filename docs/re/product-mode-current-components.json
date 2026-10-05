@@ -1,0 +1,1491 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "0cc0d589004de3b1ac6807b45bf830b205a3e6d6bc06e7dc9490a19aacd017dd",
+  "method": "Lexically resolved Acorn AST. Compare each current chromaApp renderer with its own registered Lighting component; downloaded JavaScript is never evaluated.",
+  "products": [
+    {
+      "product_id": 1303,
+      "name": "Razer Nommo Chroma",
+      "source": ".ref/devices/1303/static/js/main.4de5d448.js",
+      "sha256": "3cf034a1aee237de6460712389992df6169b1b9322117e5900a6dfe66645eff5",
+      "root_condition": "\"chromaApp\"===a&&_===this.state.serialNumber",
+      "root_offset": 4573259,
+      "root_component": "bg",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "zm",
+        "nav_offset": 4557769
+      },
+      "body_min_width": 600,
+      "css": {
+        "path": ".ref/devices/1303/static/css/main.164978f0.css",
+        "sha256": "30971af9958da2c5088d00fae14643f65083750c70e878ea20f43ce4d4b018f7",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "zm",
+          "offset": 4566214
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Fg",
+          "offset": 4563625,
+          "end": 4566378,
+          "render_offset": 4566144,
+          "render_end": 4566377,
+          "render_source": "(){return(0,aE.jsx)(er,{children:(0,aE.jsxs)(Js,{children:[(0,aE.jsx)(zm,{}),(0,aE.jsx)(\"style\",{children:\"                    .main-container{                        min-width:unset;                    }                    \"})]})})}"
+        },
+        {
+          "symbol": "er",
+          "offset": 4015857,
+          "end": 4015988,
+          "render_offset": 4015892,
+          "render_end": 4015987,
+          "render_source": "(){const e=this.props.children;return(0,aE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Qs",
+          "offset": 4014651,
+          "end": 4015702,
+          "render_offset": 4015001,
+          "render_end": 4015701,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,_=E.children,t=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=t?(0,aE.jsxs)(aE.Fragment,{children:[(0,aE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,aE.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(t,\")\")},className:\"background-edition\"}),(0,aE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:_})]}):_;return(0,aE.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1304,
+      "name": "Razer Nommo Pro",
+      "source": ".ref/devices/1304/static/js/main.3b6d76c2.js",
+      "sha256": "628994402b609ecdb144fab3cb196e133e20a5af1b8a8d1ec27aa0c97850a19f",
+      "root_condition": "\"chromaApp\"===a&&_===this.state.serialNumber",
+      "root_offset": 4589535,
+      "root_component": "Wf",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "KM",
+        "nav_offset": 4573954
+      },
+      "body_min_width": 600,
+      "css": {
+        "path": ".ref/devices/1304/static/css/main.5b9f9366.css",
+        "sha256": "879ba701a2f8bac2b97ec1526889f136e00592bedb18304c89aa94872ff6461b",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "KM",
+          "offset": 4582399
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Vf",
+          "offset": 4579810,
+          "end": 4582563,
+          "render_offset": 4582329,
+          "render_end": 4582562,
+          "render_source": "(){return(0,oE.jsx)(mr,{children:(0,oE.jsxs)(Pr,{children:[(0,oE.jsx)(KM,{}),(0,oE.jsx)(\"style\",{children:\"                    .main-container{                        min-width:unset;                    }                    \"})]})})}"
+        },
+        {
+          "symbol": "mr",
+          "offset": 4021720,
+          "end": 4021851,
+          "render_offset": 4021755,
+          "render_end": 4021850,
+          "render_source": "(){const e=this.props.children;return(0,oE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Lr",
+          "offset": 4020514,
+          "end": 4021565,
+          "render_offset": 4020864,
+          "render_end": 4021564,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,_=E.children,t=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=t?(0,oE.jsxs)(oE.Fragment,{children:[(0,oE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,oE.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(t,\")\")},className:\"background-edition\"}),(0,oE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:_})]}):_;return(0,oE.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1313,
+      "name": "Razer Kraken Kitty Edition",
+      "source": ".ref/devices/1313/static/js/main.c9234892.js",
+      "sha256": "4360b6c0c6ee3819685ca8877b3ec23cecb0ab92597550f804f9ae709882ecea",
+      "root_condition": "\"chromaApp\"===a&&i",
+      "root_offset": 5452791,
+      "root_component": "iK",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "DY",
+        "nav_offset": 5441671
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1313/static/css/main.2fcc1f32.css",
+        "sha256": "ec8577430cef9f1e7a7b2e3ecb32ce7bab95c2c1e275d94d88e2bcd4890ab80a",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "DY",
+          "offset": 5450887
+        }
+      ],
+      "components": [
+        {
+          "symbol": "aK",
+          "offset": 5448453,
+          "end": 5451038,
+          "render_offset": 5450817,
+          "render_end": 5451037,
+          "render_source": "(){return(0,xe.jsx)(Vm,{children:(0,xe.jsxs)(Fm,{children:[(0,xe.jsx)(DY,{}),(0,xe.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "Vm",
+          "offset": 4755554,
+          "end": 4755686,
+          "render_offset": 4755589,
+          "render_end": 4755685,
+          "render_source": "(){const{children:e}=this.props;return(0,xe.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "bm",
+          "offset": 4754360,
+          "end": 4755399,
+          "render_offset": 4754721,
+          "render_end": 4755398,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=i?(0,xe.jsxs)(xe.Fragment,{children:[(0,xe.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,xe.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,xe.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,xe.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1319,
+      "name": "RAZER KRAKEN ULTIMATE",
+      "source": ".ref/devices/1319/static/js/main.18b7442e.js",
+      "sha256": "8b0e82d7a047c5881f9426d91803f3fd7076673880d62daa05d8102cca566df3",
+      "root_condition": "\"chromaApp\"===t&&a===this.state.serialNumber",
+      "root_offset": 5464839,
+      "root_component": "LK",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Xz",
+        "nav_offset": 5454106
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1319/static/css/main.2d746bb2.css",
+        "sha256": "5c3f6b9ffc327e2ac6cbefa1f22fbc0ef4f83976ed88f3f033172158d5335de3",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Xz",
+          "offset": 5462943
+        }
+      ],
+      "components": [
+        {
+          "symbol": "pK",
+          "offset": 5460521,
+          "end": 5463094,
+          "render_offset": 5462873,
+          "render_end": 5463093,
+          "render_source": "(){return(0,xe.jsx)(Ym,{children:(0,xe.jsxs)(Vm,{children:[(0,xe.jsx)(Xz,{}),(0,xe.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "Ym",
+          "offset": 4760444,
+          "end": 4760576,
+          "render_offset": 4760479,
+          "render_end": 4760575,
+          "render_source": "(){const{children:e}=this.props;return(0,xe.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "wm",
+          "offset": 4759250,
+          "end": 4760289,
+          "render_offset": 4759611,
+          "render_end": 4760288,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=i?(0,xe.jsxs)(xe.Fragment,{children:[(0,xe.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,xe.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,xe.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,xe.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1325,
+      "name": "RAZER KRAKEN V3 PRO",
+      "source": ".ref/devices/1325/static/js/main.6d8e67f5.js",
+      "sha256": "c46f7e3e72605f603e568a90a59d5c9adde9b24376e5cc134a03f921d2dbc546",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5637914,
+      "root_component": "UF",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "jb",
+        "nav_offset": 5627374
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1325/static/css/main.0471c322.css",
+        "sha256": "aede8cea4b14d518f0bebc4c351e9f60cb718b3da650abc9834b0ebad9ef7418",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "jb",
+          "offset": 5636449
+        }
+      ],
+      "components": [
+        {
+          "symbol": "gF",
+          "offset": 5634308,
+          "end": 5636600,
+          "render_offset": 5636379,
+          "render_end": 5636599,
+          "render_source": "(){return(0,je.jsx)(FR,{children:(0,je.jsxs)(BR,{children:[(0,je.jsx)(jb,{}),(0,je.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "FR",
+          "offset": 4926675,
+          "end": 4926807,
+          "render_offset": 4926710,
+          "render_end": 4926806,
+          "render_source": "(){const{children:e}=this.props;return(0,je.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "yR",
+          "offset": 4925481,
+          "end": 4926520,
+          "render_offset": 4925842,
+          "render_end": 4926519,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:n,extraStyle:i}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=n?(0,je.jsxs)(je.Fragment,{children:[(0,je.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,je.jsx)(\"div\",{style:{backgroundImage:`url(${n})`},className:\"background-edition\"}),(0,je.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,je.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1328,
+      "name": "Razer Kraken BT Kitty Edition",
+      "source": ".ref/devices/1328/static/js/main.8a79cd9c.js",
+      "sha256": "9ef989508210c3de55e7db9c9f0baab67869fb069791983d17c4ec2b69048d04",
+      "root_condition": "\"chromaApp\"===a&&_===this.state.serialNumber",
+      "root_offset": 4694153,
+      "root_component": "hv",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "YG",
+        "nav_offset": 4673432
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1328/static/css/main.e4bab2aa.css",
+        "sha256": "28d5a7ea7b3c38cff5a467b325203841f21cdd14a213e274ffcddc7cf9843427",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "YG",
+          "offset": 4691709
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Mv",
+          "offset": 4689031,
+          "end": 4691860,
+          "render_offset": 4691639,
+          "render_end": 4691859,
+          "render_source": "(){return(0,_E.jsx)(NC,{children:(0,_E.jsxs)(uC,{children:[(0,_E.jsx)(YG,{}),(0,_E.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "NC",
+          "offset": 4270758,
+          "end": 4270889,
+          "render_offset": 4270793,
+          "render_end": 4270888,
+          "render_source": "(){const e=this.props.children;return(0,_E.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "cC",
+          "offset": 4270901,
+          "end": 4271952,
+          "render_offset": 4271251,
+          "render_end": 4271951,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,_E.jsxs)(_E.Fragment,{children:[(0,_E.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,_E.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,_E.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,_E.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1330,
+      "name": "RAZER LEVIATHAN V2",
+      "source": ".ref/devices/1330/static/js/main.f0797abf.js",
+      "sha256": "3df27de0303e0450bc800ce7229445a0db78876c3c67bbad559dd9a041e0a985",
+      "root_condition": "\"chromaApp\"===E",
+      "root_offset": 5466357,
+      "root_component": "_w",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "IV",
+        "nav_offset": 5456270
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1330/static/css/main.30709e10.css",
+        "sha256": "7e130be2e968d49b0c47d4747073bf82ff00adf676aa4ece5d321d0754855eb3",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "IV",
+          "offset": 5464063
+        }
+      ],
+      "components": [
+        {
+          "symbol": "aw",
+          "offset": 5461831,
+          "end": 5464214,
+          "render_offset": 5463993,
+          "render_end": 5464213,
+          "render_source": "(){return(0,We.jsx)(em,{children:(0,We.jsxs)(Jp,{children:[(0,We.jsx)(IV,{}),(0,We.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "em",
+          "offset": 4873253,
+          "end": 4873384,
+          "render_offset": 4873288,
+          "render_end": 4873383,
+          "render_source": "(){const e=this.props.children;return(0,We.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Qp",
+          "offset": 4872047,
+          "end": 4873098,
+          "render_offset": 4872397,
+          "render_end": 4873097,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),t=this.props,E=t.extraClass,a=t.children,_=t.backgroundImage,i=t.extraStyle;let n=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof E&&(n+=\" \"+E),this.isMacroDisplayMode()&&(n+=\" customMacro\"),\"armory\"===e&&(n+=\" custom-scrollable\");let o=_?(0,We.jsxs)(We.Fragment,{children:[(0,We.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,We.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,We.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,We.jsx)(\"div\",{className:n,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:o})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1331,
+      "name": "RAZER KRAKEN V3 HYPERSENSE",
+      "source": ".ref/devices/1331/static/js/main.cdddaa98.js",
+      "sha256": "b0cbc0e0ee275784a54c707aa28e26afed28f7d991ec64f1a442f7f08efd433e",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5422600,
+      "root_component": "Sz",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Uk",
+        "nav_offset": 5412176
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1331/static/css/main.ea720339.css",
+        "sha256": "dfcc2160a923495861c5fa1958bcb9b362849fc6ae417615b25d2395814bb99c",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Uk",
+          "offset": 5421213
+        }
+      ],
+      "components": [
+        {
+          "symbol": "dz",
+          "offset": 5419072,
+          "end": 5421364,
+          "render_offset": 5421143,
+          "render_end": 5421363,
+          "render_source": "(){return(0,We.jsx)(Pm,{children:(0,We.jsxs)(pm,{children:[(0,We.jsx)(Uk,{}),(0,We.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "Pm",
+          "offset": 4760447,
+          "end": 4760579,
+          "render_offset": 4760482,
+          "render_end": 4760578,
+          "render_source": "(){const{children:e}=this.props;return(0,We.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Dm",
+          "offset": 4759253,
+          "end": 4760292,
+          "render_offset": 4759614,
+          "render_end": 4760291,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=i?(0,We.jsxs)(We.Fragment,{children:[(0,We.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,We.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,We.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,We.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1332,
+      "name": "RAZER KRAKEN BT SANRIO LIMITED EDITION",
+      "source": ".ref/devices/1332/static/js/main.18a00d58.js",
+      "sha256": "c83f198095e8e3574545b8a4cef721b76c79b276cd4a809eed4701a800c61648",
+      "root_condition": "\"chromaApp\"===a&&_===this.state.serialNumber",
+      "root_offset": 4694209,
+      "root_component": "hv",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "YG",
+        "nav_offset": 4673488
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1332/static/css/main.e4bab2aa.css",
+        "sha256": "28d5a7ea7b3c38cff5a467b325203841f21cdd14a213e274ffcddc7cf9843427",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "YG",
+          "offset": 4691765
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Mv",
+          "offset": 4689087,
+          "end": 4691916,
+          "render_offset": 4691695,
+          "render_end": 4691915,
+          "render_source": "(){return(0,_E.jsx)(NC,{children:(0,_E.jsxs)(uC,{children:[(0,_E.jsx)(YG,{}),(0,_E.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "NC",
+          "offset": 4270814,
+          "end": 4270945,
+          "render_offset": 4270849,
+          "render_end": 4270944,
+          "render_source": "(){const e=this.props.children;return(0,_E.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "cC",
+          "offset": 4270957,
+          "end": 4272008,
+          "render_offset": 4271307,
+          "render_end": 4272007,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,_E.jsxs)(_E.Fragment,{children:[(0,_E.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,_E.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,_E.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,_E.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1335,
+      "name": "Razer Kraken V3 X",
+      "source": ".ref/devices/1335/static/js/main.8345750d.js",
+      "sha256": "7d1645b5df75d3759326d0d1e822f9f5eaee7fc18bb8f1e31264a2029c091eb7",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 4642211,
+      "root_component": "yf",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "iL",
+        "nav_offset": 4623222
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1335/static/css/main.39081954.css",
+        "sha256": "0744db654fa00aa492ffc376bf55fdc1bbbd15bdff400fb2e343deb84cc035fc",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "iL",
+          "offset": 4639911
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Ff",
+          "offset": 4637679,
+          "end": 4640062,
+          "render_offset": 4639841,
+          "render_end": 4640061,
+          "render_source": "(){return(0,be.jsx)(mA,{children:(0,be.jsxs)(hA,{children:[(0,be.jsx)(iL,{}),(0,be.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "mA",
+          "offset": 4194804,
+          "end": 4194935,
+          "render_offset": 4194839,
+          "render_end": 4194934,
+          "render_source": "(){const e=this.props.children;return(0,be.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "MA",
+          "offset": 4194947,
+          "end": 4195998,
+          "render_offset": 4195297,
+          "render_end": 4195997,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,be.jsxs)(be.Fragment,{children:[(0,be.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,be.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,be.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,be.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1342,
+      "name": "Razer Audio Mixer",
+      "source": ".ref/devices/1342/static/js/main.2623357c.js",
+      "sha256": "7135bf1ec237047bc3c0ca25710aa39b02c6fa9516b7aa1425f743e0c57010e9",
+      "root_condition": "\"chromaApp\"===a&&o===this.state.serialNumber",
+      "root_offset": 6568657,
+      "root_component": "$g",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "OP",
+        "nav_offset": 6525566
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1342/static/css/main.07a2c4ed.css",
+        "sha256": "23582a2533f63335b3a2b40f0849f860e1f728bab81f87cc1546ed9c56703752",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "OP",
+          "offset": 6549711
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Jg",
+          "offset": 6547033,
+          "end": 6549862,
+          "render_offset": 6549641,
+          "render_end": 6549861,
+          "render_source": "(){return(0,Qe.jsx)(qu,{children:(0,Qe.jsxs)(Ju,{children:[(0,Qe.jsx)(OP,{}),(0,Qe.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "qu",
+          "offset": 6171131,
+          "end": 6171262,
+          "render_offset": 6171166,
+          "render_end": 6171261,
+          "render_source": "(){const e=this.props.children;return(0,Qe.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Qu",
+          "offset": 6171274,
+          "end": 6172325,
+          "render_offset": 6171624,
+          "render_end": 6172324,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),t=this.props,a=t.extraClass,n=t.children,o=t.backgroundImage,i=t.extraStyle;let r=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(r+=\" \"+a),this.isMacroDisplayMode()&&(r+=\" customMacro\"),\"armory\"===e&&(r+=\" custom-scrollable\");let s=o?(0,Qe.jsxs)(Qe.Fragment,{children:[(0,Qe.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Qe.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(o,\")\")},className:\"background-edition\"}),(0,Qe.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:n})]}):n;return(0,Qe.jsx)(\"div\",{className:r,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:s})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1352,
+      "name": "Razer Leviathan V2 Pro",
+      "source": ".ref/devices/1352/static/js/main.95a4f703.js",
+      "sha256": "8dee0170de93fd9900024510e8c6edd315c30010d759ca12609ad6d2c8c73c80",
+      "root_condition": "\"chromaApp\"===E&&t===this.state.serialNumber",
+      "root_offset": 4723036,
+      "root_component": "eH",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Hv",
+        "nav_offset": 4712697
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1352/static/css/main.150adff3.css",
+        "sha256": "b6970104c8a887ad5f6501afdcfd4548ae98bee838200b19cd0edcb21ad453d5",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Hv",
+          "offset": 4720353
+        }
+      ],
+      "components": [
+        {
+          "symbol": "$v",
+          "offset": 4717744,
+          "end": 4720494,
+          "render_offset": 4720283,
+          "render_end": 4720493,
+          "render_source": "(){return(0,Y_.jsx)(TT,{children:(0,Y_.jsxs)(rT,{children:[(0,Y_.jsx)(Hv,{}),(0,Y_.jsx)(\"style\",{children:\"          .body-wrapper, .main-container{              min-width:unset;            }          \"})]})})}"
+        },
+        {
+          "symbol": "TT",
+          "offset": 4140836,
+          "end": 4140967,
+          "render_offset": 4140871,
+          "render_end": 4140966,
+          "render_source": "(){const e=this.props.children;return(0,Y_.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "nT",
+          "offset": 4139630,
+          "end": 4140681,
+          "render_offset": 4139980,
+          "render_end": 4140680,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),a=this.props,E=a.extraClass,t=a.children,_=a.backgroundImage,o=a.extraStyle;let i=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof E&&(i+=\" \"+E),this.isMacroDisplayMode()&&(i+=\" customMacro\"),\"armory\"===e&&(i+=\" custom-scrollable\");let n=_?(0,Y_.jsxs)(Y_.Fragment,{children:[(0,Y_.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Y_.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,Y_.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,Y_.jsx)(\"div\",{className:i,ref:this.bodyRef,id:\"body-wrapper\",style:o||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1353,
+      "name": "RAZER KRAKEN V3",
+      "source": ".ref/devices/1353/static/js/main.dfef4e81.js",
+      "sha256": "3c365cc8b454d563f27d5235749d290a9bb38fbafc671529e7e07ecbd75df199",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5464236,
+      "root_component": "uK",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Hz",
+        "nav_offset": 5454031
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1353/static/css/main.40635f75.css",
+        "sha256": "1264f165b588e7761f2a4db4a1de438df76dc1346324070edb332448871dd9fc",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Hz",
+          "offset": 5462859
+        }
+      ],
+      "components": [
+        {
+          "symbol": "cK",
+          "offset": 5460718,
+          "end": 5463010,
+          "render_offset": 5462789,
+          "render_end": 5463009,
+          "render_source": "(){return(0,Ye.jsx)(km,{children:(0,Ye.jsxs)(Ym,{children:[(0,Ye.jsx)(Hz,{}),(0,Ye.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "km",
+          "offset": 4762554,
+          "end": 4762686,
+          "render_offset": 4762589,
+          "render_end": 4762685,
+          "render_source": "(){const{children:e}=this.props;return(0,Ye.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Wm",
+          "offset": 4761360,
+          "end": 4762399,
+          "render_offset": 4761721,
+          "render_end": 4762398,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=i?(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Ye.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,Ye.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,Ye.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1354,
+      "name": "Razer Leviathan V2 X",
+      "source": ".ref/devices/1354/static/js/main.e16a6fa2.js",
+      "sha256": "5c03e31d51018a266b49381fe5f3dd1c99d83a4ee7ae07a89427a1702665a355",
+      "root_condition": "\"chromaApp\"===a&&t===this.props.serialNumber",
+      "root_offset": 4610937,
+      "root_component": "jH",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "hH",
+        "nav_offset": 4600811
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1354/static/css/main.1f17f3e5.css",
+        "sha256": "24ba5d37966d4409f391264a3c6e34429360279ca0725123a5381e17602789d2",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "hH",
+          "offset": 4608273
+        }
+      ],
+      "components": [
+        {
+          "symbol": "XH",
+          "offset": 4605664,
+          "end": 4608414,
+          "render_offset": 4608203,
+          "render_end": 4608413,
+          "render_source": "(){return(0,W_.jsx)(kI,{children:(0,W_.jsxs)(wI,{children:[(0,W_.jsx)(hH,{}),(0,W_.jsx)(\"style\",{children:\"          .body-wrapper, .main-container{              min-width:unset;            }          \"})]})})}"
+        },
+        {
+          "symbol": "kI",
+          "offset": 4036129,
+          "end": 4036260,
+          "render_offset": 4036164,
+          "render_end": 4036259,
+          "render_source": "(){const e=this.props.children;return(0,W_.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "YI",
+          "offset": 4034923,
+          "end": 4035974,
+          "render_offset": 4035273,
+          "render_end": 4035973,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,W_.jsxs)(W_.Fragment,{children:[(0,W_.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,W_.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,W_.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,W_.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1364,
+      "name": "Razer Kitty V2 Pro",
+      "source": ".ref/devices/1364/static/js/main.6cf04746.js",
+      "sha256": "40d6959e7e95463b33c7545969317e14f7ddd83d37555c946e1abc465e092f85",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5459258,
+      "root_component": "$z",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Dz",
+        "nav_offset": 5449017
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1364/static/css/main.ee72d527.css",
+        "sha256": "7f7cae42a251de3fdebf88776470fdcee35876ef3ed1d96844f3cee3ec49eada",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Dz",
+          "offset": 5457378
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Jz",
+          "offset": 5455237,
+          "end": 5457529,
+          "render_offset": 5457308,
+          "render_end": 5457528,
+          "render_source": "(){return(0,xe.jsx)(Cm,{children:(0,xe.jsxs)(Rm,{children:[(0,xe.jsx)(Dz,{}),(0,xe.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "Cm",
+          "offset": 4752870,
+          "end": 4753002,
+          "render_offset": 4752905,
+          "render_end": 4753001,
+          "render_source": "(){const{children:e}=this.props;return(0,xe.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "um",
+          "offset": 4751676,
+          "end": 4752715,
+          "render_offset": 4752037,
+          "render_end": 4752714,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let r=i?(0,xe.jsxs)(xe.Fragment,{children:[(0,xe.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,xe.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,xe.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,xe.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:r})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1370,
+      "name": "RAZER NOMMO V2 PRO",
+      "source": ".ref/devices/1370/static/js/main.55a82042.js",
+      "sha256": "39c29ad16ab6ab034f533c30efd80ebd2c863e925cfaa826a95ef91015e29f7c",
+      "root_condition": "\"chromaApp\"===a&&i===this.props.serialNumber",
+      "root_offset": 5246624,
+      "root_component": "nY",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "SW",
+        "nav_offset": 5237909
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1370/static/css/main.71ab05a5.css",
+        "sha256": "37366bcab3ce2f0f0dcdb67fb218c3650ef791a3b57ab8b5d5323ac4edb6dc22",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "SW",
+          "offset": 5244259
+        }
+      ],
+      "components": [
+        {
+          "symbol": "iY",
+          "offset": 5241803,
+          "end": 5244410,
+          "render_offset": 5244189,
+          "render_end": 5244409,
+          "render_source": "(){return(0,Be.jsx)(tP,{children:(0,Be.jsxs)($p,{children:[(0,Be.jsx)(SW,{}),(0,Be.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "tP",
+          "offset": 4611566,
+          "end": 4611698,
+          "render_offset": 4611601,
+          "render_end": 4611697,
+          "render_source": "(){const{children:e}=this.props;return(0,Be.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Jp",
+          "offset": 4610372,
+          "end": 4611411,
+          "render_offset": 4610733,
+          "render_end": 4611410,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let E=i?(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Be.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,Be.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,Be.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:E})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1372,
+      "name": "RAZER NOMMO V2",
+      "source": ".ref/devices/1372/static/js/main.0948803f.js",
+      "sha256": "b331f92022b9e2a4514b3367a2d2cb051d8d031163e444221ef5f08b812971d6",
+      "root_condition": "\"chromaApp\"===a&&i===this.props.serialNumber",
+      "root_offset": 5296945,
+      "root_component": "Ez",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "uY",
+        "nav_offset": 5288223
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1372/static/css/main.36eb5141.css",
+        "sha256": "420c3239599feaff84c8dd3b3a11235912f9f2b7a3a672d8b773fbe7bcbf4964",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "uY",
+          "offset": 5294587
+        }
+      ],
+      "components": [
+        {
+          "symbol": "oz",
+          "offset": 5292131,
+          "end": 5294738,
+          "render_offset": 5294517,
+          "render_end": 5294737,
+          "render_source": "(){return(0,Be.jsx)(oP,{children:(0,Be.jsxs)(iP,{children:[(0,Be.jsx)(uY,{}),(0,Be.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "oP",
+          "offset": 4618993,
+          "end": 4619125,
+          "render_offset": 4619028,
+          "render_end": 4619124,
+          "render_source": "(){const{children:e}=this.props;return(0,Be.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "aP",
+          "offset": 4617799,
+          "end": 4618838,
+          "render_offset": 4618160,
+          "render_end": 4618837,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:n}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let E=i?(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Be.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,Be.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,Be.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:E})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1376,
+      "name": "Razer Kraken Kitty V2",
+      "source": ".ref/devices/1376/static/js/main.03a3e8b2.js",
+      "sha256": "b8139a672d0166a6336f7400ff59cf459df6828097ac22d2b26b0aa8669cec87",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 4700556,
+      "root_component": "Pv",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "VG",
+        "nav_offset": 4679639
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1376/static/css/main.ef9b3ec0.css",
+        "sha256": "9b3b5155662fc62ec2e1202ae9a88d9a948887474b814c2bd6cdafd961cdff4c",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "VG",
+          "offset": 4697568
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Lv",
+          "offset": 4694975,
+          "end": 4697719,
+          "render_offset": 4697498,
+          "render_end": 4697718,
+          "render_source": "(){return(0,sE.jsx)(IC,{children:(0,sE.jsxs)(AC,{children:[(0,sE.jsx)(VG,{}),(0,sE.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "IC",
+          "offset": 4261993,
+          "end": 4262124,
+          "render_offset": 4262028,
+          "render_end": 4262123,
+          "render_source": "(){const e=this.props.children;return(0,sE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "OC",
+          "offset": 4262136,
+          "end": 4263187,
+          "render_offset": 4262486,
+          "render_end": 4263186,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,o=E.extraStyle;let i=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(i+=\" \"+a),this.isMacroDisplayMode()&&(i+=\" customMacro\"),\"armory\"===e&&(i+=\" custom-scrollable\");let n=_?(0,sE.jsxs)(sE.Fragment,{children:[(0,sE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,sE.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,sE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,sE.jsx)(\"div\",{className:i,ref:this.bodyRef,id:\"body-wrapper\",style:o||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1378,
+      "name": "Razer Kraken Kitty V2 BT Quartz Edition",
+      "source": ".ref/devices/1378/static/js/main.2397f4bd.js",
+      "sha256": "5133602433fb5ca28647b3991da519b70704d6adeff76be5d92c29aab6b011fc",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 4691664,
+      "root_component": "KH",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "CG",
+        "nav_offset": 4671817
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1378/static/css/main.52d7edae.css",
+        "sha256": "3b955ca9d2797e32986e1a03bb84bb84f283a500689b05fa1c8018454ed53fd2",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "CG",
+          "offset": 4688770
+        }
+      ],
+      "components": [
+        {
+          "symbol": "kH",
+          "offset": 4686189,
+          "end": 4688921,
+          "render_offset": 4688700,
+          "render_end": 4688920,
+          "render_source": "(){return(0,eE.jsx)(OC,{children:(0,eE.jsxs)(SC,{children:[(0,eE.jsx)(CG,{}),(0,eE.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "OC",
+          "offset": 4259444,
+          "end": 4259576,
+          "render_offset": 4259479,
+          "render_end": 4259575,
+          "render_source": "(){const{children:e}=this.props;return(0,eE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "AC",
+          "offset": 4259588,
+          "end": 4260627,
+          "render_offset": 4259949,
+          "render_end": 4260626,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:E,children:a,backgroundImage:t,extraStyle:_}=this.props;let i=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof E&&(i+=\" \"+E),this.isMacroDisplayMode()&&(i+=\" customMacro\"),\"armory\"===e&&(i+=\" custom-scrollable\");let o=t?(0,eE.jsxs)(eE.Fragment,{children:[(0,eE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,eE.jsx)(\"div\",{style:{backgroundImage:`url(${t})`},className:\"background-edition\"}),(0,eE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,eE.jsx)(\"div\",{className:i,ref:this.bodyRef,id:\"body-wrapper\",style:_||{},children:o})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1387,
+      "name": "Razer Kraken V4",
+      "source": ".ref/devices/1387/static/js/main.c3a5df87.js",
+      "sha256": "47024107759780f74a76ab93541799dcf8fe65aeb271de203735cd808ebe7c85",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5378949,
+      "root_component": "qf",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "_f",
+        "nav_offset": 5370126
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1387/static/css/main.476a91c6.css",
+        "sha256": "4c7d8f6814f96d9e6882bd0ccc3c781cc98d489b85147fd3fcfc244085d5256f",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "_f",
+          "offset": 5377560
+        }
+      ],
+      "components": [
+        {
+          "symbol": "Zf",
+          "offset": 5375051,
+          "end": 5377722,
+          "render_offset": 5377490,
+          "render_end": 5377721,
+          "render_source": "(){return(0,tI.jsx)(nI,{children:(0,tI.jsxs)(iI,{children:[(0,tI.jsx)(_f,{isIframe:!0}),(0,tI.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "nI",
+          "offset": 4664183,
+          "end": 4664315,
+          "render_offset": 4664218,
+          "render_end": 4664314,
+          "render_source": "(){const{children:e}=this.props;return(0,tI.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "aI",
+          "offset": 4662989,
+          "end": 4664028,
+          "render_offset": 4663350,
+          "render_end": 4664027,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:i,extraStyle:E}=this.props;let n=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(n+=\" \"+t),this.isMacroDisplayMode()&&(n+=\" customMacro\"),\"armory\"===e&&(n+=\" custom-scrollable\");let o=i?(0,tI.jsxs)(tI.Fragment,{children:[(0,tI.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,tI.jsx)(\"div\",{style:{backgroundImage:`url(${i})`},className:\"background-edition\"}),(0,tI.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,tI.jsx)(\"div\",{className:n,ref:this.bodyRef,id:\"body-wrapper\",style:E||{},children:o})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1389,
+      "name": "Razer Kraken V4 X",
+      "source": ".ref/devices/1389/static/js/main.7ceeec13.js",
+      "sha256": "fc68b7d1f9026b2115f0eeb2c10781f63ed51dc8c1b68864fa37864f9858fb3d",
+      "root_condition": "\"chromaApp\"===a&&t===this.state.serialNumber",
+      "root_offset": 4671317,
+      "root_component": "GH",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "Jf",
+        "nav_offset": 4661083
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1389/static/css/main.fec8918a.css",
+        "sha256": "5855fa74d8f04c993f51e1880bd9e9c69beee5b725ff911fba2b330f66d2cbd5",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "Jf",
+          "offset": 4668639
+        }
+      ],
+      "components": [
+        {
+          "symbol": "UH",
+          "offset": 4666027,
+          "end": 4668791,
+          "render_offset": 4668569,
+          "render_end": 4668790,
+          "render_source": "(){return(0,w_.jsx)(Wd,{children:(0,w_.jsxs)(bd,{children:[(0,w_.jsx)(Jf,{isIframe:!0}),(0,w_.jsx)(\"style\",{children:\"          .body-wrapper, .main-container{              min-width:unset;            }          \"})]})})}"
+        },
+        {
+          "symbol": "Wd",
+          "offset": 4096492,
+          "end": 4096623,
+          "render_offset": 4096527,
+          "render_end": 4096622,
+          "render_source": "(){const e=this.props.children;return(0,w_.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "yd",
+          "offset": 4095286,
+          "end": 4096337,
+          "render_offset": 4095636,
+          "render_end": 4096336,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,o=E.extraStyle;let i=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(i+=\" \"+a),this.isMacroDisplayMode()&&(i+=\" customMacro\"),\"armory\"===e&&(i+=\" custom-scrollable\");let n=_?(0,w_.jsxs)(w_.Fragment,{children:[(0,w_.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,w_.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,w_.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,w_.jsx)(\"div\",{className:i,ref:this.bodyRef,id:\"body-wrapper\",style:o||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1396,
+      "name": "Razer Barracuda X Chroma",
+      "source": ".ref/devices/1396/static/js/main.807d655b.js",
+      "sha256": "b357fea1c3cc0829136dfb36d818d1f62a0e6d83f0fb4c79618a6c7de4cdc6e4",
+      "root_condition": "\"chromaApp\"===t&&E===this.state.serialNumber",
+      "root_offset": 4940390,
+      "root_component": "tB",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "ig",
+        "nav_offset": 4918878
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1396/static/css/main.466b2f41.css",
+        "sha256": "eb0a0de5dd173b39808d0a6b1a68f4668f88225ef139b4f22a43287a01500a11",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "ig",
+          "offset": 4937848
+        }
+      ],
+      "components": [
+        {
+          "symbol": "aB",
+          "offset": 4935104,
+          "end": 4938006,
+          "render_offset": 4937778,
+          "render_end": 4938005,
+          "render_source": "(){return(0,we.jsx)(jN,{children:(0,we.jsxs)(qN,{children:[(0,we.jsx)(ig,{isIframe:!0}),(0,we.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{              min-width:unset;              }          \"})]})})}"
+        },
+        {
+          "symbol": "jN",
+          "offset": 4470714,
+          "end": 4470845,
+          "render_offset": 4470749,
+          "render_end": 4470844,
+          "render_source": "(){const e=this.props.children;return(0,we.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "ZN",
+          "offset": 4470857,
+          "end": 4471908,
+          "render_offset": 4471207,
+          "render_end": 4471907,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),a=this.props,t=a.extraClass,E=a.children,i=a.backgroundImage,n=a.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let _=i?(0,we.jsxs)(we.Fragment,{children:[(0,we.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,we.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(i,\")\")},className:\"background-edition\"}),(0,we.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:E})]}):E;return(0,we.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:n||{},children:_})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1406,
+      "name": "Razer Kraken V2 BT Hello Kitty and Friends Edition",
+      "source": ".ref/devices/1406/static/js/main.f2aa3af5.js",
+      "sha256": "84c967ede8c278bf7a1c6f9fa87b5bb353c9ebd5cfe1ae47699c8c5dd9723525",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 4726305,
+      "root_component": "Bv",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "jG",
+        "nav_offset": 4705762
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1406/static/css/main.99e78b96.css",
+        "sha256": "28e87805a4199297d1bba78931a9cd850ce6a7d10ac7825444843f71d420ed49",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "jG",
+          "offset": 4723350
+        }
+      ],
+      "components": [
+        {
+          "symbol": "vv",
+          "offset": 4720757,
+          "end": 4723501,
+          "render_offset": 4723280,
+          "render_end": 4723500,
+          "render_source": "(){return(0,oE.jsx)(LC,{children:(0,oE.jsxs)(pC,{children:[(0,oE.jsx)(jG,{}),(0,oE.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "LC",
+          "offset": 4279671,
+          "end": 4279802,
+          "render_offset": 4279706,
+          "render_end": 4279801,
+          "render_source": "(){const e=this.props.children;return(0,oE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "PC",
+          "offset": 4279814,
+          "end": 4280865,
+          "render_offset": 4280164,
+          "render_end": 4280864,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,oE.jsxs)(oE.Fragment,{children:[(0,oE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,oE.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,oE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,oE.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1407,
+      "name": "Razer | Sanrio Characters Limited Edition Wireless Headset",
+      "source": ".ref/devices/1407/static/js/main.cbabe455.js",
+      "sha256": "3e2b0d2ca9b3e94e9633b7327c601e213d330c5b106bb08c24f62c2bc4026c28",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 4726305,
+      "root_component": "Bv",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "jG",
+        "nav_offset": 4705762
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1407/static/css/main.99e78b96.css",
+        "sha256": "28e87805a4199297d1bba78931a9cd850ce6a7d10ac7825444843f71d420ed49",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "jG",
+          "offset": 4723350
+        }
+      ],
+      "components": [
+        {
+          "symbol": "vv",
+          "offset": 4720757,
+          "end": 4723501,
+          "render_offset": 4723280,
+          "render_end": 4723500,
+          "render_source": "(){return(0,oE.jsx)(LC,{children:(0,oE.jsxs)(pC,{children:[(0,oE.jsx)(jG,{}),(0,oE.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "LC",
+          "offset": 4279671,
+          "end": 4279802,
+          "render_offset": 4279706,
+          "render_end": 4279801,
+          "render_source": "(){const e=this.props.children;return(0,oE.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "PC",
+          "offset": 4279814,
+          "end": 4280865,
+          "render_offset": 4280164,
+          "render_end": 4280864,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),E=this.props,a=E.extraClass,t=E.children,_=E.backgroundImage,i=E.extraStyle;let o=\"body-wrapper \".concat(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(o+=\" \"+a),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=_?(0,oE.jsxs)(oE.Fragment,{children:[(0,oE.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,oE.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(_,\")\")},className:\"background-edition\"}),(0,oE.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,oE.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1439,
+      "name": "Razer Kraken V4 X Sensa HD Haptics",
+      "source": ".ref/devices/1439/static/js/main.8adbaf05.js",
+      "sha256": "97273dc1f3dfec4e9f1ab85b95e49adf884cc10e7c9c29aacb90a599626ba8eb",
+      "root_condition": "\"chromaApp\"===E&&i===this.state.serialNumber",
+      "root_offset": 4830186,
+      "root_component": "aw",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "kv",
+        "nav_offset": 4804469
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1439/static/css/main.4b00bb51.css",
+        "sha256": "e79accc0eab428598a4595e90e57de13089cced9b73ef83ef40312394feb3c9c",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "kv",
+          "offset": 4812118
+        }
+      ],
+      "components": [
+        {
+          "symbol": "ew",
+          "offset": 4809527,
+          "end": 4812270,
+          "render_offset": 4812048,
+          "render_end": 4812269,
+          "render_source": "(){return(0,Wi.jsx)(nc,{children:(0,Wi.jsxs)(tc,{children:[(0,Wi.jsx)(kv,{isIframe:!0}),(0,Wi.jsx)(\"style\",{children:\"          .body-wrapper, .main-container{              min-width:unset;            }          \"})]})})}"
+        },
+        {
+          "symbol": "nc",
+          "offset": 4146214,
+          "end": 4146346,
+          "render_offset": 4146249,
+          "render_end": 4146345,
+          "render_source": "(){const{children:e}=this.props;return(0,Wi.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "Ec",
+          "offset": 4145020,
+          "end": 4146059,
+          "render_offset": 4145381,
+          "render_end": 4146058,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:a,children:E,backgroundImage:t,extraStyle:i}=this.props;let n=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(n+=\" \"+a),this.isMacroDisplayMode()&&(n+=\" customMacro\"),\"armory\"===e&&(n+=\" custom-scrollable\");let o=t?(0,Wi.jsxs)(Wi.Fragment,{children:[(0,Wi.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Wi.jsx)(\"div\",{style:{backgroundImage:`url(${t})`},className:\"background-edition\"}),(0,Wi.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:E})]}):E;return(0,Wi.jsx)(\"div\",{className:n,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:o})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1443,
+      "name": "RAZER LEVIATHAN V2",
+      "source": ".ref/devices/1443/static/js/main.a3f7f9d1.js",
+      "sha256": "785c0239ec582a38e0bfbed1e00c98efe04b0f3d961cf3c1b8325bc0d38b6aa9",
+      "root_condition": "\"chromaApp\"===a",
+      "root_offset": 5588493,
+      "root_component": "Kg",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "tg",
+        "nav_offset": 5578882
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1443/static/css/main.1c5d6dec.css",
+        "sha256": "20fe91f2881bc7df7ad3182cd98722a989837139b30558f3a60b2b501520e56d",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "tg",
+          "offset": 5586627
+        }
+      ],
+      "components": [
+        {
+          "symbol": "kg",
+          "offset": 5584407,
+          "end": 5586778,
+          "render_offset": 5586557,
+          "render_end": 5586777,
+          "render_source": "(){return(0,Be.jsx)(TN,{children:(0,Be.jsxs)(rN,{children:[(0,Be.jsx)(tg,{}),(0,Be.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{                min-width:unset;              }            \"})]})})}"
+        },
+        {
+          "symbol": "TN",
+          "offset": 5008661,
+          "end": 5008793,
+          "render_offset": 5008696,
+          "render_end": 5008792,
+          "render_source": "(){const{children:e}=this.props;return(0,Be.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "oN",
+          "offset": 5007467,
+          "end": 5008506,
+          "render_offset": 5007828,
+          "render_end": 5008505,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:E,extraStyle:_}=this.props;let n=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(n+=\" \"+t),this.isMacroDisplayMode()&&(n+=\" customMacro\"),\"armory\"===e&&(n+=\" custom-scrollable\");let i=E?(0,Be.jsxs)(Be.Fragment,{children:[(0,Be.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,Be.jsx)(\"div\",{style:{backgroundImage:`url(${E})`},className:\"background-edition\"}),(0,Be.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,Be.jsx)(\"div\",{className:n,ref:this.bodyRef,id:\"body-wrapper\",style:_||{},children:i})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1462,
+      "name": "Razer Kraken Kitty V3",
+      "source": ".ref/devices/1462/static/js/main.77653bee.js",
+      "sha256": "8acf689338a3fcdad7f21995a9b99096fcf8098f57f223e5155087e2f79aa009",
+      "root_condition": "\"chromaApp\"===t&&E===this.state.serialNumber",
+      "root_offset": 4922132,
+      "root_component": "jH",
+      "normal_lighting": {
+        "key": "TAB_LIGHTING",
+        "symbol": "cg",
+        "nav_offset": 4893306
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1462/static/css/main.837ce177.css",
+        "sha256": "39dcfbc6b8ebb3a27cde1e795f27d6d305f9bd60a2ff5be92e40579963cccbf7",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "cg",
+          "offset": 4911705
+        }
+      ],
+      "components": [
+        {
+          "symbol": "XH",
+          "offset": 4908858,
+          "end": 4911863,
+          "render_offset": 4911635,
+          "render_end": 4911862,
+          "render_source": "(){return(0,ye.jsx)(bN,{children:(0,ye.jsxs)(VN,{children:[(0,ye.jsx)(cg,{isIframe:!0}),(0,ye.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{              min-width:unset;              }          \"})]})})}"
+        },
+        {
+          "symbol": "bN",
+          "offset": 4454371,
+          "end": 4454503,
+          "render_offset": 4454406,
+          "render_end": 4454502,
+          "render_source": "(){const{children:e}=this.props;return(0,ye.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "WN",
+          "offset": 4454515,
+          "end": 4455554,
+          "render_offset": 4454876,
+          "render_end": 4455553,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:a,children:t,backgroundImage:E,extraStyle:i}=this.props;let n=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof a&&(n+=\" \"+a),this.isMacroDisplayMode()&&(n+=\" customMacro\"),\"armory\"===e&&(n+=\" custom-scrollable\");let o=E?(0,ye.jsxs)(ye.Fragment,{children:[(0,ye.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,ye.jsx)(\"div\",{style:{backgroundImage:`url(${E})`},className:\"background-edition\"}),(0,ye.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:t})]}):t;return(0,ye.jsx)(\"div\",{className:n,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:o})}"
+        }
+      ]
+    },
+    {
+      "product_id": 1465,
+      "name": "Razer Hammerhead V3 Chroma",
+      "source": ".ref/devices/1465/static/js/main.73ac4806.js",
+      "sha256": "e17025a3a22469baf1af4fbc44364836cfdc84c5bc90bb2b51276d82b8bdd0e3",
+      "root_condition": "\"chromaApp\"===a&&E===this.state.serialNumber",
+      "root_offset": 5221055,
+      "root_component": "JM",
+      "normal_lighting": {
+        "key": "LIGHTING",
+        "symbol": "mP",
+        "nav_offset": 5202211
+      },
+      "body_min_width": 0,
+      "css": {
+        "path": ".ref/devices/1465/static/css/main.7eae5a3e.css",
+        "sha256": "70500a3b74b6855aa4864bc92d9a7fd144287936cec293a022ea18b3eea59c6b",
+        "body_wrapper": "flex:1 1;height:100%;min-width:600px;padding:10px 20px 20px;width:100%"
+      },
+      "mounts_normal_lighting": true,
+      "matched": [
+        {
+          "symbol": "mP",
+          "offset": 5218948
+        }
+      ],
+      "components": [
+        {
+          "symbol": "QM",
+          "offset": 5216187,
+          "end": 5219095,
+          "render_offset": 5218878,
+          "render_end": 5219094,
+          "render_source": "(){return(0,bO.jsx)(xA,{children:(0,bO.jsxs)(jA,{children:[(0,bO.jsx)(mP,{}),(0,bO.jsx)(\"style\",{children:\"              .body-wrapper, .main-container{              min-width:unset;              }          \"})]})})}"
+        },
+        {
+          "symbol": "xA",
+          "offset": 4764787,
+          "end": 4764919,
+          "render_offset": 4764822,
+          "render_end": 4764918,
+          "render_source": "(){const{children:e}=this.props;return(0,bO.jsx)(\"div\",{className:\"main-container\",children:e})}"
+        },
+        {
+          "symbol": "XA",
+          "offset": 4764931,
+          "end": 4765970,
+          "render_offset": 4765292,
+          "render_end": 4765969,
+          "render_source": "(){const e=new URL(window.location.href).searchParams.get(\"displayMode\"),{extraClass:t,children:a,backgroundImage:E,extraStyle:i}=this.props;let o=\"body-wrapper \"+(this.props.status?\"\":\"scrollable\");\"string\"===typeof t&&(o+=\" \"+t),this.isMacroDisplayMode()&&(o+=\" customMacro\"),\"armory\"===e&&(o+=\" custom-scrollable\");let n=E?(0,bO.jsxs)(bO.Fragment,{children:[(0,bO.jsx)(\"div\",{className:\"background-edition-gradient\"}),(0,bO.jsx)(\"div\",{style:{backgroundImage:`url(${E})`},className:\"background-edition\"}),(0,bO.jsx)(\"div\",{style:{position:\"relative\",zIndex:4},children:a})]}):a;return(0,bO.jsx)(\"div\",{className:o,ref:this.bodyRef,id:\"body-wrapper\",style:i||{},children:n})}"
+        }
+      ]
+    }
+  ]
+}

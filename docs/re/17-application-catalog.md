@@ -22,6 +22,7 @@
 | [/synapse/](https://apps.razer.com/synapse/) | not_found | 待追踪 | 0/0 |
 | [/synapse/alexa/](https://apps.razer.com/synapse/alexa/) | ok | 齐备 | 10/10 |
 | [/synapse/armory/](https://apps.razer.com/synapse/armory/) | ok | 齐备 | 32/32 |
+| [/synapse/chroma-studio/](https://apps.razer.com/synapse/chroma-studio/) | network_error | 待追踪 | 0/0 |
 | [/synapse/dashboard/](https://apps.razer.com/synapse/dashboard/) | ok | 齐备 | 135/135 |
 | [/synapse/introduction-tour/](https://apps.razer.com/synapse/introduction-tour/) | ok | 齐备 | 27/27 |
 | [/synapse/macro/](https://apps.razer.com/synapse/macro/) | ok | 齐备 | 85/85 |
@@ -32,4 +33,4 @@
 
 没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。
 
-`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。发现脚本只提取静态路径，不执行模板或下载的代码。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。
+`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。`/feedback/` 来自当前 Dashboard、App Menu 和 Settings 中查询参数插值之前的固定路径。发现脚本只提取静态路径，不执行模板或下载的代码。`--routes` 仅准备已在源码登记的应用，保留其他已取得的目录记录。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。

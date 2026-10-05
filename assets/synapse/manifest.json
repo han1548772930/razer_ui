@@ -1327,13 +1327,14 @@
       "source_url": "https://apps.razer.com/synapse/dashboard/static/media/icon_arrow_short_right.5a823bac.svg"
     },
     {
-      "source": "assets/synapse/gr-hotspot-source.svg",
+      "source": ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
       "output": "assets/synapse/gr-hotspot.svg",
       "source_sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
       "sha256": "407b7c26ece65f824d453e1b6806840b69e72e765c6daadbf4d1a5712b82363d",
       "source_url": "https://apps.razer.com/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
-      "source_kind": "downloaded_static_asset",
-      "transform": "freeze original SMIL at keyTime 0.25 (1/3 second); omit animation nodes"
+      "source_kind": "offline_current_content_fingerprint_recovery",
+      "transform": "freeze original SMIL at keyTime 0.25 (1/3 second); omit animation nodes",
+      "recovery_receipt": "docs/re/current-media-offline-recovery.json"
     },
     {
       "source": ".ref/applications/synapse/dashboard/static/js/9388.974b5d43.chunk.js",
@@ -16206,6 +16207,25 @@
       "sha256": "da5893e1c79528e7d039e956f99ed1a85e18edf1a12fea84642cb5d46aedb579",
       "source_url": "https://apps.razer.com/synapse/macro/static/media/tooltip_exclamationmark.cc8fb226.svg",
       "purpose": "14px .exclamationText warning glyph for the monitor Color Gamut warning"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/js/9388.974b5d43.chunk.js",
+      "output": "assets/synapse/gr-external-link.svg",
+      "module": 19388,
+      "component": "o.render",
+      "source_offset": 3180,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static extraction of original SVG attributes; no JavaScript evaluation",
+      "source_sha256": "3f13c14fe1b040b3747825c7c308198fcc4a78f7a0aab11d7924fa79a000474a",
+      "sha256": "389f898c71e7eefbbc5ee6258a45692810ce59040d0abf19a269680469ef31b1"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/tooltip_questionmark.96138d2f.svg",
+      "output": "assets/synapse/gr-help.svg",
+      "source_kind": "current_css_url",
+      "transform": "Byte-for-byte copy",
+      "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
     }
   ]
 }

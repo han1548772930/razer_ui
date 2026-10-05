@@ -54,8 +54,8 @@ impl AppShell {
         // Page availability is a capability. No installed/native module results
         // have been read, so those catalog fields deliberately remain Unknown.
         // Modules whose page is implemented in this host open directly instead of
-        // showing the installer gate: the seven Dashboard boxes plus Chroma
-        // Studio, whose page is the same one the `chroma-app` window mounts.
+        // showing the installer gate. Chroma Studio is a separate source
+        // application (/synapse/chroma-studio/), not the Chroma Dashboard.
         let mut bundled_modules = vec![
             PickerModule::Alexa,
             PickerModule::AddWifi,
@@ -68,7 +68,6 @@ impl AppShell {
             // waiting for the external installer/service state.
             PickerModule::Feedback,
             PickerModule::ProfileMigration,
-            PickerModule::ChromaStudio,
         ];
         let mut launchable_modules = bundled_modules.clone();
         // The Philips Hue module page is implemented as product 769's workspace,
@@ -133,9 +132,6 @@ impl AppShell {
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Feedback)) => {
                 self.open_module_tab(service_pages::ModulePage::Feedback, window, cx);
-            }
-            AppPickerEvent::Open(PickerTarget::Module(PickerModule::ChromaStudio)) => {
-                self.navigate(Location::Chroma, window, cx);
             }
             // The Hue module's page is the 769 product workspace. Open that
             // device directly when it is present locally; otherwise report the

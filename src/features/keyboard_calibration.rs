@@ -4,6 +4,7 @@
 use super::*;
 use crate::features::source_workspace::SourceProductWorkspace;
 use crate::ui::{scroll::SourceScrollable as _, theme::KeyboardCalibrationColors as Colors};
+use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use std::{path::PathBuf, time::Duration};
@@ -66,11 +67,14 @@ pub(super) fn save_intro_visibility(visible: bool) {
 }
 
 fn ease_in_out(phase: f32) -> f32 {
-    if phase < 0.5 {
-        2. * phase * phase
-    } else {
-        1. - (-2. * phase + 2.).powi(2) / 2.
-    }
+    // CSS ease-in-out is cubic-bezier(.42, 0, .58, 1), not quadratic easing.
+    Easing::EaseInOut.sample(phase)
+}
+
+/// 740/746 root componentDidUpdate compares selectedProfileGuid exactly.
+/// A user-renamed profile must never acquire factory restrictions by its name.
+pub(crate) fn is_factory_profile(product_id: u32, guid: &str) -> bool {
+    specification(product_id).is_some() && guid == "af06d371-861f-4b98-8d78-bfaef5cfdebf"
 }
 
 impl KeyboardProductWorkspace {
@@ -80,12 +84,13 @@ impl KeyboardProductWorkspace {
         }
     }
 
-    pub(super) fn calibration_page(&self, cx: &Context<Self>) -> AnyElement {
+    pub(super) fn calibration_page(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let Some(spec) = specification(self.spec.product_id) else {
             return div().into_any_element();
         };
-        v_flex()
+        let contents = v_flex()
             .gap(surface::css(20.))
+            .when(self.factory_default_profile, |view| view.opacity(0.3))
             .children(self.calibration_intro_visible.then(|| {
                 v_flex()
                     .relative()
@@ -115,33 +120,15 @@ impl KeyboardProductWorkspace {
                     )
                     .child(
                         close_button("keyboard-calibration-intro-close", &spec.text("cancel"), cx)
+                            .disabled(self.factory_default_profile)
                             .on_click(cx.listener(|this, _, _, cx| {
+                                if this.factory_default_profile {
+                                    return;
+                                }
                                 this.calibration_intro_visible = false;
                                 save_intro_visibility(false);
                                 cx.notify();
                             })),
-                    )
-            }))
-            .children(self.factory_default_profile.then(|| {
-                v_flex()
-                    .gap(surface::css(6.))
-                    .p(surface::css(12.))
-                    .bg(Colors::panel())
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .rounded(surface::css(5.))
-                    .child(
-                        div()
-                            .font_family("RazerF5")
-                            .text_size(surface::css(14.))
-                            .text_color(cx.theme().primary)
-                            .child(t("FACTORY_DEFAULT_PROFILE_TITTLE").to_uppercase()),
-                    )
-                    .child(
-                        div()
-                            .text_size(surface::css(12.))
-                            .text_color(cx.theme().muted_foreground)
-                            .child(t("FACTORY_DEFAULT_PROFILE_NOTICE")),
                     )
             }))
             // Source la uses pointer-events:none. Calibration must not select or
@@ -151,9 +138,11 @@ impl KeyboardProductWorkspace {
                 surface::page_columns().child(surface::page_column(
                     surface::panel(spec.text("title"), cx)
                         .child(spec.text("description"))
-                        .when(!self.factory_default_profile, |panel| {
+                        .map(|panel| {
                             panel.child(
-                                div().mt(surface::css(4.)).child(
+                                // Section and first button both have margin-top:20px;
+                                // these adjoining block margins collapse in the source.
+                                div().mt(surface::css(20.)).flex().justify_center().child(
                                     command_button(
                                         "keyboard-calibration-start",
                                         spec.text("start"),
@@ -161,9 +150,13 @@ impl KeyboardProductWorkspace {
                                         false,
                                         cx,
                                     )
+                                    .disabled(self.factory_default_profile)
                                     .w(surface::css(146.))
                                     .on_click(cx.listener(
                                         move |this, _, window, cx| {
+                                            if this.factory_default_profile {
+                                                return;
+                                            }
                                             this.dismiss_calibration(window, cx);
                                             this.calibration_modal = Some(CalibrationModal::open(
                                                 spec,
@@ -178,12 +171,12 @@ impl KeyboardProductWorkspace {
                                 ),
                             )
                         })
-                        .when(!self.factory_default_profile, |panel| {
+                        .map(|panel| {
                             panel.child(
                                 h_flex()
                                     .items_start()
                                     .gap(surface::css(5.))
-                                    .mt(surface::css(4.))
+                                    .mt(surface::css(20.))
                                     .text_size(surface::css(12.))
                                     .text_color(cx.theme().muted_foreground)
                                     .child(
@@ -195,15 +188,80 @@ impl KeyboardProductWorkspace {
                             )
                         }),
                 )),
-            )
+            );
+        div()
+            .child(contents)
+            .when(self.factory_default_profile, |view| {
+                view.child(factory_warning(window))
+            })
             .into_any_element()
     }
+}
+
+fn factory_warning(window: &Window) -> AnyElement {
+    let unit = window.rem_size() / 16.;
+    let icon = f32::from(unit * 14.);
+    let html = t("FACTORY_DEFAULT_PROFILE_WARNING_DESC").replace(
+        "{{dots}}",
+        &format!("<img src=\"factory-profile-dots\" width=\"{icon}\" height=\"{icon}\" />"),
+    );
+    // Aa's .factory-default overrides the common warning-alert position,
+    // dimensions and title color; the common translateY(-100%) remains active.
+    deferred(
+        anchored()
+            .anchor(Anchor::BottomCenter)
+            .position(point(
+                window.viewport_size().width / 2.,
+                window.viewport_size().height * 0.45,
+            ))
+            .child(
+                v_flex()
+                    .id("keyboard-calibration-factory-warning")
+                    .w(unit * 465.)
+                    .p(surface::css(20.))
+                    .rounded(surface::css(3.))
+                    .bg(rgb(0x111111))
+                    .border_1()
+                    .border_color(rgb(0xfd8611))
+                    .shadow(vec![BoxShadow {
+                        color: rgba(0x00000033).into(),
+                        offset: point(px(0.), unit * 6.),
+                        blur_radius: unit * 10.,
+                        spread_radius: px(0.),
+                        inset: false,
+                    }])
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .text_color(rgb(0xcccccc))
+                    .text_center()
+                    .child(
+                        div()
+                            .mb(surface::css(10.))
+                            .text_size(surface::css(16.))
+                            .line_height(surface::css(16.8))
+                            .child(t("FACTORY_DEFAULT_PROFILE_TITTLE").to_uppercase()),
+                    )
+                    .child(
+                        gpui_kit::base::TextView::html(
+                            "keyboard-calibration-factory-description",
+                            html,
+                        )
+                        .image_source(|_| "synapse/profile-more.svg".into())
+                        .selectable(false)
+                        .scrollable(false),
+                    ),
+            ),
+    )
+    .with_priority(1)
+    .into_any_element()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Sample {
     SelectKey,
     KeySelected,
+    CalibrateBottom,
     PressKey,
     VerifyBottom,
     ReleaseKey,
@@ -212,9 +270,10 @@ enum Sample {
     Failure,
 }
 impl Sample {
-    const ALL: [(Self, &'static str, &'static str); 8] = [
+    const ALL: [(Self, &'static str, &'static str); 9] = [
         (Self::SelectKey, "select", "等待按键"),
         (Self::KeySelected, "selected", "已选择按键"),
+        (Self::CalibrateBottom, "bottom", "校准按下位置"),
         (Self::PressKey, "press", "按到底"),
         (Self::VerifyBottom, "verify", "校验按下位置"),
         (Self::ReleaseKey, "release", "松开按键"),
@@ -225,7 +284,7 @@ impl Sample {
     fn step(self) -> u8 {
         match self {
             Self::SelectKey | Self::KeySelected => 1,
-            Self::PressKey => 2,
+            Self::CalibrateBottom | Self::PressKey => 2,
             Self::VerifyBottom | Self::ReleaseKey => 3,
             Self::CalibrateTop | Self::Success => 4,
             Self::Failure => 2,
@@ -235,11 +294,11 @@ impl Sample {
         matches!(self, Self::CalibrateTop | Self::Success | Self::Failure)
     }
     fn pending(self) -> bool {
-        matches!(self, Self::VerifyBottom | Self::CalibrateTop)
+        matches!(self, Self::CalibrateBottom | Self::CalibrateTop)
     }
     fn next(self) -> Self {
         match self {
-            Self::KeySelected => Self::PressKey,
+            Self::KeySelected => Self::CalibrateBottom,
             Self::PressKey => Self::VerifyBottom,
             Self::ReleaseKey => Self::CalibrateTop,
             Self::Success | Self::Failure => Self::SelectKey,
@@ -305,32 +364,63 @@ impl Render for CalibrationModal {
         if !self.open {
             return div().into_any_element();
         }
-        // Source .backdrop.show .choose-a-mat starts 100px below the viewport
-        // and extends to its bottom; the component's unused .modal CSS is not
-        // the mounted surface. Keep that distinction in the native geometry.
-        let height = (window.viewport_size().height - window.rem_size() * (100. / 16.)).max(px(0.));
+        // Ea -> Ca=Sa mounts .choose-a-mat, not the unused CSS-module .modal.
+        // The shared sheet has min-width:800px, and width:1050px only >=1400;
+        // Ea's inline maxWidth:850px caps the latter. The source document itself
+        // has min-height:720px, so preserve the 800px overflow on narrow windows.
+        let viewport = window.viewport_size();
+        let unit = window.rem_size() / 16.;
+        let width = unit
+            * if viewport.width / unit >= 1400. {
+                self.spec.modal_width
+            } else {
+                800.
+            };
+        let progress = Presence::new(("keyboard-calibration-modal", "top"), true)
+            .transition(Transition::new(Duration::from_millis(300)).easing(Easing::Ease))
+            .sample(window, cx)
+            .progress;
+        let opacity = Presence::new(("keyboard-calibration-modal", "opacity"), true)
+            .transition(Transition::new(Duration::from_millis(100)).easing(Easing::Linear))
+            .sample(window, cx)
+            .progress;
+        let top = viewport.height + (unit * 100. - viewport.height) * progress;
+        let height = (viewport.height - top).max(px(0.));
         let panel = v_flex()
             .id("keyboard-calibration-modal")
             .test_support()
             .occlude()
-            .relative()
-            .w(surface::css(self.spec.modal_width))
-            .max_w(window.viewport_size().width)
+            .absolute()
+            .left((viewport.width - width) / 2.)
+            .top(top)
+            .w(width)
             .h(height)
+            .opacity(opacity)
             .bg(cx.theme().popover)
             .rounded_t(surface::css(5.))
             .text_color(cx.theme().foreground)
             .child(
                 modal_header(self.spec, cx).child(
-                    close_button("keyboard-calibration-close", &self.spec.text("cancel"), cx)
+                    modal_close_button(&self.spec.text("cancel"), window, cx)
                         .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
                 ),
             )
-            .child(modal_content(
-                self.spec,
-                self.sample.unwrap_or(Sample::SelectKey),
-                cx,
-            ))
+            .child(
+                div()
+                    .id("keyboard-calibration-scrollbar")
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .pt(surface::css(20.))
+                    .pl(surface::css(25.))
+                    .pb(surface::css(42.))
+                    .scrollable_y()
+                    .child(modal_content(
+                        self.spec,
+                        self.sample.unwrap_or(Sample::SelectKey),
+                        cx,
+                    )),
+            )
             .child(modal_footer(
                 self.spec,
                 self.sample.unwrap_or(Sample::SelectKey),
@@ -348,19 +438,80 @@ impl Render for CalibrationModal {
                 div()
                     .absolute()
                     .inset_0()
-                    .bg(cx.theme().title_bar.opacity(0.5)),
+                    .bg(rgba(0x00000080))
+                    .opacity(opacity),
             )
-            .popup(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .flex()
-                    .items_end()
-                    .justify_center()
-                    .child(panel),
-            )
+            .popup(div().absolute().inset_0().child(panel))
             .into_any_element()
     }
+}
+
+#[derive(Default)]
+struct CloseInteraction {
+    hovered: bool,
+    pressed: bool,
+}
+
+fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> gpui_kit::base::Button {
+    let state = window.use_keyed_state(
+        (ElementId::from("keyboard-calibration-close"), "state"),
+        cx,
+        |_, _| CloseInteraction::default(),
+    );
+    let current = state.read(cx);
+    let target: Hsla = if current.pressed && current.hovered {
+        rgba(0x0000001a)
+    } else if current.hovered {
+        rgba(0xffffff1a)
+    } else {
+        rgba(0x00000000)
+    }
+    .into();
+    let background = motion::transition(
+        ("keyboard-calibration-close", "background"),
+        target,
+        Transition::new(Duration::from_millis(200)).easing(Easing::Ease),
+        window,
+        cx,
+    );
+    gpui_kit::base::Button::new("keyboard-calibration-close")
+        .absolute()
+        .top_0()
+        .right_0()
+        .size(surface::css(36.))
+        .p_0()
+        .accessibility_label(label.to_owned())
+        .bg(background)
+        .on_hover(window.listener_for(&state, |state, hovered, _, cx| {
+            state.hovered = *hovered;
+            if !hovered {
+                state.pressed = false;
+            }
+            cx.notify();
+        }))
+        .on_mouse_down(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = true;
+                cx.notify();
+            }),
+        )
+        .on_mouse_up(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = false;
+                cx.notify();
+            }),
+        )
+        .on_mouse_up_out(
+            MouseButton::Left,
+            window.listener_for(&state, |state, _, _, cx| {
+                state.pressed = false;
+                cx.notify();
+            }),
+        )
+        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
+        .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
 }
 
 fn close_button(id: &'static str, label: &str, cx: &App) -> gpui_kit::base::Button {
@@ -410,7 +561,7 @@ fn command_button(
                 if primary {
                     style.bg(Colors::button_hover())
                 } else {
-                    style.opacity(0.8)
+                    style
                 }
             })
         })
@@ -422,7 +573,8 @@ fn modal_header(spec: &Spec, cx: &App) -> Div {
         .relative()
         .h(surface::css(36.))
         .flex_shrink_0()
-        .py(surface::css(8.))
+        .pt(surface::css(9.))
+        .pb(surface::css(8.))
         .border_b_1()
         .border_color(cx.theme().border)
         .font_family("RazerF5")
@@ -471,12 +623,7 @@ fn modal_content(spec: &Spec, sample: Sample, cx: &App) -> AnyElement {
     };
     v_flex()
         .id("keyboard-calibration-content")
-        .flex_1()
-        .min_h_0()
-        .scrollable_y()
-        .pt(surface::css(20.))
-        .pl(surface::css(25.))
-        .pb(surface::css(42.))
+        .w_full()
         .child(steps)
         .children(result.then(|| {
             v_flex()
@@ -510,9 +657,12 @@ fn modal_content(spec: &Spec, sample: Sample, cx: &App) -> AnyElement {
                         ),
                 )
         }))
-        .children((!result).then(|| {
+        // Source uses visibility:hidden, retaining the section's layout and
+        // loading subtree after the result is shown.
+        .child({
             v_flex()
                 .p(surface::css(20.))
+                .when(result, |view| view.invisible())
                 .child(
                     div()
                         .text_size(surface::css(16.))
@@ -544,11 +694,7 @@ fn modal_content(spec: &Spec, sample: Sample, cx: &App) -> AnyElement {
                                 .text_size(surface::css(14.))
                                 .text_color(Colors::button_text())
                                 .when(sample.step() > 1, |key| key.opacity(0.3))
-                                .child(if sample == Sample::SelectKey {
-                                    "|"
-                                } else {
-                                    "A"
-                                }),
+                                .child(calibration_key(sample, cx)),
                         )
                         .child(
                             div()
@@ -596,7 +742,7 @@ fn modal_content(spec: &Spec, sample: Sample, cx: &App) -> AnyElement {
                         // remains explicit while the waiting animation is real.
                         .child(progress.child(bar))
                 }))
-        }))
+        })
         .into_any_element()
 }
 fn modal_footer(
@@ -615,6 +761,10 @@ fn modal_footer(
         "next"
     };
     h_flex()
+        .absolute()
+        .left_0()
+        .bottom_0()
+        .w_full()
         .flex_shrink_0()
         .justify_center()
         .gap(surface::css(12.))
@@ -648,6 +798,30 @@ fn modal_footer(
                     )
                     .on_click(next),
                 ),
+        )
+        .into_any_element()
+}
+
+fn calibration_key(sample: Sample, cx: &App) -> AnyElement {
+    if sample != Sample::SelectKey {
+        return div().child("A").into_any_element();
+    }
+    let caret = div().font_weight(FontWeight::EXTRA_BOLD).child("|");
+    if cx.reduce_motion() {
+        return caret.into_any_element();
+    }
+    // Full source keyframes: 0%,50%,100% opacity:1; 25%,75% opacity:0.
+    caret
+        .with_animation(
+            "keyboard-calibration-caret",
+            Animation::new(Duration::from_millis(1100)).repeat(),
+            |caret, phase| {
+                caret.opacity(if (phase * 4.).floor() as u8 % 2 == 0 {
+                    1.
+                } else {
+                    0.
+                })
+            },
         )
         .into_any_element()
 }

@@ -77,11 +77,7 @@ impl SourceProductWorkspace {
             .iter()
             .find(|profile| profile.id == self.device.active_profile)
             .is_some_and(|profile| {
-                let name = profile.name.to_ascii_lowercase();
-                name == "factory default"
-                    || name == "factory_default"
-                    || name == "factory-default"
-                    || profile.id.eq_ignore_ascii_case("factory-default")
+                super::keyboard_products::is_factory_profile(self.device.product_id, &profile.guid)
             });
         if let FamilyBody::Keyboard(body) = &self.body {
             body.update(cx, |keyboard, cx| {
@@ -137,9 +133,12 @@ impl SourceProductWorkspace {
         }
     }
     /// Whether this source product's family renderer can produce its lighting
-    /// page. The product's own page list decides whether a lighting page exists
-    /// at all, so a product without `TAB_LIGHTING` never reports one.
+    /// page. Audio products additionally need an audited root-to-page match:
+    /// Hammerhead V3 Chroma calls that page `LIGHTING`, not `TAB_LIGHTING`.
     pub(crate) fn supports_lighting_page(&self) -> bool {
+        if matches!(&self.body, FamilyBody::Audio(_)) {
+            return super::audio_products::supports_chroma_lighting_page(self.device.product_id);
+        }
         if !matches!(
             &self.body,
             FamilyBody::Mouse(_)
@@ -179,12 +178,16 @@ impl SourceProductWorkspace {
                 Some(view.update(cx, |view, cx| view.lighting_element(window, cx)))
             }
             FamilyBody::System(view) => Some(view.update(cx, |view, cx| view.lighting_element(cx))),
+            FamilyBody::Audio(view) => view.update(cx, |view, cx| view.lighting_element(cx)),
             _ => None,
         }
     }
-    /// Whether this source product's family renderer can produce its mapping
-    /// (Customize) page, which the Armory application embeds per device.
+    /// Whether the source product has an implemented Armory root. Some roots
+    /// mount a product image or CoolerInfo instead of the Customize page.
     pub(crate) fn supports_mapping_page(&self) -> bool {
+        if super::armory_product::supports(&self.device) {
+            return true;
+        }
         if !matches!(
             &self.body,
             FamilyBody::Mouse(_)
@@ -203,8 +206,13 @@ impl SourceProductWorkspace {
                     .any(|page| page.kind().key() == "TAB_CUSTOMIZE")
             })
     }
-    /// The `displayMode=armory` root for a source product: its mapping page.
+    /// Select the audited independent Armory component before mapping roots.
     pub(crate) fn mapping_page_element(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        if super::armory_product::supports(&self.device) {
+            return Some(
+                super::armory_product::ArmoryProduct::new(&self.device).into_any_element(),
+            );
+        }
         if !self.supports_mapping_page() {
             return None;
         }
@@ -273,11 +281,7 @@ impl SourceProductWorkspace {
                 .iter()
                 .find(|profile| profile.id == device.active_profile)
                 .is_some_and(|profile| {
-                    let name = profile.name.to_ascii_lowercase();
-                    name == "factory default"
-                        || name == "factory_default"
-                        || name == "factory-default"
-                        || profile.id.eq_ignore_ascii_case("factory-default")
+                    super::keyboard_products::is_factory_profile(device.product_id, &profile.guid)
                 });
             let body = cx.new(|cx| {
                 super::keyboard_products::KeyboardProductWorkspace::new(

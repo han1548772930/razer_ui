@@ -1,5 +1,9 @@
 # 磁轴键盘校准页（2026-10-03）
 
+2026-10-05 更正：旧实现的固定850px、关闭图标、出厂配置判断/警告、结果占位和动画等
+已由当前组件树重新核对并修正；以[本轮复核](keyboard-calibration-review-2026-10-05.md)为准。
+本文后续2026-10-03/04记录保留为历史，不能作为这些细节已一致的证明。
+
 本次读取当前产品 740、746 的实际导航和挂载组件，补上此前只有标题的 `TAB_CALIBRATION` 页面。实现为 [keyboard_calibration.rs](../../src/features/keyboard_calibration.rs)，来源、字符偏移、CSS 和 20 份语言包指纹记录在 [keyboard_calibration_data.json](../../src/features/keyboard_calibration_data.json)。未读取停用的参考目录。
 
 | 产品 | 当前页面源 | SHA-256 |

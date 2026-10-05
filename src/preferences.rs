@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct DashboardPreferences {
+    /// Current Pi.getIntroductionBannerStatus: missing/null means visible.
+    pub(crate) is_banner_open: Option<bool>,
     pub(crate) items_order: std::collections::BTreeMap<String, Vec<String>>,
     pub(crate) groups_collapsed: std::collections::BTreeMap<String, bool>,
 }

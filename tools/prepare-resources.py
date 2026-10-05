@@ -423,9 +423,11 @@ shutil.copyfile(src, dst)
 record(src, dst, source_kind="downloaded_static_asset",
        source_url="https://apps.razer.com/synapse/dashboard/static/media/icon_arrow_short_right.5a823bac.svg")
 
-# Native SVG rendering does not run SMIL. The original ellipses have no rx/ry
-# until animation runs, so preserve the original 0.25 keyframe explicitly.
-src = OUT / "gr-hotspot-source.svg"
+# The UI now evaluates this current SVG's complete SMIL tracks natively. Keep
+# the old static resource reproducible for resource consumers only; it is not
+# the Gamer Room renderer. The source was recovered offline from its current
+# manifest content fingerprint, not independently re-downloaded successfully.
+src = ROOT / ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg"
 hotspot = ET.parse(src).getroot()
 ns = "{http://www.w3.org/2000/svg}"
 for animation in hotspot.findall(f"{ns}defs/{ns}animate"):
@@ -440,7 +442,8 @@ dst = OUT / "gr-hotspot.svg"
 ET.ElementTree(hotspot).write(dst, encoding="utf-8", xml_declaration=True)
 record(src, dst,
        source_url="https://apps.razer.com/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
-       source_kind="downloaded_static_asset",
+       source_kind="offline_current_content_fingerprint_recovery",
+       recovery_receipt="docs/re/current-media-offline-recovery.json",
        transform="freeze original SMIL at keyTime 0.25 (1/3 second); omit animation nodes")
 
 # Module 71610 exports a literal PNG data URL. Decode the bytes without

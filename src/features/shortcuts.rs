@@ -1,4 +1,4 @@
-//! Local global-shortcut editing follows frontend 7282/Oe and its mapping kinds.
+//! Current 4608/94608: Oe → Te → be rows beside ie's shared mapping tree.
 //! Runtime registration is separate from storing a user's configuration.
 use super::{
     controls::Choice,
@@ -8,13 +8,77 @@ use crate::ui::source_alert::{AlertAction, AlertPlacement, SourceAlert};
 use crate::{i18n, ui::surface};
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
-    checkbox::Checkbox,
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
     select::{SelectEvent, SelectState},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::{Deserialize, Serialize};
+use std::{
+    sync::OnceLock,
+    time::{Duration, Instant},
+};
+
+#[derive(Deserialize)]
+struct SourceShortcutChoice {
+    id: String,
+    content: String,
+}
+#[derive(Deserialize)]
+struct SourceShortcutData {
+    functions: Vec<String>,
+    key_names: std::collections::BTreeMap<String, String>,
+    media: Vec<SourceShortcutChoice>,
+    windows: Vec<SourceShortcutChoice>,
+    macro_playback: Vec<SourceShortcutChoice>,
+    profile_actions: Vec<SourceShortcutChoice>,
+    sensitivity_actions: Vec<SourceShortcutChoice>,
+    excluded_keys: Vec<String>,
+}
+fn source_shortcuts() -> &'static SourceShortcutData {
+    static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
+    DATA.get_or_init(|| {
+        serde_json::from_str(include_str!("shortcuts_current.json"))
+            .expect("current shortcuts literals")
+    })
+}
+
+/// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,
+/// keeping the existing suffix when a paste or IME replacement exceeds 250.
+fn limit_shortcut_text(previous: &str, current: &str) -> Option<(std::ops::Range<usize>, String)> {
+    if current.encode_utf16().count() <= 250 {
+        return None;
+    }
+    let prefix = previous
+        .chars()
+        .zip(current.chars())
+        .take_while(|(a, b)| a == b)
+        .map(|(_, ch)| ch.len_utf8())
+        .sum::<usize>();
+    let suffix = previous[prefix..]
+        .chars()
+        .rev()
+        .zip(current[prefix..].chars().rev())
+        .take_while(|(a, b)| a == b)
+        .map(|(_, ch)| ch.len_utf8())
+        .sum::<usize>();
+    let end = current.len() - suffix;
+    let mut remaining = 250_usize.saturating_sub(
+        current[..prefix].encode_utf16().count() + current[end..].encode_utf16().count(),
+    );
+    let mut accepted = prefix;
+    for ch in current[prefix..end].chars() {
+        if ch.len_utf16() > remaining {
+            break;
+        }
+        remaining -= ch.len_utf16();
+        accepted += ch.len_utf8();
+    }
+    Some((
+        accepted..end,
+        format!("{}{}", &current[..accepted], &current[end..]),
+    ))
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -37,6 +101,14 @@ pub(crate) enum ShortcutOutput {
 }
 
 impl ShortcutOutput {
+    fn category(&self) -> &'static str {
+        match self {
+            Self::Program { .. } | Self::Website { .. } => "LAUNCH_PROGRAM",
+            Self::Multimedia { .. } => "MULTIMEDIA",
+            Self::Windows { .. } => "WINDOWS_SHORTCUT",
+            Self::Text { .. } => "TEXT_FUNCTION",
+        }
+    }
     fn kind(&self) -> &'static str {
         match self {
             Self::Program { .. } => "program",
@@ -104,6 +176,8 @@ impl ShortcutOutput {
     }
 }
 
+// Accessors for the retained pure native encoder (no transport is connected).
+#[allow(dead_code)]
 impl Shortcut {
     pub(crate) fn id(&self) -> &str {
         &self.id
@@ -120,6 +194,8 @@ impl Shortcut {
     pub(crate) fn output(&self) -> &ShortcutOutput {
         &self.output
     }
+}
+impl Shortcut {
     fn chord(&self) -> String {
         self.modifiers
             .iter()
@@ -183,22 +259,28 @@ fn modifier_label(key: &str) -> String {
     let Some(family) = modifier_family(key) else {
         return key_label(key);
     };
-    let label = MODIFIERS[family].1;
-    if key.starts_with("KEY_LEFT_") {
-        format!("左 {label}")
-    } else if key.starts_with("KEY_RIGHT_") {
-        format!("右 {label}")
+    // 46114/i names left modifiers Ctrl/Alt/Shift without an invented prefix.
+    // GPUI's side-independent aliases use that source left-key spelling.
+    let source_key = if key.starts_with("KEY_") {
+        key.to_owned()
     } else {
-        label.into()
-    }
+        format!("KEY_LEFT_{}", MODIFIERS[family].0)
+    };
+    source_shortcuts()
+        .key_names
+        .get(&source_key)
+        .cloned()
+        .unwrap_or_else(|| key_label(key))
 }
 fn default_modifiers(value: &mut Shortcut) {
-    // Original frontend 7282/updateMapping calls getModifiers for an empty
+    // Current 94608/Te.updateMapping calls getModifiers for an empty
     // recording. GPUI supplies side-independent modifier booleans.
     if value.modifiers.is_empty() {
         value.modifiers = vec!["CTRL".into(), "SHIFT".into()];
     }
 }
+/// Strict native registration contract, retained with the pure encoder.
+#[allow(dead_code)]
 pub(crate) fn validate_shortcuts(items: &[Shortcut]) -> Result<(), String> {
     for (ix, item) in items.iter().enumerate() {
         item.validate()?;
@@ -211,17 +293,38 @@ pub(crate) fn validate_shortcuts(items: &[Shortcut]) -> Result<(), String> {
     }
     Ok(())
 }
+/// Oe saves output mappings before be records an input. Conflicts remain visible
+/// as Te warnings; they are never accepted by validate_shortcuts/encode_shortcuts.
+pub(crate) fn validate_stored_shortcuts(items: &[Shortcut]) -> Result<(), String> {
+    for (index, item) in items.iter().enumerate() {
+        if item.id.is_empty() || items[..index].iter().any(|other| other.id == item.id) {
+            return Err("快捷键身份无效或重复。".into());
+        }
+        if item.input.is_empty() {
+            if !item.modifiers.is_empty() {
+                return Err("尚未录制按键的快捷键不能包含辅助键。".into());
+            }
+            if let Some(error) = item.output.error() {
+                return Err(error.into());
+            }
+        } else {
+            item.validate()?;
+        }
+    }
+    Ok(())
+}
 const MOUSE_INPUTS: &[(&str, &str)] = &[
-    ("ScrollButton", "滚轮单击"),
-    ("RightClick", "右键单击"),
-    ("Button4", "鼠标按钮 4"),
-    ("Button5", "鼠标按钮 5"),
+    ("ScrollButton", "SCROLL_CLICK"),
+    ("RightClick", "RIGHT_CLICK"),
+    ("Button4", "MOUSE_BUTTON_4"),
+    ("Button5", "MOUSE_BUTTON_5"),
 ];
 fn input_label(input: &str) -> String {
     MOUSE_INPUTS
         .iter()
         .find(|(id, _)| *id == input)
-        .map(|(_, label)| (*label).into())
+        .map(|(_, label)| i18n::t(label))
+        .or_else(|| source_shortcuts().key_names.get(input).cloned())
         .unwrap_or_else(|| key_label(input))
 }
 fn kinds() -> Vec<Choice> {
@@ -237,14 +340,15 @@ fn kinds() -> Vec<Choice> {
     .collect()
 }
 fn action_choices(kind: &str) -> Vec<Choice> {
-    match kind {
-        "multimedia" => MEDIA,
-        "windows" => WINDOWS,
+    let choices: &[SourceShortcutChoice] = match kind {
+        "multimedia" => &source_shortcuts().media,
+        "windows" => &source_shortcuts().windows,
         _ => &[],
-    }
-    .iter()
-    .map(|(id, key)| Choice::new(*id, i18n::t(key)))
-    .collect()
+    };
+    choices
+        .iter()
+        .map(|item| Choice::new(item.id.clone(), i18n::t(&item.content)))
+        .collect()
 }
 
 struct Draft {
@@ -270,10 +374,26 @@ pub(crate) struct Shortcuts {
     list_focus: FocusHandle,
     delete_return_focus: Option<FocusHandle>,
     draft_generation: u64,
-    encoding_status: Option<Result<usize, String>>,
+    mapping_category: String,
+    mapping_expanded: bool,
+    menu_for: Option<String>,
+    menu_button_bounds: Bounds<Pixels>,
+    recording_id: Option<String>,
+    recording_ready: Option<Instant>,
+    recording_focus: FocusHandle,
+    empty_device: Entity<SelectState<Vec<Choice>>>,
+    empty_catalog: Entity<SelectState<Vec<Choice>>>,
+    playback: Entity<SelectState<Vec<Choice>>>,
+    launch_program: String,
+    launch_website: String,
 }
 pub(crate) struct ShortcutsChanged;
 impl EventEmitter<ShortcutsChanged> for Shortcuts {}
+pub(crate) enum ShortcutsOpenModule {
+    Macro,
+    ChromaStudio,
+}
+impl EventEmitter<ShortcutsOpenModule> for Shortcuts {}
 
 impl Shortcuts {
     pub(crate) fn new(items: Vec<Shortcut>, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -283,7 +403,7 @@ impl Shortcuts {
             SelectState::new(
                 MOUSE_INPUTS
                     .iter()
-                    .map(|(id, label)| Choice::new(*id, *label))
+                    .map(|(id, label)| Choice::new(*id, i18n::t(label)))
                     .collect::<Vec<_>>(),
                 None,
                 window,
@@ -291,7 +411,29 @@ impl Shortcuts {
             )
         });
         let target = cx.new(|cx| InputState::new(window, cx));
-        let paragraph = cx.new(|cx| TextareaState::new(window, cx));
+        let paragraph =
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(i18n::t("ENTER_TEXT")));
+        let empty_device = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
+        let empty_catalog = cx.new(|cx| {
+            SelectState::new(
+                vec![Choice::new("empty", " ")],
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
+        let playback = cx.new(|cx| {
+            SelectState::new(
+                source_shortcuts()
+                    .macro_playback
+                    .iter()
+                    .map(|item| Choice::new(item.id.clone(), i18n::t(&item.content)))
+                    .collect::<Vec<_>>(),
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
         let mut this = Self {
             saved: items.clone(),
             items,
@@ -311,7 +453,18 @@ impl Shortcuts {
             list_focus: cx.focus_handle(),
             delete_return_focus: None,
             draft_generation: 0,
-            encoding_status: None,
+            mapping_category: "SWITCH_DEVICE_PROFILE".into(),
+            mapping_expanded: false,
+            menu_for: None,
+            menu_button_bounds: Bounds::default(),
+            recording_id: None,
+            recording_ready: None,
+            recording_focus: cx.focus_handle(),
+            empty_device,
+            empty_catalog,
+            playback,
+            launch_program: String::new(),
+            launch_website: String::new(),
         };
         this.subscriptions.push(
             cx.subscribe_in(&this.kind, window, |this, _, event, w, cx| {
@@ -347,30 +500,71 @@ impl Shortcuts {
             }));
         this.subscriptions
             .push(cx.subscribe(&this.target, |this, input, event, cx| {
-                if matches!(event, InputEvent::Change) {
+                if matches!(event, InputEvent::Change)
+                    && this
+                        .draft
+                        .as_ref()
+                        .is_some_and(|draft| draft.value.output.kind() == "website")
+                {
                     this.set_output_value(input.read(cx).value().to_string());
                     this.changed(cx);
                 }
             }));
-        this.subscriptions
-            .push(cx.subscribe(&this.paragraph, |this, input, event, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.set_output_value(input.read(cx).value().to_string());
+        this.subscriptions.push(cx.subscribe_in(
+            &this.paragraph,
+            window,
+            |this, input, event, window, cx| {
+                if matches!(event, InputEvent::Change)
+                    && this
+                        .draft
+                        .as_ref()
+                        .is_some_and(|draft| draft.value.output.kind() == "text")
+                {
+                    let value = input.read(cx).value().to_string();
+                    let previous = this
+                        .draft
+                        .as_ref()
+                        .map(|draft| draft.value.output.value())
+                        .unwrap_or("");
+                    let value =
+                        if let Some((range, limited)) = limit_shortcut_text(previous, &value) {
+                            input.update(cx, |input, cx| {
+                                let caret = range.start;
+                                input.set_selected_range(range, cx);
+                                input.replace("", window, cx);
+                                input.set_selected_range(caret..caret, cx);
+                            });
+                            limited
+                        } else {
+                            value
+                        };
+                    this.set_output_value(value);
                     this.changed(cx);
                 }
-            }));
-        this.subscriptions
-            .push(cx.on_focus_out(&this.focus, window, |this, _, _, cx| {
+            },
+        ));
+        this.subscriptions.push(cx.on_focus_out(
+            &this.recording_focus,
+            window,
+            |this, _, _, cx| {
                 this.recording = false;
+                this.recording_id = None;
+                this.recording_ready = None;
                 cx.notify();
-            }));
+            },
+        ));
         this
     }
     fn set_output_value(&mut self, value: String) {
         if let Some(draft) = &mut self.draft {
             match &mut draft.value.output {
-                ShortcutOutput::Program { target } | ShortcutOutput::Website { target } => {
-                    *target = value
+                ShortcutOutput::Program { target } => {
+                    *target = value.clone();
+                    self.launch_program = value;
+                }
+                ShortcutOutput::Website { target } => {
+                    *target = value.clone();
+                    self.launch_website = value;
                 }
                 ShortcutOutput::Multimedia { action } | ShortcutOutput::Windows { action } => {
                     *action = value
@@ -380,16 +574,7 @@ impl Shortcuts {
         }
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
-        self.encoding_status = None;
         cx.emit(ShortcutsChanged);
-        cx.notify();
-    }
-    fn check_encoding(&mut self, cx: &mut Context<Self>) {
-        if self.draft.is_some() {
-            return;
-        }
-        self.encoding_status =
-            Some(super::shortcut_engine::encode_shortcuts(&self.items).map(|_| self.items.len()));
         cx.notify();
     }
     pub(crate) fn snapshot(&self) -> Vec<Shortcut> {
@@ -402,6 +587,7 @@ impl Shortcuts {
         self.saved = snapshot;
         cx.notify();
     }
+    #[cfg(test)]
     pub(crate) fn dirty(&self) -> bool {
         self.committed_pending() || self.draft_dirty()
     }
@@ -418,19 +604,14 @@ impl Shortcuts {
     }
     fn error(&self) -> Option<String> {
         let draft = self.draft.as_ref()?;
-        let mut value = draft.value.clone();
-        default_modifiers(&mut value);
-        if let Err(error) = value.validate() {
-            return Some(error);
+        if self.mapping_category != draft.value.output.category() {
+            return Some(i18n::t(match self.mapping_category.as_str() {
+                "MACRO" => "CREATE_MACRO_MSG",
+                "SWITCH_LIGHTING" => "CONFIGURE_CHROMA_STUDIO_MSG",
+                _ => "DEVICE_NOT_CONNECTED_MSG",
+            }));
         }
-        if self
-            .items
-            .iter()
-            .any(|item| item.id != value.id && item.same_chord(&value))
-        {
-            return Some("此按键组合已经分配给另一个全局快捷键。".into());
-        }
-        None
+        draft.value.output.error().map(str::to_string)
     }
     pub(crate) fn valid(&self) -> bool {
         self.error().is_none()
@@ -450,8 +631,9 @@ impl Shortcuts {
         });
         self.mouse
             .update(cx, |s, cx| s.set_selected_value(&input, window, cx));
-        self.target
-            .update(cx, |s, cx| s.set_value(value.clone(), window, cx));
+        self.target.update(cx, |s, cx| {
+            s.set_value(self.launch_website.clone(), window, cx)
+        });
         self.paragraph
             .update(cx, |s, cx| s.set_value(value, window, cx));
     }
@@ -462,9 +644,28 @@ impl Shortcuts {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !duplicate
+            && self
+                .draft
+                .as_ref()
+                .is_some_and(|draft| source.as_ref() == Some(&draft.value.id))
+        {
+            self.menu_for = None;
+            if self
+                .draft
+                .as_ref()
+                .is_some_and(|draft| draft.original.is_none())
+            {
+                self.discard_editor(window, cx);
+            } else {
+                cx.notify();
+            }
+            return;
+        }
         // A new editor cannot share its save confirmation with a stale row popup.
         self.delete_confirmation = None;
         self.delete_return_focus = None;
+        self.menu_for = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let original = source.and_then(|id| self.items.iter().find(|item| item.id == id).cloned());
         let mut value = original.clone().unwrap_or_else(|| Shortcut {
@@ -483,12 +684,37 @@ impl Shortcuts {
             value.input.clear();
             value.modifiers.clear();
         }
+        if duplicate {
+            self.discard_editor(window, cx);
+            self.items.push(value);
+            self.changed(cx);
+            return;
+        }
+        self.mapping_category = if original.is_some() {
+            value.output.category()
+        } else {
+            "SWITCH_DEVICE_PROFILE"
+        }
+        .into();
+        self.mapping_expanded = false;
+        self.launch_program = if value.output.kind() == "program" {
+            value.output.value().into()
+        } else {
+            String::new()
+        };
+        self.launch_website = if value.output.kind() == "website" {
+            value.output.value().into()
+        } else {
+            String::new()
+        };
         self.return_focus = window.focused(cx);
         self.draft = Some(Draft {
             value,
             original: if duplicate { None } else { original },
         });
         self.recording = false;
+        self.recording_id = None;
+        self.recording_ready = None;
         self.sync(window, cx);
         window.focus(&self.focus, cx);
         self.changed(cx);
@@ -498,6 +724,8 @@ impl Shortcuts {
         let restore = self.focus.contains_focused(window, cx);
         self.draft = None;
         self.recording = false;
+        self.recording_id = None;
+        self.recording_ready = None;
         if let Some(focus) = self.return_focus.take()
             && restore
         {
@@ -511,6 +739,9 @@ impl Shortcuts {
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = None;
         self.recording = false;
+        self.recording_id = None;
+        self.recording_ready = None;
+        self.menu_for = None;
         self.return_focus = None;
         self.changed(cx);
     }
@@ -519,7 +750,10 @@ impl Shortcuts {
             return false;
         }
         if let Some(mut draft) = self.draft.take() {
-            default_modifiers(&mut draft.value);
+            // Output mapping save precedes the independent row input recorder.
+            if !draft.value.input.is_empty() {
+                default_modifiers(&mut draft.value);
+            }
             if let ShortcutOutput::Website { target } = &mut draft.value.output {
                 *target = normalized_website(target).expect("validated website");
             }
@@ -531,10 +765,6 @@ impl Shortcuts {
             self.discard_editor(window, cx);
         }
         true
-    }
-    pub(crate) fn discard_all(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.items = self.saved.clone();
-        self.discard_editor(window, cx);
     }
     fn close_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.draft_dirty() {
@@ -578,7 +808,7 @@ impl Shortcuts {
         cx.notify();
     }
     fn delete(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
-        if self.draft.is_some() || !self.items.iter().any(|item| item.id == id) {
+        if !self.items.iter().any(|item| item.id == id) {
             return;
         }
         self.delete_confirmation = Some(id);
@@ -679,6 +909,7 @@ impl Shortcuts {
                                     page.delete_confirmation = None;
                                     page.delete_return_focus = None;
                                     page.items.retain(|item| item.id != id);
+                                    page.discard_editor(window, cx);
                                     window.focus(&page.list_focus, cx);
                                     page.changed(cx);
                                 });
@@ -688,7 +919,40 @@ impl Shortcuts {
             })
             .into_any_element()
     }
-    fn capture(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn start_recording(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.discard_editor(window, cx);
+        self.menu_for = None;
+        self.recording_id = Some(id);
+        self.recording = true;
+        // Current be registers browser and native input listeners after 100 ms.
+        self.recording_ready = Some(Instant::now() + Duration::from_millis(100));
+        window.focus(&self.recording_focus, cx);
+        cx.notify();
+    }
+    fn record_input(&mut self, input: String, modifiers: Modifiers, cx: &mut Context<Self>) {
+        if !self.recording || self.recording_ready.is_none_or(|at| Instant::now() < at) {
+            return;
+        }
+        let Some(id) = &self.recording_id else {
+            return;
+        };
+        if let Some(item) = self.items.iter_mut().find(|item| &item.id == id) {
+            item.input = input;
+            // GPUI exposes modifier families, not physical left/right keys.
+            // Current be ignores the Windows key and gets Hypershift from the
+            // unavailable native device-mode event. Do not fabricate either.
+            item.modifiers = [modifiers.control, modifiers.alt, modifiers.shift]
+                .into_iter()
+                .zip(MODIFIERS)
+                .filter(|(on, _)| *on)
+                .map(|(_, (id, _))| (*id).into())
+                .collect();
+            item.hypershift = false;
+            default_modifiers(item);
+        }
+        self.changed(cx);
+    }
+    fn capture(&mut self, event: &KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
         if !self.recording {
             return;
         }
@@ -696,29 +960,35 @@ impl Shortcuts {
         if event.is_held {
             return;
         }
-        if event.keystroke.key == "escape" {
-            self.recording = false;
-            cx.notify();
-            return;
-        }
         let Some(key) = canonical_key(&event.keystroke.key) else {
             return;
         };
-        if modifier_family(&key).is_some() {
+        if modifier_family(&key).is_some() || source_shortcuts().excluded_keys.contains(&key) {
             return;
         }
-        let m = event.keystroke.modifiers;
-        if let Some(draft) = &mut self.draft {
-            draft.value.input = key;
-            draft.value.modifiers = [m.control, m.alt, m.shift, m.platform]
-                .into_iter()
-                .zip(MODIFIERS)
-                .filter(|(on, _)| *on)
-                .map(|(_, (id, _))| (*id).into())
-                .collect();
-            default_modifiers(&mut draft.value);
+        self.record_input(key, event.keystroke.modifiers, cx);
+    }
+    fn select_category(&mut self, category: String, window: &mut Window, cx: &mut Context<Self>) {
+        if self.mapping_category == category {
+            return;
         }
-        self.recording = false;
+        let kind = match category.as_str() {
+            "TEXT_FUNCTION" => Some("text"),
+            "LAUNCH_PROGRAM" => Some("program"),
+            "MULTIMEDIA" => Some("multimedia"),
+            "WINDOWS_SHORTCUT" => Some("windows"),
+            _ => None,
+        };
+        if let (Some(kind), Some(draft)) = (kind, &mut self.draft) {
+            draft.value.output = ShortcutOutput::from_kind(kind);
+        }
+        if category == "LAUNCH_PROGRAM" {
+            self.launch_program.clear();
+            self.launch_website.clear();
+        }
+        self.mapping_category = category;
+        self.mapping_expanded = false;
+        self.draft_generation = self.draft_generation.wrapping_add(1);
         self.sync(window, cx);
         self.changed(cx);
     }
@@ -755,350 +1025,10 @@ impl Shortcuts {
         })
         .detach();
     }
-    fn editor(&self, cx: &mut Context<Self>) -> AnyElement {
-        let draft = self.draft.as_ref().expect("open editor");
-        let kind = draft.value.output.kind();
-        let target = match kind {
-            "text" => div()
-                .id("shortcut-text")
-                .test_support()
-                .w_full()
-                .child(
-                    Textarea::new(&self.paragraph)
-                        .w_full()
-                        .h(surface::css(120.)),
-                )
-                .into_any_element(),
-            "multimedia" | "windows" => surface::select(&self.action)
-                .id("shortcut-action")
-                .items(action_choices(kind))
-                .w_full()
-                .into_any_element(),
-            _ => v_flex()
-                .gap_2()
-                .child(Input::new(&self.target).id("shortcut-target").w_full())
-                .when(kind == "program", |s| {
-                    s.child(
-                        Button::new("shortcut-browse")
-                            .label("浏览…")
-                            .outline()
-                            .on_click(cx.listener(|s, _, w, cx| s.browse(w, cx))),
-                    )
-                })
-                .into_any_element(),
-        };
-        v_flex()
-            .id("shortcut-editor")
-            .test_support()
-            .track_focus(&self.focus)
-            .tab_group()
-            .capture_key_down(cx.listener(|s, e, w, cx| s.capture(e, w, cx)))
-            .on_key_down(cx.listener(|s, e: &KeyDownEvent, w, cx| {
-                if e.keystroke.key == "escape" && !s.recording {
-                    s.close_editor(w, cx);
-                    cx.stop_propagation();
-                }
-            }))
-            .w(surface::css(292.))
-            .min_w(surface::css(292.))
-            .p(surface::css(20.))
-            .gap(surface::css(12.))
-            .bg(cx.theme().group_box)
-            .border_1()
-            .border_color(cx.theme().border)
-            .child(
-                h_flex().justify_between().child("全局快捷键映射").child(
-                    Button::new("shortcut-close")
-                        .ghost()
-                        .label("×")
-                        .accessibility_label("关闭快捷键编辑器")
-                        .on_click(cx.listener(|s, _, w, cx| s.close_editor(w, cx))),
-                ),
-            )
-            .child(div().child("按键组合"))
-            .child(
-                Button::new("shortcut-record")
-                    .outline()
-                    .w_full()
-                    .label(if self.recording {
-                        "请按下组合键…".into()
-                    } else if draft.value.input.is_empty() {
-                        "录制快捷键".into()
-                    } else {
-                        draft.value.chord()
-                    })
-                    .on_click(cx.listener(|s, _, w, cx| {
-                        s.recording = !s.recording;
-                        w.focus(&s.focus, cx);
-                        cx.notify();
-                    })),
-            )
-            .child(
-                h_flex()
-                    .gap_2()
-                    .flex_wrap()
-                    .children(MODIFIERS.iter().map(|(id, label)| {
-                        let id = *id;
-                        let family = modifier_family(id);
-                        Checkbox::new(SharedString::from(format!("shortcut-modifier-{id}")))
-                            .label(*label)
-                            .checked(
-                                draft
-                                    .value
-                                    .modifiers
-                                    .iter()
-                                    .any(|v| modifier_family(v) == family),
-                            )
-                            .on_click(cx.listener(move |s, checked, _, cx| {
-                                if let Some(draft) = &mut s.draft {
-                                    draft
-                                        .value
-                                        .modifiers
-                                        .retain(|m| modifier_family(m) != family);
-                                    if *checked {
-                                        draft.value.modifiers.push(id.into());
-                                    }
-                                    draft.value.modifiers.sort_by_key(|m| modifier_family(m));
-                                }
-                                s.changed(cx);
-                            }))
-                    })),
-            )
-            .child(
-                Checkbox::new("shortcut-hypershift")
-                    .label("Razer Hypershift")
-                    .checked(draft.value.hypershift)
-                    .on_click(cx.listener(|s, value, _, cx| {
-                        if let Some(draft) = &mut s.draft {
-                            draft.value.hypershift = *value;
-                        }
-                        s.changed(cx);
-                    })),
-            )
-            .child(div().child("或选择鼠标输入"))
-            .child(
-                surface::select(&self.mouse)
-                    .id("shortcut-mouse")
-                    .items(
-                        MOUSE_INPUTS
-                            .iter()
-                            .map(|(id, label)| Choice::new(*id, *label))
-                            .collect(),
-                    )
-                    .w_full(),
-            )
-            .child(div().child("分配操作"))
-            .child(
-                surface::select(&self.kind)
-                    .id("shortcut-kind")
-                    .items(kinds())
-                    .w_full(),
-            )
-            .child(target)
-            .child(surface::note("宏、跨设备和 Chroma 操作需要相应服务。", cx))
-            .when_some(self.error(), |s, error| {
-                s.child(
-                    div()
-                        .id("shortcut-error")
-                        .test_support()
-                        .aria_label(error.clone())
-                        .text_color(cx.theme().danger)
-                        .child(error),
-                )
-            })
-            .child(
-                h_flex()
-                    .gap_2()
-                    .justify_end()
-                    .child(
-                        Button::new("shortcut-cancel")
-                            .label("取消")
-                            .on_click(cx.listener(|s, _, w, cx| s.close_editor(w, cx))),
-                    )
-                    .child(
-                        Button::new("shortcut-apply")
-                            .label("保存快捷键")
-                            .primary()
-                            .disabled(!self.valid())
-                            .on_click(cx.listener(|s, _, w, cx| {
-                                s.prepare_save(w, cx);
-                            })),
-                    ),
-            )
-            .into_any_element()
-    }
 }
-impl Render for Shortcuts {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let editing = self.draft.is_some();
-        h_flex()
-            .id("global-shortcuts-workspace")
-            .test_support()
-            .track_focus(&self.list_focus)
-            .items_start()
-            .gap(surface::css(20.))
-            .flex_wrap()
-            .w_full()
-            .child(
-                surface::panel("全局快捷键", cx)
-                    .id("global-shortcuts")
-                    .relative()
-                    .w(surface::css(600.))
-                    .max_w_full()
-                    .pt(surface::css(20.))
-                    .px(surface::css(10.))
-                    .pb(surface::css(30.))
-                    .gap_0()
-                    .child(
-                        surface::asset_button(
-                            "shortcut-add-icon",
-                            "synapse/dashboard-add.svg",
-                            "添加快捷键",
-                            cx,
-                        )
-                        .absolute()
-                        .top(surface::css(20.))
-                        .right(surface::css(20.))
-                        .size(surface::css(18.))
-                        .disabled(editing)
-                        .on_click(cx.listener(|s, _, w, cx| s.begin(None, false, w, cx))),
-                    )
-                    .child(
-                        div()
-                            .px(surface::css(10.))
-                            .mb(surface::css(20.))
-                            .child("为快捷键分配操作，并在不同应用程序中使用。"),
-                    )
-                    .children(self.items.iter().map(|item| {
-                        let edit = item.id.clone();
-                        let duplicate = edit.clone();
-                        let delete = edit.clone();
-                        h_flex()
-                            .id(SharedString::from(format!("shortcut-row-{}", item.id)))
-                            .test_support()
-                            .relative()
-                            .min_h(surface::css(70.))
-                            .px(surface::css(20.))
-                            .py(surface::css(8.))
-                            .gap_3()
-                            .border_b_1()
-                            .border_color(cx.theme().border)
-                            .child(
-                                Button::new(SharedString::from(format!(
-                                    "shortcut-edit-{}",
-                                    item.id
-                                )))
-                                .ghost()
-                                .flex_1()
-                                .justify_start()
-                                .label(format!("{}  ·  {}", item.chord(), item.output.label()))
-                                .disabled(editing)
-                                .on_click(cx.listener(
-                                    move |s, _, w, cx| s.begin(Some(edit.clone()), false, w, cx),
-                                )),
-                            )
-                            .child(
-                                Button::new(SharedString::from(format!(
-                                    "shortcut-duplicate-{}",
-                                    item.id
-                                )))
-                                .ghost()
-                                .label("复制")
-                                .disabled(editing)
-                                .on_click(cx.listener(
-                                    move |s, _, w, cx| {
-                                        s.begin(Some(duplicate.clone()), true, w, cx)
-                                    },
-                                )),
-                            )
-                            .child(
-                                Button::new(SharedString::from(format!(
-                                    "shortcut-delete-{}",
-                                    item.id
-                                )))
-                                .ghost()
-                                .label("删除")
-                                .disabled(editing)
-                                .on_click(
-                                    cx.listener(move |s, _, w, cx| s.delete(delete.clone(), w, cx)),
-                                ),
-                            )
-                            .when(
-                                self.delete_confirmation.as_deref() == Some(item.id.as_str()),
-                                |row| row.child(self.delete_popover(item, cx)),
-                            )
-                    }))
-                    .child(
-                        Button::new("shortcut-add-card")
-                            .ghost()
-                            .label("添加快捷键")
-                            .w_full()
-                            .h(surface::css(70.))
-                            .px(surface::css(20.))
-                            .py(surface::css(8.))
-                            .mt(surface::css(17.))
-                            .mb(surface::css(25.))
-                            .border_2()
-                            .border_dashed()
-                            .border_color(cx.theme().border)
-                            .rounded(cx.theme().font_size * (5. / 16.))
-                            .disabled(editing)
-                            .on_click(cx.listener(|s, _, w, cx| s.begin(None, false, w, cx))),
-                    )
-                    .child(surface::note("快捷键配置保存在本机。", cx))
-                    .child(
-                        h_flex()
-                            .gap_3()
-                            .mt(surface::css(12.))
-                            .child(
-                                Button::new("shortcut-check")
-                                    .outline()
-                                    .label("检查配置")
-                                    .disabled(editing)
-                                    .on_click(cx.listener(|s, _, _, cx| s.check_encoding(cx))),
-                            )
-                            .child(
-                                Button::new("shortcut-engine-apply")
-                                    .label("应用到引擎")
-                                    .disabled(true),
-                            ),
-                    )
-                    .when_some(self.encoding_status.clone(), |s, result| {
-                        let message = match &result {
-                            Ok(count) => format!("{count} 个快捷键的配置检查通过。"),
-                            Err(error) => format!("配置检查失败：{error}"),
-                        };
-                        s.child(
-                            div()
-                                .id("shortcut-encoding-status")
-                                .test_support()
-                                .aria_label(message.clone())
-                                .mt(surface::css(8.))
-                                .text_color(if result.is_ok() {
-                                    cx.theme().foreground
-                                } else {
-                                    cx.theme().danger
-                                })
-                                .child(message),
-                        )
-                    })
-                    .child(surface::note(
-                        "暂时无法读取引擎中的现有快捷键，尚不能应用。",
-                        cx,
-                    ))
-                    .when(self.dirty(), |s| {
-                        s.child(
-                            Button::new("shortcuts-discard-all")
-                                .outline()
-                                .label("丢弃快捷键更改")
-                                .on_click(cx.listener(|s, _, w, cx| s.discard_all(w, cx))),
-                        )
-                    }),
-            )
-            .when(editing, |s| s.child(self.editor(cx)))
-            .when_some(self.source_alert.clone(), |s, alert| s.child(alert))
-    }
-}
+
+include!("shortcuts_view.rs");
+include!("shortcuts_mapping.rs");
 
 #[cfg(test)]
 #[path = "shortcuts_tests.rs"]

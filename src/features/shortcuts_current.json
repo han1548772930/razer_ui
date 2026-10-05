@@ -1,0 +1,376 @@
+{
+  "functions": [
+    "SWITCH_DEVICE_PROFILE",
+    "SWITCH_DEVICE_SENSITIVITY",
+    "SWITCH_LIGHTING",
+    "MACRO",
+    "TEXT_FUNCTION",
+    "LAUNCH_PROGRAM",
+    "MULTIMEDIA",
+    "WINDOWS_SHORTCUT"
+  ],
+  "key_names": {
+    "KEY_A": "A",
+    "KEY_B": "B",
+    "KEY_C": "C",
+    "KEY_D": "D",
+    "KEY_E": "E",
+    "KEY_F": "F",
+    "KEY_G": "G",
+    "KEY_H": "H",
+    "KEY_I": "I",
+    "KEY_J": "J",
+    "KEY_K": "K",
+    "KEY_L": "L",
+    "KEY_M": "M",
+    "KEY_N": "N",
+    "KEY_O": "O",
+    "KEY_P": "P",
+    "KEY_Q": "Q",
+    "KEY_R": "R",
+    "KEY_S": "S",
+    "KEY_T": "T",
+    "KEY_U": "U",
+    "KEY_V": "V",
+    "KEY_W": "W",
+    "KEY_X": "X",
+    "KEY_Y": "Y",
+    "KEY_Z": "Z",
+    "KEY_0": "0",
+    "KEY_1": "1",
+    "KEY_2": "2",
+    "KEY_3": "3",
+    "KEY_4": "4",
+    "KEY_5": "5",
+    "KEY_6": "6",
+    "KEY_7": "7",
+    "KEY_8": "8",
+    "KEY_9": "9",
+    "KEY_F1": "F1",
+    "KEY_F2": "F2",
+    "KEY_F3": "F3",
+    "KEY_F4": "F4",
+    "KEY_F5": "F5",
+    "KEY_F6": "F6",
+    "KEY_F7": "F7",
+    "KEY_F8": "F8",
+    "KEY_F9": "F9",
+    "KEY_F10": "F10",
+    "KEY_F11": "F11",
+    "KEY_F12": "F12",
+    "KEY_F13": "F13",
+    "KEY_F14": "F14",
+    "KEY_F15": "F15",
+    "KEY_F16": "F16",
+    "KEY_F17": "F17",
+    "KEY_F18": "F18",
+    "KEY_F19": "F19",
+    "KEY_F20": "F20",
+    "KEY_F21": "F21",
+    "KEY_F22": "F22",
+    "KEY_F23": "F23",
+    "KEY_F24": "F24",
+    "KEY_NUMPAD_NUM_LOCK": "Num Lock",
+    "KEY_NUMPAD_0": "Num 0",
+    "KEY_NUMPAD_1": "Num 1",
+    "KEY_NUMPAD_2": "Num 2",
+    "KEY_NUMPAD_3": "Num 3",
+    "KEY_NUMPAD_4": "Num 4",
+    "KEY_NUMPAD_5": "Num 5",
+    "KEY_NUMPAD_6": "Num 6",
+    "KEY_NUMPAD_7": "Num 7",
+    "KEY_NUMPAD_8": "Num 8",
+    "KEY_NUMPAD_9": "Num 9",
+    "KEY_NUMPAD_SLASH": "Num /",
+    "KEY_NUMPAD_ASTERISK": "Num *",
+    "KEY_NUMPAD_DASH": "Num -",
+    "KEY_NUMPAD_PLUS": "Num +",
+    "KEY_NUMPAD_PERIOD": "Num .",
+    "KEY_NUMPAD_ENTER": "Num Enter",
+    "KEY_UP_ARROW": "Up",
+    "KEY_DOWN_ARROW": "Down",
+    "KEY_LEFT_ARROW": "Left",
+    "KEY_RIGHT_ARROW": "Right",
+    "KEY_PAGE_UP": "Page Up",
+    "KEY_PAGE_DOWN": "Page Down",
+    "KEY_BACKSPACE": "Backspace",
+    "KEY_TAB": "Tab",
+    "KEY_SPACEBAR": "Space",
+    "KEY_ENTER": "Enter",
+    "KEY_ESC": "Esc",
+    "KEY_INSERT": "Insert",
+    "KEY_HOME": "Home",
+    "KEY_DELETE": "Delete",
+    "KEY_END": "End",
+    "KEY_PRINT_SCREEN": "Print Screen",
+    "KEY_PAUSE": "Pause",
+    "KEY_CANCEL": "Invalid/cancel",
+    "KEY_APPLICATION": "Menu",
+    "KEY_LEFT_CTRL": "Ctrl",
+    "KEY_RIGHT_CTRL": "Right Ctrl",
+    "KEY_LEFT_SHIFT": "Shift",
+    "KEY_RIGHT_SHIFT": "Right Shift",
+    "KEY_LEFT_ALT": "Alt",
+    "KEY_RIGHT_ALT": "Right Alt",
+    "KEY_LEFT_GUI": "Windows",
+    "KEY_CAPS_LOCK": "Caps Lock",
+    "KEY_SCROLL_LOCK": "Scroll Lock",
+    "KEY_TILDE": "`",
+    "KEY_NON_US_POUND": "#",
+    "KEY_HYPEN": "-",
+    "KEY_EQUAL": "=",
+    "KEY_OPEN_SQUARE_BRACKET": "[",
+    "KEY_CLOSE_SQUARE_BRACKET": "]",
+    "KEY_BACKSLASH": "\\",
+    "KEY_SEMICOLON": ";",
+    "KEY_APOSTROPHE": "'",
+    "KEY_COMMA": ",",
+    "KEY_PERIOD": ".",
+    "KEY_SLASH": "/",
+    "KEY_YEN": "KEY_YEN",
+    "KEY_RO": "KEY_BEFORE_LEFT_SHIFT",
+    "KEY_MUHENKAN": "KEY_BEFORE_SPACE",
+    "KEY_HENKAN": "KEY_AFTER_SPACE",
+    "KEY_KATAKANA_HIRAGANA": "KEY_BEFORE_RIGHT_ALT",
+    "KEY_NON_US_BACKSLASH": "\\"
+  },
+  "media": [
+    {
+      "id": "VolumeDown",
+      "content": "VOLUME_DOWN"
+    },
+    {
+      "id": "VolumeUp",
+      "content": "VOLUME_UP"
+    },
+    {
+      "id": "MuteVolume",
+      "content": "MUTE_VOLUME"
+    },
+    {
+      "id": "MicVolumeUp",
+      "content": "MIC_VOLUME_UP"
+    },
+    {
+      "id": "MicVolumeDown",
+      "content": "MIC_VOLUME_DOWN"
+    },
+    {
+      "id": "MuteMic",
+      "content": "MUTE_MIC"
+    },
+    {
+      "id": "MuteAll",
+      "content": "MUTE_ALL"
+    },
+    {
+      "id": "Play",
+      "content": "PLAY_PAUSE"
+    },
+    {
+      "id": "PrevTrack",
+      "content": "PREVIOUS_TRACK"
+    },
+    {
+      "id": "NextTrack",
+      "content": "NEXT_TRACK"
+    }
+  ],
+  "windows": [
+    {
+      "id": "Calculator",
+      "content": "LAUNCH_CALCULATOR"
+    },
+    {
+      "id": "MSPaint",
+      "content": "LAUNCH_MSPAINT"
+    },
+    {
+      "id": "Notepad",
+      "content": "LAUNCH_NOTEPAD"
+    },
+    {
+      "id": "Snipping_Tool",
+      "content": "LAUNCH_SNIPPING_TOOL"
+    },
+    {
+      "id": "LaunchTaskManager",
+      "content": "LAUNCH_TASK_MANAGER"
+    },
+    {
+      "id": "MSCopilot",
+      "content": "LAUNCH_WINDOWS_COPILOT"
+    },
+    {
+      "id": "User_Directory",
+      "content": "OPEN_USER_DIRECTORY"
+    },
+    {
+      "id": "PowerUserMenu",
+      "content": "OPEN_SYSTEM_UTILITY"
+    },
+    {
+      "id": "ShowDesktop",
+      "content": "SHOW_DESKTOP"
+    },
+    {
+      "id": "CycleApps",
+      "content": "CYCLE_APPS"
+    },
+    {
+      "id": "SwitchApps",
+      "content": "SWITCH_APPS"
+    },
+    {
+      "id": "CloseApp",
+      "content": "CLOSE_APP"
+    },
+    {
+      "id": "Cut",
+      "content": "CUT"
+    },
+    {
+      "id": "Copy",
+      "content": "COPY"
+    },
+    {
+      "id": "Paste",
+      "content": "PASTE"
+    },
+    {
+      "id": "Mail",
+      "content": "MAIL"
+    },
+    {
+      "id": "ThisPC",
+      "content": "THIS_PC"
+    },
+    {
+      "id": "Refresh",
+      "content": "REFRESH"
+    },
+    {
+      "id": "DisplayBrightnessUp",
+      "content": "DISPLAY_BRIGHTNESS_UP"
+    },
+    {
+      "id": "DisplayBrightnessDown",
+      "content": "DISPLAY_BRIGHTNESS_DOWN"
+    },
+    {
+      "id": "File_Explorer",
+      "content": "OPEN_FILE_EXPLORER"
+    },
+    {
+      "id": "LockComputer",
+      "content": "LOCK_COMPUTER"
+    },
+    {
+      "id": "WindowsZoomIn",
+      "content": "WINDOWS_ZOOM_IN"
+    },
+    {
+      "id": "WindowsZoomOut",
+      "content": "WINDOWS_ZOOM_OUT"
+    },
+    {
+      "id": "OfficeZoomIn",
+      "content": "OFFICE_ZOOM_IN"
+    },
+    {
+      "id": "OfficeZoomOut",
+      "content": "OFFICE_ZOOM_OUT"
+    }
+  ],
+  "macro_playback": [
+    {
+      "id": "Once",
+      "content": "PLAY_ONCE"
+    },
+    {
+      "id": "NTimes",
+      "content": "PLAY_MULTIPLE_TIMES"
+    },
+    {
+      "id": "ContinuousToggle",
+      "content": "TOGGLE_CONTINUOUS_PLAYBACK"
+    },
+    {
+      "id": "Queue",
+      "content": "MACRO_QUEUE"
+    }
+  ],
+  "profile_actions": [
+    {
+      "id": "NextProfile",
+      "content": "NEXT_PROFILE"
+    },
+    {
+      "id": "PreviousProfile",
+      "content": "PREVIOUS_PROFILE"
+    },
+    {
+      "id": "CycleUp",
+      "content": "CYCLE_UP_PROFILE"
+    },
+    {
+      "id": "CycleDown",
+      "content": "CYCLE_DOWN_PROFILE"
+    },
+    {
+      "id": "Specific",
+      "content": "SPECIFIC_PROFILE"
+    }
+  ],
+  "sensitivity_actions": [
+    {
+      "id": "DPI_Clutch",
+      "content": "SENSITIVITY_CLUTCH"
+    },
+    {
+      "id": "DPI_Up",
+      "content": "SENSITIVITY_STAGE_UP"
+    },
+    {
+      "id": "DPI_Down",
+      "content": "SENSITIVITY_STAGE_DOWN"
+    },
+    {
+      "id": "DPI_OnTheFly",
+      "content": "ON_THE_FLY_SENSITIVITY"
+    },
+    {
+      "id": "DPI_CycleUp",
+      "content": "CYCLE_UP_SENSITIVITY"
+    },
+    {
+      "id": "DPI_CycleDown",
+      "content": "CYCLE_DOWN_SENSITIVITY"
+    }
+  ],
+  "excluded_keys": [
+    "KEY_PAUSE",
+    "KEY_CANCEL",
+    "KEY_APPLICATION",
+    "KEY_PRINT_SCREEN",
+    "KEY_SCROLL_LOCK",
+    "KEY_NUMPAD_NUM_LOCK"
+  ],
+  "labels": {
+    "qST": "SHORTCUT_KEY_INPUT",
+    "d8g": "DUPLICATE_SHORTCUT_MESSAGE",
+    "PKF": "CONFIGURE_CHROMA_STUDIO_MSG",
+    "jrk": "CONFIGURE_CHROMA_STUDIO",
+    "iiW": "CREATE_MACRO_MSG",
+    "jxF": "CONFIGURE_MACROS",
+    "Oih": "PLAYBACK_OPTION",
+    "XD": "ENTER_TEXT",
+    "RXF": "PROGRAM",
+    "IY1": "WEBSITE",
+    "f_P": "DEVICE_NOT_CONNECTED_MSG",
+    "lvj": "SCROLL_CLICK",
+    "mTg": "RIGHT_CLICK",
+    "OJ0": "MOUSE_BUTTON_4",
+    "hIH": "MOUSE_BUTTON_5"
+  }
+}

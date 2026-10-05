@@ -91,10 +91,10 @@ function component(id, name) {
 }
 const contracts = [component(23322, 'Ks'), component(23322, 'Fs'),
   component(62296, 'Wn'), component(62296, 'Kt'), component(62296, 'yn'), component(62296, 'ys'),
-  component(62296, 'Ss'), component(62296, 'Cs'), component(62296, 'Pn'),
+  component(62296, 'Ss'), component(62296, 'Cs'), component(62296, 'bs'), component(62296, 'Pn'),
   component(77778, 'Se'), component(77778, 'De'), component(77778, 'Ne'),
   component(77778, 'u'), component(77778, 'fe'), component(77778, 'le'), component(77778, 'ye'),
-  component(40554, 'K'), component(40554, 'Z'), component(18442, 'd'),
+  component(40554, 'K'), component(40554, 'Z'), component(40554, 'F'), component(40554, 'k'), component(18442, 'd'),
   component(77778, 'be'), component(77778, 'je'), component(77778, 'Ce'),
   component(62296, 'Qe'), component(62296, 'gt'), component(62296, 'Ye'),
   component(62296, 'qe'), component(62296, 'Je'), component(62296, 'Xe')];
@@ -118,7 +118,7 @@ const keys = new Set([
   'RAZER_STORE','RAZER_STORE_DESC','RAZER_GOLD_AND_SILVER','RAZER_GOLD_AND_SILVER_DESC',
   'RAZER_COMMUNITY','RAZER_COMMUNITY_DESC','RAZER_SUPPORT','RAZER_SUPPORT_DESC',
 ]);
-const appSymbols = ['Vo','T4Z','Ktu','s84','puU','WEP','saE','vBx','fC_','kB8','BsS','rOE','sGO','col','v2q','izv','h7Q','WYy','Her','$tG','MON','JqF','xjj','WWc','zX5','PWu','nKY','nr7'];
+const appSymbols = ['Vo','T4Z','Ktu','s84','puU','WEP','saE','vBx','fC_','kB8','BsS','rOE','sGO','col','v2q','izv','h7Q','WYy','Her','$tG','MON','JqF','xjj','WWc','zX5','PWu','nKY','nr7','CLe','Nl0','F6u'];
 const appKeyMap = Object.fromEntries(appSymbols.map(symbol => {
   const result = value(37927, symbol);
   if (typeof result !== 'string') throw Error(`Missing app language key ${symbol}`);

@@ -1,0 +1,129 @@
+{
+  "source": ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg",
+  "source_sha256": "16ea857d1571db9eb72fbe03d580373c1c780618fdf74574aa89bd8a7e6b9e88",
+  "recovery_receipt": "docs/re/current-media-offline-recovery.json",
+  "recovery_method": "Offline recovery using the current manifest MD4-prefix content fingerprint, calibrated against existing current SVG bytes; candidate SHA-256 and full MD4 retained. Not an independent live-download byte comparison.",
+  "width": 36.0,
+  "height": 36.0,
+  "view_box": [
+    0.0,
+    0.0,
+    36.0,
+    36.0
+  ],
+  "center": [
+    18.0,
+    18.0
+  ],
+  "stroke_rgb": [
+    255,
+    255,
+    255
+  ],
+  "stroke_opacity": 1.0,
+  "radius": {
+    "duration_seconds": 1.3333333,
+    "key_times": [
+      0.0,
+      0.25,
+      0.625,
+      1.0
+    ],
+    "values": [
+      2.0,
+      10.0,
+      17.5,
+      17.5
+    ],
+    "key_splines": [
+      [
+        0.333,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.167,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  "stroke_width": {
+    "duration_seconds": 1.3333333,
+    "key_times": [
+      0.0,
+      0.25,
+      0.625,
+      1.0
+    ],
+    "values": [
+      2.0,
+      4.0,
+      1.0,
+      1.0
+    ],
+    "key_splines": [
+      [
+        0.333,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.167,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  "opacity": {
+    "duration_seconds": 1.3333333,
+    "key_times": [
+      0.0,
+      0.25,
+      0.625,
+      1.0
+    ],
+    "values": [
+      1.0,
+      0.2,
+      0.0,
+      0.0
+    ],
+    "key_splines": [
+      [
+        0.333,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.167,
+        0.0,
+        0.833,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  }
+}

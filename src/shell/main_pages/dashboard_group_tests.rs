@@ -13,7 +13,7 @@ struct Fixture {
 impl Render for Fixture {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
-            .w(px(600.))
+            .w(px(620.))
             .child(
                 gpui_kit::base::Button::new("group-toggle")
                     .h(px(30.))
@@ -26,7 +26,7 @@ impl Render for Fixture {
             .child(DashboardGroupContent::new(
                 "group",
                 self.collapsed,
-                600.,
+                620.,
                 4,
                 div().id("group-card").test_support().h(px(460.)),
             ))

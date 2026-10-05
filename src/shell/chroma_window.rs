@@ -39,6 +39,11 @@ impl ChromaWindow {
                         shell.navigate(Location::Main(Tab::Setting), window, cx);
                     });
                 }
+                ChromaPageEvent::OpenTour(kind) => {
+                    let _ = owner.update_in(cx, |shell, window, cx| {
+                        shell.navigate(Location::Tour(*kind), window, cx);
+                    });
+                }
             },
         )
         .detach();

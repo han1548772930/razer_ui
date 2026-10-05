@@ -2,7 +2,7 @@
 //! is explicitly a preview; production ModuleCatalog retains its unknown service state.
 use super::{
     MODULES, Module, ModuleAction, ModuleCatalog, ModuleCatalogEvent, module_action,
-    module_detail_action, source_link,
+    module_description, module_detail_action, module_group_heading,
 };
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
@@ -199,13 +199,8 @@ impl ModulePreview {
         self.last_action = "已预览取消下载。".into();
         cx.notify();
     }
-    fn heading(&self, key: &str, cx: &App) -> Div {
-        div()
-            .font_family("RazerF5")
-            .text_size(surface::css(24.))
-            .text_color(cx.theme().primary)
-            .mb(surface::css(10.))
-            .child(i18n::t(key).to_uppercase())
+    fn heading(&self, key: &'static str, cx: &App) -> Div {
+        module_group_heading(key, cx)
     }
     fn action(
         &self,
@@ -376,9 +371,9 @@ impl ModulePreview {
                             item.icon
                         },
                         if is_device {
-                            "预览设备 A"
+                            "预览设备 A".to_owned()
                         } else {
-                            item.title
+                            item.title()
                         },
                         false,
                         cx,
@@ -415,50 +410,7 @@ impl ModulePreview {
             .into_any_element()
     }
     fn description(&self, item: &'static Module, cx: &App) -> AnyElement {
-        h_flex()
-            .items_start()
-            .min_h(surface::css(202.))
-            .p(surface::css(20.))
-            .bg(MainPageColors.detail_surface())
-            .when_some(item.image, |d, path| {
-                d.child(
-                    img(path)
-                        .w(surface::css(288.))
-                        .h(surface::css(162.))
-                        .mr(surface::css(20.))
-                        .object_fit(ObjectFit::Contain),
-                )
-            })
-            .child(
-                v_flex()
-                    .w(surface::css(592.))
-                    .text_size(surface::css(14.))
-                    .text_color(cx.theme().foreground)
-                    .child(
-                        div()
-                            .mb(surface::css(20.))
-                            .whitespace_normal()
-                            .child(item.description),
-                    )
-                    .child(
-                        h_flex()
-                            .when_some(item.link, |d, url| {
-                                d.child(source_link(
-                                    "preview-learn-more",
-                                    i18n::t("LEARN_MORE"),
-                                    url,
-                                    cx,
-                                ))
-                            })
-                            .child(
-                                div()
-                                    .ml_auto()
-                                    .mr(surface::css(20.))
-                                    .child(format!("{}: < 1 MB", i18n::t("SIZE"))),
-                            ),
-                    ),
-            )
-            .into_any_element()
+        module_description(item, cx)
     }
     fn installed_row(
         &self,

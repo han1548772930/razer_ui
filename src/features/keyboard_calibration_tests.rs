@@ -8,6 +8,7 @@ use gpui_kit::{App, AppContext, ElementId, TestAppContext, px, size};
 #[gpui_kit::test]
 fn calibration_open_cancel_and_keyboard_never_modify_profile(cx: &mut TestAppContext) {
     cx.update(gpui_kit::init);
+    cx.update(|cx| cx.set_reduce_motion(true));
     for (pid, scale) in [(740, 1.), (746, 1.25)] {
         cx.update(|cx| Theme::update(cx, |theme| theme.font_size = px(16. * scale)));
         let mut entity = None;
@@ -24,7 +25,7 @@ fn calibration_open_cancel_and_keyboard_never_modify_profile(cx: &mut TestAppCon
             window.click("keyboard-calibration-intro-close", cx);
             window.click("keyboard-calibration-start", cx);
             let panel = window.find("keyboard-calibration-modal").bounds();
-            assert!((panel.size.width - px(850. * scale)).abs() < px(1.));
+            assert!((panel.size.width - px(800. * scale)).abs() < px(1.));
             assert!((panel.top() - px(100. * scale)).abs() < px(1.));
             assert!((panel.bottom() - px(1100. * scale)).abs() < px(1.));
             window.press("a", cx);
@@ -48,6 +49,7 @@ fn calibration_open_cancel_and_keyboard_never_modify_profile(cx: &mut TestAppCon
 #[gpui_kit::test]
 fn preview_shows_full_product_page_and_waits_for_explicit_samples(cx: &mut TestAppContext) {
     cx.update(gpui_kit::init);
+    cx.update(|cx| cx.set_reduce_motion(true));
     let mut entity = None;
     let handle = cx.open_window(size(px(1280.), px(1100.)), |window, cx| {
         let view = cx.new(|cx| CalibrationPreview::new(740, window, cx));
@@ -86,6 +88,10 @@ fn preview_shows_full_product_page_and_waits_for_explicit_samples(cx: &mut TestA
         window.click((ElementId::from("calibration-sample"), "selected"), cx);
         assert!(sample(entity.read(cx), cx) == Some(Sample::KeySelected));
         window.click("keyboard-calibration-next", cx);
+        assert!(sample(entity.read(cx), cx) == Some(Sample::CalibrateBottom));
+        // No fabricated completion: select the post-calibrateBottom sample.
+        window.click("keyboard-calibration-cancel", cx);
+        window.click((ElementId::from("calibration-sample"), "press"), cx);
         assert!(sample(entity.read(cx), cx) == Some(Sample::PressKey));
         window.click("keyboard-calibration-next", cx);
         assert!(sample(entity.read(cx), cx) == Some(Sample::VerifyBottom));

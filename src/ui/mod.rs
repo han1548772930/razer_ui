@@ -1,4 +1,5 @@
 //! Shared semantic presentation primitives.
+pub(crate) mod app_introduction_banner;
 pub(crate) mod battery;
 pub(crate) mod game_tile;
 pub(crate) mod keyboard_geometry;

@@ -120,6 +120,31 @@ pub(crate) fn supports_page(pid: u32, key: &str) -> bool {
             .any(|p| p.key == key && !p.sections.is_empty())
     })
 }
+
+#[derive(Deserialize)]
+struct ChromaLightingPage {
+    product_id: u32,
+    page: String,
+    body_min_width: f32,
+}
+
+/// The current product root must resolve to its own registered lighting
+/// component. A generic audio page, or a root name alone, is insufficient.
+/// The generated receipt includes the independent `LIGHTING` key of 1465.
+fn chroma_lighting_page(pid: u32) -> Option<&'static ChromaLightingPage> {
+    static PAGES: OnceLock<Vec<ChromaLightingPage>> = OnceLock::new();
+    PAGES
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("audio_chroma_modes.json"))
+                .expect("validated audio chroma root-to-page routes")
+        })
+        .iter()
+        .find(|entry| entry.product_id == pid && supports_page(pid, &entry.page))
+}
+
+pub(crate) fn supports_chroma_lighting_page(pid: u32) -> bool {
+    chroma_lighting_page(pid).is_some()
+}
 pub(crate) struct AudioProductChanged;
 pub(crate) struct AudioProductWorkspace {
     spec: &'static AudioProductSpec,
@@ -697,14 +722,30 @@ impl AudioProductWorkspace {
             .into_any_element()
     }
 }
-impl Render for AudioProductWorkspace {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.page == "TAB_DEMO" {
-            if let Some(demo) = &self.demo {
-                return demo.clone().into_any_element();
-            }
-        }
-        let page = self.spec.pages.iter().find(|p| p.key == self.page);
+impl AudioProductWorkspace {
+    /// Shared body only: the popup must neither mutate the selected main tab
+    /// nor show the local product-name heading. The source root applies
+    /// `.body-wrapper{padding:10px 20px 20px}`. Nommo 1303/1304 retain the
+    /// body's 600px minimum; their root only unsets `.main-container`.
+    pub(crate) fn lighting_element(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let route = chroma_lighting_page(self.spec.product_id)?;
+        Some(
+            div()
+                .min_w(surface::css(route.body_min_width))
+                .pt(surface::css(10.))
+                .px(surface::css(20.))
+                .pb(surface::css(20.))
+                .bg(rgb(0x222222))
+                .font_family("Roboto")
+                .text_size(surface::css(14.))
+                .text_color(cx.theme().foreground)
+                .child(self.page_body(&route.page, cx))
+                .into_any_element(),
+        )
+    }
+
+    fn page_body(&self, key: &str, cx: &mut Context<Self>) -> AnyElement {
+        let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
@@ -729,11 +770,41 @@ impl Render for AudioProductWorkspace {
                 if let Some(key) = &section.equalizer {
                     panel = panel.child(self.render_equalizer(key, cx));
                 }
-                sections.push(surface::page_column(panel));
+                sections.push(panel.into_any_element());
             }
         }
         if sections.is_empty() {
-            sections.push(surface::page_column(surface::note("此页面尚未完成。", cx)));
+            sections.push(surface::note("此页面尚未完成。", cx).into_any_element());
+        }
+        // Current Nommo wm / kM: the left Il / bl column holds brightness
+        // followed by switch-off-lighting; the right column holds effects.
+        // The former descriptor renderer incorrectly created three columns.
+        if matches!(self.spec.product_id, 1303 | 1304)
+            && key == "TAB_LIGHTING"
+            && sections.len() == 3
+        {
+            let effects = sections.pop().unwrap();
+            return surface::page_columns()
+                .child(surface::page_column(v_flex().children(sections)))
+                .child(surface::page_column(effects))
+                .into_any_element();
+        }
+        surface::page_columns()
+            .children(sections.into_iter().map(surface::page_column))
+            .into_any_element()
+    }
+}
+impl Render for AudioProductWorkspace {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if matches!(self.spec.product_id, 1303 | 1304) && self.page == "TAB_LIGHTING" {
+            if let Some(lighting) = self.lighting_element(cx) {
+                return lighting;
+            }
+        }
+        if self.page == "TAB_DEMO" {
+            if let Some(demo) = &self.demo {
+                return demo.clone().into_any_element();
+            }
         }
         v_flex()
             .min_w_0()
@@ -746,7 +817,7 @@ impl Render for AudioProductWorkspace {
                     .text_color(cx.theme().muted_foreground)
                     .child(self.spec.name.clone()),
             )
-            .child(surface::page_columns().children(sections))
+            .child(self.page_body(&self.page, cx))
             .into_any_element()
     }
 }
