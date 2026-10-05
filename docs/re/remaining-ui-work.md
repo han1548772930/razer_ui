@@ -2,17 +2,17 @@
 
 2026-10-05 ?????Macro ?????????? Mouse/Loop ??????????Dashboard ?????????????????????[????](continuation-row-actions-2026-10-05.md)??????????????????????????
 
-2026-10-05 最新续接已补 Macro 全选/顶部选中操作及键盘配对高亮、179 实际 portal 提示、Dashboard 电池状态条件和mask、691 OLED预设编辑卡片。见[续接记录](continuation-review-2026-10-05.md)。Macro 每行复制/删除与成组拖动、完整 Phased；OLED 其他编辑器、语言/设备服务；其余产品专用状态和实际画面验收仍未完成。以下旧批次中与本次修复冲突的描述以专项新记录为准。
+2026-10-05 本轮已接入 Macro 全选/顶部操作、键盘配对高亮、Dashboard 电池状态和691 OLED预设编辑卡片。Macro 每行复制/删除、成组拖动与 Phased 阶段编辑已按当前源码接入；录制、执行、设备服务和实际画面验收仍未完成。详见 [Phased 审计](macro-phased-current-audit.md)。
 
 2026-10-05 用户要求把已有页面全部纳入字体、布局、颜色、图标、功能和动画复核。三个专项任务正在按当前实际挂载源码核对；本轮已暴露公共正文 padding、RazerF5 粗体未注册、Nommo 多余选项、相机分列及 Alexa 正文/提示等差异。见[完整覆盖索引](ui-consistency-round-2026-10-05.md)。以下可达性统计不是视觉或功能验收；旧记录中“已有”页面仍须逐项复核。
 
-2026-10-05 Macro Keyboard 已补当前窗口捕获、成对键事件和持久字段，见 [键盘审计](macro-keyboard-current-audit.md)。设备输入重定向、原光标、配对连线/动画、完整行复制与多选拖拽约束、Sequence/Phased 和运行验收仍缺；整体目标未完成。
+2026-10-05 Macro Keyboard 已接入当前窗口捕获、成对键事件和持久字段；设备输入重定向、原光标、配对连线/动画、序列和实际窗口验收仍缺。
 
-2026-10-05 Macro Launch 已补文件选择器和源草稿/定位规则，见 [Launch 审计](macro-launch-current-audit.md)；Phased 六层定位层级仍待完整编辑器接入。Text/emoji 已补分类、搜索、变体与字符面板，见 [文本审计](macro-text-current-audit.md)；原光标、DOM 生命周期边界、IME、最终像素与实际窗口验收仍待完成。
+2026-10-05 Macro Launch 已补文件选择器和源草稿/定位规则，Phased 六层定位已连接阶段编辑器，详见 [Phased 审计](macro-phased-current-audit.md)。Text/emoji 与实际窗口验收仍待完成。
 
 2026-10-05 嵌套菜单续接：编辑框与展开列表已分状态；重选同一宏只收起列表；补 688px 源阈值、当前帧定位、选中项滚入、名称撑宽和菜单/触发器过渡。见 [专项后续](macro-nested-menu-followup-2026-10-05.md)。钢笔编辑光标、滚动条外观及实际窗口验收仍缺；下面同日较早批次的定位/滚入/动画待办以本条为准。
 
-2026-10-05 Macro 后续批次：共享文档库与持久高水位 ID、每份宏的已保存动作及独立草稿、新建/切换/刷新保存提示、快捷键 Macro 选择和分类型播放集合已接入；3946 类型菜单与快捷键重复次数专用 Stepper 已按当前源码调整。继续接入了[嵌套宏选择与引用](macro-nested-current-audit.md)，包括活动草稿的循环候选检查；该菜单仍缺精确定位阈值、自动滚入和部分动画。具体行为、源码缺陷的本地处理和验证见 [集成记录](macro-library-integration-2026-10-05.md)。Sequence/Phased 完整创作、原生录制/执行、硬件服务和实际窗口验收也未完成；整体目标没有完成。
+2026-10-05 Macro 后续批次已接入共享文档库、持久 ID、动作草稿、保存提示、快捷键选择与分类播放。嵌套宏、Phased 阶段编辑、原生录制/执行、硬件服务和实际窗口验收中，Phased 界面与本地排序逻辑已接入，录制/设备服务仍是边界。
 
 2026-10-05 链接会话续接：已补快捷键文本 emoji/字符面板、3946 quick macro 捕获会话、3907 独立 Armory 无遥测分支及纵轴、Devices & Modules 源记录投影与正式服务行。3894 DEFAULT 经当前静态产品配置证明不可达，不再列作必须补造的页面；3894 是 Head Cushion Chroma，旧 PWM 名称错误。验证及明确边界见 [本批记录](continuation-followup-2026-10-05.md)。整体目标仍未完成，以下旧轮次与专项新记录冲突时以同日续接记录为准。
 
@@ -32,7 +32,7 @@ zh-TW 118）来自各语言包本身的缺失，不是本地漏提取。
 它属于 `multiDevicePairing` 独立模式根（本地配对窗口承载）。本轮修掉了让 Raptor 显示器、
 Hanbo、PWM 风扇控制器、散热垫、Core X V2 的已实现页面**完全不可达**的描述符守卫顺序问题，
 并补齐监视器提示控件与刷新率计数器方块网格、HDR 的 Windows 11 分支。仍未接入的配件细节
-（PIP 方块选择器、`uiRestraint` 设备约束、显示器产品图、ICC/刷新率、散热曲线硬件值）
+（真实 `uiRestraint` 服务填充、显示器产品图、ICC/刷新率、散热曲线硬件值）
 见[配件页面审计](accessory-system-native-ui.md)。
 
 2026-10-04 displayMode 分支批次：产品侧四个根分支现在都有本地实现与机检收据，
@@ -95,14 +95,14 @@ GIF 编码、原生裁剪输出、设备传输及实际像素/交互验收仍缺
 | 3587 / 3589 / 3590 Kiyo | 共享 Customize 布局已补 520×292 相机预览外框和明确不可用边界；实时流、设备枚举、取景与叠加层仍未实现 |
 | 1392 / 1442 / 3942 audio demo products | Source poster, dimensions, floating preference, and the source-sized control bar are restored. The progress/volume sliders retain local preview values, while native audio playback, live timing, floating video and complex mappings remain open; clicking reports the service boundary. See audio-demo-playback-boundary.md. |
 | 164 / 241 Mouse Dock | dongle 713 额外确认、部分配对状态动画、弹层 viewport / 滚动几何等价 |
-| 778 ASRock B550 / 3871 Chroma ARGB | 部分 300ms hover、自动检测点击短动画、步进器长按重复 |
-| 3884 / 3886 无线 ARGB | 原版检测动画、hover 过渡、tooltip 时序；3886 原代码端口分支不可达，不能把样例编辑器算成原版普通页 |
+| 778 ASRock B550 / 3871 Chroma ARGB | 页面主体、自动检测 50/100/700ms 动画与 LED 步进器 300ms 长按重复已接入；真实 ARGB 端口服务、检测结果和运行时视觉验收仍缺 |
+| 3884 / 3886 无线 ARGB | 自动检测图标的 50/100/700ms 点击动画、300ms hover motion 已接入；源 path 颜色插值、tooltip 挂载时序、3886 原代码端口分支不可达仍待逐像素/服务验收，不能把样例编辑器算成原版普通页（见 [动画依据](wireless-argb-motion-evidence.md)） |
 | 784 Aether Light Strip | 轮播平滑居中、Identify 延迟、部分 tooltip 触发/定位和底部提示定位 |
 | 769 Philips Hue | 发现、连接、设备状态的完整交互和精确视觉验证；已接入主体与引导不等于全部完成 |
 | 3946 自动化 / Base Station V3 | 实际挂载的 Static/Breathing/Starlight/Wave/Audio Meter 参数已接入；Fire/Spectrum 无参数面板。完整宏录制器、游戏浏览与关联、快捷键子编辑器、删除确认锚定、原始图标槽位及过渡动画仍缺 |
 | 原有十个适配器 | 182、653、777、3072、3073、3074、3076、3077、3078、3080 的 27 个主页面已逐页复核（`partial_native_reaudited`，带本地路由与源码依据），见 [逐页复核](legacy-adapter-page-reaudit.md)；仍未进入 `source_help` 描述符、182 规格条目 `pages` 为空、653/777 仍走各自手写页面，仍是部分实现 |
 | 设备页顶栏电量 | 已按当前源码接入（状态机 `off`/`Charging`/`charging100`/`NoCharge_BatteryFull`/`batt-warning`/`ReachChargingLimit`，图标与文案逐条取证，见 [电量依据](battery-indicator-audit.md)）；原版的 `hideBattValue` 与耳机左右耳电量因本地无数据来源未实现 |
-| 3880 显示器色彩页 | 已按 `NSA` 做成两列 `.widget-col`（左 THX Cinema + Color Profile，右 HDR + Color Temperature）、标题行开关、`COLOR_PROFILE_TOOLTIP` 提示与空数据配置下拉；仍缺 `uiRestraint` 禁用原因与系统色彩配置文件枚举 |
+| 3880 Raptor 27 165Hz | 已接入 NSA 两列 Color 页面、HDR、THX Cinema、色域与 PIP/显示器控件；`uiRestraint` 的源字段门控已接入本地渲染，真实宿主/设备服务填充、系统 ICC 枚举和产品图仍缺 |
 | 所有产品 | 仍无实际窗口的字体度量、缩放、焦点、滚动和动画逐像素验收结论；不能以检查通过认定视觉完整 |
 
 ## 不属于单个设备的界面

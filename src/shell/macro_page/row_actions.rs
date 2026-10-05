@@ -249,6 +249,7 @@ impl MacroPage {
             self.add_action_at(kind, target, cx);
             return;
         }
+        let before = self.actions.clone();
         // T9 keeps the target object's identity during removal and inserts
         // after it. Dropping on a selected member of the moved group is a no-op.
         if target > 0 && drag.indices.contains(&(target - 1)) {
@@ -297,7 +298,28 @@ impl MacroPage {
                 order.insert(destination, paired);
             }
         }
+        let assignments = self.dragged_phase_assignments(drag, target, &order);
+        let phase_changed = assignments.iter().any(|&(index, phase)| {
+            self.actions
+                .get(index)
+                .is_some_and(|item| item.phase != Some(phase))
+        });
+        for &(index, phase) in &assignments {
+            if let Some(item) = self.actions.get_mut(index) {
+                item.phase = Some(phase);
+            }
+        }
         self.commit_row_order(order, cx);
+        let order_changed = self.actions != before;
+        if self.current_macro_type() == MacroType::Phased {
+            self.normalize_phased_rows();
+        }
+        if phase_changed && !order_changed {
+            self.undo.push(before);
+            self.redo.clear();
+            self.clear_action_editors();
+            cx.notify();
+        }
     }
 
     pub(super) fn sync_loop_value(&mut self, index: usize) {

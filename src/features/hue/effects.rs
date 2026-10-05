@@ -444,13 +444,20 @@ impl HueWorkspace {
                                 .w_full()
                                 .flex()
                                 .justify_center()
-                                .child(command(
-                                    "hue-install-chroma",
-                                    "INSTALL_RAZER_CHROMA",
-                                    true,
-                                    true,
-                                    cx,
-                                )),
+                                .child(
+                                    command(
+                                        "hue-launch-chroma",
+                                        "LAUNCH_CHROMA_STUDIO",
+                                        true,
+                                        false,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |_, _, _, cx| {
+                                            cx.emit(super::HueChromaRequested);
+                                        },
+                                    )),
+                                ),
                         ),
                 )
                 .child(
@@ -474,7 +481,7 @@ impl HueWorkspace {
                 )
                 .child(
                     gpui_kit::base::Button::new("hue-launch-chroma")
-                        .disabled(true)
+                        .disabled(false)
                         .w(surface::css(240.))
                         .h(surface::css(50.))
                         .mt(surface::css(20.))
@@ -485,7 +492,10 @@ impl HueWorkspace {
                         .px(surface::css(16.))
                         .accessibility_label(i18n::t("LAUNCH_CHROMA_STUDIO"))
                         .child(img("synapse/hue-logo_chromastudio.svg").size(surface::css(30.)))
-                        .child(i18n::t("LAUNCH_CHROMA_STUDIO").to_uppercase()),
+                        .child(i18n::t("LAUNCH_CHROMA_STUDIO").to_uppercase())
+                        .on_click(cx.listener(|_, _, _, cx| {
+                            cx.emit(super::HueChromaRequested);
+                        })),
                 )
                 .into_any_element(),
         }

@@ -23,6 +23,9 @@ pub enum WorkspaceEvent {
     Changed,
     IntroDismissed,
     ShareProfile,
+    /// Navigation request for the locally implemented Chroma app window.
+    /// This does not assert external Chroma installation or service state.
+    OpenChroma,
     PairingRequested(crate::model::Device),
 }
 pub(super) struct MappingDraft {

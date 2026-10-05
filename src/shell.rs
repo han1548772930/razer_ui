@@ -1,7 +1,10 @@
 //! App navigation and persistence. Device feature state lives in DeviceWorkspace.
 use crate::ui::scroll::SourceScrollable as _;
 use crate::{
-    features::{ProductWorkspace, WorkspaceEvent},
+    features::{
+        ProductWorkspace, WorkspaceEvent,
+        display_mode_roots::{self, DisplayModeRoot},
+    },
     model::Device,
     nav::Tab,
     preferences::CustomColors,
@@ -736,6 +739,13 @@ impl AppShell {
                         }
                     }
                 }
+                WorkspaceEvent::OpenChroma => {
+                    // Hue's advanced-effects entry targets the same local
+                    // Chroma app contract as the app picker. Opening it is a
+                    // navigation action and does not claim native install
+                    // state.
+                    this.open_chroma_window(cx);
+                }
                 WorkspaceEvent::IntroDismissed => {
                     this.tracking_intro_seen = true;
                     for device in &this.devices {
@@ -750,6 +760,10 @@ impl AppShell {
                         "productId": device.product_id,
                         "deviceContainerId": device.device_container_id,
                         "serialNumber": device.serial_number,
+                        "category": serde_json::to_value(device.category)
+                            .ok()
+                            .and_then(|value| value.as_str().map(str::to_owned)),
+                        "deviceName": device.display_name(),
                     });
                     this.open_product_pairing_window(&payload, cx);
                 }
@@ -798,12 +812,20 @@ impl AppShell {
             .and_then(|value| u32::try_from(value).ok());
         let container_id = device
             .get("deviceContainerId")
+            .or_else(|| device.get("containerId"))
             .and_then(serde_json::Value::as_str)
             .map(str::to_string)
             .filter(|value| !value.trim().is_empty());
         let (Some(product_id), Some(container_id)) = (product_id, container_id) else {
             return;
         };
+        // The product source only mounts this root for the audited
+        // `multiDevicePairing` product set. A pairing record without that
+        // branch must stay on the dashboard page instead of opening a local
+        // approximation of a non-existent product root.
+        if !display_mode_roots::has_root_branch(DisplayModeRoot::MultiDevicePairing, product_id) {
+            return;
+        }
         let identity = display_window::WindowIdentity {
             container_id: Some(container_id),
             product_id: Some(product_id),
@@ -824,7 +846,15 @@ impl AppShell {
         let policy = display_window::WindowPolicy::Different;
         // `allMasters` 来自宿主写入的 connectedDeviceInfo 投影（Dashboard `jt`/`Et`），
         // 该投影尚未审计；没有真实记录时传 None，窗口显示 4130 页面原有的空态。
-        let payload = pairing_window::PairingWindowPayload { all_masters: None };
+        // The source URL serializes `allMasters` and parses it again in the
+        // product root. Accept both representations at this native boundary.
+        let all_masters = device.get("allMasters").and_then(|value| {
+            value.as_str().map_or_else(
+                || Some(value.clone()),
+                |encoded| serde_json::from_str(encoded).ok(),
+            )
+        });
+        let payload = pairing_window::PairingWindowPayload { all_masters };
         if let Err(error) =
             display_window::open_or_focus(cx, name, policy, options, move |window, cx| {
                 cx.new(|cx| pairing_window::PairingWindow::new(window, cx, payload))

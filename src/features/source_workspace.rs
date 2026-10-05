@@ -265,6 +265,12 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, _: &super::hue::HueChromaRequested, cx| {
+                    cx.emit(WorkspaceEvent::OpenChroma);
+                },
+            ));
             FamilyBody::Hue(body)
         } else if super::mouse_products::source_product(device.product_id).is_some() {
             let body = cx.new(|cx| {

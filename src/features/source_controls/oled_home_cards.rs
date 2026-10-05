@@ -1,5 +1,6 @@
 //! Current OLED `di -> Q -> G`: all seven cards, source order and hover actions.
 use super::*;
+use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 
 impl SourceControls {
     pub(in super::super) fn render_oled_presets(
@@ -65,6 +66,9 @@ impl SourceControls {
                             self.draft.pointer("/oled/media").unwrap_or(&Value::Null),
                         )
                         .preview_content(),
+                        6 => super::super::oled_system_editor::system_preview(
+                            self.draft.pointer("/oled/system"),
+                        ),
                         3 => img("synapse/oled-691-keyboard.png")
                             .w(surface::css(256.))
                             .h(surface::css(64.))
@@ -79,7 +83,7 @@ impl SourceControls {
                             .into_any_element(),
                     };
                     let editable = mode != 3;
-                    let edit_implemented = matches!(mode, 0 | 1 | 5);
+                    let edit_implemented = matches!(mode, 0 | 1 | 5 | 6);
                     let edit_disabled =
                         disabled || ble_disabled || self.is_ble || !edit_implemented;
                     let mut overlay = h_flex()
@@ -105,6 +109,7 @@ impl SourceControls {
                                 0 => this.open_oled_presets(PresetKind::Animation, window, cx),
                                 1 => this.open_oled_presets(PresetKind::Image, window, cx),
                                 5 => this.open_oled_media(window, cx),
+                                6 => this.open_oled_system(window, cx),
                                 _ => {}
                             },
                         ));
@@ -136,19 +141,11 @@ impl SourceControls {
                             },
                         )),
                     );
-                    v_flex()
+                    let card = v_flex()
                         .id(SharedString::from(format!("oled-home-card-{name}")))
                         .w(surface::css(236.))
                         .flex_shrink_0()
                         .when(ble_disabled, |card| card.opacity(0.5))
-                        .when(ble_disabled, |card| {
-                            card.tooltip(|window, cx| {
-                                tooltip::Tooltip::new(t(
-                                    "OLED_HOME_SCREEN_DISPLAY_TURN_OFF_BLE_MODE_TOOLTIP",
-                                ))
-                                .build(window, cx)
-                            })
-                        })
                         .child(
                             h_flex()
                                 .h(surface::css(19.))
@@ -223,6 +220,19 @@ impl SourceControls {
                                     )
                                 }),
                         )
+                        .into_any_element();
+                    if ble_disabled {
+                        SourceTooltip::new(
+                            format!("oled-ble-disabled-{name}"),
+                            t("OLED_HOME_SCREEN_DISPLAY_TURN_OFF_BLE_MODE_TOOLTIP"),
+                            300.,
+                        )
+                        .kind(SourceTooltipKind::OledBleDisabled)
+                        .trigger(move |_, _, _| card)
+                        .into_any_element()
+                    } else {
+                        card
+                    }
                 }),
             )
             .when(disabled, |cards| {

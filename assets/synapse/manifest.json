@@ -15880,6 +15880,27 @@
       "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_duplicate.f2ce29fb.svg"
     },
     {
+      "source": ".ref/applications/synapse/macro/static/media/icon_keyhold.89fa438f.svg",
+      "output": "assets/synapse/macro/phase-held.svg",
+      "source_sha256": "6740712443e1460721106ccb527a553978a049ad5bec6cc72be7a43f98a4023a",
+      "sha256": "6740712443e1460721106ccb527a553978a049ad5bec6cc72be7a43f98a4023a",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_keyhold.89fa438f.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_chevron.6a725e60.svg",
+      "output": "assets/synapse/macro/phase-chevron.svg",
+      "source_sha256": "d270d7607f190b763f6fb40248b7b402e4334aa93821c3fa0c0fd4cb0ee05168",
+      "sha256": "d270d7607f190b763f6fb40248b7b402e4334aa93821c3fa0c0fd4cb0ee05168",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_chevron.6a725e60.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_chevron_r.0ba840e4.svg",
+      "output": "assets/synapse/macro/phase-chevron-hover.svg",
+      "source_sha256": "b3ab9606ffdb24cb0b71782112190caca23bd5c7dfd8c2855aeabdc20ba2fb44",
+      "sha256": "b3ab9606ffdb24cb0b71782112190caca23bd5c7dfd8c2855aeabdc20ba2fb44",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_chevron_r.0ba840e4.svg"
+    },
+    {
       "source": ".ref/applications/synapse/macro/static/media/icon_delay_d.224b6fe2.svg",
       "output": "assets/synapse/macro/drag-delay.svg",
       "source_sha256": "37d8187f08c87f245b395a50f82e1d26bc6042c431300f7fd02e4baadbb20743",

@@ -4,6 +4,7 @@ use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     select::{SelectEvent, SelectState},
 };
+use std::time::Duration;
 
 pub(super) struct PortChanged {
     pub(super) id: u32,
@@ -22,6 +23,8 @@ pub(super) struct PortEditor {
     name: Entity<InputState>,
     rows: BTreeMap<u64, LedControl>,
     editing_name: bool,
+    stepper_generation: u64,
+    stepper_click_pending: bool,
     chroma_installed: Option<bool>,
     last_command: Option<String>,
     _subscriptions: Vec<Subscription>,
@@ -82,6 +85,8 @@ impl PortEditor {
             name,
             rows: BTreeMap::new(),
             editing_name: false,
+            stepper_generation: 0,
+            stepper_click_pending: false,
             chroma_installed: preview.then_some(false),
             last_command: None,
             _subscriptions: subscriptions,
@@ -197,6 +202,74 @@ impl PortEditor {
             self.changed(cx);
         }
     }
+    fn step_leds(
+        &mut self,
+        id: u64,
+        increase: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let Some(value) = self
+            .draft
+            .segments()
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| s.value)
+        else {
+            return false;
+        };
+        let next = if increase {
+            value.saturating_add(1)
+        } else {
+            value.saturating_sub(1)
+        };
+        self.edit_leds(id, next, window, cx);
+        self.draft
+            .segments()
+            .iter()
+            .find(|s| s.id == id)
+            .is_some_and(|s| s.value != value)
+    }
+    fn begin_stepper_hold(
+        &mut self,
+        id: u64,
+        increase: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.stepper_generation = self.stepper_generation.wrapping_add(1);
+        self.stepper_click_pending = true;
+        self.step_leds(id, increase, window, cx);
+        let generation = self.stepper_generation;
+        let owner = cx.entity().downgrade();
+        let window_handle = window.window_handle();
+        cx.spawn(async move |_, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(300))
+                    .await;
+                let Some(owner) = owner.upgrade() else { break };
+                let keep_repeating = cx
+                    .update_window(window_handle, |_, window, cx| {
+                        owner.update(cx, |this, cx| {
+                            if this.stepper_generation != generation {
+                                return false;
+                            }
+                            this.step_leds(id, increase, window, cx)
+                        })
+                    })
+                    .ok()
+                    .unwrap_or(false);
+                if !keep_repeating {
+                    break;
+                }
+            }
+        })
+        .detach();
+    }
+    fn end_stepper_hold(&mut self) {
+        self.stepper_generation = self.stepper_generation.wrapping_add(1);
+    }
     fn add(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.editable()
             || self.draft.is_strip_mode && self.draft.strip.len() >= 4
@@ -300,14 +373,31 @@ impl PortEditor {
                             .w(surface::css(8.))
                             .h(surface::css(4.)),
                         )
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, _, window, cx| {
+                                this.begin_stepper_hold(id, increase, window, cx);
+                            }),
+                        )
+                        .on_mouse_up(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, _| {
+                                this.end_stepper_hold();
+                            }),
+                        )
+                        .on_mouse_up_out(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, _| {
+                                this.end_stepper_hold();
+                            }),
+                        )
                         .on_click(cx.listener(
                             move |this, _, window, cx| {
-                                let next = if increase {
-                                    value.saturating_add(1)
+                                if this.stepper_click_pending {
+                                    this.stepper_click_pending = false;
                                 } else {
-                                    value.saturating_sub(1)
-                                };
-                                this.edit_leds(id, next, window, cx);
+                                    this.step_leds(id, increase, window, cx);
+                                }
                             },
                         ))
                     })),

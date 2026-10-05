@@ -148,7 +148,10 @@ impl MacroPage {
                     .opacity(0.7)
             })
             .scrollable_y()
-            .children((0..action_count).map(|index| self.action_row(index, baseline.clone(), disabled, window, cx)))
+            .children(
+                (0..action_count)
+                    .map(|index| self.action_row(index, baseline.clone(), disabled, window, cx)),
+            )
             .child(
                 div()
                     .id("macro-item-drop-space")
@@ -169,7 +172,7 @@ impl MacroPage {
             .into_any_element()
     }
 
-    fn action_value_editor(
+    pub(super) fn action_value_editor(
         &self,
         index: usize,
         kind: ActionKind,

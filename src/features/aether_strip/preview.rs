@@ -57,6 +57,7 @@ fn apply(view: &mut AetherStrip, scene: &str, window: &mut Window, cx: &mut Cont
             refreshing: scene == "refreshing",
         }
     };
+    view.sync_identify_ready(cx);
     let sides = match scene {
         "corner" => 2,
         "three" => 3,

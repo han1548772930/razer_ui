@@ -309,7 +309,7 @@ impl MacroPage {
         let anchor = TextAnchor::Launch {
             trigger: state.trigger.clone(),
             editor: editor.clone(),
-            row_offset: index as f32 * 42.,
+            row_offset: self.phase_row_offset(index),
             upward: state.upward.clone(),
         };
         drop(state);

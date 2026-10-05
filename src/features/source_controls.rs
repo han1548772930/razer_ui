@@ -18,6 +18,7 @@ use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 mod oled_page;
 mod oled_presets;
+mod oled_system_editor;
 mod receiver;
 
 #[derive(Deserialize)]

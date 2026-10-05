@@ -1,12 +1,14 @@
 # 当前 UI 完成状态
 
+2026-10-05 本轮继续补齐当前源可直接证明的细节：3858/3880 显示器接入 `uiRestraint` truthy 禁用原因的控件门控，服务字段不写入本地 profile；3884/3886 无线 ARGB 接入自动检测 50/100/700ms 动画、300ms hover 过渡与 3886 待机覆盖层。相关专项静态校验、格式化和 `cargo check --locked --all-targets` 通过；真实设备服务与运行时像素验收仍缺，整体复刻未完成。
+
 2026-10-05 ?????Macro ?????????? Mouse/Loop ??????????Dashboard ?????????????????????[????](continuation-row-actions-2026-10-05.md)??????????????????????????
 
 2026-10-05 最新关联会话续接已修正 Macro 选择与工具栏、179 提示/配对外层、Dashboard 电池状态/mask，以及691 OLED预设卡片；补查14个服务产品的运行时图标模式。统一 `cargo check --locked --all-targets`、格式与相关静态检查通过。具体覆盖、证据和未完成项见[本轮续接](continuation-review-2026-10-05.md)。**整体仍未完成，未运行应用或测试，未作像素一致性结论。**
 
 2026-10-05 已按用户要求开启已有页面的全面一致性复核，三个子任务分别检查公共壳层、产品正文和独立应用。本批已修正179接收器、实际字体面/字重、公共正文间距、Nommo与相机内容、Alexa和Armory正文及运行时页签图标；统一`cargo check --locked --all-targets`与专项静态校验通过。覆盖范围与未核项见[本轮索引](ui-consistency-round-2026-10-05.md)。**已有页面或编译通过均不代表一致，整体仍未完成。**
 
-2026-10-05 Macro Keyboard 已替换自由文本输入，接入当前窗口原始键码捕获、150ms 提交、按下/松开配对更新与本地持久字段，并补原方向图标。见 [键盘专项记录](macro-keyboard-current-audit.md)。设备重定向、配对连线/拖拽细节和完整 Sequence/Phased 仍缺；整体复刻未完成。
+2026-10-05 Macro Keyboard 已替换自由文本输入，接入当前窗口原始键码捕获、150ms 提交、按下/松开配对更新与本地持久字段，并补原方向图标。见 [键盘专项记录](macro-keyboard-current-audit.md)。设备重定向、配对连线/拖拽细节、原生录制与执行服务仍缺；Phased 编辑器界面和本地排序已接入，整体复刻未完成。
 
 2026-10-05 Macro Launch 已接入 null 初始模式、文件选择器、分离草稿、源按钮状态和 100px／−300px 定位规则，见 [Launch 审计](macro-launch-current-audit.md)。Text/emoji 已按 `58190.dn/on/en` 接入分类、搜索、变体、UTF-16 限制与源 clear-search/CSS 缺陷，见 [文本审计](macro-text-current-audit.md)。两者均未做实际窗口验收。
 
@@ -268,3 +270,5 @@ Macro action rows now support source-shaped drag reordering, including the 100px
 - Product 182 battery snapshot corrected from stale 47% to 100%; old workspaces normalize only the confirmed full-state 47% record.
 - Product 179 Dashboard PluginImages and current `prd-1x` preview are embedded.
 - Product 179 host Tab uses `.ref/applications/synapse/dashboard/shared-favicon/ACCESSORY.svg`, matching the current ACCESSORY source category.
+
+2026-10-05 Phased Macro编辑器已按当前 58190.Ka/Fr 和 25572.G 接入三个阶段、phase-aware 拖放、稳定阶段排序和 Launch 定位，证据见 [Phased 审计](macro-phased-current-audit.md)。原生录制服务、设备传输和实际窗口验收仍未完成。

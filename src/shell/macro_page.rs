@@ -713,6 +713,13 @@ impl MacroPage {
         let Some(items) = self.new_action_items(kind) else {
             return;
         };
+        let mut items = items;
+        if self.current_macro_type() == crate::features::macro_library::MacroType::Phased {
+            let phase = self.active_phase().unwrap_or(0);
+            for item in &mut items {
+                item.phase = Some(phase);
+            }
+        }
         self.undo.push(self.actions.clone());
         let index = index.min(self.actions.len());
         for selected in &mut self.selected_actions {
@@ -721,6 +728,9 @@ impl MacroPage {
             }
         }
         self.actions.splice(index..index, items);
+        if self.current_macro_type() == crate::features::macro_library::MacroType::Phased {
+            self.normalize_phased_rows();
+        }
         self.clear_action_editors();
         self.redo.clear();
         cx.notify();

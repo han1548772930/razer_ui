@@ -43,3 +43,15 @@ This audit does **not** claim rendered pixel parity: the user prohibited launchi
 `node tools/extract-wired-argb.cjs --check` compares maintained generated data/evidence with current sources. `.work/resource-env/Scripts/python.exe tools/prepare-wired-argb.py` prepares only declared resources and static animation layers. `python tools/validate-wired-argb.py` validates current source hashes, exact component receipts, locale keys, physical-state separation evidence and every prepared asset. `rustfmt --edition 2024` formats the Rust modules. The parent agent performs the consolidated permitted `cargo check --locked --all-targets`; no application, build, test binary, installer, vendor JavaScript or vendor DLL was executed for this audit.
 
 Integration seam: `supports_page(pid, key)`, `WiredArgbWorkspace::new(&Device, window, cx)`, `snapshot() -> Value`, `restore(&Value, window, cx)`, `dismiss(window, cx)`, `WiredArgbChanged`, and `open_preview(window, cx)`.
+
+## 2026-10-05 transition follow-up
+
+The current 778 and 3871 CSS receipts were rechecked from the complete
+`.ref/devices/<pid>/` JavaScript/CSS/assets bundle. They confirm the shared
+`.common-transition` 300ms icon transition, the stepper hover/active colors,
+and the source's 50/100/700ms auto-detection click animation plus 300ms
+press-and-hold repetition. GPUI Kit supplies the equivalent motion primitives (`motion::transition`,
+`Presence`, and `.transition(...)`). The remaining gap is wiring the source
+state classes and SVG-path choreography to those primitives; it is not an API
+absence. The effects remain open rather than being approximated with an
+unverified timer or fabricated hardware result.

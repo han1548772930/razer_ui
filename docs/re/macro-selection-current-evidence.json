@@ -1,5 +1,5 @@
 {
-  "generator_sha256": "59c4ff28733a98b067e9ba379140f8df57dabc2286d088cf90e90df8bb9057e6",
+  "generator_sha256": "71333afda1c7484ea8b12bc93dd8bc6e7b138e4c924b79c4d420675c7a214bd9",
   "method": "Acorn only; native hookup guards and asset hashes are static checks, not runtime verification",
   "contracts": [
     {
@@ -2007,11 +2007,11 @@
   "native": [
     {
       "path": "src/shell/macro_page.rs",
-      "sha256": "9c06c20997533e930b840e699614911c1a0ebe0a9a94a9cc3447e40352bc8f00"
+      "sha256": "a704f7578daffa7b00e2758c67550219c58d13f006389152bc7d7d868be2dfde"
     },
     {
       "path": "src/shell/macro_page/body.rs",
-      "sha256": "60afa62df579d0830912f823b3b620bc700bfa8fe5a71bcc2a9995f8a80e3f8d"
+      "sha256": "076a047a8a9a3e9ef5aa11b77498f42bd643ed9048135c5804e24c1ccaa219a9"
     },
     {
       "path": "src/shell/macro_page/selection.rs",
@@ -2019,7 +2019,11 @@
     },
     {
       "path": "src/shell/macro_page/row_actions.rs",
-      "sha256": "7dfe35b414924d19e69ffed7261e003ee3852e8e8f02531b293ccbdab33e7dd9"
+      "sha256": "b59bbe50cf3855648de531e20dbae393f198b7963f09dbe1383a5cf0fcabde8d"
+    },
+    {
+      "path": "src/shell/macro_page/row_view.rs",
+      "sha256": "9155e5d6df1b34a75a3825cb0e4052bb740d3462ced5f487d0ae2bfcd7c184ad"
     }
   ],
   "assets": [

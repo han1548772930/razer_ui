@@ -58,6 +58,30 @@ fn protocol_statuses_keep_card_unbinding_and_confirmed_bind_distinct() {
 }
 
 #[test]
+fn product_pairing_opener_preserves_audited_display_mode_metadata() {
+    let mut raw = device(182, "MOUSE", 1);
+    raw["deviceContainerId"] = json!("container-182");
+    raw["canPairTwoDevices"] = json!(true);
+    raw["isProductivity"] = json!(false);
+    raw["deviceName"] = json!("DeathAdder V3 Pro");
+    raw["allMasters"] = json!([{"productId": 9000, "dongleId": 700}]);
+    let device = PairingDevice::parse(raw).unwrap();
+    assert_eq!(
+        device.open_window_payload().unwrap(),
+        json!({
+            "productId": 182,
+            "deviceContainerId": "container-182",
+            "serialNumber": "fixture-182",
+            "category": "MOUSE",
+            "canPairTwoDevices": true,
+            "isProductivity": false,
+            "deviceName": "DeathAdder V3 Pro",
+            "allMasters": [{"productId": 9000, "dongleId": 700}],
+        })
+    );
+}
+
+#[test]
 fn dual_scan_retains_the_other_lane_and_auto_pairs_each_empty_lane_once() {
     let mut state = state(true);
     read(&mut state, json!([]));

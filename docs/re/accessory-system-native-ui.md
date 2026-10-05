@@ -195,10 +195,12 @@ the user's no-run restriction.
   就按原版自己的空数据分支渲染一条空选项的禁用下拉。`.laptop-screen` 的样式不在已抓取的
   CSS 里（`.screen-refresh-container` 只留下 `.dropdown-area{margin-left:0}`），
   因此不臆造它的外观，只保留结构与可核对的外链样式。
-- **仍未接入**：`uiRestraint`（`thxCinema`/`hdr`/`colorProfiles`/`color` 的禁用原因，属于
-  设备上报状态）与系统色彩配置文件枚举；`z6O` 下拉的自绘外观（本地用共享 `Select`）；
-  `iTA` 的 `p.exclamationText.mb20` 禁用提示目前无数据可显示（样式与 14px 圆点图标已实现，
-  与色域警告复用同一资源）。
+- **`uiRestraint` 设备约束**：当前源把 `monitor.uiRestraint` 的 truthy 条目直接作为
+  `disabledReason`，传给 `THX Cinema`、`HDR`、`Color Profile`、`PIP`、`Adaptive Sync`、
+  `Gaming`、`Color` 与刷新率计数器。`accessory_system_products.rs` 现在保留源字段名并在
+  所有对应 `change` 路径、开关、按钮、滑条和 PIP 选择器上拒绝本地草稿写入；字符串原因
+  会显示在对应控件下方，缺少服务字段时保持可编辑预览，不伪造设备限制。仍未接入的是
+  真实宿主/设备服务对 `uiRestraint` 的填充、系统色彩配置文件枚举，以及显示器产品图。
 
 ## 2026-10-04 游戏模式页（`RTA`）按源码重做
 

@@ -2,6 +2,7 @@
 use super::*;
 use crate::ui::scroll::SourceScrollable as _;
 use std::collections::BTreeSet;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub(super) struct Peer {
@@ -25,6 +26,29 @@ pub(super) enum DialogKind {
 }
 
 impl AetherStrip {
+    pub(super) fn sync_identify_ready(&mut self, cx: &mut Context<Self>) {
+        // `ol` in the current 784 bundle clears the previous timeout first.
+        // Power-off (and unknown power) disables Identify immediately; a
+        // powered-on card becomes actionable only after the 500 ms timeout.
+        self.identify_task = None;
+        self.identify_ready = false;
+        if self.observation.power_on != Some(true) {
+            return;
+        }
+        self.identify_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(500))
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.observation.power_on == Some(true) {
+                    this.identify_ready = true;
+                }
+                this.identify_task = None;
+                cx.notify();
+            });
+        }));
+    }
+
     fn select_peer(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.selected == id {
             return;
@@ -41,6 +65,7 @@ impl AetherStrip {
             self.dismiss(window, cx);
             self.selected = peer.id;
             self.observation = peer.observation;
+            self.sync_identify_ready(cx);
             self.bends = state::distribute(self.observation.detected.unwrap_or(0), 1);
             self.sync_inputs(window, cx);
             cx.notify();
@@ -207,14 +232,16 @@ impl AetherStrip {
                                 "aether-find",
                                 "indentify-btn",
                                 text("IDENTIFY_TEXT"),
-                                observation.power_on != Some(true),
+                                observation.power_on != Some(true) || !self.identify_ready,
                                 cx,
                             )
                             .absolute()
                             .left(surface::css(15.))
                             .bottom(surface::css(78.))
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.request("ON_IDENTIFY_IOT", json!({}), cx)
+                                if this.identify_ready {
+                                    this.request("ON_IDENTIFY_IOT", json!({}), cx)
+                                }
                             })),
                         );
                 }

@@ -1,6 +1,6 @@
 {
   "method": "Manifest-scoped Acorn and CSS parsing, byte-equal assets and native source fingerprints. No behavior tests or runtime visual certification.",
-  "generator_sha256": "13b305da7a4b95e7410ce9367882474dcce5bfe02f775ae31b79933ffd768f42",
+  "generator_sha256": "d7368d06208cf4266057c12b8c1c99b8b11a6e223e3a4ba73b0966ecb307f464",
   "contracts": [
     {
       "module": 58190,
@@ -2310,19 +2310,19 @@
   "native": [
     {
       "path": "src/features/macro_library.rs",
-      "sha256": "d767f2150d6ed1562eda647ceca0ea587b61e85bc438157ecf445988f7092145"
+      "sha256": "abcb4ab74cb777028a6e9ace4f60700b15569826f36588947c9b86e39457977b"
     },
     {
       "path": "src/shell/macro_page.rs",
-      "sha256": "9c06c20997533e930b840e699614911c1a0ebe0a9a94a9cc3447e40352bc8f00"
+      "sha256": "a704f7578daffa7b00e2758c67550219c58d13f006389152bc7d7d868be2dfde"
     },
     {
       "path": "src/shell/macro_page/state.rs",
-      "sha256": "10994bc77f53492cfedf3a4d1653de142034926065341a8c1878946b77d30cab"
+      "sha256": "88f4850a7f808142ffbab59d116b42463c2ed76265346703b37e47b8080aad27"
     },
     {
       "path": "src/shell/macro_page/body.rs",
-      "sha256": "60afa62df579d0830912f823b3b620bc700bfa8fe5a71bcc2a9995f8a80e3f8d"
+      "sha256": "076a047a8a9a3e9ef5aa11b77498f42bd643ed9048135c5804e24c1ccaa219a9"
     },
     {
       "path": "src/shell/macro_page/selection.rs",
@@ -2330,7 +2330,7 @@
     },
     {
       "path": "src/shell/macro_page/row_actions.rs",
-      "sha256": "7dfe35b414924d19e69ffed7261e003ee3852e8e8f02531b293ccbdab33e7dd9"
+      "sha256": "b59bbe50cf3855648de531e20dbae393f198b7963f09dbe1383a5cf0fcabde8d"
     },
     {
       "path": "src/shell/macro_page/row_drag.rs",
@@ -2339,6 +2339,14 @@
     {
       "path": "src/shell/macro_page/row_controls.rs",
       "sha256": "924dc19f047880387285be540ef29ad5d7b6c637ed3ee02c68d791148cc614d2"
+    },
+    {
+      "path": "src/shell/macro_page/phased.rs",
+      "sha256": "805ac21b9405c3831d4875c2b261c11d40ce17307871ba02d831f15ef44dfa88"
+    },
+    {
+      "path": "src/shell/macro_page/row_view.rs",
+      "sha256": "9155e5d6df1b34a75a3825cb0e4052bb740d3462ced5f487d0ae2bfcd7c184ad"
     }
   ],
   "contracts_applied": {
@@ -2348,10 +2356,11 @@
     "delete": "Xg removes only the clicked key/mouse row, both matching Loop ends; FZ deletes exactly the selected rows. Native local IDs are not hardware IDs.",
     "mouse": "O creates paired normal/Phased rows and one Sequence row. C switches 0..5 paired functions to a single 6..9 wheel row and inserts a down row when switching back. Old display-only rows have no inferred counterpart.",
     "loop": "O creates start/end with the same ID; C synchronizes the numeric value; T9 repairs crossed Loop bounds. No clickable start/end toggle exists in the source.",
+    "phased": "Phased palette inserts and phase-header drops preserve the destination phase on every moved or newly created ActionItem. Header drop targets reject stale page/document/baseline payloads before recording undo state; rows remain visible in their selected phase after save/reload.",
     "presentation": "70/30 row columns, 20px action slots with 16px margins, actual 20px draggable CSS cascade, opacity 200ms, action pressed opacity .3, 35px tooltip top, source dark drag icons and 280x40 preview at pointer minus 10px."
   },
   "remaining": [
-    "Complete Phased grouping/phase targets and services are not implemented by this row patch.",
+    "Phased recording/device services and source pairing-line animation remain separate work.",
     "Source 200ms leading/trailing selection and duplicate debounce, pair-line animation and command-warning overlay remain separate work.",
     "Actual pointer capture, tooltip clipping/z-order, scrolling, focus and rendered animation require runtime verification, which is prohibited.",
     "Legacy rows without typed event data are not promoted into recorded key/button facts or inferred pairs. Drag snapshot changes reject stale drops."

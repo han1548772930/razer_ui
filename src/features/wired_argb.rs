@@ -2,6 +2,7 @@
 //! session; saved drafts cannot create connected hardware or detection results.
 use super::Choice;
 use crate::{i18n, model::Device, ui::surface};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -18,6 +19,55 @@ use port::{PortChanged, PortEditor};
 pub(crate) use preview::open_preview;
 use state::{PortDraft, PortObservation, Status};
 use theme::Colors;
+
+#[derive(IntoElement)]
+struct AutoDetectionIcon {
+    id: u32,
+    asset: SharedString,
+    active: bool,
+    generation: u64,
+}
+impl RenderOnce for AutoDetectionIcon {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let hover = window.use_keyed_state(("wired-argb-auto-hover", self.id), cx, |_, _| false);
+        let alpha = motion::transition(
+            SharedString::from(format!("wired-argb-auto-hover-alpha-{}", self.id)),
+            if *hover.read(cx) { 1. } else { 0.8 },
+            Transition::new(std::time::Duration::from_millis(300)).easing(Easing::Ease),
+            window,
+            cx,
+        );
+        img(self.asset)
+            .size(surface::css(20.))
+            .opacity(alpha)
+            .on_hover(window.listener_for(&hover, |state, next, _, cx| {
+                *state = *next;
+                cx.notify();
+            }))
+            .with_animation(
+                SharedString::from(format!(
+                    "wired-argb-auto-{}-{}",
+                    if self.active { "active" } else { "off" },
+                    self.generation
+                )),
+                Animation::new(std::time::Duration::from_millis(if self.active {
+                    100
+                } else {
+                    700
+                })),
+                move |icon, phase| {
+                    if self.active {
+                        icon.opacity(alpha * phase.min(1.))
+                    } else {
+                        // Source `zoomout` runs for 50ms before the two
+                        // 700ms expansion paths settle.
+                        let glyph = (phase * 700. / 50.).min(1.);
+                        icon.opacity(alpha * (0.85 + glyph * 0.15 - phase * 0.15).max(0.85))
+                    }
+                },
+            )
+    }
+}
 
 #[derive(Deserialize)]
 struct Spec {
@@ -90,6 +140,7 @@ pub(crate) struct WiredArgbWorkspace {
     ports: BTreeMap<u32, Entity<PortEditor>>,
     status: Status,
     auto_detection: Option<bool>,
+    auto_animation: u64,
     preview: bool,
     limit_dismissed: bool,
     last_request: Option<String>,
@@ -109,6 +160,7 @@ impl WiredArgbWorkspace {
             ports: BTreeMap::new(),
             status: Status::Unavailable,
             auto_detection: None,
+            auto_animation: 0,
             preview: false,
             limit_dismissed: false,
             last_request: None,
@@ -170,7 +222,7 @@ impl WiredArgbWorkspace {
             self.ports.insert(fact.id, port);
         }
     }
-    fn center(&self, cx: &Context<Self>) -> AnyElement {
+    fn center(&self, _window: &mut Window, cx: &Context<Self>) -> AnyElement {
         let art = if self
             .spec
             .assets
@@ -195,6 +247,19 @@ impl WiredArgbWorkspace {
                 self.status,
                 Status::Protection | Status::NoDevices | Status::LedLimit
             );
+        let auto_enabled = self
+            .draft
+            .auto_detection
+            .or(self.auto_detection)
+            .unwrap_or(false);
+        let auto_icon = AutoDetectionIcon {
+            id: self.spec.product_id,
+            asset: self
+                .spec
+                .asset(if auto_enabled { "auto-active" } else { "auto" }),
+            active: auto_enabled,
+            generation: self.auto_animation,
+        };
         v_flex().relative().items_center().flex_shrink_0().mt(surface::css(10.)).h(surface::css(275.))
             .w(surface::css(if self.spec.mainboard() { 600. } else { 150. }))
             .child(img(self.spec.asset(&art)).object_fit(ObjectFit::Contain)
@@ -202,7 +267,7 @@ impl WiredArgbWorkspace {
                 .h(surface::css(if self.spec.mainboard() { 275. } else { 270. })))
             .when(!self.spec.mainboard(), |v| v.child(h_flex().absolute().bottom(surface::css(60.)).left_0().w_full().justify_center().gap(surface::css(12.))
                 .child(button::Button::new("argb-auto-detection")
-                    .child(img(self.spec.asset(if self.draft.auto_detection.or(self.auto_detection).unwrap_or(false) { "auto-active" } else { "auto" })).size(surface::css(20.))).ghost().p_0().size(surface::css(20.))
+                    .child(auto_icon).ghost().p_0().size(surface::css(20.))
                     .accessibility_label(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))
                     .disabled(!enabled)
                     .tooltip(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))
@@ -210,6 +275,7 @@ impl WiredArgbWorkspace {
                         if this.preview && this.status != Status::NoPower {
                             let enabled = !this.draft.auto_detection.or(this.auto_detection).unwrap_or(false);
                             this.draft.auto_detection = Some(enabled);
+                            this.auto_animation = this.auto_animation.wrapping_add(1);
                             this.last_request = Some(format!("ON_SET_AUTO_DETECTION_ENABLE: {{isAutoDetectionEnable:{enabled}}}"));
                             cx.emit(WiredArgbChanged); cx.notify();
                         }
@@ -295,7 +361,7 @@ impl WiredArgbWorkspace {
             })
             .into_any_element()
     }
-    fn page(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+    fn page(&self, window: &mut Window, cx: &Context<Self>) -> AnyElement {
         let total: u32 = self
             .observations
             .iter()
@@ -320,7 +386,7 @@ impl WiredArgbWorkspace {
         };
         let compact =
             f32::from(window.viewport_size().width) / f32::from(window.rem_size()) * 16. <= 1024.;
-        let center = self.center(cx);
+        let center = self.center(window, cx);
         let mut page = v_flex()
             .relative()
             .min_h(surface::css(600.))
@@ -389,7 +455,7 @@ impl WiredArgbWorkspace {
                 };
                 columns = columns.child(lane(&[3, 4, 5]));
                 if !compact {
-                    columns = columns.child(self.center(cx));
+                    columns = columns.child(self.center(window, cx));
                 }
                 columns = columns.child(lane(&[0, 1, 2]));
                 page = page.child(columns);

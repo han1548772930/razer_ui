@@ -1895,14 +1895,14 @@
   "native": {
     "verification": "Reviewed file fingerprints, not runtime tests",
     "files": {
-      "src/shell/macro_page/launch.rs": "a18972a2ce91b0e6808affd29774292a844645e2786df2a0fb7b558cd9f08ef0",
-      "src/shell/macro_page.rs": "9c06c20997533e930b840e699614911c1a0ebe0a9a94a9cc3447e40352bc8f00",
-      "src/shell/macro_page/state.rs": "10994bc77f53492cfedf3a4d1653de142034926065341a8c1878946b77d30cab",
-      "src/shell/macro_page/body.rs": "60afa62df579d0830912f823b3b620bc700bfa8fe5a71bcc2a9995f8a80e3f8d",
+      "src/shell/macro_page/launch.rs": "a21f00e79741f8caf28ffe6b5dea8e000eb058f0ee4f956d53c1a9c0934ff720",
+      "src/shell/macro_page.rs": "a704f7578daffa7b00e2758c67550219c58d13f006389152bc7d7d868be2dfde",
+      "src/shell/macro_page/state.rs": "88f4850a7f808142ffbab59d116b42463c2ed76265346703b37e47b8080aad27",
+      "src/shell/macro_page/body.rs": "076a047a8a9a3e9ef5aa11b77498f42bd643ed9048135c5804e24c1ccaa219a9",
       "src/shell/macro_page/text.rs": "f3a8492b0ce83f7a027153452a2cff1d4a762437f4dec4484fcac807be4c5d07",
       "src/shell/macro_page/text_overlay.rs": "99decf640c8ca21d4892e45ddbd93cb05df5007246f28ca756ccc49178af9073",
       "src/shell/macro_page/unsaved.rs": "9239ce2326671c2875b8a31a886d392e26d2d566f560a19ed1721ba6f5219e80",
-      "tools/macro_assets.py": "0448237284ffbca7ff2f92f87c4424bde62a4d6c29f8accd0e89c550815bfb9b",
+      "tools/macro_assets.py": "eedc484666a3b8b83101d0b53a7d36265e03242055bc1ac46d6c44310ffcffef",
       "tools/prepare-macro-assets.py": "4a5dc8bc53f11218d6af8a1c19795b0267e4d272ccc709c393c8a97d3ca81d71"
     }
   }

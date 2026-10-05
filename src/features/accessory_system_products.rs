@@ -463,7 +463,13 @@ impl AccessorySystemProductWorkspace {
     }
 
     pub(crate) fn snapshot(&self) -> Value {
-        self.draft.clone()
+        let mut snapshot = self.draft.clone();
+        // `uiRestraint` is monitor-service telemetry, not a profile choice.
+        // Never persist a disabled reason as if the user selected it locally.
+        if let Some(object) = snapshot.as_object_mut() {
+            object.remove("uiRestraint");
+        }
+        snapshot
     }
 
     pub(crate) fn restore(
@@ -478,6 +484,13 @@ impl AccessorySystemProductWorkspace {
             if self.spec.product_id == 3921 {
                 self.restore_corex(saved);
             }
+        }
+        // Saved profiles from older previews may contain the telemetry field;
+        // restore only the source default until a live service supplies it.
+        if let Some(initial) = self.spec.initial.get("uiRestraint") {
+            self.draft["uiRestraint"] = initial.clone();
+        } else if let Some(object) = self.draft.as_object_mut() {
+            object.remove("uiRestraint");
         }
         // Profile input cannot create hardware data or alter port identity and
         // temperature coordinates. Only validated local choices are admitted.
@@ -757,6 +770,42 @@ impl AccessorySystemProductWorkspace {
             .unwrap_or("")
     }
 
+    /// The monitor service exposes source `uiRestraint` entries as a truthy
+    /// disabled reason.  Keep this separate from the local preference draft:
+    /// an absent entry means that no device restriction has been observed, so
+    /// the preview must not invent one.
+    fn restricted(&self, feature: &str) -> bool {
+        let Some(value) = self.draft.pointer(&format!("/uiRestraint/{feature}")) else {
+            return false;
+        };
+        match value {
+            Value::Bool(value) => *value,
+            Value::String(value) => !value.is_empty(),
+            Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.),
+            _ => false,
+        }
+    }
+
+    fn restriction_reason(&self, feature: &str) -> Option<&str> {
+        self.draft
+            .pointer(&format!("/uiRestraint/{feature}"))
+            .and_then(Value::as_str)
+            .filter(|reason| !reason.is_empty())
+    }
+
+    fn restriction_note(&self, feature: &str) -> AnyElement {
+        let Some(reason) = self.restriction_reason(feature) else {
+            return div().into_any_element();
+        };
+        div()
+            .font_family("Roboto")
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .text_color(rgb(0x999999))
+            .child(reason.to_owned())
+            .into_any_element()
+    }
+
     /// The dropdown mirrors the requested secondary source, which is local
     /// profile intent; it never claims to be observed device state.
     fn sync_pip_source(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -865,6 +914,26 @@ impl AccessorySystemProductWorkspace {
     fn allowed(&self, path: &str) -> bool {
         if ![3858, 3880].contains(&self.spec.product_id) {
             return true;
+        }
+        let restricted = if path.starts_with("/hdr/") {
+            "hdr"
+        } else if path.starts_with("/adaptiveSync/") {
+            "adaptiveSync"
+        } else if path.starts_with("/secondDisplay/") {
+            "secondDisplay"
+        } else if path.starts_with("/gaming/") {
+            "gaming"
+        } else if path.starts_with("/color/") {
+            "color"
+        } else if path.starts_with("/thxCinema/") {
+            "thxCinema"
+        } else if path.starts_with("/refeshRateCounter/") {
+            "refreshRate"
+        } else {
+            ""
+        };
+        if !restricted.is_empty() && self.restricted(restricted) {
+            return false;
         }
         if (path.starts_with("/hdr/") || path.starts_with("/adaptiveSync/"))
             && self.checked("/secondDisplay/isEnabled")
@@ -1471,6 +1540,7 @@ impl AccessorySystemProductWorkspace {
     fn monitor_gaming(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let _ = window;
         let gamut_locked = self.spec.product_id == 3880 && self.gaming_value("gamut") != &json!(0);
+        let gaming_restricted = self.restricted("gaming");
         let selected = self.number("/gaming/selectedPreset");
         // `.foot` tags are locale keys (OFF/WEAK/STRONG) in the source.
         let overdrive_tags = {
@@ -1504,6 +1574,7 @@ impl AccessorySystemProductWorkspace {
                         t(label),
                         selected == id,
                     )
+                    .disabled(gaming_restricted)
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.change("/gaming/selectedPreset", json!(id), window, cx);
                     }))
@@ -1580,6 +1651,7 @@ impl AccessorySystemProductWorkspace {
                             label.into(),
                             gamut == id,
                         )
+                        .disabled(gaming_restricted)
                         .on_click(cx.listener(
                             move |this, _, window, cx| {
                                 this.change("/gaming/customData/gamut", json!(id), window, cx);
@@ -1630,6 +1702,7 @@ impl AccessorySystemProductWorkspace {
     /// 数值输入框。
     fn color_temperature_widget(&self, cx: &Context<Self>) -> AnyElement {
         let selected = self.number("/color/selectedPreset");
+        let color_restricted = self.restricted("color");
         let mut panel =
             surface::panel_with_control(
                 t("COLOR_TEMPERATURE_HEADER"),
@@ -1647,6 +1720,7 @@ impl AccessorySystemProductWorkspace {
                         t(label),
                         selected == id,
                     )
+                    .disabled(color_restricted)
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.change("/color/selectedPreset", json!(id), window, cx);
                     }))
@@ -1674,11 +1748,13 @@ impl AccessorySystemProductWorkspace {
     /// 组件体是 `THX_CINEMA_DESC` 文本（有禁用原因时带 `.featureDisabled`）。
     fn thx_cinema_widget(&self, cx: &Context<Self>) -> AnyElement {
         let enabled = self.checked("/thxCinema/isEnabled");
+        let disabled = self.restricted("thxCinema");
         surface::panel_with_title_switch(
             t("THX_CINEMA_HEADER"),
             surface::SynapseSwitch::new("accessory-thx-cinema")
                 .accessibility_label(t("THX_CINEMA_HEADER"))
                 .checked(enabled)
+                .disabled(disabled)
                 .on_change(cx.listener(|this, next: &bool, window, cx| {
                     this.change("/thxCinema/isEnabled", json!(*next), window, cx);
                 })),
@@ -1690,8 +1766,10 @@ impl AccessorySystemProductWorkspace {
                 .font_family("Roboto")
                 .text_size(surface::css(14.))
                 .line_height(surface::css(17.))
+                .when(disabled, |view| view.opacity(0.3))
                 .child(t("THX_CINEMA_DESC")),
         )
+        .child(self.restriction_note("thxCinema"))
         .into_any_element()
     }
 
@@ -1700,11 +1778,13 @@ impl AccessorySystemProductWorkspace {
     /// `active: !disabledReason && isHdrEnabled`），组件体是 `HDR_MSG`。
     fn hdr_widget(&self, cx: &Context<Self>) -> AnyElement {
         let enabled = self.checked("/hdr/isEnabled");
+        let disabled = self.restricted("hdr");
         surface::panel_with_title_switch(
             t("HDR_HEADER"),
             surface::SynapseSwitch::new("accessory-hdr")
                 .accessibility_label(t("HDR_HEADER"))
                 .checked(enabled)
+                .disabled(disabled)
                 .on_change(cx.listener(|this, next: &bool, window, cx| {
                     this.change("/hdr/isEnabled", json!(*next), window, cx);
                 })),
@@ -1720,8 +1800,10 @@ impl AccessorySystemProductWorkspace {
                 .font_family("Roboto")
                 .text_size(surface::css(14.))
                 .line_height(surface::css(17.))
+                .when(disabled, |view| view.opacity(0.3))
                 .child(t("HDR_MSG")),
         )
+        .child(self.restriction_note("hdr"))
         .into_any_element()
     }
 
@@ -1734,7 +1816,7 @@ impl AccessorySystemProductWorkspace {
     /// （`PERFORMANCE_EXTERNAL_DISPLAY_COLOR_MANAGER`，点击拉起 Windows 颜色管理）。
     fn color_profile_widget(&self, cx: &Context<Self>) -> AnyElement {
         let select = Select::new(&self.color_profile)
-            .disabled(true)
+            .disabled(true || self.restricted("colorProfiles"))
             .w(surface::css(360.));
         surface::panel_with_control(
             t("PERFORMANCE_MODE_SCREEN_COLOR_PROFILE_HEADER"),
@@ -1746,6 +1828,7 @@ impl AccessorySystemProductWorkspace {
             cx,
         )
         .child(select)
+        .child(self.restriction_note("colorProfiles"))
         .child(
             // `.img-text .external{color:#ccc;font-size:14px;line-height:44px;
             //  text-decoration:underline;text-transform:capitalize}` 与
@@ -1963,7 +2046,8 @@ impl AccessorySystemProductWorkspace {
     }
 
     fn monitor_display(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let enabled = self.checked("/secondDisplay/isEnabled");
+        let second_display_restricted = self.restricted("secondDisplay");
+        let enabled = self.checked("/secondDisplay/isEnabled") && !second_display_restricted;
         let asking = self.pending_input_source.is_some();
         let pip = surface::panel_with_control(
             t("PIP_HEADER"),
@@ -1971,7 +2055,8 @@ impl AccessorySystemProductWorkspace {
             cx,
         )
         .child(self.toggle("/secondDisplay/isEnabled", t("PIP_HEADER"), true, cx))
-        .child(self.pip_display(enabled, cx));
+        .child(self.pip_display(enabled, cx))
+        .child(self.restriction_note("secondDisplay"));
         let mut view = v_flex()
             .gap_5()
             // `OSA` listens on the document for a mousedown outside the alert and
@@ -2005,12 +2090,8 @@ impl AccessorySystemProductWorkspace {
                     self.help_control("accessory-free-sync-help", t("FREE_SYNC_TOOLTIP"), cx),
                     cx,
                 )
-                .child(self.toggle(
-                    "/adaptiveSync/isEnabled",
-                    t("FREE_SYNC_HEADER"),
-                    true,
-                    cx,
-                )),
+                .child(self.toggle("/adaptiveSync/isEnabled", t("FREE_SYNC_HEADER"), true, cx))
+                .child(self.restriction_note("adaptiveSync")),
             )
             .child(
                 surface::panel_with_control(
@@ -2028,7 +2109,8 @@ impl AccessorySystemProductWorkspace {
                     "/refeshRateCounter/position",
                     self.checked("/refeshRateCounter/isEnabled"),
                     cx,
-                )),
+                ))
+                .child(self.restriction_note("refreshRate")),
             );
         if self.spec.product_id == 3858 {
             let hdr_tip = self.hdr_tip();

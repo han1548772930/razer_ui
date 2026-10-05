@@ -93,6 +93,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
+                    WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
@@ -110,6 +111,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
+                    WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }

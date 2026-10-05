@@ -193,6 +193,9 @@ enum BridgeAlert {
 }
 
 pub(crate) struct HueChanged;
+/// Navigation request emitted by the advanced-effects Chroma entry.
+/// No installation result is carried or inferred.
+pub(crate) struct HueChromaRequested;
 pub(crate) struct HueWorkspace {
     bridge: BridgeState,
     integration: Integration,
@@ -224,6 +227,7 @@ pub(crate) struct HueWorkspace {
     chroma_profiles: Entity<SelectState<Vec<Choice>>>,
 }
 impl EventEmitter<HueChanged> for HueWorkspace {}
+impl EventEmitter<HueChromaRequested> for HueWorkspace {}
 impl HueWorkspace {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let ip = std::array::from_fn(|_| {

@@ -56,16 +56,27 @@ const assets=names.map(name=>{
 });
 const files=['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs',
   'src/shell/macro_page/body.rs','src/shell/macro_page/selection.rs','src/shell/macro_page/row_actions.rs',
-  'src/shell/macro_page/row_drag.rs','src/shell/macro_page/row_controls.rs'];
+  'src/shell/macro_page/row_drag.rs','src/shell/macro_page/row_controls.rs',
+  'src/shell/macro_page/phased.rs','src/shell/macro_page/row_view.rs'];
 const native=files.map(path=>({path,sha256:hash(read(path))}));
-const body=read(files[3]), actions=read(files[5]), drag=read(files[6]);
-for(const token of ['this.drop_actions(drag, index + 1, cx)','this.drop_actions(drag, 0, cx)',
-  'this.choose_mouse_action(index, choice as u8, cx)','self.row_controls'])
-  if(!body.includes(token)) throw Error('Missing native hookup '+token);
+const page=read(files[1]), body=read(files[3]), actions=read(files[5]), drag=read(files[6]), phased=read(files[8]), rowView=read(files[9]);
+for(const [text, token] of [[rowView,'this.drop_actions(drag, index + 1, cx)'],
+  [body,'this.drop_actions(drag, 0, cx)'], [body,'this.choose_mouse_action(index, choice as u8, cx)'],
+  [rowView,'self.row_controls']])
+  if(!text.includes(token)) throw Error('Missing native hookup '+token);
 if(body.includes('this.move_action(')||body.includes('.border_dashed()')) throw Error('Obsolete row drag remains');
 if(!actions.includes('self.actions() != drag.baseline.as_slice()')
   ||!actions.includes('drag.document != self.current')||!drag.includes('!indices.contains(&pair)'))
   throw Error('Missing native stale-drag / pairing protection');
+// Phased rows use a separate phase-header drop target. A palette insertion or
+// an existing-row move must carry the destination phase, otherwise the row is
+// persisted but filtered out of the Phased editor on the next render.
+if(!phased.includes('fn drop_phase_actions')
+  ||!phased.includes('item.phase = Some(phase)')
+  ||!page.includes('MacroType::Phased')
+  ||!page.includes('let phase = self.active_phase().unwrap_or(0)')
+  ||!page.includes('item.phase = Some(phase)'))
+  throw Error('Missing Phased phase-preserving insertion contract');
 const evidence={method:'Manifest-scoped Acorn and CSS parsing, byte-equal assets and native source fingerprints. No behavior tests or runtime visual certification.',
   generator_sha256:hash(fs.readFileSync(__filename)),contracts,reducers,common,templates,labels,css,assets,native,
   contracts_applied:{
@@ -75,9 +86,10 @@ const evidence={method:'Manifest-scoped Acorn and CSS parsing, byte-equal assets
     delete:'Xg removes only the clicked key/mouse row, both matching Loop ends; FZ deletes exactly the selected rows. Native local IDs are not hardware IDs.',
     mouse:'O creates paired normal/Phased rows and one Sequence row. C switches 0..5 paired functions to a single 6..9 wheel row and inserts a down row when switching back. Old display-only rows have no inferred counterpart.',
     loop:'O creates start/end with the same ID; C synchronizes the numeric value; T9 repairs crossed Loop bounds. No clickable start/end toggle exists in the source.',
+    phased:'Phased palette inserts and phase-header drops preserve the destination phase on every moved or newly created ActionItem. Header drop targets reject stale page/document/baseline payloads before recording undo state; rows remain visible in their selected phase after save/reload.',
     presentation:'70/30 row columns, 20px action slots with 16px margins, actual 20px draggable CSS cascade, opacity 200ms, action pressed opacity .3, 35px tooltip top, source dark drag icons and 280x40 preview at pointer minus 10px.',
   },
-  remaining:['Complete Phased grouping/phase targets and services are not implemented by this row patch.',
+  remaining:['Phased recording/device services and source pairing-line animation remain separate work.',
     'Source 200ms leading/trailing selection and duplicate debounce, pair-line animation and command-warning overlay remain separate work.',
     'Actual pointer capture, tooltip clipping/z-order, scrolling, focus and rendered animation require runtime verification, which is prohibited.',
     'Legacy rows without typed event data are not promoted into recorded key/button facts or inferred pairs. Drag snapshot changes reject stale drops.']};

@@ -12,6 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::time::Duration;
 use std::{collections::BTreeMap, sync::OnceLock};
 
 mod device;
@@ -67,6 +68,11 @@ pub(crate) struct AetherStrip {
     alert: Option<String>,
     last_request: Option<Value>,
     modal: Option<Entity<DeviceDialog>>,
+    /// Source `ol` keeps the identify badge disabled for 500 ms after power
+    /// turns on. The task is replaced when a newer power observation arrives,
+    /// matching the source effect's clearTimeout path.
+    identify_ready: bool,
+    identify_task: Option<Task<()>>,
     subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<AetherStripChanged> for AetherStrip {}
@@ -112,6 +118,8 @@ impl AetherStrip {
             alert: None,
             last_request: None,
             modal: None,
+            identify_ready: false,
+            identify_task: None,
             subscriptions: vec![],
         };
         for id in 0..4u32 {
@@ -157,6 +165,8 @@ impl AetherStrip {
     }
     pub(crate) fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.renaming = false;
+        self.identify_task = None;
+        self.identify_ready = false;
         if let Some(modal) = self.modal.take() {
             modal.update(cx, |modal, cx| modal.close(window, cx));
         }

@@ -34,6 +34,9 @@ pub(crate) enum SourceTooltipKind {
     /// Product 179 module 7693: conditionally mounted `.body-widget-tip-portal`,
     /// immediate visibility, 10001 stacking and source edge fallback.
     ReceiverWidgetPortal,
+    /// Product 691 OLED BLE-disabled cards: `[turn-off-ble-tooltip]` pseudo
+    /// element, 20px/185px card-relative anchor and 300ms linear opacity.
+    OledBleDisabled,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -307,6 +310,21 @@ impl Element for TipOverlay {
                 cx,
             );
             size(measured.width.min(width).max(px(1.)), measured.height)
+        } else if self.kind == SourceTooltipKind::OledBleDisabled {
+            // `[turn-off-ble-tooltip]:before` is max-content with no width cap.
+            let mut measurement = tip_surface(
+                (self.id.clone(), "tip-measure").into(),
+                self.text.clone(),
+                width,
+            )
+            .w_auto()
+            .into_any_element();
+            let measured = measurement.layout_as_root(
+                size(AvailableSpace::MaxContent, AvailableSpace::MinContent),
+                window,
+                cx,
+            );
+            size(measured.width.max(px(1.)), measured.height)
         } else {
             size(width, px(0.))
         };
@@ -433,6 +451,10 @@ impl Element for TipOverlay {
                 window.viewport_size(),
                 window.rem_size(),
             ),
+            SourceTooltipKind::OledBleDisabled => {
+                let unit = window.rem_size() / 16.;
+                trigger.origin + point(unit * 20., unit * 185.)
+            }
         };
         let position = if self.kind == SourceTooltipKind::DropTips {
             point(

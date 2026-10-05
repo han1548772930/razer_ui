@@ -44,7 +44,8 @@
           "position": 3,
           "size": 1
         }
-      }
+      },
+      "uiRestraint": {}
     },
     "presets": {
       "0": {
@@ -169,7 +170,8 @@
       },
       "thxCinema": {
         "isEnabled": false
-      }
+      },
+      "uiRestraint": {}
     },
     "presets": {
       "0": {

@@ -1,5 +1,10 @@
 # Philips Hue 当前源码审计
 
+## 2026-10-05 local Chroma route
+
+The current Chroma application is implemented locally by `src/shell/chroma_page.rs` and `src/shell/chroma_window.rs`, and the shell already opens it under the audited `chroma-app` window contract. The source Hue advanced-effects branch has two explicit Chroma actions: the not-installed branch mounts `INSTALL_RAZER_CHROMA`, while the installed branch mounts `LAUNCH_CHROMA_STUDIO`. Both local Hue actions now emit a navigation-only `HueChromaRequested` event. `SourceProductWorkspace` forwards that as `WorkspaceEvent::OpenChroma`, and the shell opens the existing local Chroma window. The route does not set, persist, or infer `chroma_installed`; external installation, profiles, and synchronization remain unconnected.
+
+
 2026-10-03。本页状态为 **partial_native**，不表示完整视觉等价或已连接真实 Hue 服务。
 
 ## 来源与实际入口

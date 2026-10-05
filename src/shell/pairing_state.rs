@@ -138,11 +138,37 @@ impl PairingDevice {
         let container =
             string(self.raw.get("deviceContainerId")).filter(|value| !value.is_empty())?;
         let product = number(self.raw.get("productId")).filter(|value| *value > 0)?;
-        Some(json!({
+        let mut payload = json!({
             "productId": product,
             "deviceContainerId": container,
             "serialNumber": self.serial(),
-        }))
+        });
+        // Dashboard 7861 forwards these values when it builds the
+        // `displayMode=multiDevicePairing` product URL. Keep the fields on the
+        // opener payload so the native window can consume the same source
+        // metadata instead of reducing it to only the two identity guards.
+        if let Some(category) = self.raw.get("category").and_then(Value::as_str) {
+            payload["category"] = json!(category);
+        }
+        for field in ["canPairTwoDevices", "isProductivity"] {
+            if let Some(value) = self.raw.get(field).filter(|value| value.is_boolean()) {
+                payload[field] = value.clone();
+            }
+        }
+        if let Some(name) = self.raw.get("deviceName").and_then(Value::as_str) {
+            if !name.trim().is_empty() {
+                payload["deviceName"] = json!(name);
+            }
+        }
+        if let Some(lang) = self.raw.get("lang").and_then(Value::as_str) {
+            if !lang.trim().is_empty() {
+                payload["lang"] = json!(lang);
+            }
+        }
+        if let Some(masters) = self.raw.get("allMasters") {
+            payload["allMasters"] = masters.clone();
+        }
+        Some(payload)
     }
     pub(super) fn connected(&self) -> bool {
         self.connection() == Some(true) && !self.sleeping()

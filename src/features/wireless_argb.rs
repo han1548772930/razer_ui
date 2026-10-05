@@ -2,7 +2,7 @@
 //! editable layout preferences are local drafts, independently of discovery.
 use super::Choice;
 use crate::{i18n, model::Device, ui::surface};
-use gpui_kit::base::{NumberInput, StepAction, step_value};
+use gpui_kit::base::{NumberInput, StepAction, motion, step_value};
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     input::{Input, InputEvent, InputState},
@@ -12,7 +12,64 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{collections::BTreeMap, sync::OnceLock, time::Duration};
+
+/// The source's disabled auto-detection icon is a three-part SVG animation:
+/// the glyph settles in 50ms while the green and gray rings expand for 700ms.
+/// The enabled icon settles in 100ms.  The SVG files in the extracted bundle
+/// keep the source paths and colors; GPUI owns the equivalent timing here so
+/// the local page does not silently turn the interaction into a static swap.
+#[derive(IntoElement)]
+struct AutoDetectionIcon {
+    id: u32,
+    asset: SharedString,
+    active: bool,
+    generation: u64,
+}
+impl RenderOnce for AutoDetectionIcon {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let hover = window.use_keyed_state(("wireless-argb-auto-hover", self.id), cx, |_, _| false);
+        let alpha = motion::transition(
+            SharedString::from(format!("wireless-argb-auto-hover-alpha-{}", self.id)),
+            if *hover.read(cx) { 1. } else { 0.8 },
+            gpui_kit::base::motion::Transition::new(Duration::from_millis(300))
+                .easing(gpui_kit::base::motion::Easing::Ease),
+            window,
+            cx,
+        );
+        let icon = img(self.asset)
+            .size(surface::css(20.))
+            .opacity(alpha)
+            .on_hover(window.listener_for(&hover, |state, next, _, cx| {
+                *state = *next;
+                cx.notify();
+            }));
+        if self.generation == 0 {
+            return icon.into_any_element();
+        }
+        let duration = if self.active { 100 } else { 700 };
+        icon.with_animation(
+            SharedString::from(format!(
+                "wireless-argb-auto-{}-{}",
+                if self.active { "active" } else { "off" },
+                self.generation
+            )),
+            Animation::new(Duration::from_millis(duration)),
+            move |icon, phase| {
+                if self.active {
+                    icon.opacity(alpha * phase.min(1.))
+                } else {
+                    // Source `zoomout` runs for 50ms before the two 700ms
+                    // expansion paths settle. Keep the glyph visible while
+                    // the rings finish their expansion.
+                    let glyph = (phase * 700. / 50.).min(1.);
+                    icon.opacity(alpha * (0.85 + glyph * 0.15 - phase * 0.15).max(0.85))
+                }
+            },
+        )
+        .into_any_element()
+    }
+}
 
 mod preview;
 mod state;
@@ -99,6 +156,7 @@ pub(crate) struct WirelessArgb {
     subscriptions: Vec<Subscription>,
     syncing: bool,
     next_id: u32,
+    auto_animation: u64,
 }
 impl WirelessArgb {
     pub(crate) fn new(device: &Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -129,6 +187,7 @@ impl WirelessArgb {
             subscriptions: vec![],
             syncing: false,
             next_id: 1,
+            auto_animation: 0,
         };
         this.rebuild(window, cx);
         this
@@ -420,6 +479,13 @@ impl WirelessArgb {
     }
     fn request(&mut self, kind: &str, cx: &mut Context<Self>) {
         // No service adapter is present: never turn a request into an observation.
+        if kind == "CHANGE_AUTO_DETECTION_STATUS" {
+            // The source starts its icon transition as soon as the command is
+            // issued, before the service reports the next auto-detection
+            // value. Keep that visual phase local without inventing hardware
+            // state in the unavailable-service path.
+            self.auto_animation = self.auto_animation.wrapping_add(1);
+        }
         if self.preview {
             self.last_request = Some(kind.into());
         } else {
@@ -471,11 +537,20 @@ impl WirelessArgb {
                                 Button::new("argb-auto")
                                     .ghost()
                                     .small()
-                                    .child(self.spec.icon(if self.auto_detection {
-                                        "auto_on"
-                                    } else {
-                                        "auto_off"
-                                    }))
+                                    .child(AutoDetectionIcon {
+                                        id: self.spec.product_id,
+                                        asset: SharedString::from(format!(
+                                            "synapse/wireless-argb-{}-{}.svg",
+                                            self.spec.product_id,
+                                            if self.auto_detection {
+                                                "auto_on"
+                                            } else {
+                                                "auto_off"
+                                            }
+                                        )),
+                                        active: self.auto_detection,
+                                        generation: self.auto_animation,
+                                    })
                                     .selected(self.auto_detection)
                                     .accessibility_label(
                                         self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"),
