@@ -1203,7 +1203,12 @@ impl SourceControls {
             .child(field)
             .into_any_element()
     }
-    fn render_control(&self, control: &ControlSpec, cx: &mut Context<Self>) -> AnyElement {
+    fn render_control(
+        &self,
+        control: &ControlSpec,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if control.visible_when.as_ref().is_some_and(|condition| {
             self.draft.pointer(&self.resolve_path(&condition.path)) != Some(&condition.value)
         }) {
@@ -1219,7 +1224,7 @@ impl SourceControls {
             return self.render_indicator_radio(control, disabled, cx);
         }
         match control.kind.as_str() {
-            "oled_presets" => self.render_oled_presets(disabled, cx),
+            "oled_presets" => self.render_oled_presets(disabled, window, cx),
             // `.preset-container .preset-item`: 50px grid columns, 27px tall
             // numbered squares, selected = #292929 on a #44d62c border.
             "preset" => {
@@ -1533,7 +1538,12 @@ impl SourceControls {
     }
     /// `.advanced-camera-container .camera-container`: one 400px `#111` column
     /// with 27px/20px padding and a `.camera-divider` between mounted rows.
-    fn render_camera_column(&self, page: &'static PageSpec, cx: &mut Context<Self>) -> AnyElement {
+    fn render_camera_column(
+        &self,
+        page: &'static PageSpec,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         use crate::ui::theme::CameraProductColors as Colors;
         let mut column = v_flex()
             .id("source-camera-settings-column")
@@ -1571,7 +1581,7 @@ impl SourceControls {
                         section
                             .controls
                             .iter()
-                            .map(|control| self.render_control(control, cx)),
+                            .map(|control| self.render_control(control, window, cx)),
                     ),
             );
         }
@@ -1805,7 +1815,7 @@ impl Render for SourceControls {
                     .font_weight(FontWeight::NORMAL)
                     .text_size(surface::css(16.))
                     .text_color(gpui_kit::rgb(0xcccccc))
-                    .child(self.render_camera_column(page, cx))
+                    .child(self.render_camera_column(page, window, cx))
                     .child(
                         div()
                             .id("source-camera-video")
@@ -1867,7 +1877,7 @@ impl Render for SourceControls {
                     panel = panel.child(surface::note(crate::i18n::t(description), cx));
                 }
                 for control in &section.controls {
-                    panel = panel.child(self.render_control(control, cx));
+                    panel = panel.child(self.render_control(control, window, cx));
                 }
                 if let Some(note) = &section.note {
                     panel = panel.child(surface::note(crate::i18n::t(note), cx));

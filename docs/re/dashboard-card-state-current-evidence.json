@@ -3845,14 +3845,102 @@
       "sha256": "d3637544f084cb6ef1d5b9a9ecf498a90002d3ce2f81fdd2cae95bc4b8356e8e"
     }
   ],
+  "batteryMasks": [
+    {
+      "source": ".ref/devices/182/static/media/icon_device_off.0a0b5f8a.svg",
+      "output": "assets/synapse/battery-off.svg",
+      "source_sha256": "777468c616c92fb4b8c9189b3476f2b0b98b50a5ce573951e87a9ad57ffaf685",
+      "sha256": "777468c616c92fb4b8c9189b3476f2b0b98b50a5ce573951e87a9ad57ffaf685",
+      "intrinsic": {
+        "width": null,
+        "height": null,
+        "viewBox": "0 0 20 20"
+      },
+      "cssBox": 26,
+      "paintedSize": 26,
+      "placement": "CSS mask-size:auto, mask-position:0% 0%; background-size:20px does not apply to the mask."
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-icon.11f09412.svg",
+      "output": "assets/synapse/dashboard-card/xbox-icon.svg",
+      "source_sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3",
+      "sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3",
+      "intrinsic": {
+        "width": "26",
+        "height": "26",
+        "viewBox": "0 0 26 26"
+      },
+      "cssBox": 26,
+      "paintedSize": 26,
+      "placement": "CSS mask-size:auto, mask-position:0% 0%; background-size:20px does not apply to the mask."
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/ps-icon.54354df0.svg",
+      "output": "assets/synapse/dashboard-card/ps-icon.svg",
+      "source_sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa",
+      "sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa",
+      "intrinsic": {
+        "width": "24",
+        "height": "24",
+        "viewBox": "0 0 24 24"
+      },
+      "cssBox": 26,
+      "paintedSize": 24,
+      "placement": "CSS mask-size:auto, mask-position:0% 0%; background-size:20px does not apply to the mask."
+    }
+  ],
+  "powerLifecycle": [
+    {
+      "name": "componentDidMount",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 28815,
+      "end": 29606,
+      "source": "componentDidMount(){var e;const t=N.A.get(\"isDynamicLighting\");t&&this.setState({isDynamicLighting:JSON.parse(t)}),this.movableRef=document.getElementById(this.props.box.boxId),this.getDeviceStatusText(),this.checkShowSpinner(),[y.Dh.READY,y.Dh.WAITING].includes(this.props.box.setupStatus)&&null!=this.props.box.powerStatus&&this.generateBatteryData(this.props.box.powerStatus,this.props.box.isXBox,this.props.box.isPlaystation),this.checkFWUpgrade(),this.checkStandbyState(),window.addEventListener(\"storage\",this.checkStorageChanges),M.A.on(\"windowstorageevent\",this.onWindowStorageChange),(null===(e=this.props.box.powerStatus)||void 0===e?void 0:e.chargingStatus)!==y.pV.OFF&&(this.setState({isDelayedBatteryDevice:!0}),setTimeout(()=>{this.setState({isDelayedBatteryDevice:!1})},2e3))}"
+    },
+    {
+      "name": "componentDidUpdate",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 29749,
+      "end": 31329,
+      "source": "componentDidUpdate(e){var t;const{box:s,noAliveSignPage:i}=this.props,n=this.props.noAliveSignPage.find(e=>{let{productId:t,deviceContainerId:s}=e;return t===this.props.box.productId&&s===this.props.box.deviceContainerId});var o,a;(this.state.noAliveSign!==!!n&&this.setState({noAliveSign:!!n}),(e.box.activeProfile!==s.activeProfile||e.box.profiles!==s.profiles||s.setupStatus&&s.setupStatus!==e.box.setupStatus||i!==e.noAliveSignPage)&&this.getDeviceStatusText(),this.props.firmwareUpdateDevices===e.firmwareUpdateDevices&&s.firmwareUpdateInfo===e.box.firmwareUpdateInfo||this.checkFWUpgrade(),(s.setupStatus!==e.box.setupStatus||null!=s.powerStatus&&(null===(t=e.box.powerStatus)||void 0===t?void 0:t.chargingStatus)!==s.powerStatus.chargingStatus)&&this.checkShowSpinner(),[y.Dh.READY,y.Dh.WAITING].includes(s.setupStatus)&&null!=s.powerStatus&&e.box.powerStatus!==s.powerStatus)&&((null===(o=e.box.powerStatus)||void 0===o?void 0:o.chargingStatus)===y.pV.OFF&&(null===(a=s.powerStatus)||void 0===a?void 0:a.chargingStatus)!==y.pV.OFF&&(this.setState({isDelayedBatteryDevice:!0}),setTimeout(()=>{this.setState({isDelayedBatteryDevice:!1})},2e3)),this.generateBatteryData(s.powerStatus,s.isXBox,s.isPlaystation));s.src!==e.box.src&&this.setState({boxImage:s.src}),s.showBatteryValue!==e.box.showBatteryValue&&this.setState({showBatteryValue:s.showBatteryValue}),s.hideBatteryIcon!==e.box.hideBatteryIcon&&this.setState({hideBatteryIcon:s.hideBatteryIcon}),s.devicePowerState===e.box.devicePowerState&&s.supportsStandbyMode===e.box.supportsStandbyMode||this.checkStandbyState()}"
+    }
+  ],
+  "powerStateWriters": [
+    {
+      "name": "onWindowStorageChange",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 20091,
+      "end": 21725,
+      "source": "this.onWindowStorageChange=e=>{let{key:t,keyState:s,newValue:i,oldValue:n}=e;const{productId:o,deviceContainerId:a}=this.props.box;if(console.log(\"[BoxItemDevice] WindowStorageEvent:\",{key:t,keyState:s,productId:o,deviceContainerId:a}),\"connectedDevices\"===t)if([\"removed\",\"cleared\"].includes(s))try{const e=JSON.parse(n);e.productId===o&&e.deviceContainerId===a&&(console.log(\"[BoxItemDevice] Device removed from WindowStorageEvent\"),this.setState({isStandby:!1,isOff:!1,batteryClass:\"\",withBattery:!1}))}catch(r){console.warn(\"[BoxItemDevice] parse removed device\",r)}else if(i)try{const e=JSON.parse(i);e.productId===o&&e.deviceContainerId===a&&(console.log(\"[BoxItemDevice] WindowStorageEvent received for this device:\",e),e.supportsStandbyMode?\"off\"===e.devicePowerState?(console.log(\"[BoxItemDevice] Setting state to off from WindowStorageEvent\"),this.setState({isOff:!0,isStandby:!1,batteryClass:\"batt-off\",withBattery:!0})):\"standby\"===e.devicePowerState?(console.log(\"[BoxItemDevice] Setting state to standby from WindowStorageEvent\"),this.setState({isStandby:!0,isOff:!1,batteryClass:\"batt-standby\",withBattery:!0})):\"active\"===e.devicePowerState&&(console.log(\"[BoxItemDevice] Setting state to active from WindowStorageEvent\"),this.setState({isStandby:!1,isOff:!1,batteryClass:\"batt-active\",withBattery:!0})):null==e.supportsStandbyMode&&(\"off\"===e.devicePowerState?this.setState({isOff:!0,batteryClass:\"batt-off\",withBattery:!0,hideBatteryIcon:!1}):\"active\"===e.devicePowerState&&this.setState({isOff:!1,batteryClass:\"\",withBattery:!0,hideBatteryIcon:!0})))}catch(r){console.warn(\"[BoxItemDevice] parse device update\",r)}}"
+    },
+    {
+      "name": "checkStandbyState",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 25548,
+      "end": 26397,
+      "source": "this.checkStandbyState=()=>{const{supportsStandbyMode:e,devicePowerState:t,productId:s}=this.props.box;if(console.log(\"[BoxItemDevice] checkStandbyState\",{productId:s,supportsStandbyMode:e,devicePowerState:t}),!e)return console.log(\"[BoxItemDevice] standby unsupported\",{productId:s}),void(null==e&&(\"off\"===t?this.setState({isOff:!0,batteryClass:\"batt-off\",withBattery:!0,hideBatteryIcon:!1}):\"active\"===t&&this.setState({isOff:!1,batteryClass:\"\",withBattery:!0,hideBatteryIcon:!0})));console.log(\"[BoxItemDevice] standby power state\",{productId:s,devicePowerState:t}),\"off\"===t?this.setState({isOff:!0,isStandby:!1,batteryClass:\"batt-off\",withBattery:!0}):\"standby\"===t?this.setState({isStandby:!0,isOff:!1,batteryClass:\"batt-standby\",withBattery:!0}):\"active\"===t&&this.setState({isStandby:!1,isOff:!1,batteryClass:\"batt-active\",withBattery:!0})}"
+    },
+    {
+      "name": "generateBatteryData",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 26398,
+      "end": 27192,
+      "source": "this.generateBatteryData=function(e,s){var i,n;let o=arguments.length>2&&void 0!==arguments[2]&&arguments[2],a=\"\",r=e.level,l=!1,d=null!==(i=null===(n=t.props.box)||void 0===n?void 0:n.hideBatteryIcon)&&void 0!==i&&i;e.chargingStatus===y.pV.CHARGING&&(e.level<=99?a=\"charging\":r=100),e.chargingStatus===y.pV.OFF&&(a=\"batt-off\"),e.chargingStatus===y.pV.OFF&&s&&(a=\"xbox-icon\"),e.chargingStatus===y.pV.OFF&&o&&(a=\"playstation-icon\"),e.chargingStatus===y.pV.WARNING&&(a=\"batt-warning\"),e.chargingStatus===y.pV.NOT_CHARGING&&(a=\"batt-\"+10*Math.floor(e.level/10),-1===e.level&&(a=\"batt-query-failed\",l=!0,d=!0)),e.chargingStatus===y.pV.PAUSED_CHARGING&&(a=`batt-${10*Math.floor(e.level/10)} paused`),t.setState({...e,withBattery:!0,batteryClass:a,level:r,hasIncorrectBattLevel:l,hideBatteryIcon:d})}"
+    }
+  ],
   "implementation": [
     {
       "path": "src/shell/main_pages/dashboard_device_card.rs",
-      "sha256": "280862ef37ae341f2298fa267c932063ad16c7e97ae77fac9ca66f5d96d36493"
+      "sha256": "64b739b5a14c0e33565407ae5ce4f3f728820891387b6972bd9235a8a88a8359"
     },
     {
       "path": "src/shell/main_pages/dashboard_device.rs",
-      "sha256": "9956d8c204fa1011f25b62321d7f641a3f07eed8ef095a9e67ef7facae3e2132"
+      "sha256": "d0e33b13c4a9fd007d1ae904c779618f82e0bc4dda50a223a86929119d3472a1"
     },
     {
       "path": "src/shell/main_pages/dashboard_cards.rs",
@@ -3869,13 +3957,18 @@
     "Observed presetLoading value only, 100ms ease-in width and exact 600ms dot keyframes with 150/300ms initial delays; mixer init overlay.",
     "Source short-drag overrideAction for nested mouse controls; native keyboard activation stops card bubbling.",
     "Source can-focus short-circuit conditions and actual firmware-update inventory matching; recovery/install/restart-notification requests report missing transport without synthetic success.",
-    "Recovered standby-off and console glyphs; battery no-spinner gate, restart suppression, console text and edge-placement branches."
+    "Recovered standby-off and console glyphs; battery no-spinner gate, restart suppression, console text and edge-placement branches.",
+    "Ready/waiting acceptance of actual power observations, retained display state in other setup states, raw power used independently for spinner, source 2-second display-only timers.",
+    "Mask sizing separated from 20px background images: 26px viewBox-only power mask, intrinsic 26px Xbox and 24px PlayStation at the default top-left mask origin.",
+    "Persistent isOff/isStandby/withBattery/icon/hide/show projection follows generateBatteryData, prop overrides and checkStandbyState ordering. Unknown states and unsupported branches retain prior fields as the current class does.",
+    "Battery tooltip anchor follows actual flex height; source audio category and console generic-off exclusion, normal versus pre-line text whitespace."
   ],
   "unresolved": [
     "No runtime or pixel comparison is permitted; native layout/text rasterization and overlapping tooltip hit regions are not visually certified.",
     "CSS normal line-height, CJK fallback and pre-wrap/shrink-to-fit equivalence remain open as recorded in the shell consistency audit.",
     "Firmware navigates to Devices & Modules; source sessionStorage flag and smooth scroll to its first firmware row are not yet implemented.",
     "Service transport and continuous reducer/storage updates for retryInstall, resuscitate, notification restart, noAliveSign and dynamic-lighting are not connected; metadata is an observed projection only.",
-    "Missing prepared ordinary artwork retains the source image slot; no Synapse-logo substitution or fabricated image-load failure fallback is used."
+    "Missing prepared ordinary artwork retains the source image slot; no Synapse-logo substitution or fabricated image-load failure fallback is used.",
+    "Local snapshots do not carry source powerStatus object identity/revision: battery acceptance detects actual level/status changes, not replacement with an equal-valued JavaScript object. Sticky prop-driven standby transitions are projected locally; storage-only updates/removal/clear still need the real reducer adapter."
   ]
 }

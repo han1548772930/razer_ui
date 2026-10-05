@@ -60,15 +60,18 @@ impl RenderOnce for DeviceCard {
         let device = &self.device;
         let fields = &device.dashboard;
         let ready = device.setup_status == SetupStatus::Ready;
-        let off = device_state::power_off(device);
+        let raw_off = device_state::power_off(device);
+        let observed_power = device_state::observed_power(&self.id, device, window, cx);
+        let off = observed_power.off();
         let retry = matches!(
             device.setup_status,
             SetupStatus::InstallCanceled | SetupStatus::Error
         ) || fields.no_alive_sign == Some(true);
-        let spinner = device_state::show_spinner(device.setup_status, off) && !retry;
+        let source_spinner = device_state::show_spinner(device.setup_status, raw_off);
+        let spinner = source_spinner && !retry;
         let image_disabled = !spinner
             && if !off || fields.is_playstation == Some(true) || !ready {
-                device_state::standby_or_off(device)
+                observed_power.standby_or_off()
             } else {
                 true
             };
@@ -297,7 +300,9 @@ impl RenderOnce for DeviceCard {
                 .flex()
                 .flex_col()
                 .items_center()
-                .when(device_state::disabled(device), |view| view.opacity(0.3))
+                .when(device_state::disabled(device, &observed_power), |view| {
+                    view.opacity(0.3)
+                })
                 .child(
                     div()
                         .w_full()
@@ -437,6 +442,8 @@ impl RenderOnce for DeviceCard {
         content = content.child(device_state::DashboardBattery::new(
             format!("{}-battery", self.id),
             device,
+            observed_power,
+            source_spinner,
             self.id.clone(),
             self.state.clone(),
         ));

@@ -25,8 +25,11 @@ impl ActionItem {
         };
         Self {
             kind,
+            phase: None,
             macro_id: None,
             keyboard: None,
+            mouse: None,
+            loop_pair_id: None,
             value,
             secondary_value: String::new(),
             number_min: if kind == ActionKind::Delay {
@@ -83,18 +86,6 @@ impl ActionKind {
             Self::Command => "command",
             Self::Text => "text",
             Self::Loop => "loop",
-        }
-    }
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            Self::Delay => "TEXT_ADD_MENU_DELAY",
-            Self::Keyboard => "TEXT_ADD_MENU_KEYBOARD",
-            Self::Mouse => "TEXT_ADD_MENU_MOUSE_FUNCTION",
-            Self::Macro => "TEXT_ADD_MENU_MACRO",
-            Self::Launch => "TEXT_ADD_MENU_LAUNCH",
-            Self::Command => "TEXT_ADD_MENU_RUN_COMMAND",
-            Self::Text => "TEXT_ADD_MENU_TEXT_FUNCTION",
-            Self::Loop => "TEXT_ADD_MENU_LOOP",
         }
     }
 }
@@ -242,6 +233,7 @@ impl MacroPage {
             open: false,
             actions: vec![],
             macro_type: Default::default(),
+            active_phase: None,
             record_delay: 0,
         });
         if kind == EntryKind::Macro {

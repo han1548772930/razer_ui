@@ -321,6 +321,18 @@ impl PresetKind {
             Self::Image => "OLED_HOME_SCREEN_DISPLAY_TITLE_IMAGE",
         }
     }
+    fn editor_title(self) -> &'static str {
+        match self {
+            Self::Animation => "CUSTOMIZE_MODAL_ANIMATION_TITLE",
+            Self::Image => "CUSTOMIZE_MODAL_IMAGE_TITLE",
+        }
+    }
+    fn description(self) -> &'static str {
+        match self {
+            Self::Animation => "CUSTOMIZE_ANIMATION_DESC",
+            Self::Image => "CUSTOMIZE_IMAGE_DESC",
+        }
+    }
     fn asset(self, ix: usize) -> SharedString {
         let ext = match self {
             Self::Animation => "webp",
@@ -393,6 +405,16 @@ fn cropped_preview(
     source: SharedString,
     crop: Option<&CropPlacement>,
 ) -> AnyElement {
+    cropped_preview_scaled(id, source, crop, 1.)
+}
+
+/// jt/Ht scale the already cropped preview around its centre on hover.
+fn cropped_preview_scaled(
+    id: SharedString,
+    source: SharedString,
+    crop: Option<&CropPlacement>,
+    scale: f32,
+) -> AnyElement {
     // GPUI only retains animated frame state for an image with an ElementId.
     // Include content identity so replacing a slot starts its new GIF at zero.
     let image_id: SharedString = format!("{id}:{}", gpui_kit::hash(&source)).into();
@@ -427,10 +449,12 @@ fn cropped_preview(
             img(crop::preview_source(image_id.clone(), source))
                 .id(image_id)
                 .absolute()
-                .left(surface::css(left))
-                .top(surface::css(top))
-                .w(surface::css(width))
-                .h(surface::css(height))
+                .left(surface::css((left - WIDTH / 2.) * scale + WIDTH / 2.))
+                .top(surface::css(
+                    (top - CROP_HEIGHT / 2.) * scale + CROP_HEIGHT / 2.,
+                ))
+                .w(surface::css(width * scale))
+                .h(surface::css(height * scale))
                 .grayscale(true)
                 .object_fit(if canvas.is_some() {
                     ObjectFit::Fill
@@ -513,6 +537,7 @@ struct PresetEditor {
     kind: PresetKind,
     selection: PresetSelection,
     import_generation: u64,
+    hovered: Option<usize>,
 }
 
 /// Local crop draft used by the source's upload flow. The original cropper
@@ -892,93 +917,189 @@ impl Render for CropDraft {
 impl Render for PresetEditor {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let last_enabled = self.selection.list.iter().filter(|p| p.enabled).count() == 1;
-        h_flex()
+        v_flex()
             .w_full()
-            .items_start()
-            .flex_wrap()
-            .gap(surface::css(20.))
-            .children(self.selection.list.iter().enumerate().map(|(ix, preset)| {
-                let selected = self.selection.selected_ix == ix;
-                let enabled = preset.enabled;
-                let id = preset.id.clone();
-                let custom = preset.custom;
-                let source = preset
-                    .src
-                    .clone()
-                    .unwrap_or_else(|| self.kind.asset(ix).to_string());
-                v_flex()
-                    .w(surface::css(236.))
-                    .gap_1()
-                    .child(
-                        gpui_kit::base::Button::new(SharedString::from(format!("select-{id}")))
-                            .accessibility_label(format!("{} {}", t(self.kind.title()), ix + 1))
-                            .disabled(!enabled)
+            .text_color(rgb(0xcccccc))
+            .text_size(surface::css(14.))
+            .child(t(self.kind.description()))
+            .child(
+                div()
+                    .grid()
+                    .grid_cols(3)
+                    .gap(surface::css(20.))
+                    .mt(surface::css(30.))
+                    .children(self.selection.list.iter().enumerate().map(|(ix, preset)| {
+                        let selected = self.selection.selected_ix == ix;
+                        let enabled = preset.enabled;
+                        let id = preset.id.clone();
+                        let custom = preset.custom;
+                        let hovered = self.hovered == Some(ix);
+                        let strong_border = enabled && (selected || hovered);
+                        let source = preset
+                            .src
+                            .clone()
+                            .unwrap_or_else(|| self.kind.asset(ix).to_string());
+                        div()
                             .w(surface::css(236.))
                             .h(surface::css(68.))
-                            .border_2()
-                            .border_color(if selected {
-                                cx.theme().primary
-                            } else {
-                                OledColors::border()
-                            })
-                            .bg(OledColors::screen())
-                            .hover(|s| s.border_color(cx.theme().primary))
-                            .focus_visible(|s| s.border_color(cx.theme().primary))
-                            .child(div().when(!enabled, |preview| preview.opacity(0.1)).child(
-                                cropped_preview(
-                                    format!("oled-editor-{id}").into(),
-                                    SharedString::from(source),
-                                    preset.local_crop.as_ref(),
-                                ),
-                            ))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if this.selection.list[ix].enabled {
-                                    this.selection.selected_ix = ix;
-                                    cx.notify();
-                                }
-                            })),
-                    )
-                    .child(
-                        h_flex()
-                            .gap(surface::css(6.))
+                            .flex_shrink_0()
                             .child(
-                                Button::new(SharedString::from(format!("import-{id}")))
-                                    .label(t("IMPORT"))
-                                    .outline()
-                                    .disabled(!enabled)
-                                    .on_click(cx.listener(move |this, _, window, cx| {
-                                        this.import_custom(ix, window, cx);
-                                    })),
-                            )
-                            .when(custom && enabled, |row| {
-                                row.child(
-                                    Button::new(SharedString::from(format!("reset-{id}")))
-                                        .label(t("RESET"))
-                                        .outline()
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            if let Some(item) = this.selection.list.get_mut(ix) {
-                                                item.custom = false;
-                                                item.src = None;
-                                                item.size = None;
-                                                item.local_crop = None;
-                                            }
+                                div()
+                                    .id(SharedString::from(format!("preset-{id}")))
+                                    .relative()
+                                    .w(surface::css(if strong_border { 236. } else { 234. }))
+                                    .h(surface::css(if strong_border { 68. } else { 66. }))
+                                    .m(surface::css(if selected || hovered { 0. } else { 1. }))
+                                    .border_1()
+                                    .when(strong_border, |card| card.border_2())
+                                    .border_color(if !enabled {
+                                        rgba(0x5f5f5f4d)
+                                    } else if selected {
+                                        rgba(0x44d62cff)
+                                    } else if hovered {
+                                        rgba(0x44d62c4d)
+                                    } else {
+                                        rgba(0x5f5f5fff)
+                                    })
+                                    .bg(OledColors::screen())
+                                    .overflow_hidden()
+                                    .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                                        if *hovered {
+                                            this.hovered = Some(ix);
+                                        } else if this.hovered == Some(ix) {
+                                            this.hovered = None;
+                                        }
+                                        cx.notify();
+                                    }))
+                                    .child(
+                                        div().when(!enabled, |preview| preview.opacity(0.1)).child(
+                                            cropped_preview_scaled(
+                                                format!("oled-editor-{id}").into(),
+                                                SharedString::from(source),
+                                                preset.local_crop.as_ref(),
+                                                if hovered { 1.1 } else { 1. },
+                                            ),
+                                        ),
+                                    )
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        if this.selection.list[ix].enabled {
+                                            this.selection.selected_ix = ix;
                                             cx.notify();
-                                        })),
-                                )
-                            }),
-                    )
-                    .child(
-                        surface::SynapseSwitch::new(SharedString::from(format!("enable-{id}")))
-                            .label(format!("{} {}", t(self.kind.title()), ix + 1))
-                            .checked(enabled)
-                            .disabled(last_enabled && enabled)
-                            .on_change(cx.listener(move |this, enabled, _, cx| {
-                                this.selection.set_enabled(ix, *enabled);
-                                cx.notify();
-                            })),
-                    )
-            }))
+                                        }
+                                    }))
+                                    .when(hovered, |card| {
+                                        card.child(
+                                            v_flex()
+                                                .absolute()
+                                                .left_0()
+                                                .top_0()
+                                                .w(surface::css(232.))
+                                                .h(surface::css(64.))
+                                                .p(surface::css(2.))
+                                                .justify_between()
+                                                .bg(rgba(0x00000080))
+                                                .child(
+                                                    h_flex()
+                                                        .justify_between()
+                                                        .items_start()
+                                                        .child(
+                                                            div().m(surface::css(2.)).child(
+                                                                surface::SynapseSwitch::new(
+                                                                    SharedString::from(format!(
+                                                                        "enable-{id}"
+                                                                    )),
+                                                                )
+                                                                .accessibility_label(format!(
+                                                                    "{} {}",
+                                                                    t(self.kind.title()),
+                                                                    ix + 1
+                                                                ))
+                                                                .checked(enabled)
+                                                                .disabled(last_enabled && enabled)
+                                                                .on_change(cx.listener(
+                                                                    move |this, enabled, _, cx| {
+                                                                        cx.stop_propagation();
+                                                                        this.selection.set_enabled(
+                                                                            ix, *enabled,
+                                                                        );
+                                                                        cx.notify();
+                                                                    },
+                                                                )),
+                                                            ),
+                                                        )
+                                                        .when(enabled, |row| {
+                                                            row.child(
+                                                                preset_icon_button(
+                                                                    format!("import-{id}"),
+                                                                    "REPLACE",
+                                                                    "synapse/oled-691-replace.svg",
+                                                                )
+                                                                .on_click(cx.listener(
+                                                                    move |this, _, window, cx| {
+                                                                        this.import_custom(
+                                                                            ix, window, cx,
+                                                                        );
+                                                                    },
+                                                                )),
+                                                            )
+                                                        }),
+                                                )
+                                                .when(custom && enabled, |layer| {
+                                                    layer.child(
+                                                        preset_icon_button(
+                                                            format!("reset-{id}"),
+                                                            "RESET_BTN",
+                                                            "synapse/oled-691-reset.svg",
+                                                        )
+                                                        .on_click(cx.listener(
+                                                            move |this, _, _, cx| {
+                                                                if let Some(item) = this
+                                                                    .selection
+                                                                    .list
+                                                                    .get_mut(ix)
+                                                                    .filter(|item| item.enabled)
+                                                                {
+                                                                    item.custom = false;
+                                                                    item.src = None;
+                                                                    item.size = None;
+                                                                    item.local_crop = None;
+                                                                }
+                                                                cx.notify();
+                                                            },
+                                                        )),
+                                                    )
+                                                }),
+                                        )
+                                    }),
+                            )
+                    })),
+            )
     }
+}
+
+fn preset_icon_button(
+    id: String,
+    label: &'static str,
+    asset: &'static str,
+) -> gpui_kit::base::Button {
+    gpui_kit::base::Button::new(SharedString::from(id))
+        .accessibility_label(t(label))
+        .tooltip(move |window, cx| tooltip::Tooltip::new(t(label)).build(window, cx))
+        .w(surface::css(28.))
+        .h(surface::css(27.))
+        .m(surface::css(2.))
+        .p_0()
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(surface::css(5.))
+        .border_1()
+        .border_color(rgb(0xffffff))
+        .bg(rgb(0))
+        .text_color(rgb(0xcccccc))
+        .hover(|s| s.border_color(rgb(0x44d62c)).text_color(rgb(0x44d62c)))
+        .child(svg().path(asset).size(surface::css(20.)))
 }
 
 impl PresetEditor {
@@ -1232,6 +1353,7 @@ impl SourceControls {
             kind,
             selection,
             import_generation: 0,
+            hovered: None,
         });
         let parent = cx.weak_entity();
         let width = surface::css(800.).to_pixels(window.rem_size());
@@ -1239,7 +1361,7 @@ impl SourceControls {
             let editor_for_apply = editor.clone();
             let parent = parent.clone();
             dialog
-                .title(t(kind.title()))
+                .title(t(kind.editor_title()))
                 .width(width)
                 .child(editor.clone())
                 .footer(

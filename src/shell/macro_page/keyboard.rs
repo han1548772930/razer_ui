@@ -1,6 +1,6 @@
 //! Current Macro 58190 Nn/yn/pn and 25572 O/C; see the keyboard source audit.
 use super::*;
-use crate::features::macro_library::{KeyboardEvent, MacroType};
+use crate::features::macro_library::KeyboardEvent;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::OnceLock, time::Instant};
 
@@ -157,59 +157,6 @@ impl KeyboardUi {
 }
 
 impl MacroPage {
-    /// IDs are local and scoped to the containing document. Include retained
-    /// undo/redo and saved rows when allocating so restore cannot join new pairs.
-    pub(super) fn new_action_items(&self, kind: ActionKind) -> Option<Vec<ActionItem>> {
-        if self.record_ui.open
-            || kind == ActionKind::Delay && self.current_macro_type() != MacroType::Standard
-        {
-            return None;
-        }
-        if kind != ActionKind::Keyboard {
-            return Some(vec![ActionItem::new(kind)]);
-        }
-        let retained = self
-            .actions
-            .iter()
-            .chain(&self.saved_actions)
-            .chain(self.undo.iter().flatten())
-            .chain(self.redo.iter().flatten())
-            .chain(self.entries.iter().flat_map(|entry| &entry.actions))
-            .chain(self.inactive_drafts.values().flat_map(|draft| {
-                draft
-                    .actions
-                    .iter()
-                    .chain(draft.undo.iter().flatten())
-                    .chain(draft.redo.iter().flatten())
-            }));
-        let id = retained
-            .filter_map(|item| item.keyboard.as_ref()?.pair_id)
-            .max()
-            .unwrap_or(0)
-            .checked_add(1)?;
-        let sequence = self
-            .entries
-            .iter()
-            .find(|e| Some(e.id) == self.current)
-            .is_some_and(|e| e.macro_type == MacroType::Sequence);
-        let make = |state| {
-            let mut item = ActionItem::new(kind);
-            item.keyboard = Some(KeyboardEvent {
-                pair_id: Some(id),
-                makecode: None,
-                state,
-                flag: state,
-                key_type: None,
-            });
-            item
-        };
-        Some(if sequence {
-            vec![make(None)]
-        } else {
-            vec![make(Some(0)), make(Some(1))]
-        })
-    }
-
     pub(super) fn open_keyboard_editor(
         &mut self,
         index: usize,

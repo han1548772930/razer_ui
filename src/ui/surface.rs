@@ -907,11 +907,35 @@ pub(crate) fn panel_with_title_switch(
 /// （`max-width:300px`、`font-size:14px;line-height:18px`、`padding:8px 10px`、
 /// 黑底 `1px #5d5d5d`、`#ccc`）；图标是 `tooltip_questionmark.96138d2f.svg`。
 pub(crate) fn help_control(id: impl Into<ElementId>, text: impl Into<SharedString>) -> AnyElement {
-    use crate::ui::source_tooltip::SourceTooltipKind;
+    help_control_kind(
+        id,
+        text,
+        crate::ui::source_tooltip::SourceTooltipKind::WidgetTip,
+    )
+}
+
+/// Current 179's module 7693 portals the help text immediately and applies its
+/// own edge fallback. Other products retain their separately audited policy.
+pub(crate) fn receiver_help_control(
+    id: impl Into<ElementId>,
+    text: impl Into<SharedString>,
+) -> AnyElement {
+    help_control_kind(
+        id,
+        text,
+        crate::ui::source_tooltip::SourceTooltipKind::ReceiverWidgetPortal,
+    )
+}
+
+fn help_control_kind(
+    id: impl Into<ElementId>,
+    text: impl Into<SharedString>,
+    kind: crate::ui::source_tooltip::SourceTooltipKind,
+) -> AnyElement {
     let element_id = id.into();
     let text = text.into();
     SourceTooltip::new(element_id.clone(), text.to_string(), 300.)
-        .kind(SourceTooltipKind::WidgetTip)
+        .kind(kind)
         .trigger(move |hovered, window, cx| {
             let background: Hsla = motion::transition(
                 (element_id.clone(), "help-background"),

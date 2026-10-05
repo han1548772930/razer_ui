@@ -22,11 +22,13 @@
 - 屏保恢复两列 260×68px、10px 间隙、原始图片 256×64px、无屏保的括号文字、源选中/hover 边框。
 - Power 已存在的 dim/sleep 两个 widget 恢复标题旁开关、DIM_LIGHTING_HEADER、帮助和 48×27px 原始数字按钮，不再为每项添加 min。
 
+2026-10-05 续接已补预设编辑器卡内操作、当前标题与说明、主页标题 hover，以及 requires-Synapse/BLE 提示文案，见 [预设卡片续接](oled-preset-cards-current-audit.md)。提示 portal 的时序/定位和实际画面仍未验证。
+
 ## 仍需完成
 
 - Emote/Banner/System 真实预览和编辑器；目前保留七卡框架，但这三张内容为空、edit 禁用，是明确的源码差异。不能将此状态算作页面一致。
 - Power 另外三个 source widget：低电量 OLED 提醒、indicator、低功耗模式信息。
-- OLED 系统幻灯片选择时的特殊 dispatch、服务下载/进度/loading、require-Synapse tooltip、卡片标题 hover、原始滑条释放提交和 hover transition。现有持久化不等于硬件已写入。
+- OLED 系统幻灯片选择时的特殊 dispatch、服务下载/进度/loading、提示 portal 精确位置与时序、原始滑条释放提交和 hover transition。现有持久化不等于硬件已写入。
 - Customize、Lighting、Help 的内部结构与专用控件，其他键盘产品页面。
 - CSS normal 行高、原生字体 fallback、浏览器和 GPUI 栅格化/换行；任务禁止运行，因此未做截图一致性声明。
 

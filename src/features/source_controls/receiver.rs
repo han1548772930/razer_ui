@@ -246,7 +246,7 @@ impl SourceControls {
                     .absolute()
                     .right(surface::css(10.))
                     .top(surface::css(10.))
-                    .child(surface::help_control(
+                    .child(surface::receiver_help_control(
                         "receiver-pairing-help",
                         crate::i18n::t("MULTI__DUALINK_PROPERTIES_TOOLTIP"),
                     )),
@@ -366,6 +366,7 @@ impl SourceControls {
                         .bg(rgba(0x000000b3))
                         .child(
                             v_flex()
+                                .id("receiver-pairing-modal")
                                 .absolute()
                                 .left((size.width - width) / 2.)
                                 .top(unit * 100.)
@@ -376,6 +377,7 @@ impl SourceControls {
                                 .border_1()
                                 .border_color(rgb(0x515151))
                                 .rounded(surface::css(5.))
+                                .overflow_y_scroll()
                                 .child(
                                     h_flex()
                                         .relative()
@@ -385,6 +387,8 @@ impl SourceControls {
                                         .items_center()
                                         .justify_center()
                                         .bg(rgb(0x222222))
+                                        .rounded_tl(surface::css(5.))
+                                        .rounded_tr(surface::css(5.))
                                         .border_b_1()
                                         .border_color(rgb(0x515151))
                                         .text_size(surface::css(14.))
@@ -447,22 +451,56 @@ impl RenderOnce for ReceiverSpinner {
                         (0., std::f32::consts::TAU, 0.3),
                         (rotation.to_radians(), fraction * std::f32::consts::TAU, 1.),
                     ] {
+                        let radius = 30. * scale;
+                        let project = |angle: f32| {
+                            bounds.center()
+                                + point(px(angle.cos() * radius), px(angle.sin() * radius))
+                        };
                         let mut path = PathBuilder::stroke(px(10. * scale));
-                        for step in 0..=96 {
-                            let angle = start + length * step as f32 / 96.;
-                            let point = bounds.center()
-                                + point(
-                                    px(angle.cos() * 30. * scale),
-                                    px(angle.sin() * 30. * scale),
-                                );
-                            if step == 0 {
-                                path.move_to(point);
-                            } else {
-                                path.line_to(point);
-                            }
-                        }
+                        path.move_to(project(start));
+                        // Two true arcs also cover the background circle; equal
+                        // start/end points would degenerate a single SVG arc.
+                        path.arc_to(
+                            point(px(radius), px(radius)),
+                            px(0.),
+                            false,
+                            true,
+                            project(start + length / 2.),
+                        );
+                        path.arc_to(
+                            point(px(radius), px(radius)),
+                            px(0.),
+                            false,
+                            true,
+                            project(start + length),
+                        );
                         if let Ok(path) = path.build() {
                             window.paint_path(path, Hsla::from(rgb(0x44d62c)).opacity(alpha));
+                        }
+                        if alpha == 1. {
+                            // spinner.ef2d0235.svg has square foreground caps.
+                            // GPUI's stroke uses butt caps; add the half-stroke
+                            // tangent extension at both ends of the source arc.
+                            for (angle, direction) in [(start, -1.), (start + length, 1.)] {
+                                let endpoint = project(angle);
+                                let normal = point(
+                                    px(angle.cos() * 5. * scale),
+                                    px(angle.sin() * 5. * scale),
+                                );
+                                let extension = point(
+                                    px(-angle.sin() * 5. * scale * direction),
+                                    px(angle.cos() * 5. * scale * direction),
+                                );
+                                let mut cap = PathBuilder::fill();
+                                cap.move_to(endpoint + normal);
+                                cap.line_to(endpoint - normal);
+                                cap.line_to(endpoint - normal + extension);
+                                cap.line_to(endpoint + normal + extension);
+                                cap.close();
+                                if let Ok(cap) = cap.build() {
+                                    window.paint_path(cap, rgb(0x44d62c));
+                                }
+                            }
                         }
                     }
                 },

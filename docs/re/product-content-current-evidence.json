@@ -89782,7 +89782,7 @@
     "src/features/system_products.rs": "cdac5271a7229d9bee54d667e1e615b0db610651ab39b612509790d1827851f9",
     "src/features/audio_nommo.rs": "683b0e8ddc09b4fd2cde678cf181a503a510133fff7e139b463442de1c38599d",
     "src/features/audio_products_data.json": "e7a2019fa5857d376dded4475c60ed2be58ab920ead3009ab181b68fc1d2b25e",
-    "src/features/source_controls.rs": "205ec0287d7d09a4a81d65ae18e66d347452236d1e1697c5fde00a02c27ecd3d",
+    "src/features/source_controls.rs": "5bf3886ebb77ed31f6b5184de6234f44dc40cf16ad8f405d98545a21470a6865",
     "src/features/source_workspace.rs": "1b10dc5af2d8ec5f0a403cc452f213afa7ad4542164c17044de89f16b6d2e3ee",
     "tools/prepare-audio-products.cjs": "2fbc0ec84571bf2c742d83a518e249e40317329ef02413c64c57606d08056aea"
   }

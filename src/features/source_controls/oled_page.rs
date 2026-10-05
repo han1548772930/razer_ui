@@ -32,7 +32,7 @@ impl SourceControls {
         .when(compact, |panel| panel.px(surface::css(25.)))
         .child(oled_help("home", "OLED_HOME_SCREEN_DISPLAY_TIPS"))
         .child(div().child(t("OLED_HOME_SCREEN_DISPLAY_DESC")))
-        .child(self.render_oled_presets(!enabled, cx));
+        .child(self.render_oled_presets(!enabled, window, cx));
         let brightness = oled_panel("OLED_BRIGHTNESS_TITLE", "OLED_BRIGHTNESS_TIPS", cx)
             .child(div().child(t("OLED_BRIGHTNESS_DESC")))
             .child(self.oled_brightness());

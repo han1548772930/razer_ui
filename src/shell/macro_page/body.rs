@@ -30,6 +30,7 @@ impl MacroPage {
             || self.record_ui.open
             || matches!(self.tutorial, Tutorial::Initial | Tutorial::Record);
         let page = cx.entity_id();
+        let baseline = std::rc::Rc::new(self.actions().to_vec());
         div()
             .id("macro-source-wrapper")
             .relative()
@@ -96,12 +97,13 @@ impl MacroPage {
                                     .child(tr(key))
                                     .when(!palette_disabled, |button| {
                                         button.on_drag(
-                                            ActionDrag {
-                                                page,
-                                                index: 0,
-                                                palette_kind: Some(kind),
+                                            self.action_drag(0, Some(kind), page, baseline.clone()),
+                                            |drag, offset, _, cx| {
+                                                cx.new(|_| ActionDragPreview {
+                                                    drag: drag.clone(),
+                                                    offset,
+                                                })
                                             },
-                                            |_, _, _, cx| cx.new(|_| ActionDragPreview),
                                         )
                                     })
                                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -128,9 +130,12 @@ impl MacroPage {
     ) -> AnyElement {
         let disabled =
             self.macro_count() == 0 || self.record_ui.open || self.tutorial != Tutorial::Complete;
-        let selected_count = self.selected_actions.len();
         let page = cx.entity_id();
+        if self.current_macro_type() == crate::features::macro_library::MacroType::Phased {
+            return self.phased_editor(list_height, disabled, window, cx);
+        }
         let action_count = self.actions().len();
+        let baseline = std::rc::Rc::new(self.actions().to_vec());
         let editor_bounds = self.text_ui.editor_bounds.clone();
         v_flex()
             .id("macro-item-list")
@@ -138,144 +143,12 @@ impl MacroPage {
             .w_full()
             .h(css(list_height))
             .min_h(css(420.))
-            .when(self.record_ui.open, |v| {
+            .when(disabled, |v| {
                 v.capture_any_mouse_down(|_, _, cx| cx.stop_propagation())
+                    .opacity(0.7)
             })
             .scrollable_y()
-            .when(disabled, |v| v.opacity(0.7))
-            .children(self.actions().iter().enumerate().map(|(index, action)| {
-                let selected = self.selected_actions.contains(&index);
-                let kind = action.kind;
-                let dragging = ActionDrag {
-                    page,
-                    index,
-                    palette_kind: None,
-                };
-                h_flex()
-                    .id(("macro-action-row", index))
-                    .w_full()
-                    .h(css(42.))
-                    .flex_shrink_0()
-                    .items_center()
-                    .px(css(12.))
-                    .bg(if selected {
-                        rgb(0x44d62c33)
-                    } else {
-                        rgb(0x222222)
-                    })
-                    .border_b_1()
-                    .border_color(rgb(0x333333))
-                    .hover(|s| s.bg(rgb(0x2d2d2d)))
-                    .on_drag(dragging, move |_, _, _, cx| cx.new(|_| ActionDragPreview))
-                    .drag_over::<ActionDrag>(move |style, drag, _, _| {
-                        if drag.page == page && (drag.palette_kind.is_some() || drag.index != index)
-                        {
-                            style
-                                .border_b_2()
-                                .border_dashed()
-                                .border_color(rgb(0x44d62c))
-                        } else {
-                            style
-                        }
-                    })
-                    .on_drop(cx.listener(move |this, drag: &ActionDrag, _, cx| {
-                        if drag.page == cx.entity_id() {
-                            if let Some(kind) = drag.palette_kind {
-                                this.add_action_at(kind, index, cx);
-                            } else {
-                                this.move_action(drag.index, index, cx);
-                            }
-                        }
-                    }))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.toggle_action_selection(index, cx);
-                    }))
-                    .child(
-                        div()
-                            .size(css(16.))
-                            .mr(css(10.))
-                            .border_1()
-                            .border_color(if selected {
-                                rgb(0x44d62c)
-                            } else {
-                                rgb(0x515151)
-                            })
-                            .bg(if selected { rgb(0x44d62c) } else { rgba(0) })
-                            .child(if selected {
-                                div()
-                                    .text_size(css(12.))
-                                    .text_color(rgb(0x111111))
-                                    .child("✓")
-                                    .into_any_element()
-                            } else {
-                                div().into_any_element()
-                            }),
-                    )
-                    .child(
-                        img(SharedString::from(format!(
-                            "synapse/macro/{}.svg",
-                            action.kind.icon()
-                        )))
-                        .size(css(20.))
-                        .mr(css(if kind == ActionKind::Keyboard {
-                            10.
-                        } else {
-                            12.
-                        })),
-                    )
-                    .when_some(
-                        action.keyboard.as_ref().and_then(|key| key.state),
-                        |row, state| {
-                            row.child(
-                                img(if state % 2 == 0 {
-                                    "synapse/macro/key-down.svg"
-                                } else {
-                                    "synapse/macro/key-up.svg"
-                                })
-                                .size(css(20.))
-                                .mr(css(10.)),
-                            )
-                        },
-                    )
-                    .when(
-                        !matches!(kind, ActionKind::Launch | ActionKind::Keyboard),
-                        |row| row.child(tr(kind.label())),
-                    )
-                    .child(self.action_value_editor(index, kind, window, cx))
-                    .into_any_element()
-            }))
-            .when(selected_count > 0, |v| {
-                v.child(
-                    h_flex()
-                        .id("macro-selected-actions-bar")
-                        .w_full()
-                        .h(css(40.))
-                        .flex_shrink_0()
-                        .items_center()
-                        .px(css(12.))
-                        .bg(rgb(0x111111))
-                        .border_t_1()
-                        .border_color(rgb(0x333333))
-                        .child(format!("{} {}", selected_count, tr("TEXT_ITEMS_SELECTED")))
-                        .child(
-                            BaseButton::new("macro-delete-selected-actions")
-                                .ml_auto()
-                                .size(css(24.))
-                                .p_0()
-                                .accessibility_label(tr("TEXT_TOOLTIP_DELETE_SELECTED_ITEMS"))
-                                .child(
-                                    div()
-                                        .text_size(css(18.))
-                                        .line_height(css(18.))
-                                        .text_color(rgb(0xcccccc))
-                                        .child("×"),
-                                )
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.delete_selected_actions(cx);
-                                })),
-                        ),
-                )
-            })
+            .children((0..action_count).map(|index| self.action_row(index, baseline.clone(), disabled, window, cx)))
             .child(
                 div()
                     .id("macro-item-drop-space")
@@ -283,24 +156,14 @@ impl MacroPage {
                     .h(css(100.))
                     .flex_shrink_0()
                     .bg(rgb(0x111111))
-                    .drag_over::<ActionDrag>(move |style, drag, _, _| {
-                        if drag.page == page {
-                            style
-                                .border_t_2()
-                                .border_dashed()
-                                .border_color(rgb(0x44d62c))
-                        } else {
-                            style
+                    .on_drag_move::<ActionDrag>(move |event, _, cx| {
+                        let drag = event.drag(cx);
+                        if drag.page == page && event.bounds.contains(&event.event.position) {
+                            drag.allowed.set(drag.allows(action_count));
                         }
                     })
                     .on_drop(cx.listener(move |this, drag: &ActionDrag, _, cx| {
-                        if drag.page == cx.entity_id() {
-                            if let Some(kind) = drag.palette_kind {
-                                this.add_action_at(kind, action_count, cx);
-                            } else {
-                                this.move_action(drag.index, action_count, cx);
-                            }
-                        }
+                        this.drop_actions(drag, action_count, cx)
                     })),
             )
             .into_any_element()
@@ -420,7 +283,7 @@ impl MacroPage {
                                             })
                                             .child(tr(key))
                                             .on_click(cx.listener(move |this, _, _, cx| {
-                                                this.choose_action_value(index, key, cx);
+                                                this.choose_mouse_action(index, choice as u8, cx);
                                             }))
                                     },
                                 ))
@@ -582,70 +445,40 @@ impl MacroPage {
         item: ActionItem,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let state_button = BaseButton::new(("macro-loop-state", index))
+        BaseButton::new(("macro-loop-count", index))
             .h(css(27.))
-            .px(css(5.))
-            .py_0()
-            .text_size(css(11.))
-            .bg(rgb(0x333333))
-            .hover(|s| s.bg(rgb(0x444444)))
-            .child(tr(editors::loop_state_key(&item.state)))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                cx.stop_propagation();
-                this.toggle_loop_state(index, cx);
-            }));
-        let up = BaseButton::new(("macro-loop-up", index))
-            .w(css(18.))
-            .h(css(13.5))
             .p_0()
-            .focusable(false)
-            .child(img("synapse/stepper-up.svg").size(css(8.)))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                cx.stop_propagation();
-                this.step_loop(index, 1, cx);
-            }));
-        let down = BaseButton::new(("macro-loop-down", index))
-            .w(css(18.))
-            .h(css(13.5))
-            .p_0()
-            .focusable(false)
-            .child(img("synapse/stepper-down.svg").size(css(8.)))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                cx.stop_propagation();
-                this.step_loop(index, -1, cx);
-            }));
-        let value = BaseButton::new(("macro-loop-count", index))
-            .h(css(27.))
-            .w(css(70.))
-            .px(css(5.))
-            .py_0()
-            .text_size(css(11.))
+            .text_size(css(14.))
             .justify_start()
-            .child(format!("{}x", item.value))
+            .hover(|s| s.text_color(rgb(0x44d62c)))
+            .child(item.value)
             .on_click(cx.listener(move |this, _, window, cx| {
                 cx.stop_propagation();
                 this.begin_action_edit(index, window, cx);
-            }));
-        h_flex()
-            .items_center()
-            .child(state_button)
-            .child(
-                h_flex()
-                    .ml(css(4.))
-                    .w(css(88.))
-                    .h(css(27.))
-                    .border_1()
-                    .border_color(rgb(0x5d5d5d))
-                    .child(value)
-                    .child(v_flex().h(css(27.)).child(up).child(down)),
-            )
+            }))
             .into_any_element()
     }
 
     fn action_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let record_trigger = self.record_ui.trigger_bounds.clone();
+        let selected_count = self.selected_actions.len();
+        let page = cx.entity_id();
+        let selection_disabled = self.tutorial != Tutorial::Complete || self.record_ui.open;
         h_flex()
             .id("macro-action-bar")
+            .when(
+                self.current_macro_type() != crate::features::macro_library::MacroType::Phased,
+                |bar| {
+                    bar.drag_over::<ActionDrag>(move |style, drag, _, _| {
+                        row_drag::target_style(style, drag, page, 0)
+                    })
+                    .on_drop(
+                        cx.listener(|this, drag: &ActionDrag, _, cx| {
+                            this.drop_actions(drag, 0, cx)
+                        }),
+                    )
+                },
+            )
             .w_full()
             .h(css(54.))
             .pl(css(12.))
@@ -660,15 +493,60 @@ impl MacroPage {
                     .flex_1()
                     .mt(css(1.))
                     .child(
-                        div()
-                            .size(css(16.))
-                            .mr(css(10.))
-                            .border_1()
-                            .border_color(rgb(0x515151)),
+                        selection::checkbox(
+                            "macro-select-all",
+                            self.all_actions_selected(),
+                            selection_disabled,
+                            window,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.toggle_all_actions(cx);
+                        })),
                     )
-                    .child(img("synapse/macro/delay.svg").size(css(20.)).mr(css(10.)))
-                    .when(self.current.is_some(), |v| {
-                        v.child(div().text_size(css(14.)).child(self.macro_type_status()))
+                    .when(selected_count == 0, |v| {
+                        v.child(img("synapse/macro/delay.svg").size(css(20.)).mr(css(10.)))
+                            .when(self.current.is_some(), |v| {
+                                v.child(div().text_size(css(14.)).child(self.macro_type_status()))
+                            })
+                    })
+                    .when(selected_count > 0, |v| {
+                        v.child(
+                            BaseButton::new("macro-delete-selected-actions")
+                                .group("macro-delete-selected")
+                                .disabled(selection_disabled)
+                                .size(css(20.))
+                                .mr(css(5.))
+                                .p_0()
+                                .active(|s| s.opacity(0.7))
+                                .accessibility_label(tr("TEXT_TOOLTIP_DELETE_SELECTED_ITEMS"))
+                                .child(
+                                    div()
+                                        .relative()
+                                        .size_full()
+                                        .child(img("synapse/macro/delete.svg").size_full())
+                                        .child(
+                                            img("synapse/macro/delete-hover.svg")
+                                                .absolute()
+                                                .inset_0()
+                                                .size_full()
+                                                .opacity(0.)
+                                                .group_hover("macro-delete-selected", |s| {
+                                                    s.opacity(1.)
+                                                }),
+                                        ),
+                                )
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.delete_selected_actions(cx);
+                                })),
+                        )
+                        .child(div().text_size(css(14.)).child(format!(
+                            "{} {}",
+                            selected_count,
+                            tr("TEXT_ITEMS_SELECTED")
+                        )))
                     }),
             )
             .child(
@@ -754,21 +632,25 @@ impl MacroPage {
                     .justify_end()
                     .child(
                         BaseButton::new("macro-undo")
+                            .group("undo")
                             .disabled(!self.can_undo())
                             .size(css(20.))
                             .p_0()
                             .mr(css(16.))
-                            .child(img("synapse/macro/undo.svg").size_full())
+                            .active(|s| s.opacity(0.7))
+                            .child(selection::history_icon("undo", self.can_undo()))
                             .on_click(cx.listener(|this, _, _, cx| this.undo_action(cx))),
                     )
                     .child(
                         BaseButton::new("macro-redo")
+                            .group("redo")
                             .disabled(!self.can_redo())
                             .size(css(20.))
                             .p_0()
                             .flex_1()
                             .justify_start()
-                            .child(img("synapse/macro/redo.svg").size(css(20.)))
+                            .active(|s| s.opacity(0.7))
+                            .child(selection::history_icon("redo", self.can_redo()))
                             .on_click(cx.listener(|this, _, _, cx| this.redo_action(cx))),
                     )
                     .child(

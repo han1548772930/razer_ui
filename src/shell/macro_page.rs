@@ -27,9 +27,15 @@ mod launch;
 mod nested;
 mod nested_overlay;
 mod palette;
+mod phased;
 mod record_help;
 mod record_options;
 mod record_shortcut;
+mod row_actions;
+mod row_controls;
+mod row_drag;
+mod row_view;
+mod selection;
 mod state;
 mod text;
 mod text_emoji;
@@ -38,26 +44,7 @@ mod tree;
 mod unsaved;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial};
 
-/// Payload carried while reordering event rows in the current macro editor.
-/// The page id prevents a drag that started in another MacroPage instance from
-/// mutating this editor when independent windows are open.
-#[derive(Clone)]
-pub(super) struct ActionDrag {
-    pub(super) page: EntityId,
-    pub(super) index: usize,
-    pub(super) palette_kind: Option<&'static str>,
-}
-
-/// The web editor uses the browser's drag image for functional items. GPUI
-/// still requires a preview entity for the drag lifetime; keeping it empty
-/// preserves the source's unobtrusive row drag while the insertion highlight
-/// is painted by the target row.
-pub(super) struct ActionDragPreview;
-impl Render for ActionDragPreview {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        Empty
-    }
-}
+use row_drag::{ActionDrag, ActionDragPreview};
 
 fn tr(key: &str) -> String {
     i18n::t(&format!("MACRO_SOURCE.{key}")).to_string()
@@ -130,6 +117,7 @@ pub(super) struct MacroPage {
     launch_ui: launch::LaunchUi,
     keyboard_ui: keyboard::KeyboardUi,
     record_ui: record_options::RecordUi,
+    phased_ui: phased::PhasedUi,
     delay_min_editor: Entity<InputState>,
     delay_max_editor: Entity<InputState>,
     randomized_open: Option<usize>,
@@ -304,6 +292,7 @@ impl MacroPage {
             launch_ui: Default::default(),
             keyboard_ui: keyboard::KeyboardUi::new(keyboard_focus),
             record_ui,
+            phased_ui: Default::default(),
             delay_min_editor,
             delay_max_editor,
             randomized_open: None,
@@ -450,31 +439,13 @@ impl MacroPage {
         self.choice_action = None;
     }
     pub(super) fn add_action(&mut self, kind: &str, cx: &mut Context<Self>) {
-        let Some(current) = self.current else { return };
-        if self.tutorial != Tutorial::Complete || self.record_ui.open {
-            return;
-        }
-        let Some(kind) = ActionKind::from_palette(kind) else {
-            return;
-        };
-        if self.actions_for != Some(current) {
-            self.actions_for = Some(current);
-            self.actions.clear();
-            self.saved_actions_for = Some(current);
-            self.saved_actions.clear();
-            self.undo.clear();
-            self.redo.clear();
-        }
-        self.finish_keyboard_editor();
-        let Some(items) = self.new_action_items(kind) else {
-            return;
-        };
-        self.undo.push(self.actions.clone());
-        self.actions.extend(items);
-        self.clear_action_editors();
-        self.selected_actions.clear();
-        self.redo.clear();
-        cx.notify();
+        let index = self
+            .selected_actions
+            .iter()
+            .copied()
+            .max()
+            .map_or(self.actions().len(), |index| index + 1);
+        self.add_action_at(kind, index, cx);
     }
     pub(super) fn can_undo(&self) -> bool {
         !self.record_ui.open && !self.undo.is_empty()
@@ -595,6 +566,7 @@ impl MacroPage {
         }
         self.undo.push(self.actions.clone());
         self.actions[index].value = value;
+        self.sync_loop_value(index);
         self.redo.clear();
         window.blur(cx);
         cx.notify();
@@ -721,68 +693,6 @@ impl MacroPage {
         cx.notify();
     }
 
-    pub(super) fn step_loop(&mut self, index: usize, direction: i8, cx: &mut Context<Self>) {
-        if self.record_ui.open {
-            return;
-        }
-        let Some(item) = self.actions.get(index).cloned() else {
-            return;
-        };
-        if item.kind != ActionKind::Loop {
-            return;
-        }
-        let value = item.value.parse::<i64>().unwrap_or(1);
-        let next = (value + i64::from(direction)).clamp(1, 99_999).to_string();
-        if next == item.value {
-            return;
-        }
-        self.undo.push(self.actions.clone());
-        self.actions[index].value = next;
-        self.redo.clear();
-        cx.notify();
-    }
-
-    pub(super) fn set_action_state(&mut self, index: usize, state: String, cx: &mut Context<Self>) {
-        if self.record_ui.open {
-            return;
-        }
-        if index >= self.actions.len() || self.actions[index].state == state {
-            return;
-        }
-        self.undo.push(self.actions.clone());
-        self.actions[index].state = state;
-        self.redo.clear();
-        cx.notify();
-    }
-
-    pub(super) fn choose_action_value(
-        &mut self,
-        index: usize,
-        value: &str,
-        cx: &mut Context<Self>,
-    ) {
-        if index >= self.actions.len() || self.actions[index].value == value {
-            self.choice_action = None;
-            return;
-        }
-        self.undo.push(self.actions.clone());
-        self.actions[index].value = value.to_string();
-        self.redo.clear();
-        self.choice_action = None;
-        cx.notify();
-    }
-
-    pub(super) fn toggle_loop_state(&mut self, index: usize, cx: &mut Context<Self>) {
-        let next = self
-            .actions
-            .get(index)
-            .filter(|item| item.kind == ActionKind::Loop)
-            .map(|item| if item.state == "end" { "start" } else { "end" });
-        if let Some(next) = next {
-            self.set_action_state(index, next.to_string(), cx);
-        }
-    }
-
     pub(super) fn add_action_at(&mut self, kind: &str, index: usize, cx: &mut Context<Self>) {
         let Some(current) = self.current else { return };
         if self.tutorial != Tutorial::Complete || self.record_ui.open {
@@ -805,9 +715,13 @@ impl MacroPage {
         };
         self.undo.push(self.actions.clone());
         let index = index.min(self.actions.len());
+        for selected in &mut self.selected_actions {
+            if *selected >= index {
+                *selected += items.len();
+            }
+        }
         self.actions.splice(index..index, items);
         self.clear_action_editors();
-        self.selected_actions.clear();
         self.redo.clear();
         cx.notify();
     }
@@ -858,7 +772,7 @@ impl MacroPage {
         }
     }
     pub(super) fn toggle_action_selection(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open {
+        if self.record_ui.open || self.tutorial != Tutorial::Complete {
             return;
         }
         if index >= self.actions().len() {
@@ -877,7 +791,7 @@ impl MacroPage {
     }
 
     pub(super) fn delete_selected_actions(&mut self, cx: &mut Context<Self>) {
-        if self.record_ui.open {
+        if self.record_ui.open || self.tutorial != Tutorial::Complete {
             return;
         }
         self.finish_keyboard_editor();
@@ -892,31 +806,6 @@ impl MacroPage {
             .enumerate()
             .filter_map(|(index, action)| (!selected.contains(&index)).then_some(action.clone()))
             .collect();
-        self.clear_action_editors();
-        self.redo.clear();
-        cx.notify();
-    }
-
-    /// Move an event row to the insertion position indicated by a drop target.
-    /// The source editor inserts before the target row; removing an earlier
-    /// source first therefore shifts the destination one slot to the left.
-    pub(super) fn move_action(&mut self, source: usize, target: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open {
-            return;
-        }
-        self.finish_keyboard_editor();
-        if self.actions_for != self.current
-            || source >= self.actions.len()
-            || target > self.actions.len()
-            || source == target
-        {
-            return;
-        }
-        self.undo.push(self.actions.clone());
-        let action = self.actions.remove(source);
-        let destination = if source < target { target - 1 } else { target };
-        self.actions.insert(destination, action);
-        self.selected_actions.clear();
         self.clear_action_editors();
         self.redo.clear();
         cx.notify();
@@ -956,6 +845,7 @@ fn format_delay(value: f64) -> String {
 
 impl Render for MacroPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_phased_mount(cx);
         if self.locale != i18n::locale() {
             self.locale = i18n::locale();
             self.update_search_placeholder(window, cx);

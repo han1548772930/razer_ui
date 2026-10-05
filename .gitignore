@@ -169,4 +169,8 @@
 !/tools/audit-product-content-current.cjs
 !/tools/audit-keyboard-691-current.cjs
 !/tools/audit-macro-record-options.cjs
+!/tools/audit-macro-selection.cjs
+!/tools/audit-oled-preset-cards.cjs
+!/tools/audit-product-mode-tab-icons.cjs
 !/tools/audit-dashboard-card-state.cjs
+!/tools/audit-macro-row-actions.cjs

@@ -134,12 +134,206 @@ pub(super) fn standby_or_off(device: &Device) -> bool {
             && device.dashboard.device_power_state.as_deref() == Some("standby"))
 }
 
-pub(super) fn disabled(device: &Device) -> bool {
-    (power_off(device)
+pub(super) fn disabled(device: &Device, observed: &DisplayedPower) -> bool {
+    (observed.off()
         && device.dashboard.is_xbox != Some(true)
         && device.dashboard.is_playstation != Some(true))
         || device.setup_status == SetupStatus::RestartRequired
-        || standby_or_off(device)
+        || observed.standby_or_off()
+}
+
+/// Persistent fields written by z.generateBatteryData/checkStandbyState.
+/// Unknown power states and explicit unsupported values do not reset them.
+#[derive(Clone)]
+pub(super) struct DisplayedPower {
+    power: Option<PowerStatus>,
+    delayed: bool,
+    is_off: bool,
+    is_standby: bool,
+    with_battery: bool,
+    icon: Icon,
+    hide_icon: bool,
+    show_value: bool,
+    incorrect: bool,
+}
+
+impl DisplayedPower {
+    pub(super) fn off(&self) -> bool {
+        self.power
+            .as_ref()
+            .is_some_and(|power| power.charging_status.eq_ignore_ascii_case("off"))
+    }
+
+    pub(super) fn standby_or_off(&self) -> bool {
+        self.is_off || self.is_standby
+    }
+
+    fn accept_power(&mut self, power: &PowerStatus, fields: &DashboardDeviceMetadata) {
+        self.power = Some(power.clone());
+        self.with_battery = true;
+        self.incorrect = is_normal(&power.charging_status) && power.level == -1;
+        self.hide_icon = fields.hide_battery_icon.unwrap_or(false) || self.incorrect;
+        self.icon = if self.off() && fields.is_playstation == Some(true) {
+            Icon::Mask("synapse/dashboard-card/ps-icon.svg")
+        } else if self.off() && fields.is_xbox == Some(true) {
+            Icon::Mask("synapse/dashboard-card/xbox-icon.svg")
+        } else {
+            icon(power)
+        };
+    }
+
+    fn accept_standby(&mut self, fields: &DashboardDeviceMetadata) {
+        let state = fields.device_power_state.as_deref();
+        if fields.supports_standby_mode == Some(true) {
+            match state {
+                Some("off" | "standby" | "active") => {
+                    self.is_off = state == Some("off");
+                    self.is_standby = state == Some("standby");
+                    self.with_battery = true;
+                    self.icon = if self.is_off {
+                        Icon::Power(0xff0000)
+                    } else if self.is_standby {
+                        Icon::Power(0xfd8611)
+                    } else {
+                        // batt-active has no final CSS override of the base image.
+                        Icon::Image("synapse/battery-charging-100.svg".into())
+                    };
+                }
+                _ => {}
+            }
+        } else if fields.supports_standby_mode.is_none() {
+            match state {
+                Some("off" | "active") => {
+                    self.is_off = state == Some("off");
+                    self.with_battery = true;
+                    self.hide_icon = !self.is_off;
+                    self.icon = if self.is_off {
+                        Icon::Power(0xff0000)
+                    } else {
+                        Icon::Image("synapse/battery-charging-100.svg".into())
+                    };
+                    // The null/absent-support branch does not write isStandby.
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// z only accepts powerStatus into its display state while ready or waiting.
+/// Other setup states retain the last accepted observation; a card initially
+/// mounted in error/installing does not gain a battery from an ineligible value.
+struct ObservedPower {
+    previous: Option<PowerStatus>,
+    previous_support: Option<bool>,
+    previous_state: Option<String>,
+    previous_hide: Option<bool>,
+    previous_show: Option<bool>,
+    displayed: DisplayedPower,
+}
+
+impl ObservedPower {
+    fn timer(cx: &mut Context<Self>) {
+        cx.spawn(async move |state, cx| {
+            cx.background_executor().timer(Duration::from_secs(2)).await;
+            let _ = state.update(cx, |state, cx| {
+                state.displayed.delayed = false;
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+}
+
+fn same_power(a: Option<&PowerStatus>, b: Option<&PowerStatus>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => a.level == b.level && a.charging_status == b.charging_status,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+pub(super) fn observed_power(
+    id: &str,
+    device: &Device,
+    window: &mut Window,
+    cx: &mut App,
+) -> DisplayedPower {
+    let eligible = matches!(
+        device.setup_status,
+        SetupStatus::Ready | SetupStatus::Waiting
+    );
+    let off = power_off(device);
+    let fields = &device.dashboard;
+    let id: ElementId = SharedString::from(id.to_owned()).into();
+    let state = window.use_keyed_state((id, "observed-battery"), cx, |_, cx| {
+        if !off {
+            ObservedPower::timer(cx);
+        }
+        let mut displayed = DisplayedPower {
+            power: None,
+            delayed: !off,
+            is_off: false,
+            is_standby: false,
+            with_battery: false,
+            icon: Icon::Image("synapse/battery-charging-100.svg".into()),
+            hide_icon: fields.hide_battery_icon.unwrap_or(false),
+            show_value: fields.show_battery_value.unwrap_or(true),
+            incorrect: false,
+        };
+        if eligible {
+            if let Some(power) = &device.power_status {
+                displayed.accept_power(power, fields);
+            }
+        }
+        displayed.accept_standby(fields);
+        ObservedPower {
+            previous: device.power_status.clone(),
+            previous_support: fields.supports_standby_mode,
+            previous_state: fields.device_power_state.clone(),
+            previous_hide: fields.hide_battery_icon,
+            previous_show: fields.show_battery_value,
+            displayed,
+        }
+    });
+    state.update(cx, |state, cx| {
+        if !same_power(state.previous.as_ref(), device.power_status.as_ref()) {
+            if eligible && device.power_status.is_some() {
+                if state
+                    .previous
+                    .as_ref()
+                    .is_some_and(|power| power.charging_status.eq_ignore_ascii_case("off"))
+                    && !off
+                {
+                    state.displayed.delayed = true;
+                    // Source setTimeout calls do not cancel earlier delays.
+                    ObservedPower::timer(cx);
+                }
+                if let Some(power) = &device.power_status {
+                    state.displayed.accept_power(power, fields);
+                }
+            }
+            state.previous = device.power_status.clone();
+        }
+        // componentDidUpdate writes prop overrides after generateBatteryData,
+        // then runs checkStandbyState only when its two inputs have changed.
+        if state.previous_show != fields.show_battery_value {
+            state.displayed.show_value = fields.show_battery_value == Some(true);
+            state.previous_show = fields.show_battery_value;
+        }
+        if state.previous_hide != fields.hide_battery_icon {
+            state.displayed.hide_icon = fields.hide_battery_icon == Some(true);
+            state.previous_hide = fields.hide_battery_icon;
+        }
+        if state.previous_support != fields.supports_standby_mode
+            || state.previous_state != fields.device_power_state
+        {
+            state.displayed.accept_standby(fields);
+            state.previous_support = fields.supports_standby_mode;
+            state.previous_state = fields.device_power_state.clone();
+        }
+        state.displayed.clone()
+    })
 }
 
 pub(super) fn show_spinner(setup: SetupStatus, off: bool) -> bool {
@@ -220,10 +414,10 @@ enum Icon {
 #[derive(IntoElement)]
 pub(super) struct DashboardBattery {
     id: ElementId,
-    power: Option<PowerStatus>,
+    observed: DisplayedPower,
     fields: DashboardDeviceMetadata,
     setup: SetupStatus,
-    audio: bool,
+    source_spinner: bool,
     category: String,
     card: String,
     grid: Entity<super::dashboard_grid::DashboardState>,
@@ -233,15 +427,17 @@ impl DashboardBattery {
     pub(super) fn new(
         id: String,
         device: &Device,
+        observed: DisplayedPower,
+        source_spinner: bool,
         card: String,
         grid: Entity<super::dashboard_grid::DashboardState>,
     ) -> Self {
         Self {
             id: SharedString::from(id).into(),
-            power: device.power_status.clone(),
+            observed,
             fields: device.dashboard.clone(),
             setup: device.setup_status,
-            audio: device.category == DeviceCategory::Audio,
+            source_spinner,
             category: category(device).to_owned(),
             card,
             grid,
@@ -249,43 +445,12 @@ impl DashboardBattery {
     }
 }
 
-struct BatteryDelay {
-    off: bool,
-    delayed: bool,
-    task: Option<Task<()>>,
+#[derive(Default)]
+struct BatteryHover {
     hover: bool,
     tooltip_right: Rc<Cell<Pixels>>,
     anchor_right: Rc<Cell<Pixels>>,
     flipped: bool,
-}
-impl BatteryDelay {
-    fn new(off: bool, cx: &mut Context<Self>) -> Self {
-        Self {
-            off,
-            delayed: !off,
-            task: (!off).then(|| Self::timer(cx)),
-            hover: false,
-            tooltip_right: Rc::default(),
-            anchor_right: Rc::default(),
-            flipped: false,
-        }
-    }
-    fn timer(cx: &mut Context<Self>) -> Task<()> {
-        cx.spawn(async move |state, cx| {
-            cx.background_executor().timer(Duration::from_secs(2)).await;
-            let _ = state.update(cx, |state, cx| {
-                state.delayed = false;
-                cx.notify();
-            });
-        })
-    }
-    fn update_power(&mut self, off: bool, cx: &mut Context<Self>) {
-        if self.off && !off {
-            self.delayed = true;
-            self.task = Some(Self::timer(cx));
-        }
-        self.off = off;
-    }
 }
 
 fn is_charging(status: &str) -> bool {
@@ -328,15 +493,11 @@ fn icon(power: &PowerStatus) -> Icon {
 
 impl RenderOnce for DashboardBattery {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let off = self
-            .power
-            .as_ref()
-            .is_some_and(|p| p.charging_status.eq_ignore_ascii_case("off"));
-        let state = window.use_keyed_state((self.id.clone(), "battery-delay"), cx, |_, cx| {
-            BatteryDelay::new(off, cx)
+        let off = self.observed.off();
+        let state = window.use_keyed_state((self.id.clone(), "battery-hover"), cx, |_, _| {
+            BatteryHover::default()
         });
-        state.update(cx, |s, cx| s.update_power(off, cx));
-        let delayed = state.read(cx).delayed;
+        let delayed = self.observed.delayed;
         let hovered = state.read(cx).hover;
         let tip_right = state.read(cx).tooltip_right.clone();
         let anchor_right = state.read(cx).anchor_right.clone();
@@ -358,7 +519,7 @@ impl RenderOnce for DashboardBattery {
             .text_size(css(14.))
             .text_color(rgb(0xcccccc));
         // z checks spinner before mounting either of its battery branches.
-        if show_spinner(self.setup, off) {
+        if self.source_spinner {
             return result;
         }
         let fields = self.fields;
@@ -368,111 +529,90 @@ impl RenderOnce for DashboardBattery {
         let mut chosen = None;
         let mut value = None;
         if standby {
-            match power_state {
-                Some("off") => {
+            match (self.observed.is_off, self.observed.is_standby) {
+                (true, _) => {
                     chosen = Some(Icon::Source(
                         "synapse/dashboard-card/icon_device_power_state_off.svg",
                         24.,
                     ));
                     tip = Some("STANDBY_MODE_OFF_TOOLTIP");
                 }
-                Some("standby") => {
+                (_, true) => {
                     chosen = Some(Icon::Power(0xfd8611));
                     tip = Some("DEVICE_STANDBY_TOOLTIP_LINE1");
                 }
                 _ => {}
             }
-        } else {
-            let mut hide_icon = fields.hide_battery_icon.unwrap_or(false);
-            if let Some(power) = &self.power {
-                let incorrect = is_normal(&power.charging_status) && power.level == -1;
-                hide_icon |= incorrect;
-                chosen = (!hide_icon).then(|| icon(power));
-                if off {
-                    tip = Some(if self.audio {
-                        "DASHBOARD_AUDIO_DEVICE_OFF_TOOLTIP"
+        } else if self.observed.with_battery {
+            chosen = (!self.observed.hide_icon).then(|| self.observed.icon.clone());
+            if (off || power_state == Some("off"))
+                && fields.is_xbox != Some(true)
+                && fields.is_playstation != Some(true)
+            {
+                tip = Some(if self.category.eq_ignore_ascii_case("AUDIO") {
+                    "DASHBOARD_AUDIO_DEVICE_OFF_TOOLTIP"
+                } else {
+                    "DASHBOARD_DEVICE_OFF_TOOLTIP"
+                });
+            }
+            if off {
+                if fields.is_playstation == Some(true) {
+                    tip = Some(
+                        if fields.sub_category.as_deref() == Some("ARCADE_CONTROLLER") {
+                            "ARCADE_PS_MODE_TOOLTIP"
+                        } else {
+                            "PS_MODE_TOOLTIP"
+                        },
+                    );
+                } else if fields.is_xbox == Some(true) {
+                    tip = if self.category == "Controller" {
+                        Some(
+                            if fields.controller_mode_variant.as_deref() == Some("THREE_MODE") {
+                                "XBOX_SHORTCUT_TOOLTIP_THREE_MODE"
+                            } else {
+                                "XBOX_SHORTCUT_TOOLTIP"
+                            },
+                        )
+                    } else if self.category == "Headset" {
+                        Some("XBOX_SHORTCUT_TOOLTIP_HEADSET")
+                    } else if self.category.eq_ignore_ascii_case("AUDIO")
+                        && fields
+                            .sub_category
+                            .as_deref()
+                            .is_some_and(|s| s.eq_ignore_ascii_case("EARBUDS"))
+                    {
+                        Some("XBOX_EARBUDS_TOOLTIP")
                     } else {
-                        "DASHBOARD_DEVICE_OFF_TOOLTIP"
-                    });
-                    if fields.is_xbox == Some(true) || fields.is_playstation == Some(true) {
-                        let ps = fields.is_playstation == Some(true);
-                        chosen = (!hide_icon).then_some(Icon::Mask(if ps {
-                            "synapse/dashboard-card/ps-icon.svg"
-                        } else {
-                            "synapse/dashboard-card/xbox-icon.svg"
-                        }));
-                        tip = if ps {
-                            Some(
-                                if fields.sub_category.as_deref() == Some("ARCADE_CONTROLLER") {
-                                    "ARCADE_PS_MODE_TOOLTIP"
-                                } else {
-                                    "PS_MODE_TOOLTIP"
-                                },
-                            )
-                        } else if self.category == "Controller" {
-                            Some(
-                                if fields.controller_mode_variant.as_deref() == Some("THREE_MODE") {
-                                    "XBOX_SHORTCUT_TOOLTIP_THREE_MODE"
-                                } else {
-                                    "XBOX_SHORTCUT_TOOLTIP"
-                                },
-                            )
-                        } else if self.category == "Headset" {
-                            Some("XBOX_SHORTCUT_TOOLTIP_HEADSET")
-                        } else if self.category.eq_ignore_ascii_case("AUDIO")
-                            && fields
-                                .sub_category
-                                .as_deref()
-                                .is_some_and(|s| s.eq_ignore_ascii_case("EARBUDS"))
-                        {
-                            Some("XBOX_EARBUDS_TOOLTIP")
-                        } else {
-                            None
-                        };
-                    }
-                } else if power.charging_status == "batt-warning" {
-                    tip = Some("BATTERY_ERROR_TIPS");
+                        None
+                    };
                 }
-                let suppress_value = fields.is_external_batt == Some(true)
-                    || (fields.supports_standby_mode.is_none()
-                        && power_state.is_some_and(|s| !s.is_empty()));
-                if !suppress_value
-                    && !incorrect
-                    && !off
-                    && fields.show_battery_value.unwrap_or(true)
-                {
-                    let level = if is_charging(&power.charging_status) && power.level > 99 {
+            } else if self
+                .observed
+                .power
+                .as_ref()
+                .is_some_and(|p| p.charging_status == "batt-warning")
+            {
+                tip = Some("BATTERY_ERROR_TIPS");
+            }
+            let suppress_value = fields.is_external_batt == Some(true)
+                || (fields.supports_standby_mode.is_none()
+                    && power_state.is_some_and(|s| !s.is_empty()));
+            if !suppress_value && !self.observed.incorrect && !off && self.observed.show_value {
+                let power = self.observed.power.as_ref();
+                let charging = power.is_some_and(|p| is_charging(&p.charging_status));
+                let level = power.map_or(0, |p| {
+                    if charging && p.level > 99 {
                         100
                     } else {
-                        power.level
-                    };
-                    let text = if level == -1 || delayed {
-                        "-".to_string()
-                    } else {
-                        level.to_string()
-                    };
-                    value = Some((
-                        format!("{text}%"),
-                        (0..=10).contains(&level) && !is_charging(&power.charging_status),
-                    ));
-                }
-            }
-            // The absent supportsStandbyMode path can report power without a battery.
-            if fields.supports_standby_mode.is_none() {
-                match power_state {
-                    Some("off") => {
-                        chosen = Some(Icon::Power(0xff0000));
-                        tip = Some(if self.audio {
-                            "DASHBOARD_AUDIO_DEVICE_OFF_TOOLTIP"
-                        } else {
-                            "DASHBOARD_DEVICE_OFF_TOOLTIP"
-                        });
+                        p.level
                     }
-                    Some("active") => {
-                        chosen = None;
-                    }
-                    _ => {}
-                }
+                });
+                let text = if level == -1 || delayed {
+                    "-".to_string()
+                } else {
+                    level.to_string()
+                };
+                value = Some((format!("{text}%"), (0..=10).contains(&level) && !charging));
             }
             if fields.is_battery_supported == Some(false)
                 || self.setup == SetupStatus::RestartRequired
@@ -504,16 +644,34 @@ impl RenderOnce for DashboardBattery {
                         Icon::Image(path) => img(SharedString::from(path))
                             .size(css(20.))
                             .into_any_element(),
+                        // background-size:20px does not size a CSS mask. This
+                        // viewBox-only mask fills its 26px positioning area.
                         Icon::Power(color) => svg()
                             .path("synapse/battery-off.svg")
-                            .size(css(20.))
+                            .size(css(26.))
                             .text_color(rgb(color))
                             .into_any_element(),
                         Icon::Source(path, size) => img(path).size(css(size)).into_any_element(),
-                        Icon::Mask(path) => svg()
-                            .path(path)
+                        Icon::Mask(path) => div()
+                            .relative()
                             .size(css(26.))
-                            .text_color(rgb(0xffffff))
+                            .overflow_hidden()
+                            .child(
+                                svg()
+                                    .absolute()
+                                    .left_0()
+                                    .top_0()
+                                    .path(path)
+                                    // mask-size:auto uses the PS file's intrinsic
+                                    // 24px dimensions at the default 0% position.
+                                    // Its 2px repeated strips contain no artwork.
+                                    .size(css(if fields.is_playstation == Some(true) {
+                                        24.
+                                    } else {
+                                        26.
+                                    }))
+                                    .text_color(rgb(0xffffff)),
+                            )
                             .into_any_element(),
                     }),
             );
@@ -548,11 +706,15 @@ impl RenderOnce for DashboardBattery {
                     div()
                         .absolute()
                         .left_0()
-                        .top(css(if headset { 48. } else { 33. }))
+                        // The zero-height source tips-container is vertically
+                        // centered by .batt's align-items:center. A 24px standby
+                        // icon therefore differs from the 26px ordinary icon.
+                        .top(relative(0.5))
                         .w_0()
                         .child(
                             div()
                                 .absolute()
+                                .top(css(if headset { 35. } else { 20. }))
                                 .when(!console || flipped, |view| view.right(css(-20.)))
                                 .when(console && !flipped, |view| {
                                     view.left(css(if headset { 10. } else { 0. }))
@@ -582,10 +744,35 @@ impl RenderOnce for DashboardBattery {
                                 .opacity(opacity)
                                 .when(!hovered, |s| s.invisible())
                                 .on_prepaint(move |bounds, _, _| tip_right.set(bounds.right()))
-                                .child(i18n::t(tip)),
+                                .child(tooltip_text(
+                                    tip,
+                                    matches!(
+                                        tip,
+                                        "XBOX_SHORTCUT_TOOLTIP"
+                                            | "XBOX_SHORTCUT_TOOLTIP_THREE_MODE"
+                                            | "XBOX_SHORTCUT_TOOLTIP_HEADSET"
+                                            | "XBOX_EARBUDS_TOOLTIP"
+                                            | "PS_MODE_TOOLTIP"
+                                            | "ARCADE_PS_MODE_TOOLTIP"
+                                    ),
+                                )),
                         ),
                 );
         }
         result
+    }
+}
+
+/// CSS pre-line retains explicit newlines while collapsing each line's spaces.
+/// Normal tooltips collapse all whitespace, including source-language newlines.
+fn tooltip_text(key: &str, pre_line: bool) -> String {
+    let text = i18n::t(key);
+    if pre_line {
+        text.split('\n')
+            .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else {
+        text.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 }

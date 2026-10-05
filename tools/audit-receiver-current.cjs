@@ -13,6 +13,8 @@ const save=(file,output)=>{if(check){if(read(file)!==output)throw Error('Stale '
 const cssFile=s.directory+'/static/css/main.c778525e.css',css=read(cssFile);
 const roots=['mE','OE','Te','$e','AE','Ie','eE','rE','sE','TE','G','se','x'];
 const snippets=Object.fromEntries(roots.map(name=>[name,receipt(9473,name)]));
+const supportingComponents={widget:receipt(7693,'l'),spinner:receipt(603,'t'),closeIcon:receipt(7731,'_'),radio:receipt(9473,'l')};
+if(!supportingComponents.widget.source.includes('this.state.showTip&&(0,o.createPortal)')||!supportingComponents.widget.source.includes('o-=r.bottom-n.bottom+10'))throw Error('Receiver widget portal changed');
 if(!snippets.mE.source.includes('direction:"left"')||!snippets.mE.source.includes('uppercase:!1'))throw Error('Receiver root changed');
 if(s.snippet(3249,s.binding(3249,'t'))!=='()=>-1!==navigator.userAgent.indexOf("Windows",0)')throw Error('Windows branch changed');
 const labelExports=['FeU','A4y','JSN','bDV','ags','orY','DJE','cbq','q2H','JhZ','q0f','UVv'];
@@ -38,9 +40,14 @@ for(const [mode,name]of [[1,'rE'],[2,'sE'],[3,'TE']]){
  }
  modes.push(native);
 }
-const rules=parseCSS(css).filter(r=>/^(\.body-widgets|\.widget-col|\.widget-prod|\.body-wrapper\s|\.widget \.titleRow|\.widget \.help|\.indicator-led-container|\.radio-item|\[type=radio\]|\.img-text \.external|\.img-text \.multipairing|\.mt5|\.mb5|\.spinner-razer|\.modal_backDrop__BYKQl|\.modal_modal__UO3fZ|\.HyperPollingWirelessUma_loading__4WRAI)/.test(r.selector));
-const native=['src/features/source_controls/receiver.rs','src/features/source_controls/receiver_indicator_data.json','src/features/source_controls.rs'].map(path=>({path,sha256:hash(read(path))}));
-const evidence={product_id:179,method:'Acorn module scope, current mounted Windows root, literal SVG JSX and CSS rules; no vendor JS execution',generator_sha256:hash(fs.readFileSync(__filename)),manifest:{path:s.directory+'/asset-manifest.json',sha256:hash(read(s.directory+'/asset-manifest.json'))},html:{path:s.directory+'/index.html',sha256:hash(read(s.directory+'/index.html'))},windows_predicate:receipt(3249,'t'),components:snippets,labels,css:{path:cssFile,sha256:hash(css),rules},assets,native};
+const rules=parseCSS(css).filter(r=>/^(\.body-widgets|\.body-widget-tip-portal|\.widget-col|\.widget-prod|\.body-wrapper\s|\.widget \.titleRow|\.widget \.help|\.indicator-led-container|\.radio-item|\[type=radio\]|\.img-text \.external|\.img-text \.multipairing|\.mt5|\.mb5|\.spinner-razer|\.modal_backDrop__BYKQl|\.modal_modal__UO3fZ|\.HyperPollingWirelessUma_loading__4WRAI)/.test(r.selector));
+const staticAssets=[['icon_close.svg','assets/synapse/mapping-close.svg'],['tooltip_questionmark.svg','assets/synapse/automation-tooltip_questionmark.svg'],['spinner.svg','assets/synapse/gr-device-spinner.svg']].map(([key,prepared])=>{
+ const file=s.directory+'/'+manifest.files['static/media/'+key].slice(2),bytes=fs.readFileSync(path.join(root,file));
+ if(hash(bytes)!==hash(fs.readFileSync(path.join(root,prepared))))throw Error('Receiver shared asset mismatch: '+key);
+ return {path:file,sha256:hash(bytes),prepared,source:bytes.toString('utf8')};
+});
+const native=['src/features/source_controls/receiver.rs','src/features/source_controls/receiver_indicator_data.json','src/features/source_controls.rs','src/ui/source_tooltip.rs','src/ui/surface.rs'].map(path=>({path,sha256:hash(read(path))}));
+const evidence={product_id:179,method:'Acorn module scope, current mounted Windows root, literal SVG JSX and CSS rules; no vendor JS execution',generator_sha256:hash(fs.readFileSync(__filename)),manifest:{path:s.directory+'/asset-manifest.json',sha256:hash(read(s.directory+'/asset-manifest.json'))},html:{path:s.directory+'/index.html',sha256:hash(read(s.directory+'/index.html'))},windows_predicate:receipt(3249,'t'),components:snippets,supporting_components:supportingComponents,static_assets:staticAssets,labels,css:{path:cssFile,sha256:hash(css),rules},assets,native};
 save('src/features/source_controls/receiver_indicator_data.json',JSON.stringify(modes,null,2)+'\n');
 save('docs/re/receiver-current-evidence.json',JSON.stringify(evidence,null,2)+'\n');
 console.log(`Current receiver: ${rules.length} CSS rules, ${assets.length} SVG layers, Windows mounted pairing and indicator verified.`);

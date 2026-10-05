@@ -1622,7 +1622,7 @@
     "files": [
       {
         "path": "src/features/source_controls/oled_presets.rs",
-        "sha256": "6b6c2832b3deb1c53457b156679c1ff4c982e102d880be31f2b6b964aaee6b3e"
+        "sha256": "527c0396e9b68d22c752abe08063148cb149b7ad92a6dbf4eeb50e40f8920615"
       },
       {
         "path": "src/features/source_controls/oled_crop.rs",

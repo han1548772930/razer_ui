@@ -28,6 +28,9 @@ pub(crate) enum ActionKind {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ActionItem {
     pub(crate) kind: ActionKind,
+    /// Source phase 0/1/2. Missing legacy values are never guessed from order.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) phase: Option<u8>,
     /// Persistent local nested-macro identity, never a native event GUID.
     /// Older display-only rows remain unassigned; names are not identities.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -36,6 +39,11 @@ pub(crate) struct ActionItem {
     /// be interpreted as a recorded physical key or an event identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) keyboard: Option<KeyboardEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) mouse: Option<MouseEvent>,
+    /// Only explicitly created paired Loop rows have this local identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) loop_pair_id: Option<u64>,
     pub(crate) value: String,
     pub(crate) secondary_value: String,
     pub(crate) number_min: String,
@@ -52,6 +60,14 @@ pub(crate) struct KeyboardEvent {
     pub(crate) state: Option<u8>,
     pub(crate) flag: Option<u8>,
     pub(crate) key_type: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MouseEvent {
+    pub(crate) pair_id: Option<u64>,
+    pub(crate) button: Option<u8>,
+    pub(crate) state: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,6 +101,9 @@ pub(crate) struct Entry {
     pub(crate) actions: Vec<ActionItem>,
     #[serde(default)]
     pub(crate) macro_type: MacroType,
+    /// 25572.G saves the currently chosen phase as metadata, not an action edit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) active_phase: Option<u8>,
     /// 25572.G commits the selected recording delay mode to live and saved
     /// macro metadata immediately, independently from the action draft.
     #[serde(default)]
@@ -130,6 +149,9 @@ impl MacroLibraryFile {
         }
         let mut entries = HashMap::with_capacity(self.entries.len());
         for entry in &self.entries {
+            if entry.active_phase.is_some_and(|phase| phase > 2) {
+                return Err(format!("Invalid active phase in {}", entry.id));
+            }
             if entry.record_delay > 3 {
                 return Err(format!("Invalid recording delay mode in {}", entry.id));
             }
@@ -151,7 +173,41 @@ impl MacroLibraryFile {
         }
         for entry in &self.entries {
             let mut key_pairs = HashMap::<u64, usize>::new();
+            let mut mouse_pairs = HashMap::<u64, usize>::new();
+            let mut loop_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
+                if action.phase.is_some_and(|phase| phase > 2) {
+                    return Err(format!("Invalid action phase in {}", entry.id));
+                }
+                if let Some(mouse) = &action.mouse {
+                    if action.kind != ActionKind::Mouse
+                        || mouse.pair_id == Some(0)
+                        || mouse.button.is_some_and(|button| button > 9)
+                        || mouse.state.is_some_and(|state| state > 1)
+                    {
+                        return Err(format!("Invalid mouse metadata in {}", entry.id));
+                    }
+                    if let Some(id) = mouse.pair_id {
+                        let count = mouse_pairs.entry(id).or_default();
+                        *count += 1;
+                        if *count > 2 {
+                            return Err(format!("Ambiguous mouse pair {id} in {}", entry.id));
+                        }
+                    }
+                }
+                if let Some(id) = action.loop_pair_id {
+                    if action.kind != ActionKind::Loop
+                        || id == 0
+                        || !matches!(action.state.as_str(), "start" | "end")
+                    {
+                        return Err(format!("Invalid Loop metadata in {}", entry.id));
+                    }
+                    let count = loop_pairs.entry(id).or_default();
+                    *count += 1;
+                    if *count > 2 {
+                        return Err(format!("Ambiguous Loop pair {id} in {}", entry.id));
+                    }
+                }
                 if let Some(key) = &action.keyboard {
                     if action.kind != ActionKind::Keyboard || key.pair_id == Some(0) {
                         return Err(format!("Invalid keyboard metadata in {}", entry.id));
@@ -239,6 +295,7 @@ impl MacroLibraryFile {
                     && a.parent == b.parent
                     && a.actions == b.actions
                     && a.macro_type == b.macro_type
+                    && a.active_phase == b.active_phase
                     && a.record_delay == b.record_delay
             })
     }

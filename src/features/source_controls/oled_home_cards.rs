@@ -5,6 +5,7 @@ impl SourceControls {
     pub(in super::super) fn render_oled_presets(
         &self,
         disabled: bool,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let selected = self
@@ -36,6 +37,12 @@ impl SourceControls {
                     let ble_disabled = self.is_ble && matches!(mode, 5 | 6);
                     let active = selected == mode;
                     let group = SharedString::from(format!("oled-card-body-{name}"));
+                    let hover = window.use_keyed_state(
+                        (ElementId::from(group.clone()), "hover"),
+                        cx,
+                        |_, _| false,
+                    );
+                    let hovered = !disabled && !ble_disabled && *hover.read(cx);
                     let preview = match mode {
                         0 | 1 => {
                             let kind = if mode == 0 {
@@ -86,22 +93,33 @@ impl SourceControls {
                         .border_2()
                         .border_color(rgba(0x44d62c4d));
                     if editable {
+                        let edit = card_action(
+                            format!("oled-edit-{name}"),
+                            "EDIT",
+                            "synapse/oled-691-edit.svg",
+                            false,
+                            edit_disabled,
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| match mode {
+                                0 => this.open_oled_presets(PresetKind::Animation, window, cx),
+                                1 => this.open_oled_presets(PresetKind::Image, window, cx),
+                                5 => this.open_oled_media(window, cx),
+                                _ => {}
+                            },
+                        ));
                         overlay = overlay.child(
-                            card_action(
-                                format!("oled-edit-{name}"),
-                                "EDIT",
-                                "synapse/oled-691-edit.svg",
-                                false,
-                                edit_disabled,
-                            )
-                            .on_click(cx.listener(
-                                move |this, _, window, cx| match mode {
-                                    0 => this.open_oled_presets(PresetKind::Animation, window, cx),
-                                    1 => this.open_oled_presets(PresetKind::Image, window, cx),
-                                    5 => this.open_oled_media(window, cx),
-                                    _ => {}
-                                },
-                            )),
+                            div()
+                                .id(SharedString::from(format!("oled-edit-tooltip-{name}")))
+                                .when(self.is_ble, |tip| {
+                                    tip.tooltip(|window, cx| {
+                                        tooltip::Tooltip::new(t(
+                                            "OLED_DISABLE_EDIT_BLE_MODE_TOOLTIP",
+                                        ))
+                                        .build(window, cx)
+                                    })
+                                })
+                                .child(edit),
                         );
                     }
                     overlay = overlay.child(
@@ -119,21 +137,52 @@ impl SourceControls {
                         )),
                     );
                     v_flex()
+                        .id(SharedString::from(format!("oled-home-card-{name}")))
                         .w(surface::css(236.))
                         .flex_shrink_0()
                         .when(ble_disabled, |card| card.opacity(0.5))
+                        .when(ble_disabled, |card| {
+                            card.tooltip(|window, cx| {
+                                tooltip::Tooltip::new(t(
+                                    "OLED_HOME_SCREEN_DISPLAY_TURN_OFF_BLE_MODE_TOOLTIP",
+                                ))
+                                .build(window, cx)
+                            })
+                        })
                         .child(
                             h_flex()
                                 .h(surface::css(19.))
                                 .p(surface::css(2.))
                                 .gap(surface::css(7.))
                                 .text_size(surface::css(14.))
-                                .text_color(if active { rgb(0x44d62c) } else { rgb(0xcccccc) })
+                                // OLED CSS declares title.hover after title.selected.
+                                .text_color(if hovered {
+                                    rgba(0x44d62c4d)
+                                } else if active {
+                                    rgba(0x44d62cff)
+                                } else {
+                                    rgba(0xccccccff)
+                                })
                                 .child(t(title).to_uppercase())
                                 .when(matches!(mode, 5 | 6), |title| {
                                     title.child(
-                                        img("synapse/oled-691-requires-synapse.svg")
-                                            .size(surface::css(15.)),
+                                        div()
+                                            .id(SharedString::from(format!(
+                                                "oled-require-synapse-{name}"
+                                            )))
+                                            .size(surface::css(15.))
+                                            .when(!ble_disabled, |icon| {
+                                                icon.tooltip(|window, cx| {
+                                                    tooltip::Tooltip::new(t(
+                                                        "OLED_REQUIRE_SYNAPSE_RUNNING_TOOLTIP",
+                                                    ))
+                                                    .build(window, cx)
+                                                })
+                                            })
+                                            .child(
+                                                img("synapse/oled-691-requires-synapse.svg")
+                                                    .size_full(),
+                                            ),
                                     )
                                 }),
                         )
@@ -141,6 +190,10 @@ impl SourceControls {
                             div()
                                 .id(group.clone())
                                 .group(group.clone())
+                                .on_hover(window.listener_for(&hover, |state, hovered, _, cx| {
+                                    *state = *hovered;
+                                    cx.notify();
+                                }))
                                 .relative()
                                 .w(surface::css(236.))
                                 .h(surface::css(68.))

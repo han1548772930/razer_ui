@@ -15859,6 +15859,90 @@
       "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_draggable_g.695879f5.svg"
     },
     {
+      "source": ".ref/applications/synapse/macro/static/media/icon_delete.d1a6a9ad.svg",
+      "output": "assets/synapse/macro/delete.svg",
+      "source_sha256": "5a7c6f9a8e6f7719c2d2332551367359a05038b6d61fff42a64920ff8eaa88e7",
+      "sha256": "5a7c6f9a8e6f7719c2d2332551367359a05038b6d61fff42a64920ff8eaa88e7",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_delete.d1a6a9ad.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_delete_r.033c20fb.svg",
+      "output": "assets/synapse/macro/delete-hover.svg",
+      "source_sha256": "be9b01c809a92edc42f517e6201b422fd756b974dcd8e8043e6d906c3a474b07",
+      "sha256": "be9b01c809a92edc42f517e6201b422fd756b974dcd8e8043e6d906c3a474b07",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_delete_r.033c20fb.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_duplicate.f2ce29fb.svg",
+      "output": "assets/synapse/macro/duplicate.svg",
+      "source_sha256": "b0e68b050b63160b1297db4cf3e5948a4824230ea14d4003675adccc044d1be1",
+      "sha256": "b0e68b050b63160b1297db4cf3e5948a4824230ea14d4003675adccc044d1be1",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_duplicate.f2ce29fb.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_delay_d.224b6fe2.svg",
+      "output": "assets/synapse/macro/drag-delay.svg",
+      "source_sha256": "37d8187f08c87f245b395a50f82e1d26bc6042c431300f7fd02e4baadbb20743",
+      "sha256": "37d8187f08c87f245b395a50f82e1d26bc6042c431300f7fd02e4baadbb20743",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_delay_d.224b6fe2.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_keyboard_d.2a40b559.svg",
+      "output": "assets/synapse/macro/drag-keyboard.svg",
+      "source_sha256": "c6ebfeb28fd548746eb5f7d9c460b3d638fd990657057d70bfd77b6142dacdd7",
+      "sha256": "c6ebfeb28fd548746eb5f7d9c460b3d638fd990657057d70bfd77b6142dacdd7",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_keyboard_d.2a40b559.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_mouse_d.7f54db58.svg",
+      "output": "assets/synapse/macro/drag-mouse.svg",
+      "source_sha256": "a3a2bf906676fbc6e4ec3225b59645c2c0fdcee5c5a8e97344353f93f1ea4210",
+      "sha256": "a3a2bf906676fbc6e4ec3225b59645c2c0fdcee5c5a8e97344353f93f1ea4210",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_mouse_d.7f54db58.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_macro_d.7b17228b.svg",
+      "output": "assets/synapse/macro/drag-macro.svg",
+      "source_sha256": "0e442f5fc21bea70c51168468e521ee3954595d279f3dd94866e44307896df23",
+      "sha256": "0e442f5fc21bea70c51168468e521ee3954595d279f3dd94866e44307896df23",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_macro_d.7b17228b.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_launch_d.483e2609.svg",
+      "output": "assets/synapse/macro/drag-launch.svg",
+      "source_sha256": "6b3a258f314ba99eb874b52417202b79c475ad689be60cb173022f3d9b8d4c8a",
+      "sha256": "6b3a258f314ba99eb874b52417202b79c475ad689be60cb173022f3d9b8d4c8a",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_launch_d.483e2609.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_runcmd_d.9aeb6de2.svg",
+      "output": "assets/synapse/macro/drag-command.svg",
+      "source_sha256": "ec63b513f1eeedecd343be57386bb983337c43cfa40dbae680f74535d9439e1d",
+      "sha256": "ec63b513f1eeedecd343be57386bb983337c43cfa40dbae680f74535d9439e1d",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_runcmd_d.9aeb6de2.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_text_d.b54bb44d.svg",
+      "output": "assets/synapse/macro/drag-text.svg",
+      "source_sha256": "8dfc7d13f9ccd6a6772bc101a3f8f881729740d9c132db8c3f5fbe6a073f6c05",
+      "sha256": "8dfc7d13f9ccd6a6772bc101a3f8f881729740d9c132db8c3f5fbe6a073f6c05",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_text_d.b54bb44d.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_refresh-1_d.b0292515.svg",
+      "output": "assets/synapse/macro/drag-loop.svg",
+      "source_sha256": "c29b75140f854cc92e21a52ed1b5bab0db58308d44c719af65af3d91853c3d45",
+      "sha256": "c29b75140f854cc92e21a52ed1b5bab0db58308d44c719af65af3d91853c3d45",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_refresh-1_d.b0292515.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_layers_d.2816d5ba.svg",
+      "output": "assets/synapse/macro/drag-layers.svg",
+      "source_sha256": "97918e2925731756b44fa871bc8a2d6a2f41213c999df95dda82e508be45c7a0",
+      "sha256": "97918e2925731756b44fa871bc8a2d6a2f41213c999df95dda82e508be45c7a0",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_layers_d.2816d5ba.svg"
+    },
+    {
       "source": ".ref/applications/synapse/macro/static/media/icon_new_marco.6edec51b.svg",
       "output": "assets/synapse/macro/new.svg",
       "source_sha256": "4a562092f2b4383249b89d188d36a9a0e7ac54fa1bb002491eaffb239e776bcc",
@@ -17259,6 +17343,26 @@
       "transform": "Original base64 PNG bytes",
       "width": 256,
       "height": 64
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-replace.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "d76b1de327f15b4960d3d86a36035e37499b4f6225fb3a255df27f9f7f6acd2e",
+      "source_offset": 15204,
+      "source_end": 16263,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-reset.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "06964d233c1948740f5af64a800c64ea885f00e3bf0bd192b8b15a089d67fd2f",
+      "source_offset": 16559,
+      "source_end": 17723,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
     }
   ]
 }

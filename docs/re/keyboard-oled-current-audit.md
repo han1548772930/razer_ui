@@ -407,3 +407,14 @@ it exceeds the largest initial canvas possible from u32 image dimensions
 with minimum height 64, so it does not limit a valid default Cropper canvas.
 The self-review is static and does not claim exhaustive codec safety or
 executed interaction coverage.
+
+## Preset/card presentation continuation on 2026-10-05
+
+The current `wt/Vt/jt/Ht/pi/Q/G` audit now restores the editor titles and
+descriptions, three-column preset grid, card-local hover controls, exact
+source disabled/selected border precedence, 1.1 preview hover scale and
+original Replace/Reset SVGs. Home titles track body hover, and source
+requires-Synapse/BLE explanations are mounted. The existing native import,
+isolated crop/editor drafts and Apply boundaries remain intact. Full evidence,
+static reproduction commands and remaining tooltip/service limitations are
+in [oled-preset-cards-current-audit.md](oled-preset-cards-current-audit.md).

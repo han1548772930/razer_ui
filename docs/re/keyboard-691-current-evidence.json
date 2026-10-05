@@ -5532,10 +5532,10 @@
     }
   ],
   "local": {
-    "src/features/source_controls.rs": "205ec0287d7d09a4a81d65ae18e66d347452236d1e1697c5fde00a02c27ecd3d",
-    "src/features/source_controls/oled_page.rs": "83f903e7a19bb85bdbf241aedbe2cdefa9fa6b5b818e7a7efecdc8494ba0f47a",
-    "src/features/source_controls/oled_home_cards.rs": "75761fd816d901388ae60a5c05e2f398eeb0952b77e81ce2dc3d4eb8494e3433",
-    "src/features/source_controls/oled_presets.rs": "222e347f56b132cf007ff66218cc61e6634fd9ddbcea051631b77c89bc719995",
+    "src/features/source_controls.rs": "5bf3886ebb77ed31f6b5184de6234f44dc40cf16ad8f405d98545a21470a6865",
+    "src/features/source_controls/oled_page.rs": "9c07489c1e364e69980132b6ee26c5258793d32c2b6dd3b54d093faaca1d5932",
+    "src/features/source_controls/oled_home_cards.rs": "eed24e0fcee873bdad1c425710e161cda496e6c474520980e93c53fe8936fc7e",
+    "src/features/source_controls/oled_presets.rs": "527c0396e9b68d22c752abe08063148cb149b7ad92a6dbf4eeb50e40f8920615",
     "src/features/keyboard_products.rs": "d8ed714d6605793c1471afac36a190a57c06f566309e4e81df0b8aece5f2704b",
     "src/features/source_workspace/profile_bar.rs": "12ba981788fbe66c291a9f921196db3988700a19ca7c02f001e4c4c0c419f544"
   },
@@ -5552,7 +5552,7 @@
     "Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference",
     "Power low-battery warning, indicator and low-power information widgets are still absent",
     "BLE/download/service-derived flags and source system-slide Apply semantics incomplete",
-    "Card title hover, require-Synapse tooltip and pixel/raster parity not yet verified",
+    "Card title hover and source requires-Synapse/BLE tooltip text restored; tooltip portal timing/placement and runtime pixels remain unverified",
     "Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified",
     "Customize/Lighting/Help content and other keyboard-specific widgets remain partial"
   ],

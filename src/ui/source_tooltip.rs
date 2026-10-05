@@ -31,6 +31,9 @@ pub(crate) enum SourceTooltipKind {
     /// `max-width:300px`, `right:14px;top:34px` against the widget box, and the
     /// trigger is the 14px `.widget .help` control at `right:10px;top:10px`.
     WidgetTip,
+    /// Product 179 module 7693: conditionally mounted `.body-widget-tip-portal`,
+    /// immediate visibility, 10001 stacking and source edge fallback.
+    ReceiverWidgetPortal,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -102,7 +105,10 @@ impl RenderOnce for SourceTooltip {
         let presence = Presence::new((self.id.clone(), "tip-opacity"), hovered)
             .transition(
                 Transition::new(Duration::from_millis(
-                    if self.kind == SourceTooltipKind::ProfilesNav {
+                    if matches!(
+                        self.kind,
+                        SourceTooltipKind::ProfilesNav | SourceTooltipKind::ReceiverWidgetPortal
+                    ) {
                         0
                     } else if matches!(
                         self.kind,
@@ -161,7 +167,13 @@ impl RenderOnce for SourceTooltip {
                     visible,
                     opacity,
                 })
-                .with_priority(200),
+                .with_priority(
+                    if kind == SourceTooltipKind::ReceiverWidgetPortal {
+                        10001
+                    } else {
+                        200
+                    },
+                ),
             )
     }
 }
@@ -278,7 +290,10 @@ impl Element for TipOverlay {
                 cx,
             );
             size(measured.width.max(px(1.)), px(0.))
-        } else if self.kind == SourceTooltipKind::WidgetTip {
+        } else if matches!(
+            self.kind,
+            SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal
+        ) {
             // `width:max-content` with `max-width:300px`; the height stays auto.
             let mut measurement = widget_tip_surface(
                 (self.id.clone(), "tip-measure").into(),
@@ -291,7 +306,7 @@ impl Element for TipOverlay {
                 window,
                 cx,
             );
-            size(measured.width.min(width).max(px(1.)), px(0.))
+            size(measured.width.min(width).max(px(1.)), measured.height)
         } else {
             size(width, px(0.))
         };
@@ -322,6 +337,14 @@ impl Element for TipOverlay {
             // The measured max-content width is already the rendered width.
             tip.w(source_size.width).max_w(source_size.width)
         })
+        .when(
+            self.kind == SourceTooltipKind::ReceiverWidgetPortal,
+            |tip| {
+                tip.w(source_size.width)
+                    .max_w(source_size.width)
+                    .line_height(surface::css(18.))
+            },
+        )
         .when(
             !self.hovered && self.kind == SourceTooltipKind::DropTips,
             |tip| tip.h(source_size.height),
@@ -404,6 +427,12 @@ impl Element for TipOverlay {
             SourceTooltipKind::WidgetTip => {
                 widget_tip_position(trigger, layout.source_size.width, window.rem_size())
             }
+            SourceTooltipKind::ReceiverWidgetPortal => receiver_widget_tip_position(
+                trigger,
+                layout.source_size,
+                window.viewport_size(),
+                window.rem_size(),
+            ),
         };
         let position = if self.kind == SourceTooltipKind::DropTips {
             point(
@@ -450,6 +479,34 @@ impl Element for TipOverlay {
             cx,
         );
     }
+}
+
+/// 179/7693 positionTip: the body wrapper spans the product viewport width and
+/// ends at its bottom. Its top is not used by the source's fallback algorithm.
+fn receiver_widget_tip_position(
+    trigger: Bounds<Pixels>,
+    tip: Size<Pixels>,
+    viewport: Size<Pixels>,
+    rem: Pixels,
+) -> Point<Pixels> {
+    let unit = rem / 16.;
+    let mut position = widget_tip_position(trigger, tip.width, rem);
+    if position.x + tip.width > viewport.width {
+        position.x = viewport.width - unit * 14. - tip.width;
+    }
+    if position.x < px(0.) {
+        position.x = unit * 14.;
+    }
+    if position.y + tip.height > viewport.height {
+        position = point(trigger.right() + unit * 8., trigger.top());
+        if position.x + tip.width > viewport.width {
+            position.x = trigger.left() - unit * 8. - tip.width;
+        }
+        if position.y + tip.height > viewport.height {
+            position.y = viewport.height - tip.height - unit * 10.;
+        }
+    }
+    position
 }
 
 fn drop_tip_position(

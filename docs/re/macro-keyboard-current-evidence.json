@@ -1120,13 +1120,14 @@
   "native": {
     "verification": "Source review and file fingerprints, not runtime verification",
     "files": {
-      "src/features/macro_library.rs": "9094029f604ee7abc7eeefddde5b8238ecbd8883a85b83eaf0e7ec4c475f216b",
-      "src/shell/macro_page.rs": "680cec750941c65079c83c8d304abb3f5e7855979e77dc0d91cb5614d77e40e0",
-      "src/shell/macro_page/state.rs": "25672ef7780d25f7b46c134cbb9e338511e5bcd764741645b8c79ee6006d2189",
-      "src/shell/macro_page/body.rs": "7727d3f7dd73db0f650d1c5b9449bc2366449aa34cf30c8854f1750c2765c77c",
-      "src/shell/macro_page/unsaved.rs": "0b0771a89bbeb61a99e677de51680062aea67d6f37daff1b0aaf0555fc4876de",
-      "src/shell/macro_page/keyboard.rs": "975c7378049a070d98680fd446195c4582fcc5bb678dc858d10935e5a11ae628",
-      "src/shell/macro_page/keyboard_windows.rs": "2c624e7788df41edfa998c01555eeb201128299bf2f8c4d5eb641933d380c06a"
+      "src/features/macro_library.rs": "d767f2150d6ed1562eda647ceca0ea587b61e85bc438157ecf445988f7092145",
+      "src/shell/macro_page.rs": "9c06c20997533e930b840e699614911c1a0ebe0a9a94a9cc3447e40352bc8f00",
+      "src/shell/macro_page/state.rs": "10994bc77f53492cfedf3a4d1653de142034926065341a8c1878946b77d30cab",
+      "src/shell/macro_page/body.rs": "60afa62df579d0830912f823b3b620bc700bfa8fe5a71bcc2a9995f8a80e3f8d",
+      "src/shell/macro_page/unsaved.rs": "9239ce2326671c2875b8a31a886d392e26d2d566f560a19ed1721ba6f5219e80",
+      "src/shell/macro_page/keyboard.rs": "9a64eb0ee452b1188219c05f26a6bfc84ddeaa09812b567b36e80214dcae217c",
+      "src/shell/macro_page/row_actions.rs": "7dfe35b414924d19e69ffed7261e003ee3852e8e8f02531b293ccbdab33e7dd9",
+      "src/shell/macro_page/keyboard_windows.rs": "5d58b09b7f4fae69d563cbe9d763aa29ffe53ce60a40521981c8345d082b39df"
     }
   }
 }

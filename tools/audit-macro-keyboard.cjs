@@ -33,7 +33,7 @@ const directionAssets=[['icon_key_down.4d5fb90e.svg','key-down.svg',9919],['icon
   if(!bytes.equals(fs.readFileSync(path.join(root,asset)))||!embedded.includes('"synapse/macro/'+out+'"'))throw Error('Key direction asset differs or is unregistered');
   return {original,asset,sha256:hash(bytes),module:s.receipt(id,s.module(id).fn)};
 });
-const nativeFiles=['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs','src/shell/macro_page/body.rs','src/shell/macro_page/unsaved.rs','src/shell/macro_page/keyboard.rs','src/shell/macro_page/keyboard_windows.rs'];
+const nativeFiles=['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs','src/shell/macro_page/body.rs','src/shell/macro_page/unsaved.rs','src/shell/macro_page/keyboard.rs','src/shell/macro_page/row_actions.rs','src/shell/macro_page/keyboard_windows.rs'];
 // --data-only is useful while implementing the independently extracted data.
 if(process.argv.includes('--data-only')){console.log('144 ordered keys and keyboard layout names extracted.');process.exit(0);}
 output('docs/re/macro-keyboard-current-evidence.json',{

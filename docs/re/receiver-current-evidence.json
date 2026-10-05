@@ -1,7 +1,7 @@
 {
   "product_id": 179,
   "method": "Acorn module scope, current mounted Windows root, literal SVG JSX and CSS rules; no vendor JS execution",
-  "generator_sha256": "727a223cdd181c89fb9e22a41cf45dc8eeddeb00be25addde0f5f5b1ab6a03ab",
+  "generator_sha256": "2447e8a7d1c01c5f0c3dfdd8a4321c25a62a2c3baa45e59bba3417cece8d8b6b",
   "manifest": {
     "path": ".ref/devices/179/asset-manifest.json",
     "sha256": "33f8cd60c72685d968e70e2d84ba2d4dcfd116e2452528034c8bc3e1cad559bd"
@@ -110,6 +110,56 @@
       "source": "{dongleId:0,status:W.LOADING,bindInfo:[],scannedInfo:[],selectedIndex:0,lang:\"en\",category:\"mouse\"}"
     }
   },
+  "supporting_components": {
+    "widget": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4025145,
+      "end": 4029061,
+      "source": "class l extends _.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.props.toggleSwitch()},this.positionTip=()=>{const e=document.querySelector(\".main-container > #body-wrapper\"),E=this.tipDiv.current,a=this.helpRef.current,_=null===a||void 0===a?void 0:a.closest(\".widget\");if(!E||!a||!_)return;const t=_.getBoundingClientRect();E.style.position=\"fixed\",E.style.right=\"auto\",E.style.visibility=\"visible\",E.style.opacity=\"1\";let i=t.right-14-E.offsetWidth,o=t.top+34;if(E.style.left=`${i}px`,E.style.top=`${o}px`,!e)return;const n=e.getBoundingClientRect();let r=E.getBoundingClientRect();if(r.right>n.right&&(i=n.right-14-E.offsetWidth,E.style.left=`${i}px`,r=E.getBoundingClientRect()),r.left<n.left&&(i=n.left+14,E.style.left=`${i}px`,r=E.getBoundingClientRect()),r.bottom>n.bottom){const e=a.getBoundingClientRect();i=e.right+8,o=e.top,E.style.left=`${i}px`,E.style.top=`${o}px`,r=E.getBoundingClientRect(),r.right>n.right&&(i=e.left-8-r.width,E.style.left=`${i}px`),r=E.getBoundingClientRect(),r.bottom>n.bottom&&(o-=r.bottom-n.bottom+10,E.style.top=`${o}px`)}},this.onHover=()=>{this.setState({showTip:!0},this.positionTip)},this.onLeave=()=>{this.setState({showTip:!1})};const{active:E}=this.props;this.state={active:E,showTip:!1,showFWUpdateTip:!1,tooltipX:0,tooltipY:0},this.tipDiv=t().createRef(),this.tipRef=t().createRef(),this.helpRef=t().createRef(),this._tipX=0,this._tipY=0}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){var e;const{id:E,title:a,tips:_,centerTips:t,children:i,hasSwitch:r=!1,disableSwitchTips:l,extraClass:R,customStyle:N,extraTitle:d,besideTitle:C,increaseZIndex:u,supportsShortcut:c,disable:D,renderShortcut:L,keyPressed:P,hasTutorialButton:p,allowHtml:M,currentFWVersion:m,hasFWUpdate:U=!1,fwUpdateComponent:h,isHyperPolling:G=!1,ignoreBottomOverflow:g=!1}=this.props,{toggleSwitch:H}=this,{active:f}=this.state,v=(null===(e=S.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},B=(0,A.ju)(h,v,m)&&U;var F=`widget ${G?\"hyperPolling\":\"\"} ${R||\"\"} ${u?\"increase-zindex\":\"\"} ${B?\"disabled\":\"\"}`,y=void 0!==_?(0,n.jsxs)(n.Fragment,{children:[(0,n.jsx)(\"div\",{className:\"help\",ref:this.helpRef,role:\"button\",\"aria-label\":(0,O.JN)(_),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,o.createPortal)((0,n.jsx)(\"div\",{className:\"tip body-widget-tip-portal\",ref:this.tipDiv,children:\"string\"!==typeof _?_:(0,n.jsx)(T.A,{text:_})}),document.body),p?(0,n.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,b=r?(0,n.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,n.jsx)(s,{disable:this.props.disable,active:f,onClick:H,className:P||\"\"}),l&&D?(0,n.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,n.jsx)(T.A,{text:l})}):null]}):null,V=\"\"!==a?(0,n.jsxs)(\"div\",{className:\"titleRow\",children:[(0,n.jsxs)(\"div\",{className:\"title\",children:[(0,n.jsx)(T.A,{text:a,allowHtml:M}),b,C]}),(0,n.jsx)(\"div\",{children:d}),c?L:null]}):null;return(0,n.jsxs)(\"div\",{className:\"widget-container\",children:[(0,n.jsxs)(\"div\",{className:F,id:E,style:N,children:[V,i,y]}),t&&(F.includes(\"disabled\")||!1===f)&&(0,n.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,n.jsx)(T.A,{text:t})}),B&&(0,n.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const E=e.clientX,a=e.clientY+25;this._tipX=E,this._tipY=a,this.setState({showFWUpdateTip:!0,tooltipX:E,tooltipY:a})},onMouseMove:e=>{const E=e.clientX,a=e.clientY+25;this._tipX===E&&this._tipY===a||(this._tipX=E,this._tipY=a,this.setState({tooltipX:E,tooltipY:a}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,n.jsx)(T.A,{text:I.AG3})}),B&&this.state.showFWUpdateTip&&(0,n.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,n.jsx)(T.A,{text:I.ssg})})]})}}"
+    },
+    "spinner": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 29862,
+      "end": 29944,
+      "source": "e=>{let{isMounted:E}=e;return E?(0,_.jsx)(\"div\",{className:\"spinner-razer\"}):null}"
+    },
+    "closeIcon": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4029342,
+      "end": 4029384,
+      "source": "a.p+\"static/media/icon_close.55fe41f1.svg\""
+    },
+    "radio": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4081438,
+      "end": 4082621,
+      "source": "class l extends t.Component{constructor(e){super(e),this.checkMe=()=>{var e,E,a,_;const t=this.props.effectSettings.filter(e=>e.effectId===this.props.selectedEffectId);this.props.onCheck(null!==(e=this.props.name)&&void 0!==e?e:this.props.id,null===(E=this.props.inActiveEffectSettings)||void 0===E||null===(a=E.inActiveEffectSetting)||void 0===a?void 0:a.color1,null===(_=t[0])||void 0===_?void 0:_.color1)},this.handleClick=e=>{1!==e.nativeEvent.which&&3!==e.nativeEvent.which||this.checkMe()};const{active:E,disabled:a}=this.props;this.state={active:E,disabled:a}}componentDidUpdate(e){const{active:E,disabled:a}=this.props;E!==e.active&&this.setState({active:E}),a!==e.disabled&&this.setState({disabled:a})}render(){const{id:e,name:E,customName:a,extraClass:_,allowLeftClick:t}=this.props,{active:i,disabled:o}=this.state,{checkMe:n}=this;var r=`radio-item ${_||\"\"} ${o?\"disabled\":\"\"}`;return(0,S.jsxs)(\"div\",{tooltip:i?(0,O.JN)(A.HcD):(0,O.JN)(A._pM),className:r,children:[(0,S.jsx)(\"input\",{type:\"radio\",id:e,checked:i,onChange:n}),(0,S.jsx)(\"label\",{htmlFor:e,onClick:t?this.handleClick:()=>{},onContextMenu:t?this.handleClick:()=>{},children:a||(0,S.jsx)(T.A,{text:E})})]})}}"
+    }
+  },
+  "static_assets": [
+    {
+      "path": ".ref/devices/179/static/media/icon_close.55fe41f1.svg",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "prepared": "assets/synapse/mapping-close.svg",
+      "source": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"m13.409 12.005 5.3-5.3a1 1 0 0 0 0-1.414 1 1 0 0 0-1.414 0l-5.3 5.3-5.3-5.3a1 1 0 0 0-1.414 0 1 1 0 0 0 0 1.414l5.3 5.3-5.3 5.3A1 1 0 0 0 6.7 18.719l5.3-5.3 5.3 5.3a1 1 0 0 0 1.414-1.414Z\" transform=\"translate(-1.989 -2)\" style=\"fill:#999\"/></svg>"
+    },
+    {
+      "path": ".ref/devices/179/static/media/tooltip_questionmark.96138d2f.svg",
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "prepared": "assets/synapse/automation-tooltip_questionmark.svg",
+      "source": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 23.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 14 14\" style=\"enable-background:new 0 0 14 14;width:14px;height:14px;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#f4f4f4;}\n</style>\n<path class=\"st0\" d=\"M7.7,11.9H6.3v-1.4h1.4V11.9z M9.15,6.47L8.52,7.12C8.01,7.63,7.7,8.05,7.7,9.1H6.3V8.75\n\tc0-0.77,0.31-1.47,0.82-1.98l0.87-0.88C8.25,5.63,8.4,5.28,8.4,4.9c0-0.77-0.63-1.4-1.4-1.4S5.6,4.13,5.6,4.9\n\tc0,0.39-0.31,0.7-0.7,0.7S4.2,5.29,4.2,4.9c0-1.55,1.25-2.8,2.8-2.8s2.8,1.25,2.8,2.8C9.8,5.52,9.55,6.08,9.15,6.47z\"/>\n</svg>\n"
+    },
+    {
+      "path": ".ref/devices/179/static/media/spinner.ef2d0235.svg",
+      "sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+      "prepared": "assets/synapse/gr-device-spinner.svg",
+      "source": "<svg width=\"26px\"  height=\"26px\"  xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid\" class=\"lds-ring\" style=\"background: none;\"><circle cx=\"50\" cy=\"50\" ng-attr-r=\"{{config.radius}}\" ng-attr-stroke=\"{{config.base}}\" ng-attr-stroke-width=\"{{config.width}}\" fill=\"none\" r=\"30\" stroke=\"rgba(26.66666666666669%,83.92156862745098%,17.25490196078431%,0.3)\" stroke-width=\"10\"></circle><circle cx=\"50\" cy=\"50\" ng-attr-r=\"{{config.radius}}\" ng-attr-stroke=\"{{config.stroke}}\" ng-attr-stroke-width=\"{{config.innerWidth}}\" ng-attr-stroke-linecap=\"{{config.linecap}}\" fill=\"none\" r=\"30\" stroke=\"#44d62c\" stroke-width=\"10\" stroke-linecap=\"square\" transform=\"rotate(56.0473 50 50)\"><animateTransform attributeName=\"transform\" type=\"rotate\" calcMode=\"linear\" values=\"0 50 50;180 50 50;720 50 50\" keyTimes=\"0;0.5;1\" dur=\"2s\" begin=\"0s\" repeatCount=\"indefinite\"></animateTransform><animate attributeName=\"stroke-dasharray\" calcMode=\"linear\" values=\"18.84955592153876 169.64600329384882;94.2477796076938 94.24777960769377;18.84955592153876 169.64600329384882\" keyTimes=\"0;0.5;1\" dur=\"2\" begin=\"0s\" repeatCount=\"indefinite\"></animate></circle></svg>"
+    }
+  ],
   "labels": {
     "FeU": "HYPERPOLLING_WIRELESS",
     "A4y": "MULTI__DUALINK_PROPERTIES_TOOLTIP",
@@ -1174,6 +1224,142 @@
           {
             "property": "background-color",
             "value": "#ffffff4d",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 75927,
+        "selector": ".body-widget-tip-portal,.widget .tip",
+        "conditions": [],
+        "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:18px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:14px;text-align:left;text-transform:none;top:34px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:max-content;will-change:visibility,opacity;z-index:99",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #5d5d5d",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "18px",
+            "important": false
+          },
+          {
+            "property": "max-width",
+            "value": "300px",
+            "important": false
+          },
+          {
+            "property": "opacity",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "8px 10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "left",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "34px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "visibility 0s,opacity .3s linear",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "white-space",
+            "value": "pre-wrap",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "max-content",
+            "important": false
+          },
+          {
+            "property": "will-change",
+            "value": "visibility,opacity",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "99",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 76314,
+        "selector": ".body-widget-tip-portal",
+        "conditions": [],
+        "declarations": "opacity:1;position:fixed;right:auto;visibility:visible;z-index:10001",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": "1",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "fixed",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "auto",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "visible",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "10001",
             "important": false
           }
         ]
@@ -3206,7 +3392,7 @@
   "native": [
     {
       "path": "src/features/source_controls/receiver.rs",
-      "sha256": "bf6f5b7aab734d8eebd10c4e2c15609485d1de5d1b2a5250e47531e9d92a24a4"
+      "sha256": "e1399a46a070e460c2a1959e496502e0287c75bc46a9d77781b201eec6397831"
     },
     {
       "path": "src/features/source_controls/receiver_indicator_data.json",
@@ -3214,7 +3400,15 @@
     },
     {
       "path": "src/features/source_controls.rs",
-      "sha256": "8a9eea005a1b8bebb042043c6ec532b53ffc03ef5c67336c702c6dc065946f50"
+      "sha256": "5bf3886ebb77ed31f6b5184de6234f44dc40cf16ad8f405d98545a21470a6865"
+    },
+    {
+      "path": "src/ui/source_tooltip.rs",
+      "sha256": "cd0d8274a9d3105b647daa7c7c54b3e21eaeca564945e6187f7a279d53251ab7"
+    },
+    {
+      "path": "src/ui/surface.rs",
+      "sha256": "18b9aa0eb789f9919af138ea495b75b21a88cfb60ea6a8a3343af482b9115e29"
     }
   ]
 }
