@@ -166,6 +166,7 @@ fn encode_output(output: &ShortcutOutput) -> Result<(Value, Value), String> {
         )),
         ShortcutOutput::Multimedia { action } => encode_media(action),
         ShortcutOutput::Windows { action } => encode_windows(action),
+        ShortcutOutput::Macro { .. } => Err("本地宏文档尚未连接原生宏执行服务。".into()),
     }
 }
 

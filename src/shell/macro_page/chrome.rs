@@ -479,7 +479,10 @@ impl MacroPage {
                     window,
                     cx,
                 )
-                .on_click(cx.listener(|this, _, _, cx| this.duplicate_current(cx))),
+                .on_click(cx.listener(|this, _, window, cx| {
+                    this.finish_pending_edits(window, cx);
+                    this.duplicate_current(cx)
+                })),
             )
             .child(super::tree::menu_action(
                 "macro-menu-export",

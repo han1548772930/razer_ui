@@ -8,9 +8,13 @@ use std::time::Duration;
 
 const REPEAT: Duration = Duration::from_millis(300);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct StepperEvent {
+    /// Last committed numeric value; live drafts do not normalize this value.
     pub value: f64,
+    /// Source `allowLiveUpdate` sends the raw string, including `""` and `"-"`.
+    /// Commit and step events carry `None`.
+    pub draft: Option<String>,
 }
 impl EventEmitter<StepperEvent> for Stepper {}
 
@@ -24,6 +28,8 @@ pub(crate) struct Stepper {
     allow_decimal: bool,
     round_up_decimals: bool,
     modes_area: bool,
+    custom_keymapping: bool,
+    allow_live_update: bool,
     disabled: bool,
     focused: bool,
     interacting: bool,
@@ -88,6 +94,12 @@ impl Stepper {
                 InputEvent::PressEnter { .. } => window.blur(cx),
                 InputEvent::Change => {
                     this.draft_from_typing = true;
+                    if this.allow_live_update && !this.disabled {
+                        cx.emit(StepperEvent {
+                            value: this.value,
+                            draft: Some(this.input.read(cx).value().to_string()),
+                        });
+                    }
                     cx.notify();
                 }
             });
@@ -101,6 +113,8 @@ impl Stepper {
             allow_decimal,
             round_up_decimals,
             modes_area: false,
+            custom_keymapping: false,
+            allow_live_update: false,
             disabled: false,
             focused: false,
             interacting: false,
@@ -114,6 +128,19 @@ impl Stepper {
     /// `.modes-area .stepper` wins over the later generic Kiyo dimensions.
     pub(crate) fn in_modes_area(mut self) -> Self {
         self.modes_area = true;
+        self
+    }
+
+    /// Dashboard 82508's `.key-config .stepper.custom-keymapping-stepper`.
+    pub(crate) fn in_custom_keymapping(mut self) -> Self {
+        self.custom_keymapping = true;
+        self
+    }
+
+    /// Emit accepted text drafts immediately, leaving snapping and clamping
+    /// to blur/Enter or a step, as Dashboard 44230 does.
+    pub(crate) fn live_update(mut self) -> Self {
+        self.allow_live_update = true;
         self
     }
 
@@ -232,7 +259,7 @@ impl Stepper {
         self.value = value;
         self.draft_from_typing = false;
         self.write_input(window, cx);
-        cx.emit(StepperEvent { value });
+        cx.emit(StepperEvent { value, draft: None });
         cx.notify();
     }
 
@@ -264,6 +291,18 @@ impl Stepper {
         }
     }
 
+    /// A different mapping owns a fresh input draft, even when its committed
+    /// number equals the previous mapping's value. Ordinary sync preserves it.
+    pub(crate) fn reset_value(&mut self, value: f64, window: &mut Window, cx: &mut Context<Self>) {
+        self.value = value.clamp(self.min, self.max);
+        self.draft_from_typing = false;
+        self.interacting = false;
+        self.task = None;
+        self.suppress_pointer_click = false;
+        self.write_input(window, cx);
+        cx.notify();
+    }
+
     fn spinner(&self, button: BaseButton, action: StepAction, cx: &Context<Self>) -> BaseButton {
         let at_limit = self.at_limit(action);
         let disabled = self.disabled || at_limit;
@@ -277,7 +316,13 @@ impl Stepper {
             .h(surface::css(12.))
             .p_0()
             .relative()
-            .opacity(if at_limit { 0.3 } else { 1. })
+            // The custom selector overrides the source disabled opacity,
+            // while pointer interaction remains disabled at a numeric bound.
+            .opacity(if at_limit && !self.custom_keymapping {
+                0.3
+            } else {
+                1.
+            })
             .when(!disabled, |button| {
                 button
                     .hover(|style| style.bg(Colors::spinner_hover()))
@@ -332,31 +377,68 @@ impl Stepper {
 }
 
 impl Render for Stepper {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus = self.input.focus_handle(cx);
         let owner = cx.entity().downgrade();
         let increment = self.spinner(BaseButton::new("increment"), StepAction::Increment, cx);
         let decrement = self.spinner(BaseButton::new("decrement"), StepAction::Decrement, cx);
-        div()
+        let opacity = if self.disabled { 0.3 } else { 1. };
+        let opacity = if self.custom_keymapping {
+            // The final .key-config .stepper shorthand replaces the generic
+            // border transition with opacity .2s (default ease). Spinner
+            // opacity stays 1 in every custom state; it has no changing target.
+            surface::fade_opacity(self.id.clone(), opacity, 200, window, cx)
+        } else {
+            opacity
+        };
+        let root = div()
             .id(self.id.clone())
             .track_focus(&focus)
-            .w(surface::css(if self.modes_area { 60. } else { 62. }))
-            .h(surface::css(if self.modes_area { 27. } else { 26. }))
+            .w(surface::css(if self.custom_keymapping {
+                58.
+            } else if self.modes_area {
+                60.
+            } else {
+                62.
+            }))
+            .h(surface::css(if self.custom_keymapping {
+                25.
+            } else if self.modes_area {
+                27.
+            } else {
+                26.
+            }))
+            .when(self.custom_keymapping, |root| {
+                root.relative().mb(surface::css(10.))
+            })
             .flex_shrink_0()
             .bg(Colors::background())
             .border_1()
-            .border_color(if self.focused && !self.disabled {
-                Colors::focus()
-            } else {
-                Colors::border()
-            })
-            .opacity(if self.disabled { 0.3 } else { 1. })
+            .border_color(
+                if self.focused && !self.disabled && !self.custom_keymapping {
+                    Colors::focus()
+                } else {
+                    Colors::border()
+                },
+            )
+            .opacity(opacity)
             .when(!self.disabled, |root| {
                 root.hover(|style| style.border_color(Colors::focus()))
             })
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                if !this.disabled && event.keystroke.key == "escape" {
+                if this.disabled {
+                    return;
+                }
+                if event.keystroke.key == "escape" {
                     window.blur(cx);
+                    cx.stop_propagation();
+                } else if this.custom_keymapping {
+                    let action = match event.keystroke.key.as_str() {
+                        "up" => StepAction::Increment,
+                        "down" => StepAction::Decrement,
+                        _ => return,
+                    };
+                    this.step_once(action, window, cx);
                     cx.stop_propagation();
                 }
             }))
@@ -373,54 +455,118 @@ impl Render for Stepper {
                 } else {
                     StepAction::Decrement
                 };
-                if !this.at_limit(action) {
+                // Wheel guards compare props.value with coercive >= / <=;
+                // spinner classes instead compare the draft with strict ===.
+                let wheel_at_limit = if this.allow_live_update && this.draft_from_typing {
+                    let draft = this.input.read(cx).value();
+                    let value = if draft.is_empty() {
+                        0.
+                    } else {
+                        draft.parse::<f64>().unwrap_or(f64::NAN)
+                    };
+                    if action == StepAction::Increment {
+                        value >= this.max
+                    } else {
+                        value <= this.min
+                    }
+                } else {
+                    this.at_limit(action)
+                };
+                if !wheel_at_limit {
                     this.step_once(action, window, cx);
                 }
                 cx.stop_propagation();
-            }))
-            .child(
-                NumberInput::new(&self.input)
-                    .disabled(self.disabled)
-                    .size_full()
-                    .controls_right()
-                    .input(
-                        div()
-                            .id("stepper-input")
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                if !this.disabled && !this.interacting {
-                                    this.interacting = true;
-                                    this.input
-                                        .update(cx, |input, cx| input.select_all(window, cx));
-                                }
-                            }))
-                            .child(
-                                Input::new(&self.input)
-                                    .appearance(false)
-                                    .bordered(false)
-                                    .focus_bordered(false)
-                                    .h(surface::css(if self.modes_area { 25. } else { 24. }))
-                                    .w(surface::css(if self.modes_area { 42. } else { 44. }))
-                                    .p_0()
-                                    .pl(surface::css(if self.modes_area { 5. } else { 6. }))
-                                    .text_size(surface::css(14.))
-                                    .line_height(surface::css(if self.modes_area {
-                                        17.
-                                    } else {
-                                        14.
-                                    }))
-                                    .text_color(Colors::text()),
-                            ),
-                    )
-                    .increment_button(move |_| increment)
-                    .decrement_button(move |_| decrement)
-                    .on_step(move |action, window, cx| {
-                        let _ = owner.update(cx, |this, cx| {
-                            if std::mem::take(&mut this.suppress_pointer_click) {
-                                return;
+            }));
+        if self.custom_keymapping {
+            // Source children are absolute in the 56 x 23 padding box. Its
+            // root padding does not move them: input left 6, width 90%, and
+            // independent 12px spinners at top/bottom (a 1px overlap).
+            return root
+                .child(
+                    div()
+                        .id("stepper-input")
+                        .absolute()
+                        .left(surface::css(6.))
+                        .top_0()
+                        .w(surface::css(50.4))
+                        .h(surface::css(24.))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            if !this.disabled && !this.interacting {
+                                this.interacting = true;
+                                this.input
+                                    .update(cx, |input, cx| input.select_all(window, cx));
                             }
-                            this.step_once(action, window, cx);
-                        });
-                    }),
-            )
+                        }))
+                        .child(
+                            Input::new(&self.input)
+                                .appearance(false)
+                                .bordered(false)
+                                .focus_bordered(false)
+                                .size_full()
+                                .p_0()
+                                .text_size(surface::css(14.))
+                                .line_height(surface::css(14.))
+                                .text_color(Colors::text()),
+                        ),
+                )
+                .child(
+                    increment
+                        .absolute()
+                        .right_0()
+                        .top_0()
+                        .focusable(false)
+                        .disabled(self.disabled || self.at_limit(StepAction::Increment)),
+                )
+                .child(
+                    decrement
+                        .absolute()
+                        .right_0()
+                        .bottom_0()
+                        .focusable(false)
+                        .disabled(self.disabled || self.at_limit(StepAction::Decrement)),
+                )
+                .into_any_element();
+        }
+        root.child(
+            NumberInput::new(&self.input)
+                .disabled(self.disabled)
+                .size_full()
+                .controls_right()
+                .input(
+                    div()
+                        .id("stepper-input")
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            if !this.disabled && !this.interacting {
+                                this.interacting = true;
+                                this.input
+                                    .update(cx, |input, cx| input.select_all(window, cx));
+                            }
+                        }))
+                        .child(
+                            Input::new(&self.input)
+                                .appearance(false)
+                                .bordered(false)
+                                .focus_bordered(false)
+                                .h(surface::css(if self.modes_area { 25. } else { 24. }))
+                                .w(surface::css(if self.modes_area { 42. } else { 44. }))
+                                .p_0()
+                                .pl(surface::css(if self.modes_area { 5. } else { 6. }))
+                                .text_size(surface::css(14.))
+                                .line_height(surface::css(if self.modes_area { 17. } else { 14. }))
+                                .text_color(Colors::text()),
+                        ),
+                )
+                .increment_button(move |_| increment)
+                .decrement_button(move |_| decrement)
+                .on_step(move |action, window, cx| {
+                    let _ = owner.update(cx, |this, cx| {
+                        if std::mem::take(&mut this.suppress_pointer_click) {
+                            return;
+                        }
+                        this.step_once(action, window, cx);
+                    });
+                }),
+        )
+        .into_any_element()
     }
 }

@@ -21,9 +21,12 @@ mod bindings;
 mod body;
 mod chrome;
 mod editors;
+mod nested;
+mod nested_overlay;
 mod palette;
 mod state;
 mod tree;
+mod unsaved;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial};
 
 /// Payload carried while reordering event rows in the current macro editor.
@@ -81,6 +84,7 @@ impl MacroTab {
 }
 
 pub(super) struct MacroPage {
+    library: Entity<crate::features::macro_library::MacroLibrary>,
     tab: MacroTab,
     focus: FocusHandle,
     history: Vec<MacroTab>,
@@ -95,6 +99,10 @@ pub(super) struct MacroPage {
     saved_actions: Vec<ActionItem>,
     undo: Vec<Vec<ActionItem>>,
     redo: Vec<Vec<ActionItem>>,
+    inactive_drafts: std::collections::HashMap<u64, unsaved::ActionDraft>,
+    suspended_action: Option<unsaved::PendingAction>,
+    unsaved_focus: FocusHandle,
+    unsaved_return_focus: Option<FocusHandle>,
     tree_selection: Option<u64>,
     tutorial: Tutorial,
     selector_open: bool,
@@ -117,6 +125,7 @@ pub(super) struct MacroPage {
     editing_action: Option<usize>,
     launch_open: Option<usize>,
     choice_action: Option<usize>,
+    source_viewport: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
     rename: Option<u64>,
     rename_in_tree: bool,
     deletion: Option<u64>,
@@ -132,7 +141,18 @@ pub(super) struct MacroPage {
 }
 
 impl MacroPage {
-    pub(super) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(super) fn new(
+        library: Entity<crate::features::macro_library::MacroLibrary>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let file = library.read(cx).snapshot();
+        let saved_actions = file
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == file.current)
+            .map(|entry| entry.actions.clone())
+            .unwrap_or_default();
         let search = cx.new(|cx| InputState::new(window, cx).placeholder(tr("TEXT_MACRO_SEARCH")));
         let name = cx.new(|cx| {
             InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
@@ -182,6 +202,9 @@ impl MacroPage {
                 }
             }),
             cx.subscribe_in(&action_editor, window, |this, _, event, window, cx| {
+                if matches!(event, InputEvent::Change) {
+                    cx.notify();
+                }
                 if matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
                     && !this
                         .editing_action
@@ -204,22 +227,27 @@ impl MacroPage {
             }),
         ];
         Self {
+            library,
             tab: MacroTab::MyMacros,
             focus: cx.focus_handle(),
             history: vec![MacroTab::MyMacros],
             history_index: 0,
-            entries: Vec::new(),
-            next_id: 1,
-            current: None,
-            actions_for: None,
-            actions: Vec::new(),
+            entries: file.entries,
+            next_id: file.next_id,
+            current: file.current,
+            actions_for: file.current,
+            actions: saved_actions.clone(),
             selected_actions: Vec::new(),
-            saved_actions_for: None,
-            saved_actions: Vec::new(),
+            saved_actions_for: file.current,
+            saved_actions,
             undo: Vec::new(),
             redo: Vec::new(),
-            tree_selection: None,
-            tutorial: Tutorial::Initial,
+            inactive_drafts: Default::default(),
+            suspended_action: None,
+            unsaved_focus: cx.focus_handle(),
+            unsaved_return_focus: None,
+            tree_selection: file.current,
+            tutorial: file.tutorial,
             selector_open: false,
             more_open: false,
             sort_open: false,
@@ -240,6 +268,7 @@ impl MacroPage {
             editing_action: None,
             launch_open: None,
             choice_action: None,
+            source_viewport: Default::default(),
             rename: None,
             rename_in_tree: false,
             deletion: None,
@@ -257,6 +286,41 @@ impl MacroPage {
     pub(super) fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.focus.focus(window, cx);
         cx.notify();
+    }
+    fn publish_library(&self, cx: &mut Context<Self>) {
+        let mut entries = self.entries.clone();
+        for entry in &mut entries {
+            entry.open = false;
+        }
+        let file = crate::features::macro_library::MacroLibraryFile {
+            next_id: self.next_id,
+            entries,
+            current: self.current,
+            tutorial: self.tutorial,
+        };
+        self.library
+            .update(cx, |library, cx| library.replace(file, cx));
+    }
+    fn load_current_actions(&mut self) {
+        self.clear_action_editors();
+        self.actions_for = self.current;
+        self.actions = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+            .map(|entry| entry.actions.clone())
+            .unwrap_or_default();
+        self.saved_actions_for = self.current;
+        self.saved_actions = self.actions.clone();
+        self.undo.clear();
+        self.redo.clear();
+        self.selected_actions.clear();
+        if let Some(draft) = self.current.and_then(|id| self.inactive_drafts.remove(&id)) {
+            self.actions = draft.actions;
+            self.undo = draft.undo;
+            self.redo = draft.redo;
+            self.selected_actions = draft.selected;
+        }
     }
     pub(super) fn has_previous_page(&self) -> bool {
         self.history_index > 0
@@ -278,10 +342,13 @@ impl MacroPage {
             return;
         }
         self.tab = self.history[self.history_index];
-        self.refresh(window, cx);
+        self.finish_pending_edits(window, cx);
+        self.dismiss_transient_ui(window, cx);
     }
     pub(super) fn refresh(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // Local entries currently have no unsaved event edits to discard.
+        self.request_action(unsaved::PendingAction::Refresh, window, cx);
+    }
+    fn dismiss_transient_ui(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.selector_open = false;
         self.more_open = false;
         self.sort_open = false;
@@ -308,7 +375,8 @@ impl MacroPage {
         self.history.truncate(self.history_index + 1);
         self.history.push(tab);
         self.history_index = self.history.len() - 1;
-        self.refresh(window, cx);
+        self.finish_pending_edits(window, cx);
+        self.dismiss_transient_ui(window, cx);
     }
     fn macro_count(&self) -> usize {
         self.entries
@@ -361,8 +429,30 @@ impl MacroPage {
         !self.redo.is_empty()
     }
     pub(super) fn can_save(&self) -> bool {
-        self.actions_for == self.current
+        self.current.is_some()
+            && self.actions_for == self.current
             && (self.saved_actions_for != self.current || self.actions != self.saved_actions)
+    }
+    fn can_save_with_pending(&self, cx: &App) -> bool {
+        self.can_save()
+            || self
+                .editing_action
+                .and_then(|index| self.actions().get(index))
+                .is_some_and(|item| {
+                    let value = if item.kind == ActionKind::Text {
+                        self.text_editor.read(cx).value().to_string()
+                    } else {
+                        self.action_editor.read(cx).value().trim().to_string()
+                    };
+                    value != item.value
+                })
+            || self
+                .randomized_open
+                .and_then(|index| self.actions().get(index))
+                .is_some_and(|item| {
+                    item.number_min != self.delay_min_editor.read(cx).value().as_ref()
+                        || item.number_max != self.delay_max_editor.read(cx).value().as_ref()
+                })
     }
 
     pub(super) fn begin_action_edit(
@@ -701,6 +791,14 @@ impl MacroPage {
         }
         self.saved_actions_for = self.current;
         self.saved_actions = self.actions.clone();
+        if let Some(entry) = self
+            .entries
+            .iter_mut()
+            .find(|entry| Some(entry.id) == self.current)
+        {
+            entry.actions = self.saved_actions.clone();
+        }
+        self.publish_library(cx);
         self.undo.clear();
         self.redo.clear();
         self.selected_actions.clear();
@@ -840,6 +938,10 @@ impl Render for MacroPage {
         };
         v_flex()
             .id("macro-window")
+            .on_prepaint({
+                let viewport = self.source_viewport.clone();
+                move |bounds, _, _| viewport.set(bounds)
+            })
             .size_full()
             .relative()
             .bg(rgb(0x222222))
@@ -850,7 +952,12 @@ impl Render for MacroPage {
             .track_focus(&self.focus)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
-                    this.refresh(window, cx);
+                    if this.suspended_action.is_some() {
+                        this.cancel_suspended_action(window, cx);
+                    } else {
+                        this.finish_pending_edits(window, cx);
+                        this.dismiss_transient_ui(window, cx);
+                    }
                     cx.stop_propagation();
                 }
             }))
@@ -869,6 +976,9 @@ impl Render for MacroPage {
             })
             .when_some(self.binding_dialog.clone(), |root, dialog| {
                 root.child(dialog)
+            })
+            .when(self.suspended_action.is_some(), |root| {
+                root.child(self.unsaved_confirmation(window, cx))
             })
     }
 }

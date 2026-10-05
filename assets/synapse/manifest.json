@@ -15280,133 +15280,152 @@
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_chroma_studio_dark_inside.9f7cca8e.svg",
       "output": "assets/synapse/automation-0.svg",
       "source_sha256": "753f8935d8e73f19eaefcb5dce5371d16c4df985ef70e404aabdac9b5f5d76ce",
-      "sha256": "753f8935d8e73f19eaefcb5dce5371d16c4df985ef70e404aabdac9b5f5d76ce"
+      "sha256": "753f8935d8e73f19eaefcb5dce5371d16c4df985ef70e404aabdac9b5f5d76ce",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/audio_device_mini.473f6726.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/audio_device_mini.473f6726.svg",
       "output": "assets/synapse/automation-1.svg",
       "source_sha256": "9c3bc217a7bf157630af8d85c0f7adae78ec7ada43e9c21491a65dd1554d2bc9",
-      "sha256": "9c3bc217a7bf157630af8d85c0f7adae78ec7ada43e9c21491a65dd1554d2bc9"
+      "sha256": "9c3bc217a7bf157630af8d85c0f7adae78ec7ada43e9c21491a65dd1554d2bc9",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_microphone.38f05cc6.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_microphone.38f05cc6.svg",
       "output": "assets/synapse/automation-2.svg",
       "source_sha256": "9342bbc528796789a3f1988e10cf7a10f37b94b5ad211b857ec91fe64c7fc951",
-      "sha256": "9342bbc528796789a3f1988e10cf7a10f37b94b5ad211b857ec91fe64c7fc951"
+      "sha256": "9342bbc528796789a3f1988e10cf7a10f37b94b5ad211b857ec91fe64c7fc951",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/arrow-top-right-icon.3df88154.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/arrow-top-right-icon.3df88154.svg",
       "output": "assets/synapse/automation-3.svg",
       "source_sha256": "0acb4f38040bdb9b7455ff86ded0c6cec00b79abd20d084462007bf476a79b9e",
-      "sha256": "0acb4f38040bdb9b7455ff86ded0c6cec00b79abd20d084462007bf476a79b9e"
+      "sha256": "0acb4f38040bdb9b7455ff86ded0c6cec00b79abd20d084462007bf476a79b9e",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/game-more.423a334f.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/game-more.423a334f.svg",
       "output": "assets/synapse/automation-4.svg",
       "source_sha256": "c8136d2fce0f49a31f4f7b5bf2e78ab311d757f1c06524f544c313cfab6f0df0",
-      "sha256": "c8136d2fce0f49a31f4f7b5bf2e78ab311d757f1c06524f544c313cfab6f0df0"
+      "sha256": "c8136d2fce0f49a31f4f7b5bf2e78ab311d757f1c06524f544c313cfab6f0df0",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/logo_macro_grey.9702f3f7.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/logo_macro_grey.9702f3f7.svg",
       "output": "assets/synapse/automation-5.svg",
       "source_sha256": "df95d7d78808f5d7a2d41a14d8a66c1708427596177a8028132bc95df1d71ba7",
-      "sha256": "df95d7d78808f5d7a2d41a14d8a66c1708427596177a8028132bc95df1d71ba7"
+      "sha256": "df95d7d78808f5d7a2d41a14d8a66c1708427596177a8028132bc95df1d71ba7",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_add_light_grey.1d6669e3.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_add_light_grey.1d6669e3.svg",
       "output": "assets/synapse/automation-icon_add_light_grey.svg",
       "source_sha256": "fa10f8b6f26b3651fd4415d286c885f74b09b9b437cc0b03c68fe5391f05c38a",
-      "sha256": "fa10f8b6f26b3651fd4415d286c885f74b09b9b437cc0b03c68fe5391f05c38a"
+      "sha256": "fa10f8b6f26b3651fd4415d286c885f74b09b9b437cc0b03c68fe5391f05c38a",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_delete.de9b7746.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_delete.de9b7746.svg",
       "output": "assets/synapse/automation-icon_delete.svg",
       "source_sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43",
-      "sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43"
+      "sha256": "acc975f1c9e73bb63c0030d4a23016262aad581239c4d5ed9fe45aadcc6a4e43",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/tooltip_questionmark.96138d2f.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/tooltip_questionmark.96138d2f.svg",
       "output": "assets/synapse/automation-tooltip_questionmark.svg",
       "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
-      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_warning.6c0cd78b.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_warning.6c0cd78b.svg",
       "output": "assets/synapse/automation-icon_warning.svg",
       "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
-      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4"
+      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/thx_spatial_audio_logo.96d279ba.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/thx_spatial_audio_logo.96d279ba.svg",
       "output": "assets/synapse/automation-thx_spatial_audio_logo.svg",
       "source_sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f",
-      "sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f"
+      "sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/logo-7.1.5c511eea.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/logo-7.1.5c511eea.svg",
       "output": "assets/synapse/automation-logo-7.1.svg",
       "source_sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa",
-      "sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa"
+      "sha256": "f8e97ef8bccac894c84eaaf89d3cb887889ecb4c8aac403c91cb8e13330734aa",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_folder.e5ceb5b6.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_folder.e5ceb5b6.svg",
       "output": "assets/synapse/automation-icon_folder.svg",
       "source_sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001",
-      "sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001"
+      "sha256": "f8b7b061260528672ba9f46e008cda26d431457bb01dc5969599ed22d616a001",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_expand.55a47b0c.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_expand.55a47b0c.svg",
       "output": "assets/synapse/automation-icon_expand.svg",
       "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
-      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88"
+      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_close.55fe41f1.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_close.55fe41f1.svg",
       "output": "assets/synapse/automation-icon_close.svg",
       "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
-      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_direction_up_999.2c24f25f.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_up_999.2c24f25f.svg",
       "output": "assets/synapse/automation-icon_direction_up_999.svg",
       "source_sha256": "3c600a5559b552ebf0e3d7b5115620958defb466f92b7590c38c64b929340594",
-      "sha256": "3c600a5559b552ebf0e3d7b5115620958defb466f92b7590c38c64b929340594"
+      "sha256": "3c600a5559b552ebf0e3d7b5115620958defb466f92b7590c38c64b929340594",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_direction_up.f4029a80.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_up.f4029a80.svg",
       "output": "assets/synapse/automation-icon_direction_up.svg",
       "source_sha256": "f4b59720a3c34e20d2b879144f2e4c1cc99641a610eb69907391836959deb710",
-      "sha256": "f4b59720a3c34e20d2b879144f2e4c1cc99641a610eb69907391836959deb710"
+      "sha256": "f4b59720a3c34e20d2b879144f2e4c1cc99641a610eb69907391836959deb710",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_direction_down_999.56bcfa23.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_down_999.56bcfa23.svg",
       "output": "assets/synapse/automation-icon_direction_down_999.svg",
       "source_sha256": "0b7f9af912f1eaa67f79d9b8fcb07c3aa176fea8e154e6e11723577d6b82c9ff",
-      "sha256": "0b7f9af912f1eaa67f79d9b8fcb07c3aa176fea8e154e6e11723577d6b82c9ff"
+      "sha256": "0b7f9af912f1eaa67f79d9b8fcb07c3aa176fea8e154e6e11723577d6b82c9ff",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/media/icon_direction_down.531edd48.svg",
       "url": "https://apps.razer.com/synapse/products/3946/ui/static/media/icon_direction_down.531edd48.svg",
       "output": "assets/synapse/automation-icon_direction_down.svg",
       "source_sha256": "df5ad0e600e74eb95a552dc8b44c43cd1c4257fd7849362e82a5ce089eedbbd6",
-      "sha256": "df5ad0e600e74eb95a552dc8b44c43cd1c4257fd7849362e82a5ce089eedbbd6"
+      "sha256": "df5ad0e600e74eb95a552dc8b44c43cd1c4257fd7849362e82a5ce089eedbbd6",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/js/main.46ad416c.js",
@@ -15416,7 +15435,8 @@
       "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 5V15H2V5H18ZM18 3H2C1.47005 3.00158 0.962265 3.2128 0.587535 3.58753C0.212805 3.96227 0.00158273 4.47005 0 5L0 15C0.00158273 15.5299 0.212805 16.0377 0.587535 16.4125C0.962265 16.7872 1.47005 16.9984 2 17H18C18.5299 16.9984 19.0377 16.7872 19.4125 16.4125C19.7872 16.0377 19.9984 15.5299 20 15V5C19.9984 4.47005 19.7872 3.96227 19.4125 3.58753C19.0377 3.2128 18.5299 3.00158 18 3V3ZM5 8H3V6H5V8ZM8 8H6V6H8V8ZM11 8H9V6H11V8ZM14 8H12V6H14V8ZM17 8H15V6H17V8ZM5 11H3V9H5V11ZM8 11H6V9H8V11ZM11 11H9V9H11V11ZM14 11H12V9H14V11ZM17 11H15V9H17V11ZM14 14H6V12H14V14Z\" fill=\"#44D62C\"></path></svg>\n",
       "output": "assets/synapse/automation-quick-macro-keyboard.svg",
       "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
-      "sha256": "a7531a6b258435c1aead2ca586259b31b3fda36f7d176e903c166652b62f8301"
+      "sha256": "a7531a6b258435c1aead2ca586259b31b3fda36f7d176e903c166652b62f8301",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/js/main.46ad416c.js",
@@ -15426,7 +15446,8 @@
       "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M19.0017 12.8017V16.0017C19.0097 16.1351 18.9894 16.2687 18.9419 16.3937C18.8945 16.5186 18.8211 16.6321 18.7266 16.7266C18.6321 16.8211 18.5186 16.8945 18.3937 16.9419C18.2687 16.9894 18.1351 17.0097 18.0017 17.0017H2.0017C1.86829 17.0097 1.73469 16.9894 1.60973 16.9419C1.48477 16.8945 1.37129 16.8211 1.27678 16.7266C1.18228 16.6321 1.10889 16.5186 1.06147 16.3937C1.01405 16.2687 0.993683 16.1351 1.0017 16.0017V4.0017C0.993683 3.86829 1.01405 3.73469 1.06147 3.60973C1.10889 3.48477 1.18228 3.37129 1.27678 3.27678C1.37129 3.18228 1.48477 3.10889 1.60973 3.06147C1.73469 3.01405 1.86829 2.99368 2.0017 3.0017H9.2017L12.0017 5.8017L10.9017 6.9017L10.8017 7.0017H3.0017V15.0017H17.0017V10.8017L19.0017 12.8017ZM14.8017 5.8017L12.3017 8.3017C12.1191 8.48799 12.0175 8.7388 12.0188 8.99963C12.0201 9.26046 12.1243 9.51023 12.3087 9.69467C12.4932 9.8791 12.7429 9.9833 13.0038 9.98462C13.2646 9.98594 13.5154 9.88427 13.7017 9.7017L16.2017 7.2017L19.0017 10.0017V3.0017H12.0017L14.8017 5.8017Z\" fill=\"#DB2687\"></path></svg>\n",
       "output": "assets/synapse/automation-quick-macro-launch.svg",
       "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
-      "sha256": "4526f8430417c599117948182253130ba88456360e9f9a650a590c93f8dcdc51"
+      "sha256": "4526f8430417c599117948182253130ba88456360e9f9a650a590c93f8dcdc51",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/js/main.46ad416c.js",
@@ -15436,7 +15457,8 @@
       "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M18 3H2C1.73478 3 1.48043 3.10536 1.29289 3.29289C1.10536 3.48043 1 3.73478 1 4V16C1 16.2652 1.10536 16.5196 1.29289 16.7071C1.48043 16.8946 1.73478 17 2 17H18C18.2652 17 18.5196 16.8946 18.7071 16.7071C18.8946 16.5196 19 16.2652 19 16V4C19 3.73478 18.8946 3.48043 18.7071 3.29289C18.5196 3.10536 18.2652 3 18 3ZM17 15H3V7H17V15ZM15 14H10V12H15V14ZM5.707 13.707L4.293 12.293L5.586 11L4.293 9.707L5.707 8.293L8.414 11L5.707 13.707Z\" fill=\"#26AADB\"></path></svg>\n",
       "output": "assets/synapse/automation-quick-macro-runCommand.svg",
       "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
-      "sha256": "121b0cdfc8f9b3efa579490d9a8dbc2f2d8025c75f72bef88a4d35a2bd78e18c"
+      "sha256": "121b0cdfc8f9b3efa579490d9a8dbc2f2d8025c75f72bef88a4d35a2bd78e18c",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/devices/3946/static/js/main.46ad416c.js",
@@ -15446,7 +15468,8 @@
       "inline_svg": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\"><path d=\"M15 5H3V3H15V5ZM17 6H3V8H17V6ZM11 9H3V11H11V9ZM15 12H3V14H15V12ZM13 15H3V17H13V15Z\" fill=\"#4496FB\"></path></svg>\n",
       "output": "assets/synapse/automation-quick-macro-text.svg",
       "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
-      "sha256": "45637b07a4f0650d7b8f5b11e4ae4a6cde35d46786d9e887f0ad6cfc55a2dcb3"
+      "sha256": "45637b07a4f0650d7b8f5b11e4ae4a6cde35d46786d9e887f0ad6cfc55a2dcb3",
+      "evidence": "assets/synapse/automation-manifest.json"
     },
     {
       "source": ".ref/applications/synapse/profiles/static/media/icon_addnotgrey.f73db7b6.svg",
@@ -16226,6 +16249,239 @@
       "transform": "Byte-for-byte copy",
       "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
       "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
+    },
+    {
+      "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+      "output": "assets/synapse/armory-cooling-cpu.svg",
+      "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+      "sha256": "bd14fb564a24f02d65019b5d20a44429a407438f8c3590c908ef107eeec864c2",
+      "component": "FP",
+      "source_offset": 4737302,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+      "output": "assets/synapse/armory-cooling-gpu.svg",
+      "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+      "sha256": "135cca535e81950ac3b058246a6b9c8493f8c57c965e34afa6cdc9605105bef5",
+      "component": "GP",
+      "source_offset": 4729594,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+      "output": "assets/synapse/armory-cooling-reset.svg",
+      "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+      "sha256": "06964d233c1948740f5af64a800c64ea885f00e3bf0bd192b8b15a089d67fd2f",
+      "component": "nm",
+      "source_offset": 4766180,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+      "output": "assets/synapse/armory-cooling-delete.svg",
+      "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+      "sha256": "491979c29c590dc56f6f000b4113d80f78f7d7f36dd80743fa60b0a7f7cc6fe5",
+      "component": "Vp",
+      "source_offset": 4747707,
+      "source_kind": "inline_svg_literal",
+      "transform": "Exact current JSX-runtime SVG literal; path verified against renderer"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/warning.ad3f47f8.svg",
+      "output": "assets/synapse/armory-cooling-warning.svg",
+      "source_sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+      "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+      "component": "current CSS .warning:before",
+      "source_offset": 4046,
+      "source_kind": "inline_svg_literal",
+      "transform": "Offline current CSS content-fingerprint recovery, not a live HTTP success"
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-de.svg",
+      "sha256": "50585b9e80ec0661766ed679df1031e87a0e802d85b1b96c67d7769661bae771",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Lüftergeschwindigkeit",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-en.svg",
+      "sha256": "e0799e76291e089b773603f94197cf2d01f134c0f55c057a1a3495bfaf0ee2a6",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Fan Speed",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-es.svg",
+      "sha256": "0cd7c5e35627c230b812195a2a278635e3c3a7cf3408b4a90dbda53a8fbe1bff",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Velocidad del ventilador",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-fr.svg",
+      "sha256": "00408358d76710324064a876079beb95f1a6600576bcda44c4b6516aa66bc85d",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Vitesse du ventilateur",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-ja.svg",
+      "sha256": "d38ac3f8c0e0e21a2e1b744d94162c538db20a598c863484126e34518e3632c2",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "ファン速度",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-kr.svg",
+      "sha256": "9002d053c44fecb0c3419095ba706dd93a0ab2a5b69a5f5548f4374cfcf7e5b1",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "팬 속도",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-pt-BR.svg",
+      "sha256": "a029fce51ec7fd611bf025c5b93e1c47c246bbcd0a24a99f3f52d5afbe1e70e8",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Velocidade da ventoinha",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-ru.svg",
+      "sha256": "d216a69752f53604bb973a020fa3e9006d61b8ede4923802da4d38cf41b940ba",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "Скорость вращения вентилятора",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-zh-CN.svg",
+      "sha256": "b46eb9997ebe2548ea9c9990bff8009cfe978b9f20093c67c4ae8e3e27913ccc",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "风扇转速",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-zh-TW.svg",
+      "sha256": "22402ccf606038092a8d3d7afa3db3e9ef815ff67066c7d4956a2f7fdef33901",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "風扇速度",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-percent.svg",
+      "sha256": "0e708c723775cbf6952bc99507d2718a991e8f4d2fa8cade9ab13fb161518a33",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "%",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "output": "assets/synapse/armory-cooling-axis-rpm.svg",
+      "sha256": "7199d3f1692cc974ea6a08c49522137b5ebf59b6fcccc5a54f39e361bf51d849",
+      "source_kind": "font_glyph_outline",
+      "evidence": "docs/re/armory-cooling-axis-resources.json",
+      "text": "RPM",
+      "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_emoji.07a71bf8.svg",
+      "source_sha256": "dc54c0f563e8c6a16b6b55a21a5f55186aae46f8a9efe90c9fc2347b0b864550",
+      "output": "assets/synapse/shortcuts-emoji.svg",
+      "sha256": "dc54c0f563e8c6a16b6b55a21a5f55186aae46f8a9efe90c9fc2347b0b864550",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_emoji.07a71bf8.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_emoji_active.b1a4efad.svg",
+      "source_sha256": "1a695f1eb7b1f0ec51a180a29def16b4bef1758493cb6b534d30ec8df6a2174d",
+      "output": "assets/synapse/shortcuts-emoji-active.svg",
+      "sha256": "1a695f1eb7b1f0ec51a180a29def16b4bef1758493cb6b534d30ec8df6a2174d",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_emoji_active.b1a4efad.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_charactermap.025aae0b.svg",
+      "source_sha256": "f109be3abbc7005e08c60fd5a9f8f563e25cc9948f472a3bd1438638ab0012de",
+      "output": "assets/synapse/shortcuts-character.svg",
+      "sha256": "f109be3abbc7005e08c60fd5a9f8f563e25cc9948f472a3bd1438638ab0012de",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_charactermap.025aae0b.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_charactermap_active.3c3d7fb3.svg",
+      "source_sha256": "f29a2286d98c9f736231e437b805442692b0f6092ecd01ebc559136b90eb3b59",
+      "output": "assets/synapse/shortcuts-character-active.svg",
+      "sha256": "f29a2286d98c9f736231e437b805442692b0f6092ecd01ebc559136b90eb3b59",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_charactermap_active.3c3d7fb3.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_search.b84dee08.svg",
+      "source_sha256": "2dfb538fb7d85f1e1d86481cc3f457c33ebbb330fad3c6e7769fbd6a7f1d45a5",
+      "output": "assets/synapse/shortcuts-emoji-search.svg",
+      "sha256": "2dfb538fb7d85f1e1d86481cc3f457c33ebbb330fad3c6e7769fbd6a7f1d45a5",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_search.b84dee08.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_close_enclosed.6056b667.svg",
+      "source_sha256": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f",
+      "output": "assets/synapse/shortcuts-search-clear.svg",
+      "sha256": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_close_enclosed.6056b667.svg"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon_close_enclosed_a.83aff4bb.svg",
+      "source_sha256": "5b789a132a0c7468397a4f758e00c414e5a83a38de8ca718bc81974f6cb76451",
+      "output": "assets/synapse/shortcuts-search-clear-active.svg",
+      "sha256": "5b789a132a0c7468397a4f758e00c414e5a83a38de8ca718bc81974f6cb76451",
+      "purpose": "Current Dashboard MapText toolbar/search; exact current shared source bytes",
+      "current_dashboard_css_reference": "icon_close_enclosed_a.83aff4bb.svg"
+    },
+    {
+      "source": ".ref/devices/3946/static/js/main.46ad416c.js",
+      "source_sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
+      "output": "assets/synapse/automation-quick-macro-delete.svg",
+      "sha256": "9ce55bc420afed27edcb9c74d3b502a53f773d536b252decf593e3585d4e1cb2",
+      "evidence": "assets/synapse/automation-manifest.json"
     }
   ]
 }

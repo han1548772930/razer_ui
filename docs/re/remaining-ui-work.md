@@ -1,5 +1,9 @@
 # 尚未完成的界面与产品
 
+2026-10-05 Macro 后续批次：共享文档库与持久高水位 ID、每份宏的已保存动作及独立草稿、新建/切换/刷新保存提示、快捷键 Macro 选择和分类型播放集合已接入；3946 类型菜单与快捷键重复次数专用 Stepper 已按当前源码调整。继续接入了[嵌套宏选择与引用](macro-nested-current-audit.md)，包括活动草稿的循环候选检查；该菜单仍缺精确定位阈值、自动滚入和部分动画。具体行为、源码缺陷的本地处理和验证见 [集成记录](macro-library-integration-2026-10-05.md)。Sequence/Phased 完整创作、原生录制/执行、硬件服务和实际窗口验收也未完成；整体目标没有完成。
+
+2026-10-05 链接会话续接：已补快捷键文本 emoji/字符面板、3946 quick macro 捕获会话、3907 独立 Armory 无遥测分支及纵轴、Devices & Modules 源记录投影与正式服务行。3894 DEFAULT 经当前静态产品配置证明不可达，不再列作必须补造的页面；3894 是 Head Cushion Chroma，旧 PWM 名称错误。验证及明确边界见 [本批记录](continuation-followup-2026-10-05.md)。整体目标仍未完成，以下旧轮次与专项新记录冲突时以同日续接记录为准。
+
 2026-10-04 语言包键清零批次：`python tools/audit-locale-keys.py --check` 的待回溯项现在为
 **0**。前几轮登记的 5 处全部收口：`SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF`/`_WHEN_IDLE`
 （第 6 轮 → `DISPLAY_TURNED_OFF`/`IDLE_FOR_MIN`）、`MINIMUM`/`MAXIMUM`（第 7 轮 →

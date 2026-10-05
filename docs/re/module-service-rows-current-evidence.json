@@ -1,0 +1,671 @@
+{
+  "method": "Manifest-owned current Dashboard AST/CSS and existing asset hash comparison; no reference execution.",
+  "contracts": [
+    {
+      "module": 44442,
+      "symbol": "w",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 12624,
+      "end": 17620,
+      "source": "(0,r.connect)(e=>({lang:e.languageReducer.lang,isOnline:e.connection.isOnline,installerStatus:e.devicesAndModules.installerStatus}))(e=>{const{installerStatus:t,item:n,isOnline:s,showDescription:r,showChangeLog:w}=e,y=e.lang.toLowerCase(),[A,j]=(0,i.useState)(!1),[M,I]=(0,i.useState)(!1),{downloadedPercent:N,installedFiles:D,phase:S,totalFiles:$}=t[n.id]||{},k=()=>{const e=new BroadcastChannel(`installation_${n.type}_${n.id}`);e.postMessage({msg:\"install-cancel\"}),e.close()},C=()=>{if(\"device\"===n.type){const e=new BroadcastChannel(`usb_5426_${n.id}_${n.deviceContainerId}_mw`);e.postMessage({msgName:\"crossPageRequest\",msgData:{action:\"retryInstall\"}}),e.close()}else\"macro\"===n.id&&(window.open(\"/installer/#type=module&id=macro&location=synapse/macro\",\"synapse_install_macro\",\"policy=7,tab_visible=0,browser_visible=0\"),x.A.userOpen(g.zI[0])),\"alexa\"===n.id&&(window.open(\"/installer/#type=module&id=alexa&location=synapse/alexa\",\"synapse_install_alexa\",\"policy=7,tab_visible=0,browser_visible=0\"),x.A.userOpen(g.zI[1])),\"feedback\"===n.id&&window.open(\"/installer/#type=module&id=feedback&location=feedback\",\"synapse_install_feedback\",\"policy=7,tab_visible=0,browser_visible=0\")};let _=0,T=100;\"downloading\"===S&&(_=N),\"installing\"===S&&(_=D,T=$),\"completed\"===S&&(_=$,T=$);const[E,z]=(0,f.p7)(_||0,T,{phase:S,installData:{size:n.size}}),O=()=>I(!0),U=\"device\"===n.type?(0,v.U)({category:n.icon,subCategory:n.subCategory}):(0,b.jsx)(\"img\",{src:n.icon}),Y=y.toLowerCase(),V=void 0!==n.title[Y]?n.title[Y]:n.title.en;return(0,b.jsxs)(\"div\",{className:\"item\",children:[(0,b.jsxs)(\"div\",{className:\"item-main-content connected\",children:[(0,b.jsx)(\"div\",{className:\"item-icon\",children:U}),(0,b.jsx)(\"div\",{className:\"item-name\",children:V}),(0,b.jsxs)(\"div\",{className:\"to-left\",children:[(r||w)&&(0,b.jsx)(\"div\",{className:\"info-text link\",onClick:()=>j(!A),children:(0,b.jsx)(\"div\",{className:\"link\",children:n.detail?A?(0,b.jsx)(o.A,{text:a.Ndl}):(0,b.jsx)(o.A,{text:a.pmk}):null})}),(0,b.jsx)(\"div\",{className:\"second-from-left info-text last-update-time\",children:(()=>{let e;switch(S){case\"installing\":e=`${(0,l.getTextItem)(a.Uxl)}...`;break;case\"downloading\":e=100===E?`${(0,l.getTextItem)(a.HST)}...`:`${(0,l.getTextItem)(a.FHr)} ${z}`;break;case\"error\":e=(0,l.getTextItem)(a.jA5);break;default:e=`${(0,l.getTextItem)(a.uEA)}...`}return[\"downloading\",\"installing\"].includes(S)?(0,b.jsxs)(\"div\",{className:\"progress-bar-wrapper\",children:[(0,b.jsx)(p.A,{progress:E,extraStyle:{width:200,height:8}}),(0,b.jsx)(\"div\",{className:\"progress-bar-info\",children:e})]}):\"error\"===S?(0,b.jsx)(\"span\",{className:\"error\",children:e}):null})()}),(()=>{const e=s?\"\":\" disabled no-internet\",t=100===E?\" disabled\":\"\",i=s?\"\":\" disabled\";if(n.underMaintenance)return(0,b.jsxs)(\"div\",{className:\"item-action under-maintenance\",children:[(0,b.jsx)(\"i\",{className:\"cone-icon\"}),(0,b.jsx)(\"span\",{children:(0,b.jsx)(o.A,{text:a.mcz})})]});let r;switch(S){case\"installing\":r=(0,b.jsx)(\"div\",{className:\"item-action btn btn-gray disabled\",children:(0,b.jsx)(o.A,{text:a.bOp})});break;case\"downloading\":r=(0,b.jsx)(\"div\",{className:\"item-action btn btn-gray \"+t,onClick:k,children:(0,b.jsx)(o.A,{text:a.bOp})});break;case\"error\":r=(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.p6C})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]});break;case\"canceled\":r=s?(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]}):(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+i,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})});break;default:r=s?(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,onClick:C,children:(0,b.jsx)(o.A,{text:a.gF2})}):(0,b.jsxs)(\"div\",{className:\"item-tooltip\",children:[(0,b.jsx)(\"div\",{className:\"item-action btn btn-green\"+e,children:(0,b.jsx)(o.A,{text:a.gF2})}),(0,b.jsx)(\"div\",{className:\"tip\",children:(0,b.jsx)(o.A,{text:a.hDF})})]})}return r})()]})]}),A?(0,b.jsxs)(\"div\",{className:\"item-moreInfo item-description\",children:[(0,b.jsx)(\"img\",{className:\"item-description-image\",src:M?h:n.detail.srcImage,alt:c(n.detail.title,y),onError:O}),(0,b.jsxs)(\"div\",{className:\"item-description-info\",children:[(0,b.jsx)(\"div\",{className:\"item-description-content\",dangerouslySetInnerHTML:{__html:d(n.detail.description,y)}}),(0,b.jsxs)(\"div\",{className:\"item-description-extra-info\",children:[n.detail.learnMoreURL&&(0,b.jsx)(\"div\",{className:\"link\",children:(0,b.jsx)(m.A,{href:n.detail.learnMoreURL,onClick:()=>!1,children:(0,b.jsx)(o.A,{text:a.HkB})})}),(0,b.jsxs)(\"div\",{className:\"item-description-extra-info-fileSize\",children:[(0,b.jsx)(o.A,{text:a.SKL}),`: ${u(n.detail.size).size}`]}),n.detail.restartRequired?(0,b.jsx)(o.A,{text:a.kVo}):null]})]})]}):null]})})"
+    },
+    {
+      "module": 44442,
+      "symbol": "L",
+      "path": ".ref/applications/synapse/dashboard/static/js/6505.84205103.chunk.js",
+      "sha256": "2e52295495042bd8aa53b434348b929b42c00bc54edb900e3a4568583a54a8a4",
+      "offset": 23655,
+      "end": 29092,
+      "source": "(0,r.connect)(e=>({lang:\"unknown\"===e.languageReducer.lang?\"en\":e.languageReducer.lang}))(e=>{let{lang:t,item:n}=e;const[i,r]=s().useState(!1),c=\"SDK\"===n.upgradeMode,{warningText:d,isEntryEnabled:p}=s().useMemo(()=>c?(e=>{const{connectType:t}=e;let n=\"\",i=!0;var s,r;return t===V?(e.isSlaveDevice||e.supportDongle&&!1===(null===(s=e.supportUpgradeConnection)||void 0===s?void 0:s.dongle))&&(i=!1,!1!==(null===(r=e.supportUpgradeConnection)||void 0===r?void 0:r.usb)&&(n=a.Lw$)):t===R&&(i=!1,n=a.gcx),{warningText:n,isEntryEnabled:i}})(n):{warningText:\"\",isEntryEnabled:!0},[n.connectType,n.isSlaveDevice,n.supportDongle,n.supportUpgradeConnection,c]),h=n.firmwareUpdateInfo,f=s().useCallback(async e=>{try{const{productId:t,serialNumber:n}=e;await w(e);const i=(e=>U.stringify({productId:e}))(t),s=window.location.origin+g.Yb.url+`?${i}`;window.open(s,((e,t)=>g.Yb.windowName+`_${e}_${t}`)(t,n),g.Yb.openParam)}catch(t){console.warn(\"[openFirmwareUpdate] error:\",t)}},[]),x=s().useCallback(async e=>{var t;console.log(\"Opening online firmware update guide for device:\",e.productId,e.firmwareUpdateInfo),D.A.openExternalWindow(null===(t=e.firmwareUpdateInfo)||void 0===t?void 0:t.guide),console.log(\"View Online clicked and handled over.\")},[]),w=s().useCallback(async e=>{try{const t=await D.A.getWindowStorageItem(\"fw-upgrade\"),n=t?JSON.parse(t):[];let i=[];if(Array.isArray(n)&&n.length>0){const e=n.find(e=>e.windowName.includes(window.location.href));i=(null===e||void 0===e?void 0:e.value)||[]}i=i.filter(t=>t.serialNumber!==e.serialNumber||t.productId!==e.productId),i.push(e),await D.A.setWindowStorageItem(\"fw-upgrade\",i).finally(()=>{console.log(\"FirmwareUpdate Entry updateWindowStorage - Updated fw-upgrade data:\",JSON.stringify(i))})}catch(t){console.warn(\"[updateWindowStorage] error:\",t)}},[]),y=t.toLowerCase(),{releaseDate:A,releaseNotes:j,size:M,severity:I,targetVersion:N}=((e,t)=>{var n,i,s,r,a,o,l,c,d,u;const m={releaseDate:\"\",releaseNotes:[],size:0,severity:\"\",targetVersion:\"\"};let p=e.connectType===V?null===(n=e.firmwareUpdateInfo)||void 0===n?void 0:n.dongle:e.firmwareUpdateInfo;if(e.connectType!==V||null!==(i=e.firmwareUpdateInfo)&&void 0!==i&&null!==(s=i.dongle)&&void 0!==s&&s.targetFWVersion&&(null===(r=e.firmwareUpdateInfo)||void 0===r||null===(a=r.dongle)||void 0===a?void 0:a.targetFWVersion)!==(null===(o=e.firmwareInfo)||void 0===o?void 0:o.currentDongleFWVersion)||(e.supportUsb&&e.firmwareUpdateInfo.targetFWVersion!==e.firmwareInfo.currentFWVersion?p=e.firmwareUpdateInfo:console.warn(\"[getReleaseInfo] No valid firmware update info found for device:\",e.productId)),!p)return{...m,releaseDate:W(\"\",t)};const h={releaseDate:p.releaseDate,releaseNotes:null!==(l=p.releaseNotes)&&void 0!==l?l:m.releaseNotes,size:(null===(c=p)||void 0===c?void 0:c.size)||m.size,severity:(null===(d=p)||void 0===d?void 0:d.severity)||m.severity,targetVersion:(null===(u=p)||void 0===u?void 0:u.targetFWVersion)||m.targetVersion};return{...h,releaseDate:W(h.releaseDate,t)}})(n,y);console.log(\"FirmwareUpdateItem - Device:\",n.productId,\"FWInfo:\",JSON.stringify(h||{})),console.log(\"Warning text for device:\",n.productId,\"isEntryEnabled:\",p,\"warningText:\",d);const S=(0,v.U)({category:n.category||n.icon,subCategory:n.subCategory}),$=((e,t)=>{if(e.productName){if(\"string\"===typeof e.productName)return e.productName;if(\"object\"===typeof e.productName)return e.productName[t]||e.productName.en||\"\"}if(e.title){if(\"string\"===typeof e.title)return e.title;if(\"object\"===typeof e.title)return e.title[t]||e.title.en||\"\"}return\"\"})(n,y),k=!p&&d?(0,b.jsxs)(\"div\",{className:\"warning-box\",children:[(0,b.jsx)(\"span\",{className:\"warning-icon\",children:(0,b.jsx)(Y.h,{})}),(0,b.jsx)(\"span\",{className:\"firmware-warning-text\",children:(0,b.jsx)(o.A,{text:d})})]}):null,C=a.q8m,_=\"warning\"===I;return(0,b.jsxs)(\"div\",{className:\"item firmware\",children:[(0,b.jsxs)(\"div\",{className:\"item-main-content \"+(_?\"updateWarning\":\"\"),children:[(0,b.jsx)(\"div\",{className:\"item-icon\",children:S}),(0,b.jsx)(\"div\",{className:\"item-name\",children:`${$} ${_?` (${T=(0,l.getTextItem)(a.Inm),T.toLowerCase().split(\" \").map(e=>e.charAt(0).toUpperCase()+e.substring(1)).join(\" \")})`:\"\"}`}),(0,b.jsxs)(\"div\",{className:\"to-left\",children:[(0,b.jsx)(\"div\",{className:\"info-text link firmware-upgrade-info-text\",children:(0,b.jsx)(\"div\",{className:\"link\",onClick:()=>r(!i),children:i?(0,b.jsx)(o.A,{text:a.Ndl}):(0,b.jsx)(o.A,{text:a.pmk})})}),(0,b.jsx)(\"div\",{className:\"second-from-left info-text last-update-time\",children:k}),(0,b.jsx)(\"button\",{className:\"item-action btn btn-gray firmware-upgrade-btn \"+(p?\"\":\"disabled\"),onClick:()=>c?f(n):x(n),disabled:!p,children:(0,b.jsx)(o.A,{text:C})})]})]}),i&&(0,b.jsxs)(\"div\",{className:\"firmwareDescription\",children:[(0,b.jsxs)(\"div\",{className:\"leftContent\",children:[(0,b.jsxs)(\"p\",{children:[\" \",(0,b.jsx)(o.A,{text:a.xMD,data:{version:N}})]}),(0,b.jsxs)(\"p\",{children:[\" \",` ${(0,l.getTextItem)(a.iB1)}: ${A}`]}),c?(0,b.jsx)(\"p\",{}):(0,b.jsxs)(\"p\",{children:[\" \",`${(0,l.getTextItem)(a.SKL)}: `,`${u(M).size}`]})]}),(0,b.jsxs)(\"div\",{className:\"rightContent\",children:[(0,b.jsx)(m.A,{href:h.guide,onClick:()=>!1,children:(0,b.jsx)(o.A,{text:\"SYSTEM\"===n.icon?a.Pvt:a.zek,data:{deviceName:$,version:N}})}),(0,b.jsx)(\"ul\",{children:j.map(e=>{const n=e[t]||e[y]||e.en;return String(null!==n&&void 0!==n?n:\"\").trim()}).filter(Boolean).map((e,t)=>(0,b.jsx)(\"li\",{children:e},t))})]})]})]});var T})"
+    },
+    {
+      "module": 75551,
+      "symbol": "o",
+      "path": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+      "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a",
+      "offset": 88350,
+      "end": 88983,
+      "source": "e=>{let{progress:t,extraStyle:a,...s}=e;const o=n().useRef(null),r=n().useRef(0);return n().useEffect(()=>{const e=o.current,a=(t,a)=>{if(a){const t=()=>{a(),e.removeEventListener(\"transitionend\",t)};e.addEventListener(\"transitionend\",t)}t&&t()},s=t=>{e.style.width=t+\"%\"};if(t<r.current){const n=()=>{a(()=>{r.current=0,e.setAttribute(\"data-transition\",\"0\"),s(0)},()=>{e.removeAttribute(\"data-transition\"),s(t),r.current=t})};r.current<100?a(()=>{s(100)},n):n()}else t>r.current?(s(t),r.current=t):r.current=t},[t]),(0,i.jsx)(\"div\",{className:\"progress-bar\",...s||{},style:a,children:(0,i.jsx)(\"div\",{className:\"progress\",ref:o})})}"
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 4091,
+      "selector": ".items .item-moreInfo.item-description .item-description-image",
+      "conditions": [],
+      "declarations": "-webkit-user-drag:none;height:162px;margin-right:20px;object-fit:contain;-webkit-user-select:none;user-select:none;width:288px",
+      "properties": [
+        {
+          "property": "-webkit-user-drag",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "162px",
+          "important": false
+        },
+        {
+          "property": "margin-right",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "object-fit",
+          "value": "contain",
+          "important": false
+        },
+        {
+          "property": "-webkit-user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "288px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 4281,
+      "selector": ".items .item-moreInfo.item-description .item-description-info",
+      "conditions": [],
+      "declarations": "color:#ccc;font-family:Roboto;font-size:14px;width:592px",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "Roboto",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "592px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6154,
+      "selector": ".firmware .updateWarning .item-name",
+      "conditions": [],
+      "declarations": "color:#fd8611!important",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#fd8611",
+          "important": true
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6214,
+      "selector": ".firmware .updateWarning .item-icon svg",
+      "conditions": [],
+      "declarations": "fill:#fd8611",
+      "properties": [
+        {
+          "property": "fill",
+          "value": "#fd8611",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6267,
+      "selector": ".firmware .updateWarning .warning-box",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;max-height:56px;max-width:314px",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "56px",
+          "important": false
+        },
+        {
+          "property": "max-width",
+          "value": "314px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6369,
+      "selector": ".firmware .updateWarning .warning-box .warning-icon",
+      "conditions": [],
+      "declarations": "margin-right:10px",
+      "properties": [
+        {
+          "property": "margin-right",
+          "value": "10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6439,
+      "selector": ".firmware .updateWarning .warning-box .firmware-warning-text",
+      "conditions": [],
+      "declarations": "height:100%;overflow:auto;width:100%",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6537,
+      "selector": ".firmware .firmwareDescription",
+      "conditions": [],
+      "declarations": "background-color:#2d2d2d;display:flex;font-size:14px;padding:20px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#2d2d2d",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6634,
+      "selector": ".firmware .firmwareDescription p",
+      "conditions": [],
+      "declarations": "margin:0",
+      "properties": [
+        {
+          "property": "margin",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6676,
+      "selector": ".firmware .firmwareDescription .leftContent",
+      "conditions": [],
+      "declarations": "display:flex;flex-direction:column;gap:10px;justify-content:flex-start;width:200px",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "flex-start",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "200px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6803,
+      "selector": ".firmware .firmwareDescription .rightContent a",
+      "conditions": [],
+      "declarations": "cursor:pointer;position:relative;text-decoration:underline",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "pointer",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "text-decoration",
+          "value": "underline",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 6909,
+      "selector": ".firmware .firmwareDescription .rightContent a:after",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/icon_external_link.48227e72.svg);content:\"\";display:inline-block;height:20px;position:absolute;right:-25px;top:-2px;width:20px",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/icon_external_link.48227e72.svg)",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\"\"",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "inline-block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "-25px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-2px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/6505.9782778c.chunk.css",
+      "sha256": "a5aa94dc8b3de365368419c282f7e5760a0c7f57096bcba7eff7ebf4605f3561",
+      "offset": 7129,
+      "selector": ".firmware .firmwareDescription .rightContent ul",
+      "conditions": [],
+      "declarations": "padding-left:15px",
+      "properties": [
+        {
+          "property": "padding-left",
+          "value": "15px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 60809,
+      "selector": ".progress-bar-wrapper",
+      "conditions": [],
+      "declarations": "padding-top:20px",
+      "properties": [
+        {
+          "property": "padding-top",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 60848,
+      "selector": ".progress-bar-wrapper .progress-bar-info",
+      "conditions": [],
+      "declarations": "color:#707070;font-family:Roboto;font-size:12px;margin-top:5px;text-align:left",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#707070",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "Roboto",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "12px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 60968,
+      "selector": ".progress-bar-wrapper .progress-bar-info.error",
+      "conditions": [],
+      "declarations": "color:#fd4949",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#fd4949",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 61029,
+      "selector": ".progress-bar",
+      "conditions": [],
+      "declarations": "background-color:#2c5824;border-radius:4px;height:5px;overflow:hidden;position:relative;width:100%",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#2c5824",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "4px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 61142,
+      "selector": ".progress-bar .progress",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;border-radius:15px;height:100%;left:0;position:absolute;top:0;transition:width .3s linear;width:0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "15px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "width .3s linear",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 61289,
+      "selector": ".progress-bar .progress[data-transition=\"0\"]",
+      "conditions": [],
+      "declarations": "transition-duration:1ms",
+      "properties": [
+        {
+          "property": "transition-duration",
+          "value": "1ms",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 86811,
+      "selector": ".header-update>.box>.circle>.progress-bar",
+      "conditions": [],
+      "declarations": "background-color:#2c5824;border-radius:1px;height:2px;overflow:hidden;position:relative;width:14px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#2c5824",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "2px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "14px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 86952,
+      "selector": ".header-update>.box>.circle>.progress-bar>.progress",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;height:100%;left:0;position:absolute;top:0;transition:width .3s linear;width:0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "width .3s linear",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+      "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+      "offset": 174041,
+      "selector": ".reset-oled-download .download-popup .progress-bar-header",
+      "conditions": [],
+      "declarations": "display:flex;justify-content:space-between",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-between",
+          "important": false
+        }
+      ]
+    }
+  ],
+  "external_link": {
+    "source": ".ref/applications/synapse/dashboard/static/media/icon_external_link.48227e72.svg",
+    "output": "assets/synapse/external-link.svg",
+    "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8"
+  },
+  "native": {
+    "progress": "Retained RenderOnce presentation starts at zero and linearly approaches observed targets in 300ms. Decrease fills to 100 when the previous target is below 100, resets to zero in 1ms, then approaches the new target in 300ms. Track is #2c5824, 200x8px, radius 4px and clipped; indicator is #44d62c with radius 15px.",
+    "observations": "Only width is sampled. Service snapshot and install phase never change; accessibility exposes the observed percentage. Reduced motion displays the target immediately.",
+    "image": "w consumes detail.srcImage, which is not established as the ae dashboard thumbnail. The native description leaves its 288x162 image area empty pending a proven embedded mapping.",
+    "firmware": "Only firmware severity warning colors the category icon; installed/new rows remain ordinary. Firmware title prefers productName before title. Current external-link.svg is used at the original 20px, right -25px/top -2px position.",
+    "limits": [
+      "Overlapping source transitionend callback races are not reproduced; a newer observation starts a new visual sequence from the displayed width.",
+      "The 1ms reset is clock-sampled; it may not occupy a whole display frame.",
+      "Description error fallback artwork is not shown without observing an image request failure.",
+      "No app/build/tests/vendor JS/DLL ran; pixel geometry, OS font metrics and animation have not been visually verified."
+    ]
+  }
+}

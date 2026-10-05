@@ -37,9 +37,9 @@ row, hover, pressed, foreground, muted, primary, border, footer, danger and
 warning roles. Body uses Roboto 14px at the source 16px rem scale; widget title
 uses RazerF5 16px. Widget and row widths/padding, 60px item height, 355px lane
 width, 34/35px lane gaps, 37px category select, footer sizing and 109px modal
-top margin are derived from the current CSS. Twenty-three SVG assets are recorded in
+top margin are derived from the current CSS. Twenty-four SVG assets are recorded in
 `automation-manifest.json`: nineteen exact copies from manifest-declared current
-URLs and four type icons converted from literal JSX SVG paths. Inline receipts
+URLs, four type icons and one quick-macro delete icon converted from literal JSX SVG paths. Inline receipts
 retain the current source range, fragment and source/output hashes.
 
 ## Explicit remaining fidelity and integration work
@@ -110,9 +110,14 @@ retain the current source range, fragment and source/output hashes.
   invalidate older picker results. GPUI cannot filter extensions in its native
   picker, so `.exe` is checked after selection. See
   [current program picker evidence](automation-quick-program-current-audit.md).
-  Native type-menu row icons, source capture-session keyup
-  behavior, exact pill hover/delete overlays and transition timing still need
-  completion. Game browser/link editing and
+  Native type-menu row icons, the source capture-session keyup behavior,
+  pill hover/delete overlays and their 200ms transitions are now implemented;
+  see [current keyboard capture evidence](automation-quick-keyboard-current-audit.md).
+  The type menu now uses the source 8/12px option insets, selected text,
+  300ms trigger/arrow transitions and immediate conditional mounting;
+  see [current menu evidence](automation-quick-menu-current-audit.md).
+  Caps Lock physical edges, browser-default trigger metrics and rendered
+  focus/animation parity remain unresolved. Game browser/link editing and
   global-shortcut assignment remain follow-up work; their buttons continue to
   report the unavailable service boundary rather than inventing catalogs.
 - Advanced Chroma profile selection requires the real profile catalog; source

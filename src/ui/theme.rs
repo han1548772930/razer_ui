@@ -343,6 +343,13 @@ impl TourColors {
 /// Main frontend's photographic banner, module details, and tutorial emphasis.
 pub(crate) struct MainPageColors;
 impl MainPageColors {
+    /// Current 55 CSS .progress-bar and its .progress child.
+    pub(crate) fn service_progress_track(&self) -> Hsla {
+        rgb(0x2c5824).into()
+    }
+    pub(crate) fn service_progress_fill(&self) -> Hsla {
+        rgb(0x44d62c).into()
+    }
     pub(crate) fn module_action_gray(&self) -> Hsla {
         rgb(0x555555).into()
     }

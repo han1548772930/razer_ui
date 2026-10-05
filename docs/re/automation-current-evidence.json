@@ -1,6 +1,6 @@
 {
   "method": "Acorn literals and mounted current source; vendor code never executed",
-  "generator_sha256": "4bf3dab3bbf1fce54bd147b02c860b03b56c3bfa76e18a9c2177d598f132fc57",
+  "generator_sha256": "a2b3e2f36d9237d8a6d316d9964969e374a957668fd3383b1faf25f347c19cc3",
   "source_files": [
     {
       "path": ".ref/devices/3946/static/js/main.46ad416c.js",

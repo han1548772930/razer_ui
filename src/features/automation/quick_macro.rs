@@ -1,9 +1,41 @@
 use super::*;
+use gpui_kit::base::motion;
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
     radio::Radio,
-    select::{Select, SelectEvent, SelectState},
 };
+use std::time::Duration;
+
+#[derive(Clone, Copy)]
+struct MacroType {
+    value: &'static str,
+    label: &'static str,
+}
+
+impl MacroType {
+    fn content(self, selected: bool) -> AnyElement {
+        h_flex()
+            .min_w_0()
+            .gap(surface::css(6.))
+            .overflow_hidden()
+            .whitespace_nowrap()
+            .text_color(if selected {
+                Colors::primary()
+            } else {
+                Colors::foreground()
+            })
+            .child(
+                img(SharedString::from(format!(
+                    "synapse/automation-quick-macro-{}.svg",
+                    self.value
+                )))
+                .size(surface::css(20.))
+                .flex_shrink_0(),
+            )
+            .child(div().truncate().child(self.label))
+            .into_any_element()
+    }
+}
 
 pub(super) struct QuickMacroSaved(pub(super) Value);
 impl EventEmitter<QuickMacroSaved> for QuickMacroEditor {}
@@ -19,11 +51,20 @@ pub(super) struct QuickMacroEditor {
     picker_task: Option<Task<()>>,
     picker_error: Option<String>,
     text: Entity<TextareaState>,
-    type_select: Entity<SelectState<Vec<Choice>>>,
+    type_menu_open: bool,
+    type_hovered: bool,
+    type_focus: FocusHandle,
+    type_option_focus: [FocusHandle; 4],
+    type_trigger_bounds: Bounds<Pixels>,
     kind: String,
     launch_kind: String,
     keys: Vec<String>,
     capture: FocusHandle,
+    capture_input: Entity<InputState>,
+    capturing: bool,
+    capture_modifiers: Modifiers,
+    hovered_key: Option<String>,
+    pressed_key: Option<String>,
     subscriptions: Vec<Subscription>,
 }
 
@@ -31,10 +72,10 @@ impl QuickMacroEditor {
     pub(super) fn new(names: Vec<String>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let next_name = Self::next_name_for(&names);
         let name = cx.new(|cx| InputState::new(window, cx).default_value(next_name));
-        let value = cx.new(|cx| InputState::new(window, cx));
+        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Insert Command"));
         let website = cx.new(|cx| InputState::new(window, cx));
-        let text = cx.new(|cx| TextareaState::new(window, cx));
-        let type_select = cx.new(|cx| SelectState::new(Self::type_choices(), None, window, cx));
+        let text = cx.new(|cx| TextareaState::new(window, cx).placeholder("Enter Text"));
+        let capture_input = cx.new(|cx| InputState::new(window, cx).placeholder("Start typing"));
         let mut this = Self {
             catalog_names: names,
             name,
@@ -46,11 +87,20 @@ impl QuickMacroEditor {
             picker_task: None,
             picker_error: None,
             text,
-            type_select,
+            type_menu_open: false,
+            type_hovered: false,
+            type_focus: cx.focus_handle(),
+            type_option_focus: std::array::from_fn(|_| cx.focus_handle()),
+            type_trigger_bounds: Bounds::default(),
             kind: String::new(),
             launch_kind: "PROGRAM".into(),
             keys: vec![],
             capture: cx.focus_handle(),
+            capture_input,
+            capturing: false,
+            capture_modifiers: Modifiers::default(),
+            hovered_key: None,
+            pressed_key: None,
             subscriptions: vec![],
         };
         this.subscriptions
@@ -82,25 +132,203 @@ impl QuickMacroEditor {
                 }
             },
         ));
-        this.subscriptions.push(cx.subscribe_in(
-            &this.type_select,
-            window,
-            |this, _, event, window, cx| {
-                if let SelectEvent::Confirm(Some(kind)) = event {
-                    this.set_kind(kind, window, cx);
-                }
-            },
-        ));
         this
     }
 
-    fn type_choices() -> Vec<Choice> {
-        vec![
-            Choice::new("keyboard", "Keyboard function"),
-            Choice::new("launch", "Launch"),
-            Choice::new("runCommand", "Run command"),
-            Choice::new("text", "Text function"),
+    fn type_choices() -> [MacroType; 4] {
+        [
+            MacroType {
+                value: "keyboard",
+                label: "Keyboard function",
+            },
+            MacroType {
+                value: "launch",
+                label: "Launch",
+            },
+            MacroType {
+                value: "runCommand",
+                label: "Run command",
+            },
+            MacroType {
+                value: "text",
+                label: "Text function",
+            },
         ]
+    }
+
+    fn type_selector(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let choices = Self::type_choices();
+        let selected = choices.iter().copied().find(|item| item.value == self.kind);
+        let placeholder = text("SELECT_MACRO_TYPE");
+        let title = selected.map_or(placeholder.as_str(), |item| item.label);
+        let policy =
+            || motion::Transition::new(Duration::from_millis(300)).easing(motion::Easing::Ease);
+        let border: Hsla = if self.type_menu_open || self.type_hovered {
+            Colors::primary()
+        } else {
+            rgb(0x515151).into()
+        };
+        let border = motion::transition("quick-macro-type-border", border, policy(), window, cx);
+        let angle = motion::transition(
+            "quick-macro-type-chevron",
+            if self.type_menu_open {
+                std::f32::consts::PI
+            } else {
+                0.
+            },
+            policy(),
+            window,
+            cx,
+        );
+        // CSS fit-content is bounded below by the whole trigger. The source
+        // row's 20px SVG + 6px gap + 12px side padding determines max-content.
+        let content_width = choices
+            .iter()
+            .map(|item| surface::label_width(item.label, 14., window) + 20. + 6. + 24. + 2.)
+            .fold(0., f32::max);
+        let menu_width = self
+            .type_trigger_bounds
+            .size
+            .width
+            .max(surface::css(content_width).to_pixels(window.rem_size()));
+        let trigger_owner = cx.entity().downgrade();
+        let mut selector = div()
+            .id("quick-macro-type-select")
+            .relative()
+            .w_full()
+            .h(surface::css(27.))
+            .child(
+                gpui_kit::base::Button::new("quick-macro-type-control")
+                    .track_focus(&self.type_focus)
+                    .accessibility_label(format!("{}: {title}", text("TYPE")))
+                    .aria_expanded(self.type_menu_open)
+                    .relative()
+                    .w_full()
+                    .h(surface::css(27.))
+                    .px(surface::css(6.))
+                    .flex()
+                    .items_center()
+                    .border_1()
+                    .border_color(border)
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .text_color(Colors::foreground())
+                    .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                        this.type_hovered = *hovered;
+                        cx.notify();
+                    }))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.type_menu_open = !this.type_menu_open;
+                        cx.notify();
+                    }))
+                    .child(selected.map_or_else(
+                        || {
+                            div()
+                                .text_color(rgb(0x666666))
+                                .truncate()
+                                .child(placeholder)
+                                .into_any_element()
+                        },
+                        |item| item.content(false),
+                    ))
+                    .child(
+                        div()
+                            .absolute()
+                            .right_0()
+                            .top_0()
+                            .w(surface::css(29.))
+                            .h(surface::css(25.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                svg()
+                                    .path("synapse/automation-icon_expand.svg")
+                                    .size(surface::css(10.))
+                                    .text_color(Colors::muted())
+                                    .with_transformation(Transformation::rotate(radians(angle))),
+                            ),
+                    )
+                    .child(
+                        canvas(
+                            move |bounds, _, cx| {
+                                let _ = trigger_owner.update(cx, |this, cx| {
+                                    let resized = this.type_trigger_bounds.size != bounds.size;
+                                    this.type_trigger_bounds = bounds;
+                                    if resized && this.type_menu_open {
+                                        cx.notify();
+                                    }
+                                });
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .inset_0(),
+                    ),
+            );
+        if self.type_menu_open {
+            // aH mounts this only while k is true. Its CSS declares height and
+            // max-height transitions, but no closed DOM node or delayed open
+            // style exists; retain the immediate mount/unmount rather than
+            // introducing a new popup entrance/exit animation.
+            let menu = v_flex()
+                .id("quick-macro-type-menu")
+                .absolute()
+                .left_0()
+                .top(surface::css(28.))
+                .w(menu_width)
+                .max_h(surface::css(180.))
+                .bg(Colors::black())
+                .border_1()
+                .border_color(rgb(0x515151))
+                .overflow_x_hidden()
+                .overflow_y_scroll()
+                .occlude()
+                .on_mouse_down_out(cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                    if !this.type_trigger_bounds.contains(&event.position) {
+                        this.type_menu_open = false;
+                        // A disappearing focused option must not strand GPUI
+                        // keyboard dispatch. The clicked field may take focus
+                        // later in the same event, as normal native buttons do.
+                        if this
+                            .type_option_focus
+                            .iter()
+                            .any(|focus| focus.is_focused(window))
+                        {
+                            this.type_focus.focus(window, cx);
+                        }
+                        cx.notify();
+                    }
+                }))
+                .children(choices.into_iter().enumerate().map(|(index, item)| {
+                    gpui_kit::base::Button::new(("quick-macro-type-option", index))
+                        .track_focus(&self.type_option_focus[index])
+                        .accessibility_label(item.label)
+                        .aria_selected(self.kind == item.value)
+                        .w_full()
+                        .min_h(surface::css(30.))
+                        .flex_shrink_0()
+                        .px(surface::css(12.))
+                        .py(surface::css(8.))
+                        .flex()
+                        .items_center()
+                        .gap(surface::css(10.))
+                        .font_family("Roboto")
+                        .text_size(surface::css(14.))
+                        .line_height(surface::css(17.))
+                        .hover(|style| style.bg(Colors::close_hover()))
+                        .child(item.content(self.kind == item.value))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            // Source resets the action even when reselecting
+                            // the already-selected type; it has no no-op guard.
+                            this.set_kind(item.value, window, cx);
+                            this.type_focus.focus(window, cx);
+                        }))
+                }));
+            selector = selector.child(deferred(menu).priority(3));
+        }
+        selector.into_any_element()
     }
 
     fn next_name_for(names: &[String]) -> String {
@@ -151,20 +379,29 @@ impl QuickMacroEditor {
         }
     }
 
-    fn capture_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        if self.kind != "keyboard" {
+    fn capture_key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.capturing {
+            if event.keystroke.key == "escape" {
+                window.close_dialog(cx);
+                window.prevent_default();
+                cx.stop_propagation();
+            }
             return;
         }
+        // aH installs document listeners only during X. Escape is a captured
+        // key while X is true; it must not activate the enclosing dialog.
+        window.prevent_default();
+        cx.stop_propagation();
         let key = match event.keystroke.key.as_str() {
             "meta" => "Windows".into(),
             "control" => "Ctrl".into(),
             "alt" => "Alt".into(),
             "shift" => "Shift".into(),
-            " " => "Space".into(),
-            "arrowup" => "Arrow Up".into(),
-            "arrowdown" => "Arrow Down".into(),
-            "arrowleft" => "Arrow Left".into(),
-            "arrowright" => "Arrow Right".into(),
+            " " | "space" => "Space".into(),
+            "arrowup" | "up" => "Arrow Up".into(),
+            "arrowdown" | "down" => "Arrow Down".into(),
+            "arrowleft" | "left" => "Arrow Left".into(),
+            "arrowright" | "right" => "Arrow Right".into(),
             value if value.len() == 1 => value.to_uppercase(),
             value => {
                 let mut chars = value.chars();
@@ -174,9 +411,48 @@ impl QuickMacroEditor {
                     .unwrap_or_default()
             }
         };
+        self.add_key(key, cx);
+        // The source temporary input unmounts after the first key. Keep its
+        // listener scope focused so the remaining chord and keyup still arrive.
+        self.capture.focus(window, cx);
+    }
+
+    fn add_key(&mut self, key: String, cx: &mut Context<Self>) {
         if self.keys.len() < 10 && !self.keys.iter().any(|value| value == &key) {
             self.keys.push(key);
             cx.notify();
+        }
+    }
+
+    fn modifiers_changed(
+        &mut self,
+        event: &ModifiersChangedEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.capturing {
+            return;
+        }
+        let before = self.capture_modifiers;
+        self.capture_modifiers = event.modifiers;
+        // GPUI Windows reports modifier edges separately from KeyDown/KeyUp.
+        // Any release ends the same session as the source document keyup.
+        let edges = [
+            (before.control, event.control, "Ctrl"),
+            (before.alt, event.alt, "Alt"),
+            (before.shift, event.shift, "Shift"),
+            (before.platform, event.platform, "Windows"),
+        ];
+        if edges.iter().any(|(old, new, _)| *old && !*new) {
+            self.capturing = false;
+            cx.notify();
+            return;
+        }
+        for (old, new, name) in edges {
+            if !old && new {
+                self.add_key(name.into(), cx);
+                self.capture.focus(window, cx);
+            }
         }
     }
 
@@ -234,10 +510,14 @@ impl QuickMacroEditor {
         // A picker response from before Clear or a type change must not
         // repopulate the new draft. The native picker itself remains open.
         self.picker_generation = self.picker_generation.wrapping_add(1);
+        self.type_menu_open = false;
         self.picker_error = None;
         self.program_path.clear();
         self.launch_kind = "PROGRAM".into();
         self.keys.clear();
+        self.capturing = false;
+        self.hovered_key = None;
+        self.pressed_key = None;
         self.value
             .update(cx, |state, cx| state.set_value("", window, cx));
         self.website
@@ -398,76 +678,174 @@ impl QuickMacroEditor {
             .into_any_element()
     }
 
-    fn field(&self, cx: &Context<Self>) -> AnyElement {
+    fn keyboard_field(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let disabled = self.kind.is_empty();
+        let mut field = h_flex()
+            .w_full()
+            .items_center()
+            .flex_wrap()
+            .gap(surface::css(5.))
+            .when(disabled, |field| field.opacity(0.3));
+        if self.keys.is_empty() && !self.capturing {
+            field = field.child(
+                gpui_kit::base::Button::new("quick-macro-capture-start")
+                    .accessibility_label("Start typing")
+                    .disabled(disabled)
+                    .px(surface::css(10.))
+                    .py(surface::css(8.))
+                    .min_w(surface::css(34.))
+                    .min_h(surface::css(34.))
+                    .border_1()
+                    .rounded(surface::css(4.))
+                    .border_color(Colors::muted())
+                    .hover(|style| style.border_color(Colors::primary()))
+                    .child("+")
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.capturing = true;
+                        this.capture_modifiers = window.modifiers();
+                        this.capture_input
+                            .read(cx)
+                            .focus_handle(cx)
+                            .focus(window, cx);
+                        cx.notify();
+                    })),
+            );
+        } else if self.keys.is_empty() {
+            field = field.child(
+                Input::new(&self.capture_input)
+                    .appearance(false)
+                    .w_full()
+                    .h(surface::css(28.))
+                    .p_0(),
+            );
+        }
+        for (index, key) in self.keys.iter().enumerate() {
+            if index > 0 {
+                field = field.child(div().text_size(surface::css(14.)).child("+"));
+            }
+            let hovered = self.hovered_key.as_ref() == Some(key);
+            let pressed = self.pressed_key.as_ref() == Some(key);
+            let policy =
+                || motion::Transition::new(Duration::from_millis(200)).easing(motion::Easing::Ease);
+            let border_target: Hsla = if pressed {
+                rgb(0x4e4e4e)
+            } else if hovered {
+                rgb(0xff4a4a)
+            } else {
+                rgb(0x5d5d5d)
+            }
+            .into();
+            let border = motion::transition(
+                (
+                    SharedString::from(format!("quick-macro-pill-{key}")),
+                    "border",
+                ),
+                border_target,
+                policy(),
+                window,
+                cx,
+            );
+            let delete_opacity = motion::transition(
+                (
+                    SharedString::from(format!("quick-macro-pill-{key}")),
+                    "opacity",
+                ),
+                if hovered { 1.0_f32 } else { 0.0_f32 },
+                policy(),
+                window,
+                cx,
+            );
+            let delete_target: Hsla = if pressed {
+                rgb(0x4e4e4e)
+            } else {
+                rgb(0xfd4949)
+            }
+            .into();
+            let delete_color = motion::transition(
+                (
+                    SharedString::from(format!("quick-macro-pill-{key}")),
+                    "delete-color",
+                ),
+                delete_target,
+                policy(),
+                window,
+                cx,
+            );
+            let hover_key = key.clone();
+            let press_key = key.clone();
+            let remove_key = key.clone();
+            field = field.child(
+                gpui_kit::base::Button::new(SharedString::from(format!("quick-macro-key-{key}")))
+                    .accessibility_label(format!("Remove {key}"))
+                    .relative()
+                    .px(surface::css(10.))
+                    .py(surface::css(8.))
+                    .min_w(surface::css(34.))
+                    .min_h(surface::css(34.))
+                    .text_size(surface::css(13.))
+                    .line_height(surface::css(16.))
+                    .border_1()
+                    .rounded(surface::css(4.))
+                    .border_color(border)
+                    .child(div().opacity(1. - delete_opacity).child(key.clone()))
+                    .child(
+                        div()
+                            .absolute()
+                            .inset_0()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .opacity(delete_opacity)
+                            .child(
+                                svg()
+                                    .path("synapse/automation-quick-macro-delete.svg")
+                                    .size(surface::css(24.))
+                                    .text_color(delete_color),
+                            ),
+                    )
+                    .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                        this.hovered_key = hovered.then(|| hover_key.clone());
+                        if !hovered {
+                            this.pressed_key = None;
+                        }
+                        cx.notify();
+                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _, _, cx| {
+                            this.pressed_key = Some(press_key.clone());
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.pressed_key = None;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.pressed_key = None;
+                            cx.notify();
+                        }),
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.keys.retain(|key| key != &remove_key);
+                        this.hovered_key = None;
+                        this.pressed_key = None;
+                        cx.notify();
+                    })),
+            );
+        }
+        field.into_any_element()
+    }
+
+    fn field(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         match self.kind.as_str() {
             "launch" => self.launch_field(cx),
-            "keyboard" => div()
-                .id("quick-macro-key-capture")
-                .track_focus(&self.capture)
-                .w_full()
-                .min_h(surface::css(38.))
-                .px(surface::css(6.))
-                .flex()
-                .items_center()
-                .justify_start()
-                .flex_wrap()
-                .gap(surface::css(5.))
-                .border_1()
-                .border_color(Colors::border())
-                .on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(|this, _, window, cx| {
-                        this.capture.focus(window, cx);
-                    }),
-                )
-                .on_key_down(
-                    cx.listener(|this, event: &KeyDownEvent, _, cx| this.capture_key(event, cx)),
-                )
-                .children(if self.keys.is_empty() {
-                    vec![
-                        div()
-                            .text_color(Colors::muted())
-                            .child("+")
-                            .into_any_element(),
-                    ]
-                } else {
-                    self.keys
-                        .iter()
-                        .map(|key| {
-                            let key_to_remove = key.clone();
-                            gpui_kit::base::Button::new(SharedString::from(format!(
-                                "quick-macro-key-{key}"
-                            )))
-                            .accessibility_label(format!("Remove {key}"))
-                            .px(surface::css(8.))
-                            .py(surface::css(6.))
-                            .border_1()
-                            .rounded(surface::css(4.))
-                            .border_color(Colors::input_border())
-                            .hover(|style| style.border_color(Colors::danger()))
-                            .child(key.clone())
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.keys.retain(|key| key != &key_to_remove);
-                                cx.notify();
-                            }))
-                            .into_any_element()
-                        })
-                        .collect()
-                })
-                .into_any_element(),
-            "" => div()
-                .w_full()
-                .min_h(surface::css(38.))
-                .opacity(0.3)
-                .child(
-                    div()
-                        .px(surface::css(8.))
-                        .py(surface::css(6.))
-                        .border_1()
-                        .border_color(Colors::border())
-                        .child("+"),
-                )
-                .into_any_element(),
+            "keyboard" | "" => self.keyboard_field(window, cx),
             "text" => Textarea::new(&self.text)
                 .appearance(false)
                 .w_full()
@@ -490,27 +868,42 @@ impl QuickMacroEditor {
     }
 
     fn section_icon(&self) -> AnyElement {
-        if self.kind.is_empty() {
-            return div()
-                .w(surface::css(20.))
-                .h(surface::css(20.))
-                .opacity(0.3)
-                .into_any_element();
-        }
+        let kind = if self.kind.is_empty() {
+            "keyboard"
+        } else {
+            &self.kind
+        };
         img(SharedString::from(format!(
-            "synapse/automation-quick-macro-{}.svg",
-            self.kind
+            "synapse/automation-quick-macro-{kind}.svg"
         )))
         .size(surface::css(20.))
+        .flex_shrink_0()
+        .when(!matches!(self.kind.as_str(), "text" | "launch"), |icon| {
+            icon.mt(surface::css(6.))
+        })
+        .when(self.kind.is_empty(), |icon| icon.opacity(0.3))
         .into_any_element()
     }
 }
 
 impl Render for QuickMacroEditor {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let value_len = self.text.read(cx).value().encode_utf16().count();
         v_flex()
             .id("quick-macro-popup")
+            .track_focus(&self.capture)
+            .capture_key_down(
+                cx.listener(|this, event, window, cx| this.capture_key(event, window, cx)),
+            )
+            .on_key_up(cx.listener(|this, _: &KeyUpEvent, _, cx| {
+                if this.capturing {
+                    this.capturing = false;
+                    cx.notify();
+                }
+            }))
+            .on_modifiers_changed(
+                cx.listener(|this, event, window, cx| this.modifiers_changed(event, window, cx)),
+            )
             .w(surface::css(500.))
             .h(surface::css(369.))
             .when(self.picker_error.is_some(), |view| {
@@ -580,13 +973,7 @@ impl Render for QuickMacroEditor {
                                     .text_color(Colors::muted())
                                     .child(text("TYPE").to_uppercase()),
                             )
-                            .child(
-                                Select::new(&self.type_select)
-                                    .w_full()
-                                    .h(surface::css(27.))
-                                    .placeholder("Select a type of macro")
-                                    .accessibility_label("Macro type"),
-                            ),
+                            .child(self.type_selector(window, cx)),
                     ),
             )
             .child(
@@ -617,7 +1004,7 @@ impl Render for QuickMacroEditor {
                     .items_start()
                     .gap(surface::css(10.))
                     .child(self.section_icon())
-                    .child(self.field(cx)),
+                    .child(self.field(window, cx)),
             )
             .when(self.kind == "text", |view| {
                 view.child(

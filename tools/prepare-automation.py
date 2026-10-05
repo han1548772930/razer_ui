@@ -28,7 +28,29 @@ for asset in spec['assets']:
         assert fragment==asset['source_fragment']
     svg=ET.fromstring(output_content)
     assert svg.tag.endswith('svg') and not any(n.tag.endswith('script') for n in svg.iter())
-    output.write_bytes(output_content)
+    if not output.exists() or output.read_bytes() != output_content:
+        output.write_bytes(output_content)
     records.append({**asset,'source_sha256':digest(content),'output_sha256':digest(output_content)})
 (ROOT/'assets/synapse/automation-manifest.json').write_text(json.dumps(records,indent=2)+'\n',encoding='utf8')
+# A prepared SVG must also reach the production AssetSource. Preserve unrelated
+# resources and merge this generator's own entries using actual output bytes.
+manifest_path = ROOT/'assets/synapse/manifest.json'
+manifest = json.loads(manifest_path.read_text(encoding='utf8'))
+embedded_path = ROOT/'assets/synapse/embedded.rs'
+embedded = embedded_path.read_text(encoding='utf8')
+for record in records:
+    entry = {'source': record['source'], 'source_sha256': record['source_sha256'],
+             'output': record['output'], 'sha256': record['output_sha256'],
+             'evidence': 'assets/synapse/automation-manifest.json'}
+    existing = next((item for item in manifest['entries'] if item['output'] == record['output']), None)
+    if existing:
+        existing.update(entry)
+    else:
+        manifest['entries'].append(entry)
+    name = Path(record['output']).name
+    asset_key = record['output'].removeprefix('assets/')
+    if f'"{asset_key}"' not in embedded:
+        embedded = embedded.rstrip().removesuffix(']') + f'    ("{asset_key}", include_bytes!("{name}") as &[u8]),\n]\n'
+manifest_path.write_bytes((json.dumps(manifest, ensure_ascii=False, indent=2)+'\n').encode('utf8'))
+embedded_path.write_bytes(embedded.encode('utf8'))
 print(f'Prepared {len(records)} current automation SVG resources.')

@@ -11,6 +11,8 @@ mod keyboard_controls;
 mod lighting_color;
 mod lighting_input;
 pub(crate) mod macro_inputs;
+pub(crate) mod macro_library;
+pub(crate) mod module_service;
 mod sensitivity;
 pub mod settings;
 // Keep the pure native encoder and its strict input validation available for

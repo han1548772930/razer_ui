@@ -235,7 +235,9 @@ impl MacroPage {
                             .pr(css(30.))
                             .justify_start()
                             .child(div().min_w_0().truncate().child(entry.name.clone()))
-                            .on_click(cx.listener(move |this, _, _, cx| this.select_entry(id, cx))),
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.select_entry(id, window, cx)
+                            })),
                     );
                 if self.rename == Some(id) && self.rename_in_tree {
                     row = row.child(
@@ -343,7 +345,10 @@ impl MacroPage {
             )
             .child(
                 menu_action(("macro-tree-duplicate", id), keys[1], false, window, cx).on_click(
-                    cx.listener(move |this, _, _, cx| this.duplicate_entry(id, false, true, cx)),
+                    cx.listener(move |this, _, window, cx| {
+                        this.finish_pending_edits(window, cx);
+                        this.duplicate_entry(id, false, true, cx)
+                    }),
                 ),
             )
             .child(div().h(css(1.)).mx(css(6.)).my(css(4.)).bg(rgb(0x5d5d5d)))

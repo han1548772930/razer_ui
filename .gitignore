@@ -136,3 +136,13 @@
 !/tools/recover-current-media.cjs
 !/tools/audit-chroma-review.cjs
 !/tools/audit-armory-product-roots.cjs
+!/tools/audit-armory-remaining-roots.cjs
+!/tools/extract-armory-cooling-icons.cjs
+!/tools/audit-automation-quick-keyboard.cjs
+!/tools/audit-module-service.cjs
+!/tools/audit-module-service-rows.cjs
+!/tools/prepare-armory-cooling-axis.py
+!/tools/recover-shortcuts-service-media.cjs
+!/tools/audit-shortcuts-macro-contract.cjs
+!/tools/audit-shortcuts-stepper.cjs
+!/tools/audit-automation-quick-menu.cjs

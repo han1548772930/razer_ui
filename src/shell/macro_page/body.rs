@@ -118,7 +118,7 @@ impl MacroPage {
     fn item_editor(
         &self,
         list_height: f32,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let disabled = self.macro_count() == 0 || self.tutorial != Tutorial::Complete;
@@ -209,7 +209,7 @@ impl MacroPage {
                         .mr(css(12.)),
                     )
                     .child(tr(kind.label()))
-                    .child(self.action_value_editor(index, kind, cx))
+                    .child(self.action_value_editor(index, kind, window, cx))
                     .into_any_element()
             }))
             .when(selected_count > 0, |v| {
@@ -278,6 +278,7 @@ impl MacroPage {
         &self,
         index: usize,
         kind: ActionKind,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let editable = kind != ActionKind::Macro;
@@ -286,6 +287,9 @@ impl MacroPage {
             .get(index)
             .cloned()
             .unwrap_or_else(|| ActionItem::new(kind));
+        if kind == ActionKind::Macro {
+            return self.nested_macro_editor(index, &item, window, cx);
+        }
         if kind == ActionKind::Launch {
             return self.launch_value_popup(index, item, cx);
         }
@@ -981,8 +985,12 @@ impl MacroPage {
                     )
                     .child(
                         BaseButton::new("macro-save")
-                            .disabled(!self.can_save())
-                            .opacity(if self.can_save() { 1. } else { 0.3 })
+                            .disabled(!self.can_save_with_pending(cx))
+                            .opacity(if self.can_save_with_pending(cx) {
+                                1.
+                            } else {
+                                0.3
+                            })
                             .min_w(css(100.))
                             .h(css(27.))
                             .mr(css(10.))
@@ -996,7 +1004,10 @@ impl MacroPage {
                             .text_size(css(12.))
                             .line_height(css(14.))
                             .child(tr("TEXT_LAUNCH_SAVE"))
-                            .on_click(cx.listener(|this, _, _, cx| this.save_actions(cx))),
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.finish_pending_edits(window, cx);
+                                this.save_actions(cx)
+                            })),
                     ),
             )
             .into_any_element()
@@ -1050,6 +1061,7 @@ impl MacroPage {
                         .child(tr("TEXT_MACRO_CONTENT_SKIP").to_uppercase())
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.tutorial = Tutorial::Complete;
+                            this.publish_library(cx);
                             cx.notify();
                         })),
                 )
@@ -1106,6 +1118,7 @@ impl MacroPage {
                             } else {
                                 Tutorial::Complete
                             };
+                            this.publish_library(cx);
                             cx.notify();
                         })),
                 )

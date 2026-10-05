@@ -115,15 +115,15 @@ for(const name of ['icon_add_light_grey','icon_delete','tooltip_questionmark','i
 // Convert only literal JSX SVG props. No downloaded JavaScript is evaluated.
 const macroIcon=declarations.find(n=>n.id.name==='tH'&&n.start>6917000&&n.end<6920390).init;
 const escapeXml=value=>String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-function literalSvg(node){
+function literalSvg(node,size=20){
  if(node.type!=='CallExpression'||node.arguments[0]?.type!=='Literal'||node.arguments[1]?.type!=='ObjectExpression')throw Error('Changed quick macro JSX');
  const tag=node.arguments[0].value;
  if(!['svg','path'].includes(tag))throw Error('Unexpected quick macro SVG node');
  const props=node.arguments[1].properties,attributes=[],children=[];
  for(const p of props){
   const key=p.key.name??p.key.value;
-  if(key==='children'){children.push(literalSvg(p.value));continue;}
-  if(key==='width'||key==='height'){attributes.push(`${key}="20"`);continue;}
+  if(key==='children'){children.push(literalSvg(p.value,size));continue;}
+  if(key==='width'||key==='height'){attributes.push(`${key}="${size}"`);continue;}
   if(p.value.type!=='Literal')throw Error('Nonliteral quick macro SVG attribute');
   attributes.push(`${key}="${escapeXml(p.value.value)}"`);
  }
@@ -135,6 +135,11 @@ for(const branch of macroIcon.body.body.find(n=>n.type==='SwitchStatement').case
  const kind=branch.test.value,svg=literalSvg(statement.argument)+'\n';
  assets.push({source:file.path,source_offset:statement.argument.start,source_end:statement.argument.end,source_fragment:source.slice(statement.argument.start,statement.argument.end),inline_svg:svg,output:`assets/synapse/automation-quick-macro-${kind}.svg`});
 }
+const macroDelete=declarations.find(n=>n.id.name==='eH'&&n.init?.start===6915402).init;
+const macroDeleteSvg=macroDelete.body.body.find(n=>n.type==='ReturnStatement').argument;
+assets.push({source:file.path,source_offset:macroDeleteSvg.start,source_end:macroDeleteSvg.end,
+ source_fragment:source.slice(macroDeleteSvg.start,macroDeleteSvg.end),inline_svg:literalSvg(macroDeleteSvg,24)+'\n',
+ output:'assets/synapse/automation-quick-macro-delete.svg'});
 const css=[];
 for(const f of fs.readdirSync(path.join(root,'.ref/devices/3946/static/css')).filter(f=>f.endsWith('.css'))){
  const p='.ref/devices/3946/static/css/'+f,s=read(p),rules=s.split('}').filter(r=>/automation-|AutomationModal_|LaunchSoundApp_|quick-macro|macro-type-select|macro-keyboard|macro-pill|effects-area|color-opts|dropdown-color|random-color|toggle-btn|modes-tab|dir-up|dir-down|stepper|slider-container|range-slider|^\.slider[:{]|^\.foot\./.test(r.split('{')[0])||r.startsWith('.slider{')).map(r=>r+'}');

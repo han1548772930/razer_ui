@@ -3,7 +3,7 @@
   "final_url": "https://apps.razer.com/synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif",
   "redirected": false,
   "http_status": null,
-  "fetched_at_utc": "2026-10-05T03:58:48Z",
+  "fetched_at_utc": "2026-10-05T05:10:00Z",
   "content_type": null,
   "last_modified": null,
   "etag": null,
@@ -14,15 +14,15 @@
   "attempts": [
     {
       "attempt": 1,
-      "started_at_utc": "2026-10-05T03:58:48Z",
-      "completed_at_utc": "2026-10-05T03:58:48Z",
+      "started_at_utc": "2026-10-05T05:10:00Z",
+      "completed_at_utc": "2026-10-05T05:10:00Z",
       "status": null,
       "result": "network_error",
-      "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000025AA2835DF0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+      "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000022FD3E24620>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
       "final_url": "https://apps.razer.com/synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif",
       "redirect_chain": []
     }
   ],
-  "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000025AA2835DF0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+  "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/3893/ui/3893_0/PluginImages/3893_0_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000022FD3E24620>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
   "body_file": "dashboard-3893-0-0-source.avif.response"
 }

@@ -2,6 +2,7 @@
 //! Browsing and navigation are local. Native discovery/install results are never
 //! synthesized from clicks, timers, or the catalogue of supported products.
 use super::app_picker::PickerModule;
+use crate::features::module_service::{self as service, ModuleServiceSnapshot, Record};
 use crate::{
     i18n,
     model::Device,
@@ -322,3 +323,5 @@ const MODULES: &[Module] = &[
     },
 ];
 include!("devices_modules_catalog.rs");
+include!("module_service_rows.rs");
+include!("module_service_remove.rs");

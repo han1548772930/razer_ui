@@ -1,0 +1,54 @@
+[
+  {
+    "asset": "assets/synapse/armory-cooling-cpu.svg",
+    "sha256": "bd14fb564a24f02d65019b5d20a44429a407438f8c3590c908ef107eeec864c2",
+    "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+    "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+    "component": "FP",
+    "offset": 4737302,
+    "end": 4738714,
+    "method": "Static literal createElement SVG serialization"
+  },
+  {
+    "asset": "assets/synapse/armory-cooling-gpu.svg",
+    "sha256": "135cca535e81950ac3b058246a6b9c8493f8c57c965e34afa6cdc9605105bef5",
+    "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+    "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+    "component": "GP",
+    "offset": 4729594,
+    "end": 4737006,
+    "method": "Static literal createElement SVG serialization"
+  },
+  {
+    "asset": "assets/synapse/armory-cooling-reset.svg",
+    "sha256": "06964d233c1948740f5af64a800c64ea885f00e3bf0bd192b8b15a089d67fd2f",
+    "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+    "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+    "component": "nm",
+    "offset": 4766180,
+    "end": 4767344,
+    "method": "Static literal createElement SVG serialization"
+  },
+  {
+    "asset": "assets/synapse/armory-cooling-delete.svg",
+    "sha256": "491979c29c590dc56f6f000b4113d80f78f7d7f36dd80743fa60b0a7f7cc6fe5",
+    "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
+    "source_sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+    "component": "Vp",
+    "offset": 4747707,
+    "end": 4748544,
+    "method": "Exact current JSX-runtime SVG literal; path verified against renderer"
+  },
+  {
+    "asset": "assets/synapse/armory-cooling-warning.svg",
+    "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+    "source": ".ref/applications/synapse/macro/static/media/warning.ad3f47f8.svg",
+    "source_sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+    "component": "current CSS .warning:before",
+    "offset": 4046,
+    "css": ".ref/devices/3907/static/css/main.693a1953.css",
+    "css_sha256": "3bc4dd6b0eeb64b60162a6fc0b78df0382855b2113ab486b8866f74d8969ac21",
+    "md4": "ad3f47f8808da6f791645f53f445ca17",
+    "method": "Offline current CSS content-fingerprint recovery, not a live HTTP success"
+  }
+]

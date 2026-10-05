@@ -5,7 +5,7 @@
 //! See docs/re/armory-product-roots-current-evidence.json.
 use crate::{
     i18n,
-    model::{Device, DeviceCategory},
+    model::Device,
     resources,
     ui::surface::{self, css},
 };
@@ -13,13 +13,12 @@ use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
+mod cooling_pad;
+
 pub(crate) fn supports(device: &Device) -> bool {
-    matches!(device.product_id, 1303 | 1304 | 1313 | 3893)
-        || (device.product_id == 3894
-            && matches!(
-                device.category,
-                DeviceCategory::Accessory | DeviceCategory::Mousepad
-            ))
+    // 3894 is Head Cushion Chroma. Its current 8193.DeviceInfo.category is
+    // statically ACCESSORY; the root does not inspect our discovery category.
+    matches!(device.product_id, 1303 | 1304 | 1313 | 3893 | 3894 | 3907)
 }
 
 /// 3893's BC.runtimeData initial values. These are source initialization,
@@ -123,6 +122,9 @@ fn temperature(value: f32, celsius: bool) -> String {
 }
 impl RenderOnce for ArmoryProduct {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        if self.device.product_id == 3907 {
+            return cooling_pad::render(&self.device, window, cx);
+        }
         let root = v_flex()
             .w_full()
             .min_w_0()
@@ -132,7 +134,7 @@ impl RenderOnce for ArmoryProduct {
             .text_color(rgb(0xcccccc))
             .child(self.product_image(cx));
         if self.device.product_id != 3893 {
-            return root;
+            return root.into_any_element();
         }
         let state = window.use_keyed_state(
             (
@@ -248,5 +250,6 @@ impl RenderOnce for ArmoryProduct {
                     vec![cpu, cooling, gpu]
                 }),
         )
+        .into_any_element()
     }
 }

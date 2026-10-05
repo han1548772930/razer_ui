@@ -15,6 +15,22 @@ entries = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))[
 embedded = (directory / "embedded.rs").read_text(encoding="utf-8")
 expected = set()
 
+# Current 96689 category paths have a separate generated include so resource
+# preparation can remain independent from the main manifest writer.
+service_evidence = json.loads((ROOT / "docs/re/module-service-current-evidence.json").read_text(encoding="utf-8"))
+service_include = (directory / "module-service-embedded.rs").read_text(encoding="utf-8")
+service_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', service_include)
+assert len(service_keys) == len(service_evidence["entries"])
+assert len({key for key, _ in service_keys}) == len(service_keys)
+for entry in service_evidence["entries"]:
+    assert entry["source"].startswith(".ref/applications/synapse/dashboard/")
+    source = ROOT / entry["source"]
+    target = ROOT / "assets" / entry["asset"]
+    assert (entry["asset"], target.name) in service_keys
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == entry["source_sha256"]
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == entry["output_sha256"]
+    assert ET.fromstring(target.read_bytes()).tag.endswith("svg")
+
 # Reject obsolete provenance before opening any referenced source. A passing hash
 # from an old snapshot must never certify an asset as current.
 def validate_provenance(value):
@@ -112,6 +128,8 @@ for entry in entries:
         assert delays == entry["frame_durations_ms"], path
 assert set(re.findall(r'include_bytes!\("([^"]+)"\)', embedded)) == expected
 assert len(expected) == len(entries), "Duplicate output keys"
+assert expected.isdisjoint({filename for _, filename in service_keys}), "Duplicate service asset registration"
+expected.update(filename for _, filename in service_keys)
 image_map = json.loads((directory / "product-image-map.json").read_text(encoding="utf-8"))
 sources = {entry["output"]: entry for entry in entries}
 source_text = {}
@@ -293,6 +311,7 @@ for layout in layout_sources["layouts"]:
         assert all(abs(a-b)<1e-5 for a,b in zip(bounds,key["bounds"])), (key["id"],bounds,key["bounds"])
         assert bounds[2]>0 and bounds[3]>0
 print(f"Validated {len(entries)} source/output hashes, image formats and embedded keys; "
+      f"{len(service_keys)} current service SVGs; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
       f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")

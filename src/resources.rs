@@ -3,9 +3,15 @@ use gpui_kit::{AssetSource, SharedString};
 use std::borrow::Cow;
 pub struct SynapseAssets;
 const ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/embedded.rs");
+const MODULE_SERVICE_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/module-service-embedded.rs");
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
-        if let Some((_, bytes)) = ASSETS.iter().find(|(key, _)| *key == path) {
+        if let Some((_, bytes)) = ASSETS
+            .iter()
+            .chain(MODULE_SERVICE_ASSETS)
+            .find(|(key, _)| *key == path)
+        {
             return Ok(Some(Cow::Borrowed(bytes)));
         }
         gpui_kit::assets::AllAssets.load(path)
@@ -15,6 +21,7 @@ impl AssetSource for SynapseAssets {
         items.extend(
             ASSETS
                 .iter()
+                .chain(MODULE_SERVICE_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
                 .map(|(key, _)| SharedString::from(*key)),
         );

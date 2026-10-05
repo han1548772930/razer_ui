@@ -158,25 +158,6 @@ fn module_group(key: &'static str, rows: Vec<AnyElement>, cx: &App) -> Option<An
     )
 }
 
-/// Presentation slots for rows supplied by service adapters. None is unobserved;
-/// Some(empty) is observed empty. Snapshot devices lack installedDate,
-/// needsUpgrade and installer receipts, so they cannot populate these groups.
-/// ModulePreview remains a separate owner of explicitly labelled sample data.
-#[derive(Default)]
-struct ObservedModuleServiceRows {
-    firmware_updates: Option<Vec<AnyView>>,
-    new_devices: Option<Vec<AnyView>>,
-    updated_recently: Option<Vec<AnyView>>,
-}
-impl ObservedModuleServiceRows {
-    fn elements(rows: &Option<Vec<AnyView>>) -> Vec<AnyElement> {
-        rows.iter()
-            .flatten()
-            .cloned()
-            .map(IntoElement::into_any_element)
-            .collect()
-    }
-}
 /// 77989/i loads these flags together. Unknown retains the hook's initial
 /// isExchangeEnabled=false, rather than inventing a completed flag response.
 struct ObservedArmoryFeatures {
@@ -192,13 +173,26 @@ impl ObservedArmoryFeatures {
     }
 }
 pub(super) struct ModuleCatalog {
-    expanded: BTreeSet<&'static str>,
-    service_rows: ObservedModuleServiceRows,
+    expanded: BTreeSet<String>,
+    service_snapshot: Option<ModuleServiceSnapshot>,
+    service_groups: Option<service::ServiceGroups>,
+    local_devices: Vec<Device>,
+    removal: Option<String>,
+    clear_settings: bool,
+    removal_focus: FocusHandle,
+    return_focus: Option<FocusHandle>,
+    removal_task: Option<Task<()>>,
     armory_features: Option<ObservedArmoryFeatures>,
     host_is_beta: Option<bool>,
 }
 pub(super) enum ModuleCatalogEvent {
     OpenModule(ModulePage),
+    OpenDevice(String),
+    ServiceCommand {
+        action: &'static str,
+        record: Record,
+        clear_settings: bool,
+    },
     FirmwareUpdate {
         device: Option<Device>,
         preview: bool,
@@ -206,13 +200,28 @@ pub(super) enum ModuleCatalogEvent {
 }
 impl EventEmitter<ModuleCatalogEvent> for ModuleCatalog {}
 impl ModuleCatalog {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(snapshot: Option<ModuleServiceSnapshot>, cx: &mut Context<Self>) -> Self {
+        let groups = snapshot.as_ref().map(ModuleServiceSnapshot::groups);
         Self {
             expanded: BTreeSet::new(),
-            service_rows: ObservedModuleServiceRows::default(),
+            service_snapshot: snapshot,
+            service_groups: groups,
+            local_devices: Vec::new(),
+            removal: None,
+            clear_settings: false,
+            removal_focus: cx.focus_handle(),
+            return_focus: None,
+            removal_task: None,
             armory_features: None,
             host_is_beta: None,
         }
+    }
+    pub(super) fn service_snapshot(&self) -> Option<ModuleServiceSnapshot> {
+        self.service_snapshot.clone()
+    }
+    pub(super) fn sync_local_devices(&mut self, devices: &[Device], cx: &mut Context<Self>) {
+        self.local_devices = devices.to_vec();
+        cx.notify();
     }
     /// Explicit UI samples: no installer transport or device mutation is involved.
     pub(super) fn open_preview(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -267,7 +276,7 @@ impl ModuleCatalog {
                                 .on_click(cx.listener(
                                     move |this, _, _, cx| {
                                         if !this.expanded.remove(item.id) {
-                                            this.expanded.insert(item.id);
+                                            this.expanded.insert(item.id.into());
                                         }
                                         cx.notify();
                                     },
@@ -301,31 +310,86 @@ impl ModuleCatalog {
     }
 }
 impl Render for ModuleCatalog {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // ne has five entries. Tour/profile migration remain Dashboard entries.
         let available = source_module_catalog()
             .ids
             .iter()
             .filter_map(|id| MODULES.iter().find(|item| item.source_id() == id.as_str()))
-            .map(|item| self.module_row(item, cx))
+            .filter(|item| {
+                !self
+                    .service_snapshot
+                    .as_ref()
+                    .is_some_and(|s| s.installed_module(item.source_id()))
+            })
+            .map(|item| self.available_service_module(item, cx))
             .collect();
+        let mut firmware = Vec::new();
+        let mut new_devices = Vec::new();
+        let mut recent = Vec::new();
+        if let Some(groups) = &self.service_groups {
+            firmware = groups
+                .firmware
+                .iter()
+                .map(|row| self.firmware_service_row(row, cx))
+                .collect();
+            new_devices = groups
+                .new_devices
+                .iter()
+                .map(|row| self.new_device_service_row(row, cx))
+                .collect();
+            // ae preserves this exact order; only normal devices sort connected-first.
+            for removing in [true, false] {
+                recent.extend(
+                    groups
+                        .installed_devices
+                        .iter()
+                        .filter(|r| (service::string(r, "status") == "uninstalling") == removing)
+                        .map(|row| self.installed_service_row(row, None, window, cx)),
+                );
+                recent.extend(
+                    groups
+                        .installed_modules
+                        .iter()
+                        .filter(|r| (service::string(r, "status") == "uninstalling") == removing)
+                        .filter_map(|row| {
+                            let name = service::string(row, "moduleName");
+                            MODULES
+                                .iter()
+                                .find(|m| {
+                                    m.source_id() == name
+                                        && source_module_catalog().ids.iter().any(|id| id == &name)
+                                })
+                                .map(|module| {
+                                    // ae.f merges current ne/ie metadata after service data.
+                                    let mut row = row.clone();
+                                    row.insert(
+                                        "title".into(),
+                                        serde_json::Value::String(module.title_for(
+                                            self.armory_features.as_ref().is_some_and(
+                                                ObservedArmoryFeatures::exchange_enabled,
+                                            ),
+                                            self.host_is_beta.unwrap_or(false),
+                                        )),
+                                    );
+                                    row.insert(
+                                        "removable".into(),
+                                        serde_json::Value::Bool(matches!(
+                                            module.source_id(),
+                                            "alexa" | "macro"
+                                        )),
+                                    );
+                                    self.installed_service_row(&row, Some(module), window, cx)
+                                })
+                        }),
+                );
+            }
+        }
         let groups = [
-            module_group(
-                "FIRMWARE_UPDATES",
-                ObservedModuleServiceRows::elements(&self.service_rows.firmware_updates),
-                cx,
-            ),
-            module_group(
-                "NEW_DEVICES",
-                ObservedModuleServiceRows::elements(&self.service_rows.new_devices),
-                cx,
-            ),
+            module_group("FIRMWARE_UPDATES", firmware, cx),
+            module_group("NEW_DEVICES", new_devices, cx),
             module_group("AVAILABLE_MODULES", available, cx),
-            module_group(
-                "UPDATED_RECENTLY",
-                ObservedModuleServiceRows::elements(&self.service_rows.updated_recently),
-                cx,
-            ),
+            module_group("UPDATED_RECENTLY", recent, cx),
         ];
         v_flex()
             .id("devices-modules")

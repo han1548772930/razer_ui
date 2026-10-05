@@ -144,6 +144,16 @@ pub(crate) fn open_color_management() -> anyhow::Result<()> {
         anyhow::bail!("color management is only available on Windows")
     }
 }
+/// Current MapText's character-map action opens the Windows character utility.
+pub(crate) fn open_character_map() -> anyhow::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("charmap.exe").spawn()?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    anyhow::bail!("Character Map is only available on Windows")
+}
 pub(crate) fn open(properties: Properties) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {

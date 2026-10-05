@@ -1,5 +1,7 @@
 # Devices & Modules 主路由接入（2026-10-05）
 
+> 同日续接更新：下文关于三个 `AnyView` 空槽和“正式服务行只在预览中”的状态已被后续代码取代。新增源记录投影、workspace 可选快照入口及正式 w/O/L 行，见 [服务接入记录](module-service-integration-2026-10-05.md)。真实原生服务仍未连接。
+
 本轮依据 `ui-source-review-2026-10-05.md` 的 M01–M07，重新读取当前 `.ref/applications/synapse/dashboard/`。只运行维护中的静态 Acorn 提取器、JSON/资源校验与格式化；没有运行应用、构建、测试、下载的 JavaScript 或 DLL。
 
 ## 已接入的部分

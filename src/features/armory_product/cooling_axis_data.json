@@ -1,0 +1,54 @@
+{
+  "labels": {
+    "de": {
+      "asset": "synapse/armory-cooling-axis-de.svg",
+      "advance": 117.492188
+    },
+    "en": {
+      "asset": "synapse/armory-cooling-axis-en.svg",
+      "advance": 55.886719
+    },
+    "es": {
+      "asset": "synapse/armory-cooling-axis-es.svg",
+      "advance": 127.382812
+    },
+    "fr": {
+      "asset": "synapse/armory-cooling-axis-fr.svg",
+      "advance": 114.820312
+    },
+    "ja": {
+      "asset": "synapse/armory-cooling-axis-ja.svg",
+      "advance": 60.0
+    },
+    "kr": {
+      "asset": "synapse/armory-cooling-axis-kr.svg",
+      "advance": 38.970703
+    },
+    "pt-BR": {
+      "asset": "synapse/armory-cooling-axis-pt-BR.svg",
+      "advance": 130.371094
+    },
+    "ru": {
+      "asset": "synapse/armory-cooling-axis-ru.svg",
+      "advance": 181.505859
+    },
+    "zh-CN": {
+      "asset": "synapse/armory-cooling-axis-zh-CN.svg",
+      "advance": 48.0
+    },
+    "zh-TW": {
+      "asset": "synapse/armory-cooling-axis-zh-TW.svg",
+      "advance": 48.0
+    }
+  },
+  "units": {
+    "percent": {
+      "asset": "synapse/armory-cooling-axis-percent.svg",
+      "advance": 10.253906
+    },
+    "rpm": {
+      "asset": "synapse/armory-cooling-axis-rpm.svg",
+      "advance": 29.674805
+    }
+  }
+}

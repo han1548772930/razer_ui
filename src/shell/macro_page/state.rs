@@ -1,39 +1,8 @@
 use super::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum ActionKind {
-    Delay,
-    Keyboard,
-    Mouse,
-    Macro,
-    Launch,
-    Command,
-    Text,
-    Loop,
-}
-
-/// One locally editable event row. The current Synapse editor renders a
-/// compact action-specific value beside every event (delay seconds, key,
-/// mouse button, text, command, and so on). The value is intentionally kept
-/// as display text here: no device recorder or mapping service is available
-/// in this shell, while the edit/undo/save interaction remains reviewable.
-#[derive(Clone, PartialEq, Eq)]
-pub(super) struct ActionItem {
-    pub(super) kind: ActionKind,
-    pub(super) value: String,
-    /// The second launch target (`Content1`) stays separate from the program
-    /// path (`Content0`) when switching the Program/Website radio selection.
-    pub(super) secondary_value: String,
-    /// Delay randomization keeps the two source `Number.min`/`Number.max`
-    /// values separate from the fixed delay value. These remain local draft
-    /// fields because profile delay settings are service-owned in Synapse.
-    pub(super) number_min: String,
-    pub(super) number_max: String,
-    /// Source keeps button/loop state beside the primary value (`State` or
-    /// `LoopEvent.State`). It is local metadata here because no recorder or
-    /// mapping service is connected to this shell.
-    pub(super) state: String,
-}
+pub(super) use crate::features::macro_library::{
+    ActionItem, ActionKind, Entry, EntryKind, Tutorial,
+};
 
 impl ActionItem {
     pub(super) fn new(kind: ActionKind) -> Self {
@@ -55,6 +24,7 @@ impl ActionItem {
         };
         Self {
             kind,
+            macro_id: None,
             value,
             secondary_value: String::new(),
             number_min: if kind == ActionKind::Delay {
@@ -127,27 +97,6 @@ impl ActionKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum EntryKind {
-    Macro,
-    Folder,
-}
-
-#[derive(Clone)]
-pub(super) struct Entry {
-    pub id: u64,
-    pub name: String,
-    pub kind: EntryKind,
-    pub parent: Option<u64>,
-    pub open: bool,
-}
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Tutorial {
-    Initial,
-    Record,
-    Add,
-    Complete,
-}
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Sort {
     Ascending,
@@ -265,6 +214,21 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if kind == EntryKind::Macro {
+            self.request_action(super::unsaved::PendingAction::New, window, cx);
+        } else {
+            self.create_entry_now(kind, window, cx);
+        }
+    }
+    pub(super) fn create_entry_now(
+        &mut self,
+        kind: EntryKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.next_id >= u64::MAX - 1 {
+            return;
+        }
         // 25572.OM and Zs[h.$g] both concat to root profiles, not selected folder.
         let id = self.next_id;
         self.next_id += 1;
@@ -274,12 +238,16 @@ impl MacroPage {
             kind,
             parent: None,
             open: false,
+            actions: vec![],
+            macro_type: Default::default(),
         });
         if kind == EntryKind::Macro {
+            self.stash_current_draft();
             self.clear_action_editors();
             self.current = Some(id);
             self.actions_for = Some(id);
             self.actions.clear();
+            self.selected_actions.clear();
             self.saved_actions_for = Some(id);
             self.saved_actions.clear();
             self.undo.clear();
@@ -293,9 +261,23 @@ impl MacroPage {
         }
         self.more_open = false;
         self.tree_menu = None;
+        self.publish_library(cx);
         cx.notify();
     }
-    pub(super) fn select_entry(&mut self, id: u64, cx: &mut Context<Self>) {
+    pub(super) fn select_entry(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        if self.current != Some(id)
+            && self
+                .entries
+                .iter()
+                .any(|e| e.id == id && e.kind == EntryKind::Macro)
+        {
+            self.request_action(super::unsaved::PendingAction::Select(id), window, cx);
+        } else {
+            self.select_entry_now(id, cx);
+        }
+    }
+    pub(super) fn select_entry_now(&mut self, id: u64, cx: &mut Context<Self>) {
+        self.stash_current_draft();
         self.binding_menu = None;
         if let Some(entry) = self.entries.iter_mut().find(|e| e.id == id) {
             self.tree_selection = Some(id);
@@ -308,16 +290,12 @@ impl MacroPage {
                 self.randomized_open = None;
                 self.choice_action = None;
                 self.current = Some(id);
-                self.actions_for = None;
-                self.actions.clear();
-                self.saved_actions_for = None;
-                self.saved_actions.clear();
-                self.undo.clear();
-                self.redo.clear();
+                self.load_current_actions();
                 self.selector_open = false;
                 self.tree_menu = None;
             }
         }
+        self.publish_library(cx);
         cx.notify();
     }
     pub(super) fn start_rename(
@@ -371,6 +349,7 @@ impl MacroPage {
             if let Some(entry) = self.entries.iter_mut().find(|e| e.id == id) {
                 entry.name = name;
             }
+            self.publish_library(cx);
         }
         cx.notify();
     }
@@ -399,9 +378,24 @@ impl MacroPage {
         let all = self.ancestor_matches(id, &query);
         let mut originals = Vec::new();
         self.collect_projected(&original, &query, all, &mut originals);
+        if self
+            .next_id
+            .checked_add(originals.len() as u64)
+            .is_none_or(|next| next >= u64::MAX)
+        {
+            return;
+        }
         let mut ids = std::collections::HashMap::new();
         for mut entry in originals {
             let old = entry.id;
+            // Source duplicates live documents, including unsaved events.
+            if entry.kind == EntryKind::Macro {
+                if self.actions_for == Some(old) {
+                    entry.actions = self.actions.clone();
+                } else if let Some(draft) = self.inactive_drafts.get(&old) {
+                    entry.actions = draft.actions.clone();
+                }
+            }
             entry.id = self.next_id;
             self.next_id += 1;
             ids.insert(old, entry.id);
@@ -426,11 +420,14 @@ impl MacroPage {
             self.entries.push(entry);
         }
         if select && original.kind == EntryKind::Macro {
+            self.stash_current_draft();
             self.current = ids.get(&id).copied();
             self.tree_selection = self.current;
+            self.load_current_actions();
         }
         self.more_open = false;
         self.tree_menu = None;
+        self.publish_library(cx);
         cx.notify();
     }
     pub(super) fn move_entry(&mut self, id: u64, destination: u64, cx: &mut Context<Self>) {
@@ -465,6 +462,7 @@ impl MacroPage {
         entry.parent = parent;
         self.entries.push(entry);
         self.tree_menu = None;
+        self.publish_library(cx);
         cx.notify();
     }
     pub(super) fn request_delete(&mut self, id: u64, cx: &mut Context<Self>) {
@@ -498,6 +496,7 @@ impl MacroPage {
             deleted.extend(children);
         }
         self.entries.retain(|e| !deleted.contains(&e.id));
+        self.inactive_drafts.retain(|id, _| !deleted.contains(id));
         self.forget_bindings(&deleted);
         if redirect && self.tab != MacroTab::MyMacros {
             self.tab = MacroTab::MyMacros;
@@ -515,17 +514,13 @@ impl MacroPage {
                 .filter(|e| e.kind == EntryKind::Macro)
                 .min_by_key(|e| e.id)
                 .map(|e| e.id);
-            self.actions_for = None;
-            self.actions.clear();
-            self.saved_actions_for = None;
-            self.saved_actions.clear();
-            self.undo.clear();
-            self.redo.clear();
+            self.load_current_actions();
         }
         self.tree_selection = self.current;
         self.deletion = None;
         self.more_open = false;
         self.tree_menu = None;
+        self.publish_library(cx);
         cx.notify();
     }
     fn matches_query(&self, entry: &Entry, query: &str) -> bool {

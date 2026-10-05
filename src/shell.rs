@@ -139,6 +139,7 @@ pub struct AppShell {
     firmware_update: Option<(Entity<firmware_update::FirmwareUpdate>, Subscription)>,
     profile_migration: Option<Entity<profile_migration::MigrationPage>>,
     macro_page: Option<Entity<macro_page::MacroPage>>,
+    macro_library: Entity<crate::features::macro_library::MacroLibrary>,
     armory_page: Option<Entity<armory_page::ArmoryPage>>,
     chroma_page: Entity<chroma_page::ChromaPage>,
     profiles_page: Option<Entity<profiles_page::ProfilesPage>>,
@@ -161,20 +162,24 @@ impl AppShell {
             mut devices,
             intro,
             shortcuts,
+            macros,
             preferences,
             custom_colors,
             host_order,
             dashboard,
+            module_services,
             error,
         ) = match store::read_workspace(&store::store_path()) {
             Ok(Some(file)) => (
                 file.devices,
                 file.tracking_intro_seen,
                 file.shortcuts,
+                file.macros,
                 file.preferences,
                 file.custom_colors,
                 file.host_tab_order,
                 file.dashboard,
+                file.module_services,
                 None,
             ),
             Ok(None) => (
@@ -182,9 +187,11 @@ impl AppShell {
                 false,
                 vec![],
                 Default::default(),
+                Default::default(),
                 [None; 16],
                 vec![],
                 Default::default(),
+                None,
                 None,
             ),
             Err(error) => (
@@ -192,9 +199,11 @@ impl AppShell {
                 false,
                 vec![],
                 Default::default(),
+                Default::default(),
                 [None; 16],
                 vec![],
                 Default::default(),
+                None,
                 Some(error.to_string()),
             ),
         };
@@ -202,8 +211,12 @@ impl AppShell {
             device.normalize_known_measurements();
         }
         cx.set_global(CustomColors::new(custom_colors));
+        let macro_library = cx.new(|_| crate::features::macro_library::MacroLibrary::new(macros));
         let shortcuts =
             cx.new(|cx| crate::features::shortcuts::Shortcuts::new(shortcuts, window, cx));
+        shortcuts.update(cx, |shortcuts, cx| {
+            shortcuts.set_macro_library(&macro_library.read(cx).snapshot(), window, cx)
+        });
         let runtime = cx.new(|_| runtime_page::RuntimePanel::new());
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
@@ -238,6 +251,7 @@ impl AppShell {
             firmware_update: None,
             profile_migration: None,
             macro_page: None,
+            macro_library,
             armory_page: None,
             chroma_page: cx.new(|cx| chroma_page::ChromaPage::new(window, cx)),
             profiles_page: None,
@@ -246,7 +260,7 @@ impl AppShell {
             shortcuts,
             settings,
             gamer_room: cx.new(|_| service_pages::GamerRoomPage::new()),
-            module_catalog: cx.new(|_| service_pages::ModuleCatalog::new()),
+            module_catalog: cx.new(|cx| service_pages::ModuleCatalog::new(module_services, cx)),
             pairing: cx.new(|cx| pairing_page::PairingPage::new(window, cx)),
             source_alert: None,
             release_notes: None,
@@ -477,6 +491,38 @@ impl AppShell {
             &this.module_catalog,
             window,
             |this, _, event: &service_pages::ModuleCatalogEvent, window, cx| match event {
+                service_pages::ModuleCatalogEvent::OpenDevice(container) => {
+                    let key = this.devices.iter().find_map(|workspace| {
+                        let workspace = workspace.read(cx);
+                        (workspace.device(cx).device_container_id == *container)
+                            .then(|| workspace.identity(cx))
+                    });
+                    if let Some(key) = key {
+                        this.navigate(Location::Device(key), window, cx);
+                    }
+                }
+                service_pages::ModuleCatalogEvent::ServiceCommand {
+                    action,
+                    record,
+                    clear_settings,
+                } => {
+                    let name = crate::features::module_service::localized(
+                        record.get("title").or_else(|| record.get("productName")),
+                        &crate::i18n::locale().to_ascii_lowercase(),
+                    );
+                    // A request is not an observed phase change. No native installer /
+                    // uninstaller/SDK transport is connected to these source records.
+                    this.status = format!(
+                        "未执行 {action}：{name} 的设备/模块服务尚未连接{}。",
+                        if *clear_settings {
+                            "（包含清除设置请求）"
+                        } else {
+                            ""
+                        }
+                    );
+                    window.push_notification(this.status.clone(), cx);
+                    cx.notify();
+                }
                 service_pages::ModuleCatalogEvent::OpenModule(module) => match *module {
                     service_pages::ModulePage::Picker(module) => {
                         this.handle_app_picker(
@@ -525,11 +571,32 @@ impl AppShell {
             },
         ));
         this.subscriptions.push(cx.subscribe_in(
+            &this.macro_library,
+            window,
+            |this, _, _: &crate::features::macro_library::MacroLibraryChanged, window, cx| {
+                let snapshot = this.macro_library.read(cx).snapshot();
+                this.shortcuts.update(cx, |shortcuts, cx| {
+                    shortcuts.set_macro_library(&snapshot, window, cx)
+                });
+                if this.macro_library.read(cx).pending() {
+                    this.save_auxiliary_preferences(cx);
+                }
+                cx.notify();
+            },
+        ));
+        this.subscriptions.push(cx.subscribe_in(
             &this.shortcuts,
             window,
             |this, _, event: &crate::features::shortcuts::ShortcutsOpenModule, window, cx| {
                 use crate::features::shortcuts::ShortcutsOpenModule;
                 match event {
+                    ShortcutsOpenModule::CharacterMap => {
+                        if let Err(error) = crate::backend::system::open_character_map() {
+                            this.status = format!("无法打开字符映射表：{error}");
+                            window.push_notification(this.status.clone(), cx);
+                            cx.notify();
+                        }
+                    }
                     ShortcutsOpenModule::Macro => {
                         this.open_module_tab(service_pages::ModulePage::Macro, window, cx)
                     }
@@ -712,6 +779,8 @@ impl AppShell {
             .collect::<Vec<_>>();
         self.gamer_room
             .update(cx, |page, cx| page.sync_devices(&devices, cx));
+        self.module_catalog
+            .update(cx, |page, cx| page.sync_local_devices(&devices, cx));
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
@@ -898,6 +967,8 @@ impl AppShell {
             .update(cx, |picker, cx| picker.dismiss(window, cx));
         self.host_tabs.visit(&next, cx);
         if next != self.location {
+            self.module_catalog
+                .update(cx, |page, cx| page.dismiss_service_removal(window, cx));
             self.host_tabs.focus_location(&next, window, cx);
             if let Location::Device(key) = &self.location {
                 if let Some(device) = self
@@ -992,7 +1063,9 @@ impl AppShell {
             }
             if next == Location::Macro {
                 if self.macro_page.is_none() {
-                    let page = cx.new(|cx| macro_page::MacroPage::new(window, cx));
+                    let page = cx.new(|cx| {
+                        macro_page::MacroPage::new(self.macro_library.clone(), window, cx)
+                    });
                     page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
                     self.subscriptions
                         .push(cx.observe(&page, |_, _, cx| cx.notify()));
@@ -1230,6 +1303,7 @@ impl AppShell {
             || self.settings.read(cx).dirty()
             || cx.global::<CustomColors>().dirty()
             || self.shortcuts.read(cx).committed_pending()
+            || self.macro_library.read(cx).pending()
     }
     fn save_profiles(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(error) = &self.storage_error {
@@ -1253,7 +1327,9 @@ impl AppShell {
             .with_preferences(preferences)
             .with_custom_colors(custom_colors)
             .with_host_tab_order(host_order)
-            .with_dashboard(dashboard);
+            .with_dashboard(dashboard)
+            .with_module_services(self.module_catalog.read(cx).service_snapshot());
+        let file = file.with_macros(self.macro_library.read(cx).snapshot());
         self.pending_saves.push_back(PreparedSave {
             window: window.window_handle(),
             file,
@@ -1271,6 +1347,7 @@ impl AppShell {
         // immediate semantics, so a queued save always takes their latest value.
         request.file.preferences = self.settings.read(cx).snapshot();
         request.file.shortcuts = self.shortcuts.read(cx).saved_snapshot();
+        request.file.macros = self.macro_library.read(cx).snapshot();
         let PreparedSave { window, file } = request;
         let snapshot = file.clone();
         let path = store::store_path();
@@ -1292,6 +1369,7 @@ impl AppShell {
                             tracking_intro_seen: intro,
                             host_tab_order: host_order,
                             dashboard,
+                            macros,
                             ..
                         } = snapshot;
                         // Commit exactly the captured revision. New edits during I/O stay dirty.
@@ -1299,6 +1377,8 @@ impl AppShell {
                             entity.update(cx, |d, cx| d.mark_saved(snapshot, cx));
                         }
                         this.saved_intro_seen = intro;
+                        this.macro_library
+                            .update(cx, |library, cx| library.mark_saved(macros, cx));
                         this.host_tabs.mark_order_saved(host_order);
                         this.dashboard_state
                             .update(cx, |state, _| state.mark_saved(dashboard));
@@ -1367,6 +1447,7 @@ impl AppShell {
         let shortcuts_pending = self.shortcuts.read(cx).committed_pending();
         let host_order = self.host_tabs.order();
         let dashboard = self.dashboard_state.read(cx).snapshot();
+        let macros = self.macro_library.read(cx).snapshot();
         let file = store::WorkspaceFile::new(
             self.devices
                 .iter()
@@ -1378,7 +1459,9 @@ impl AppShell {
         .with_preferences(preferences.clone())
         .with_custom_colors(custom_colors)
         .with_host_tab_order(host_order.clone())
-        .with_dashboard(dashboard.clone());
+        .with_dashboard(dashboard.clone())
+        .with_module_services(self.module_catalog.read(cx).service_snapshot());
+        let file = file.with_macros(macros.clone());
         let path = store::store_path();
         self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
@@ -1390,6 +1473,8 @@ impl AppShell {
                 match result {
                     Ok(()) => {
                         this.saved_intro_seen = intro;
+                        this.macro_library
+                            .update(cx, |library, cx| library.mark_saved(macros, cx));
                         this.host_tabs.mark_order_saved(host_order);
                         this.dashboard_state
                             .update(cx, |state, _| state.mark_saved(dashboard));

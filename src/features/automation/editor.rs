@@ -304,6 +304,8 @@ impl AutomationEditor {
                 .margin_top(margin_top)
                 .overlay(false)
                 .overlay_closable(true)
+                // QuickMacroEditor owns Escape while recording a keyboard chord.
+                .keyboard(false)
                 .close_button(false)
                 .p_0()
                 .bg(Colors::panel())

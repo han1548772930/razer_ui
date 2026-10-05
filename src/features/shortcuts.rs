@@ -31,9 +31,34 @@ struct SourceShortcutData {
     media: Vec<SourceShortcutChoice>,
     windows: Vec<SourceShortcutChoice>,
     macro_playback: Vec<SourceShortcutChoice>,
+    macro_sequence_playback: Vec<SourceShortcutChoice>,
+    macro_phased_playback: Vec<SourceShortcutChoice>,
     profile_actions: Vec<SourceShortcutChoice>,
     sensitivity_actions: Vec<SourceShortcutChoice>,
     excluded_keys: Vec<String>,
+    emoji: SourceEmojiData,
+}
+#[derive(Deserialize)]
+struct SourceEmojiData {
+    groups: Vec<SourceEmojiGroup>,
+    tabs: Vec<SourceEmojiTab>,
+    search: Vec<SourceEmojiSearch>,
+    variants: std::collections::BTreeMap<String, Vec<String>>,
+    excluded_without_windows_10: Vec<String>,
+}
+#[derive(Deserialize)]
+struct SourceEmojiGroup {
+    values: Vec<String>,
+}
+#[derive(Deserialize)]
+struct SourceEmojiTab {
+    emo: String,
+    name: String,
+}
+#[derive(Deserialize)]
+struct SourceEmojiSearch {
+    emo: String,
+    name: String,
 }
 fn source_shortcuts() -> &'static SourceShortcutData {
     static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
@@ -93,11 +118,29 @@ pub(crate) struct Shortcut {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum ShortcutOutput {
-    Program { target: String },
-    Website { target: String },
-    Multimedia { action: String },
-    Windows { action: String },
-    Text { text: String },
+    Program {
+        target: String,
+    },
+    Website {
+        target: String,
+    },
+    Multimedia {
+        action: String,
+    },
+    Windows {
+        action: String,
+    },
+    Text {
+        text: String,
+    },
+    /// Persistent identity in this workspace's local Macro library. This is
+    /// deliberately not a native Synapse GUID or an executable engine output.
+    Macro {
+        macro_id: u64,
+        name: String,
+        playback: String,
+        repeat_count: u8,
+    },
 }
 
 impl ShortcutOutput {
@@ -107,6 +150,7 @@ impl ShortcutOutput {
             Self::Multimedia { .. } => "MULTIMEDIA",
             Self::Windows { .. } => "WINDOWS_SHORTCUT",
             Self::Text { .. } => "TEXT_FUNCTION",
+            Self::Macro { .. } => "MACRO",
         }
     }
     fn kind(&self) -> &'static str {
@@ -116,6 +160,7 @@ impl ShortcutOutput {
             Self::Multimedia { .. } => "multimedia",
             Self::Windows { .. } => "windows",
             Self::Text { .. } => "text",
+            Self::Macro { .. } => "macro",
         }
     }
     fn value(&self) -> &str {
@@ -123,6 +168,7 @@ impl ShortcutOutput {
             Self::Program { target } | Self::Website { target } => target,
             Self::Multimedia { action } | Self::Windows { action } => action,
             Self::Text { text } => text,
+            Self::Macro { name, .. } => name,
         }
     }
     fn from_kind(kind: &str) -> Self {
@@ -138,6 +184,12 @@ impl ShortcutOutput {
             },
             "text" => Self::Text {
                 text: String::new(),
+            },
+            "macro" => Self::Macro {
+                macro_id: 0,
+                name: String::new(),
+                playback: "Once".into(),
+                repeat_count: 2,
             },
             _ => Self::Program {
                 target: String::new(),
@@ -170,6 +222,23 @@ impl ShortcutOutput {
             }
             Self::Windows { action } if !WINDOWS.iter().any(|(id, _)| id == action) => {
                 Some("请选择有效的 Windows 操作。")
+            }
+            Self::Macro {
+                macro_id,
+                name,
+                playback,
+                repeat_count,
+            } if *macro_id == 0
+                || name.trim().is_empty()
+                || playback == "NTimes" && !(1..=99).contains(repeat_count)
+                || !source_shortcuts()
+                    .macro_playback
+                    .iter()
+                    .chain(&source_shortcuts().macro_sequence_playback)
+                    .chain(&source_shortcuts().macro_phased_playback)
+                    .any(|item| item.id == *playback) =>
+            {
+                Some("宏引用或播放选项无效。")
             }
             _ => None,
         }
@@ -337,6 +406,7 @@ fn kinds() -> Vec<Choice> {
     ]
     .into_iter()
     .map(|(id, label)| Choice::new(id, label))
+    .chain(std::iter::once(Choice::new("macro", i18n::t("MACRO"))))
     .collect()
 }
 fn action_choices(kind: &str) -> Vec<Choice> {
@@ -384,14 +454,33 @@ pub(crate) struct Shortcuts {
     empty_device: Entity<SelectState<Vec<Choice>>>,
     empty_catalog: Entity<SelectState<Vec<Choice>>>,
     playback: Entity<SelectState<Vec<Choice>>>,
+    macro_catalog: Vec<MacroCatalogItem>,
+    macro_selector: Entity<SelectState<Vec<Choice>>>,
+    macro_repeat: Entity<crate::ui::stepper::Stepper>,
+    macro_repeat_draft: String,
     launch_program: String,
     launch_website: String,
+    emoji_open: bool,
+    emoji_search: Entity<InputState>,
+    emoji_category: usize,
+    emoji_cursor: usize,
+    emoji_tab_focus: FocusHandle,
+    emoji_item_focus: FocusHandle,
+    emoji_scroll: ScrollHandle,
+    emoji_last_scroll: Pixels,
+    emoji_button_bounds: Bounds<Pixels>,
+    emoji_text_bounds: Bounds<Pixels>,
+    emoji_toolbar_bounds: Bounds<Pixels>,
+    emoji_hover: Option<(usize, usize)>,
+    emoji_search_generation: u64,
+    emoji_resetting: bool,
 }
 pub(crate) struct ShortcutsChanged;
 impl EventEmitter<ShortcutsChanged> for Shortcuts {}
 pub(crate) enum ShortcutsOpenModule {
     Macro,
     ChromaStudio,
+    CharacterMap,
 }
 impl EventEmitter<ShortcutsOpenModule> for Shortcuts {}
 
@@ -413,6 +502,8 @@ impl Shortcuts {
         let target = cx.new(|cx| InputState::new(window, cx));
         let paragraph =
             cx.new(|cx| TextareaState::new(window, cx).placeholder(i18n::t("ENTER_TEXT")));
+        let emoji_search =
+            cx.new(|cx| InputState::new(window, cx).placeholder(i18n::t("TEXT_SEARCH_EMOJI")));
         let empty_device = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
         let empty_catalog = cx.new(|cx| {
             SelectState::new(
@@ -433,6 +524,28 @@ impl Shortcuts {
                 window,
                 cx,
             )
+        });
+        let macro_selector = cx.new(|cx| {
+            SelectState::new(
+                vec![Choice::new("empty", " ")],
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
+        let macro_repeat = cx.new(|cx| {
+            crate::ui::stepper::Stepper::new(
+                "shortcut-macro-repeat",
+                2.,
+                (1., 99., 1.),
+                false,
+                false,
+                Some(2),
+                window,
+                cx,
+            )
+            .in_custom_keymapping()
+            .live_update()
         });
         let mut this = Self {
             saved: items.clone(),
@@ -463,9 +576,36 @@ impl Shortcuts {
             empty_device,
             empty_catalog,
             playback,
+            macro_catalog: vec![],
+            macro_selector,
+            macro_repeat,
+            macro_repeat_draft: "2".into(),
             launch_program: String::new(),
             launch_website: String::new(),
+            emoji_open: false,
+            emoji_search,
+            emoji_category: 0,
+            emoji_cursor: 0,
+            emoji_tab_focus: cx.focus_handle(),
+            emoji_item_focus: cx.focus_handle(),
+            emoji_scroll: ScrollHandle::new(),
+            emoji_last_scroll: px(0.),
+            emoji_button_bounds: Bounds::default(),
+            emoji_text_bounds: Bounds::default(),
+            emoji_toolbar_bounds: Bounds::default(),
+            emoji_hover: None,
+            emoji_search_generation: 0,
+            emoji_resetting: false,
         };
+        this.subscriptions.push(cx.subscribe_in(
+            &this.emoji_search,
+            window,
+            |this, _, event, window, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.emoji_search_changed(window, cx);
+                }
+            },
+        ));
         this.subscriptions.push(
             cx.subscribe_in(&this.kind, window, |this, _, event, w, cx| {
                 if let SelectEvent::Confirm(Some(kind)) = event {
@@ -553,6 +693,7 @@ impl Shortcuts {
                 cx.notify();
             },
         ));
+        this.subscribe_macro_controls(window, cx);
         this
     }
     fn set_output_value(&mut self, value: String) {
@@ -570,6 +711,7 @@ impl Shortcuts {
                     *action = value
                 }
                 ShortcutOutput::Text { text } => *text = value,
+                ShortcutOutput::Macro { .. } => {}
             }
         }
     }
@@ -604,6 +746,29 @@ impl Shortcuts {
     }
     fn error(&self) -> Option<String> {
         let draft = self.draft.as_ref()?;
+        if let ShortcutOutput::Macro {
+            macro_id, playback, ..
+        } = &draft.value.output
+        {
+            if !self.macro_catalog.iter().any(|item| item.id == *macro_id) {
+                return Some(i18n::t("CREATE_MACRO_MSG"));
+            }
+            if !self
+                .selected_macro_playback()
+                .iter()
+                .any(|item| item.id == *playback)
+            {
+                return Some("宏引用或播放选项无效。".into());
+            }
+        }
+        if matches!(&draft.value.output, ShortcutOutput::Macro { playback, .. } if playback == "NTimes")
+            && !self
+                .macro_repeat_draft
+                .parse::<u8>()
+                .is_ok_and(|value| (1..=99).contains(&value))
+        {
+            return Some("重复次数必须为 1–99。".into());
+        }
         if self.mapping_category != draft.value.output.category() {
             return Some(i18n::t(match self.mapping_category.as_str() {
                 "MACRO" => "CREATE_MACRO_MSG",
@@ -623,6 +788,12 @@ impl Shortcuts {
         let kind = draft.value.output.kind().to_string();
         let value = draft.value.output.value().to_string();
         let input = draft.value.input.clone();
+        if let ShortcutOutput::Macro { repeat_count, .. } = &draft.value.output {
+            self.macro_repeat_draft = repeat_count.to_string();
+            self.macro_repeat.update(cx, |stepper, cx| {
+                stepper.reset_value(f64::from(*repeat_count), window, cx)
+            });
+        }
         self.kind
             .update(cx, |s, cx| s.set_selected_value(&kind, window, cx));
         self.action.update(cx, |s, cx| {
@@ -636,6 +807,7 @@ impl Shortcuts {
         });
         self.paragraph
             .update(cx, |s, cx| s.set_value(value, window, cx));
+        self.sync_macro_controls(window, cx);
     }
     fn begin(
         &mut self,
@@ -666,6 +838,7 @@ impl Shortcuts {
         self.delete_confirmation = None;
         self.delete_return_focus = None;
         self.menu_for = None;
+        self.reset_emoji_mapping(window, cx);
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let original = source.and_then(|id| self.items.iter().find(|item| item.id == id).cloned());
         let mut value = original.clone().unwrap_or_else(|| Shortcut {
@@ -720,6 +893,8 @@ impl Shortcuts {
         self.changed(cx);
     }
     pub(crate) fn discard_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.emoji_open = false;
+        self.emoji_hover = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let restore = self.focus.contains_focused(window, cx);
         self.draft = None;
@@ -734,6 +909,8 @@ impl Shortcuts {
         self.changed(cx);
     }
     pub(crate) fn dismiss_for_navigation(&mut self, cx: &mut Context<Self>) {
+        self.emoji_open = false;
+        self.emoji_hover = None;
         self.delete_confirmation = None;
         self.delete_return_focus = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
@@ -756,6 +933,18 @@ impl Shortcuts {
             }
             if let ShortcutOutput::Website { target } = &mut draft.value.output {
                 *target = normalized_website(target).expect("validated website");
+            }
+            if let ShortcutOutput::Macro {
+                playback,
+                repeat_count,
+                ..
+            } = &mut draft.value.output
+            {
+                // 82508 getMappingData always uses 2 outside NTimes, including
+                // mappings reloaded from a local file with a different count.
+                if playback != "NTimes" {
+                    *repeat_count = 2;
+                }
             }
             if let Some(item) = self.items.iter_mut().find(|item| item.id == draft.value.id) {
                 *item = draft.value;
@@ -977,6 +1166,7 @@ impl Shortcuts {
             "LAUNCH_PROGRAM" => Some("program"),
             "MULTIMEDIA" => Some("multimedia"),
             "WINDOWS_SHORTCUT" => Some("windows"),
+            "MACRO" => Some("macro"),
             _ => None,
         };
         if let (Some(kind), Some(draft)) = (kind, &mut self.draft) {
@@ -987,6 +1177,10 @@ impl Shortcuts {
             self.launch_website.clear();
         }
         self.mapping_category = category;
+        if self.mapping_category == "MACRO" {
+            self.choose_default_macro();
+        }
+        self.reset_emoji_mapping(window, cx);
         self.mapping_expanded = false;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.sync(window, cx);
@@ -1029,6 +1223,8 @@ impl Shortcuts {
 
 include!("shortcuts_view.rs");
 include!("shortcuts_mapping.rs");
+include!("shortcuts_text.rs");
+include!("shortcuts_macro.rs");
 
 #[cfg(test)]
 #[path = "shortcuts_tests.rs"]

@@ -13,6 +13,8 @@ pub struct WorkspaceFile {
     #[serde(default)]
     pub(crate) shortcuts: Vec<crate::features::shortcuts::Shortcut>,
     #[serde(default)]
+    pub(crate) macros: crate::features::macro_library::MacroLibraryFile,
+    #[serde(default)]
     pub(crate) preferences: crate::preferences::AppPreferences,
     #[serde(default)]
     pub(crate) custom_colors: crate::preferences::CustomColorSlots,
@@ -20,6 +22,8 @@ pub struct WorkspaceFile {
     pub(crate) host_tab_order: Vec<String>,
     #[serde(default)]
     pub(crate) dashboard: crate::preferences::DashboardPreferences,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) module_services: Option<crate::features::module_service::ModuleServiceSnapshot>,
 }
 impl WorkspaceFile {
     pub(crate) fn new(devices: Vec<Device>, tracking_intro_seen: bool) -> Self {
@@ -28,10 +32,12 @@ impl WorkspaceFile {
             devices,
             tracking_intro_seen,
             shortcuts: vec![],
+            macros: Default::default(),
             preferences: crate::preferences::AppPreferences::default(),
             custom_colors: [None; 16],
             host_tab_order: vec![],
             dashboard: Default::default(),
+            module_services: None,
         }
     }
     pub(crate) fn with_shortcuts(
@@ -46,6 +52,13 @@ impl WorkspaceFile {
         preferences: crate::preferences::AppPreferences,
     ) -> Self {
         self.preferences = preferences;
+        self
+    }
+    pub(crate) fn with_macros(
+        mut self,
+        macros: crate::features::macro_library::MacroLibraryFile,
+    ) -> Self {
+        self.macros = macros;
         self
     }
     pub(crate) fn with_custom_colors(
@@ -64,6 +77,13 @@ impl WorkspaceFile {
         dashboard: crate::preferences::DashboardPreferences,
     ) -> Self {
         self.dashboard = dashboard;
+        self
+    }
+    pub(crate) fn with_module_services(
+        mut self,
+        snapshot: Option<crate::features::module_service::ModuleServiceSnapshot>,
+    ) -> Self {
+        self.module_services = snapshot;
         self
     }
 }
@@ -113,10 +133,12 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
     crate::features::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
     file.preferences.validate().map_err(anyhow::Error::msg)?;
+    file.macros.validate().map_err(anyhow::Error::msg)?;
     Ok(file)
 }
 pub(crate) fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Result<()> {
     file.preferences.validate().map_err(anyhow::Error::msg)?;
+    file.macros.validate().map_err(anyhow::Error::msg)?;
     // Recheck the current disk file, not just the version loaded at startup.
     // A newer app or external edit must not be silently replaced by this one.
     let previous = match std::fs::read(path) {
