@@ -1,7 +1,10 @@
 //! Shell-facing owner for the original adapters and source-specific products.
 //! Selecting a registered product never creates another product's controls.
 use super::{
-    DeviceWorkspace, WorkspaceEvent, source_workspace::SourceProductWorkspace, workspace::Continue,
+    DeviceWorkspace, WorkspaceEvent, chroma_product,
+    display_mode_roots::{self, DisplayModeRoot},
+    source_workspace::SourceProductWorkspace,
+    workspace::Continue,
 };
 use crate::{model::Device, nav::Tab};
 use gpui_kit::*;
@@ -91,7 +94,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::PairingRequested(device) => {
-                        WorkspaceEvent::PairingRequested(device)
+                        WorkspaceEvent::PairingRequested(device.clone())
                     }
                 });
                 cx.notify();
@@ -108,7 +111,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::PairingRequested(device) => {
-                        WorkspaceEvent::PairingRequested(device)
+                        WorkspaceEvent::PairingRequested(device.clone())
                     }
                 });
                 cx.notify();
@@ -137,12 +140,80 @@ impl ProductWorkspace {
     }
     /// The current 653 chromaApp root mounts the same lighting content as its
     /// normal lighting tab, without the product navigation/profile chrome.
+    /// Only products whose bundle has a root-level `chromaApp` branch and whose
+    /// local page set contains a lighting page qualify; the quick-effect
+    /// buttons need this editing path, so a product without one stays disabled.
     pub(crate) fn chroma_lighting_workspace(&self, cx: &App) -> Option<Entity<DeviceWorkspace>> {
+        let device = self.device(cx);
+        if !chroma_product::has_chroma_app_root(device.product_id)
+            || !Tab::for_product(device.product_id).contains(&Tab::Lighting)
+        {
+            return None;
+        }
         match &self.body {
-            Body::Existing(workspace) if workspace.read(cx).device().product_id == 653 => {
-                Some(workspace.clone())
+            Body::Existing(workspace) => Some(workspace.clone()),
+            Body::Source(_) => None,
+        }
+    }
+    /// Whether this device has a local `displayMode=chromaApp` popup root.
+    pub(crate) fn has_chroma_device_page(&self, cx: &App) -> bool {
+        let device = self.device(cx);
+        if !chroma_product::has_chroma_app_root(device.product_id) {
+            return false;
+        }
+        match &self.body {
+            Body::Existing(_) => Tab::for_product(device.product_id).contains(&Tab::Lighting),
+            Body::Source(workspace) => workspace.read(cx).supports_lighting_page(),
+        }
+    }
+    /// The popup content the Chroma application mounts for one device: the
+    /// product's lighting page without the product chrome.
+    pub(crate) fn chroma_device_page(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !self.has_chroma_device_page(cx) {
+            return None;
+        }
+        match &self.body {
+            Body::Existing(workspace) => {
+                Some(workspace.update(cx, |workspace, cx| workspace.lighting_page(cx)))
             }
-            _ => None,
+            Body::Source(workspace) => workspace.update(cx, |workspace, cx| {
+                workspace.lighting_page_element(window, cx)
+            }),
+        }
+    }
+    /// Whether this device has a local `displayMode=armory` root. The Armory
+    /// application embeds the product's mapping page for the device it shares.
+    pub(crate) fn has_armory_device_page(&self, cx: &App) -> bool {
+        let device = self.device(cx);
+        if !display_mode_roots::has_root_branch(DisplayModeRoot::Armory, device.product_id) {
+            return false;
+        }
+        match &self.body {
+            Body::Existing(_) => Tab::for_product(device.product_id).contains(&Tab::Customize),
+            Body::Source(workspace) => workspace.read(cx).supports_mapping_page(),
+        }
+    }
+    /// The mapping content the Armory application mounts for one device, without
+    /// the product navigation and profile chrome.
+    pub(crate) fn armory_device_page(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !self.has_armory_device_page(cx) {
+            return None;
+        }
+        match &self.body {
+            Body::Existing(workspace) => Some(workspace.update(cx, |workspace, cx| {
+                workspace.armory_mapping_page(window, cx)
+            })),
+            Body::Source(workspace) => {
+                workspace.update(cx, |workspace, cx| workspace.mapping_page_element(cx))
+            }
         }
     }
     /// Existing local profile associations; no executable is launched or scanned.

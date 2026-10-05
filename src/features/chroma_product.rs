@@ -1,9 +1,31 @@
-//! Current 653 lg -> rg/_g -> Fh/yh; it mounts the existing brightness,
-//! switch-off and effects children, without the normal product chrome.
-//! See docs/re/chroma-app-current-evidence.json. Other roots stay unclaimed.
-use super::{DeviceWorkspace, ProductWorkspace, settings::Effect};
+//! Product-side `displayMode=chromaApp` root.
+//!
+//! The current bundles select this root in the same ternary chain that reads
+//! `searchParams.get("displayMode")` and only when the requested serial number
+//! matches the running device (`"chromaApp"===a&&_===this.state.serialNumber`),
+//! which is why the Chroma application opens it as a per-device popup. The root
+//! mounts the product's lighting content without the normal product navigation
+//! and profile chrome, and Escape asks the parent window to close it
+//! (`window.postMessage("closePopup","*")`). See
+//! [display-mode audit](../../docs/re/display-mode-audit.md),
+//! [window contract](../../docs/re/display-window-contract.md) and
+//! [Chroma application evidence](../../docs/re/chroma-app-current-evidence.json).
+//!
+//! The product id table is generated from the audited static scan by
+//! `tools/generate-display-mode-roots.cjs`; the branch content stays a product
+//! page, so nothing is fabricated when a product has no local lighting page.
+use super::{
+    ProductWorkspace,
+    display_mode_roots::{DisplayModeRoot, has_root_branch},
+    settings::Effect,
+};
 use crate::ui::scroll::SourceScrollable as _;
 use gpui_kit::*;
+
+/// Whether the current product bundle mounts a root-level `chromaApp` branch.
+pub(crate) fn has_chroma_app_root(product_id: u32) -> bool {
+    has_root_branch(DisplayModeRoot::ChromaApp, product_id)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ChromaPreset {
@@ -47,6 +69,10 @@ impl ChromaPreset {
             Self::Wheel => Effect::Wheel,
         }
     }
+    /// The quick-effect buttons write the shared lighting settings, which only
+    /// the local editing path exposes. Products whose lighting page is a
+    /// generated source page keep the preset disabled instead of pretending a
+    /// write happened.
     pub(crate) fn supported(self, workspace: &ProductWorkspace, cx: &App) -> bool {
         workspace
             .chroma_lighting_workspace(cx)
@@ -111,30 +137,45 @@ pub(crate) fn lighting_snapshot(
     })
 }
 
+/// The popup root: the product's lighting content, addressed per device.
 pub(crate) struct ChromaProduct {
-    workspace: Entity<DeviceWorkspace>,
+    workspace: Entity<ProductWorkspace>,
     _subscription: Subscription,
 }
 impl ChromaProduct {
-    pub(crate) fn new(workspace: &ProductWorkspace, cx: &mut Context<Self>) -> Option<Self> {
-        let workspace = workspace.chroma_lighting_workspace(cx)?;
-        let subscription = cx.observe(&workspace, |_, _, cx| cx.notify());
+    pub(crate) fn new(
+        workspace: &Entity<ProductWorkspace>,
+        cx: &mut Context<Self>,
+    ) -> Option<Self> {
+        if !workspace.read(cx).has_chroma_device_page(cx) {
+            return None;
+        }
+        let subscription = cx.observe(workspace, |_, _, cx| cx.notify());
         Some(Self {
-            workspace,
+            workspace: workspace.clone(),
             _subscription: subscription,
         })
     }
 }
 impl Render for ChromaProduct {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = self
             .workspace
-            .update(cx, |workspace, cx| workspace.lighting_page(cx));
-        div()
+            .update(cx, |workspace, cx| workspace.chroma_device_page(window, cx));
+        // The source popup overrides the shared width rule with
+        // `.body-wrapper, .main-container{ min-width: unset; }`.
+        let view = div()
             .id("chroma-product-lighting")
             .size_full()
             .min_h_0()
-            .scrollable_y()
-            .child(content)
+            .min_w_0()
+            .scrollable_y();
+        match content {
+            Some(content) => view.child(content),
+            None => view,
+        }
     }
 }
+
+// Receipts for the generated `displayMode` table live in
+// `src/features/display_mode_roots_tests.rs`; this module only consumes it.

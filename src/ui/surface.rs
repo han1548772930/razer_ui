@@ -1,10 +1,13 @@
 use gpui_kit::base::motion::{self, Easing, Transition};
+use gpui_kit::base::{Button as BaseButton, Presence};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
+
+use super::source_tooltip::SourceTooltip;
 
 pub(crate) use super::synapse_select::{select, select_alexa};
 
@@ -857,6 +860,351 @@ pub(crate) fn panel_with_control(
                 .child(control),
         )
 }
+/// `_TA`/`wrA` 的 `hasSwitch:true`：原版把 `.widget-switch` 放进
+/// `.titleRow > .title`（`display:flex`）里、紧跟标题文本，帮助按钮仍固定在
+/// 组件右上角，所以标题行需要两个不同位置的控件。
+pub(crate) fn panel_with_title_switch(
+    title: impl Into<SharedString>,
+    title_control: impl IntoElement,
+    corner_control: impl IntoElement,
+    cx: &App,
+) -> Div {
+    let title = title.into().to_uppercase();
+    v_flex()
+        .w_full()
+        .flex_shrink_0()
+        .my(css(10.))
+        .py(css(WIDGET_PADDING_Y))
+        .px(css(WIDGET_PADDING_X))
+        .bg(cx.theme().group_box)
+        .rounded(css(WIDGET_RADIUS))
+        .text_size(css(14.))
+        .child(
+            h_flex()
+                .justify_between()
+                .child(
+                    h_flex()
+                        .items_center()
+                        .gap(css(10.))
+                        .mb(css(20.))
+                        .child(
+                            div()
+                                .font_family("RazerF5")
+                                .text_size(css(16.))
+                                .text_color(cx.theme().primary)
+                                .child(title),
+                        )
+                        .child(title_control),
+                )
+                .child(corner_control),
+        )
+}
+
+/// `.widget .help`：14px 圆形帮助控件。依据当前源码的
+/// `.widget .help{background-color:#4a4a4a;border-radius:50%;height:14px;
+///  position:absolute;right:10px;top:10px;width:14px;transition:background-color .3s}`
+/// 与 `:hover{background-color:#ffffff4d}`，悬停显示 `.widget .tip`
+/// （`max-width:300px`、`font-size:14px;line-height:18px`、`padding:8px 10px`、
+/// 黑底 `1px #5d5d5d`、`#ccc`）；图标是 `tooltip_questionmark.96138d2f.svg`。
+pub(crate) fn help_control(id: impl Into<ElementId>, text: impl Into<SharedString>) -> AnyElement {
+    use crate::ui::source_tooltip::SourceTooltipKind;
+    let element_id = id.into();
+    let text = text.into();
+    SourceTooltip::new(element_id.clone(), text.to_string(), 300.)
+        .kind(SourceTooltipKind::WidgetTip)
+        .trigger(move |hovered, window, cx| {
+            let background: Hsla = motion::transition(
+                (element_id.clone(), "help-background"),
+                if hovered {
+                    rgba(0xffffff4d).into()
+                } else {
+                    rgb(0x4a4a4a).into()
+                },
+                Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+                window,
+                cx,
+            );
+            BaseButton::new(element_id.clone())
+                .w(css(14.))
+                .h(css(14.))
+                .flex_shrink_0()
+                .p_0()
+                .rounded_full()
+                .bg(background)
+                .accessibility_label(text.clone())
+                .hover(|button| button.cursor_pointer())
+                .child(img("synapse/automation-tooltip_questionmark.svg").size_full())
+                .into_any_element()
+        })
+        .into_any_element()
+}
+
+/// 指针状态（悬停 / 按下）跟踪，供带 CSS `transition` 的控件做插值。
+///
+/// GPUI 的 `.hover(...)`/`.active(...)` 是**瞬时**样式，而源码里这类控件写的是
+/// `transition:opacity .3s`、`transition:background-color .2s,border-color .2s,color .2s`
+/// （`.thx-btn`、`.hover-btn`、`.hyper-wrapper`）。这里把状态放进 keyed state，
+/// 再用 [`track_pointer`] 挂到任意可交互元素上，由调用方用 [`fade_opacity`] /
+/// [`fade_color`] 取值。
+#[derive(Default)]
+pub(crate) struct PointerState {
+    hovered: bool,
+    pressed: bool,
+}
+
+impl PointerState {
+    /// 当前 `(hovered, pressed)`。
+    pub(crate) fn sample(&self) -> (bool, bool) {
+        (self.hovered, self.pressed)
+    }
+}
+
+/// 建立（或复用）某个元素 id 的指针状态。
+pub(crate) fn pointer_state(
+    id: impl Into<ElementId>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<PointerState> {
+    window.use_keyed_state((id.into(), "pointer"), cx, |_, _| PointerState::default())
+}
+
+/// 把悬停与按下监听挂到元素上。
+pub(crate) fn track_pointer<E: InteractiveElement + StatefulInteractiveElement>(
+    element: E,
+    state: &Entity<PointerState>,
+    window: &mut Window,
+) -> E {
+    element
+        .on_hover(window.listener_for(state, |pointer, hovered, _, cx| {
+            pointer.hovered = *hovered;
+            if !*hovered {
+                pointer.pressed = false;
+            }
+            cx.notify();
+        }))
+        .on_mouse_down(
+            MouseButton::Left,
+            window.listener_for(state, |pointer, _, _, cx| {
+                pointer.pressed = true;
+                cx.notify();
+            }),
+        )
+        .on_mouse_up(
+            MouseButton::Left,
+            window.listener_for(state, |pointer, _, _, cx| {
+                pointer.pressed = false;
+                cx.notify();
+            }),
+        )
+}
+
+/// 源码 `transition:opacity <ms>` 的不透明度插值。
+pub(crate) fn fade_opacity(
+    id: impl Into<ElementId>,
+    target: f32,
+    millis: u64,
+    window: &mut Window,
+    cx: &mut App,
+) -> f32 {
+    motion::transition(
+        (id.into(), "fade-opacity"),
+        target,
+        Transition::new(Duration::from_millis(millis)).easing(Easing::Ease),
+        window,
+        cx,
+    )
+}
+
+/// 源码 `transition:background-color|border-color|color <ms>` 的颜色插值。
+pub(crate) fn fade_color(
+    id: impl Into<ElementId>,
+    target: Hsla,
+    millis: u64,
+    window: &mut Window,
+    cx: &mut App,
+) -> Hsla {
+    motion::transition(
+        (id.into(), "fade-color"),
+        target,
+        Transition::new(Duration::from_millis(millis)).easing(Easing::Ease),
+        window,
+        cx,
+    )
+}
+
+/// `.check-item` / `.check-box`：20×20 圆角 2.4px 方框（`1px solid #737373`，悬停
+/// `#44d62c`，选中底 `#44d62c`），勾由 `:before`/`:after` 两条 `#111` 线组成
+/// （`ticktop .2s ease`、`tickbottom .1s ease`）；`.check-text` 是 `#ccc`、
+/// 14px/17px、相对方框左移 30px、上移 2px，首字母大写；`.check-item{margin-bottom:9px}`，
+/// 禁用时整行 `opacity:.3;pointer-events:none`。
+pub(crate) fn check_item(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    checked: bool,
+    disabled: bool,
+    window: &mut Window,
+    cx: &mut App,
+) -> BaseButton {
+    let element_id = id.into();
+    let label = label.into();
+    let tick_top = Presence::new((element_id.clone(), "tick-top"), checked)
+        .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))
+        .sample(window, cx)
+        .progress;
+    let tick_bottom = Presence::new((element_id.clone(), "tick-bottom"), checked)
+        .transition(Transition::new(Duration::from_millis(100)).easing(Easing::Ease))
+        .sample(window, cx)
+        .progress;
+    BaseButton::new(element_id.clone())
+        .accessibility_label(label.clone())
+        .flex()
+        .items_center()
+        .justify_start()
+        .w_full()
+        .m_0()
+        .p_0()
+        .bg(rgba(0x00000000))
+        .mb(css(9.))
+        .when(disabled, |button| button.opacity(0.3).disabled(true))
+        .child(
+            div()
+                .relative()
+                .size(css(20.))
+                .flex_shrink_0()
+                .rounded(css(2.4))
+                .border_1()
+                .border_color(if checked {
+                    rgb(0x44d62c)
+                } else {
+                    rgb(0x737373)
+                })
+                .bg(if checked {
+                    rgb(0x44d62c)
+                } else {
+                    rgb(0x111111)
+                })
+                .hover(|style| style.border_color(rgb(0x44d62c)))
+                // `.check-text`：方框内相对定位、左移 30px、上移 2px。
+                .child(
+                    div()
+                        .absolute()
+                        .left(css(30.))
+                        .top(css(2.))
+                        .text_size(css(14.))
+                        .line_height(css(17.))
+                        .text_color(rgb(0xcccccc))
+                        .child(first_letter_uppercase(label.clone())),
+                )
+                .when(checked, |view| {
+                    view.child(check_tick(tick_top, tick_bottom))
+                }),
+        )
+}
+
+/// `.check-box:before/:after` 的两段勾线（`rotate(-145deg)` 长 15.4px、
+/// `rotate(-50deg)` 长 9.6px，宽 3px、`#111`），长度按 `ticktop`/`tickbottom` 动画插值。
+fn check_tick(tick_top: f32, tick_bottom: f32) -> AnyElement {
+    canvas(
+        move |_, _, _| (),
+        move |bounds, _, window, _| {
+            let scale = f32::from(bounds.size.width) / 20.;
+            for (x, y, angle, length) in [
+                (8.6_f32, 16.4_f32, -145_f32, 15.4 * tick_top),
+                (0.6, 10., -50., 9.6 * tick_bottom),
+            ] {
+                let angle = angle.to_radians();
+                let start = bounds.origin + point(px(x * scale), px(y * scale));
+                let mut path = PathBuilder::stroke(px(3. * scale));
+                path.move_to(start);
+                path.line_to(
+                    start
+                        + point(
+                            px(-angle.sin() * length * scale),
+                            px(angle.cos() * length * scale),
+                        ),
+                );
+                if let Ok(path) = path.build() {
+                    window.paint_path(path, rgb(0x111111));
+                }
+            }
+        },
+    )
+    .absolute()
+    .inset_0()
+    .size_full()
+    .into_any_element()
+}
+
+/// `.check-text:first-letter{text-transform:uppercase}`。
+fn first_letter_uppercase(text: SharedString) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
+}
+
+/// `OTA` 的 `.foot` 灰标：`.foot{position:absolute;text-transform:uppercase}`、
+/// `.foot.min{left:0}`、`.foot.mid{left:0;width:100%;text-align:center}`、
+/// `.foot.mid1{left:0;width:66%}`、`.foot.mid2{left:0;width:133%}`、`.foot.max{right:0}`。
+pub(crate) fn slider_tags(
+    min: &str,
+    mid: Option<&str>,
+    max: &str,
+    boost: Option<&str>,
+) -> AnyElement {
+    let tag = |label: &str| {
+        div()
+            .font_family("Roboto")
+            .text_size(css(14.))
+            .line_height(css(17.))
+            .child(label.to_uppercase())
+    };
+    let mut marks = div()
+        .relative()
+        .w_full()
+        .h(css(17.))
+        .child(div().absolute().left_0().child(tag(min)));
+    marks = match boost {
+        Some(boost) => {
+            let mid = mid.unwrap_or_default();
+            marks
+                .child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .w(relative(0.66))
+                        .text_center()
+                        .child(tag(mid)),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .w(relative(1.33))
+                        .text_center()
+                        .child(tag(max)),
+                )
+                .child(div().absolute().right_0().child(tag(boost)))
+        }
+        None => {
+            let mut marks = marks;
+            if let Some(mid) = mid {
+                marks = marks.child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .w_full()
+                        .text_center()
+                        .child(tag(mid)),
+                );
+            }
+            marks.child(div().absolute().right_0().child(tag(max)))
+        }
+    };
+    marks.into_any_element()
+}
+
 /// `.h1-body{color:#ccc;margin-bottom:10px}`：控件标题下方那段说明文字。
 pub(crate) fn h1_body(text: impl Into<SharedString>, cx: &App) -> Div {
     div()

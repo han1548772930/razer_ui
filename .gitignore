@@ -119,3 +119,8 @@
 !/tools/audit-chroma-app.cjs
 !/tools/audit-source-profile-transfer.cjs
 !/tools/prepare-chroma-assets.py
+!/tools/extract-device-decl.cjs
+!/tools/generate-display-mode-roots.cjs
+!/tools/audit-display-mode-roots.cjs
+!/tools/audit-page-coverage.py
+!/tools/audit-locale-keys.py

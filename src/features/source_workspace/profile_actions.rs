@@ -93,6 +93,11 @@ impl SourceProductWorkspace {
             },
         ));
         self.profile_linked_games = Some(dialog);
+        // The source dialog takes focus when it opens, the same way the
+        // transfer dialog above does.
+        if let Some(dialog) = &self.profile_linked_games {
+            dialog.update(cx, |dialog, cx| dialog.focus(window, cx));
+        }
     }
 
     fn create_profile(&mut self, duplicate: bool, window: &mut Window, cx: &mut Context<Self>) {

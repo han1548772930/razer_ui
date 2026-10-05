@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "source": "docs/re/display-mode-audit.json",
+  "source_sha256": "d2ced692ff50c6ceed7bdb306f4be6854b50d8420319ce4d2666ca4206e087a3",
+  "root_table": "src/features/display-mode-roots.json",
+  "root_table_sha256": "0087e1ada4be09688ac285b98640042dbafdcb7ed2ab263fb260432b32432e53",
+  "generator": "tools/generate-display-mode-roots.cjs",
+  "generator_sha256": "1d24e504a61c4df53ae7ef5e5869dec3cae63247f859c913d1c9c9f58f7cb3a5",
+  "modes": {
+    "armory": {
+      "root_products": 226,
+      "status": "implemented",
+      "local": [
+        "src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)",
+        "src/features/product_workspace.rs (armory_device_page / has_armory_device_page)",
+        "src/shell/armory_page/device_root.rs (device panel, iframe height by device type)",
+        "src/shell.rs (share entry opens the device panel next to the share form)"
+      ],
+      "rule": "product has a root armory branch AND a local mapping page (adapter Customize tab or a source TAB_CUSTOMIZE page in a family renderer)",
+      "boundary": "the panel message handshake is recorded but not exchanged (both sides run in this process); audio/accessory families and products without a local mapping page keep the entry closed"
+    },
+    "chromaApp": {
+      "root_products": 212,
+      "status": "implemented",
+      "local": [
+        "src/features/chroma_product.rs (popup root, table-driven selection)",
+        "src/features/product_workspace.rs (chroma_device_page / has_chroma_device_page)",
+        "src/shell/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)"
+      ],
+      "rule": "product has a root chromaApp branch AND a local lighting page (adapter tab set or a source TAB_LIGHTING page in a family renderer)",
+      "boundary": "audio/accessory families and products without a local lighting page keep the explicit unavailable state"
+    },
+    "macro": {
+      "root_products": 174,
+      "status": "implemented-elsewhere",
+      "local": [
+        "src/shell/macro_page.rs (macro application window)"
+      ],
+      "rule": "the product-side macro branch only appears inside the macro application iframe, so the same page is opened there",
+      "boundary": "macro service, recording and device binding remain unconnected"
+    },
+    "multiDevicePairing": {
+      "root_products": 30,
+      "status": "implemented",
+      "local": [
+        "src/shell/display_window.rs (named window + policy flags)",
+        "src/shell/pairing_window.rs (root view)",
+        "src/shell/pairing_page.rs (embedded /synapse/multipairing/ page)"
+      ],
+      "rule": "Dashboard device box opens the named `multi-device-pairing*` window",
+      "boundary": "keep as the audited second-window exception; device services stay unconnected"
+    }
+  },
+  "problems": []
+}

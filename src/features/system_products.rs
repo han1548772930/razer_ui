@@ -747,6 +747,12 @@ impl SystemProductWorkspace {
         refresh.into_any_element()
     }
 
+    /// The `displayMode=chromaApp` popup mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn lighting_element(&self, cx: &mut Context<Self>) -> AnyElement {
+        self.lighting(cx)
+    }
+
     fn lighting(&self, cx: &Context<Self>) -> AnyElement {
         let linked = self.checked("/profile/brightness/isTwoMode");
         let power = if linked { "twoMode" } else { &self.power };
@@ -976,6 +982,12 @@ impl SystemProductWorkspace {
             }
         }
         panel.into_any_element()
+    }
+
+    /// The `displayMode=armory` root mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
+        self.customize(cx)
     }
 
     fn customize(&self, cx: &Context<Self>) -> AnyElement {

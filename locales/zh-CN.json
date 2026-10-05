@@ -5822,5 +5822,6 @@
     "TRADEMARK": "所有其他商标均属于其各自的所有者。",
     "TUTORIAL_RESET": "教程重置",
     "VERSION": "版本 {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "高级效果可以普遍应用于多个支持 Razer Chroma 雷蛇幻彩功能的设备，但不会保存到设备配置文件。"
 }

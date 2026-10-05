@@ -49,3 +49,11 @@
 | feedback | `ModulePage::Feedback` | 当前官方 `/feedback/` HTML、清单与 27 个 JS/CSS 已静态取得；直接打开 `feedback-synapse` 宿主页签，提交和日志收集仍未连接服务 |
 
 当前 Profiles 页面按 module 43 的实际挂载复刻 Games 和 Devices 两个页签，复用本地 `ProductWorkspace` 列表与用户关联；服务扫描仍未连接。Feedback 的实际根仅挂载 500px 表单和页脚，旧 `renderLeft` 方法未被调用。具体组件、输入限制与服务边界见 [Feedback 审计](feedback-app-current-audit.md)。七个模块盒现在均有直接打开入口；入口可用不代表设备、账户或远端服务已连接。
+
+2026-10-04 选择器（App Picker）去门控：模块行只要在本地有页面就直接打开，不再落回
+「窗口服务尚未连接」。除上表七个之外，Chroma 应用的 Chroma Studio 也在本地实现
+（打开 `chroma-app` 窗口里的 Chroma 页面），已加入 bundled/launchable 列表；
+Philips Hue 的模块页就是 769 产品工作区，仅在本地存在该设备时登记并直接打开，
+没有设备时明确说明而不是显示安装门控。`audio-visualizer`、`chroma-connect`、
+`sensa-hd`、Streamer Companion 与 Virtual Ring Light 在本地没有页面，保留门控。
+`tools/audit-module-registry.cjs --check` 会核对这条规则（含 PhilipsHue 的条件登记）。

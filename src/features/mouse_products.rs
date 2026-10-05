@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+use crate::i18n::t;
 use crate::ui::surface;
 
 #[derive(Deserialize)]
@@ -518,7 +519,7 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 
-    fn toggle(&self, path: &str, label: &str, cx: &Context<Self>) -> AnyElement {
+    fn toggle(&self, path: &str, label: impl Into<String>, cx: &Context<Self>) -> AnyElement {
         let path = path.to_owned();
         // 182 `.check-item{margin-bottom:9px}`：勾选项之间靠这条外边距分行。
         div()
@@ -528,7 +529,7 @@ impl MouseProductWorkspace {
                     "mouse-{}-{path}",
                     self.spec.product_id
                 )))
-                .label(label.to_owned())
+                .label(label.into())
                 .checked(self.boolean(&path))
                 .on_click(cx.listener(move |this, checked, window, cx| {
                     this.write(&path, json!(*checked), cx);
@@ -553,8 +554,8 @@ impl MouseProductWorkspace {
             .and_then(Value::as_array)
             .map_or(0, Vec::len);
         let active = self.number(self.spec.active_path()) as usize;
-        let mut sensitivity = surface::panel("灵敏度", cx)
-            .child(self.toggle(self.spec.stage_enable_path(), "灵敏度阶段", cx))
+        let mut sensitivity = surface::panel(t("SENSITIVITY_HEADER"), cx)
+            .child(self.toggle(self.spec.stage_enable_path(), t("SENSITIVITY_STAGES"), cx))
             .child(
                 h_flex()
                     .flex_wrap()
@@ -578,8 +579,7 @@ impl MouseProductWorkspace {
                 self.spec.independent_key()
             );
             if self.spec.support_xy {
-                sensitivity =
-                    sensitivity.child(self.toggle(&independent_path, "启用 X-Y 灵敏度", cx));
+                sensitivity = sensitivity.child(self.toggle(&independent_path, t("ENABLE_XY"), cx));
             }
             for axis in 0..if self.spec.support_xy && self.boolean(&independent_path) {
                 2
@@ -622,7 +622,7 @@ impl MouseProductWorkspace {
             .get("POLLING_RATE")
             .map(Vec::as_slice)
             .unwrap_or(&[]);
-        surface::panel("回报率", cx)
+        surface::panel(t("POLLING_RATE_HEADER"), cx)
             .child(
                 h_flex()
                     .flex_wrap()
@@ -646,96 +646,190 @@ impl MouseProductWorkspace {
     fn power(&self, cx: &Context<Self>) -> AnyElement {
         let mut panels = v_flex().gap_5();
         if self.spec.power_slider || self.spec.performance_power {
-            panels = panels.child(surface::panel("无线省电", cx).child(self.range(
-                self.spec.power_path(),
-                "闲置后进入睡眠",
-                "分钟",
-                true,
-                cx,
-            )));
+            panels = panels.child(
+                surface::panel(t("POWER_SAVING_HEADER"), cx)
+                    .child(surface::note(t("POWER_SAVING_DESC"), cx))
+                    .child(self.range(self.spec.power_path(), "", "", true, cx)),
+            );
         }
         if self.spec.low_power_slider {
-            panels = panels.child(surface::panel("低功耗模式", cx).child(self.range(
-                "/lowPowerMode",
-                "电量低于",
-                "%",
-                true,
-                cx,
-            )));
+            panels = panels.child(
+                surface::panel(t("LOW_POWER_MODE_HEADER"), cx)
+                    .child(surface::note(t("LOW_POWER_MODE_DESC"), cx))
+                    .child(self.range("/lowPowerMode", "", "%", true, cx)),
+            );
         }
         if self.spec.low_battery_slider {
-            panels = panels.child(surface::panel("低电量警告", cx).child(self.range(
-                "/lowBatteryEffects",
-                "电量低于",
-                "%",
-                true,
-                cx,
-            )));
+            panels = panels.child(
+                surface::panel(t("LOW_BATTERY_EFFECTS_HEADER"), cx)
+                    .child(surface::note(t("LOW_BATTERY_EFFECTS_DESC"), cx))
+                    .child(self.range("/lowBatteryEffects", "", "%", true, cx)),
+            );
         }
         panels.into_any_element()
     }
 
-    fn lighting(&self, cx: &Context<Self>) -> AnyElement {
+    /// The `displayMode=chromaApp` popup mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn lighting_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.lighting(window, cx)
+    }
+
+    /// The lighting page (`ql`): the left `.widget-col` holds the brightness
+    /// widget (`WI` — title `BRIGHTNESS_HEADER`, tips `BRIGHTNESS_TOOLTIP`,
+    /// `hasSwitch:true`, slider tags `0`/`100`) and the switch-off-lighting
+    /// widget (`kI`/`xI` — title `SWITCH_OFF_LIGHTING_HEADER`, tips
+    /// `SWITCH_OFF_LIGHTING_TOOLTIP`, `extraClass:"has-slider"`), the right one
+    /// the quick-effects widget.
+    fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let enabled = self.boolean("/brightness/isEnabled");
         surface::page_columns()
             .child(surface::page_column(
-                surface::panel("亮度", cx)
-                    .child(self.toggle("/brightness/isEnabled", "亮度", cx))
-                    .child(self.range("/brightness/value", "亮度", "%", enabled, cx))
-                    .child(self.toggle(
-                        "/switchOffLighting/isDisplayOn",
-                        "显示器关闭时关闭灯光",
-                        cx,
-                    ))
-                    .child(self.toggle("/switchOffLighting/isIdleEnabled", "闲置时关闭灯光", cx))
-                    .child(self.range(
-                        "/switchOffLighting/idleMinutes",
-                        "闲置时间",
-                        "分钟",
-                        self.boolean("/switchOffLighting/isIdleEnabled"),
-                        cx,
-                    )),
+                v_flex()
+                    .child(
+                        surface::panel_with_title_switch(
+                            t("BRIGHTNESS_HEADER"),
+                            surface::SynapseSwitch::new("mouse-brightness")
+                                .accessibility_label(t("BRIGHTNESS_HEADER"))
+                                .checked(enabled)
+                                .on_change(cx.listener(|this, next: &bool, _, cx| {
+                                    this.write("/brightness/isEnabled", json!(*next), cx);
+                                })),
+                            surface::help_control("mouse-brightness-help", t("BRIGHTNESS_TOOLTIP")),
+                            cx,
+                        )
+                        .child(surface::slider_tags("0", None, "100", None))
+                        .child(self.range(
+                            "/brightness/value",
+                            crate::i18n::t("BRIGHTNESS_HEADER").as_str(),
+                            "%",
+                            enabled,
+                            cx,
+                        )),
+                    )
+                    .child(self.switch_off_lighting(window, cx)),
             ))
             .child(surface::page_column(
-                surface::panel("快速效果", cx).child(h_flex().flex_wrap().gap_2().children(
-                    self.spec.effects.iter().map(|effect| {
-                        let id = effect.id;
-                        Button::new(SharedString::from(format!("mouse-effect-{id}")))
-                            .label(effect_label(&effect.key).to_owned())
-                            .outline()
-                            .selected(self.number("/quickEffects/selectedEffectId") as u32 == id)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.write("/quickEffects/selectedEffectId", json!(id), cx)
-                            }))
-                    }),
-                )),
+                surface::panel(t("QUICK_EFFECTS"), cx).child(
+                    h_flex()
+                        .flex_wrap()
+                        .gap_2()
+                        .children(self.spec.effects.iter().map(|effect| {
+                            let id = effect.id;
+                            Button::new(SharedString::from(format!("mouse-effect-{id}")))
+                                .label(localized_name(effect_label(&effect.key), &effect.key))
+                                .outline()
+                                .selected(
+                                    self.number("/quickEffects/selectedEffectId") as u32 == id,
+                                )
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.write("/quickEffects/selectedEffectId", json!(id), cx)
+                                }))
+                        })),
+                ),
             ))
             .into_any_element()
+    }
+
+    /// `kI`/`xI`: the switch-off-lighting widget — check items `DISPLAY_TURNED_OFF`
+    /// and (unless `DeviceInfo.hideLightingIdle`) `IDLE_FOR_MIN`, the latter
+    /// followed by the 1–15 minute slider tagged `1`/`15` with no label
+    /// (`.has-slider .slider-container{margin-left:30px;width:490px}`).
+    fn switch_off_lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let brightness_on = self.boolean("/brightness/isEnabled");
+        let display_on = self.boolean("/switchOffLighting/isDisplayOn");
+        let idle_on = self.boolean("/switchOffLighting/isIdleEnabled");
+        let mut widget = surface::panel_with_control(
+            t("SWITCH_OFF_LIGHTING_HEADER"),
+            surface::help_control(
+                "mouse-switch-off-lighting-help",
+                t("SWITCH_OFF_LIGHTING_TOOLTIP"),
+            ),
+            cx,
+        )
+        .child(
+            surface::check_item(
+                "mouse-switch-off-display",
+                t("DISPLAY_TURNED_OFF"),
+                display_on,
+                !brightness_on,
+                window,
+                cx,
+            )
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.write("/switchOffLighting/isDisplayOn", json!(!display_on), cx)
+            })),
+        );
+        // 原版按 `Te.DeviceInfo.hideLightingIdle` 决定是否渲染空闲行；本地鼠标
+        // 规格里没有这个设备字段（键盘规格有），因此走原版未设置该标志时的分支。
+        {
+            widget = widget
+                .child(
+                    surface::check_item(
+                        "mouse-switch-off-idle",
+                        t("IDLE_FOR_MIN"),
+                        idle_on,
+                        !brightness_on,
+                        window,
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.write("/switchOffLighting/isIdleEnabled", json!(!idle_on), cx)
+                    })),
+                )
+                .child({
+                    let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
+                    if let Some(slider) = self.sliders.get("/switchOffLighting/idleMinutes") {
+                        column =
+                            column.child(Slider::new(slider).disabled(!(brightness_on && idle_on)));
+                    }
+                    column.child(surface::slider_tags("1", None, "15", None))
+                });
+        }
+        widget.into_any_element()
     }
 
     fn calibration(&self, cx: &Context<Self>) -> AnyElement {
         if self.spec.calibration.starts_with("smart") {
             let asymmetric = self.boolean("/smartTracking/isAsymmetric");
-            let mut panel = surface::panel("智能追踪", cx).child(self.toggle(
+            let mut panel = surface::panel(t("SMARTTRACKING"), cx).child(self.toggle(
                 "/smartTracking/isAsymmetric",
-                "非对称中止",
+                t("ENABLEASYMMETRICCUTOFF"),
                 cx,
             ));
             if asymmetric && self.spec.calibration == "smart_only" {
                 panel = panel
-                    .child(self.range("/smartTracking/liftOffDistance", "抬升距离", "", true, cx))
-                    .child(self.range("/smartTracking/landingDistance", "着陆距离", "", true, cx));
+                    .child(self.range(
+                        "/smartTracking/liftOffDistance",
+                        &t("LIFTOFFDISTANCE"),
+                        "",
+                        true,
+                        cx,
+                    ))
+                    .child(self.range(
+                        "/smartTracking/landingDistance",
+                        &t("LANDINGDISTANCE"),
+                        "",
+                        true,
+                        cx,
+                    ));
             } else if asymmetric {
                 panel = panel
                     .child(
                         h_flex()
                             .justify_between()
                             .child(format!(
-                                "着陆距离：{} mm",
+                                "{}: {} mm",
+                                t("LANDINGDISTANCE"),
                                 self.number("/smartTracking/landingDistance")
                             ))
                             .child(format!(
-                                "抬升距离：{} mm",
+                                "{}: {} mm",
+                                t("LIFTOFFDISTANCE"),
                                 self.number("/smartTracking/liftOffDistance")
                             )),
                     )
@@ -743,7 +837,7 @@ impl MouseProductWorkspace {
             } else {
                 panel = panel.child(self.range(
                     "/smartTracking/trackingDistance",
-                    "追踪距离",
+                    &t("TRACKINGDISTANCE"),
                     "",
                     true,
                     cx,
@@ -755,7 +849,7 @@ impl MouseProductWorkspace {
         }
         surface::page_columns()
             .child(surface::page_column(
-                surface::panel("表面校准", cx).children(
+                surface::panel(t("MOUSE_MAT_CALIBRATION_HEADER"), cx).children(
                     self.spec
                         .mats
                         .iter()
@@ -793,10 +887,10 @@ impl MouseProductWorkspace {
         let mut panels = surface::page_columns();
         if self.spec.dynamic {
             panels = panels.child(surface::page_column(
-                surface::panel("动态灵敏度", cx)
+                surface::panel(t("DYNAMIC_SENSITIVITY"), cx)
                     .child(
                         Checkbox::new("mouse-dynamic-enabled")
-                            .label("动态灵敏度")
+                            .label(t("DYNAMIC_SENSITIVITY"))
                             .checked(self.number("/dynamicSensitivity/state") == 1.)
                             .on_click(cx.listener(|this, value, _, cx| {
                                 this.write(
@@ -808,12 +902,12 @@ impl MouseProductWorkspace {
                     )
                     .child(
                         h_flex().gap_2().children(
-                            ["经典", "自然", "跳跃", "自定义"]
+                            ["CLASSIC", "NATURAL", "JUMP", "CUSTOM"]
                                 .into_iter()
                                 .enumerate()
-                                .map(|(mode, label)| {
+                                .map(|(mode, key)| {
                                     Button::new(SharedString::from(format!("mouse-dynamic-{mode}")))
-                                        .label(label)
+                                        .label(t(key))
                                         .outline()
                                         .selected(
                                             self.number("/dynamicSensitivity/mode") as usize
@@ -829,11 +923,11 @@ impl MouseProductWorkspace {
         }
         if self.spec.rotation {
             panels = panels.child(surface::page_column(
-                surface::panel("旋转", cx)
-                    .child(self.toggle("/rotation/isEnabled", "旋转", cx))
+                surface::panel(t("ROTATION"), cx)
+                    .child(self.toggle("/rotation/isEnabled", t("ROTATION"), cx))
                     .child(self.range(
                         "/rotation/value",
-                        "旋转角度",
+                        &t("ROTATION"),
                         "°",
                         self.boolean("/rotation/isEnabled"),
                         cx,
@@ -857,35 +951,41 @@ impl MouseProductWorkspace {
             .pointer("/scrollWheelStages/activeStage")
             .and_then(Value::as_str)
             .unwrap_or("SW_STANDARD");
-        let mut panel =
-            surface::panel("滚轮阶段", cx).child(h_flex().flex_wrap().gap_2().children(
-                stages.into_iter().enumerate().map(|(index, stage)| {
-                    Button::new(SharedString::from(format!("mouse-wheel-{stage}")))
-                        .label(["标准", "清晰", "超精细", "自适应", "平滑滚动", "自定义"][index])
-                        .outline()
-                        .selected(active == stage)
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.write("/scrollWheelStages/activeStage", json!(stage), cx)
-                        }))
-                }),
-            ));
+        let mut panel = surface::panel(t("SCROLL_WHEEL_STAGES"), cx)
+            .child(surface::note(t("SCROLL_WHEEL_STAGES_DESCRIPTION"), cx))
+            .child(
+                h_flex()
+                    .flex_wrap()
+                    .gap_2()
+                    .children(stages.into_iter().map(|stage| {
+                        Button::new(SharedString::from(format!("mouse-wheel-{stage}")))
+                            .label(t(stage))
+                            .outline()
+                            .selected(active == stage)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.write("/scrollWheelStages/activeStage", json!(stage), cx)
+                            }))
+                    })),
+            );
         if active == "SW_CUSTOM" {
-            for (direction, label) in [("upDirection", "向上滚动"), ("downDirection", "向下滚动")]
-            {
+            for (direction, key) in [
+                ("upDirection", "SCROLL_UP"),
+                ("downDirection", "SCROLL_DOWN"),
+            ] {
                 panel = panel
-                    .child(div().child(label))
+                    .child(div().child(t(key)))
                     .child(self.range(
                         &format!(
                             "/scrollWheelStages/scrollWheelStages/5/{direction}/scrollTension"
                         ),
-                        "滚动张力",
+                        &t("SCROLL_TENSION"),
                         "",
                         true,
                         cx,
                     ))
                     .child(self.range(
                         &format!("/scrollWheelStages/scrollWheelStages/5/{direction}/scrollSteps"),
-                        "滚动刻度",
+                        &t("SCROLL_STEPS"),
                         "",
                         true,
                         cx,
@@ -895,6 +995,12 @@ impl MouseProductWorkspace {
         surface::page_columns()
             .child(surface::page_column(panel))
             .into_any_element()
+    }
+
+    /// The `displayMode=armory` root mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
+        self.customize(cx)
     }
 
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
@@ -916,7 +1022,7 @@ impl MouseProductWorkspace {
                 }
             }
         }
-        let mut panel = surface::panel("按键自定义", cx)
+        let mut panel = surface::panel(t("TAB_CUSTOMIZE"), cx)
             .child(
                 h_flex()
                     .gap_2()
@@ -965,7 +1071,7 @@ impl MouseProductWorkspace {
             )
             .children(buttons.iter().filter_map(|button| {
                 let input = button["inputID"].as_str()?.to_owned();
-                let label = input_label(&input).to_owned();
+                let label = localized_name(input_label(&input), &input);
                 Some(
                     Button::new(SharedString::from(format!("mouse-input-{input}")))
                         .label(label)
@@ -991,8 +1097,12 @@ impl MouseProductWorkspace {
                     })
             });
             if supported {
-                panel = panel.child(div().font_bold().child(input_label(&input).to_owned()))
-                .child(Button::new("mouse-reset-mapping").label("默认").outline().on_click(cx.listener({
+                panel = panel.child(
+                    div()
+                        .font_bold()
+                        .child(localized_name(input_label(&input), &input)),
+                )
+                .child(Button::new("mouse-reset-mapping").label(t("DEFAULT")).outline().on_click(cx.listener({
                     let input=input.clone();
                     move |this,_,_,cx| {
                         if let Some(mappings)=this.draft["mappings"].as_array_mut() {
@@ -1002,12 +1112,12 @@ impl MouseProductWorkspace {
                     }
                 })))
                 .child(h_flex().gap_2().flex_wrap().children([
-                    ("Click", "左键单击"), ("Menu", "右键单击"), ("ScrollButton", "滚轮单击"),
-                    ("Previous", "后退"), ("Next", "前进"), ("ScrollUp", "向上滚动"), ("ScrollDown", "向下滚动"),
-                ].into_iter().map(|(assignment, label)| {
+                    ("Click", "LEFT_CLICK"), ("Menu", "RIGHT_CLICK"), ("ScrollButton", "SCROLL_CLICK"),
+                    ("Previous", "STEP_BACK"), ("Next", "STEP_FORWARD"), ("ScrollUp", "SCROLL_UP"), ("ScrollDown", "SCROLL_DOWN"),
+                ].into_iter().map(|(assignment, key)| {
                     let input = input.clone();
                     let input_type = source_button.and_then(|button| button["inputType"].as_str()).unwrap_or("MouseInput").to_owned();
-                    Button::new(SharedString::from(format!("mouse-assignment-{assignment}"))).label(label).outline()
+                    Button::new(SharedString::from(format!("mouse-assignment-{assignment}"))).label(t(key)).outline()
                         .on_click(cx.listener(move |this, _, _, cx| {
                             let entry = json!({"inputID":input,"isHyperShift":this.hypershift,"inputType":input_type,"outputType":"mouseGroup","mouseGroup":{"mouseAssignment":assignment}});
                             let mappings = this.draft.get_mut("mappings").and_then(Value::as_array_mut);
@@ -1022,8 +1132,12 @@ impl MouseProductWorkspace {
         }
         if self.draft.get("scrollWheel").is_some() {
             panel = panel
-                .child(self.toggle("/scrollWheel/smartReelEnabled", "智能滚动", cx))
-                .child(self.toggle("/scrollWheel/accelerationEnabled", "滚动加速", cx));
+                .child(self.toggle("/scrollWheel/smartReelEnabled", t("SMART_REEL"), cx))
+                .child(self.toggle(
+                    "/scrollWheel/accelerationEnabled",
+                    t("SCROLL_ACCELERATION"),
+                    cx,
+                ));
         }
         surface::page_columns()
             .child(surface::page_column(panel))
@@ -1032,15 +1146,15 @@ impl MouseProductWorkspace {
 }
 
 impl Render for MouseProductWorkspace {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = match self.page.as_str() {
             "TAB_PERFORMANCE" => self.performance(cx),
             "TAB_POWER" => self.power(cx),
-            "TAB_LIGHTING" => self.lighting(cx),
+            "TAB_LIGHTING" => self.lighting(window, cx),
             "TAB_CALIBRATION" => self.calibration(cx),
             "TAB_SCROLLING" => self.scrolling(cx),
             "ADVANCED" => self.advanced(cx),
-            "TAB_PAIRING" => surface::panel("配对", cx)
+            "TAB_PAIRING" => surface::panel(t("PAIR"), cx)
                 .child(surface::note("配对界面尚未接入。", cx))
                 .into_any_element(),
             "TAB_CUSTOMIZE" => self.customize(cx),
@@ -1089,35 +1203,52 @@ fn set_pointer(root: &mut Value, path: &str, value: Value) {
     }
 }
 
-fn input_label(input: &str) -> &str {
-    match input {
-        "LeftClick" => "左键单击",
-        "RightClick" => "右键单击",
-        "ScrollButton" => "滚轮单击",
-        "ScrollUp" => "向上滚动",
-        "ScrollDown" => "向下滚动",
-        "Button4" => "后退",
-        "Button5" => "前进",
-        "SensitivityStageUp" => "提高灵敏度阶段",
-        "SensitivityStageDown" => "降低灵敏度阶段",
-        "CycleUpSensitivityStages" => "循环灵敏度阶段",
-        "CycleUpProfile" => "循环配置文件",
-        _ => input,
-    }
+#[cfg(test)]
+#[path = "mouse_products_tests.rs"]
+mod tests;
+
+/// 源码把鼠标输入映射为语言键（`LEFT_CLICK`、`STEP_BACK`…）；未知输入返回 `None`，
+/// 由 [`localized_name`] 原样显示内部名。
+fn input_label(input: &str) -> Option<&'static str> {
+    Some(match input {
+        "LeftClick" | "Click" => "LEFT_CLICK",
+        "RightClick" | "Menu" => "RIGHT_CLICK",
+        "ScrollButton" | "ScrollClick" => "SCROLL_CLICK",
+        "ScrollUp" => "SCROLL_UP",
+        "ScrollDown" => "SCROLL_DOWN",
+        "Button4" | "Previous" => "STEP_BACK",
+        "Button5" | "Next" => "STEP_FORWARD",
+        "DoubleClick" => "DOUBLE_CLICK",
+        "SensitivityStageUp" => "SENSITIVITY_STAGE_UP",
+        "SensitivityStageDown" => "SENSITIVITY_STAGE_DOWN",
+        "CycleUpSensitivityStages" => "CYCLE_UP_SENSITIVITY",
+        "CycleUpProfile" => "CYCLE_UP_PROFILE",
+        _ => return None,
+    })
 }
 
-fn effect_label(effect: &str) -> &str {
-    match effect {
-        "Audio_Meter_Effect" => "音频指示器",
-        "Breathing_Effect" => "呼吸",
-        "Reactive_Effect" => "响应",
-        "Spectrum_Effect" => "光谱循环",
-        "Static_Effect" => "静态",
-        "Tidal_Effect" => "潮汐",
-        "Wave_Effect" => "波浪",
-        "Wheel_Effect" => "旋转",
-        "Fire_Effect" => "火焰",
-        "Starlight_Effect" => "星光",
-        _ => effect,
-    }
+/// 源码效果表（`Mi` / `I`）把每个效果映射到语言键；未知效果返回 `None`。
+fn effect_label(effect: &str) -> Option<&'static str> {
+    Some(match effect {
+        "Static_Effect" => "STATIC",
+        "Breathing_Effect" => "BREATHING",
+        "Spectrum_Effect" => "SPECTRUM_CYCLING",
+        "Wave_Effect" => "WAVE",
+        "Reactive_Effect" => "REACTIVE",
+        "Ripple_Effect" => "RIPPLE",
+        "Starlight_Effect" => "STARLIGHT",
+        "Fire_Effect" => "FIRE",
+        "Wheel_Effect" => "WHEEL",
+        "Audio_Meter_Effect" => "AUDIO_METER",
+        "Tidal_Effect" => "TIDAL",
+        "Battery_Level_Effect" => "BATTERY_LEVEL",
+        "Lamborghini" => "LAMBORGHINI",
+        "Ambient_Effect" => "AMBIENT",
+        _ => return None,
+    })
+}
+
+/// 命中源码语言键就取译文，否则原样显示内部名（原版对未知项也是原样显示）。
+fn localized_name(key: Option<&'static str>, raw: &str) -> String {
+    key.map_or_else(|| raw.to_owned(), crate::i18n::t)
 }

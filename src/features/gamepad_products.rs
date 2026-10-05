@@ -12,7 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 use crate::{i18n::t, ui::surface};
 
@@ -55,8 +55,67 @@ pub(crate) fn source_product(pid: u32) -> Option<&'static GamepadProductSpec> {
 
 pub(crate) struct GamepadProductChanged;
 
+/// 源码 `GR` 的功耗取值标签：`item.value >= 60 ? ra.pHP : ra.yvH`，同时
+/// `data.value` 在 `>= 60` 时除以 60。两个别名经导出表解析为 `MIN`
+/// （"{{value}} min."）与 `SEC`（"{{value}} sec."），说明该组件按**秒**判断：
+/// 不足 60 显示秒、满 60 起按分钟显示。
+pub(crate) fn power_saving_label(value: i64) -> String {
+    if value >= 60 {
+        crate::i18n::t_value("MIN", value / 60)
+    } else {
+        crate::i18n::t_value("SEC", value)
+    }
+}
+
+/// `JP` 按扳机侧选的三对键：`we.LST`/`we.gzX`（标题）、`we.Vwf`/`we.ukk`
+/// （模拟分支的 `.h1-body`）、`we.C7E`/`we.Fh7`（数字分支的 `.h1-body`）。
+pub(crate) fn trigger_keys(prefix: &str) -> (&'static str, &'static str, &'static str) {
+    if prefix == "LEFT" {
+        (
+            "LEFT_TRIGGER_MODE",
+            "LEFT_TRIGGER_RANGE",
+            "LEFT_ACTUATION_POINT",
+        )
+    } else {
+        (
+            "RIGHT_TRIGGER_MODE",
+            "RIGHT_TRIGGER_RANGE",
+            "RIGHT_ACTUATION_POINT",
+        )
+    }
+}
+
+/// `QP` 手柄的越界规则：起点最多到终点 −1，终点最少到起点 +1（原版
+/// `Math.min(value, max-1)` / `Math.max(value, min+1)`）。
+pub(crate) fn range_handle_value(handle: RangeHandle, value: i64, start: i64, end: i64) -> i64 {
+    match handle {
+        RangeHandle::Start => value.min(end - 1).clamp(0, 99),
+        RangeHandle::End => value.max(start + 1).clamp(1, 100),
+    }
+}
+
+#[cfg(test)]
+#[path = "gamepad_products_tests.rs"]
+mod tests;
+
+/// `QP` 的两个手柄。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum RangeHandle {
+    Start,
+    End,
+}
+
+/// `QP` 的几何与拖拽状态：`.rangeSlider` 的容器 bounds 由 canvas 记录，指针位置
+/// 按容器宽度换算成 0–100 的整数。
+#[derive(Clone, Default)]
+struct RangeDrag {
+    bounds: Rc<Cell<Bounds<Pixels>>>,
+    handle: Option<RangeHandle>,
+}
+
 pub(crate) struct GamepadProductWorkspace {
     spec: &'static GamepadProductSpec,
+    range_drag: RangeDrag,
     page: String,
     draft: Value,
     selected_button: Option<String>,
@@ -74,6 +133,7 @@ impl GamepadProductWorkspace {
         let spec = source_product(pid).expect("audited gamepad product");
         let mut this = Self {
             spec,
+            range_drag: RangeDrag::default(),
             page: "TAB_CUSTOMIZE".into(),
             draft: json!({"profile": spec.profile, "controller": spec.controller}),
             selected_button: None,
@@ -273,12 +333,216 @@ impl GamepadProductWorkspace {
             .into_any_element()
     }
 
+    /// `QP`：`.rangeSlider` 双柄滑条。两条 6px、圆角 5px 的条
+    /// （`.rangeSliderBackground{background:#44d62c;opacity:.3}` 与
+    /// `.rangeSliderHighlight{background:#44d62c;left:start%;right:(100-end)%}`，
+    /// 都在 `top:18px`），两个 20px 绿色圆柄（悬停 `#5d5d5d` + `2px #44d62c`、
+    /// 按下 `#383838` + `2px #44d62c`），柄上方 `.sliderTipBar` 的绿色数值气泡
+    /// （`#000`、12px、`padding:4px 9px`、`top:-16px`、`translateX(-50%)`），
+    /// 以及下方两端对齐的 `0`/`100`。手柄不能互相越过，对应原版的
+    /// `Math.min(value, max-1)` / `Math.max(value, min+1)`。
+    fn range_control(&self, root: &str, start: i64, end: i64, cx: &Context<Self>) -> AnyElement {
+        let bounds_cell = self.range_drag.bounds.clone();
+        // 原版用 `:active` 表示手柄被按住；本地按拖拽状态给同样的
+        // `background:#383838;border:2px solid #44d62c`。
+        let thumb = |value: i64, handle: RangeHandle| {
+            let pressed = self.range_drag.handle == Some(handle);
+            div()
+                .absolute()
+                .left(relative(value as f32 / 100.))
+                .top(surface::css(11.))
+                .w_0()
+                .flex()
+                .justify_center()
+                .child(
+                    div()
+                        .w(surface::css(20.))
+                        .h(surface::css(20.))
+                        .rounded_full()
+                        .bg(if pressed {
+                            rgb(0x383838)
+                        } else {
+                            rgb(0x44d62c)
+                        })
+                        .when(pressed, |thumb| {
+                            thumb.border_2().border_color(rgb(0x44d62c))
+                        })
+                        .hover(|style| {
+                            style
+                                .bg(rgb(0x5d5d5d))
+                                .border_2()
+                                .border_color(rgb(0x44d62c))
+                        }),
+                )
+        };
+        let tip = |value: i64| {
+            div()
+                .absolute()
+                .left(relative(value as f32 / 100.))
+                .top(surface::css(-16.))
+                .w_0()
+                .flex()
+                .justify_center()
+                .child(
+                    div()
+                        .rounded(surface::css(3.))
+                        .bg(rgb(0x44d62c))
+                        .px(surface::css(9.))
+                        .py(surface::css(4.))
+                        .font_family("Roboto")
+                        .text_size(surface::css(12.))
+                        .text_color(rgb(0x000000))
+                        .child(value.to_string()),
+                )
+        };
+        let root_down = root.to_owned();
+        let root_move = root.to_owned();
+        v_flex()
+            .mt(surface::css(20.))
+            .child(
+                div()
+                    .relative()
+                    .ml(surface::css(10.))
+                    .mr(surface::css(-12.))
+                    .mb(surface::css(-8.))
+                    .h(surface::css(40.))
+                    .child(
+                        canvas(move |bounds, _, _| bounds_cell.set(bounds), |_, _, _, _| ())
+                            .absolute()
+                            .inset_0(),
+                    )
+                    .child(
+                        div()
+                            .absolute()
+                            .left(surface::css(-10.))
+                            .right(surface::css(12.))
+                            .top(surface::css(18.))
+                            .h(surface::css(6.))
+                            .rounded(surface::css(5.))
+                            .bg(rgba(0x44d62c4d)),
+                    )
+                    .child(
+                        div()
+                            .absolute()
+                            .left(relative(start as f32 / 100.))
+                            .right(relative((100 - end) as f32 / 100.))
+                            .top(surface::css(18.))
+                            .h(surface::css(6.))
+                            .rounded(surface::css(5.))
+                            .bg(rgb(0x44d62c)),
+                    )
+                    .child(
+                        div()
+                            .relative()
+                            .w(relative(0.96))
+                            .child(tip(start))
+                            .child(tip(end)),
+                    )
+                    .child(thumb(start, RangeHandle::Start))
+                    .child(thumb(end, RangeHandle::End))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                            this.range_drag_start(event, &root_down, cx)
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
+                        this.range_drag_move(event, &root_move, cx)
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, _| this.range_drag.handle = None),
+                    ),
+            )
+            .child(h_flex().justify_between().child("0").child("100"))
+            .into_any_element()
+    }
+
+    fn range_pointer_value(&self, x: Pixels) -> i64 {
+        let bounds = self.range_drag.bounds.get();
+        let width = f32::from(bounds.size.width).max(1.);
+        let local = f32::from(x - bounds.left()) / width;
+        (local * 100.).round().clamp(0., 100.) as i64
+    }
+
+    /// 原版是两个重叠的 `<input type=range>`，由浏览器命中决定拖哪一个；本地按
+    /// 「离哪个手柄更近」选择。
+    fn range_drag_start(&mut self, event: &MouseDownEvent, root: &str, cx: &mut Context<Self>) {
+        let start = self.number(&format!("{root}/startRange"));
+        let end = self.number(&format!("{root}/endRange"));
+        let value = self.range_pointer_value(event.position.x);
+        self.range_drag.handle = Some(if (value - start).abs() <= (value - end).abs() {
+            RangeHandle::Start
+        } else {
+            RangeHandle::End
+        });
+        self.range_drag_apply(root, value, cx);
+    }
+
+    fn range_drag_move(&mut self, event: &MouseMoveEvent, root: &str, cx: &mut Context<Self>) {
+        if self.range_drag.handle.is_none() {
+            return;
+        }
+        let value = self.range_pointer_value(event.position.x);
+        self.range_drag_apply(root, value, cx);
+    }
+
+    fn range_drag_apply(&mut self, root: &str, value: i64, cx: &mut Context<Self>) {
+        let Some(handle) = self.range_drag.handle else {
+            return;
+        };
+        let start_path = format!("{root}/startRange");
+        let end_path = format!("{root}/endRange");
+        let (start, end) = (self.number(&start_path), self.number(&end_path));
+        let next = range_handle_value(handle, value, start, end);
+        match handle {
+            RangeHandle::Start if next != start => self.write(&start_path, json!(next), cx),
+            RangeHandle::End if next != end => self.write(&end_path, json!(next), cx),
+            _ => {}
+        }
+    }
+
+    /// `JP`：每个扳机的组件。标题是 `LEFT_TRIGGER_MODE`/`RIGHT_TRIGGER_MODE`
+    /// （`we.LST`/`we.gzX`），`tips` 是同一个提示键；组件体是 `.radioList`
+    /// （`display:grid`）里的 Analog/Digital 两个 `radioItem` 勾选项，然后按模式分支：
+    /// 模拟模式显示 `.h1-body` = `<SIDE>_TRIGGER_RANGE`（`we.Vwf`/`we.ukk`）与
+    /// `QP` 双柄滑条（外层 `margin-top:35px`），数字模式显示
+    /// `<SIDE>_ACTUATION_POINT`（`we.C7E`/`we.Fh7`）与 1–100 的滑条
+    /// （`minTag:"1%"`、`maxTag:"100%"`、`tipFormat` 加 `%`）。两者都带
+    /// `.reset-actuation` 重置链接，仅在取值偏离默认时可用。
     fn triggers(&self, cx: &Context<Self>) -> AnyElement {
-        let panels = [
-            ("leftTrigger", "LEFT_TRIGGER"),
-            ("rightTrigger", "RIGHT_TRIGGER"),
-        ]
-        .map(|(side, label)| {
+        v_flex()
+            .gap_5()
+            .child(surface::note(t("ACTUATION_DESC"), cx))
+            .child(
+                surface::page_columns()
+                    .child(surface::page_column(self.trigger_panel(
+                        "leftTrigger",
+                        "LEFT",
+                        cx,
+                    )))
+                    .child(surface::page_column(self.trigger_panel(
+                        "rightTrigger",
+                        "RIGHT",
+                        cx,
+                    ))),
+            )
+            // 原版按设备信息里的 `minFWSupportTriggers` 显示固件要求提示。
+            .when_some(
+                self.spec.info["minFWSupportTriggers"].as_str(),
+                |view, version| {
+                    view.child(surface::note(
+                        format!("此产品扳机功能要求固件 {version}；当前未读取设备固件。"),
+                        cx,
+                    ))
+                },
+            )
+            .into_any_element()
+    }
+
+    fn trigger_panel(&self, side: &str, prefix: &str, cx: &Context<Self>) -> AnyElement {
+        let panel = {
+            let (mode_key, range_key, point_key) = trigger_keys(prefix);
             let root = format!("/controller/{side}");
             let analog = self.number(&format!("{root}/mode")) == self.spec.analog_mode;
             let reset_fields: &[&str] = if analog {
@@ -289,9 +553,8 @@ impl GamepadProductWorkspace {
             let changed = reset_fields.iter().any(|field| {
                 self.draft.pointer(&format!("{root}/{field}")) != self.spec.trigger_reset.get(field)
             });
-            let mut panel = surface::panel(t(label), cx).child(
-                h_flex()
-                    .gap_2()
+            let mut panel = surface::panel(t(mode_key), cx).child(
+                v_flex()
                     .child(self.choice(
                         &format!("{root}/mode"),
                         json!(self.spec.analog_mode),
@@ -307,17 +570,70 @@ impl GamepadProductWorkspace {
                         cx,
                     )),
             );
+            let label_key = if analog { range_key } else { point_key };
+            let mut branch = h_flex().justify_between().items_center().child(
+                // `.h1-body{color:#ccc;margin-bottom:10px}`，原版这里把
+                // `margin-bottom` 覆盖成 0、并让元素 `display:inline-block`。
+                div().text_color(rgb(0xcccccc)).child(t(label_key)),
+            );
+            branch = branch.child(
+                // `.reset-actuation{font-size:14px;position:absolute;right:35px;
+                //  text-decoration:underline;text-transform:capitalize}` 与
+                // `:hover{color:#44d62c}`、`.disabled{opacity 由调用方控制}`。
+                // 图标 `icon_reset.f416d0b7.svg` 不在已抓取的设备包里，因此只渲染文字。
+                div()
+                    .id(SharedString::from(format!("gamepad-reset-{side}")))
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .text_color(rgb(0xcccccc))
+                    .underline()
+                    .when(!changed, |link| link.opacity(0.3))
+                    .hover(|style| style.text_color(rgb(0x44d62c)))
+                    .on_click({
+                        let reset_root = root.clone();
+                        cx.listener(move |this, _, window, cx| {
+                            if !changed {
+                                return;
+                            }
+                            let fields: &[&str] = if analog {
+                                &["startRange", "endRange"]
+                            } else {
+                                &["actuationPoint", "isRapidTrigger"]
+                            };
+                            for field in fields {
+                                if let Some(value) = this.spec.trigger_reset.get(*field) {
+                                    this.write(&format!("{reset_root}/{field}"), value.clone(), cx);
+                                }
+                            }
+                            this.sync_sliders(window, cx);
+                        })
+                    })
+                    .child(t("RESET")),
+            );
             if analog {
-                panel = panel
-                    .child(self.range(&format!("{root}/startRange"), t("MINIMUM"), true))
-                    .child(self.range(&format!("{root}/endRange"), t("MAXIMUM"), true));
+                let start = self.number(&format!("{root}/startRange"));
+                let end = self.number(&format!("{root}/endRange"));
+                panel = panel.child(branch).child(
+                    div()
+                        .mt(surface::css(35.))
+                        .child(self.range_control(&root, start, end, cx)),
+                );
             } else {
                 panel = panel
-                    .child(self.range(
-                        &format!("{root}/actuationPoint"),
-                        t("ACTUATION_POINT"),
-                        true,
-                    ))
+                    .child(branch)
+                    .child(
+                        div().mt(surface::css(20.)).child(
+                            // `<slider min={1} max={100} step={1} minTag="1%"
+                            //  maxTag="100%" tipFormat={v => v + "%"}>`
+                            v_flex()
+                                .child(self.range(
+                                    &format!("{root}/actuationPoint"),
+                                    t(point_key),
+                                    true,
+                                ))
+                                .child(surface::slider_tags("1%", None, "100%", None)),
+                        ),
+                    )
                     .child(self.toggle(
                         &format!("{root}/isRapidTrigger"),
                         t("RAPID_TRIGGER"),
@@ -325,42 +641,9 @@ impl GamepadProductWorkspace {
                         cx,
                     ));
             }
-            panel.child(
-                Button::new(SharedString::from(format!("gamepad-reset-{side}")))
-                    .label(t("RESET"))
-                    .outline()
-                    .disabled(!changed)
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        let fields: &[&str] = if analog {
-                            &["startRange", "endRange"]
-                        } else {
-                            &["actuationPoint", "isRapidTrigger"]
-                        };
-                        for field in fields {
-                            this.write(
-                                &format!("/controller/{side}/{field}"),
-                                this.spec.trigger_reset[*field].clone(),
-                                cx,
-                            );
-                        }
-                        this.sync_sliders(window, cx);
-                    })),
-            )
-        });
-        v_flex()
-            .gap_5()
-            .child(surface::note(t("ACTUATION_DESC"), cx))
-            .child(surface::page_columns().children(panels.into_iter().map(surface::page_column)))
-            .when_some(
-                self.spec.info["minFWSupportTriggers"].as_str(),
-                |v, version| {
-                    v.child(surface::note(
-                        format!("此产品扳机功能要求固件 {version}；当前未读取设备固件。"),
-                        cx,
-                    ))
-                },
-            )
-            .into_any_element()
+            panel
+        };
+        panel.into_any_element()
     }
 
     fn set_mapping(&mut self, input: &str, assignment: Option<&str>, cx: &mut Context<Self>) {
@@ -393,6 +676,12 @@ impl GamepadProductWorkspace {
         }
         cx.emit(GamepadProductChanged);
         cx.notify();
+    }
+
+    /// The `displayMode=armory` root mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
+        self.customize(cx)
     }
 
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
@@ -701,71 +990,153 @@ impl GamepadProductWorkspace {
         page.into_any_element()
     }
 
-    fn lighting(&self, cx: &Context<Self>) -> AnyElement {
+    /// The `displayMode=chromaApp` popup mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn lighting_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.lighting(window, cx)
+    }
+
+    /// 源码灯光页：左侧亮度组件（标题 `BRIGHTNESS_HEADER`、标题行开关、
+    /// 右上帮助 `BRIGHTNESS_TOOLTIP`、0–100 滑条）加上「关闭灯光」组件
+    /// （`SWITCH_OFF_LIGHTING_HEADER` + `SWITCH_OFF_LIGHTING_TOOLTIP`，两个
+    /// `.check-item` 与 1–15 滑条），右侧快速效果。
+    fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let enabled = self.checked("/profile/brightness/isEnabled");
-        let mut left = surface::panel(t("BRIGHTNESS_HEADER"), cx)
-            .child(self.toggle("/profile/brightness/isEnabled", t("BRIGHTNESS"), true, cx))
-            .child(self.range("/profile/brightness/value", t("BRIGHTNESS"), enabled));
-        if !self.spec.controller_lighting {
-            left = left
-                .child(self.toggle(
-                    "/profile/switchOffLighting/isDisplayOn",
-                    t("DISPLAY_TURNED_OFF"),
-                    enabled,
-                    cx,
-                ))
-                .child(self.toggle(
-                    "/profile/switchOffLighting/isIdleEnabled",
-                    t("IDLE_FOR_MIN"),
-                    enabled,
-                    cx,
-                ))
-                .child(self.range(
-                    "/profile/switchOffLighting/idleMinutes",
-                    t("MINUTES"),
-                    enabled && self.checked("/profile/switchOffLighting/isIdleEnabled"),
-                ));
-        }
-        let path = if self.spec.controller_lighting {
-            "/controller/lighting/effectId"
-        } else {
-            "/profile/quickEffects/selectedEffectId"
-        };
-        let right = surface::panel(t("EFFECTS"), cx).children(self.spec.effects.iter().filter_map(
-            |effect| {
-                Some(self.choice(
-                    path,
-                    effect["id"].clone(),
-                    t(effect["name"].as_str()?),
-                    true,
-                    cx,
-                ))
-            },
-        ));
         surface::page_columns()
-            .child(surface::page_column(left))
-            .child(surface::page_column(right))
+            .child(surface::page_column(
+                v_flex()
+                    .child(
+                        surface::panel_with_title_switch(
+                            t("BRIGHTNESS_HEADER"),
+                            surface::SynapseSwitch::new("gamepad-brightness")
+                                .accessibility_label(t("BRIGHTNESS_HEADER"))
+                                .checked(enabled)
+                                .on_change(cx.listener(|this, next: &bool, _, cx| {
+                                    this.write("/profile/brightness/isEnabled", json!(*next), cx);
+                                })),
+                            surface::help_control(
+                                "gamepad-brightness-help",
+                                t("BRIGHTNESS_TOOLTIP"),
+                            ),
+                            cx,
+                        )
+                        .child(surface::slider_tags("0", None, "100", None))
+                        .child(self.range(
+                            "/profile/brightness/value",
+                            crate::i18n::t("BRIGHTNESS_HEADER"),
+                            enabled,
+                        )),
+                    )
+                    .when(!self.spec.controller_lighting, |column| {
+                        column.child(self.switch_off_lighting(window, cx))
+                    }),
+            ))
+            .child(surface::page_column({
+                let path = if self.spec.controller_lighting {
+                    "/controller/lighting/effectId"
+                } else {
+                    "/profile/quickEffects/selectedEffectId"
+                };
+                surface::panel(t("EFFECTS"), cx).children(self.spec.effects.iter().filter_map(
+                    |effect| {
+                        Some(self.choice(
+                            path,
+                            effect["id"].clone(),
+                            t(effect["name"].as_str()?),
+                            true,
+                            cx,
+                        ))
+                    },
+                ))
+            }))
             .into_any_element()
     }
 
-    fn power(&self, cx: &Context<Self>) -> AnyElement {
-        // Mounted gamepad pages pass noSwitch=true; the shared keyboard power
-        // widget's switch must not be exposed here.
-        surface::panel(t("KEYBOARD_POWER_SAVING_TITLE"), cx)
-            .child(
-                h_flex()
-                    .gap_2()
-                    .children(self.spec.power_minutes.iter().map(|value| {
-                        self.choice(
-                            "/controller/power/powerSaving/value",
-                            json!(value),
-                            format!("{value} {}", t("MINUTES")),
-                            self.checked("/controller/power/powerSaving/isEnabled"),
-                            cx,
-                        )
-                    })),
+    /// 与键盘/鼠标同源的「关闭灯光」组件：面板标题 `SWITCH_OFF_LIGHTING_HEADER`、
+    /// 右上帮助 `SWITCH_OFF_LIGHTING_TOOLTIP`，两个勾选项用 `DISPLAY_TURNED_OFF`
+    /// 与 `IDLE_FOR_MIN`（`extraClass:"has-slider"` → 滑条 `margin-left:30px;
+    /// width:490px`），滑条 1–15、灰标 `1`/`15`。
+    fn switch_off_lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let brightness_on = self.checked("/profile/brightness/isEnabled");
+        let display_on = self.checked("/profile/switchOffLighting/isDisplayOn");
+        let idle_on = self.checked("/profile/switchOffLighting/isIdleEnabled");
+        let widget = surface::panel_with_control(
+            t("SWITCH_OFF_LIGHTING_HEADER"),
+            surface::help_control(
+                "gamepad-switch-off-lighting-help",
+                t("SWITCH_OFF_LIGHTING_TOOLTIP"),
+            ),
+            cx,
+        )
+        .child(
+            surface::check_item(
+                "gamepad-switch-off-display",
+                t("DISPLAY_TURNED_OFF"),
+                display_on,
+                !brightness_on,
+                window,
+                cx,
             )
-            .into_any_element()
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.write(
+                    "/profile/switchOffLighting/isDisplayOn",
+                    json!(!display_on),
+                    cx,
+                )
+            })),
+        )
+        .child(
+            surface::check_item(
+                "gamepad-switch-off-idle",
+                t("IDLE_FOR_MIN"),
+                idle_on,
+                !brightness_on,
+                window,
+                cx,
+            )
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.write(
+                    "/profile/switchOffLighting/isIdleEnabled",
+                    json!(!idle_on),
+                    cx,
+                )
+            })),
+        )
+        .child({
+            let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
+            if let Some(slider) = self.sliders.get("/profile/switchOffLighting/idleMinutes") {
+                column = column.child(Slider::new(slider).disabled(!(brightness_on && idle_on)));
+            }
+            column.child(surface::slider_tags("1", None, "15", None))
+        });
+        widget.into_any_element()
+    }
+
+    fn power(&self, cx: &Context<Self>) -> AnyElement {
+        surface::panel_with_control(
+            t("POWER_SAVING_HEADER"),
+            surface::help_control("gamepad-power-saving-help", t("POWER_SAVING_TOOLTIP")),
+            cx,
+        )
+        .child(surface::note(t("CONTROLLER_POWER_SAVING_DESC"), cx))
+        .child(
+            h_flex()
+                .gap_2()
+                .children(self.spec.power_minutes.iter().map(|value| {
+                    self.choice(
+                        "/controller/power/powerSaving/value",
+                        json!(value),
+                        power_saving_label(*value),
+                        self.checked("/controller/power/powerSaving/isEnabled"),
+                        cx,
+                    )
+                })),
+        )
+        .into_any_element()
     }
 
     fn calibration(&self, cx: &Context<Self>) -> AnyElement {
@@ -796,12 +1167,12 @@ impl GamepadProductWorkspace {
 }
 
 impl Render for GamepadProductWorkspace {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = match self.page.as_str() {
             "TAB_CUSTOMIZE" => self.customize(cx),
             "TRIGGERS" => self.triggers(cx),
             "THUMBSTICKS" => self.thumbsticks(cx),
-            "TAB_LIGHTING" => self.lighting(cx),
+            "TAB_LIGHTING" => self.lighting(window, cx),
             "TAB_POWER" => self.power(cx),
             "TAB_CALIBRATION" => self.calibration(cx),
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),

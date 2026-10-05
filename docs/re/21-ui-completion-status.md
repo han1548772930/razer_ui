@@ -1,5 +1,153 @@
 # 当前 UI 完成状态
 
+2026-10-04 产品页文案语言键批次：鼠标、键盘两族产品页不再写中文字面量，面板标题、开关、
+滑条行、效果名与输入名全部换成源码自己的语言键（鼠标 40 余处、键盘 13 处），做法是
+「用语言包中文值反查键名」+「设备包导出表两跳解析别名」+「语言包审计做闸门」；未知输入/效果
+改为原样显示内部名而不是编中文，并有测试固定。语言包审计现在覆盖 409 个字面量键、0 缺失，
+新增的 27 个键都在 10 份语言包中存在。逐条键名依据与仍未接入的文件清单见
+[产品页文案的语言键对账](product-label-locale-audit.md)。
+
+2026-10-04 语言包收口与手柄功耗/灯光批次：语言包键审计的**待回溯项清零**（5 → 3 → 0）。
+`ADVANCED_EFFECT_DETAILS` 的键名本来就是对的（设备包里就是 `oi("ADVANCED_EFFECT_DETAILS")`），
+缺的是应用级提取工具看不到设备包表格，新增 `tools/prepare-device-locales.py` 用 JS 感知扫描
+从设备包取出 10 种语言文本并合并（`--check` 现已通过）。手柄功耗页按共享组件 `BR`/`GR` 改正：
+标签不再是自造的 `"{value} MINUTES"`，而是源码的 `MIN`/`SEC` 模板（`value >= 60` 才用
+`MIN` 且数值除以 60，即按秒判断），新增 `i18n::t_value` 做 `{{value}}` 替换与纯函数
+`power_saving_label`（含测试）；标题/帮助/说明改用 `POWER_SAVING_HEADER`、
+`POWER_SAVING_TOOLTIP`、控制器自己的 `CONTROLLER_POWER_SAVING_DESC`。手柄灯光页改回源码的
+「关闭灯光」组件（两个勾选项 + 1–15 滑条与 `1`/`15` 灰标）与带标题开关的亮度组件。
+关联游戏弹层标题改用真实存在的 `LINKED_GAME_CHROMA_HEADER`（"Games linked to profile:"），
+原先的 `LINKED_GAMES_TO` 在所有当前源码里都不存在。细节与逐条 CSS 对账见
+[设备页 CSS 逐条对账](device-page-css-audit.md)。
+
+2026-10-04 手柄扳机页批次：按 `JP`/`QP` 重做扳机页的模拟/数字分支——面板标题改为源码的
+`LEFT_TRIGGER_MODE`/`RIGHT_TRIGGER_MODE`，两个分支各自的 `.h1-body` 文案用
+`LEFT|RIGHT_TRIGGER_RANGE`（模拟）与 `LEFT|RIGHT_ACTUATION_POINT`（数字），删掉本地自造的
+`MINIMUM`/`MAXIMUM`；模拟分支改用源码的双柄滑条（两条 6px 绿条：背景 `#44d62c` + `opacity .3`、
+高亮按 `left:start%/right:(100-end)%`，20px 圆柄悬停 `#5d5d5d`/按下 `#383838` 且都带 `2px #44d62c`
+描边，`.sliderTipBar` 的绿色数值气泡用零宽容器 + 居中复刻 `translateX(-50%)`，下方 `0`/`100`
+两端对齐），越界规则照源码 `Math.min(value,max-1)`/`Math.max(value,min+1)` 写成纯函数并有 3 条测试；
+数字分支滑条按源码加 `1%`/`100%` 灰标。`.reset-actuation` 改为下划线重置链接（未偏离默认时
+`opacity .3` 且不可点），其 16px 图标 `icon_reset.f416d0b7.svg` 不在已抓取资源里，因此只渲染文字。
+语言包键审计的待回溯项从 5 降到 3。细节见 [设备页 CSS 逐条对账](device-page-css-audit.md)。
+
+2026-10-04 勾选项与「关闭灯光」组件批次：`.check-item`/`.check-box` 从「外包一层 mb(9px)」
+升级为按当前源码实现的真实勾选框（20×20、圆角 2.4、`#737373`/悬停与选中 `#44d62c`、
+`:before/:after` 两段 3px 勾线按 `ticktop .2s`/`tickbottom .1s` 插值、`.check-text` 为
+`#ccc` 14px/17px 且 `left:30px;top:2px`、首字母大写），并连同 `.widget .help`、`.foot` 灰标
+一起收进 `ui/surface.rs`（`check_item`/`help_control`/`slider_tags`）。同时按源码更正键盘与
+鼠标的「关闭灯光」组件：它是**独立组件**（`kI`/`xI`，标题 `SWITCH_OFF_LIGHTING_HEADER`、
+提示 `SWITCH_OFF_LIGHTING_TOOLTIP`），内含 `DISPLAY_TURNED_OFF`、`IDLE_FOR_MIN` 两个勾选项与
+1–15 的滑条（灰标 `1`/`15`、无标签、30px 缩进 490px 宽），两个勾选项在亮度关闭时禁用；
+原先自造的 `SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF`/`_WHEN_IDLE`/`MINUTES` 三个键
+（源码里不存在，`t()` 未命中会直接显示 key）已删除，语言包键审计的待回溯项从 7 降到 5。
+细节与别名解析见 [设备页 CSS 逐条对账](device-page-css-audit.md)。
+
+2026-10-04 色彩页批次：显示器色彩页按源码重做——3858 的色彩温度组件补齐
+`COLOR_PROFILE_TOOLTIP` 提示、预设改为 `.btn_group`/`.btn_custom`（`GM` 枚举顺序与
+`NORMAL`/`LOW_BLUE_LIGHT`/`WARM`/`COOL`/`SRGB`/`SCARLETT_CUSTOM` 键），红/绿/蓝三行改为
+`STA` 行（无提示、无灰标、带 0–100 数值输入框）并包在 `.slide-off`/`.slide-on` 块里；
+3880 改为源码的两列网格（`.widget-col` 各 600px，左列 THX Cinema + Color Profile，
+右列 HDR + Color Temperature）。新增 `surface::panel_with_title_switch` 复刻
+`.titleRow > .title` 里的 `.widget-switch` 位置（THX/HDR 的开关在标题文本之后，帮助按钮仍在
+右上角），HDR 提示按 Windows 版本选键，Color Profile 组件按源码渲染禁用下拉与外链
+（删除了此前自造的“等待系统提供显示器色彩配置文件。”文案，无数据时走原版自己的空数据分支；
+外链点击拉起 `colorcpl.exe`）。同时新增静态审计
+[audit-locale-keys.py](<../../tools/audit-locale-keys.py>)：扫描 `src/` 里全部字面量
+`t("KEY")` 调用，核对 10 份语言包——383 个硬键、42 个 `t_or` 软键、42 个动态调用，
+发现 7 个字面量键不在语言包内（已逐个记录为待回溯），并给出各语言的键数差
+（61–118 个，属既有提取差距）。细节见
+[配件页面审计](accessory-system-native-ui.md)。
+
+2026-10-04 游戏模式页批次：显示器 Game Mode（`RTA`）此前是「outline 按钮 + 文字标签 + 滑条」
+的混合形态，现按源码重建——`.btn_group`/`.btn_custom` 预设按钮（DEFAULT/FPS/MMO/RACING/
+STREAMING/CUSTOM，标签键 `SCARLETT_*`）、四条 `STA` 行（`.slider_header.mb10` 名称 + 内联
+`.help`/`.tip` + 仅 `maxStep===100` 的 50×27 数值输入框）、overdrive 与 gamma 改为带
+`.foot` 灰标的离散滑条（标签位置 0/33%/66.5%/100%，overdrive 用 OFF/WEAK/STRONG 语言键，
+gamma 1.4/1.8/2.2 且 3880 加 2.4 提升标）、色域控件 `xrA`（标题 + 选项 `.btn_group` +
+**仅在非 Native 时**显示的 `COLOR_GAMUT_WARNING` 与 14px 圆形感叹号图标）。顺带把缺失的
+`tooltip_exclamationmark.cc8fb226.svg` 纳入资源（取自 Macro/Profiles 中字节相同的副本，
+资源清单 1085 条哈希校验通过）。细节、键名核对记录与仍未接入的轨道视觉见
+[配件页面审计](accessory-system-native-ui.md)。
+
+2026-10-04 输入源确认浮层批次：按 `SSA`/`OSA` 重做显示器主输入源控件——`.btn_group.inputSource`
+（`gap:20px`）里的 `.btn_custom` 按钮（透明底、`1px solid #5d5d5d`、Roboto 12px 大写、
+`padding:7px 16px 6px`、`margin:0`、`.active{#222 + #44d62c}`），点非当前源后按
+`confirmInputSourceChange` 弹确认浮层：`.profile-del`（`left:40px;top:165px`、`min-width:300px`、
+`#111`、`1px solid #fd4949`、`box-shadow:0 6px 10px 0 #0003`、20px 内边距、`opacity .3s linear`）
++ `CONFIRMATION_DESC` 文本 + 「不再询问」复选 + `#fd4949` 的 `CONFIRM` 键；点浮层外取消、
+确认后应用、切换页面丢弃未确认请求，并用 `deferred(...).with_priority(6)` 复刻
+`.widgetZIndex{z-index:6}` 的层级。四个输入源图标（`icon_hdmi`/`icon_displayport`/
+`icon_usb_typec`/Auto）在已抓取源码中不存在（3858 只抓了 `css/`、`js/`），按"不得猜测"只渲染
+文字并在文档中登记缺失文件，未画占位图形。详见
+[配件页面审计](accessory-system-native-ui.md)。
+
+2026-10-04 PIP 组件批次：按当前 3858/3880 源码重做显示器 PIP 面板（此前是三组自造按钮）。
+新增 `qAA`/`ZAA` 屏幕模型（330×196、主区 186、底部 10px 条、130×30 底座）、`JAA` 的 12 个
+放置预设（3 尺寸 × 4 角，SMALL 90×49.5 / MEDIUM 120×66 / LARGE 151×83，z 3/2/1，虚线边框、
+悬停 `#ffffff1a`+`#44d62c`、进入选择器后边框转 `#ccc`、选中框 `#222` 且隐藏输入源文字）、
+右侧栏 `MODE` 标题 + 两个 144×80 模式按钮（共享 `.btn` 度量与微型屏幕图形）+ `SOURCE` 标题 +
+输入源下拉（`$AA`：DP_1 15 / HDMI_1 17 / USB_C 19）。标题键按源码更正为 `MODE`/`SOURCE`，
+并记录了下一轮要做的输入源确认浮层（`OSA`：`.alert.profile-del`、`CONFIRMATION_DESC`、
+`CONFIRMAION_TEXT`、点外部取消）的完整证据。细节与"按源码保留的 640px 溢出"见
+[配件页面审计](accessory-system-native-ui.md)。
+
+2026-10-04 页面可达性批次：新增 `tools/audit-page-coverage.py`，把「产品自己声明的页面
+键」与「本地渲染器实际分派」做静态对账，并区分四种情况：家族分派、补充控件描述符、
+独立模式根（`StandaloneMode`）、确实没有渲染器。首轮结果暴露了两个真问题：
+
+- **已实现的配件页面全部不可达**：`accessory_system_products.rs` 把
+  `_ if !supports_page(...)` 描述符守卫放在实现分支之前，而 Raptor 显示器三页、
+  Hanbo/PWM/散热垫的 Performance、Core X V2 的 Customize 都没有生成描述符表，
+  于是被守卫挡在一个乱码占位字符串（`"?????????????"`）后面。现已改为实现分支优先，
+  并删除该乱码（`shell.rs` 深链失败提示里的同类乱码也换成明确中文）。
+- **9 个无线键盘的 `TAB_PAIRING` 不是主导航页**：它们属于 `multiDevicePairing`
+  独立导航（注册表里 `role: StandaloneMode`），本地由配对模式根承载，审计不再把它算作缺口。
+
+对账后：本审计覆盖的 5 个家族数据文件共 **1010 个页面槽位 / 279 个产品，没有任何一页缺少
+渲染器**（`slots with no renderer at all: 0`），也没有只渲染占位说明的页面。（注册表口径的
+331 产品 / 1419 主导航页来自 `tools/audit-native-product-coverage.py`，与本审计的分母不同，
+两者不可混用。）同时补齐了三处控件细节：监视器 `.widget .help` 提示控件
+（14px、`#4a4a4a` → 悬停 `#ffffff4d`、`.3s`）与 `SourceTooltip` 新增的 `WidgetTip`
+分支（`max-width:300px`、14px/18px、`right:14px;top:34px` 锚点）、HDR 提示按
+Windows 11 分支（新增只读 `is_windows_11()`）、刷新率计数器位置的 2×2 `#` 方块网格
+（27px 行、`min-width:90px`、`1px dashed #ccc`、选中 `#44d62c`/黑字）。依据与仍未接入项
+（PIP 方块选择器、`uiRestraint` 设备约束、显示器产品图）见
+[配件页面审计](accessory-system-native-ui.md)。
+
+机检：`python tools/audit-page-coverage.py`（含 `--self-test` 的四个合成用例：实现分支在前、
+守卫在前、占位分支、完全缺失分支；以及针对仓库源码的守卫顺序检查）。
+本批没有运行应用、构建、测试、安装器或下载代码；`cargo check --locked --all-targets`
+与格式化、资源/内嵌 JSON 校验、各专项 `--check` 审计全部通过。
+
+2026-10-04 displayMode 根分支批次：本轮先修复了被上一批提交破坏的编译
+（`assets/synapse/embedded.rs` 数组在闭合括号后多了一行、`hyperpolling` 图标未进
+资源清单；`product_workspace.rs` 的事件转发把 `&Device` 当 `Device`）。随后按当前源码
+补齐两个尚未接入的产品侧独立根：
+
+- 新增 `tools/generate-display-mode-roots.cjs` → `src/features/display-mode-roots.json`
+  （armory 226、chromaApp 212、macro 174、multiDevicePairing 30，产品 id 直接来自
+  `docs/re/display-mode-audit.json`），Rust 侧统一由
+  [display_mode_roots.rs](../../src/features/display_mode_roots.rs) 读取；窗口契约的
+  `DisplayMode::key()` 也改为引用同一张表，避免手写模式名。
+- `chromaApp` 根：不再只对 653 生效，改为「有根分支 + 有本地灯光页」才打开
+  （[chroma_product.rs](../../src/features/chroma_product.rs)、
+  [product_workspace.rs](../../src/features/product_workspace.rs)）；设备卡按
+  `.box-item-device` 修正内边距、名称行与不可用态（`opacity:.3`、`pointer-events:none`）。
+- `armory` 根：新增 [device_root.rs](../../src/shell/armory_page/device_root.rs)，在工坊
+  窗口按原版 `ie` 分支挂 460/340/420px 的设备面板并挂载该产品映射页；入口是设备
+  「分享到工坊」（与分享表单同屏），消息契约（`armoryIframeReady`、
+  `armoryMappings-<productId>`、`armory-button-list`、`armory-change-viewIndex`、
+  `hypershiftMode`）记录不改用 postMessage。
+- 选择器去门控：Chroma Studio 与（本地存在 769 设备时的）Philips Hue 直接打开本地页面，
+  不再显示下载/安装门控；其余模块保持门控是因为本地确实没有对应页面。
+
+机检：`node tools/audit-display-mode-roots.cjs --check`（收据
+[display-mode-roots-audit.json](display-mode-roots-audit.json)）与
+`node tools/generate-display-mode-roots.cjs --check`；逐模式的源码依据与本地偏差见
+[本地实现记录](display-mode-roots-implementation.md)。仍未接入：音频/配件家族与没有本地
+灯光页/映射页的产品，逐模式写在上面的收据里。本批没有运行应用、构建、测试或下载代码。
+
 2026-10-04 后续接线与参数补齐：182/653 的配置更多菜单现可把当前本地配置带到
 Armory 分享草稿；标题/描述、最多十个游戏文件、配置选择与摘要均有当前源码证据，
 在线检测和上传仍未接入。Macro 的绑定页新增设备卡、配置选择及产品真实输入区域，

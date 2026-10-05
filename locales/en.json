@@ -5851,5 +5851,6 @@
     "TRADEMARK": "All other trademarks are the property of their respective owners.",
     "TUTORIAL_RESET": "TUTORIALS RESET",
     "VERSION": "Version {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "Advanced effects are applied across multiple Razer Chroma-enabled devices globally and are not saved to device profile."
 }

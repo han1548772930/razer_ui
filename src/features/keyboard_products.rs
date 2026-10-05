@@ -70,6 +70,20 @@ pub(crate) fn source_product(pid: u32) -> Option<&'static KeyboardProductSpec> {
         .find(|p| p.product_id == pid)
 }
 pub(crate) struct KeyboardProductChanged;
+/// `kI` 的两个勾选项：状态路径与文案键（源码别名 `Rt.ISS`/`Rt.CUC` 解析为
+/// `DISPLAY_TURNED_OFF`、`IDLE_FOR_MIN`）。
+pub(crate) const SWITCH_OFF_LIGHTING_ITEMS: [(&str, &str); 2] = [
+    ("/switchOffLighting/isDisplayOn", "DISPLAY_TURNED_OFF"),
+    ("/switchOffLighting/isIdleEnabled", "IDLE_FOR_MIN"),
+];
+
+/// 空闲滑条的量程：`min:1`、`max:15`、`step:1`、`minTag:"1"`、`maxTag:"15"`。
+pub(crate) const SWITCH_OFF_IDLE_MINUTES: (i64, i64) = (1, 15);
+
+#[cfg(test)]
+#[path = "keyboard_products_tests.rs"]
+mod tests;
+
 pub(crate) struct KeyboardProductWorkspace {
     spec: &'static KeyboardProductSpec,
     page: String,
@@ -296,7 +310,102 @@ impl KeyboardProductWorkspace {
             .child(Slider::new(slider).disabled(!enabled))
             .into_any_element()
     }
-    fn lighting(&self, cx: &Context<Self>) -> AnyElement {
+    /// `kI`/`xI`: the switch-off-lighting widget. The audited source renders it
+    /// as its own `.widget` — title `SWITCH_OFF_LIGHTING_HEADER`, tips
+    /// `SWITCH_OFF_LIGHTING_TOOLTIP`, `extraClass:"has-slider"` — holding a
+    /// `checkDisplay` check item (`DISPLAY_TURNED_OFF`) and, unless
+    /// `DeviceInfo.hideLightingIdle` is set, a `checkIdle` check item
+    /// (`IDLE_FOR_MIN`) plus a 1–15 minute slider with `minTag:"1"`/`maxTag:"15"`
+    /// and no label. Both check items are disabled while brightness is off, and
+    /// the slider is active only when the idle switch and brightness are on.
+    fn switch_off_lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let on = self
+            .draft
+            .pointer("/brightness/isEnabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let [(display_path, display_key), (idle_path, idle_key)] = SWITCH_OFF_LIGHTING_ITEMS;
+        let display_on = self.boolean(display_path);
+        let idle_on = self.boolean(idle_path);
+        let mut widget = surface::panel_with_control(
+            t("SWITCH_OFF_LIGHTING_HEADER"),
+            surface::help_control(
+                "keyboard-switch-off-lighting-help",
+                t("SWITCH_OFF_LIGHTING_TOOLTIP"),
+            ),
+            cx,
+        )
+        .child(
+            surface::check_item(
+                "keyboard-switch-off-display",
+                t(display_key),
+                display_on,
+                !on,
+                window,
+                cx,
+            )
+            .on_click(
+                cx.listener(move |this, _, _, cx| this.write(display_path, json!(!display_on), cx)),
+            ),
+        );
+        if !self.spec.config["DeviceInfo"]["hideLightingIdle"]
+            .as_bool()
+            .unwrap_or(false)
+        {
+            widget =
+                widget
+                    .child(
+                        surface::check_item(
+                            "keyboard-switch-off-idle",
+                            t(idle_key),
+                            idle_on,
+                            !on,
+                            window,
+                            cx,
+                        )
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.write(idle_path, json!(!idle_on), cx)
+                        })),
+                    )
+                    .child({
+                        // `.has-slider .slider-container{margin-left:30px;width:490px}`
+                        // 让滑条与勾选框文字对齐。
+                        let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
+                        if let Some(slider) = self.sliders.get("/switchOffLighting/idleMinutes") {
+                            column = column.child(Slider::new(slider).disabled(!(on && idle_on)));
+                        }
+                        let (min, max) = SWITCH_OFF_IDLE_MINUTES;
+                        column.child(surface::slider_tags(
+                            &min.to_string(),
+                            None,
+                            &max.to_string(),
+                            None,
+                        ))
+                    });
+        }
+        widget.into_any_element()
+    }
+
+    fn boolean(&self, path: &str) -> bool {
+        self.draft
+            .pointer(path)
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// The `displayMode=chromaApp` popup mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn lighting_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.lighting(window, cx)
+    }
+    /// The lighting page (`ql`): `.body-widgets` with a left `.widget-col`
+    /// holding the brightness widget and the switch-off-lighting widget, and a
+    /// right column holding the effects widget.
+    fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let on = self
             .draft
             .pointer("/brightness/isEnabled")
@@ -306,33 +415,7 @@ impl KeyboardProductWorkspace {
             .child(self.toggle("/brightness/isEnabled", t("BRIGHTNESS"), true, cx))
             .child(self.range("/brightness/value", t("BRIGHTNESS"), on));
         if self.draft.get("switchOffLighting").is_some() {
-            left = left.child(self.toggle(
-                "/switchOffLighting/isDisplayOn",
-                t("SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF"),
-                on,
-                cx,
-            ));
-            if !self.spec.config["DeviceInfo"]["hideLightingIdle"]
-                .as_bool()
-                .unwrap_or(false)
-            {
-                left = left
-                    .child(self.toggle(
-                        "/switchOffLighting/isIdleEnabled",
-                        t("SWITCH_OFF_LIGHTING_WHEN_IDLE"),
-                        on,
-                        cx,
-                    ))
-                    .child(
-                        self.range(
-                            "/switchOffLighting/idleMinutes",
-                            t("MINUTES"),
-                            on && self.draft["switchOffLighting"]["isIdleEnabled"]
-                                .as_bool()
-                                .unwrap_or(false),
-                        ),
-                    );
-            }
+            left = left.child(self.switch_off_lighting(window, cx));
         }
         let mut right = surface::panel(t("QUICK_EFFECTS"), cx);
         if let Some(effects) = self.spec.config["QUICK_EFFECTS"].as_array() {
@@ -500,7 +583,7 @@ impl KeyboardProductWorkspace {
                     Button::new(SharedString::from(format!(
                         "keyboard-choice-{path}-{value}"
                     )))
-                    .label(value.to_string())
+                    .label(crate::i18n::t_value("MIN", value as i64))
                     .outline()
                     .selected(self.draft.pointer(&path).and_then(Value::as_u64) == Some(value))
                     .disabled(!enabled)
@@ -525,14 +608,11 @@ impl KeyboardProductWorkspace {
                 .pointer(&format!("{path}/isEnabled"))
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            let panel = surface::panel("调暗灯光", cx).child(self.toggle(
-                &format!("{path}/isEnabled"),
-                "闲置后调暗灯光".into(),
-                true,
-                cx,
-            ));
+            let panel = surface::panel(t("DIM_KEYBOARD_LIGHTING_TITLE"), cx)
+                .child(surface::note(t("DIM_KEYBOARD_LIGHTING_DESC"), cx))
+                .child(self.toggle(&format!("{path}/isEnabled"), t("IDLE_FOR_MIN"), true, cx));
             left = left.child(if kind == "choices" {
-                panel.child(div().child("闲置时间（分钟）")).child(
+                panel.child(
                     self.choices(
                         &format!("{path}/value"),
                         self.spec.config["DIM_KEYBOARD_LIGHTING_VALUES"]
@@ -543,11 +623,7 @@ impl KeyboardProductWorkspace {
                     ),
                 )
             } else {
-                panel.child(self.range(
-                    &format!("{path}/value"),
-                    "闲置时间（分钟）".into(),
-                    enabled,
-                ))
+                panel.child(self.range(&format!("{path}/value"), String::new(), enabled))
             });
         }
         if let Some(kind) = self.spec.controls["power_kind"].as_str() {
@@ -555,17 +631,14 @@ impl KeyboardProductWorkspace {
                 || self.draft["powerSaving"]["isEnabled"]
                     .as_bool()
                     .unwrap_or(false);
-            let mut panel = surface::panel("无线省电", cx);
+            let mut panel = surface::panel(t("KEYBOARD_POWER_SAVING_TITLE"), cx)
+                .child(surface::note(t("KEYBOARD_POWER_SAVING_DESC"), cx));
             if kind != "mouse_slider" {
-                panel = panel.child(self.toggle(
-                    "/powerSaving/isEnabled",
-                    "闲置后进入睡眠".into(),
-                    true,
-                    cx,
-                ));
+                panel =
+                    panel.child(self.toggle("/powerSaving/isEnabled", t("IDLE_FOR_MIN"), true, cx));
             }
             right = right.child(if kind == "choices" {
-                panel.child(div().child("闲置时间（分钟）")).child(
+                panel.child(
                     self.choices(
                         "/powerSaving/value",
                         self.spec.config["KEYBOARD_WIRELESS_POWER_SAVING_VALUES"]
@@ -582,7 +655,7 @@ impl KeyboardProductWorkspace {
                     } else {
                         "/powerSaving/value"
                     },
-                    "闲置时间（分钟）".into(),
+                    String::new(),
                     enabled,
                 ))
             });
@@ -606,10 +679,10 @@ impl KeyboardProductWorkspace {
             value["isWindowsKeyDisabled"] = json!(state != 0);
             this.write("/gamingMode", value, cx);
         };
-        surface::panel("游戏模式", cx)
+        surface::panel(t("GAMING_MODE_HEADER"), cx)
             .child(
                 Checkbox::new("keyboard-game-mode")
-                    .label("游戏模式")
+                    .label(t("GAME_MODE"))
                     .checked(enabled)
                     .on_click(cx.listener(move |this, value, _, cx| {
                         set_mode(
@@ -626,7 +699,7 @@ impl KeyboardProductWorkspace {
             )
             .child(
                 Checkbox::new("keyboard-game-mode-in-game")
-                    .label("仅在游戏中启用")
+                    .label(t("GAMING_MODE_IN_GAME"))
                     .checked(in_game)
                     .disabled(!enabled)
                     .on_click(cx.listener(move |this, value, _, cx| {
@@ -635,13 +708,13 @@ impl KeyboardProductWorkspace {
             )
             .child(
                 Checkbox::new("keyboard-game-mode-windows")
-                    .label("禁用 Windows 键")
+                    .label(t("DISABLE_WINDOWS_KEY"))
                     .checked(enabled)
                     .disabled(true),
             )
             .child(self.toggle(
                 "/gamingMode/isAltTabDisabled",
-                "禁用 Alt + Tab".into(),
+                t("DISABLE_ALT_TAB"),
                 enabled,
                 cx,
             ))
@@ -652,7 +725,7 @@ impl KeyboardProductWorkspace {
                 .then(|| {
                     self.toggle(
                         "/gamingMode/isAltF4Disabled",
-                        "禁用 Alt + F4".into(),
+                        t("DISABLE_ALT_F4"),
                         enabled,
                         cx,
                     )
@@ -751,6 +824,11 @@ impl KeyboardProductWorkspace {
             .child(surface::dot_background(cx))
             .child(keyboard)
             .into_any_element()
+    }
+    /// The `displayMode=armory` root mounts this page without the product
+    /// chrome; the renderer itself is shared, so no separate layout is faked.
+    pub(crate) fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
+        self.customize(cx)
     }
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
         let mut panel = surface::panel(t("TAB_CUSTOMIZE"), cx);
@@ -1093,12 +1171,12 @@ impl KeyboardProductWorkspace {
     }
 }
 impl Render for KeyboardProductWorkspace {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = match self.page.as_str() {
             "TAB_LIGHTING" => v_flex()
                 .gap_5()
                 .child(self.keyboard_image(false, cx))
-                .child(self.lighting(cx))
+                .child(self.lighting(window, cx))
                 .into_any_element(),
             "TAB_CUSTOMIZE" => self.customize(cx),
             "ACTUATION" => self.actuation_page(cx),

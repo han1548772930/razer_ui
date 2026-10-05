@@ -5789,5 +5789,6 @@
     "TRADEMARK": "Alle anderen Warenzeichen sind Eigentum der jeweiligen Inhaber.",
     "TUTORIAL_RESET": "TUTORIALS ZURÜCKGESETZT",
     "VERSION": "Version {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "Erweiterte Effekte werden auf mehrere Geräte mit Razer Chroma-Unterstützung global übernommen und nicht im Geräte-Profil gespeichert."
 }

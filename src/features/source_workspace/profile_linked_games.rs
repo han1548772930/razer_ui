@@ -574,7 +574,14 @@ impl Render for ProfileLinkedGames {
         let title = if self.adding {
             i18n::t("ADD_GAME_TITLE").to_uppercase()
         } else {
-            format!("{} {}", i18n::t("LINKED_GAMES_TO"), self.profile_name).to_uppercase()
+            // 源码键 `LINKED_GAME_CHROMA_HEADER`＝"Games linked to profile:"，冒号后接
+            // Profile 名；本地原先用的 `LINKED_GAMES_TO` 在全部当前源码里都不存在。
+            format!(
+                "{} {}",
+                i18n::t("LINKED_GAME_CHROMA_HEADER"),
+                self.profile_name
+            )
+            .to_uppercase()
         };
         let mut body = v_flex()
             .flex_1()

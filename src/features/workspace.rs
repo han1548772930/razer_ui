@@ -1149,6 +1149,19 @@ impl DeviceWorkspace {
             )
             .into_any_element()
     }
+
+    /// The product-side `displayMode=armory` root: the mapping surface the Armory
+    /// application embeds for one device. The current bundles mount the mapping
+    /// component with `showMouseUse:false`, so the mouse-use block is not part of
+    /// this surface; the local mapping surface already has no such block, and the
+    /// product navigation/profile chrome stays outside this call.
+    pub(crate) fn armory_mapping_page(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.customize_surface(window, cx)
+    }
 }
 impl Render for DeviceWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

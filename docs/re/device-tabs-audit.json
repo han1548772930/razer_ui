@@ -901,12 +901,12 @@
     {
       "file": "src/features/workspace.rs",
       "marker": "fn toolbar(",
-      "sha256": "54c8274779fb55c1c9640081fafe0e1cea909cc9e8a65a24c7d472bd9f2ec3da"
+      "sha256": "ec41303841c1a94b4827e14be706c3367dd913f9b5ce4691f4d7f1291aef56fa"
     },
     {
       "file": "src/features/source_workspace.rs",
       "marker": "impl Render for SourceProductWorkspace",
-      "sha256": "ce49e4bbcc6c6d1d621fe9eed998bbc5855e22c2f8bcf39b5df97bf3c903bad6"
+      "sha256": "19eebece20955f34238d7247294784f954d83037e4692eb9e1cdee719209a3e0"
     }
   ],
   "limitations": [

@@ -5767,5 +5767,6 @@
     "TRADEMARK": "所有其他商標均屬各自所有權人之財產。",
     "TUTORIAL_RESET": "重設使用教學",
     "VERSION": "版本 {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "進階效果可全面套用到多個支援 Razer Chroma 的裝置，但無法儲存到裝置上的設定檔。"
 }

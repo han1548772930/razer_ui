@@ -310,7 +310,7 @@ impl DeviceWorkspace {
                     .pt(surface::css(10.))
                     .px(surface::css(20.))
                     .pb(surface::css(20.))
-                    .child(self.customize_page(cx)),
+                    .child(self.customize_page(window, cx)),
             );
         let from_drawer = open
             && self.mapping.as_ref().is_some_and(|mapping| {

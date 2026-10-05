@@ -508,7 +508,7 @@ impl AppShell {
                     });
                     this.location = Location::Device(identity);
                 } else {
-                    this.status = "?????????????".into();
+                    this.status = format!("没有设备提供页面 {key}；未切换页面。");
                 }
             }
         }
@@ -554,6 +554,18 @@ impl AppShell {
                     let device = entity.read(cx).snapshot(cx);
                     this.open_module_tab(service_pages::ModulePage::Armory, window, cx);
                     if this.location == Location::Armory {
+                        // Current Armory mounts the product's `displayMode=armory`
+                        // mapping root for the device being shared, next to the
+                        // share form. Open both from the same entry.
+                        let opened = this.armory_page.as_ref().is_some_and(|page| {
+                            page.update(cx, |page, cx| {
+                                page.open_device_root(entity.clone(), window, cx)
+                            })
+                        });
+                        if !opened {
+                            this.status = "此设备没有本地 Armory 映射页（源包无 armory 分支，或该产品没有本地映射页）。"
+                                .into();
+                        }
                         if let Some(page) = &this.armory_page {
                             page.update(cx, |page, cx| page.open_share_profile(device, window, cx));
                         }

@@ -855,34 +855,51 @@ fn profile_dialog_button(
     id: &'static str,
     label: impl Into<SharedString>,
     kind: ThxKind,
-    cx: &App,
+    window: &mut Window,
+    cx: &mut App,
 ) -> BaseButton {
     let label = label.into().to_uppercase();
     let (background, foreground) = match kind {
         ThxKind::Primary => (gpui_kit::rgb(0x44d62c), gpui_kit::rgb(0x000000)),
         ThxKind::Test => (gpui_kit::rgb(0x707070), gpui_kit::rgb(0xffffff)),
     };
-    BaseButton::new(id)
-        .accessibility_label(label.clone())
-        .h(surface::css(27.))
-        .min_w(surface::css(90.))
-        .px(surface::css(5.))
-        .py(surface::css(4.))
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_size(surface::css(12.))
-        .line_height(surface::css(14.))
-        .rounded(surface::css(3.))
-        .border_1()
-        .border_color(gpui_kit::rgba(0x0000004d))
-        .bg(background)
-        .text_color(foreground)
-        .hover(|button| button.opacity(0.8))
-        .active(|button| button.opacity(0.6))
-        .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
-        .focus_visible(|button| button.border_color(cx.theme().primary))
-        .child(label)
+    let focus = cx.theme().primary;
+    // `.thx-btn{transition:opacity .3s}`：悬停 `.8`、按下 `.6` 都走 300ms 过渡，
+    // 所以不透明度由指针状态插值，而不是用瞬时的 `.hover`/`.active` 样式。
+    let pointer = surface::pointer_state(id, window, cx);
+    let (hovered, pressed) = pointer.read(cx).sample();
+    let target = if pressed {
+        0.6
+    } else if hovered {
+        0.8
+    } else {
+        1.
+    };
+    let opacity = surface::fade_opacity(id, target, 300, window, cx);
+    surface::track_pointer(
+        BaseButton::new(id)
+            .accessibility_label(label.clone())
+            .h(surface::css(27.))
+            .min_w(surface::css(90.))
+            .px(surface::css(5.))
+            .py(surface::css(4.))
+            .flex()
+            .items_center()
+            .justify_center()
+            .text_size(surface::css(12.))
+            .line_height(surface::css(14.))
+            .rounded(surface::css(3.))
+            .border_1()
+            .border_color(gpui_kit::rgba(0x0000004d))
+            .bg(background)
+            .text_color(foreground)
+            .opacity(opacity)
+            .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
+            .focus_visible(|button| button.border_color(focus))
+            .child(label),
+        &pointer,
+        window,
+    )
 }
 
 impl DeviceWorkspace {

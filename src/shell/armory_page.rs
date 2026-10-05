@@ -14,7 +14,9 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use std::{path::PathBuf, time::Duration};
 
+mod device_root;
 mod share_profile;
+use device_root::ArmoryDeviceRoot;
 use share_profile::{ShareClosed, ShareProfileDialog};
 
 fn tr(key: &str) -> String {
@@ -207,6 +209,10 @@ pub(super) struct ArmoryPage {
     search_task: Option<Task<()>>,
     share_profile: Option<Entity<ShareProfileDialog>>,
     share_subscription: Option<Subscription>,
+    // Product-side `displayMode=armory` root for the device being shared. The
+    // source mounts it inside the Armory share screen; here it is the same
+    // window's device panel, and it stays absent until a device is opened.
+    device_root: Option<Entity<ArmoryDeviceRoot>>,
     _subscriptions: Vec<Subscription>,
 }
 impl ArmoryPage {
@@ -238,6 +244,7 @@ impl ArmoryPage {
             search_task: None,
             share_profile: None,
             share_subscription: None,
+            device_root: None,
             _subscriptions: vec![search_subscription],
             focus: cx.focus_handle(),
         }
@@ -270,6 +277,31 @@ impl ArmoryPage {
             );
         self.share_profile = Some(dialog);
         self.focus(window, cx);
+    }
+    /// Mount the device's `displayMode=armory` mapping root in this window.
+    /// Devices without a local armory root keep the entry closed.
+    pub(super) fn open_device_root(
+        &mut self,
+        workspace: Entity<crate::features::ProductWorkspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if self.device_root.is_some() {
+            return true;
+        }
+        if !workspace.read(cx).has_armory_device_page(cx) {
+            return false;
+        }
+        let root = cx.new(|cx| {
+            ArmoryDeviceRoot::new(workspace, cx).expect("armory device root was checked")
+        });
+        self.device_root = Some(root);
+        self.focus(window, cx);
+        true
+    }
+    pub(super) fn close_device_root(&mut self, cx: &mut Context<Self>) {
+        self.device_root = None;
+        cx.notify();
     }
     fn visible(&self, tab: ArmoryTab) -> bool {
         (!self.guest || tab != ArmoryTab::MyUploads)
@@ -717,6 +749,37 @@ impl Render for ArmoryPage {
         let mut body = v_flex().w_full();
         if self.tab == ArmoryTab::Browse && self.banner_open {
             body = body.child(self.banner(cx));
+        }
+        if let Some(root) = self.device_root.clone() {
+            let name = root.read(cx).device_name(cx);
+            body = body.child(
+                v_flex()
+                    .w_full()
+                    .gap(surface::css(10.))
+                    .px(surface::css(20.))
+                    .pt(surface::css(20.))
+                    .child(
+                        h_flex()
+                            .w_full()
+                            .justify_between()
+                            .items_center()
+                            .text_size(surface::css(14.))
+                            .child(name.to_uppercase())
+                            .child(
+                                BaseButton::new("armory-device-root-close")
+                                    .accessibility_label(tr("CLOSE"))
+                                    .child(
+                                        Icon::default()
+                                            .path("synapse/host-close.svg")
+                                            .size(surface::css(20.)),
+                                    )
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.close_device_root(cx);
+                                    })),
+                            ),
+                    )
+                    .child(root),
+            );
         }
         // 86024 returns null for an empty service dataset. The former paragraphs
         // containing source keys and implementation notes were not product UI.

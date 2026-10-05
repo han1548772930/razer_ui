@@ -1083,5 +1083,6 @@
     ("synapse/dashboard-179-0-0.png", include_bytes!("dashboard-179-0-0.png") as &[u8]),
     ("synapse/dashboard-179-0-0-1x.png", include_bytes!("dashboard-179-0-0-1x.png") as &[u8]),
     ("synapse/product-179-prd-1x.c84b6fdf.png", include_bytes!("product-179-prd-1x.c84b6fdf.png") as &[u8]),
-]
     ("synapse/hyperpolling-icon-multidevicepairing2.svg", include_bytes!("hyperpolling-icon-multidevicepairing2.svg") as &[u8]),
+    ("synapse/accessory-exclamation.svg", include_bytes!("accessory-exclamation.svg") as &[u8]),
+]

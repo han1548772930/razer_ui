@@ -7,6 +7,12 @@ impl AppShell {
     pub(super) fn sync_app_picker(&self, window: &mut Window, cx: &mut Context<Self>) {
         let dashboard = self.dashboard_state.read(cx).snapshot();
         let order = dashboard.items_order.get("devices");
+        // The Hue module page is product 769's workspace; remember the local
+        // device key so the picker can open it directly.
+        let hue_device = self.devices.iter().find_map(|workspace| {
+            let workspace = workspace.read(cx);
+            (workspace.device(cx).product_id == 769).then(|| workspace.identity(cx))
+        });
         let devices = self
             .devices
             .iter()
@@ -47,35 +53,41 @@ impl AppShell {
             .collect();
         // Page availability is a capability. No installed/native module results
         // have been read, so those catalog fields deliberately remain Unknown.
+        // Modules whose page is implemented in this host open directly instead of
+        // showing the installer gate: the seven Dashboard boxes plus Chroma
+        // Studio, whose page is the same one the `chroma-app` window mounts.
+        let mut bundled_modules = vec![
+            PickerModule::Alexa,
+            PickerModule::AddWifi,
+            PickerModule::Macro,
+            PickerModule::LinkedGames,
+            PickerModule::Armory,
+            // The Dashboard's FEEDBACK box targets the named
+            // `feedback-synapse` window.  The local shell now has the
+            // same page, so keep it visible and launchable without
+            // waiting for the external installer/service state.
+            PickerModule::Feedback,
+            PickerModule::ProfileMigration,
+            PickerModule::ChromaStudio,
+        ];
+        let mut launchable_modules = bundled_modules.clone();
+        // The Philips Hue module page is implemented as product 769's workspace,
+        // so it can only open directly while that device exists locally. The
+        // Chroma application's other module pages are not implemented here and
+        // keep their gate.
+        if hue_device.is_some() {
+            bundled_modules.push(PickerModule::PhilipsHue);
+            launchable_modules.push(PickerModule::PhilipsHue);
+        }
         let catalog = AppPickerCatalog::new(PickerApp::Synapse)
             .devices(devices)
-            .bundled_modules([
-                PickerModule::Alexa,
-                PickerModule::AddWifi,
-                PickerModule::Macro,
-                PickerModule::LinkedGames,
-                PickerModule::Armory,
-                // The Dashboard's FEEDBACK box targets the named
-                // `feedback-synapse` window.  The local shell now has the
-                // same page, so keep it visible and launchable without
-                // waiting for the external installer/service state.
-                PickerModule::Feedback,
-                PickerModule::ProfileMigration,
-            ])
+            .bundled_modules(bundled_modules)
             // Chroma is a separately named local application. Keep it in the
             // picker as an installed/launchable app so its entry opens the
             // policy=5 `chroma-app` window without an installer service.
             .installed_modules([PickerApp::Chroma.key()])
             .native_apps([PickerApp::Chroma])
-            .launchable_modules([
-                PickerModule::Alexa,
-                PickerModule::AddWifi,
-                PickerModule::Macro,
-                PickerModule::LinkedGames,
-                PickerModule::Armory,
-                PickerModule::Feedback,
-                PickerModule::ProfileMigration,
-            ])
+            .launchable_modules(launchable_modules)
             .launchable_apps([PickerApp::Synapse, PickerApp::Chroma]);
         self.app_picker
             .update(cx, |picker, cx| picker.set_catalog(catalog, window, cx));
@@ -124,6 +136,22 @@ impl AppShell {
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::ChromaStudio)) => {
                 self.navigate(Location::Chroma, window, cx);
+            }
+            // The Hue module's page is the 769 product workspace. Open that
+            // device directly when it is present locally; otherwise report the
+            // missing device instead of an installer gate.
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::PhilipsHue)) => {
+                let key = self.devices.iter().find_map(|workspace| {
+                    let workspace = workspace.read(cx);
+                    (workspace.device(cx).product_id == 769).then(|| workspace.identity(cx))
+                });
+                match key {
+                    Some(key) => self.navigate(Location::Device(key), window, cx),
+                    None => {
+                        self.status = "本地没有 Philips Hue 设备，模块页无法打开。".into();
+                        cx.notify();
+                    }
+                }
             }
             AppPickerEvent::AddWifiDevice
             | AppPickerEvent::Open(PickerTarget::Module(PickerModule::AddWifi)) => {

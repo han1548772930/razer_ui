@@ -41,6 +41,9 @@ impl Colors {
     pub(super) fn close_hover() -> Hsla {
         rgba(0xffffff1a).into()
     }
+    /// Source divider color. No local automation surface draws a division line
+    /// yet, so this stays unused rather than repainting another edge with it.
+    #[allow(dead_code)]
     pub(super) fn divider() -> Hsla {
         rgba(0xffffff14).into()
     }

@@ -162,6 +162,39 @@ fn portal_uses_source_left_and_bottom_aligned_fallback_at_window_edges(cx: &mut 
 }
 
 #[gpui_kit::test]
+fn widget_tip_anchors_below_the_help_control_and_caps_at_300px(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+        cx.set_reduce_motion(true);
+    });
+    let handle = cx.open_window(size(px(640.), px(400.)), |window, cx| {
+        let view = cx.new(|_| TipFixture {
+            kind: SourceTooltipKind::WidgetTip,
+            at_edge: false,
+        });
+        Root::new(view, window, cx)
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.hover("explanation", cx);
+        window.render_frame(cx);
+        let trigger = window.find("explanation").bounds();
+        let tip = window.find(popup());
+        assert!(tip.visible());
+        // `.widget .tip{right:14px;top:34px}` against a `.widget .help` control
+        // that itself sits at `right:10px;top:10px` inside the widget.
+        assert_eq!(tip.bounds().right(), trigger.right() - px(4.));
+        assert_eq!(tip.bounds().origin.y, trigger.origin.y + px(24.));
+        assert!(
+            tip.bounds().size.width <= px(300.),
+            "width:max-content stays under the 300px cap"
+        );
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 fn profile_warning_includes_tip_hover_but_lock_warning_only_includes_icon(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);

@@ -5787,5 +5787,6 @@
     "TRADEMARK": "Todas as outras marcas comerciais são de propriedade de seus respectivos proprietários.",
     "TUTORIAL_RESET": "RESTAURO DOS TUTORIAIS",
     "VERSION": "Versão {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "Os efeitos avançados são aplicados em diversos dispositivos habilitados para Razer Chroma em todo o mundo e não são salvos no perfil de um dispositivo."
 }

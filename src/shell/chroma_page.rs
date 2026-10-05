@@ -446,7 +446,7 @@ impl ChromaPage {
                 if !device.is_chroma_device {
                     return None;
                 }
-                let available = workspace.chroma_lighting_workspace(cx).is_some()
+                let available = workspace.has_chroma_device_page(cx)
                     && device.setup_status == SetupStatus::Ready
                     && !device
                         .power_status
@@ -460,9 +460,10 @@ impl ChromaPage {
                         .w(css(290.))
                         .h(css(245.))
                         .p_0()
+                        // `.box-item-device{padding:10px 20px 20px}`
                         .pt(css(10.))
-                        .px(css(18.))
-                        .pb(css(18.))
+                        .px(css(20.))
+                        .pb(css(20.))
                         .flex_col()
                         .justify_start()
                         .gap_0()
@@ -478,54 +479,61 @@ impl ChromaPage {
                                 Tooltip::new("此设备的 Chroma 灯光页尚未接入。").build(window, cx)
                             })
                         })
-                        .child(div().w(css(250.)).h(css(140.)).flex_shrink_0().when_some(
-                            resources::dashboard_image(
-                                device.product_id,
-                                device.edition_id,
-                                device.layout_id,
-                            ),
-                            |v, image| {
-                                v.child(img(image).size_full().object_fit(ObjectFit::Contain))
-                            },
-                        ))
+                        // `.box-item-device .disabled{opacity:.3;pointer-events:none}`
                         .child(
                             v_flex()
                                 .w_full()
-                                .h(css(50.))
-                                .justify_end()
-                                .items_center()
+                                .h_full()
+                                .when(!available, |v| v.opacity(0.3).cursor_default())
+                                .child(div().w(css(250.)).h(css(140.)).flex_shrink_0().when_some(
+                                    resources::dashboard_image(
+                                        device.product_id,
+                                        device.edition_id,
+                                        device.layout_id,
+                                    ),
+                                    |v, image| {
+                                        v.child(
+                                            img(image).size_full().object_fit(ObjectFit::Contain),
+                                        )
+                                    },
+                                ))
                                 .child(
-                                    div()
-                                        .text_size(css(14.))
-                                        .text_center()
-                                        .child(name.to_uppercase()),
-                                ),
-                        )
-                        .when_some(snapshot, |button, state| {
-                            button.child(
-                                h_flex()
-                                    .mt(css(5.))
-                                    .gap(css(8.))
-                                    .text_size(css(12.))
-                                    .child(
-                                        img("synapse/chroma-icon_device_brightness_100.svg")
-                                            .size(css(18.)),
+                                    // `.name-tag{display:inline-flex;flex-direction:column;
+                                    // height:50px;justify-content:flex-end}`
+                                    v_flex().w_full().h(css(50.)).justify_end().child(
+                                        div()
+                                            .text_size(css(14.))
+                                            .line_height(css(16.))
+                                            .text_ellipsis()
+                                            .child(name.to_uppercase()),
+                                    ),
+                                )
+                                .when_some(snapshot, |view, state| {
+                                    view.child(
+                                        h_flex()
+                                            .mt(css(5.))
+                                            .gap(css(8.))
+                                            .text_size(css(12.))
+                                            .child(
+                                                img(
+                                                    "synapse/chroma-icon_device_brightness_100.svg",
+                                                )
+                                                .size(css(18.)),
+                                            )
+                                            .child(format!(
+                                                "{}%",
+                                                if state.enabled { state.brightness } else { 0 }
+                                            ))
+                                            .child(state.effect),
                                     )
-                                    .child(format!(
-                                        "{}%",
-                                        if state.enabled { state.brightness } else { 0 }
-                                    ))
-                                    .child(state.effect),
-                            )
-                        })
+                                }),
+                        )
                         .on_click(cx.listener(move |this, _, window, cx| {
                             if !available {
                                 return;
                             }
-                            let product = target.update(cx, |workspace, cx| {
-                                cx.new(|cx| {
-                                    ChromaProduct::new(workspace, cx).expect("653 root was checked")
-                                })
+                            let product = cx.new(|cx| {
+                                ChromaProduct::new(&target, cx).expect("chromaApp root was checked")
                             });
                             this.dialog_return_focus = window.focused(cx);
                             this.focus.focus(window, cx);

@@ -9,18 +9,21 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 
 // The 182 KP order and anchor coordinates come from drawLines, not DKM array order.
+// 标签是源码自己的语言键（与 `customize_drawer.rs` 的 182 module 1368 表一致）：
+// `LEFT_CLICK`/`RIGHT_CLICK`/`SCROLL_CLICK`/`SCROLL_UP`/`SCROLL_DOWN`/
+// `MOUSE_BUTTON_4`/`MOUSE_BUTTON_5`/`CYCLE_UP_SENSITIVITY`。
 const MOUSE_INPUTS: [(&str, &str); 8] = [
-    ("LeftButton", "左键单击"),
-    ("RightButton", "右键单击"),
-    ("MiddleButton", "滚轮点击"),
-    ("ScrollUp", "向上滚动"),
-    ("ScrollDown", "向下滚动"),
-    ("Button5", "鼠标按键 5"),
-    ("Button4", "鼠标按键 4"),
-    ("CycleUpSensitivityStages", "向上循环灵敏度等级"),
+    ("LeftButton", "LEFT_CLICK"),
+    ("RightButton", "RIGHT_CLICK"),
+    ("MiddleButton", "SCROLL_CLICK"),
+    ("ScrollUp", "SCROLL_UP"),
+    ("ScrollDown", "SCROLL_DOWN"),
+    ("Button5", "MOUSE_BUTTON_5"),
+    ("Button4", "MOUSE_BUTTON_4"),
+    ("CycleUpSensitivityStages", "CYCLE_UP_SENSITIVITY"),
 ];
 impl DeviceWorkspace {
-    pub(super) fn customize_page(&self, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn customize_page(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         v_flex()
             .child(if self.pid() == 653 {
                 self.keyboard_image(cx)
@@ -35,37 +38,116 @@ impl DeviceWorkspace {
                     .mt(surface::css(20.))
                     .mb(surface::css(10.))
                     .child(self.drawer_toggle(cx))
-                    .child(
-                        h_flex()
-                            .h(surface::css(36.))
-                            .p(surface::css(5.))
-                            .gap(surface::css(5.))
-                            .bg(cx.theme().group_box)
-                            .border_1()
-                            .border_color(cx.theme().border)
-                            .hover(|style| style.border_color(cx.theme().primary))
-                            .rounded(surface::css(18.))
-                            .child(self.layer_button(false, cx))
-                            .child(self.layer_button(true, cx)),
-                    )
-                    .child(
-                        Button::new("hypershift-help")
-                            .ghost()
-                            .label("?")
-                            .accessibility_label("Hypershift 说明")
-                            .tooltip(crate::i18n::t("HYPERSHIFT_TOOLTIP"))
-                            .size(surface::css(14.))
-                            .p_0()
-                            .border_0()
-                            .rounded_full()
-                            .text_size(surface::css(11.)),
-                    ),
+                    .child(self.layer_switch(window, cx))
+                    .child(surface::help_control(
+                        "mapping-hypershift-help",
+                        crate::i18n::t("HYPERSHIFT_TOOLTIP"),
+                    )),
             )
             .when(self.pid() == 653, |this| {
                 this.child(self.keyboard_panels(cx))
             })
             .into_any_element()
     }
+    /// `.hyper-wrapper`：`#111` 底、`1px solid #5d5d5d`、圆角 18px、高 36px、内边距 5px，
+    /// 悬停边框 `#44d62c`、按下底色 `#292929`，边框与底色都有 200ms 过渡；
+    /// 标记与源码一致：`role="switch"` + `aria-checked` + 两个 `.text` 标签。
+    fn layer_switch(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let pointer = surface::pointer_state("mapping-layer-switch", window, cx);
+        let (hovered, pressed) = pointer.read(cx).sample();
+        let border = surface::fade_color(
+            "mapping-layer-switch-border",
+            if hovered {
+                rgb(0x44d62c).into()
+            } else {
+                rgb(0x5d5d5d).into()
+            },
+            200,
+            window,
+            cx,
+        );
+        let background = surface::fade_color(
+            "mapping-layer-switch-background",
+            if pressed {
+                rgb(0x292929).into()
+            } else {
+                rgb(0x111111).into()
+            },
+            200,
+            window,
+            cx,
+        );
+        let mut wrapper = div()
+            .flex()
+            .items_center()
+            .h(surface::css(36.))
+            .p(surface::css(5.))
+            .rounded(surface::css(18.))
+            .border_1()
+            .border_color(border)
+            .bg(background)
+            .id("mapping-layer-switch")
+            // 源码的 `role="switch"` + `aria-checked`：本地用 kit 的 `Role` 与
+            // `aria_label`（GPUI 没有 `aria-checked`，因此把状态并入标签）。
+            .role(Role::Switch)
+            .aria_label(format!(
+                "{} {}",
+                crate::i18n::t("HYPERSHIFT"),
+                if self.hypershift { "on" } else { "off" }
+            ));
+        wrapper = surface::track_pointer(wrapper, &pointer, window);
+        wrapper
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.continue_with(Continue::Layer(!this.hypershift), window, cx)
+            }))
+            .child(self.layer_label(false, window, cx))
+            .child(self.layer_label(true, window, cx))
+            .into_any_element()
+    }
+
+    /// `.text`：14px、高 24px、`padding:6px 10px 5px`、圆角 12px、首字母大写，
+    /// 颜色有 200ms 过渡（`.text{transition:color .2s}`）；选中的一侧拿到
+    /// `#44d62c`（标准层）或 `#fd8611`（Hypershift 层）底色与 `#212121` 文字。
+    fn layer_label(&self, hyper: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let selected = self.hypershift == hyper;
+        let id = if hyper {
+            "mapping-hypershift"
+        } else {
+            "mapping-standard"
+        };
+        let accent = if hyper { rgb(0xfd8611) } else { rgb(0x44d62c) };
+        let color = surface::fade_color(
+            (ElementId::from(id), "label-color"),
+            if selected {
+                rgb(0x212121).into()
+            } else {
+                rgb(0xcccccc).into()
+            },
+            200,
+            window,
+            cx,
+        );
+        div()
+            .id(id)
+            .relative()
+            .h(surface::css(24.))
+            .pt(surface::css(6.))
+            .pb(surface::css(5.))
+            .px(surface::css(10.))
+            .rounded(surface::css(12.))
+            .text_size(surface::css(14.))
+            .line_height(surface::css(14.))
+            .text_color(color)
+            .when(selected, |label| label.bg(accent))
+            .when(!hyper, |label| label.mr(surface::css(5.)))
+            .child(crate::i18n::t(if hyper {
+                "HYPERSHIFT"
+            } else {
+                "STANDARD"
+            }))
+            .into_any_element()
+    }
+
     fn layer_button(&self, hyper: bool, cx: &mut Context<Self>) -> Button {
         let selected = self.hypershift == hyper;
         let color = if hyper {
@@ -116,9 +198,10 @@ impl DeviceWorkspace {
     fn input_button(
         &self,
         id: &'static str,
-        label: &'static str,
+        label: impl Into<String>,
         cx: &mut Context<Self>,
     ) -> Button {
+        let label = label.into();
         let selected = self.mapping.as_ref().is_some_and(|m| m.input == id);
         let bindings = if self.hypershift {
             &self.settings().hypershift_bindings
@@ -128,7 +211,7 @@ impl DeviceWorkspace {
         let assignment = bindings.get(id).filter(|value| value.as_str() != "default");
         let text = assignment
             .map(|value| self.mapping_summary(value).1)
-            .unwrap_or_else(|| label.to_string());
+            .unwrap_or_else(|| label.clone());
         let enabled = self.mapping_input_enabled(id);
         let foreground = if !enabled {
             cx.theme().muted_foreground
@@ -242,7 +325,11 @@ impl DeviceWorkspace {
                             .w(surface::css(if i == 7 { 220. } else { 210. }))
                             .flex()
                             .justify_end()
-                            .child(self.input_button(MOUSE_INPUTS[i].0, MOUSE_INPUTS[i].1, cx))
+                            .child(self.input_button(
+                                MOUSE_INPUTS[i].0,
+                                crate::i18n::t(MOUSE_INPUTS[i].1),
+                                cx,
+                            ))
                     }))
                     .children([1, 3, 4].into_iter().enumerate().map(|(row, i)| {
                         div()
@@ -252,7 +339,11 @@ impl DeviceWorkspace {
                             .w(surface::css(210.))
                             .flex()
                             .justify_start()
-                            .child(self.input_button(MOUSE_INPUTS[i].0, MOUSE_INPUTS[i].1, cx))
+                            .child(self.input_button(
+                                MOUSE_INPUTS[i].0,
+                                crate::i18n::t(MOUSE_INPUTS[i].1),
+                                cx,
+                            ))
                     })),
             )
             .into_any_element()

@@ -23,6 +23,10 @@ pub(crate) enum SourceTooltipKind {
     LockedProfile,
     /// `.tooltip-razer.bottom-left`: 300px main, intrinsic wrapper, +5px below.
     Battery,
+    /// `.widget .help + .tip` / `.body-widget-tip-portal`: 14px/18px,
+    /// `max-width:300px`, `right:14px;top:34px` against the widget box, and the
+    /// trigger is the 14px `.widget .help` control at `right:10px;top:10px`.
+    WidgetTip,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -141,9 +145,28 @@ fn tip_surface(id: ElementId, text: SharedString, width: Pixels) -> Tooltip {
         .text_color(TooltipColors::foreground())
         .font_family("Roboto")
         .text_size(surface::css(14.))
+        // `.widget .tip` keeps 18px against the 16px used by the other paths.
         .line_height(surface::css(16.))
         .whitespace_normal()
         .child(text)
+}
+
+/// `.widget .tip` hugs its content (`width:max-content`) under a 300px cap.
+fn widget_tip_surface(id: ElementId, text: SharedString, max_width: Pixels) -> Tooltip {
+    tip_surface(id, text, max_width)
+        .w_auto()
+        .max_w(max_width)
+        .line_height(surface::css(18.))
+}
+
+/// `.widget .tip{right:14px;top:34px}` is measured against the widget box, while
+/// the trigger is the `.widget .help` control at `right:10px;top:10px`:
+/// the tip's right edge lands 4px left of the control and 24px below its top.
+fn widget_tip_position(trigger: Bounds<Pixels>, width: Pixels, rem: Pixels) -> Point<Pixels> {
+    point(
+        trigger.right() - rem * (4. / 16.) - width,
+        trigger.origin.y + rem * (24. / 16.),
+    )
 }
 
 /// Measures the source's hidden `.tip` before composing the portal. RenderOnce
@@ -209,6 +232,20 @@ impl Element for TipOverlay {
             // JS copies clientWidth/clientHeight (border excluded) to the
             // portal's border-box width/height. Its `.on` height is auto.
             measured.map(|length| (length - px(2.)).max(px(1.)))
+        } else if self.kind == SourceTooltipKind::WidgetTip {
+            // `width:max-content` with `max-width:300px`; the height stays auto.
+            let mut measurement = widget_tip_surface(
+                (self.id.clone(), "tip-measure").into(),
+                self.text.clone(),
+                width,
+            )
+            .into_any_element();
+            let measured = measurement.layout_as_root(
+                size(AvailableSpace::MaxContent, AvailableSpace::MinContent),
+                window,
+                cx,
+            );
+            size(measured.width.min(width).max(px(1.)), px(0.))
         } else {
             size(width, px(0.))
         };
@@ -225,6 +262,10 @@ impl Element for TipOverlay {
         )
         .when(self.kind == SourceTooltipKind::Battery, |tip| {
             tip.w_auto().max_w(source_size.width)
+        })
+        .when(self.kind == SourceTooltipKind::WidgetTip, |tip| {
+            // The measured max-content width is already the rendered width.
+            tip.w(source_size.width).max_w(source_size.width)
         })
         .when(
             !self.hovered && self.kind == SourceTooltipKind::DropTips,
@@ -289,6 +330,9 @@ impl Element for TipOverlay {
                             .max(margin),
                     );
                 point(left, trigger.bottom() + window.rem_size() * (5. / 16.))
+            }
+            SourceTooltipKind::WidgetTip => {
+                widget_tip_position(trigger, layout.source_size.width, window.rem_size())
             }
         };
         let position = if self.kind == SourceTooltipKind::DropTips {

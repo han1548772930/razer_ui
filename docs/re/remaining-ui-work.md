@@ -1,5 +1,48 @@
 # 尚未完成的界面与产品
 
+2026-10-04 语言包键清零批次：`python tools/audit-locale-keys.py --check` 的待回溯项现在为
+**0**。前几轮登记的 5 处全部收口：`SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF`/`_WHEN_IDLE`
+（第 6 轮 → `DISPLAY_TURNED_OFF`/`IDLE_FOR_MIN`）、`MINIMUM`/`MAXIMUM`（第 7 轮 →
+`<SIDE>_TRIGGER_RANGE`/`<SIDE>_ACTUATION_POINT`）、`MINUTES`（第 8 轮 → 源码 `GR` 组件的
+`MIN`/`SEC` 模板）、`LINKED_GAMES_TO`（第 8 轮 → `LINKED_GAME_CHROMA_HEADER`，
+"Games linked to profile:"）、`ADVANCED_EFFECT_DETAILS`（第 8 轮 → 键名无误，文本由新工具
+`tools/prepare-device-locales.py` 从设备包语言表合并进 `locales/`）。审计现在覆盖 382 个字面量
+`t()` 键、42 个软键与 42 个动态调用；动态键仍无法静态解析，只能逐个回溯（当前 42 处都已在
+别处核对过键名）。语言包之间的键数差（de/fr 93、es 88、ja/kr 97、pt-BR 96、ru 94、zh-CN 61、
+zh-TW 118）来自各语言包本身的缺失，不是本地漏提取。
+
+2026-10-04 页面可达性批次：`tools/audit-page-coverage.py` 现在给出「主导航页是否都有渲染器」
+的机检答案——**没有渲染器的页面槽位为 0**，剩余一行是 9 个无线键盘的 `TAB_PAIRING`，
+它属于 `multiDevicePairing` 独立模式根（本地配对窗口承载）。本轮修掉了让 Raptor 显示器、
+Hanbo、PWM 风扇控制器、散热垫、Core X V2 的已实现页面**完全不可达**的描述符守卫顺序问题，
+并补齐监视器提示控件与刷新率计数器方块网格、HDR 的 Windows 11 分支。仍未接入的配件细节
+（PIP 方块选择器、`uiRestraint` 设备约束、显示器产品图、ICC/刷新率、散热曲线硬件值）
+见[配件页面审计](accessory-system-native-ui.md)。
+
+2026-10-04 displayMode 分支批次：产品侧四个根分支现在都有本地实现与机检收据，
+逐产品的归属表由 `tools/generate-display-mode-roots.cjs` 从审计结果生成
+（`src/features/display-mode-roots.json`），不再按单个产品写死。逐模式的规则、
+颜色尺寸依据和本地偏差见[本地实现记录](display-mode-roots-implementation.md)。
+
+- `chromaApp`（212 个产品包有根分支）：Chroma 窗口的设备卡在有本地灯光页时直接打开弹层根
+  （适配器的灯光标签，或 source 家族的 `TAB_LIGHTING` 页），无灯光页时保留原版
+  `.box-item-device .disabled`（`opacity:.3`、不响应指针）。设备卡几何按
+  `.box-item-device`（290×245、`padding:10px 20px 20px`、`#111`/2px/圆角 5、
+  hover `#44d62c4d`、active `#44d62c`）修正；`.name-tag` 不再居中，行高 16px。
+- `armory`（226 个产品包有根分支）：工坊窗口新增设备面板，挂载该产品的映射页
+  （适配器 Customize 或 source 家族的 `TAB_CUSTOMIZE`），高度按原版 `ie` 分支
+  KEYPAD 460 / HEADSET·AUDIO 340 / 其他 420；入口是设备「分享到工坊」，与分享表单同屏。
+- `macro`：产品侧分支仍是宏应用 iframe，本地由宏页承载（见宏审计）。
+- `multiDevicePairing`：具名第二窗口（见配对窗口审计）。
+
+仍未接入：音频/配件家族以及没有本地灯光页或映射页的产品（不打开，而不是伪造页面）；
+两个根的 postMessage 往返在本地改为同进程直接挂载，消息名仅作契约记录。
+
+2026-10-04 应用选择器去门控：Chroma Studio 已本地实现（Chroma 窗口页面），
+选择器改为直接打开；Philips Hue 的模块页就是 769 产品工作区，本地存在该设备时也直接打开，
+否则明确说明缺少设备。仍保留门控的只有本地确实没有页面的模块/应用
+（`audio-visualizer`、`chroma-connect`、`sensa-hd`、Streamer Companion、Virtual Ring Light）。
+
 2026-10-04 后续进展：Armory 本地分享表单已接到 182/653 配置更多菜单；Macro 新增
 设备/配置/真实产品输入区域的会话内绑定；3946 自动化的星光、波浪、音频表参数
 与快速宏 `.exe` 文件选择已落地。OLED 裁剪画布/移动/中心缩放与持久化几何已按当前
@@ -43,6 +86,7 @@ GIF 编码、原生裁剪输出、设备传输及实际像素/交互验收仍缺
 | 3946 自动化 / Base Station V3 | 实际挂载的 Static/Breathing/Starlight/Wave/Audio Meter 参数已接入；Fire/Spectrum 无参数面板。完整宏录制器、游戏浏览与关联、快捷键子编辑器、删除确认锚定、原始图标槽位及过渡动画仍缺 |
 | 原有十个适配器 | 182、653、777、3072、3073、3074、3076、3077、3078、3080 的 27 个主页面已逐页复核（`partial_native_reaudited`，带本地路由与源码依据），见 [逐页复核](legacy-adapter-page-reaudit.md)；仍未进入 `source_help` 描述符、182 规格条目 `pages` 为空、653/777 仍走各自手写页面，仍是部分实现 |
 | 设备页顶栏电量 | 已按当前源码接入（状态机 `off`/`Charging`/`charging100`/`NoCharge_BatteryFull`/`batt-warning`/`ReachChargingLimit`，图标与文案逐条取证，见 [电量依据](battery-indicator-audit.md)）；原版的 `hideBattValue` 与耳机左右耳电量因本地无数据来源未实现 |
+| 3880 显示器色彩页 | 已按 `NSA` 做成两列 `.widget-col`（左 THX Cinema + Color Profile，右 HDR + Color Temperature）、标题行开关、`COLOR_PROFILE_TOOLTIP` 提示与空数据配置下拉；仍缺 `uiRestraint` 禁用原因与系统色彩配置文件枚举 |
 | 所有产品 | 仍无实际窗口的字体度量、缩放、焦点、滚动和动画逐像素验收结论；不能以检查通过认定视觉完整 |
 
 ## 不属于单个设备的界面
@@ -72,6 +116,39 @@ GIF 编码、原生裁剪输出、设备传输及实际像素/交互验收仍缺
 | 对话框按钮 `.thx-btn`（绿/灰两态、大写、`1px #0000004d`、悬停 `opacity .8`） | [thx-button-audit.md](thx-button-audit.md) | `audit-thx-button.cjs` |
 | 导入/导出底栏：`.import-profile-btn-group`、导出模式的 `willNotImport` 文案、关联游戏弹层打开时导航行 `opacity .5`（`div.nav-tabs.disabled`） | [import-export-footer-audit.md](import-export-footer-audit.md) | `audit-import-export.cjs` |
 | 宏窗口顶栏：46px / `#222` / 2px `#000` / 居中（`.nav-wrapper` + `.module-nav`） | [macro-app-chrome-audit.md](macro-app-chrome-audit.md) | `audit-macro-app-chrome.cjs` |
+
+## 语言包键审计（2026-10-04）
+
+`python tools/audit-locale-keys.py --check` 扫描 `src/` 中全部字面量 `t("KEY")` 调用并核对
+`locales/` 的 10 份语言包：**409 个硬键、42 个 `t_or` 软键、42 个动态调用，缺失 0 个**
+（`KNOWN_MISSING` 现为空表）。`t()` 未命中时 rust-i18n 会原样返回 key（见 `src/i18n.rs`
+的 `has`），因此缺失数是这条链路的直接指标。历史缺口与其收口方式：
+
+| 键 | 收口方式 |
+| --- | --- |
+| `ADVANCED_EFFECT_DETAILS` | 键名无误（设备包里就是 `oi("ADVANCED_EFFECT_DETAILS")`）；文本由 `tools/prepare-device-locales.py` 从设备包语言表合并进 10 份语言包 |
+| `MINUTES` | 源码无此键；手柄省电取值改用共享组件 `GR` 的 `MIN`/`SEC` 模板（`>= 60` 才用 `MIN` 并除以 60） |
+| `LINKED_GAMES_TO` | 源码无此键；改用 `LINKED_GAME_CHROMA_HEADER`＝"Games linked to profile:" |
+| `MINIMUM` / `MAXIMUM` | 源码无此键；手柄扳机页改用 `<SIDE>_TRIGGER_RANGE`/`<SIDE>_ACTUATION_POINT` |
+| `SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF` / `_WHEN_IDLE` | 改用 `DISPLAY_TURNED_OFF` / `IDLE_FOR_MIN` |
+
+别名解析记录见 [设备页 CSS 逐条对账](device-page-css-audit.md)。
+
+另有一类**不经过语言包的界面文案**，上面的审计看不见：产品页三族（鼠标、键盘、手柄）
+已经在 2026-10-04 全部改为源码语言键（鼠标 40 余处、键盘 13 处），未知输入/效果原样显示
+内部名而不编中文，并有测试防止回退；逐条键名依据见
+[产品页文案的语言键对账](product-label-locale-audit.md)。仍带标签类中文字面量的模块（按数量降序）：
+`device_pages.rs` 62（旧版设备页渲染器，仅 `system_button` 被复用，是否仍挂载待确认）、
+`mapping_editor.rs` 45、`profile_transfer.rs` 45、`shortcuts.rs` 44、`onboard_memory.rs` 20、
+`audio_page.rs` 17、`profile.rs` 17、`keyboard_controls.rs` 16、`linked_games.rs` 15、
+`customize_page.rs` 14、`settings.rs` 12、`keyboard_calibration.rs` 10，以及若干「界面预览」
+工具模块（`dock_pairing/preview.rs`、`hue/preview.rs` 等，不进应用 UI）。`surface::note(...)`、
+Tooltip 与 `accessibility_label` 的中文是本项目自己的「服务未接入」提示，不是雷云文案。
+
+另有 42 个 `t_or` 软键中 5 个不在语言包内（`AETHER_SERVICE_UNAVAILABLE`、`REFRESH_RATE`、
+`SCARLETT_CONFIRM`、`SCARLETT_CONFIRMAION_TEXT`、`SCARLETT_CONFIRMATION_DESC`）：前两个走
+自带兜底文案，后三个是原版自带的 `SCARLETT_*` 描述名（真实键是 `CONFIRM` 等，已按基础键取值）。
+各语言包比英文少 61–118 个键，属既有提取差距，审计只做提示、不判失败。
 
 ## 资源准备更正（2026-10-04）
 

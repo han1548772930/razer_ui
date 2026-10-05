@@ -44,6 +44,15 @@ pub fn t_or(key: &str, fallback: &str) -> String {
     }
 }
 
+/// 取带 `{{value}}` 占位符的雷云文案并替换数值。
+///
+/// 源码里这类模板键由 `getTextItem(key, {value})` 填充，例如功耗取值标签用的
+/// `MIN`（"{{value}} min."）与 `SEC`（"{{value}} sec."）；语言包本身保留占位符，
+/// 因此这里做一次字面替换即可。
+pub fn t_value(key: &str, value: i64) -> String {
+    t(key).replace("{{value}}", &value.to_string())
+}
+
 /// 当前语言代码。
 pub fn locale() -> String {
     rust_i18n::locale().to_string()

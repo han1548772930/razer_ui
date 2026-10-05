@@ -5782,5 +5782,6 @@
     "TRADEMARK": "다른 모든 상표는 해당 소유자의 자산입니다.",
     "TUTORIAL_RESET": "튜토리얼 초기화",
     "VERSION": "버전 {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "고급 효과는 다중 Razer Chroma 지원 장치를 통해 전 세계적으로 적용되며 장치 프로파일에 저장되지 않습니다."
 }

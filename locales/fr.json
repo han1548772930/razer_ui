@@ -5789,5 +5789,6 @@
     "TRADEMARK": "Toutes les autres marques déposées sont la propriété de leurs propriétaires respectifs.",
     "TUTORIAL_RESET": "RÉINITIALISER LES DIDACTICIELS",
     "VERSION": "Version {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "En général, les effets avancés sont appliqués à plusieurs appareils compatibles avec Razer Chroma et ne sont pas enregistrés dans le profil de l'appareil."
 }

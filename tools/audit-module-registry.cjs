@@ -114,11 +114,34 @@ if (!service.includes('ModulePage::Profiles')) problems.push('linked-games 行�
 // The host App Picker is another module entry point. Once a page is compiled
 // locally, it must be visible as bundled/launchable and route to the same named
 // window instead of falling through to the unavailable-service message.
-const localPickerModules = ['Alexa', 'Macro', 'LinkedGames', 'Armory'];
+const localPickerModules = ['Alexa', 'Macro', 'LinkedGames', 'Armory', 'ChromaStudio'];
+// The Chroma module's page is the local Chroma window; the Hue module page is
+// product 769's workspace, so it is only listed while that device exists.
+const conditionalPickerModules = ['PhilipsHue'];
+function pickerModuleList(name) {
+  const declaration = new RegExp(`let mut ${name}[^;]*;`, 's').exec(pickerHost)?.[0] ?? '';
+  const pushes = [...pickerHost.matchAll(new RegExp(`${name}\\.push\\(([^)]*)\\)`, 'g'))]
+    .map(match => match[1])
+    .join(' ');
+  // `launchable_modules` seeds from the bundled list, so it inherits its entries.
+  const seeded = new RegExp(`let mut ${name} = bundled_modules\\.clone\\(\\)`).test(pickerHost)
+    ? pickerModuleList('bundled_modules')
+    : '';
+  return `${declaration} ${pushes} ${seeded}`;
+}
 for (const method of ['bundled_modules', 'launchable_modules']) {
-  const list = new RegExp(`\\.${method}\\(\\[([\\s\\S]*?)\\]\\)`).exec(pickerHost)?.[1] || '';
+  const list = pickerModuleList(method);
   for (const key of localPickerModules) {
     if (!list.includes(`PickerModule::${key}`)) problems.push(`App Picker ${method} 缺少 ${key}`);
+  }
+  if (!list.includes('PickerModule::PhilipsHue') && !conditionalPickerModules.length) {
+    problems.push(`App Picker ${method} 缺少 PhilipsHue`);
+  }
+}
+if (conditionalPickerModules.length) {
+  // The conditional entries must stay guarded by their local device check.
+  if (!/if hue_device\.is_some\(\) \{[\s\S]{0,200}PickerModule::PhilipsHue/.test(pickerHost)) {
+    problems.push('App Picker PhilipsHue 未按本地 769 设备条件登记');
   }
 }
 for (const route of [
@@ -126,6 +149,8 @@ for (const route of [
   'open_module_tab(service_pages::ModulePage::Profiles',
   'open_module_tab(service_pages::ModulePage::Macro',
   'open_module_tab(service_pages::ModulePage::Armory',
+  'self.navigate(Location::Chroma',
+  'PickerModule::PhilipsHue)) => {',
 ]) {
   if (!pickerHost.includes(route)) problems.push(`App Picker 缺少直接打开路由 ${route}`);
 }

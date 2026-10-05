@@ -136,6 +136,92 @@ impl SourceProductWorkspace {
             _ => None,
         }
     }
+    /// Whether this source product's family renderer can produce its lighting
+    /// page. The product's own page list decides whether a lighting page exists
+    /// at all, so a product without `TAB_LIGHTING` never reports one.
+    pub(crate) fn supports_lighting_page(&self) -> bool {
+        if !matches!(
+            &self.body,
+            FamilyBody::Mouse(_)
+                | FamilyBody::Keyboard(_)
+                | FamilyBody::Gamepad(_)
+                | FamilyBody::System(_)
+        ) {
+            return false;
+        }
+        product::registered(self.device.product_id)
+            .and_then(|product| product.primary_navigation())
+            .is_some_and(|navigation| {
+                navigation
+                    .pages()
+                    .iter()
+                    .any(|page| page.kind().key() == "TAB_LIGHTING")
+            })
+    }
+    /// The `displayMode=chromaApp` popup content for a source product: its
+    /// lighting page built from the family renderer, without the product chrome.
+    pub(crate) fn lighting_page_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !self.supports_lighting_page() {
+            return None;
+        }
+        match &self.body {
+            FamilyBody::Mouse(view) => {
+                Some(view.update(cx, |view, cx| view.lighting_element(window, cx)))
+            }
+            FamilyBody::Keyboard(view) => {
+                Some(view.update(cx, |view, cx| view.lighting_element(window, cx)))
+            }
+            FamilyBody::Gamepad(view) => {
+                Some(view.update(cx, |view, cx| view.lighting_element(window, cx)))
+            }
+            FamilyBody::System(view) => Some(view.update(cx, |view, cx| view.lighting_element(cx))),
+            _ => None,
+        }
+    }
+    /// Whether this source product's family renderer can produce its mapping
+    /// (Customize) page, which the Armory application embeds per device.
+    pub(crate) fn supports_mapping_page(&self) -> bool {
+        if !matches!(
+            &self.body,
+            FamilyBody::Mouse(_)
+                | FamilyBody::Keyboard(_)
+                | FamilyBody::Gamepad(_)
+                | FamilyBody::System(_)
+        ) {
+            return false;
+        }
+        product::registered(self.device.product_id)
+            .and_then(|product| product.primary_navigation())
+            .is_some_and(|navigation| {
+                navigation
+                    .pages()
+                    .iter()
+                    .any(|page| page.kind().key() == "TAB_CUSTOMIZE")
+            })
+    }
+    /// The `displayMode=armory` root for a source product: its mapping page.
+    pub(crate) fn mapping_page_element(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        if !self.supports_mapping_page() {
+            return None;
+        }
+        match &self.body {
+            FamilyBody::Mouse(view) => Some(view.update(cx, |view, cx| view.customize_element(cx))),
+            FamilyBody::Keyboard(view) => {
+                Some(view.update(cx, |view, cx| view.customize_element(cx)))
+            }
+            FamilyBody::Gamepad(view) => {
+                Some(view.update(cx, |view, cx| view.customize_element(cx)))
+            }
+            FamilyBody::System(view) => {
+                Some(view.update(cx, |view, cx| view.customize_element(cx)))
+            }
+            _ => None,
+        }
+    }
     pub(crate) fn new(mut device: Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
         if device.profiles.is_empty() {
             device.profiles.push(Profile {

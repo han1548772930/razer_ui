@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "8568fb9b7fa3dc4b744dda24f3e7204346a93a9506a57e184950d101c636a2d5",
+  "scanner_sha256": "a204068aac4213c51dc7b90bc7eb72960d83fb6fa5e83b30f3dc4dff70d3962d",
   "source": {
     "path": ".ref/applications/rz-app-menu/static/js/main.83ced465.js",
     "sha256": "421b5d6900421a99c0520e1fe63d4a83072799ac4bb45d848fa0e8170bf70716"
@@ -97,7 +97,8 @@
     "Alexa",
     "Macro",
     "LinkedGames",
-    "Armory"
+    "Armory",
+    "ChromaStudio"
   ],
   "problems": []
 }

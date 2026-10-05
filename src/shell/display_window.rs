@@ -30,12 +30,16 @@ pub(super) enum DisplayMode {
 pub(super) const CHROMA_APP_WINDOW_ICON_PATH: &str = "ChromaApp\\window.ico";
 
 impl DisplayMode {
+    /// The literal the product bundle compares `displayMode` with. The keys come
+    /// from the generated root table, so a window contract can never invent a
+    /// mode name the current bundles do not use.
     pub(super) fn key(self) -> &'static str {
+        use crate::features::display_mode_roots::DisplayModeRoot;
         match self {
-            Self::Macro => "macro",
-            Self::ChromaApp => "chromaApp",
-            Self::Armory => "armory",
-            Self::MultiDevicePairing => "multiDevicePairing",
+            Self::Macro => DisplayModeRoot::Macro.key(),
+            Self::ChromaApp => DisplayModeRoot::ChromaApp.key(),
+            Self::Armory => DisplayModeRoot::Armory.key(),
+            Self::MultiDevicePairing => DisplayModeRoot::MultiDevicePairing.key(),
         }
     }
 

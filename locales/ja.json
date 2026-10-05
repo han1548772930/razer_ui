@@ -5788,5 +5788,6 @@
     "TRADEMARK": "その他すべての登録商標は、それぞれの企業の所有物です。",
     "TUTORIAL_RESET": "チュートリアルのリセット",
     "VERSION": "バージョン {{number}}"
-  }
+  },
+  "ADVANCED_EFFECT_DETAILS": "「高度な効果」は、すべてのRazer Chroma 対応デバイスに適用され、デバイスプロファイルには保存されません。"
 }

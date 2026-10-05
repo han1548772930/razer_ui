@@ -407,7 +407,7 @@ impl ImportDialog {
     }
 }
 impl Render for ImportDialog {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = v_flex()
             .id("profile-import-content")
             .w_full()
@@ -429,6 +429,7 @@ impl Render for ImportDialog {
                         "选择文件…"
                     },
                     ThxKind::Primary,
+                    window,
                     cx,
                 )
                 .disabled(self.busy)
@@ -468,16 +469,23 @@ impl Render for ImportDialog {
             .child(
                 profile_dialog_footer(cx)
                     .child(
-                        profile_dialog_button("profile-import-cancel", "取消", ThxKind::Test, cx)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            })),
+                        profile_dialog_button(
+                            "profile-import-cancel",
+                            crate::i18n::t("CANCEL"),
+                            ThxKind::Test,
+                            window,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            dismiss_profile_dialog(&this.target.workspace, window, cx)
+                        })),
                     )
                     .child(
                         profile_dialog_button(
                             "profile-import-confirm",
                             "导入到本地草稿",
                             ThxKind::Primary,
+                            window,
                             cx,
                         )
                         .disabled(self.loaded.is_none() || self.busy)
@@ -538,7 +546,7 @@ impl ExportDialog {
     }
 }
 impl Render for ExportDialog {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut body = v_flex()
             .id("profile-export-content").w_full().flex_1().min_h_0().overflow_y_scroll()
             .p(surface::css(20.)).gap(surface::css(10.))
@@ -583,10 +591,16 @@ impl Render for ExportDialog {
                             )),
                     )
                     .child(
-                        profile_dialog_button("profile-export-close", "关闭", ThxKind::Test, cx)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            })),
+                        profile_dialog_button(
+                            "profile-export-close",
+                            crate::i18n::t("CLOSE"),
+                            ThxKind::Test,
+                            window,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            dismiss_profile_dialog(&this.target.workspace, window, cx)
+                        })),
                     )
                     .child(
                         profile_dialog_button(
@@ -597,6 +611,7 @@ impl Render for ExportDialog {
                                 "选择导出位置…"
                             },
                             ThxKind::Primary,
+                            window,
                             cx,
                         )
                         .disabled(self.busy)

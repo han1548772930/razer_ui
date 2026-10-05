@@ -16192,6 +16192,20 @@
       "width": 325,
       "height": 250,
       "mode": "RGBA"
+    },
+    {
+      "source": ".ref/devices/182/static/media/icon-multidevicepairing2.af8657a6.svg",
+      "output": "assets/synapse/hyperpolling-icon-multidevicepairing2.svg",
+      "source_sha256": "3db472bb9ec2fa56acdcb8c5816249b2d109ce069239fdaecbc954a85c5798d1",
+      "sha256": "3db472bb9ec2fa56acdcb8c5816249b2d109ce069239fdaecbc954a85c5798d1"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/tooltip_exclamationmark.cc8fb226.svg",
+      "output": "assets/synapse/accessory-exclamation.svg",
+      "source_sha256": "da5893e1c79528e7d039e956f99ed1a85e18edf1a12fea84642cb5d46aedb579",
+      "sha256": "da5893e1c79528e7d039e956f99ed1a85e18edf1a12fea84642cb5d46aedb579",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/tooltip_exclamationmark.cc8fb226.svg",
+      "purpose": "14px .exclamationText warning glyph for the monitor Color Gamut warning"
     }
   ]
 }

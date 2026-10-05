@@ -135,7 +135,7 @@ impl LinkedGamesDialog {
 }
 
 impl Render for LinkedGamesDialog {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let body = v_flex()
             .id("linked-games-content")
             .w_full()
@@ -199,16 +199,23 @@ impl Render for LinkedGamesDialog {
             .child(
                 profile_dialog_footer(cx)
                     .child(
-                        profile_dialog_button("linked-games-cancel", "取消", ThxKind::Test, cx)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                dismiss_profile_dialog(&this.target.workspace, window, cx)
-                            })),
+                        profile_dialog_button(
+                            "linked-games-cancel",
+                            crate::i18n::t("CANCEL"),
+                            ThxKind::Test,
+                            window,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            dismiss_profile_dialog(&this.target.workspace, window, cx)
+                        })),
                     )
                     .child(
                         profile_dialog_button(
                             "linked-games-save",
                             "保存到本地草稿",
                             ThxKind::Primary,
+                            window,
                             cx,
                         )
                         .disabled(self.busy)
