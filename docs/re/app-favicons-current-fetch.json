@@ -1,5 +1,5 @@
 {
-  "method": "Exact current HTML + manifest icon URLs; live asset download only; no code execution",
+  "method": "Exact current HTML/manifest and runtime source icon URLs; live asset download only; no code execution",
   "entries": [
     {
       "route": "synapse/alexa",
@@ -12,7 +12,7 @@
       "etag": "\"f3543895d847c2d74ebc019cf6f7353a\"",
       "sha256": "99fbeba08c5afeff562b17ad8d7c70ac17699f5b0a42b342949202f43a537940",
       "bytes": 16442,
-      "fetched_utc": "2026-10-05T09:08:07.902865+00:00"
+      "fetched_utc": "2026-10-05T09:24:40.223123+00:00"
     },
     {
       "route": "synapse/armory",
@@ -25,7 +25,7 @@
       "etag": "\"5dcaddb9d56868b54bdcb8d7a9bf0a05\"",
       "sha256": "21fd3bd391af63239424c77160336a05a9f8a7f7884610a80ff05babc0d29eea",
       "bytes": 500,
-      "fetched_utc": "2026-10-05T09:08:08.255099+00:00"
+      "fetched_utc": "2026-10-05T09:24:40.949891+00:00"
     },
     {
       "route": "synapse/profiles",
@@ -38,7 +38,7 @@
       "etag": "\"487096eb540dcb2a803669382972e8fd\"",
       "sha256": "1151db35205efd40630085ad6d80ebd40460dd836a5b7f5a93bc3f2fb8613b90",
       "bytes": 1000,
-      "fetched_utc": "2026-10-05T09:08:08.377451+00:00"
+      "fetched_utc": "2026-10-05T09:24:41.126486+00:00"
     },
     {
       "route": "feedback",
@@ -51,7 +51,7 @@
       "etag": "\"463eb5b6df8c5490decf5192c37ef3e8\"",
       "sha256": "118933dfd53de42c70680b224fe0f841bc9ae8d911816f0d18de9b6e6bef46de",
       "bytes": 547,
-      "fetched_utc": "2026-10-05T09:08:08.475677+00:00"
+      "fetched_utc": "2026-10-05T09:24:41.468391+00:00"
     },
     {
       "route": "chroma-app/dashboard",
@@ -64,7 +64,7 @@
       "etag": "\"00b7b2f64fd8862f59e2f0fd0f0558bc\"",
       "sha256": "ceb14ca48686034903a07d0780d0060a1d3ac818a3a33eed1cbbf1d1a0b80293",
       "bytes": 1275127,
-      "fetched_utc": "2026-10-05T09:08:09.185655+00:00"
+      "fetched_utc": "2026-10-05T09:24:42.295883+00:00"
     },
     {
       "route": "synapse/introduction-tour",
@@ -77,7 +77,7 @@
       "etag": "\"fc58ede256eb704408996364dff063a8\"",
       "sha256": "6b953a71af091c43493b5d6d71eef1fc545c0b9c917353de02be7cf8c63e6ec0",
       "bytes": 1509,
-      "fetched_utc": "2026-10-05T09:08:09.306943+00:00"
+      "fetched_utc": "2026-10-05T09:24:42.677585+00:00"
     },
     {
       "route": "synapse/dashboard",
@@ -90,7 +90,67 @@
       "etag": "\"94ab882339447c137f3c5c03f5eca2d8\"",
       "sha256": "76acb76f772f2696512943817219b912b3246c95a636876fe44dee835f711e14",
       "bytes": 880,
-      "fetched_utc": "2026-10-05T09:08:06.833243+00:00"
+      "fetched_utc": "2026-10-05T09:24:39.816277+00:00"
+    },
+    {
+      "route": "synapse/dashboard:runtime",
+      "url": "https://apps.razer.com/synapse/dashboard/synapse.svg",
+      "path": ".ref/applications/synapse/dashboard/synapse.svg",
+      "source_js": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+      "source_sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a",
+      "source_literal": "\"./synapse.svg\"",
+      "manifest_sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a",
+      "final_url": "https://apps.razer.com/synapse/dashboard/synapse.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"94ab882339447c137f3c5c03f5eca2d8\"",
+      "sha256": "76acb76f772f2696512943817219b912b3246c95a636876fe44dee835f711e14",
+      "bytes": 880,
+      "fetched_utc": "2026-10-05T09:24:42.782894+00:00"
+    },
+    {
+      "route": "synapse/macro:runtime",
+      "url": "https://apps.razer.com/synapse/macro/static/media/macro.eba30c35.ico",
+      "path": ".ref/applications/synapse/macro/static/media/macro.eba30c35.ico",
+      "source_js": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "source_sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "source_literal": "\"static/media/macro.eba30c35.ico\"",
+      "manifest_sha256": "42c5f5a3f8dae356016443302d15926ce1746aa3e8aa7fce2afbc43596382884",
+      "final_url": "https://apps.razer.com/synapse/macro/static/media/macro.eba30c35.ico",
+      "content_type": "image/vnd.microsoft.icon",
+      "etag": "\"e06458f7ae515e6d8c2d4ca63e5e8476\"",
+      "sha256": "90c8727ca4b78b9dd231c202f145b9ddefb6e1ac85a1614edef9be2ab6f58a85",
+      "bytes": 34731,
+      "fetched_utc": "2026-10-05T09:24:42.960957+00:00"
+    },
+    {
+      "route": "synapse/armory:workshop",
+      "url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_workshop.svg",
+      "path": ".ref/applications/synapse/armory/shared-apps/logo_armory_workshop.svg",
+      "source_js": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "source_sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "source_literal": "\"logo_armory_workshop.svg\"",
+      "manifest_sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28",
+      "final_url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_workshop.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"17192068efa1ec0f6f7a4cec2b367bb8\"",
+      "sha256": "77f4924dbfecc1ce10b711d054029f3a65a12246cd8f815abbd54b8d04141f54",
+      "bytes": 446,
+      "fetched_utc": "2026-10-05T09:35:31.272616+00:00"
+    },
+    {
+      "route": "synapse/armory:exchange",
+      "url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_exchange.svg",
+      "path": ".ref/applications/synapse/armory/shared-apps/logo_armory_exchange.svg",
+      "source_js": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "source_sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "source_literal": "\"logo_armory_exchange.svg\"",
+      "manifest_sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28",
+      "final_url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_exchange.svg",
+      "content_type": "image/svg+xml",
+      "etag": "\"f5bb29680c19364e4d711b7b708f1131\"",
+      "sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2",
+      "bytes": 1721,
+      "fetched_utc": "2026-10-05T09:35:31.760650+00:00"
     }
   ]
 }

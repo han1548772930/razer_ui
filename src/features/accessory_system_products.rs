@@ -2319,13 +2319,7 @@ impl Render for AccessorySystemProductWorkspace {
             }
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
         };
-        v_flex()
-            .p_5()
-            .gap_5()
-            .min_w(surface::css(600.))
-            .max_w(surface::css(1240.))
-            .child(surface::note("本地配置预览；设备状态尚未读取。", cx))
-            .child(content)
+        super::product_surface::body().child(content)
     }
 }
 

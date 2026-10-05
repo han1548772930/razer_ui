@@ -1,4 +1,4 @@
-"""Register source-exact receiver SVG layers and available HTML favicon assets."""
+"""Register exact receiver SVG layers and source-backed final favicon assets."""
 import hashlib
 import json
 import shutil
@@ -10,8 +10,8 @@ def prepare(root, output):
     records = evidence['assets'].copy()
     records.extend(prepare_ico(root, output))
     applications = json.loads((root / 'docs/re/app-favicons-current-fetch.json').read_text(encoding='utf8'))
-    names = {'synapse/armory':'armory', 'synapse/profiles':'profiles', 'feedback':'feedback',
-             'chroma-app/dashboard':'chroma', 'synapse/introduction-tour':'tour', 'synapse/dashboard':'dashboard'}
+    names = {'synapse/armory:workshop':'armory', 'synapse/armory:exchange':'armory-exchange', 'synapse/profiles':'profiles', 'feedback':'feedback',
+             'chroma-app/dashboard':'chroma', 'synapse/introduction-tour':'tour', 'synapse/dashboard:runtime':'dashboard'}
     for entry in applications['entries']:
         if entry['route'] not in names:
             continue

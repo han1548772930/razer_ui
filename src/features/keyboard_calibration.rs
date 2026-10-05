@@ -6,7 +6,6 @@ use crate::features::source_workspace::SourceProductWorkspace;
 use crate::ui::{scroll::SourceScrollable as _, theme::KeyboardCalibrationColors as Colors};
 use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::component::WindowExt as _;
-use gpui_kit::prelude::FluentBuilder as _;
 use std::{path::PathBuf, time::Duration};
 
 #[cfg(test)]

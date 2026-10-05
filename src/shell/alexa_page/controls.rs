@@ -146,6 +146,46 @@ pub(super) fn text_button(
         .child(label)
 }
 
+/// Mounted Alexa sE uses its own literal question mark and oE portal.
+pub(super) fn settings_help() -> impl IntoElement {
+    use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
+    SourceTooltip::new(
+        "alexa-settings-help",
+        format!("{}\n\n{}", text("TEXT_TOOLTIPS_1"), text("TEXT_TOOLTIPS_2")),
+        300.,
+    )
+    .kind(SourceTooltipKind::Alexa)
+    .trigger(|hovered, window, cx| {
+        let overlay = motion::transition(
+            "alexa-help-highlight",
+            if hovered { 0.3_f32 } else { 0. },
+            Transition::new(Duration::from_millis(100)).easing(Easing::Linear),
+            window,
+            cx,
+        );
+        Button::new("alexa-settings-help")
+            .relative()
+            .size(css(14.))
+            .p_0()
+            .rounded_full()
+            .text_size(css(13.))
+            .line_height(css(13.))
+            .text_center()
+            .bg(AlexaColors::tooltip_background())
+            .text_color(AlexaColors::tooltip_text())
+            .accessibility_label(text("TEXT_TOOLTIPS_1"))
+            .child("?")
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .rounded_full()
+                    .bg(PaletteColors.white().opacity(overlay)),
+            )
+            .into_any_element()
+    })
+}
+
 pub(super) fn source_switch(
     id: &'static str,
     label: String,

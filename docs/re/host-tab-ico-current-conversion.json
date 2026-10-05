@@ -1,5 +1,5 @@
 {
-  "method": "Static ICO32 BGRA frame extraction and PNG encoding; host pixels match existing tray-app.rgba; no resampling",
+  "method": "Static ICO32 BGRA frame extraction/PNG encoding, or byte-exact embedded PNG; host pixels match existing tray-app.rgba; no resampling",
   "entries": [
     {
       "source": ".ref/host-4.0.827/electron/resources/images/rzAppEngine.ico",
@@ -33,6 +33,20 @@
         "frame_sha256": "d5526e7e849be658fc888a666c0a21ca39129ab4b24f6df170c1b0772aab9390"
       },
       "source_url": "https://apps.razer.com/synapse/alexa/favicon.ico"
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/macro.eba30c35.ico",
+      "output": "assets/synapse/host-macro-favicon.png",
+      "source_sha256": "90c8727ca4b78b9dd231c202f145b9ddefb6e1ac85a1614edef9be2ab6f58a85",
+      "sha256": "5690adf873f6033df2ecaaaf40ad9392d94dd7a9aae2f2fff8e531a19b9df104",
+      "width": 256,
+      "height": 256,
+      "conversion": "ico-embedded-png",
+      "ico_frame": {
+        "offset": 12470,
+        "bytes": 4789
+      },
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/macro.eba30c35.ico"
     }
   ]
 }

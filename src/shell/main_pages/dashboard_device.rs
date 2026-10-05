@@ -5,9 +5,12 @@ use crate::{
     model::{DashboardDeviceMetadata, Device, DeviceCategory, PowerStatus, SetupStatus},
     ui::surface::css,
 };
-use gpui_kit::base::motion::{self, Easing, Transition};
+use gpui_kit::base::{
+    ElementExt as _,
+    motion::{self, Easing, Transition},
+};
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use std::time::Duration;
+use std::{cell::Cell, rc::Rc, time::Duration};
 
 pub(super) fn name(device: &Device) -> &str {
     let locale = locale();
@@ -124,22 +127,94 @@ pub(super) fn power_off(device: &Device) -> bool {
         .is_some_and(|p| p.charging_status.eq_ignore_ascii_case("off"))
 }
 
+pub(super) fn standby_or_off(device: &Device) -> bool {
+    (device.dashboard.supports_standby_mode != Some(false)
+        && device.dashboard.device_power_state.as_deref() == Some("off"))
+        || (device.dashboard.supports_standby_mode == Some(true)
+            && device.dashboard.device_power_state.as_deref() == Some("standby"))
+}
+
 pub(super) fn disabled(device: &Device) -> bool {
     (power_off(device)
         && device.dashboard.is_xbox != Some(true)
         && device.dashboard.is_playstation != Some(true))
         || device.setup_status == SetupStatus::RestartRequired
-        || device.dashboard.device_power_state.as_deref() == Some("off")
-        || (device.dashboard.supports_standby_mode == Some(true)
-            && device.dashboard.device_power_state.as_deref() == Some("standby"))
+        || standby_or_off(device)
+}
+
+pub(super) fn show_spinner(setup: SetupStatus, off: bool) -> bool {
+    !matches!(
+        setup,
+        SetupStatus::RestartRequired
+            | SetupStatus::InstallCanceled
+            | SetupStatus::Ready
+            | SetupStatus::Error
+    ) && !(setup == SetupStatus::Waiting && off)
+}
+
+pub(super) fn js_truthy(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Null => false,
+        serde_json::Value::Bool(value) => *value,
+        serde_json::Value::String(value) => !value.is_empty(),
+        serde_json::Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.),
+        _ => true,
+    }
+}
+
+pub(super) fn min_firmware(device: &Device) -> bool {
+    device
+        .dashboard
+        .firmware_update_info
+        .as_ref()
+        .and_then(|value| value.get("minRequiredVersion"))
+        .is_some_and(js_truthy)
+}
+
+pub(super) fn preset_loading(device: &Device) -> bool {
+    device
+        .dashboard
+        .device_state
+        .as_ref()
+        .and_then(|value| value.get("type"))
+        .and_then(|value| value.as_str())
+        == Some("presetLoading")
+}
+
+pub(super) fn can_focus(device: &Device) -> bool {
+    !min_firmware(device)
+        && !preset_loading(device)
+        && !power_off(device)
+        && device.dashboard.is_xbox != Some(true)
+        && device.dashboard.is_playstation != Some(true)
+        && device.dashboard.device_init_status_fail.as_deref() != Some("mixer_system_check_failed")
+        && !standby_or_off(device)
+        && device.dashboard.device_power_state.as_deref() != Some("off")
+        && !matches!(
+            device.setup_status,
+            SetupStatus::Updating | SetupStatus::RestartRequired
+        )
+}
+
+pub(super) fn category(device: &Device) -> &str {
+    device
+        .dashboard
+        .source_category
+        .as_deref()
+        .unwrap_or(match device.category {
+            DeviceCategory::Controller => "Controller",
+            DeviceCategory::Headset => "Headset",
+            DeviceCategory::Audio => "AUDIO",
+            _ => "",
+        })
 }
 
 #[derive(Clone)]
 enum Icon {
     Image(String),
     Power(u32),
-    /// Preserve the source slot while its distinct SVG is unavailable.
-    Missing(f32),
+    Source(&'static str, f32),
+    Mask(&'static str),
 }
 
 #[derive(IntoElement)]
@@ -149,16 +224,27 @@ pub(super) struct DashboardBattery {
     fields: DashboardDeviceMetadata,
     setup: SetupStatus,
     audio: bool,
+    category: String,
+    card: String,
+    grid: Entity<super::dashboard_grid::DashboardState>,
 }
 
 impl DashboardBattery {
-    pub(super) fn new(id: String, device: &Device) -> Self {
+    pub(super) fn new(
+        id: String,
+        device: &Device,
+        card: String,
+        grid: Entity<super::dashboard_grid::DashboardState>,
+    ) -> Self {
         Self {
             id: SharedString::from(id).into(),
             power: device.power_status.clone(),
             fields: device.dashboard.clone(),
             setup: device.setup_status,
             audio: device.category == DeviceCategory::Audio,
+            category: category(device).to_owned(),
+            card,
+            grid,
         }
     }
 }
@@ -168,6 +254,9 @@ struct BatteryDelay {
     delayed: bool,
     task: Option<Task<()>>,
     hover: bool,
+    tooltip_right: Rc<Cell<Pixels>>,
+    anchor_right: Rc<Cell<Pixels>>,
+    flipped: bool,
 }
 impl BatteryDelay {
     fn new(off: bool, cx: &mut Context<Self>) -> Self {
@@ -176,6 +265,9 @@ impl BatteryDelay {
             delayed: !off,
             task: (!off).then(|| Self::timer(cx)),
             hover: false,
+            tooltip_right: Rc::default(),
+            anchor_right: Rc::default(),
+            flipped: false,
         }
     }
     fn timer(cx: &mut Context<Self>) -> Task<()> {
@@ -246,6 +338,9 @@ impl RenderOnce for DashboardBattery {
         state.update(cx, |s, cx| s.update_power(off, cx));
         let delayed = state.read(cx).delayed;
         let hovered = state.read(cx).hover;
+        let tip_right = state.read(cx).tooltip_right.clone();
+        let anchor_right = state.read(cx).anchor_right.clone();
+        let flipped = state.read(cx).flipped;
         let opacity = motion::transition(
             (self.id.clone(), "tooltip-opacity"),
             if hovered { 1. } else { 0. },
@@ -263,8 +358,7 @@ impl RenderOnce for DashboardBattery {
             .text_size(css(14.))
             .text_color(rgb(0xcccccc));
         // z checks spinner before mounting either of its battery branches.
-        let ready = self.setup == SetupStatus::Ready || (self.setup == SetupStatus::Waiting && off);
-        if !ready {
+        if show_spinner(self.setup, off) {
             return result;
         }
         let fields = self.fields;
@@ -275,10 +369,11 @@ impl RenderOnce for DashboardBattery {
         let mut value = None;
         if standby {
             match power_state {
-                // This branch uses H (icon_device_power_state_off), not the
-                // ordinary red batt-off mask. The current H resource is absent.
                 Some("off") => {
-                    chosen = Some(Icon::Missing(24.));
+                    chosen = Some(Icon::Source(
+                        "synapse/dashboard-card/icon_device_power_state_off.svg",
+                        24.,
+                    ));
                     tip = Some("STANDBY_MODE_OFF_TOOLTIP");
                 }
                 Some("standby") => {
@@ -300,10 +395,40 @@ impl RenderOnce for DashboardBattery {
                         "DASHBOARD_DEVICE_OFF_TOOLTIP"
                     });
                     if fields.is_xbox == Some(true) || fields.is_playstation == Some(true) {
-                        // Their distinct console glyphs and tooltip branches
-                        // require uncached current resources and variant data.
-                        chosen = (!hide_icon).then_some(Icon::Missing(26.));
-                        tip = None;
+                        let ps = fields.is_playstation == Some(true);
+                        chosen = (!hide_icon).then_some(Icon::Mask(if ps {
+                            "synapse/dashboard-card/ps-icon.svg"
+                        } else {
+                            "synapse/dashboard-card/xbox-icon.svg"
+                        }));
+                        tip = if ps {
+                            Some(
+                                if fields.sub_category.as_deref() == Some("ARCADE_CONTROLLER") {
+                                    "ARCADE_PS_MODE_TOOLTIP"
+                                } else {
+                                    "PS_MODE_TOOLTIP"
+                                },
+                            )
+                        } else if self.category == "Controller" {
+                            Some(
+                                if fields.controller_mode_variant.as_deref() == Some("THREE_MODE") {
+                                    "XBOX_SHORTCUT_TOOLTIP_THREE_MODE"
+                                } else {
+                                    "XBOX_SHORTCUT_TOOLTIP"
+                                },
+                            )
+                        } else if self.category == "Headset" {
+                            Some("XBOX_SHORTCUT_TOOLTIP_HEADSET")
+                        } else if self.category.eq_ignore_ascii_case("AUDIO")
+                            && fields
+                                .sub_category
+                                .as_deref()
+                                .is_some_and(|s| s.eq_ignore_ascii_case("EARBUDS"))
+                        {
+                            Some("XBOX_EARBUDS_TOOLTIP")
+                        } else {
+                            None
+                        };
                     }
                 } else if power.charging_status == "batt-warning" {
                     tip = Some("BATTERY_ERROR_TIPS");
@@ -349,7 +474,9 @@ impl RenderOnce for DashboardBattery {
                     _ => {}
                 }
             }
-            if fields.is_battery_supported == Some(false) {
+            if fields.is_battery_supported == Some(false)
+                || self.setup == SetupStatus::RestartRequired
+            {
                 chosen = None;
                 value = None;
             }
@@ -362,7 +489,7 @@ impl RenderOnce for DashboardBattery {
             );
         }
         if let Some(chosen) = chosen {
-            let size = if let Icon::Missing(size) = &chosen {
+            let size = if let Icon::Source(_, size) = &chosen {
                 *size
             } else {
                 26.
@@ -382,37 +509,81 @@ impl RenderOnce for DashboardBattery {
                             .size(css(20.))
                             .text_color(rgb(color))
                             .into_any_element(),
-                        Icon::Missing(_) => Empty.into_any_element(),
+                        Icon::Source(path, size) => img(path).size(css(size)).into_any_element(),
+                        Icon::Mask(path) => svg()
+                            .path(path)
+                            .size(css(26.))
+                            .text_color(rgb(0xffffff))
+                            .into_any_element(),
                     }),
             );
         }
         if let Some(tip) = tip {
+            let console = fields.is_xbox == Some(true) || fields.is_playstation == Some(true);
+            let headset = fields.is_xbox == Some(true) && self.category == "Headset";
+            let measure = fields.is_playstation == Some(true)
+                || (fields.is_xbox == Some(true)
+                    && self.category.eq_ignore_ascii_case("AUDIO")
+                    && fields
+                        .sub_category
+                        .as_deref()
+                        .is_some_and(|s| s.eq_ignore_ascii_case("EARBUDS")));
+            let grid = self.grid;
+            let card = self.card;
             result = result
-                .on_hover(window.listener_for(&state, |s, hovered, _, cx| {
+                .on_prepaint(move |bounds, _, _| anchor_right.set(bounds.left()))
+                .on_hover(window.listener_for(&state, move |s, hovered, window, cx| {
                     s.hover = *hovered;
+                    s.flipped = *hovered
+                        && if headset {
+                            f32::from(window.viewport_size().width - s.anchor_right.get())
+                                < f32::from(window.rem_size()) / 16. * 300.
+                        } else {
+                            measure && s.tooltip_right.get() > window.viewport_size().width
+                        };
+                    grid.update(cx, |grid, cx| grid.hover_card(&card, *hovered, cx));
                     cx.notify();
                 }))
                 .child(
-                    div().absolute().left_0().top(css(33.)).w_0().child(
-                        div()
-                            .absolute()
-                            .right(css(-20.))
-                            .w_auto()
-                            .max_w(css(280.))
-                            .px(css(10.))
-                            .py(css(8.))
-                            .border_1()
-                            .border_color(rgb(0x5d5d5d))
-                            .bg(rgb(0x000000))
-                            .text_color(rgb(0xcccccc))
-                            .font_family("Roboto")
-                            .text_size(css(14.))
-                            .line_height(css(16.))
-                            .whitespace_normal()
-                            .opacity(opacity)
-                            .when(!hovered, |s| s.invisible())
-                            .child(i18n::t(tip)),
-                    ),
+                    div()
+                        .absolute()
+                        .left_0()
+                        .top(css(if headset { 48. } else { 33. }))
+                        .w_0()
+                        .child(
+                            div()
+                                .absolute()
+                                .when(!console || flipped, |view| view.right(css(-20.)))
+                                .when(console && !flipped, |view| {
+                                    view.left(css(if headset { 10. } else { 0. }))
+                                })
+                                .w_auto()
+                                .max_w(css(if headset {
+                                    300.
+                                } else if console {
+                                    270.
+                                } else {
+                                    280.
+                                }))
+                                .when(tip == "STANDBY_MODE_OFF_TOOLTIP", |view| view.w(css(280.)))
+                                .when(tip == "BATTERY_ERROR_TIPS", |view| {
+                                    view.w(css(352.)).left_0()
+                                })
+                                .px(css(10.))
+                                .py(css(8.))
+                                .border_1()
+                                .border_color(rgb(0x5d5d5d))
+                                .bg(rgb(0x000000))
+                                .text_color(rgb(0xcccccc))
+                                .font_family("Roboto")
+                                .text_size(css(14.))
+                                .line_height(css(16.))
+                                .whitespace_normal()
+                                .opacity(opacity)
+                                .when(!hovered, |s| s.invisible())
+                                .on_prepaint(move |bounds, _, _| tip_right.set(bounds.right()))
+                                .child(i18n::t(tip)),
+                        ),
                 );
         }
         result

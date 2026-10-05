@@ -48,6 +48,7 @@ impl MacroPage {
         if self.suspended_action.is_some() {
             return;
         }
+        self.record_ui.close();
         self.finish_pending_edits(window, cx);
         if self.can_save() {
             self.selector_open = false;

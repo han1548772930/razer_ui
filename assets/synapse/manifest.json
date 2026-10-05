@@ -4704,28 +4704,247 @@
       "fragment": "active"
     },
     {
+      "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Light.woff2",
+      "output": "assets/synapse/Roboto-Light.ttf",
+      "source_sha256": "eca8ffa764a66cd084800e2e71c4176ef089ebd805515664a6cb8d4fb3b598bf",
+      "sha256": "104d76669a1810f22611938c265d4d3cb855fc533b403d0f38f543fcab965d3f",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 300
+      },
+      "original_metadata": {
+        "family": "Roboto Light",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 300
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "8ec508dd6c40a3af42a8a03870d390f3805a2883cc5c481f5eafe7368ace3e55",
+        "maxp": "e6ea77419c567706c363cc07b9b0aa12604919c0faa7dd2510f5ec2a7348ddcc",
+        "hmtx": "89a503c26571b75cc81be9de2c19930c171de0240991668f7711400fdbacf698",
+        "hdmx": "122889f425ec10e24ca204c4963730b7be950020e7e8053707e6017354deaf12",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "292d16d2cac92ef59adae039b7a40053b2826919c754a9bcbcb68dfd378c21b5",
+        "prep": "8d5f4ccd7179642ab86741aa9761f029c857f9c353337eb4da7da12ee028cc98",
+        "cvt ": "d750f3dda6b1653a8bd30f0ebe5c6323cb4e119fc6fdc10c153b83d762e7e891",
+        "loca": "36c25895ca5a7f0681d3553972a5f29926790816e61a4892f16f657154e42b04",
+        "glyf": "fd6e581f13824739d5549e8bb36f3bb55fa7a277e4351a015bdb8a3a27b73962",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
       "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Regular.woff2",
       "output": "assets/synapse/Roboto-Regular.ttf",
       "source_sha256": "3e253b66056519aa065b00a453bac37ac5ed8f3e6fe7b542e93a9dcdcc11d0bc",
-      "sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a"
+      "sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "0dafd74090e20f82204400f05512a33847411b9e3c597807d9284fe436238d9e",
+        "maxp": "6e7a4fc2b3667f6961643e59af7539ada21d42441c96e76156d786591137e814",
+        "hmtx": "8a15feefd534043ecce76db4fa3921b7545b3e3b08e1ff187358922deac1f846",
+        "hdmx": "b854756b38f20f1c24e1a9dcd06edc7672a54e777dbaa3729d5d8b38c090467f",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "dcc4c09fde7cd3c40c25c96ad362a3fa9cb5bfa6f09f416c404540a898230a13",
+        "prep": "5a22fb8ae3ead3afb2ba74c9010edd041cd108fabcd7086ad5d355b62f1fb99e",
+        "cvt ": "cf36c4618b85d263c0db1b04efac2d335b8cd37d98433ac8a4e8c8e591695e06",
+        "loca": "dbbcdda797221a56c098428bd63a3b5926a418d0564e89adb4690babd6e36847",
+        "glyf": "5ecd5177ede6a52bf3d57ce85d8166bfa20c8c4800a80b595fb2fc03abeb4ee6",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
     },
     {
       "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Medium.woff2",
       "output": "assets/synapse/Roboto-Medium.ttf",
       "source_sha256": "5a8c1e7681318caa29e9f44e8a6e271f6a4067a2703e9916dfd4fe9099241db7",
-      "sha256": "71939d40f2b78d92007559090373ff6953095eddb53744a07a9dd795c496d235"
+      "sha256": "b5356da237055228be2cdad6eaea1c454290745c08b35e1a99e65f931d21ac4f",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 500
+      },
+      "original_metadata": {
+        "family": "Roboto Medium",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 500
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "2aa0669d4b728aab7588a0a2d4200b54489b7571c38363b8b568230ec0c4ef6a",
+        "maxp": "80883b98fe9e939f8dd6ab1c8e36ea03fae5d7927aae798af1d31dacce1cdfc0",
+        "hmtx": "fa545143fd32e5bea9618f80be26c0ae1ef5dd1b9aa6c5c58a2525047b8c55c8",
+        "hdmx": "9dd7d2c1cf5fb7da8e1d0feb05d93966f5a278f32bc715a9f2a6db3c1e3ab76f",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a076c8a10d7b904d00ced83edafc77c83c3c9e9ca30af60ad5e1496cc5aa6199",
+        "prep": "4439cae10ff7665a68725bcb02c83a8176c0e7079834efcb542f91eeef97bb0f",
+        "cvt ": "856be9904c253073fafdfae18d874865c09f9a2e987809e28d068f1e724e14c7",
+        "loca": "a25d82df2fba228886ee30b952853d64780ca28b7d53f12c68121bd0c425f695",
+        "glyf": "0081cc4f36e4f0d7c2a453bb6a09893fa2706acae8c97bf102fd37fef2677412",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
     },
     {
       "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Bold.woff2",
       "output": "assets/synapse/Roboto-Bold.ttf",
       "source_sha256": "1d5b7c64458f4af91dcfee0354be47adde1f739b5aded03a7ab6068a1bb6ca97",
-      "sha256": "fc8488b1de752bbdc008caa2b731dd5a1721cdddf170ad78138e81694ca292a2"
+      "sha256": "fc8488b1de752bbdc008caa2b731dd5a1721cdddf170ad78138e81694ca292a2",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Bold",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 700
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "0c376a06d2dc046a9cde9600833201f42f1666329d818aad7fee058ecfe0bb26",
+        "maxp": "32cb0fc69faf2c18b8c52e42d15a3de3e83a3ecd0fde274e9a0cbabe7fbae980",
+        "hmtx": "0bd2d86f63753590979073b426f8e4fb1ac8e4d575a16a8868cf00147f4cb7b6",
+        "hdmx": "0340026a198b752abf8001e6cd74b6cd211a2eecf1395591f5e1040b238cd5b7",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "6c96a4fd4637922588fd3d50a2cee98aa8de1027a6cd9835824c39f6eed5e681",
+        "prep": "227d9116536ec33841e71620fa6336b347a01a1540e9ffe6cc93b1048dc6fd39",
+        "cvt ": "50681f3b04112f341c40669d3d7ae0123e5139e0cc6299d904180b1a1053b8f1",
+        "loca": "41c5fd7eb251ee103ef8bee0ab16772bf9036e95dae1a64cb1a2a9fb3b7186f6",
+        "glyf": "be936f9471ff21c0324f89eef9ee2d51db84c2c9a1199dac0fe7c8853645e7e9",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Thin.woff2",
+      "output": "assets/synapse/RazerF5-Thin.ttf",
+      "source_sha256": "77caa92a2a0ae136f70cc309b486b454ea99d5be6e63a7e7c15ad5bae3707bb8",
+      "sha256": "0fa0aefa2bf1e00b99a9e331f4caf2650b309dad1a4e54a49c481461d8d48e66",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 100
+      },
+      "original_metadata": {
+        "family": "RazerF5 Thin",
+        "subfamily": "Regular",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Thin",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "3bf0ad9682daa9908e2c300fe8d6c85cf7f44bae342c945ed3b670f746ceb998",
+        "maxp": "b7d3d70c02989f19b1d9f79f3718ef4f063d568e76cc52158a466dfadf764eda",
+        "hmtx": "7ca8556b3522b9e15a3eeefbfcc5e39744d3ef5e5ee612e9ed2cd7492bd013e2",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "9a4c254fc6ea297ae01a3b56b569f0576cb82963417bdfb883a6b8434e506d89",
+        "glyf": "ac0ab663de36ac6ba1bc6cbc24b157ae0b57e541c74b034d110047322948126d",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "ba4355bc286025b3a3af9824857dc448bc77663320a7bd48660f030111c6b6c7",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "fa25ba79991017911ccede57d513eafa2c585b707acb14b92a5438fd2dd17859",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
     },
     {
       "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Regular.woff2",
       "output": "assets/synapse/RazerF5-Regular.ttf",
       "source_sha256": "f74f5837dec1729e960a3a04bbde7ca706b4c938f71516630767089f5ca9bd0b",
-      "sha256": "90cb41b5dfd6449ffbb4780da707d3bced328ab2f60b05c69f90e37dedcec3bf"
+      "sha256": "ba98bf5a0ea8d55161f061dcd2f8b2730088cc04eb05d702f163e1679c11d15f",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "RazerF5",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "d46d03ddebc044a0f831a257a411416a5df502988390fb181cc108accbcd3c7a",
+        "maxp": "7a6fc7666fff5820fbe08f14c328330e06c539c8900a383343b26fc90c5261b5",
+        "hmtx": "834acfa38f2a165478edea1f3db593c68932d82b61f22ea63e73f21a6cd2f6d8",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "27f3617d2593997faea27b7ea6668c19ce3cde248fd79b04adca47bd06046236",
+        "glyf": "ebc67c393a538a61aefc3d7f06eaf650c2eb3b51fa2b60c6764236fa41de7154",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "ba4355bc286025b3a3af9824857dc448bc77663320a7bd48660f030111c6b6c7",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "0cf05bb54d04d0a8f245d710d9ac4e801ab2583e18b3442e5d22e8a29b81dd11",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Bold.woff2",
+      "output": "assets/synapse/RazerF5-Bold.ttf",
+      "source_sha256": "e1b009d49f5ca2feec11a3904f4f028693a8957ecbf7488ca235917564d434a3",
+      "sha256": "fa85dc64f34086139c4030c1da8cb96fa902e7c6942b2bdf55123c509b8b112e",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "RazerF5 Bold",
+        "subfamily": "Regular",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Bold",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "bdbb1e58814c510f720b546fdcd84d58681e35b6539f9929272be48bd48694c8",
+        "maxp": "ec527c1b2ae128c27c33560e10d8d474b166954d622c7f20b6cab4f71c4fe71c",
+        "hmtx": "221f305401959d0995c32477b50cd3a7c4cfe56a1a66592be8cf4033a87d633b",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "da19ebb5e44e5cec9f23c9b87904e7662ee792378a36ca50deeeab9e49536d74",
+        "glyf": "244340e275258de0dce2e58c1e696d12a993e3246d958b8a18f2976ec0a96b81",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "59cca9e4a067f5ae98ff14660f853b39beb49627c798a3edf37cbbd98c72b157",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "fb79bc1d76f44893bd3323a1a97b50f78e71c0d3e5e910f8eefca3508719053c",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
     },
     {
       "source": ".ref/devices/653/static/js/main.7b71cce5.js",
@@ -16583,11 +16802,18 @@
       "source_url": "https://apps.razer.com/synapse/alexa/favicon.ico"
     },
     {
-      "source": ".ref/applications/synapse/armory/favicon.svg",
-      "output": "assets/synapse/host-app-armory.svg",
-      "source_sha256": "21fd3bd391af63239424c77160336a05a9f8a7f7884610a80ff05babc0d29eea",
-      "sha256": "21fd3bd391af63239424c77160336a05a9f8a7f7884610a80ff05babc0d29eea",
-      "source_url": "https://apps.razer.com/synapse/armory/favicon.svg"
+      "source": ".ref/applications/synapse/macro/static/media/macro.eba30c35.ico",
+      "output": "assets/synapse/host-macro-favicon.png",
+      "source_sha256": "90c8727ca4b78b9dd231c202f145b9ddefb6e1ac85a1614edef9be2ab6f58a85",
+      "sha256": "5690adf873f6033df2ecaaaf40ad9392d94dd7a9aae2f2fff8e531a19b9df104",
+      "width": 256,
+      "height": 256,
+      "conversion": "ico-embedded-png",
+      "ico_frame": {
+        "offset": 12470,
+        "bytes": 4789
+      },
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/macro.eba30c35.ico"
     },
     {
       "source": ".ref/applications/synapse/profiles/favicon.svg",
@@ -16618,11 +16844,25 @@
       "source_url": "https://apps.razer.com/synapse/introduction-tour/favicon.svg"
     },
     {
-      "source": ".ref/applications/synapse/dashboard/favicon.svg",
+      "source": ".ref/applications/synapse/dashboard/synapse.svg",
       "output": "assets/synapse/host-app-dashboard.svg",
       "source_sha256": "76acb76f772f2696512943817219b912b3246c95a636876fe44dee835f711e14",
       "sha256": "76acb76f772f2696512943817219b912b3246c95a636876fe44dee835f711e14",
-      "source_url": "https://apps.razer.com/synapse/dashboard/favicon.svg"
+      "source_url": "https://apps.razer.com/synapse/dashboard/synapse.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/armory/shared-apps/logo_armory_workshop.svg",
+      "output": "assets/synapse/host-app-armory.svg",
+      "source_sha256": "77f4924dbfecc1ce10b711d054029f3a65a12246cd8f815abbd54b8d04141f54",
+      "sha256": "77f4924dbfecc1ce10b711d054029f3a65a12246cd8f815abbd54b8d04141f54",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_workshop.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/armory/shared-apps/logo_armory_exchange.svg",
+      "output": "assets/synapse/host-app-armory-exchange.svg",
+      "source_sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2",
+      "sha256": "4facd1ea0bc94ae87ed965e8ea7b95aa6a63593c6aa8254fca0fe372217983f2",
+      "source_url": "https://apps.razer.com/synapse/assets/imgs/apps/logo_armory_exchange.svg"
     },
     {
       "source": ".ref/applications/synapse/dashboard/shared-favicon/MOUSE.svg",
@@ -16861,6 +17101,164 @@
       "source_sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42",
       "sha256": "296986b8d56f0e417447a0cc7037e4fad4d28efa3b2fe395aa60942155afea42",
       "source_url": "https://apps.razer.com/synapse/assets/imgs/favicon/IOT_STRIP.svg"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/arcade-controller-fw-update-disable.3348302b.svg",
+      "output": "assets/synapse/dashboard-card/arcade-controller-fw-update-disable.svg",
+      "source_sha256": "a25dfaf1c50709d4ee781e16f4bf03eb4837358a0c8b6a0dd09578d067cf9f26",
+      "sha256": "a25dfaf1c50709d4ee781e16f4bf03eb4837358a0c8b6a0dd09578d067cf9f26"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/arcade-controller-disable.ce6508f3.svg",
+      "output": "assets/synapse/dashboard-card/arcade-controller-disable.svg",
+      "source_sha256": "43d98a51864aff5fc646609d3f1b447a3ad503a6f779ab85d4cdd19a27e45f46",
+      "sha256": "43d98a51864aff5fc646609d3f1b447a3ad503a6f779ab85d4cdd19a27e45f46"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/ps-controller-disable.a16ccaff.avif",
+      "output": "assets/synapse/dashboard-card/ps-controller-disable.png",
+      "source_sha256": "63274179aaa9134918a667f09b269efbd95e78701453276241e33777529e536f",
+      "sha256": "ff66ebeac4874a019d59c6a96b692f6bca5de24914df5e8336b8d719019a318c",
+      "conversion": "Installed ImageMagick: -strip -depth 8 PNG32",
+      "width": 440,
+      "height": 345,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/controller-disable.a11aa934.svg",
+      "output": "assets/synapse/dashboard-card/controller-disable.svg",
+      "source_sha256": "495b8f357e78c46d824e44c48590bab7dc5293e9e391f40bcb57f888e35b7322",
+      "sha256": "495b8f357e78c46d824e44c48590bab7dc5293e9e391f40bcb57f888e35b7322"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/earbuds-disable.6f9e24da.svg",
+      "output": "assets/synapse/dashboard-card/earbuds-disable.svg",
+      "source_sha256": "81ced7fbe021c0e8f8b80f24d75964d6edfb25f8699a982e9c75986baf7edbf6",
+      "sha256": "81ced7fbe021c0e8f8b80f24d75964d6edfb25f8699a982e9c75986baf7edbf6"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/windows_dynamic_lighting_active_icon.07524369.svg",
+      "output": "assets/synapse/dashboard-card/windows_dynamic_lighting_active_icon.svg",
+      "source_sha256": "1a4bd095ce85ca8c9b34b5b6ac282d5bde0c9350033406c6b6de554b20c04f8e",
+      "sha256": "1a4bd095ce85ca8c9b34b5b6ac282d5bde0c9350033406c6b6de554b20c04f8e"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/windows_dynamic_lighting_icon.00836c88.svg",
+      "output": "assets/synapse/dashboard-card/windows_dynamic_lighting_icon.svg",
+      "source_sha256": "e52dcaa0c2822d8235d1c3c72d54d953a23da3c7c6040cf1247a0bbcc7222679",
+      "sha256": "e52dcaa0c2822d8235d1c3c72d54d953a23da3c7c6040cf1247a0bbcc7222679"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-icon.11f09412.svg",
+      "output": "assets/synapse/dashboard-card/xbox-icon.svg",
+      "source_sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3",
+      "sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/icon_device_power_state_off.6b8c9694.svg",
+      "output": "assets/synapse/dashboard-card/icon_device_power_state_off.svg",
+      "source_sha256": "1228de7fa15c0c4cb59058fae9e70e14181a904d13f99881d00c224cff1970bc",
+      "sha256": "1228de7fa15c0c4cb59058fae9e70e14181a904d13f99881d00c224cff1970bc"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/headset-disable.6cb91cff.svg",
+      "output": "assets/synapse/dashboard-card/headset-disable.svg",
+      "source_sha256": "1f3e43d6a3bec3505faddd9f18653282695f3eb2c4e570e88ff702703fb3b525",
+      "sha256": "1f3e43d6a3bec3505faddd9f18653282695f3eb2c4e570e88ff702703fb3b525"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/ps-icon.54354df0.svg",
+      "output": "assets/synapse/dashboard-card/ps-icon.svg",
+      "source_sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa",
+      "sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/icon_firmware_update-3.0e8a265a.svg",
+      "output": "assets/synapse/dashboard-card/icon_firmware_update-3.svg",
+      "source_sha256": "411d5ec547deadacf22a5cb34b0a2e71bb44e8bc673855a66b6d87121eede19c",
+      "sha256": "411d5ec547deadacf22a5cb34b0a2e71bb44e8bc673855a66b6d87121eede19c"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/warning.95a829f6.svg",
+      "output": "assets/synapse/dashboard-card/warning.svg",
+      "source_sha256": "e7d619a099c1088fa6121012e472d23d11bc04ba02a04c108bd764e759836de8",
+      "sha256": "e7d619a099c1088fa6121012e472d23d11bc04ba02a04c108bd764e759836de8"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-o-white.722d78b0.svg",
+      "output": "assets/synapse/dashboard-card/xbox-o-white.svg",
+      "source_sha256": "123abb559544d343d459bf55836af196bf3e9a0aa347a16bfee160b7452ad274",
+      "sha256": "123abb559544d343d459bf55836af196bf3e9a0aa347a16bfee160b7452ad274"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-menu.029cb487.svg",
+      "output": "assets/synapse/dashboard-card/xbox-menu.svg",
+      "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993",
+      "sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-a-white.ddb51c5e.svg",
+      "output": "assets/synapse/dashboard-card/xbox-a-white.svg",
+      "source_sha256": "c6bc62edd016a2b3f46cb6d82362a5d8d157d2dd2ca743b28a0e8a6c91e2277a",
+      "sha256": "c6bc62edd016a2b3f46cb6d82362a5d8d157d2dd2ca743b28a0e8a6c91e2277a"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-y-white.7078f657.svg",
+      "output": "assets/synapse/dashboard-card/xbox-y-white.svg",
+      "source_sha256": "d3637544f084cb6ef1d5b9a9ecf498a90002d3ce2f81fdd2cae95bc4b8356e8e",
+      "sha256": "d3637544f084cb6ef1d5b9a9ecf498a90002d3ce2f81fdd2cae95bc4b8356e8e"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-edit.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "68c2992e944bc0e4bfe8f5d226e86ccea463943f686dae8e1f312e28302b0eff",
+      "source_offset": 1603,
+      "source_end": 2571,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-apply.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "7c02b87df79db54f726b91e6a56541994996e6f31ddbe6ae603cf153c7ec3d35",
+      "source_offset": 2856,
+      "source_end": 3766,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-requires-synapse.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "91c0fc9fdc857bd2901a1d33688208d3ec09c2897567ee28731cc7d6ca8a7c28",
+      "source_offset": 4053,
+      "source_end": 5600,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-unavailable.svg",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "9287a5aa8cf67fbd19d3611ba7037c58b1d15386afc338936e68e4db22cd88f6",
+      "source_offset": 20039,
+      "source_end": 22068,
+      "source_kind": "inline_svg_literal",
+      "transform": "Static literal createElement SVG serialization"
+    },
+    {
+      "source": ".ref/devices/691/static/js/OLED.b7b95581.chunk.js",
+      "output": "assets/synapse/oled-691-keyboard.png",
+      "source_sha256": "ea0480e7c17180944b2aac3d4287abba9eeec3338c54e0327d55e370643deee6",
+      "sha256": "7d618891cc30239d17890cc771769ef4d86f883ee58986f71aa23f1153b18cc9",
+      "source_offset": 82030,
+      "source_end": 85870,
+      "source_kind": "inline_png_literal",
+      "transform": "Original base64 PNG bytes",
+      "width": 256,
+      "height": 64
     }
   ]
 }

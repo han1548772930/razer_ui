@@ -106,6 +106,8 @@ impl ModuleCatalog {
             h_flex()
                 .ml(surface::css(30.))
                 .flex_shrink_1()
+                // O's `.item-action.info-text` inherits 14px, not body 16px.
+                .text_size(surface::css(14.))
                 .text_color(rgb(0x707070))
                 // 43468/A names this exact SVG; bytes equal the current cache.
                 .child(

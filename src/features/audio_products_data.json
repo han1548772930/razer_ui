@@ -96,12 +96,8 @@
               {
                 "path": "/profile/switchOffLighting/isDisplayOn",
                 "label": "DISPLAY_TURNED_OFF",
-                "kind": "toggle"
-              },
-              {
-                "path": "/profile/switchOffLighting/isIdleEnabled",
-                "label": "IDLE_FOR_MIN",
-                "kind": "toggle"
+                "kind": "toggle",
+                "enabled_by": "/profile/brightness/isEnabled"
               }
             ]
           },
@@ -258,12 +254,8 @@
               {
                 "path": "/profile/switchOffLighting/isDisplayOn",
                 "label": "DISPLAY_TURNED_OFF",
-                "kind": "toggle"
-              },
-              {
-                "path": "/profile/switchOffLighting/isIdleEnabled",
-                "label": "IDLE_FOR_MIN",
-                "kind": "toggle"
+                "kind": "toggle",
+                "enabled_by": "/profile/brightness/isEnabled"
               }
             ]
           },

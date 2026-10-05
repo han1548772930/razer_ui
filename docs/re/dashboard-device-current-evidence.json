@@ -1867,16 +1867,16 @@
   "missing": [
     {
       "path": ".ref/applications/synapse/dashboard/static/media/icon_device_power_state_off.6b8c9694.svg",
-      "present": false
+      "present": true
     },
     {
       "path": ".ref/applications/synapse/dashboard/static/media/xbox-icon.11f09412.svg",
-      "present": false
+      "present": true
     },
     {
       "path": ".ref/applications/synapse/dashboard/static/media/ps-icon.54354df0.svg",
-      "present": false
+      "present": true
     }
   ],
-  "scope": "Source names/edition/profile conditions; ordinary battery levels, unknown/charging/off/paused states and 2-second delay. Standby power-off and console glyphs retain empty source slots until current assets are available. Console artwork, firmware/retry/WDL/init-status trees and source service transport remain incomplete."
+  "scope": "Source names/edition/profile conditions; ordinary battery levels, unknown/charging/off/paused states and 2-second delay. Current standby power-off and console resources are now present and mounted. Card-state trees and interaction changes have a separate dashboard-card-state-current-evidence.json receipt; source service transport and runtime visual parity remain incomplete."
 }

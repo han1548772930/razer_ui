@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "ea214f6bee085968cf29f959b843415d31ff3d90873c59f342375a2b6bbe5f14",
+  "generator_sha256": "2fbc0ec84571bf2c742d83a518e249e40317329ef02413c64c57606d08056aea",
   "products": [
     {
       "product_id": 1303,
@@ -15,7 +15,7 @@
         {
           "key": "TAB_LIGHTING",
           "sections": 3,
-          "controls": 5,
+          "controls": 4,
           "equalizers": 0
         }
       ],
@@ -36,7 +36,7 @@
         {
           "key": "TAB_LIGHTING",
           "sections": 3,
-          "controls": 5,
+          "controls": 4,
           "equalizers": 0
         }
       ],

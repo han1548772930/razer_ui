@@ -1,19 +1,15 @@
 {
   "schema_version": 1,
   "verification": "Static receipts and descriptor validation only; no application, build or tests executed",
-  "parser_sha256": "251693ce9bc12e311018beb7874a4a90ad6639e39afd0e22e40bfc9f9598cb80",
-  "generator_sha256": "95c627e87506c244a942e3eb76536994e5f1afd06fc2333809fd67631178ba5c",
-  "rust_sha256": "2f333e310b6f1a9336123a22bf2f81dcc57c2f9de57d40c4d34df3706e01aa4f",
-  "data_sha256": "9e14caeb0f7750499d6b81b3f8db6bde87c59a3764b624526c2159b89f861140",
-  "products": 75,
+  "parser_sha256": "db2fb31dbe67c1f430e7f92a701397782a00486d3730f1c418091bf67745edc9",
+  "generator_sha256": "2fbc0ec84571bf2c742d83a518e249e40317329ef02413c64c57606d08056aea",
+  "rust_sha256": "b1774e7a3123ef0479515a93488ad9a43bbf4ae2b93cf0efd18a3bc826494ac8",
+  "data_sha256": "e7a2019fa5857d376dded4475c60ed2be58ab920ead3009ab181b68fc1d2b25e",
+  "products": 76,
   "source_files": 2829,
-  "controls": 1715,
+  "controls": 1755,
   "equalizers": 77,
   "empty_pages": [
-    {
-      "product_id": 1383,
-      "page": "TAB_OLED"
-    },
     {
       "product_id": 1392,
       "page": "TAB_DEMO"
@@ -21,14 +17,6 @@
     {
       "product_id": 1442,
       "page": "TAB_DEMO"
-    },
-    {
-      "product_id": 1465,
-      "page": "TAB_ENHANCEMENT"
-    },
-    {
-      "product_id": 3867,
-      "page": "TAB_LIGHTING"
     },
     {
       "product_id": 3942,

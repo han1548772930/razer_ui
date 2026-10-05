@@ -3,7 +3,7 @@
 //! These controls edit local drafts; they do not fabricate hardware responses.
 use crate::{i18n::t, ui::surface};
 use gpui_kit::component::{
-    ActiveTheme, Disableable, Selectable,
+    Disableable, Selectable,
     button::Button,
     checkbox::Checkbox,
     h_flex,
@@ -1118,16 +1118,7 @@ impl Render for SystemProductWorkspace {
                 .child(surface::note("此页尚未完成原生实现。", cx))
                 .into_any_element(),
         };
-        v_flex()
-            .min_w_0()
-            .gap_5()
-            .py_5()
-            .text_color(cx.theme().foreground)
-            .child(content)
-            .child(surface::note(
-                "设置保存在本地配置中；尚未写入电脑硬件。",
-                cx,
-            ))
+        super::product_surface::body().child(content)
     }
 }
 

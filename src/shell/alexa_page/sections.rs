@@ -1,6 +1,5 @@
 use super::*;
 use controls::source_checkbox;
-use gpui_kit::component::button::{ButtonCustomVariant, ButtonVariants as _};
 
 fn switch_callback(
     cx: &Context<AlexaPage>,
@@ -70,6 +69,26 @@ impl AlexaPage {
             )
             .children(SKILLS.iter().map(|skill| {
                 let open = self.expanded == Some(skill.id);
+                let pointer = surface::pointer_state(skill.id, window, cx);
+                let (hovered, pressed) = pointer.read(cx).sample();
+                let more_color = gpui_kit::base::motion::transition(
+                    (skill.id, "more-color"),
+                    if hovered || pressed {
+                        cx.theme().primary
+                    } else {
+                        crate::ui::theme::SettingsButtonColors::background()
+                    },
+                    Transition::new(Duration::from_millis(100)).easing(Easing::EaseInOut),
+                    window,
+                    cx,
+                );
+                let more_alpha = gpui_kit::base::motion::transition(
+                    (skill.id, "more-opacity"),
+                    if pressed { 0.7_f32 } else { 1. },
+                    Transition::new(Duration::from_millis(100)).easing(Easing::Linear),
+                    window,
+                    cx,
+                );
                 let reveal = Presence::new(("alexa-skill", skill.id), open)
                     .transition(Transition::new(Duration::from_millis(200)).easing(Easing::EaseOut))
                     .sample(window, cx)
@@ -100,18 +119,15 @@ impl AlexaPage {
                                 .ml(css(10.))
                                 .flex_shrink_0()
                                 .underline()
-                                .text_color(crate::ui::theme::SettingsButtonColors::background())
-                                .group_hover(skill.id, |style| style.text_color(cx.theme().primary))
-                                .group_active(skill.id, |style| {
-                                    style.text_color(cx.theme().primary).opacity(0.7)
-                                })
+                                .text_color(more_color)
+                                .opacity(more_alpha)
                                 .child(text(if open { "TEXT_CLOSE" } else { "MORE_SKILL" })),
                         )
                     });
                 let header = if skill.content.is_empty() {
                     header.into_any_element()
                 } else {
-                    Button::new(skill.id)
+                    surface::track_pointer(Button::new(skill.id), &pointer, window)
                         .group(skill.id)
                         .w_full()
                         .p_0()
@@ -140,19 +156,20 @@ impl AlexaPage {
                             .gap(css(8.))
                             .bg(crate::ui::theme::MainPageColors.mobile_action())
                             .children(skill.content.iter().map(|key| {
-                                h_flex()
-                                    .items_start()
-                                    .gap(css(9.))
+                                div()
+                                    .relative()
                                     .pl(css(20.))
                                     .child(
                                         div()
-                                            .mt(css(6.))
+                                            .absolute()
+                                            .left(css(6.))
+                                            .top(css(7.))
                                             .size(css(5.))
                                             .flex_shrink_0()
                                             .rounded_full()
                                             .bg(cx.theme().foreground),
                                     )
-                                    .child(div().flex_1().child(text(key)))
+                                    .child(text(key))
                             })),
                     )
             }))
@@ -187,7 +204,9 @@ impl AlexaPage {
                         div()
                             .font_family("RazerF5")
                             .text_size(css(18.))
-                            .font_weight(FontWeight::EXTRA_LIGHT)
+                            // CSS asks for 200, but declares 100/400/600/700 faces;
+                            // CSS matching selects the lower Thin face first.
+                            .font_weight(FontWeight::THIN)
                             .text_color(cx.theme().primary)
                             .child("ALEXA"),
                     )
@@ -201,38 +220,11 @@ impl AlexaPage {
                     ),
             )
             .child(
-                div().absolute().top(css(10.)).right(css(10.)).child(
-                    gpui_kit::component::button::Button::new("alexa-settings-help")
-                        .ghost()
-                        .size(css(14.))
-                        .p_0()
-                        .border_0()
-                        .rounded_full()
-                        .text_size(css(13.))
-                        .line_height(css(13.))
-                        .custom(
-                            ButtonCustomVariant::new(cx)
-                                .color(AlexaColors::tooltip_background())
-                                .foreground(AlexaColors::tooltip_text())
-                                .hover(
-                                    AlexaColors::tooltip_background().blend(
-                                        crate::ui::theme::PaletteColors.white().opacity(0.3),
-                                    ),
-                                )
-                                .active(
-                                    AlexaColors::tooltip_background().blend(
-                                        crate::ui::theme::PaletteColors.white().opacity(0.3),
-                                    ),
-                                ),
-                        )
-                        .label("?")
-                        .accessibility_label(text("TEXT_TOOLTIPS_1"))
-                        .tooltip(format!(
-                            "{}\n\n{}",
-                            text("TEXT_TOOLTIPS_1"),
-                            text("TEXT_TOOLTIPS_2")
-                        )),
-                ),
+                div()
+                    .absolute()
+                    .top(css(10.))
+                    .right(css(10.))
+                    .child(controls::settings_help()),
             )
             .child(
                 group()
@@ -374,6 +366,7 @@ impl AlexaPage {
                     .child(text("TEXT_NOT_USER").replace("{{name}}", "示例用户"))
                     .child(
                         text_button("alexa-logout", text("TEXT_LOG_OUT"), cx)
+                            .text_size(css(16.))
                             .ml(css(10.))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.open_modal(ModalKind::Logout, window, cx)

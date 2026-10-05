@@ -1,5 +1,7 @@
 # Profiles 当前应用复核
 
+> 2026-10-05 正文续审修正：Profile目标选择不再激活硬件配置；区分Games/Add清除搜索行为；修正52px导航、Devices最小宽、关联卡片勾选/页脚、菜单与关闭过渡。当前3137并未向5529转发goBack，已移除多画的返回按钮和非源码空目录说明。详细修正及尚未覆盖项见[正文专项](profiles-content-consistency-2026-10-05.md)；下文旧“返回按钮/空目录说明”等描述以本轮实际挂载证据为准。
+
 2026-10-04。当前源码 `.ref/applications/synapse/profiles/`；[静态提取器](../../tools/audit-profiles-app.cjs) 按 webpack 模块局部作用域解析，不执行下载的 JavaScript。[机器收据](profiles-app-audit.json) 保存实际节点、文件偏移、SHA-256、十个语言包和 CSS。
 
 ## 已撤销的旧结论

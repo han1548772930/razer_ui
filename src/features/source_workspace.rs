@@ -178,7 +178,9 @@ impl SourceProductWorkspace {
                 Some(view.update(cx, |view, cx| view.lighting_element(window, cx)))
             }
             FamilyBody::System(view) => Some(view.update(cx, |view, cx| view.lighting_element(cx))),
-            FamilyBody::Audio(view) => view.update(cx, |view, cx| view.lighting_element(cx)),
+            FamilyBody::Audio(view) => {
+                view.update(cx, |view, cx| view.lighting_element(window, cx))
+            }
             _ => None,
         }
     }

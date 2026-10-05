@@ -20,6 +20,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
+mod controls;
 mod devices;
 
 const FILTER_KEYS: [&str; 3] = ["ALL_GAMES", "LINKED_GAMES", "REMOVED_GAMES"];
@@ -31,9 +32,11 @@ fn popup_width(viewport: f32, device: bool) -> f32 {
     if device && viewport >= 1600. {
         1300.
     } else {
-        (viewport - 40.)
+        let width = (viewport - 40.)
             .min(if viewport <= 900. { 800. } else { 1050. })
-            .max(0.)
+            .max(0.);
+        // Only .profiles-link-games cancels choose-a-mat's 800px minimum.
+        if device { width.max(800.) } else { width }
     }
 }
 
@@ -233,7 +236,9 @@ impl ProfilesPage {
         let mut left = h_flex().flex_1().min_w_0().gap(surface::css(10.));
         if self.view == ProfilesView::Games {
             left = left
-                .child(
+                .child(controls::nav_tip(
+                    "profiles-add-tip",
+                    "ADD_GAME_AND_PROGRAM",
                     icon_button(
                         "profiles-add",
                         "synapse/profiles-add.svg",
@@ -242,7 +247,7 @@ impl ProfilesPage {
                     )
                     .disabled(disabled)
                     .on_click(cx.listener(|this, _, window, cx| this.open_add(window, cx))),
-                )
+                ))
                 // Original scan is initiateGameScan; no service result is synthesized.
                 .child(
                     icon_button(
@@ -264,10 +269,17 @@ impl ProfilesPage {
                     "profiles-search-field",
                     &self.search,
                     disabled,
+                    Some(Box::new(cx.listener(|this, _, window, cx| {
+                        this.searching = false;
+                        this.focus.focus(window, cx);
+                        cx.notify();
+                    }))),
                     cx,
                 ))
             } else {
-                left.child(
+                left.child(controls::nav_tip(
+                    "profiles-search-tip",
+                    "SEARCH",
                     icon_button(
                         "profiles-search",
                         "synapse/profiles-search.svg",
@@ -280,10 +292,15 @@ impl ProfilesPage {
                         this.search.update(cx, |input, cx| input.focus(window, cx));
                         cx.notify();
                     })),
-                )
+                ))
             };
         }
-        let mut right = h_flex().flex_1().min_w_0().justify_end();
+        let mut right = h_flex()
+            .flex_1()
+            .min_w_0()
+            .justify_end()
+            // Source m.handleClick excludes navRef (filter/order controls).
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         if self.view == ProfilesView::Games {
             for (id, label, state, keys) in [
                 (
@@ -315,7 +332,8 @@ impl ProfilesPage {
             .w_full()
             .flex_shrink_0()
             .p(surface::css(11.))
-            .h(surface::css(50.))
+            // 28px navigation + 11px top/bottom padding + 2px bottom border.
+            .h(surface::css(52.))
             .when(disabled, |row| row.opacity(0.3))
             .border_b_2()
             .border_color(cx.theme().title_bar)
@@ -402,7 +420,9 @@ impl Render for ProfilesPage {
             .id("profiles-grid")
             .items_start()
             .flex_wrap()
-            .min_w(surface::css(900.))
+            .when(self.view == ProfilesView::Games, |grid| {
+                grid.min_w(surface::css(900.))
+            })
             .px(surface::css(20.))
             .pb(surface::css(80.));
         if self.view == ProfilesView::Devices {
@@ -426,6 +446,8 @@ impl Render for ProfilesPage {
             )
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
+            .font_family("Roboto")
+            .text_size(surface::css(16.))
             .track_focus(&self.focus)
             .child(self.toolbar(cx))
             .child(
@@ -433,6 +455,11 @@ impl Render for ProfilesPage {
                     .id("profiles-body")
                     .flex_1()
                     .min_h_0()
+                    // Games .content-wrapper starts at 50px, overlapping the
+                    // 52px absolute toolbar; Devices follows its nav normally.
+                    .when(self.view == ProfilesView::Games, |body| {
+                        body.mt(-surface::css(2.))
+                    })
                     .scrollable_both()
                     .child(grid),
             )
@@ -476,6 +503,7 @@ fn search_field(
     id: &'static str,
     state: &Entity<InputState>,
     disabled: bool,
+    on_clear: Option<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
     cx: &App,
 ) -> AnyElement {
     let clear = state.clone();
@@ -523,11 +551,14 @@ fn search_field(
                 .top_0()
                 .size(surface::css(25.))
                 .disabled(disabled)
-                .on_click(move |_, window, cx| {
+                .on_click(move |event, window, cx| {
                     clear.update(cx, |state, cx| {
                         state.set_value("", window, cx);
                         state.focus(window, cx);
-                    })
+                    });
+                    if let Some(on_clear) = &on_clear {
+                        on_clear(event, window, cx);
+                    }
                 }),
             )
         })
@@ -638,6 +669,7 @@ impl Render for AddGameDialog {
                 "profiles-program-search-field",
                 &self.search,
                 false,
+                None,
                 cx,
             ))
         } else {
@@ -659,8 +691,9 @@ impl Render for AddGameDialog {
             h_flex()
                 .flex_1()
                 .justify_end()
+                .items_end()
                 .mr(surface::css(15.))
-                .gap(surface::css(10.))
+                .text_size(surface::css(14.))
                 .child(i18n::t("STILL_DONT_SEE_YOUR_GAME"))
                 .child(
                     BaseButton::new("profiles-program-browse")
@@ -669,6 +702,8 @@ impl Render for AddGameDialog {
                             Tooltip::new("Executable browse service unavailable").build(window, cx)
                         })
                         .p_0()
+                        .underline()
+                        .text_color(rgb(0xffffff))
                         .child(i18n::t("BROWSE")),
                 ),
         );
@@ -711,11 +746,11 @@ impl Render for AddGameDialog {
                     .line_height(surface::css(17.))
                     .text_color(cx.theme().foreground)
                     .child(
-                        h_flex()
+                        div()
                             .relative()
                             .h(surface::css(36.))
                             .flex_shrink_0()
-                            .justify_center()
+                            .text_center()
                             .overflow_hidden()
                             .pt(surface::css(20.))
                             .pb(surface::css(10.))
@@ -725,44 +760,17 @@ impl Render for AddGameDialog {
                             .line_height(surface::css(19.))
                             .text_color(cx.theme().muted_foreground)
                             .child(i18n::t("ADD_GAME_TITLE").to_uppercase())
-                            .when(self.from_device, |head| {
-                                head.child(
-                                    BaseButton::new("profiles-add-back")
-                                        .absolute()
-                                        .top_0()
-                                        .left_0()
-                                        .size(surface::css(36.))
-                                        .p_0()
-                                        .accessibility_label(i18n::t("BACK"))
-                                        .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
-                                        .child(
-                                            img("synapse/profiles-back.svg")
-                                                .size(surface::css(20.)),
-                                        )
-                                        .on_click(cx.listener(|this, _, window, cx| {
-                                            this.close(window, cx)
-                                        })),
-                                )
-                            })
+                            .shadow(vec![BoxShadow {
+                                color: rgb(0x5d5d5d).into(),
+                                offset: point(px(0.), unit),
+                                blur_radius: px(0.),
+                                spread_radius: px(0.),
+                                inset: false,
+                            }])
                             .child(
-                                BaseButton::new("profiles-add-close")
-                                    .accessibility_label(i18n::t("CLOSE"))
-                                    .absolute()
-                                    .top_0()
-                                    .right_0()
-                                    .size(surface::css(36.))
-                                    .p_0()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .hover(|s| s.bg(gpui_kit::rgba(0xffffff1a)))
-                                    .active(|s| s.bg(gpui_kit::rgba(0x0000001a)))
-                                    .child(
-                                        img("synapse/profiles-close.svg").size(surface::css(20.)),
-                                    )
-                                    .on_click(
-                                        cx.listener(|this, _, window, cx| this.close(window, cx)),
-                                    ),
+                                controls::close_button("profiles-add-close", window, cx).on_click(
+                                    cx.listener(|this, _, window, cx| this.close(window, cx)),
+                                ),
                             ),
                     )
                     .child(
@@ -774,31 +782,15 @@ impl Render for AddGameDialog {
                             .pb(surface::css(42.))
                             .child(nav)
                             .child(
+                                // 3137/f mounts `.content` with app rows only.
+                                // No response means no rows; the unavailable
+                                // service is explained on Refresh/Browse.
+                                // Its goBack prop is not forwarded to 5529/r.
                                 div()
                                     .id("profiles-installed-programs")
                                     .flex_1()
                                     .min_h_0()
-                                    .scrollable_y()
-                                    // No installed-program payload is present
-                                    // until the host discovery service answers.
-                                    // Render a stable empty state so the blank
-                                    // list cannot be mistaken for a completed
-                                    // scan or a fabricated catalog.
-                                    .child(
-                                        v_flex()
-                                            .w_full()
-                                            .items_center()
-                                            .justify_center()
-                                            .pt(surface::css(48.))
-                                            .gap(surface::css(8.))
-                                            .text_color(cx.theme().muted_foreground)
-                                            .child(i18n::t("GAME_NOT_SEE"))
-                                            .child(
-                                                div()
-                                                    .text_size(surface::css(12.))
-                                                    .child("Game discovery service unavailable"),
-                                            ),
-                                    ),
+                                    .scrollable_y(),
                             ),
                     ),
             )

@@ -119,6 +119,20 @@ fn display(key: &Key, editing: bool) -> String {
         .to_string()
 }
 
+/// ShortcutKey Rr calls the same layout-name resolver. An unobserved system
+/// keyboard layout uses its source default table rather than guessing a layout.
+pub(super) fn shortcut_name(input_id: &str) -> String {
+    data().names["default"]
+        .get(input_id)
+        .and_then(|value| {
+            value
+                .as_str()
+                .or_else(|| value.get("DEFAULT").and_then(|v| v.as_str()))
+        })
+        .unwrap_or(input_id)
+        .to_owned()
+}
+
 struct Session {
     document: u64,
     index: usize,
@@ -146,6 +160,11 @@ impl MacroPage {
     /// IDs are local and scoped to the containing document. Include retained
     /// undo/redo and saved rows when allocating so restore cannot join new pairs.
     pub(super) fn new_action_items(&self, kind: ActionKind) -> Option<Vec<ActionItem>> {
+        if self.record_ui.open
+            || kind == ActionKind::Delay && self.current_macro_type() != MacroType::Standard
+        {
+            return None;
+        }
         if kind != ActionKind::Keyboard {
             return Some(vec![ActionItem::new(kind)]);
         }

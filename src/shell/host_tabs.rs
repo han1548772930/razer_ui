@@ -401,8 +401,9 @@ impl AppShell {
                     HostTab::ProfileMigration => "PROFILE MIGRATION".into(),
                     // 原版这个窗口名是 `macro`，模块盒名是 `MACRO`。
                     HostTab::Macro => crate::i18n::t("MACRO_SOURCE.TEXT_PROFILE_BAR_MACRO"),
-                    // 原版标题 key 为 DASHBOARD_WORKSHOP / DASHBOARD_EXCHANGE，中文都是「互换」。
-                    HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
+                    // 77989 starts isExchangeEnabled=false without an observed
+                    // feature response, matching the current Armory page state.
+                    HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_WORKSHOP"),
                     HostTab::Chroma => crate::i18n::t_or("CHROMA_STUDIO", "Chroma Studio"),
                     HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
                     HostTab::Feedback => crate::i18n::t("FEEDBACK"),
@@ -542,7 +543,7 @@ impl AppShell {
             Some(HostTab::Alexa) => "synapse/host-alexa-favicon.png",
             Some(HostTab::FirmwareUpdate) => "synapse/host-default-tab.png",
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
-            Some(HostTab::Macro) => "synapse/host-category-keyboard.svg",
+            Some(HostTab::Macro) => "synapse/host-macro-favicon.png",
             Some(HostTab::Armory) => "synapse/host-app-armory.svg",
             Some(HostTab::Chroma) => "synapse/host-app-chroma.svg",
             Some(HostTab::Profiles) => "synapse/host-app-profiles.svg",

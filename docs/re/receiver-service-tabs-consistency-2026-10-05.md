@@ -44,11 +44,15 @@
 | 3886 无线ARGB | 产品自己的 `./productCategoryIcon.svg` |
 | 777 音频 | AUDIO |
 
-已同步修正独立页签：Macro取其HTML的KEYBOARD；Alexa取ICO原63px帧；Armory、Profiles、Feedback、Chroma、Tour和主Dashboard各用当前HTML指定文件；迁移沿用已取得的真实favicon；Firmware Update的HTML `href="false"` 不提供图标，使用当前host默认图。默认ICO选20px原帧，与已有独立解码的tray原始RGBA逐字节相同。SVG原字节复制，ICO仅静态解码和PNG编码，见 [下载收据](app-favicons-current-fetch.json)、[ICO转换收据](host-tab-ico-current-conversion.json)。
+随后进一步追踪了8个独立应用的运行时代码，纠正了仅以HTML为依据的遗漏。Macro的真实挂载组件`xr`按`activeRecord`覆盖HTML图标：普通状态为`macro.eba30c35.ico`，真实录制时为`tabicon_recording.d215dc73.svg`。本地未接录制transport，普通页签已改成原ICO内嵌256px PNG，逐字节提取、不重采样；不能继续使用HTML的KEYBOARD。
+
+Dashboard实际生产分支使用`./synapse.svg`，它与HTML的favicon.svg恰好字节相同；Chroma生产分支使用`/chroma-app/dashboard/icon.svg`。Dashboard包中的`Ft`虽有HyperPolling图标覆盖，但该类只传入返回值被丢弃的`connect`调用，未挂载，不能套用到主Dashboard。Armory入口立即运行的IIFE与挂载页面effect都会按feature状态选择共享`logo_armory_workshop.svg`/`logo_armory_exchange.svg`；本地无feature观测时对应hook初值false，已改用真实workshop资源与标题键，保留exchange资源供真实状态接入。源码和挂载证据见 [运行时收据](runtime-tab-icons-current-evidence.json)。
+
+Alexa取ICO原63px帧；Profiles、Feedback、Tour的图标hook只把现有图像字节转成data URL；迁移沿用已取得的真实favicon；Firmware Update的HTML `href="false"` 不提供图标，使用当前host默认图。默认ICO选20px原帧，与已有独立解码的tray原始RGBA逐字节相同。SVG原字节复制，见 [下载收据](app-favicons-current-fetch.json)、[ICO转换收据](host-tab-ico-current-conversion.json)。331个产品映射目前明确覆盖HTML声明；产品替代根组件中的运行时覆盖仍须逐项区分实际挂载，不能把该数量当成所有显示模式的最终图标验收。
 
 最初下载遇到自动审批服务HTTP404故障；用户重新授权后由主线程成功完成全部静态下载。现无资源下载阻塞，不能把该中间故障当作最终缺失项。
 
-维护工具：`python tools/audit-host-device-favicons.py --check`、`node tools/audit-host-tab-icons.cjs --check`、`python tools/prepare-receiver-tab-assets.py`。完整资源准备同样导入该准备模块，不会在下一轮恢复错误的5类清单。
+维护工具：`python tools/audit-host-device-favicons.py --check`、`node tools/audit-runtime-tab-icons.cjs --check`、`node tools/audit-host-tab-icons.cjs --check`、`python tools/prepare-receiver-tab-assets.py`。完整资源准备同样导入该准备模块，不会在下一轮恢复错误的5类清单。
 
 ## 验证与边界
 

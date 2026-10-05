@@ -536,11 +536,15 @@ impl AlexaPage {
                             })),
                         ),
                 )
-                .child(h_flex().justify_center().mt(css(10.)).child(
-                    text_button("alexa-code-cancel", text("TEXT_CANCEL"), cx).on_click(
-                        cx.listener(|this, _, window, cx| this.auth_scene("razer", window, cx)),
+                .child(
+                    h_flex().justify_center().mt(css(10.)).child(
+                        text_button("alexa-code-cancel", text("TEXT_CANCEL"), cx)
+                            .text_size(css(16.))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.auth_scene("razer", window, cx)
+                            })),
                     ),
-                ))
+                )
                 .into_any_element(),
             Account::InvalidCode | Account::Unauthorized | Account::Error => v_flex()
                 .child(description(550.).child(text(match self.account {
@@ -586,7 +590,11 @@ impl AlexaPage {
                 .into_any_element(),
             Account::Ready => v_flex()
                 .items_center()
-                .min_h(window.viewport_size().height * 0.8)
+                // Source 80vh is relative to the hosted WebContents below TabUI.
+                .min_h(
+                    (window.viewport_size().height - window.rem_size() * (42. / 16.)).max(px(0.))
+                        * 0.8,
+                )
                 .child(
                     description(400.)
                         .child(format!(
@@ -594,7 +602,7 @@ impl AlexaPage {
                             text("PAGE_DESC_ALEXA_READY_1"),
                             text("PAGE_DESC_ALEXA_READY_2")
                         ))
-                        .child(div().mt(css(17.)).child(text("PAGE_DESC_ALEXA_READY_3"))),
+                        .child(div().mt(css(19.52)).child(text("PAGE_DESC_ALEXA_READY_3"))),
                 )
                 .child(
                     h_flex()
@@ -711,7 +719,9 @@ impl Render for AlexaPage {
             .min_h_0()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
-            .text_size(css(14.))
+            .font_family("Roboto")
+            // The later body/html rule overrides the early 14px body reset.
+            .text_size(css(16.))
             .line_height(relative(1.22))
             .when(self.preview, |view| {
                 view.child(

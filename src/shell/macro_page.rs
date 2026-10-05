@@ -27,6 +27,9 @@ mod launch;
 mod nested;
 mod nested_overlay;
 mod palette;
+mod record_help;
+mod record_options;
+mod record_shortcut;
 mod state;
 mod text;
 mod text_emoji;
@@ -126,6 +129,7 @@ pub(super) struct MacroPage {
     launch_website: Entity<InputState>,
     launch_ui: launch::LaunchUi,
     keyboard_ui: keyboard::KeyboardUi,
+    record_ui: record_options::RecordUi,
     delay_min_editor: Entity<InputState>,
     delay_max_editor: Entity<InputState>,
     randomized_open: Option<usize>,
@@ -178,6 +182,24 @@ impl MacroPage {
             InputState::new(window, cx).validate(|value, _| editors::valid_randomized_draft(value))
         });
         let keyboard_focus = cx.focus_handle();
+        let record_ui = record_options::RecordUi::new(window, cx);
+        let record_subscriptions = [
+            (&record_ui.fixed, record_options::NumberField::Fixed),
+            (&record_ui.min, record_options::NumberField::Min),
+            (&record_ui.max, record_options::NumberField::Max),
+        ]
+        .into_iter()
+        .map(|(input, field)| {
+            cx.subscribe_in(input, window, move |this, _, event, window, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.record_number_changed(field, window, cx);
+                }
+                if matches!(event, InputEvent::Focus | InputEvent::Blur) {
+                    cx.notify();
+                }
+            })
+        })
+        .collect::<Vec<_>>();
         let subscriptions = vec![
             cx.on_blur(&keyboard_focus, window, |this, _, cx| {
                 this.finish_keyboard_editor();
@@ -281,6 +303,7 @@ impl MacroPage {
             launch_website,
             launch_ui: Default::default(),
             keyboard_ui: keyboard::KeyboardUi::new(keyboard_focus),
+            record_ui,
             delay_min_editor,
             delay_max_editor,
             randomized_open: None,
@@ -299,7 +322,10 @@ impl MacroPage {
             binding_menu: None,
             binding_dialog: None,
             binding_subscription: None,
-            _subscriptions: subscriptions,
+            _subscriptions: subscriptions
+                .into_iter()
+                .chain(record_subscriptions)
+                .collect(),
         }
     }
     pub(super) fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -321,6 +347,7 @@ impl MacroPage {
             .update(cx, |library, cx| library.replace(file, cx));
     }
     fn load_current_actions(&mut self) {
+        self.record_ui.close();
         self.clear_action_editors();
         self.actions_for = self.current;
         self.actions = self
@@ -368,6 +395,7 @@ impl MacroPage {
         self.request_action(unsaved::PendingAction::Refresh, window, cx);
     }
     fn dismiss_transient_ui(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.record_ui.close();
         self.selector_open = false;
         self.more_open = false;
         self.sort_open = false;
@@ -412,6 +440,7 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
+        self.record_ui.close();
         self.finish_keyboard_editor();
         self.editing_action = None;
         self.text_ui.emoji_open = false;
@@ -422,7 +451,7 @@ impl MacroPage {
     }
     pub(super) fn add_action(&mut self, kind: &str, cx: &mut Context<Self>) {
         let Some(current) = self.current else { return };
-        if self.tutorial != Tutorial::Complete {
+        if self.tutorial != Tutorial::Complete || self.record_ui.open {
             return;
         }
         let Some(kind) = ActionKind::from_palette(kind) else {
@@ -448,10 +477,10 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn can_undo(&self) -> bool {
-        !self.undo.is_empty()
+        !self.record_ui.open && !self.undo.is_empty()
     }
     pub(super) fn can_redo(&self) -> bool {
-        !self.redo.is_empty()
+        !self.record_ui.open && !self.redo.is_empty()
     }
     pub(super) fn can_save(&self) -> bool {
         self.current.is_some()
@@ -483,6 +512,9 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.record_ui.open {
+            return;
+        }
         if self
             .actions()
             .get(index)
@@ -569,6 +601,9 @@ impl MacroPage {
     }
 
     pub(super) fn toggle_delay_randomized(&mut self, index: usize, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         let Some(item) = self.actions.get(index).cloned() else {
             return;
         };
@@ -687,6 +722,9 @@ impl MacroPage {
     }
 
     pub(super) fn step_loop(&mut self, index: usize, direction: i8, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         let Some(item) = self.actions.get(index).cloned() else {
             return;
         };
@@ -705,6 +743,9 @@ impl MacroPage {
     }
 
     pub(super) fn set_action_state(&mut self, index: usize, state: String, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         if index >= self.actions.len() || self.actions[index].state == state {
             return;
         }
@@ -744,7 +785,7 @@ impl MacroPage {
 
     pub(super) fn add_action_at(&mut self, kind: &str, index: usize, cx: &mut Context<Self>) {
         let Some(current) = self.current else { return };
-        if self.tutorial != Tutorial::Complete {
+        if self.tutorial != Tutorial::Complete || self.record_ui.open {
             return;
         }
         let Some(kind) = ActionKind::from_palette(kind) else {
@@ -791,6 +832,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn undo_action(&mut self, cx: &mut Context<Self>) {
+        if !self.can_undo() {
+            return;
+        }
         self.finish_keyboard_editor();
         if let Some(previous) = self.undo.pop() {
             self.redo.push(self.actions.clone());
@@ -801,6 +845,9 @@ impl MacroPage {
         }
     }
     pub(super) fn redo_action(&mut self, cx: &mut Context<Self>) {
+        if !self.can_redo() {
+            return;
+        }
         self.finish_keyboard_editor();
         if let Some(next) = self.redo.pop() {
             self.undo.push(self.actions.clone());
@@ -811,6 +858,9 @@ impl MacroPage {
         }
     }
     pub(super) fn toggle_action_selection(&mut self, index: usize, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         if index >= self.actions().len() {
             return;
         }
@@ -827,6 +877,9 @@ impl MacroPage {
     }
 
     pub(super) fn delete_selected_actions(&mut self, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         self.finish_keyboard_editor();
         if self.selected_actions.is_empty() || self.actions_for != self.current {
             return;
@@ -848,6 +901,9 @@ impl MacroPage {
     /// The source editor inserts before the target row; removing an earlier
     /// source first therefore shifts the destination one slot to the left.
     pub(super) fn move_action(&mut self, source: usize, target: usize, cx: &mut Context<Self>) {
+        if self.record_ui.open {
+            return;
+        }
         self.finish_keyboard_editor();
         if self.actions_for != self.current
             || source >= self.actions.len()

@@ -1721,6 +1721,18 @@
     "data_grid_when_empty": null,
     "banner_default": true,
     "banner_close_source": "localStorage boolean via module 95889",
+    "banner_title": {
+      "source_module": 3026,
+      "locale_module": 54693,
+      "source_keys": {
+        "$JL": "EXCHANGE_GET_STARTED",
+        "HBy": "WORKSHOP_GET_STARTED"
+      },
+      "native_no_response": "WORKSHOP_GET_STARTED",
+      "initial_is_exchange_enabled": false,
+      "resolved_all_false_features_is_exchange_enabled": true,
+      "explanation": "No service response preserves the hook initial value; a successful all-false feature response would select Exchange."
+    },
     "filtering_bar": {
       "mounted_for": [
         "BROWSE_HEADER",

@@ -85,6 +85,10 @@ pub(crate) struct Entry {
     pub(crate) actions: Vec<ActionItem>,
     #[serde(default)]
     pub(crate) macro_type: MacroType,
+    /// 25572.G commits the selected recording delay mode to live and saved
+    /// macro metadata immediately, independently from the action draft.
+    #[serde(default)]
+    pub(crate) record_delay: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -126,6 +130,9 @@ impl MacroLibraryFile {
         }
         let mut entries = HashMap::with_capacity(self.entries.len());
         for entry in &self.entries {
+            if entry.record_delay > 3 {
+                return Err(format!("Invalid recording delay mode in {}", entry.id));
+            }
             if entry.id == 0 {
                 return Err("Macro entry IDs must be nonzero".into());
             }
@@ -232,6 +239,7 @@ impl MacroLibraryFile {
                     && a.parent == b.parent
                     && a.actions == b.actions
                     && a.macro_type == b.macro_type
+                    && a.record_delay == b.record_delay
             })
     }
 }

@@ -1,0 +1,3881 @@
+{
+  "verification": "Current module-local AST, final CSS, maintained resource preparation and hash checks. No application, build, test or reference JavaScript was executed.",
+  "contracts": [
+    {
+      "module": 22534,
+      "name": "z",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 19894,
+      "end": 39109,
+      "source": "class z extends i.Component{constructor(e){var t,s,i;super(e),t=this,this.checkStorageChanges=e=>{let{key:t,newValue:s}=e;\"isDynamicLighting\"===t&&this.setState({isDynamicLighting:JSON.parse(s)})},this.onWindowStorageChange=e=>{let{key:t,keyState:s,newValue:i,oldValue:n}=e;const{productId:o,deviceContainerId:a}=this.props.box;if(console.log(\"[BoxItemDevice] WindowStorageEvent:\",{key:t,keyState:s,productId:o,deviceContainerId:a}),\"connectedDevices\"===t)if([\"removed\",\"cleared\"].includes(s))try{const e=JSON.parse(n);e.productId===o&&e.deviceContainerId===a&&(console.log(\"[BoxItemDevice] Device removed from WindowStorageEvent\"),this.setState({isStandby:!1,isOff:!1,batteryClass:\"\",withBattery:!1}))}catch(r){console.warn(\"[BoxItemDevice] parse removed device\",r)}else if(i)try{const e=JSON.parse(i);e.productId===o&&e.deviceContainerId===a&&(console.log(\"[BoxItemDevice] WindowStorageEvent received for this device:\",e),e.supportsStandbyMode?\"off\"===e.devicePowerState?(console.log(\"[BoxItemDevice] Setting state to off from WindowStorageEvent\"),this.setState({isOff:!0,isStandby:!1,batteryClass:\"batt-off\",withBattery:!0})):\"standby\"===e.devicePowerState?(console.log(\"[BoxItemDevice] Setting state to standby from WindowStorageEvent\"),this.setState({isStandby:!0,isOff:!1,batteryClass:\"batt-standby\",withBattery:!0})):\"active\"===e.devicePowerState&&(console.log(\"[BoxItemDevice] Setting state to active from WindowStorageEvent\"),this.setState({isStandby:!1,isOff:!1,batteryClass:\"batt-active\",withBattery:!0})):null==e.supportsStandbyMode&&(\"off\"===e.devicePowerState?this.setState({isOff:!0,batteryClass:\"batt-off\",withBattery:!0,hideBatteryIcon:!1}):\"active\"===e.devicePowerState&&this.setState({isOff:!1,batteryClass:\"\",withBattery:!0,hideBatteryIcon:!0})))}catch(r){console.warn(\"[BoxItemDevice] parse device update\",r)}},this.isThreeModeXboxController=()=>{const{box:e}=this.props;return e.isXBox&&\"Controller\"===e.category&&\"THREE_MODE\"===e.controllerModeVariant},this.checkShowSpinner=()=>{var e,t;const{box:s}=this.props;console.log(\"checkShowSpinner\",s,s.setupStatus,null===(e=s.powerStatus)||void 0===e?void 0:e.chargingStatus),\"restart-required\"===s.setupStatus||s.setupStatus===y.Dh.INSTALL_CANCELED||s.setupStatus===y.Dh.READY||s.setupStatus===y.Dh.ERROR||s.setupStatus===y.Dh.WAITING&&\"off\"===(null===(t=s.powerStatus)||void 0===t?void 0:t.chargingStatus)?this.setState({showSpinner:!1}):this.setState({showSpinner:!0})},this.checkTooltipPosition=()=>{const e=this.tipsRef.current;if(e){const t=e.getBoundingClientRect();t.x+t.width>window.innerWidth&&(e.style.left=\"auto\")}this.setState({isHovering:!0})},this.onMouseLeaveTooltipPosition=()=>{this.setState({isHovering:!1},()=>{const e=this.tipsRef.current;e&&(e.style.left=0)})},this.checkFWUpgrade=()=>{const{box:e}=this.props;let t=!!(this.props.firmwareUpdateDevices||[]).find(e=>e.serialNumber===this.props.box.serialNumber&&e.productId===this.props.box.productId&&e.needsUpgrade);t||(t=e.firmwareUpdateInfo&&\"ready\"===e.setupStatus&&\"SDK\"!==e.upgradeMode),this.setState({isFwNeedUpgrade:t})},this.getDeviceStatusText=()=>{const{setupStatus:e,profiles:t,activeProfile:s,isSingleProfile:i,subDevices:n,notShowProfileName:o,isShowProfileNameInDashboard:a,autoSwitch:r,interDeviceMappingConfig:l}=this.props.box;let d=\"\",c=s,u=t;if(null==e){this.props.noAliveSignPage.find(e=>{let{productId:t,deviceContainerId:s}=e;return t===this.props.box.productId&&s===this.props.box.deviceContainerId})&&(d=`${I.getTextItem(f.jA5)}`)}if(e!==y.Dh.READY){const t={[y.Dh.WAITING]:f.uEA,[y.Dh.DOWNLOADING]:f.FHr,[y.Dh.INSTALLING]:f.Uxl,[y.Dh.SYNCING]:f.wch,[y.Dh.UPDATING]:f.ZdF,[y.Dh.INSTALL_CANCELED]:f.jA5,[y.Dh.ERROR]:f.jA5};t[e]&&(d=`${I.getTextItem(t[e])}${[y.Dh.INSTALL_CANCELED,y.Dh.ERROR].includes(e)?\"\":\"...\"}`)}if(e===y.Dh.READY){if(Array.isArray(n)){const e=n.findIndex(e=>e.isShownOnUI);e>=0&&(c=n[e].activeProfile,u=n[e].profiles)}if(u&&c){const e=u.find(e=>e.guid===c);e&&!o&&(d=e.name,r&&(d+=\" (Auto)\"))}}!i||a||l&&!1===l.isSupported||(d=\"\"),this.setState({status:d})},this.reInstall=()=>{if(this.state.noAliveSign){new BroadcastChannel(\"background-manager\").postMessage({msgName:\"resuscitate\",msgData:this.props.box})}else{const{productId:e,deviceContainerId:t}=this.props.box,s=`usb_5426_${e}_${t}_mw`;w.A.postBCMsg(y.qg.CROSS_PAGE_REQUEST,{action:\"retryInstall\"},s)}},this.onBoxClick=()=>{this.props.setMouseUpAction({baseAction:()=>{var e,t,s,i,n,o,a,r,l,d;\"restart-required\"!==this.props.box.setupStatus?null!==(e=this.props.box.firmwareUpdateInfo)&&void 0!==e&&e.minRequiredVersion||\"presetLoading\"!==(null===(t=this.props.box.deviceState)||void 0===t?void 0:t.type)&&\"off\"!==(null===(s=this.props.box)||void 0===s||null===(i=s.powerStatus)||void 0===i?void 0:i.chargingStatus)&&(null!==(n=this.props.box)&&void 0!==n&&n.isPlaystation||null!==(o=this.props.box)&&void 0!==o&&o.isXBox||(null===(a=this.props.box)||void 0===a?void 0:a.deviceInitStatusFail)!==y.t7.MIXER_SYSTEM_CHECK_FAILED&&(null===(r=this.props.box)||void 0===r||!r.supportsStandbyMode||\"standby\"!==(null===(l=this.props.box)||void 0===l?void 0:l.devicePowerState)&&\"off\"!==(null===(d=this.props.box)||void 0===d?void 0:d.devicePowerState))&&\"off\"!==this.props.box.devicePowerState&&this.props.box.setupStatus!==y.Dh.UPDATING&&A.A.focusTab(this.props.box)):j.A.setWindowStorageItem(\"notification_manager_unique_noti_restart\",\"true\")}})},this.onFirmwareIconClick=()=>{sessionStorage.setItem(O.nw,\"true\"),this.props.setMouseUpAction({overrideAction:()=>{this.props.changeSelectedTab(\"DEVICES_AND_MODULES_HEADER\")}})},this.onRetryClick=()=>{this.props.setMouseUpAction({overrideAction:()=>{this.reInstall()}})},this.checkStandbyState=()=>{const{supportsStandbyMode:e,devicePowerState:t,productId:s}=this.props.box;if(console.log(\"[BoxItemDevice] checkStandbyState\",{productId:s,supportsStandbyMode:e,devicePowerState:t}),!e)return console.log(\"[BoxItemDevice] standby unsupported\",{productId:s}),void(null==e&&(\"off\"===t?this.setState({isOff:!0,batteryClass:\"batt-off\",withBattery:!0,hideBatteryIcon:!1}):\"active\"===t&&this.setState({isOff:!1,batteryClass:\"\",withBattery:!0,hideBatteryIcon:!0})));console.log(\"[BoxItemDevice] standby power state\",{productId:s,devicePowerState:t}),\"off\"===t?this.setState({isOff:!0,isStandby:!1,batteryClass:\"batt-off\",withBattery:!0}):\"standby\"===t?this.setState({isStandby:!0,isOff:!1,batteryClass:\"batt-standby\",withBattery:!0}):\"active\"===t&&this.setState({isStandby:!1,isOff:!1,batteryClass:\"batt-active\",withBattery:!0})},this.generateBatteryData=function(e,s){var i,n;let o=arguments.length>2&&void 0!==arguments[2]&&arguments[2],a=\"\",r=e.level,l=!1,d=null!==(i=null===(n=t.props.box)||void 0===n?void 0:n.hideBatteryIcon)&&void 0!==i&&i;e.chargingStatus===y.pV.CHARGING&&(e.level<=99?a=\"charging\":r=100),e.chargingStatus===y.pV.OFF&&(a=\"batt-off\"),e.chargingStatus===y.pV.OFF&&s&&(a=\"xbox-icon\"),e.chargingStatus===y.pV.OFF&&o&&(a=\"playstation-icon\"),e.chargingStatus===y.pV.WARNING&&(a=\"batt-warning\"),e.chargingStatus===y.pV.NOT_CHARGING&&(a=\"batt-\"+10*Math.floor(e.level/10),-1===e.level&&(a=\"batt-query-failed\",l=!0,d=!0)),e.chargingStatus===y.pV.PAUSED_CHARGING&&(a=`batt-${10*Math.floor(e.level/10)} paused`),t.setState({...e,withBattery:!0,batteryClass:a,level:r,hasIncorrectBattLevel:l,hideBatteryIcon:d})},this.onBoxImageError=()=>this.setState({boxImage:`${b.A.HOST_URL}/products/${this.props.box.productId}/ui/${this.props.box.productId}_0/PluginImages/${this.props.box.productId}_0_0_dashboard1x.avif`}),this.renderBattValue=e=>{if(e)return null;const{hasIncorrectBattLevel:t,level:s,chargingStatus:i,showBatteryValue:n,isDelayedBatteryDevice:o}=this.state;if(!t&&i!==y.pV.OFF&&n&&void 0!==s){const e=-1===s||o?\"-\":s;return(0,C.jsxs)(\"div\",{className:s>=0&&s<=10&&i!==y.pV.CHARGING?\"low-batt\":\"\",children:[e,\"%\"]})}return null},this.onMouseEnterFWIcon=()=>{this.setState({isFwHovering:!0})},this.onMouseLeaveFWIcon=()=>{this.setState({isFwHovering:!1})},this.handleOpenSettings=()=>{this.props.setMouseUpAction({overrideAction:()=>{(0,D._P)(\"/synapse/settings?source=synapse\",\"settings-synapse\",D.ZP.sameWindow,D.ZP.autoFocus)}})},this.renderCountBadge=()=>{const{subDevices:e,count:t}=this.props.box;return e&&Array.isArray(e)&&e.length>=2?(0,C.jsx)(\"div\",{className:\"count-icon\",children:e.length}):t?(0,C.jsx)(\"div\",{className:\"count-icon\",children:t}):null},this.state={status:\"\",batteryClass:\"\",withBattery:!1,hasInncorrectBattLevel:!1,charingStatus:!1,level:0,boxImage:this.props.box.src,showSpinner:!0,reInstallClicked:!1,showBatteryValue:null===(s=this.props.box.showBatteryValue)||void 0===s||s,hideBatteryIcon:null!==(i=this.props.box.hideBatteryIcon)&&void 0!==i&&i,noAliveSign:!1,isDynamicLighting:!1,isHovering:!1,isFwNeedUpgrade:!1,isFwHovering:!1,isStandby:!1,isOff:!1},this.topOnClick=0,this.leftOnLick=0,this.ref=n().createRef(),this.tipsRef=n().createRef(),this.isFocusing=!1,this.isDelayedBatteryDevice=!1}componentDidMount(){var e;const t=N.A.get(\"isDynamicLighting\");t&&this.setState({isDynamicLighting:JSON.parse(t)}),this.movableRef=document.getElementById(this.props.box.boxId),this.getDeviceStatusText(),this.checkShowSpinner(),[y.Dh.READY,y.Dh.WAITING].includes(this.props.box.setupStatus)&&null!=this.props.box.powerStatus&&this.generateBatteryData(this.props.box.powerStatus,this.props.box.isXBox,this.props.box.isPlaystation),this.checkFWUpgrade(),this.checkStandbyState(),window.addEventListener(\"storage\",this.checkStorageChanges),M.A.on(\"windowstorageevent\",this.onWindowStorageChange),(null===(e=this.props.box.powerStatus)||void 0===e?void 0:e.chargingStatus)!==y.pV.OFF&&(this.setState({isDelayedBatteryDevice:!0}),setTimeout(()=>{this.setState({isDelayedBatteryDevice:!1})},2e3))}componentWillUnmount(){window.removeEventListener(\"storage\",this.checkStorageChanges),M.A.off(\"windowstorageevent\",this.onWindowStorageChange)}componentDidUpdate(e){var t;const{box:s,noAliveSignPage:i}=this.props,n=this.props.noAliveSignPage.find(e=>{let{productId:t,deviceContainerId:s}=e;return t===this.props.box.productId&&s===this.props.box.deviceContainerId});var o,a;(this.state.noAliveSign!==!!n&&this.setState({noAliveSign:!!n}),(e.box.activeProfile!==s.activeProfile||e.box.profiles!==s.profiles||s.setupStatus&&s.setupStatus!==e.box.setupStatus||i!==e.noAliveSignPage)&&this.getDeviceStatusText(),this.props.firmwareUpdateDevices===e.firmwareUpdateDevices&&s.firmwareUpdateInfo===e.box.firmwareUpdateInfo||this.checkFWUpgrade(),(s.setupStatus!==e.box.setupStatus||null!=s.powerStatus&&(null===(t=e.box.powerStatus)||void 0===t?void 0:t.chargingStatus)!==s.powerStatus.chargingStatus)&&this.checkShowSpinner(),[y.Dh.READY,y.Dh.WAITING].includes(s.setupStatus)&&null!=s.powerStatus&&e.box.powerStatus!==s.powerStatus)&&((null===(o=e.box.powerStatus)||void 0===o?void 0:o.chargingStatus)===y.pV.OFF&&(null===(a=s.powerStatus)||void 0===a?void 0:a.chargingStatus)!==y.pV.OFF&&(this.setState({isDelayedBatteryDevice:!0}),setTimeout(()=>{this.setState({isDelayedBatteryDevice:!1})},2e3)),this.generateBatteryData(s.powerStatus,s.isXBox,s.isPlaystation));s.src!==e.box.src&&this.setState({boxImage:s.src}),s.showBatteryValue!==e.box.showBatteryValue&&this.setState({showBatteryValue:s.showBatteryValue}),s.hideBatteryIcon!==e.box.hideBatteryIcon&&this.setState({hideBatteryIcon:s.hideBatteryIcon}),s.devicePowerState===e.box.devicePowerState&&s.supportsStandbyMode===e.box.supportsStandbyMode||this.checkStandbyState()}render(){var e,t,s,i,n,o,a,r,l;const{box:d}=this.props,{subDevices:c}=d||{},{chargingStatus:u,status:h,withBattery:p,batteryClass:v,showSpinner:m,noAliveSign:g,isDynamicLighting:b,hideBatteryIcon:w}=this.state,A=G(this.props.lang),S=V(d,A);let N;const D=\"status \"+([y.Dh.INSTALL_CANCELED,y.Dh.ERROR].includes(this.props.box.setupStatus)||null==this.props.box.setupStatus?\" canceled\":\"\"),j=\"box-img \"+(d.setupStatus!==y.Dh.READY?\"blurred\":\"\"),M=[y.Dh.INSTALL_CANCELED,y.Dh.ERROR].includes(this.props.box.setupStatus)||g;if(c){const e=c.findIndex(e=>e.isShownOnUI);N=e>=0&&e+1}const O=(null===(e=d.isBatterySupported)||void 0===e||e)&&\"restart-required\"!==d.setupStatus;return(0,C.jsxs)(\"div\",{className:\"box box-item\",onMouseDown:this.onBoxClick,children:[N&&N>1&&c&&(0,C.jsx)(\"div\",{className:\"display-number\",children:N}),b&&(null===d||void 0===d?void 0:d.isWDLSupported)&&d.setupStatus===y.Dh.READY&&!(null!==d&&void 0!==d&&d.useBle)&&(0,C.jsxs)(\"div\",{className:\"windows-dynamic-lighting \"+(d.firmwareUpdateInfo&&\"ready\"===d.setupStatus?\"extend\":\"\"),onMouseDown:this.handleOpenSettings,children:[(0,C.jsx)(\"div\",{className:\"icon \"+(!b||null===d||void 0===d||!d.isWDLSupported||null!==d&&void 0!==d&&d.useBle?\"\":\"show\")}),(0,C.jsx)(\"span\",{className:\"tip\",children:(0,C.jsx)(x.A,{text:f.PPh})})]}),\"restart-required\"===d.setupStatus&&(0,C.jsx)(\"div\",{className:\"warning\",children:(0,C.jsx)(\"span\",{className:\"tip\",children:(0,C.jsx)(x.A,{text:f.Km})})}),this.renderCountBadge(),(0,C.jsxs)(\"div\",{className:\"box-img-container \"+(m&&!M?\"loading\":u!==y.pV.OFF||d.isPlaystation||d.setupStatus!==y.Dh.READY?this.state.isStandby||this.state.isOff?\"disabled\":\"\":\"disabled\"),style:d.isXBox||d.isPlaystation?{display:\"inline-flex\",justifyContent:\"center\"}:{},children:[M?(0,C.jsxs)(\"div\",{className:\"retry\",children:[(0,C.jsx)(\"button\",{onMouseDown:this.onRetryClick,className:\"btn btn-green \"+(this.props.isOnline?\"\":\"disabled\"),children:(0,C.jsx)(x.A,{text:f.p6C})}),this.props.isOnline?null:(0,C.jsx)(\"p\",{className:\"status-failed\",children:(0,C.jsx)(x.A,{text:(0,I.getTextItem)(f.Aw1)})})]}):null,(null===(t=d.firmwareUpdateInfo)||void 0===t?void 0:t.minRequiredVersion)&&(0,C.jsx)(C.Fragment,{children:(0,C.jsx)(\"img\",{className:j,src:k,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"})}),d.src&&!d.isXBox&&!d.isPlaystation&&!(null!==(s=d.firmwareUpdateInfo)&&void 0!==s&&s.minRequiredVersion)&&(0,C.jsx)(\"img\",{className:j,src:this.state.boxImage,srcSet:d.srcSet,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"}),d.isXBox&&\"Controller\"===d.category&&(0,C.jsx)(\"img\",{style:{width:\"145px\"},className:j,src:T,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"}),d.isPlaystation&&(0,C.jsx)(\"img\",{style:{width:\"145px\"},className:\"box-img\",src:\"ARCADE_CONTROLLER\"===d.subCategory?U:B,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"}),d.isXBox&&\"Headset\"===d.category&&(0,C.jsx)(\"img\",{className:j,src:F,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"}),d.isXBox&&\"AUDIO\"===(null===(i=d.category)||void 0===i?void 0:i.toUpperCase())&&\"EARBUDS\"===(null===(n=d.subCategory)||void 0===n?void 0:n.toUpperCase())&&(0,C.jsx)(\"img\",{className:j,src:W,alt:d.name&&d.name[A],onError:this.onBoxImageError,\"aria-hidden\":\"true\"})]}),(0,C.jsx)(E,{state:d.deviceState}),d.supportsStandbyMode&&!m&&this.state.isOff&&(0,C.jsxs)(\"div\",{className:\"batt\",onMouseEnter:this.checkTooltipPosition,onMouseLeave:this.onMouseLeaveTooltipPosition,children:[(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips standby-power-off-tips\",children:(0,C.jsx)(x.A,{text:f.wWZ})})}),(0,C.jsx)(\"img\",{src:H,alt:\"\",width:\"24\",height:\"24\",\"aria-hidden\":\"true\"})]}),d.supportsStandbyMode&&!m&&this.state.isStandby&&(0,C.jsxs)(\"div\",{className:\"batt\",onMouseEnter:this.checkTooltipPosition,onMouseLeave:this.onMouseLeaveTooltipPosition,children:[(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips\",children:(0,C.jsx)(x.A,{text:f.fc0})})}),(0,C.jsx)(\"div\",{className:\"batt-icon batt-standby\"})]}),p&&!m&&!d.supportsStandbyMode&&(0,C.jsxs)(\"div\",{className:\"batt\",onMouseEnter:this.checkTooltipPosition,onMouseLeave:this.onMouseLeaveTooltipPosition,children:[(u===y.pV.OFF||\"off\"===d.devicePowerState)&&!d.isXBox&&!d.isPlaystation&&(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips\",children:(0,C.jsx)(x.A,{text:\"AUDIO\"===(null===(o=d.category)||void 0===o?void 0:o.toUpperCase())?f.Z55:f.CwW})})}),u===y.pV.OFF&&d.isXBox&&\"Controller\"===d.category&&(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips xbox-tips\",children:(0,C.jsx)(x.A,{text:this.isThreeModeXboxController()?f.AAO:f.pfH})})}),u===y.pV.OFF&&d.isXBox&&\"AUDIO\"===(null===(a=d.category)||void 0===a?void 0:a.toUpperCase())&&\"EARBUDS\"===(null===(r=d.subCategory)||void 0===r?void 0:r.toUpperCase())&&(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips xbox-tips\",ref:this.tipsRef,children:(0,C.jsx)(x.A,{text:f.f03})})}),u===y.pV.OFF&&d.isPlaystation&&(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips playstation-tips\",ref:this.tipsRef,children:(0,C.jsx)(x.A,{text:\"ARCADE_CONTROLLER\"===d.subCategory?f.nmq:f.Sx7})})}),u===y.pV.OFF&&d.isXBox&&\"Headset\"===d.category&&(0,C.jsx)(Z,{text:f.Uef,isHovering:this.state.isHovering}),u===y.pV.WARNING&&(0,C.jsx)(\"div\",{className:\"tips-container\",children:(0,C.jsx)(\"div\",{className:\"tips batt-warning\",children:(0,C.jsx)(x.A,{text:f.CnU})})}),O?(0,C.jsxs)(C.Fragment,{children:[this.renderBattValue(d.isExternalBatt||null==d.supportsStandbyMode&&d.devicePowerState),!w&&(0,C.jsx)(\"div\",{className:`batt-icon ${v}`})]}):null]}),this.state.isFwNeedUpgrade&&\"ready\"===d.setupStatus&&(0,C.jsx)(\"div\",{className:\"boxFirmwareIcon\",onMouseEnter:this.onMouseEnterFWIcon,onMouseLeave:this.onMouseLeaveFWIcon,onMouseDown:this.onFirmwareIconClick,children:this.state.isFwHovering&&(0,C.jsx)(Z,{text:null!==(l=this.props.box.firmwareUpdateInfo)&&void 0!==l&&l.minRequiredVersion?f.j7H:f.HhA,isHovering:this.state.isFwHovering,className:\"firmwareNoti\"})}),d.deviceInitStatusFail===y.t7.MIXER_SYSTEM_CHECK_FAILED&&(0,C.jsx)(\"div\",{className:\"box-device-init-status\",children:(0,C.jsx)(\"p\",{children:(0,C.jsx)(x.A,{text:f.a58})})}),(0,C.jsxs)(\"div\",{className:\"name-tag \"+(u===y.pV.OFF&&!d.isXBox&&!d.isPlaystation||\"restart-required\"===d.setupStatus||this.state.isStandby||this.state.isOff?\"disabled\":\"\"),children:[(0,C.jsx)(\"div\",{className:\"name \"+(d.isXBox||d.isPlaystation?\"disabled\":\"\"),children:S}),(0,C.jsx)(\"div\",{className:\"ed-name\",children:K(d,A)}),u!==y.pV.OFF&&(0,C.jsx)(\"div\",{className:D,children:h}),d.isXBox&&\"Controller\"===d.category&&(0,C.jsxs)(\"div\",{className:\"status\",style:{color:\"#fff\",display:\"inline-flex\",alignItems:\"center\",justifyContent:\"center\"},children:[(0,C.jsx)(x.A,{text:f.uKP}),this.isThreeModeXboxController()?(0,C.jsxs)(\"div\",{className:\"shortcut\",children:[(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:_.A}),\" +\",(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:L.A}),\" +\",(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:R.A}),\" /\",(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:P.A})]}):(0,C.jsxs)(\"div\",{className:\"shortcut\",children:[(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:_.A}),\" +\",(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:L.A}),\" +\",(0,C.jsx)(\"img\",{className:\"shortcut-icon\",src:R.A})]})]}),d.isPlaystation&&\"Controller\"===d.category&&\"ARCADE_CONTROLLER\"!==d.subCategory&&(0,C.jsx)(\"div\",{className:\"status uppercase\",style:{color:\"#fff\",display:\"inline-flex\",alignItems:\"center\",justifyContent:\"center\"},children:(0,C.jsx)(x.A,{text:f.OdY})})]})]})}}"
+    },
+    {
+      "module": 22534,
+      "name": "E",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 17232,
+      "end": 18010,
+      "source": "function E(e){let{state:t}=e;if(\"presetLoading\"===(null===t||void 0===t?void 0:t.type)){const e=t.presetLoading.value;return(0,C.jsx)(\"div\",{className:\"device-state\",children:(0,C.jsxs)(\"div\",{className:\"preset-loading\",children:[(0,C.jsxs)(\"div\",{className:\"preset-loading_text\",children:[(0,C.jsxs)(\"span\",{children:[(0,C.jsx)(x.A,{text:f.pAm}),(0,C.jsx)(\"span\",{className:\"preset-loading_text_dot\",children:\".\"}),(0,C.jsx)(\"span\",{className:\"preset-loading_text_dot _delay-1\",children:\".\"}),(0,C.jsx)(\"span\",{className:\"preset-loading_text_dot _delay-2\",children:\".\"})]}),(0,C.jsxs)(\"span\",{children:[e,\"%\"]})]}),(0,C.jsx)(\"div\",{className:\"preset-loading_process\",children:(0,C.jsx)(\"div\",{className:\"preset-loading_process_current\",style:{width:e+\"%\"}})})]})})}return null}"
+    },
+    {
+      "module": 22534,
+      "name": "Z",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18963,
+      "end": 19893,
+      "source": "e=>{let{text:t,isHovering:s,className:n}=e;const[o,a]=(0,i.useState)(!1),r=(0,i.useRef)(null),l=()=>{if(!r.current)return;const e=r.current.getBoundingClientRect(),t=window.innerWidth-e.right;a(t<300)};return(0,i.useEffect)(()=>(l(),window.addEventListener(\"resize\",l),()=>{window.removeEventListener(\"resize\",l)}),[]),(0,i.useEffect)(()=>{if(!r.current)return;const e=r.current.closest(\".movableBox\");return e?(s?(e.classList.add(\"hovering\"),l()):e.classList.remove(\"hovering\"),()=>{e.classList.remove(\"hovering\")}):void 0},[s]),(0,C.jsx)(\"div\",{className:\"tips-container\",ref:r,style:{position:\"relative\"},children:(0,C.jsx)(\"span\",{style:{display:\"inline-block\"},children:(0,C.jsx)(\"div\",{className:`tips xbox-tips ${o?\"flip-left\":\"\"} ${n||\"\"}`,style:{position:\"absolute\",left:o?\"auto\":\"10px\",right:o?\"-20px\":\"auto\",top:\"35px\",maxWidth:\"300px\",wordWrap:\"break-word\",pointerEvents:\"none\"},children:(0,C.jsx)(x.A,{text:t})})})})}"
+    },
+    {
+      "module": 22534,
+      "name": "k",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18279,
+      "end": 18346,
+      "source": "s.p+\"static/media/arcade-controller-fw-update-disable.3348302b.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "T",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18097,
+      "end": 18147,
+      "source": "s.p+\"static/media/controller-disable.a11aa934.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "U",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18213,
+      "end": 18270,
+      "source": "s.p+\"static/media/arcade-controller-disable.ce6508f3.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "B",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18150,
+      "end": 18204,
+      "source": "s.p+\"static/media/ps-controller-disable.a16ccaff.avif\""
+    },
+    {
+      "module": 22534,
+      "name": "F",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18355,
+      "end": 18402,
+      "source": "s.p+\"static/media/headset-disable.6cb91cff.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "W",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18411,
+      "end": 18458,
+      "source": "s.p+\"static/media/earbuds-disable.6f9e24da.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "H",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 18467,
+      "end": 18526,
+      "source": "s.p+\"static/media/icon_device_power_state_off.6b8c9694.svg\""
+    },
+    {
+      "module": 22534,
+      "name": "xi",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 117297,
+      "end": 130421,
+      "source": "class xi extends i.Component{constructor(e){var t;super(e),t=this,this.setMouseUpAction=e=>{let{baseAction:t,overrideAction:s}=e;s?this.mouseUpAction=s:this.mouseUpAction||(this.mouseUpAction=t)},this.wheelEvent=e=>{this.estimateDragItemLocation(e,!0)},this.resetDragSession=()=>{document.removeEventListener(\"wheel\",this.wheelEvent),document.removeEventListener(\"mousemove\",this.estimateDragItemLocation),document.removeEventListener(\"mouseup\",this.onMouseUp),this.mouseUp=!0,this.mouseUpAction=null,this.isDragged=!1,this.shortDrag=!0,this.dragElement=null,this.setState({draggingId:null})},this.getChildren=()=>this.listRef&&this.listRef.current?Array.from(this.listRef.current.children):[],this.moveItems=()=>{if(this.listRef.current){const e=Math.ceil(this.state.showingItemsOrder.length/this.props.maxColumns);this.listRef.current.style.height=`${this.boxHeight+(e-1)*this.yOffset}px`}const{draggingId:e,showingItemsOrder:t}=this.state,{maxColumns:s}=this.props,i=this.getChildren();i.forEach((n,o)=>{let a,r,l=t.indexOf(n.id);-1===l&&(l=o);const d=Math.floor(l/s),c=l%s;r=d*this.yOffset,a=c*this.xOffset,n.id!=e&&(gi(n,300),fi(n,i.length-l+1),0!==d||0!==c?mi(n,r,a):mi(n,null))})},this.estimateDragItemLocation=function(e){let s=arguments.length>1&&void 0!==arguments[1]&&arguments[1];if(e.preventDefault(),t.isDragged=!0,!t.dragElement)return;if(t.mouseUp||!t.listRef.current)return;const{maxColumns:i}=t.props,{initialXTranslate:n,initialYTranslate:o,targetYy:a,targetXx:r,itemAmount:l,showingItemsOrder:d,draggingId:c}=t.state,{top:u,left:h}=t.listRef.current.getBoundingClientRect(),{width:p}=t.contentRef.current.getBoundingClientRect(),v=Math.ceil(l/i),m=v<=1?0:t.yOffset*(v-1),g=p-t.boxWidth;let f=e.clientY,x=e.clientX;s&&(f+=e.deltaY,x+=e.deltaX);let b=f-u-a+o,I=x-h-r+n;b>m&&(b=m),b<0&&(b=0),I>g&&(I=g),I<0&&(I=0),mi(t.dragElement,b,I),t.shortDrag&&(Math.abs(b-o)>10||Math.abs(I-n)>10)&&(t.shortDrag=!1);let y=Math.floor((I-t.boxWidth/2)/t.xOffset)+1;y>i&&(y=i);let w=y+(Math.floor((b-t.boxHeight/2)/t.yOffset)+1)*i;w>l-1&&(w=l-1);if(d.indexOf(c)!==w){const e=t.state.showingItemsOrder||[];(c===fe.BU.inDevelopment||d.includes(\"inDevelopment\")&&w===d.length-1)&&!e.includes(\"inDevelopment\")&&e.push(\"inDevelopment\");const s=e[w+1];let i,n;s?(i=e.indexOf(s)-1,i<0&&(i=0)):i=e.length-1,n=e.filter(e=>e!==c),n.splice(i,0,c);let o=Array.isArray(t.props.itemsOrder)?Array.from(t.props.itemsOrder):[];if(n.length!==o.length){const e=n.filter(e=>!o.some(t=>t===e));o=o.concat(e)}o=n.reduce((e,t)=>{let s=o.find(e=>e===t);return s&&e.push(s),e},[]),t.props.updateGroupItemOrder({[t.props.groupId]:o})}},this.onMouseUp=()=>{const{maxColumns:e}=this.props;if(this.isDragged){const t=this.state.showingItemsOrder.indexOf(this.state.draggingId);if(-1===t)return;const s=Math.floor(t/e),i=t%e,n=s*this.yOffset,o=i*this.xOffset;gi(this.dragElement,300),fi(this.dragElement,this.state.showingItemsOrder.length-t+1),0!==s||0!==i?mi(this.dragElement,n,o):mi(this.dragElement,null);const a=this.dragElement;setTimeout(()=>{this.dragElement&&a.id===this.dragElement.id||(a.style.zIndex=fi(a,this.state.showingItemsOrder.length-t+1))},300)}this.mouseUpAction&&this.shortDrag&&this.mouseUpAction(),this.resetDragSession()},this.dragMouseDown=(e,t)=>{this.mouseUp=!1,(e=e||window.event).preventDefault(),this.lastClickItem&&(this.lastClickItem.style.zIndex=\"unset\"),this.lastClickItem=t.current,this.dragElement=t.current,this.dragElement.style.zIndex=100,this.dragElement.style.transition=\"none\",document.addEventListener(\"wheel\",this.wheelEvent),document.addEventListener(\"mousemove\",this.estimateDragItemLocation),document.addEventListener(\"mouseup\",this.onMouseUp),this.getDragingItemPos(e.clientX,e.clientY)},this.getDragingItemPos=(e,t)=>{const s=this.listRef.current.getBoundingClientRect();let i=0,n=0;if(this.dragElement.style.transform){const e=this.dragElement.style.transform.match(/(-)*\\d+(?=px)/g);i=parseInt(e[0]),n=parseInt(e[1])}this.setState({targetXx:e-s.left,targetYy:t-s.top,initialXTranslate:i,initialYTranslate:n,draggingId:this.dragElement.id})},this.ensureItemIsLast=(e,t)=>{if(!e.includes(t))return e;return e[e.length-1]===t?e:[...e.filter(e=>e!==t),t]},this.updateItemOrders=()=>{const{items:e}=this.props;let t;const s=this.props.itemsOrder||[];if(\"devices\"===this.props.groupId){var i;const s=(null===(i=this.getWirelessDevices())||void 0===i?void 0:i.itemsPairing)||[];t=[...e,...s].flatMap(e=>e.boxId===fe.BU.xboxController||e.boxId===fe.BU.xboxHeadset?e.items.map(t=>`${e.boxId}-${t.productId}`):`${e.boxId}`)}else t=e.flatMap(e=>`${e.boxId}`);t.sort((e,t)=>{const i=s.indexOf(e),n=s.indexOf(t);return-1===i?1:-1===n?-1:i-n}),JSON.stringify(t)!==JSON.stringify(this.state.showingItemsOrder)&&(this.setState({showingItemsOrder:t,itemAmount:t.length}),this.props.updateGroupItemOrder({[this.props.groupId]:t}))},this.sendRecommendationBroadcast=e=>{if(this.props.groupId!==fe.oQ.recommendation)return;if(!e||0===e.length)return;const t=this.props.sentRecommendationList||[],s=e.filter(e=>!t.includes(e.sku));if(0===s.length)return;const i=s.map(e=>e.sku);this.props.updateSentRecommendationList([...new Set([...t,...i])]);const n=new BroadcastChannel(\"systray-left\");n.postMessage({EventCategory:\"Recommendation\",EventDimensions:{Action:\"Load\",Items:s.map(e=>({SKU:e.sku,Name:e.product_name}))}}),n.close()},this.toggleGroupCollapsed=()=>{const{groupTitle:e,groupsCollapsed:t}=this.props,s=e;this.props.toggleDashboardGroupCollapsed(s,!t[s])},this.listDeviceContainerIds=e=>e.map(e=>{const{deviceContainerId:t,master:s}=e;let i;return s&&(i=s.productId),{deviceContainerId:t,productIdOfMaster:i,productIdOfSlave:e.productId}}),this.isMultiPairingOnDongle=e=>{const{deviceContainerId:t,productId:s}=e||{};if(!t||null==s)return!1;if(e.isOnlyWirelessMode)return!0;const i=this.props.devices;return null===i||void 0===i||!i.length||i.some(e=>e.isDongle&&e.deviceContainerId===t&&e.productId===s)},this.getWirelessDevices=()=>{var e;if(!this.state.showMultiPairingFeature)return{itemsPairing:[],listStatusOfSlaveDevice:[],isPaired:!1};const t=this.props.validDevices,s=null===t||void 0===t?void 0:t.filter(e=>e.isMultiPairingDevice&&\"ready\"===e.setupStatus&&this.isMultiPairingOnDongle(e));let i={};try{i=JSON.parse(localStorage.getItem(\"duallink-devices\"))||{}}catch(u){i={}}const n=Object.values(i),o=this.listDeviceContainerIds(n),a=null===s||void 0===s?void 0:s.filter(e=>o.some(t=>t.deviceContainerId===e.deviceContainerId&&t.productIdOfSlave===e.productId)),r=a.reduce((e,t)=>{const{deviceContainerId:s,powerStatus:i}=t,{chargingStatus:n}=i||{};return e[s]||(e[s]=[]),e[s].push(n),e},{});let l,d,c=!1;a.length?(l=null===s||void 0===s?void 0:s.filter(e=>!a.some(t=>t.serialNumber===e.serialNumber)),d=r,c=!0):(l=d=s,c=!1);return{itemsPairing:(null===(e=l)||void 0===e?void 0:e.map(e=>{const t=(0,Fe.UU)(e);return{...e,boxId:t}}))||[],listStatusOfSlaveDevice:d,isPaired:c}},this.getProdItems=e=>{const{itemsPairing:t,listStatusOfSlaveDevice:s,isPaired:i}=this.getWirelessDevices();let n=e.map(e=>e.boxId===fe.BU.noDevice?(0,C.jsx)(te,{boxId:fe.BU.noDevice},e.boxId):e.boxId===fe.BU.syn2?(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:(0,C.jsx)(le,{id:e.boxId,name:e.name,items:e.items})},e.boxId):e.boxId!==fe.BU.xboxController?e.boxId===fe.BU.xboxHeadset?e.items.map(t=>(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}-${t.productId}`,innerContent:(0,C.jsx)(ke,{id:e.boxId,name:e.name,items:[t],setMouseUpAction:this.setMouseUpAction})},e.boxId+\"-\"+t.productId)):e.boxId===fe.BU.window10?(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:(0,C.jsx)(oe,{id:e.boxId,name:e.name,items:e.items,setMouseUpAction:this.setMouseUpAction,box:e})},e.boxId):e.boxId===fe.BU.inDevelopment?(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:(0,C.jsx)(oe,{id:e.boxId,name:e.name,items:e.items,setMouseUpAction:this.setMouseUpAction,box:e},e.boxId)},e.boxId):(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:(0,C.jsx)(Y,{box:e,setMouseUpAction:this.setMouseUpAction},e.uniqueId)},e.boxId):void 0);return(0,C.jsxs)(C.Fragment,{children:[n,this.state.showMultiPairingFeature&&(null===t||void 0===t?void 0:t.map(e=>(0,C.jsx)(be,{dragMouseDown:this.dragMouseDown,boxId:e.boxId,innerContent:(0,C.jsx)(hi,{device:e,listStatusOfSlaveDevice:s,isPaired:i,setMouseUpAction:this.setMouseUpAction},e.boxId)},e.boxId)))]})},this.getBoxItems=()=>{const{groupId:e,items:t}=this.props;let s=[];switch(e){case fe.oQ.devices:s=this.getProdItems(t);break;case fe.oQ.module:s=t.map(e=>{let t=e.iotModule?(0,C.jsx)(we,{box:e,setMouseUpAction:this.setMouseUpAction}):(0,C.jsx)(Q,{setMouseUpAction:this.setMouseUpAction,box:e});return(0,C.jsx)(be,{onItemMouseUp:this.showProduct,dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:t},e.boxId)});break;case fe.oQ.onlineService:s=t.map(e=>(0,C.jsx)(be,{onItemMouseUp:this.showProduct,dragMouseDown:this.dragMouseDown,boxId:`${e.boxId}`,innerContent:(0,C.jsx)(ce,{setMouseUpAction:this.setMouseUpAction,box:e})},e.boxId));break;case fe.oQ.recommendation:s=t.map(e=>(0,C.jsx)(be,{boxId:e.sku||e.pid_base,dragMouseDown:this.dragMouseDown,className:\"recommend-box-wrapper\",innerContent:(0,C.jsx)(ge,{setMouseUpAction:this.setMouseUpAction,box:e})},e.sku||e.pid_base));break;case fe.oQ.partnerDeals:s=t.map(e=>(0,C.jsx)(be,{boxId:e.product_name,dragMouseDown:this.dragMouseDown,className:\"partner-deals-wrapper\",innerContent:(0,C.jsx)(Ce,{setMouseUpAction:this.setMouseUpAction,box:e})},e.product_name));break;default:return null}return s},this.listRef=n().createRef(),this.contentRef=n().createRef(),this.itemsArray=[],this.boxItemXGap=20,this.boxItemYGap=20,this.boxWidth=290,this.boxHeight=220,this.xOffset=this.boxWidth+this.boxItemXGap,this.yOffset=this.boxHeight+this.boxItemYGap,this.shortDrag=!0,this.lastClickItem=null,this.sentSKUs=new Set,this.state={showingItemsOrder:[],initialOrder:[],itemAmount:0,collapsed:!1,boxItems:null,draggingId:null,showMultiPairingFeature:!1}}componentDidMount(){var e,t,s;const{groupTitle:i,groupsCollapsed:n}=this.props;if((async()=>({showMultiPairingFeature:!!(await(0,pi.A)(\"global.multipairing\"))?.provisionFlags}))().then(e=>{let{showMultiPairingFeature:t}=e;this.setState({showMultiPairingFeature:t})}).catch(e=>{console.log(\"SimpleBoxGroups showMultiPairingFeature error:\",e)}),n){const e=n[i];this.setState({collapsed:e})}const o=this.props.itemsOrder||[],a=this.props.items||[],r=\"devices\"===(null===(e=this.props)||void 0===e?void 0:e.groupId)?null===(t=this.getWirelessDevices())||void 0===t?void 0:t.itemsPairing:[],l=(\"devices\"===(null===(s=this.props)||void 0===s?void 0:s.groupId)&&r.length?[...a,...r]:a).map(e=>{let{boxId:t}=e;return`${t}`}),d=l.sort((e,t)=>{const s=o.indexOf(e),i=o.indexOf(t);return-1===s?1:-1===i?-1:s-i});JSON.stringify(d)!==JSON.stringify(this.state.showingItemsOrder)&&this.setState({boxItems:this.getBoxItems(),showingItemsOrder:d,initialOrder:l,itemAmount:a.length}),this.sendRecommendationBroadcast(a)}componentDidUpdate(e,t){const{groupsCollapsed:s,groupTitle:i,items:n}=this.props;t.showMultiPairingFeature!==this.state.showMultiPairingFeature&&this.props.groupId===fe.oQ.devices&&this.setState({boxItems:this.getBoxItems()},()=>{this.updateItemOrders()}),this.props.groupId!==fe.oQ.devices||e.devices===this.props.devices&&e.validDevices===this.props.validDevices||this.setState({boxItems:this.getBoxItems()},()=>{this.updateItemOrders()}),e.items!==n&&this.setState({boxItems:this.getBoxItems()},()=>{let e=this.props.itemsOrder?this.props.itemsOrder:[];if(e=e.filter(e=>\"noDevice\"!==e),n.some(e=>{let{boxId:t}=e;return\"noDevice\"===t}))return;const t=n.map(e=>{let{boxId:t}=e;return`${t}`}).filter(t=>!e.includes(t));if(t.length>0){let s=[...e].concat(t);s.includes(fe.BU.inDevelopment)&&(s=s.filter(e=>e!==fe.BU.inDevelopment)),n.some(e=>\"module\"===e.type)&&(s=this.ensureItemIsLast(s,\"tour\")),this.props.updateGroupItemOrder({[this.props.groupId]:s})}else this.updateItemOrders();this.sendRecommendationBroadcast(n)}),e.itemsOrder!==this.props.itemsOrder&&this.updateItemOrders(),t.showingItemsOrder===this.state.showingItemsOrder&&e.maxColumns===this.props.maxColumns||this.moveItems();const o=i;if(e.groupsCollapsed!==s&&e.groupsCollapsed[o]!==s[o]){const e=s[o];this.setState({collapsed:e})}}render(){const{groupTitle:e}=this.props,{collapsed:t,boxItems:s}=this.state;return s&&0!==s.length?(0,C.jsxs)(\"div\",{className:`box-group ${t?\"\":\"expand\"} `,children:[(0,C.jsx)(\"div\",{className:\"title\",children:(0,C.jsxs)(\"div\",{className:\"collapse\",children:[(0,C.jsxs)(\"div\",{className:\"collapse-action\",onClick:this.toggleGroupCollapsed,children:[(0,C.jsx)(\"div\",{className:\"icon\"}),(0,C.jsx)(\"span\",{children:(0,C.jsx)(x.A,{text:e})})]}),this.props.groupTooltip?(0,C.jsx)(\"div\",{className:\"help\",children:(0,C.jsx)(\"div\",{className:\"tip\",children:(0,C.jsx)(x.A,{text:this.props.groupTooltip})})}):null]})}),(0,C.jsx)(\"div\",{className:\"content\",ref:this.contentRef,children:(0,C.jsx)(\"div\",{className:\"content-inner\",ref:this.listRef,children:s})})]}):null}}"
+    },
+    {
+      "module": 22534,
+      "name": "xe",
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 54227,
+      "end": 54839,
+      "source": "class xe extends i.Component{constructor(e){super(e),this.mouseOut=()=>{this.isFocusing=!1},this.mouseDown=e=>{this.props.boxId!==fe.BU.noDevice&&this.ref.current&&1!==e.button&&2!==e.button&&3!==e.button&&4!==e.button&&(this.topOnClick=this.ref.current.offsetTop,this.leftOnLick=this.ref.current.offsetLeft,this.isFocusing=!0,this.props.dragMouseDown(e,this.ref,this.props.innerContent))},this.ref=n().createRef()}render(){const{innerContent:e,boxId:t,className:s}=this.props;return(0,C.jsx)(\"div\",{className:[\"movableBox\",s].filter(Boolean).join(\" \"),ref:this.ref,onMouseDown:this.mouseDown,id:t,children:e})}}"
+    }
+  ],
+  "labels": {
+    "pAm": "PRESET_PROFILES_LOADING_TEXT",
+    "a58": "MIXER_DEVICE_INIT_STATUS_FAILED_DES",
+    "Km": "RESTART_REQUIRED",
+    "PPh": "DYNAMIC_LIGHTING_SYNAPSE_MSG",
+    "p6C": "RETRY",
+    "Aw1": "NO_INTERNET",
+    "j7H": "FIRMWARE_UPDATE_REQUIRED_TO_CONFIGURE_DESC",
+    "HhA": "FIRMWARE_UPDATE_NOTI",
+    "uKP": "PRESS",
+    "AAO": "XBOX_SHORTCUT_TOOLTIP_THREE_MODE",
+    "pfH": "XBOX_SHORTCUT_TOOLTIP",
+    "f03": "XBOX_EARBUDS_TOOLTIP",
+    "Uef": "XBOX_SHORTCUT_TOOLTIP_HEADSET",
+    "nmq": "ARCADE_PS_MODE_TOOLTIP",
+    "Sx7": "PS_MODE_TOOLTIP",
+    "OdY": "PS_MODE_DESC"
+  },
+  "css": {
+    "path": ".ref/applications/synapse/dashboard/static/css/55.4e8559cb.chunk.css",
+    "sha256": "aba3cdc0ae2b3f36197ee327cc9a681a5680cf9117b6ee1bf59a867ebb57daf8",
+    "rules": [
+      {
+        "offset": 3900,
+        "selector": ".warning",
+        "conditions": [],
+        "declarations": "padding-left:30px;position:relative;word-break:break-word",
+        "properties": [
+          {
+            "property": "padding-left",
+            "value": "30px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          },
+          {
+            "property": "word-break",
+            "value": "break-word",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 4003,
+        "selector": ".warning:before",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/warning.95a829f6.svg);background-position:50%;background-repeat:no-repeat;content:\"\";display:inline-block;height:20px;left:0;position:absolute;width:20px",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/warning.95a829f6.svg)",
+            "important": false
+          },
+          {
+            "property": "background-position",
+            "value": "50%",
+            "important": false
+          },
+          {
+            "property": "background-repeat",
+            "value": "no-repeat",
+            "important": false
+          },
+          {
+            "property": "content",
+            "value": "\"\"",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "inline-block",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "20px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 187758,
+        "selector": ".box-item",
+        "conditions": [],
+        "declarations": "background-color:#111;border-radius:5px;box-sizing:border-box;flex-direction:column;padding:10px 20px 9px;position:relative;transition:none",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#111",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "5px",
+            "important": false
+          },
+          {
+            "property": "box-sizing",
+            "value": "border-box",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "column",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "10px 20px 9px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "none",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 187908,
+        "selector": ".box-item .deals-tooltip",
+        "conditions": [],
+        "declarations": "visibility:hidden",
+        "properties": [
+          {
+            "property": "visibility",
+            "value": "hidden",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 187951,
+        "selector": ".box-item:hover .deals-tooltip",
+        "conditions": [],
+        "declarations": "background-color:#44d62c;opacity:.3;visibility:visible",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "visible",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188037,
+        "selector": ".box-item:hover .deals-tooltip:hover",
+        "conditions": [],
+        "declarations": "opacity:1",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": "1",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188084,
+        "selector": ".box-item .warning",
+        "conditions": [],
+        "declarations": "margin-left:-7px;padding:0;width:20px;z-index:1",
+        "properties": [
+          {
+            "property": "margin-left",
+            "value": "-7px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "1",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188151,
+        "selector": ".box-item .warning .tip",
+        "conditions": [],
+        "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;left:10px;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;top:28px;transition:visibility .2s,opacity .3s;visibility:hidden;width:max-content;will-change:visibility,opacity;z-index:200",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #5d5d5d",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "block",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "auto",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "16px",
+            "important": false
+          },
+          {
+            "property": "opacity",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "8px 10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "left",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "28px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "visibility .2s,opacity .3s",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "max-content",
+            "important": false
+          },
+          {
+            "property": "will-change",
+            "value": "visibility,opacity",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "200",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188488,
+        "selector": ".box-item .warning:hover .tip",
+        "conditions": [],
+        "declarations": "opacity:1;visibility:visible",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": "1",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "visible",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188547,
+        "selector": ".box-item.recommendation-box",
+        "conditions": [],
+        "declarations": "position:relative",
+        "properties": [
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188594,
+        "selector": ".box-item div.box-img",
+        "conditions": [],
+        "declarations": "background-repeat:no-repeat;background-size:contain",
+        "properties": [
+          {
+            "property": "background-repeat",
+            "value": "no-repeat",
+            "important": false
+          },
+          {
+            "property": "background-size",
+            "value": "contain",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188668,
+        "selector": ".box-item.xbox",
+        "conditions": [],
+        "declarations": "padding:10px 10px 9px",
+        "properties": [
+          {
+            "property": "padding",
+            "value": "10px 10px 9px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188705,
+        "selector": ".box-item.xbox .box-img",
+        "conditions": [],
+        "declarations": "align-items:center;display:flex;flex:0 0 140px;justify-content:center;width:auto",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex",
+            "value": "0 0 140px",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "auto",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188810,
+        "selector": ".box-item.xbox .name",
+        "conditions": [],
+        "declarations": "overflow:hidden",
+        "properties": [
+          {
+            "property": "overflow",
+            "value": "hidden",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 188847,
+        "selector": ".box-item.xbox .ed-name,.box-item.xbox .name-tag",
+        "conditions": [],
+        "declarations": "color:#ccc!important;text-transform:none!important",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": true
+          },
+          {
+            "property": "text-transform",
+            "value": "none",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 188947,
+        "selector": ".box-item.xbox .icon-external-link",
+        "conditions": [],
+        "declarations": "background-size:20px 20px;height:20px;left:90%;position:absolute;width:20px",
+        "properties": [
+          {
+            "property": "background-size",
+            "value": "20px 20px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "90%",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "20px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189058,
+        "selector": ".box-item .box-img",
+        "conditions": [],
+        "declarations": "-webkit-user-drag:none;height:140px;object-fit:contain;-webkit-user-select:none;user-select:none;width:250px",
+        "properties": [
+          {
+            "property": "-webkit-user-drag",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "140px",
+            "important": false
+          },
+          {
+            "property": "object-fit",
+            "value": "contain",
+            "important": false
+          },
+          {
+            "property": "-webkit-user-select",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "user-select",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "250px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189186,
+        "selector": ".box-item .box-img.has-store-link",
+        "conditions": [],
+        "declarations": "height:120px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "120px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189233,
+        "selector": ".box-item .display-number",
+        "conditions": [],
+        "declarations": "align-items:center;background-color:#bbb;border-radius:50px;color:#111;display:flex;font-size:12px;height:20px;justify-content:center;position:absolute;right:10px;text-align:center;top:10px;width:20px",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "background-color",
+            "value": "#bbb",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "50px",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#111",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "20px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189460,
+        "selector": ".box-item .box-img-container",
+        "conditions": [],
+        "declarations": "height:140px;position:relative;width:250px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "140px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "250px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189532,
+        "selector": ".box-item .box-img-container .box-img",
+        "conditions": [],
+        "declarations": "position:absolute;top:0",
+        "properties": [
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189594,
+        "selector": ".box-item .box-img-container .box-img.blurred",
+        "conditions": [],
+        "declarations": "opacity:.3",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189651,
+        "selector": ".box-item .box-img-container .retry",
+        "conditions": [],
+        "declarations": "align-items:center;display:flex;flex-direction:column;margin-top:25%;position:relative;z-index:1",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "column",
+            "important": false
+          },
+          {
+            "property": "margin-top",
+            "value": "25%",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "1",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189784,
+        "selector": ".box-item .box-img-container .retry button",
+        "conditions": [],
+        "declarations": "cursor:pointer;display:block;margin:0;padding:0 3px;width:auto",
+        "properties": [
+          {
+            "property": "cursor",
+            "value": "pointer",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "block",
+            "important": false
+          },
+          {
+            "property": "margin",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0 3px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "auto",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189890,
+        "selector": ".box-item .box-img-container .retry button .disabled",
+        "conditions": [],
+        "declarations": "opacity:.3",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 189954,
+        "selector": ".box-item .box-img-container .retry button+p",
+        "conditions": [],
+        "declarations": "color:#fd8611;font-size:12px;margin-top:5px",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#fd8611",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "margin-top",
+            "value": "5px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190043,
+        "selector": ".box-item .box-img-container.loading:after",
+        "conditions": [],
+        "declarations": "content:url(../../static/media/spinner.ef2d0235.svg);height:27px;left:calc(50% - 14px);position:absolute;top:calc(50% - 14px);width:27px",
+        "properties": [
+          {
+            "property": "content",
+            "value": "url(../../static/media/spinner.ef2d0235.svg)",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "27px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "calc(50% - 14px)",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "calc(50% - 14px)",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "27px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190223,
+        "selector": ".box-item .logo-placeholder-container",
+        "conditions": [],
+        "declarations": "height:100px;margin:15px auto 25px;position:relative;width:100px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "100px",
+            "important": false
+          },
+          {
+            "property": "margin",
+            "value": "15px auto 25px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190326,
+        "selector": ".box-item .logo-placeholder-container .logo-placeholder",
+        "conditions": [],
+        "declarations": "background-position:50%;background-repeat:no-repeat;background-size:100px;height:100%;width:100%",
+        "properties": [
+          {
+            "property": "background-position",
+            "value": "50%",
+            "important": false
+          },
+          {
+            "property": "background-repeat",
+            "value": "no-repeat",
+            "important": false
+          },
+          {
+            "property": "background-size",
+            "value": "100px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "100%",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190479,
+        "selector": ".box-item .logo-placeholder-container.loading:after",
+        "conditions": [],
+        "declarations": "content:url(../../static/media/spinner.ef2d0235.svg);height:27px;left:calc(50% - 14px);position:absolute;top:calc(50% - 14px);width:27px",
+        "properties": [
+          {
+            "property": "content",
+            "value": "url(../../static/media/spinner.ef2d0235.svg)",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "27px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "calc(50% - 14px)",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "calc(50% - 14px)",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "27px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190668,
+        "selector": ".box-item .logo-placeholder-container.loading .logo-placeholder",
+        "conditions": [],
+        "declarations": "opacity:.3",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190743,
+        "selector": ".box-item .disabled",
+        "conditions": [],
+        "declarations": "opacity:.3;pointer-events:none",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          },
+          {
+            "property": "pointer-events",
+            "value": "none",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190794,
+        "selector": ".box-item .name-tag",
+        "conditions": [],
+        "declarations": "align-items:center;display:flex;flex-direction:column",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "column",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 190868,
+        "selector": ".box-item .name-tag .name",
+        "conditions": [],
+        "declarations": "font-size:14px;line-height:16px;min-height:17px;padding:0 10px;text-align:center;text-transform:uppercase",
+        "properties": [
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "16px",
+            "important": false
+          },
+          {
+            "property": "min-height",
+            "value": "17px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0 10px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "uppercase",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191000,
+        "selector": ".box-item .name-tag .name.loading",
+        "conditions": [],
+        "declarations": "background-color:#cccccc80;border:1px solid #707070;height:15px;width:156px",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#cccccc80",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #707070",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "15px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "156px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191110,
+        "selector": ".box-item .name-tag .ed-name",
+        "conditions": [],
+        "declarations": "color:#707070;font-size:12px;line-height:14px;padding:0 10px;text-align:center;text-transform:uppercase",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#707070",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0 10px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "uppercase",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191243,
+        "selector": ".box-item .name-tag .truncate-two-line",
+        "conditions": [],
+        "declarations": "-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;height:30px;overflow:hidden;padding:0 10px;word-break:break-word",
+        "properties": [
+          {
+            "property": "-webkit-line-clamp",
+            "value": "2",
+            "important": false
+          },
+          {
+            "property": "-webkit-box-orient",
+            "value": "vertical",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "-webkit-box",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "30px",
+            "important": false
+          },
+          {
+            "property": "overflow",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0 10px",
+            "important": false
+          },
+          {
+            "property": "word-break",
+            "value": "break-word",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191416,
+        "selector": ".box-item .name-tag .truncate-two-line.show-tooltip:before",
+        "conditions": [],
+        "declarations": "display:block",
+        "properties": [
+          {
+            "property": "display",
+            "value": "block",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191489,
+        "selector": ".box-item .name-tag .truncate-two-line:before",
+        "conditions": [],
+        "declarations": "display:none;left:0;position:absolute;text-align:center;top:90%;white-space:pre-line;z-index:1",
+        "properties": [
+          {
+            "property": "display",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "90%",
+            "important": false
+          },
+          {
+            "property": "white-space",
+            "value": "pre-line",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "1",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191630,
+        "selector": ".box-item .name-tag .truncate-two-line>div",
+        "conditions": [],
+        "declarations": "white-space:pre-line",
+        "properties": [
+          {
+            "property": "white-space",
+            "value": "pre-line",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191694,
+        "selector": ".box-item .name-tag .store-link",
+        "conditions": [],
+        "declarations": "margin-bottom:7px;margin-top:15px",
+        "properties": [
+          {
+            "property": "margin-bottom",
+            "value": "7px",
+            "important": false
+          },
+          {
+            "property": "margin-top",
+            "value": "15px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191760,
+        "selector": ".box-item .name-tag .store-link>a",
+        "conditions": [],
+        "declarations": "color:#44d62c;line-height:16px;min-height:17px;text-decoration:none;text-transform:uppercase",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "16px",
+            "important": false
+          },
+          {
+            "property": "min-height",
+            "value": "17px",
+            "important": false
+          },
+          {
+            "property": "text-decoration",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "uppercase",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191887,
+        "selector": ".box-item .name-tag .store-link>a:after",
+        "conditions": [],
+        "declarations": "content:\">\";margin-left:3px",
+        "properties": [
+          {
+            "property": "content",
+            "value": "\">\"",
+            "important": false
+          },
+          {
+            "property": "margin-left",
+            "value": "3px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 191955,
+        "selector": ".box-item .name-tag .status",
+        "conditions": [],
+        "declarations": "color:#44d62c;font-size:12px;line-height:14px;overflow:hidden;text-align:center;text-overflow:ellipsis;white-space:pre;width:230px",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "overflow",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "text-overflow",
+            "value": "ellipsis",
+            "important": false
+          },
+          {
+            "property": "white-space",
+            "value": "pre",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "230px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192114,
+        "selector": ".box-item .name-tag .status.white",
+        "conditions": [],
+        "declarations": "color:#ccc",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192159,
+        "selector": ".box-item .name-tag .status.green",
+        "conditions": [],
+        "declarations": "color:#44d62c",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#44d62c",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192207,
+        "selector": ".box-item .name-tag .status.grey",
+        "conditions": [],
+        "declarations": "color:#707070",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#707070",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192254,
+        "selector": ".box-item .name-tag .status.orange",
+        "conditions": [],
+        "declarations": "color:#fd8611",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#fd8611",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192303,
+        "selector": ".box-item .name-tag .status.canceled",
+        "conditions": [],
+        "declarations": "color:#fd4949",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#fd4949",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192354,
+        "selector": ".box-item.box-item-full-image",
+        "conditions": [],
+        "declarations": "outline-offset:-2px;padding:0",
+        "properties": [
+          {
+            "property": "outline-offset",
+            "value": "-2px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192414,
+        "selector": ".box-item.box-item-full-image:active .box-img div[data-type=loaded],.box-item.box-item-full-image:hover .box-img div[data-type=loaded]",
+        "conditions": [],
+        "declarations": "transform:scale(1.1);transition:all .3s ease-out",
+        "properties": [
+          {
+            "property": "transform",
+            "value": "scale(1.1)",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "all .3s ease-out",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192598,
+        "selector": ".box-item.box-item-full-image .box-img",
+        "conditions": [],
+        "declarations": "border-radius:5px 5px 0 0;margin-bottom:10px;overflow:hidden;width:100%",
+        "properties": [
+          {
+            "property": "border-radius",
+            "value": "5px 5px 0 0",
+            "important": false
+          },
+          {
+            "property": "margin-bottom",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "overflow",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192709,
+        "selector": ".box-item.box-item-full-image .box-img div",
+        "conditions": [],
+        "declarations": "background-position:50%;background-size:cover;height:140px;width:100%",
+        "properties": [
+          {
+            "property": "background-position",
+            "value": "50%",
+            "important": false
+          },
+          {
+            "property": "background-size",
+            "value": "cover",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "140px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192822,
+        "selector": ".box-item.box-item-full-image .box-img.has-store-link>div",
+        "conditions": [],
+        "declarations": "height:120px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "120px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 192893,
+        "selector": ".box-item.box-item-green-gradient",
+        "conditions": [],
+        "declarations": "background-image:radial-gradient(circle,#44d62c 0,#44d62c 21%,#0a0 100%)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "radial-gradient(circle,#44d62c 0,#44d62c 21%,#0a0 100%)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193000,
+        "selector": ".box-item.box-item-green-gradient .name-tag .name",
+        "conditions": [],
+        "declarations": "color:#212121;font-weight:700",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#212121",
+            "important": false
+          },
+          {
+            "property": "font-weight",
+            "value": "700",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193080,
+        "selector": ".box-item.box-item-green-gradient .name-tag .ed-name",
+        "conditions": [],
+        "declarations": "color:#fff;font-size:14px",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193159,
+        "selector": ".box-item .batt",
+        "conditions": [],
+        "declarations": "align-items:center;color:#ccc;display:flex;font-size:14px;left:auto!important;position:absolute;right:10px;top:10px",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "auto",
+            "important": true
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "10px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193291,
+        "selector": ".box-item .batt .tips-container",
+        "conditions": [],
+        "declarations": "position:relative",
+        "properties": [
+          {
+            "property": "position",
+            "value": "relative",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193341,
+        "selector": ".box-item .batt .tips-container .tips",
+        "conditions": [],
+        "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;line-height:16px;max-width:280px;opacity:0;padding:8px 10px;position:absolute;right:-20px;text-align:left;top:20px;transition:top .1s,left .1s,visibility 0s,opacity .3s linear;visibility:hidden;width:max-content;will-change:top,left,visibility,opacity;z-index:200",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #5d5d5d",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "block",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "auto",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "16px",
+            "important": false
+          },
+          {
+            "property": "max-width",
+            "value": "280px",
+            "important": false
+          },
+          {
+            "property": "opacity",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "8px 10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "-20px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "left",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "top .1s,left .1s,visibility 0s,opacity .3s linear",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "max-content",
+            "important": false
+          },
+          {
+            "property": "will-change",
+            "value": "top,left,visibility,opacity",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "200",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193742,
+        "selector": ".box-item .batt .tips-container .tips.batt-warning",
+        "conditions": [],
+        "declarations": "left:0;width:352px",
+        "properties": [
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "352px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193812,
+        "selector": ".box-item .batt .tips-container .tips.playstation-tips,.box-item .batt .tips-container .tips.xbox-tips",
+        "conditions": [],
+        "declarations": "left:0;max-width:270px;white-space:pre-line",
+        "properties": [
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "max-width",
+            "value": "270px",
+            "important": false
+          },
+          {
+            "property": "white-space",
+            "value": "pre-line",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 193959,
+        "selector": ".box-item .batt .tips-container .tips.playstation-tips .shortcut,.box-item .batt .tips-container .tips.xbox-tips .shortcut",
+        "conditions": [],
+        "declarations": "align-items:center;display:inline-flex;justify-items:center;line-height:21px",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "inline-flex",
+            "important": false
+          },
+          {
+            "property": "justify-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "21px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 194159,
+        "selector": ".box-item .batt .tips-container .tips.playstation-tips .shortcut .shortcut-icon,.box-item .batt .tips-container .tips.xbox-tips .shortcut .shortcut-icon",
+        "conditions": [],
+        "declarations": "height:21px;padding:0 5px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "21px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "0 5px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 194338,
+        "selector": ".box-item .batt .tips-container .tips.playstation-tips .shortcut .shortcut-icon:first-child,.box-item .batt .tips-container .tips.xbox-tips .shortcut .shortcut-icon:first-child",
+        "conditions": [],
+        "declarations": "height:18px;padding-left:0",
+        "properties": [
+          {
+            "property": "height",
+            "value": "18px",
+            "important": false
+          },
+          {
+            "property": "padding-left",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 194542,
+        "selector": ".box-item .batt .tips-container .tips.playstation-tips .shortcut .shortcut-icon:last-child,.box-item .batt .tips-container .tips.xbox-tips .shortcut .shortcut-icon:last-child",
+        "conditions": [],
+        "declarations": "padding-right:0",
+        "properties": [
+          {
+            "property": "padding-right",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 194733,
+        "selector": ".box-item .batt .tips-container .tips.standby-power-off-tips",
+        "conditions": [],
+        "declarations": "white-space:normal;width:280px;word-break:normal",
+        "properties": [
+          {
+            "property": "white-space",
+            "value": "normal",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "280px",
+            "important": false
+          },
+          {
+            "property": "word-break",
+            "value": "normal",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 194843,
+        "selector": ".box-item .batt .batt-icon",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_charging_100.d01170a4.svg);background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;width:26px",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_charging_100.d01170a4.svg)",
+            "important": false
+          },
+          {
+            "property": "background-position",
+            "value": "50%",
+            "important": false
+          },
+          {
+            "property": "background-repeat",
+            "value": "no-repeat",
+            "important": false
+          },
+          {
+            "property": "background-size",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "26px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "26px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195046,
+        "selector": ".box-item .batt .batt-icon.charging",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_charging.99e70522.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_charging.99e70522.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195158,
+        "selector": ".box-item .batt .batt-icon.batt-100",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_100.b00b88f9.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_100.b00b88f9.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195265,
+        "selector": ".box-item .batt .batt-icon.batt-80",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_80.cabac91c.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_80.cabac91c.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195370,
+        "selector": ".box-item .batt .batt-icon.batt-90",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_90.f59d2a3d.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_90.f59d2a3d.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195475,
+        "selector": ".box-item .batt .batt-icon.batt-70",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_70.73ff3b3b.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_70.73ff3b3b.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195580,
+        "selector": ".box-item .batt .batt-icon.batt-60",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_60.ca9e0c58.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_60.ca9e0c58.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195685,
+        "selector": ".box-item .batt .batt-icon.batt-50",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_50.b36451e7.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_50.b36451e7.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195790,
+        "selector": ".box-item .batt .batt-icon.batt-40",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_40.425e62c7.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_40.425e62c7.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 195895,
+        "selector": ".box-item .batt .batt-icon.batt-30",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_30.2ea266e0.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_30.2ea266e0.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196000,
+        "selector": ".box-item .batt .batt-icon.batt-20",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_20.5573858b.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_20.5573858b.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196105,
+        "selector": ".box-item .batt .batt-icon.batt-10",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_10.5a0a21e9.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_10.5a0a21e9.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196210,
+        "selector": ".box-item .batt .batt-icon.batt-0",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_0.d600fc0a.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_0.d600fc0a.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196313,
+        "selector": ".box-item .batt .batt-icon.batt-query-failed",
+        "conditions": [],
+        "declarations": "background-color:#fff;background-image:none;-webkit-mask-image:url(../../static/media/icon_battery_0.d600fc0a.svg);mask-image:url(../../static/media/icon_battery_0.d600fc0a.svg)",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "background-image",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "-webkit-mask-image",
+            "value": "url(../../static/media/icon_battery_0.d600fc0a.svg)",
+            "important": false
+          },
+          {
+            "property": "mask-image",
+            "value": "url(../../static/media/icon_battery_0.d600fc0a.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196536,
+        "selector": ".box-item .batt .batt-icon.batt-100.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#100)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#100)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196657,
+        "selector": ".box-item .batt .batt-icon.batt-90.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#90)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#90)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196776,
+        "selector": ".box-item .batt .batt-icon.batt-80.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#80)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#80)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 196895,
+        "selector": ".box-item .batt .batt-icon.batt-70.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#70)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#70)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197014,
+        "selector": ".box-item .batt .batt-icon.batt-60.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#60)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#60)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197133,
+        "selector": ".box-item .batt .batt-icon.batt-50.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#50)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#50)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197252,
+        "selector": ".box-item .batt .batt-icon.batt-40.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#40)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#40)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197371,
+        "selector": ".box-item .batt .batt-icon.batt-30.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#30)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#30)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197490,
+        "selector": ".box-item .batt .batt-icon.batt-20.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#20)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#20)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197609,
+        "selector": ".box-item .batt .batt-icon.batt-10.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#10)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#10)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197728,
+        "selector": ".box-item .batt .batt-icon.batt-0.paused",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_paused.087ee1a5.svg#0)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_paused.087ee1a5.svg#0)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197845,
+        "selector": ".box-item .batt .batt-icon.batt-warning",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_battery_error.44052666.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_battery_error.44052666.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 197958,
+        "selector": ".box-item .batt .batt-icon.batt-off",
+        "conditions": [],
+        "declarations": "background-color:red;background-image:none;-webkit-mask-image:url(../../static/media/icon_device_off.0a0b5f8a.svg);mask-image:url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "red",
+            "important": false
+          },
+          {
+            "property": "background-image",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "-webkit-mask-image",
+            "value": "url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+            "important": false
+          },
+          {
+            "property": "mask-image",
+            "value": "url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 198173,
+        "selector": ".box-item .batt .batt-icon.batt-standby",
+        "conditions": [],
+        "declarations": "background-color:#fd8611!important",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#fd8611",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 198248,
+        "selector": ".box-item .batt .batt-icon.batt-active,.box-item .batt .batt-icon.batt-standby",
+        "conditions": [],
+        "declarations": "background-image:none;cursor:default;-webkit-mask-image:url(../../static/media/icon_device_off.0a0b5f8a.svg);mask-image:url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "cursor",
+            "value": "default",
+            "important": false
+          },
+          {
+            "property": "-webkit-mask-image",
+            "value": "url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+            "important": false
+          },
+          {
+            "property": "mask-image",
+            "value": "url(../../static/media/icon_device_off.0a0b5f8a.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 198500,
+        "selector": ".box-item .batt .batt-icon.batt-active",
+        "conditions": [],
+        "declarations": "background-color:#44d62c!important",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#44d62c",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 198574,
+        "selector": ".box-item .batt .batt-icon.xbox-icon",
+        "conditions": [],
+        "declarations": "background-color:#fff;background-image:none;-webkit-mask-image:url(../../static/media/xbox-icon.11f09412.svg);mask-image:url(../../static/media/xbox-icon.11f09412.svg)",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "background-image",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "-webkit-mask-image",
+            "value": "url(../../static/media/xbox-icon.11f09412.svg)",
+            "important": false
+          },
+          {
+            "property": "mask-image",
+            "value": "url(../../static/media/xbox-icon.11f09412.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 198779,
+        "selector": ".box-item .batt .batt-icon.playstation-icon",
+        "conditions": [],
+        "declarations": "background-color:#fff;background-image:none;-webkit-mask-image:url(../../static/media/ps-icon.54354df0.svg);mask-image:url(../../static/media/ps-icon.54354df0.svg)",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "background-image",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "-webkit-mask-image",
+            "value": "url(../../static/media/ps-icon.54354df0.svg)",
+            "important": false
+          },
+          {
+            "property": "mask-image",
+            "value": "url(../../static/media/ps-icon.54354df0.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 198987,
+        "selector": ".box-item .batt:hover .tips",
+        "conditions": [],
+        "declarations": "opacity:1;visibility:visible",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": "1",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "visible",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199044,
+        "selector": ".box-item .shortcut",
+        "conditions": [],
+        "declarations": "align-items:center;display:inline-flex;gap:5px;justify-items:center;line-height:21px;margin-left:5px",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "inline-flex",
+            "important": false
+          },
+          {
+            "property": "gap",
+            "value": "5px",
+            "important": false
+          },
+          {
+            "property": "justify-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "21px",
+            "important": false
+          },
+          {
+            "property": "margin-left",
+            "value": "5px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199165,
+        "selector": ".box-item .shortcut .shortcut-icon",
+        "conditions": [],
+        "declarations": "height:21px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "21px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199212,
+        "selector": ".box-item .shortcut .shortcut-icon:first-child",
+        "conditions": [],
+        "declarations": "height:18px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "18px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199271,
+        "selector": ".box-item .box-device-init-status",
+        "conditions": [],
+        "declarations": "align-items:center;background:#1119;display:flex;flex-direction:column;height:100%;justify-content:center;left:0;padding:20px;position:absolute;text-align:center;top:0;width:100%",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "background",
+            "value": "#1119",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "column",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "100%",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "20px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199484,
+        "selector": ".box-item .box-device-init-status p",
+        "conditions": [],
+        "declarations": "font-size:12px;margin:0",
+        "properties": [
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "margin",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 199544,
+        "selector": ".box-item .maintenance-icon",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_cone.7bf8041f.svg);background-position:50%;background-repeat:no-repeat;background-size:24px;height:24px;position:absolute;right:10px;top:10px;width:24px",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_cone.7bf8041f.svg)",
+            "important": false
+          },
+          {
+            "property": "background-position",
+            "value": "50%",
+            "important": false
+          },
+          {
+            "property": "background-repeat",
+            "value": "no-repeat",
+            "important": false
+          },
+          {
+            "property": "background-size",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "24px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206043,
+        "selector": ".count-icon",
+        "conditions": [],
+        "declarations": "align-items:center;background-color:#707070;border-radius:15px;display:flex;justify-content:center;right:10px",
+        "properties": [
+          {
+            "property": "align-items",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "background-color",
+            "value": "#707070",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "15px",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "right",
+            "value": "10px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206165,
+        "selector": ".boxFirmwareIcon,.count-icon",
+        "conditions": [],
+        "declarations": "height:24px;position:absolute;top:10px;width:24px",
+        "properties": [
+          {
+            "property": "height",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "24px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206244,
+        "selector": ".boxFirmwareIcon",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/icon_firmware_update-3.0e8a265a.svg);display:block;left:10px;outline:1px solid #0000;outline-offset:-1px",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/icon_firmware_update-3.0e8a265a.svg)",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "block",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "outline",
+            "value": "1px solid #0000",
+            "important": false
+          },
+          {
+            "property": "outline-offset",
+            "value": "-1px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206406,
+        "selector": ".boxFirmwareIcon:hover",
+        "conditions": [],
+        "declarations": "outline-color:#5d5d5d",
+        "properties": [
+          {
+            "property": "outline-color",
+            "value": "#5d5d5d",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206451,
+        "selector": ".boxFirmwareIcon.extend",
+        "conditions": [],
+        "declarations": "left:39px!important",
+        "properties": [
+          {
+            "property": "left",
+            "value": "39px",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 206495,
+        "selector": ".firmwareNoti",
+        "conditions": [],
+        "declarations": "background-color:#000;border:1px solid #5d5d5d;box-shadow:none;font-size:14px;min-width:300px;outline:none;padding:10px;position:absolute;top:30px!important;z-index:100",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #5d5d5d",
+            "important": false
+          },
+          {
+            "property": "box-shadow",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "min-width",
+            "value": "300px",
+            "important": false
+          },
+          {
+            "property": "outline",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "30px",
+            "important": true
+          },
+          {
+            "property": "z-index",
+            "value": "100",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206678,
+        "selector": ".flip-left.firmwareNoti",
+        "conditions": [],
+        "declarations": "right:14px!important",
+        "properties": [
+          {
+            "property": "right",
+            "value": "14px",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 206766,
+        "selector": ".windows-dynamic-lighting",
+        "conditions": [],
+        "declarations": "height:24px;left:10px;position:absolute;top:10px;width:24px;z-index:1",
+        "properties": [
+          {
+            "property": "height",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "1",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206862,
+        "selector": ".windows-dynamic-lighting .icon",
+        "conditions": [],
+        "declarations": "height:100%;width:100%",
+        "properties": [
+          {
+            "property": "height",
+            "value": "100%",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 206917,
+        "selector": ".windows-dynamic-lighting .show",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/windows_dynamic_lighting_icon.00836c88.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/windows_dynamic_lighting_icon.00836c88.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 207033,
+        "selector": ".windows-dynamic-lighting:hover .show",
+        "conditions": [],
+        "declarations": "background-image:url(../../static/media/windows_dynamic_lighting_active_icon.07524369.svg)",
+        "properties": [
+          {
+            "property": "background-image",
+            "value": "url(../../static/media/windows_dynamic_lighting_active_icon.07524369.svg)",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 207162,
+        "selector": ".windows-dynamic-lighting:hover .tip",
+        "conditions": [],
+        "declarations": "opacity:1;visibility:visible;z-index:100",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": "1",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "visible",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "100",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 207240,
+        "selector": ".windows-dynamic-lighting.extend",
+        "conditions": [],
+        "declarations": "left:39px!important",
+        "properties": [
+          {
+            "property": "left",
+            "value": "39px",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 207293,
+        "selector": ".windows-dynamic-lighting .tip",
+        "conditions": [],
+        "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;left:10px;line-height:16px;max-width:max-content;opacity:0;padding:8px 10px;position:absolute;text-align:left;text-transform:none;top:24px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:280px;will-change:visibility,opacity;z-index:99",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #5d5d5d",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "16px",
+            "important": false
+          },
+          {
+            "property": "max-width",
+            "value": "max-content",
+            "important": false
+          },
+          {
+            "property": "opacity",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "8px 10px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "left",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "24px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "visibility 0s,opacity .3s linear",
+            "important": false
+          },
+          {
+            "property": "visibility",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "white-space",
+            "value": "pre-wrap",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "280px",
+            "important": false
+          },
+          {
+            "property": "will-change",
+            "value": "visibility,opacity",
+            "important": false
+          },
+          {
+            "property": "z-index",
+            "value": "99",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 207896,
+        "selector": ".device-state",
+        "conditions": [],
+        "declarations": "background:#00000080;height:100%;left:0;padding:10px 20px 9px;position:absolute;top:0;width:100%",
+        "properties": [
+          {
+            "property": "background",
+            "value": "#00000080",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "100%",
+            "important": false
+          },
+          {
+            "property": "left",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "10px 20px 9px",
+            "important": false
+          },
+          {
+            "property": "position",
+            "value": "absolute",
+            "important": false
+          },
+          {
+            "property": "top",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208007,
+        "selector": ".device-state .preset-loading",
+        "conditions": [],
+        "declarations": "display:flex;flex-direction:column;height:140px;justify-content:flex-end;width:250px",
+        "properties": [
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "flex-direction",
+            "value": "column",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "140px",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "flex-end",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "250px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208122,
+        "selector": ".device-state .preset-loading_text",
+        "conditions": [],
+        "declarations": "color:#fff;display:flex;font-size:12px;font-weight:400;justify-content:space-between;margin-bottom:5px",
+        "properties": [
+          {
+            "property": "color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "flex",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "font-weight",
+            "value": "400",
+            "important": false
+          },
+          {
+            "property": "justify-content",
+            "value": "space-between",
+            "important": false
+          },
+          {
+            "property": "margin-bottom",
+            "value": "5px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208260,
+        "selector": ".device-state .preset-loading_text_dot",
+        "conditions": [],
+        "declarations": "animation-duration:.6s;animation-iteration-count:infinite;animation-name:threeDotLoading;animation-timing-function:ease-in",
+        "properties": [
+          {
+            "property": "animation-duration",
+            "value": ".6s",
+            "important": false
+          },
+          {
+            "property": "animation-iteration-count",
+            "value": "infinite",
+            "important": false
+          },
+          {
+            "property": "animation-name",
+            "value": "threeDotLoading",
+            "important": false
+          },
+          {
+            "property": "animation-timing-function",
+            "value": "ease-in",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208422,
+        "selector": ".device-state .preset-loading_text_dot._delay-1",
+        "conditions": [],
+        "declarations": "animation-delay:.15s",
+        "properties": [
+          {
+            "property": "animation-delay",
+            "value": ".15s",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208491,
+        "selector": ".device-state .preset-loading_text_dot._delay-2",
+        "conditions": [],
+        "declarations": "animation-delay:.3s",
+        "properties": [
+          {
+            "property": "animation-delay",
+            "value": ".3s",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208559,
+        "selector": ".device-state .preset-loading_process",
+        "conditions": [],
+        "declarations": "background:#44d62c80;border-radius:10px;overflow:hidden;width:100%",
+        "properties": [
+          {
+            "property": "background",
+            "value": "#44d62c80",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "overflow",
+            "value": "hidden",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100%",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 208664,
+        "selector": ".device-state .preset-loading_process_current",
+        "conditions": [],
+        "declarations": "background:#44d62c;border-bottom-right-radius:10px;border-top-right-radius:10px;height:5px;transition:width .1s ease-in;width:0",
+        "properties": [
+          {
+            "property": "background",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "border-bottom-right-radius",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "border-top-right-radius",
+            "value": "10px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "5px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "width .1s ease-in",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "0",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 283406,
+        "selector": ".btn",
+        "conditions": [],
+        "declarations": "background-color:#707070;border:1px solid #000;border-radius:3px;height:27px;line-height:14px;margin:10px 10px 0 0;padding:6px 0 7px;transition:opacity .3s;width:100px;will-change:opacity",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#707070",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #000",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "3px",
+            "important": false
+          },
+          {
+            "property": "height",
+            "value": "27px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "14px",
+            "important": false
+          },
+          {
+            "property": "margin",
+            "value": "10px 10px 0 0",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "6px 0 7px",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "opacity .3s",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "100px",
+            "important": false
+          },
+          {
+            "property": "will-change",
+            "value": "opacity",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 283599,
+        "selector": ".btn-primary",
+        "conditions": [],
+        "declarations": "background:#44d62c;color:#000",
+        "properties": [
+          {
+            "property": "background",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#000",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 285032,
+        "selector": ".btn.fix-btn",
+        "conditions": [],
+        "declarations": "min-width:100px;padding:6px 12px;width:auto",
+        "properties": [
+          {
+            "property": "min-width",
+            "value": "100px",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "6px 12px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "auto",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 286236,
+        "selector": ".btn-group",
+        "conditions": [],
+        "declarations": "margin-bottom:20px",
+        "properties": [
+          {
+            "property": "margin-bottom",
+            "value": "20px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 286266,
+        "selector": ".btn-group .btn-row",
+        "conditions": [],
+        "declarations": "margin-bottom:5px",
+        "properties": [
+          {
+            "property": "margin-bottom",
+            "value": "5px",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 286512,
+        "selector": ".btn.btn-mode-switching",
+        "conditions": [],
+        "declarations": "background-color:#111;border:1px solid #555;border-radius:3px;color:#ccc;font-family:Roboto;font-size:12px;margin:initial!important;min-width:0;min-width:auto;padding:7px 16px;width:fit-content!important",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#111",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #555",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "3px",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#ccc",
+            "important": false
+          },
+          {
+            "property": "font-family",
+            "value": "Roboto",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "margin",
+            "value": "initial",
+            "important": true
+          },
+          {
+            "property": "min-width",
+            "value": "0",
+            "important": false
+          },
+          {
+            "property": "min-width",
+            "value": "auto",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "7px 16px",
+            "important": false
+          },
+          {
+            "property": "width",
+            "value": "fit-content",
+            "important": true
+          }
+        ]
+      },
+      {
+        "offset": 286740,
+        "selector": ".btn.btn-mode-switching:hover",
+        "conditions": [],
+        "declarations": "background-color:#5d5d5d;border:1px solid #44d62c",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#5d5d5d",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #44d62c",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 286820,
+        "selector": ".btn.btn-mode-switching.selected",
+        "conditions": [],
+        "declarations": "border:1px solid #44d62c",
+        "properties": [
+          {
+            "property": "border",
+            "value": "1px solid #44d62c",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 286878,
+        "selector": ".btn.btn-mode-switching.not-selected",
+        "conditions": [],
+        "declarations": "opacity:.3",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 338768,
+        "selector": ".btn",
+        "conditions": [],
+        "declarations": "background-color:#0000;border:1px solid #0000004d;border-radius:2px;color:#fff;cursor:default;display:inline-block;font-size:12px;line-height:1;min-height:27px;min-width:100px;outline:none;padding:7px 0 6px;text-align:center;text-decoration:none;text-transform:uppercase;transition:opacity .2s ease-out,background-color .2s ease-out;-webkit-user-select:none;user-select:none",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#0000",
+            "important": false
+          },
+          {
+            "property": "border",
+            "value": "1px solid #0000004d",
+            "important": false
+          },
+          {
+            "property": "border-radius",
+            "value": "2px",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#fff",
+            "important": false
+          },
+          {
+            "property": "cursor",
+            "value": "default",
+            "important": false
+          },
+          {
+            "property": "display",
+            "value": "inline-block",
+            "important": false
+          },
+          {
+            "property": "font-size",
+            "value": "12px",
+            "important": false
+          },
+          {
+            "property": "line-height",
+            "value": "1",
+            "important": false
+          },
+          {
+            "property": "min-height",
+            "value": "27px",
+            "important": false
+          },
+          {
+            "property": "min-width",
+            "value": "100px",
+            "important": false
+          },
+          {
+            "property": "outline",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "padding",
+            "value": "7px 0 6px",
+            "important": false
+          },
+          {
+            "property": "text-align",
+            "value": "center",
+            "important": false
+          },
+          {
+            "property": "text-decoration",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "text-transform",
+            "value": "uppercase",
+            "important": false
+          },
+          {
+            "property": "transition",
+            "value": "opacity .2s ease-out,background-color .2s ease-out",
+            "important": false
+          },
+          {
+            "property": "-webkit-user-select",
+            "value": "none",
+            "important": false
+          },
+          {
+            "property": "user-select",
+            "value": "none",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339148,
+        "selector": ".btn:hover",
+        "conditions": [],
+        "declarations": "opacity:.8",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".8",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339170,
+        "selector": ".btn:active",
+        "conditions": [],
+        "declarations": "opacity:.6",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".6",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339193,
+        "selector": ".btn.disabled",
+        "conditions": [],
+        "declarations": "opacity:.3;pointer-events:none",
+        "properties": [
+          {
+            "property": "opacity",
+            "value": ".3",
+            "important": false
+          },
+          {
+            "property": "pointer-events",
+            "value": "none",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339238,
+        "selector": ".btn.btn-green",
+        "conditions": [],
+        "declarations": "background-color:#44d62c;color:#000",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#44d62c",
+            "important": false
+          },
+          {
+            "property": "color",
+            "value": "#000",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339289,
+        "selector": ".btn.btn-red",
+        "conditions": [],
+        "declarations": "background-color:#c8323c",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#c8323c",
+            "important": false
+          }
+        ]
+      },
+      {
+        "offset": 339327,
+        "selector": ".btn.btn-gray",
+        "conditions": [],
+        "declarations": "background-color:#555;font-weight:400",
+        "properties": [
+          {
+            "property": "background-color",
+            "value": "#555",
+            "important": false
+          },
+          {
+            "property": "font-weight",
+            "value": "400",
+            "important": false
+          }
+        ]
+      }
+    ],
+    "keyframes": "@keyframes threeDotLoading{0%{opacity:.4}29%{opacity:.4}30%{opacity:1}98%{opacity:1}99%{opacity:.4}to{opacity:.4}}"
+  },
+  "spinner": {
+    "path": ".ref/applications/synapse/dashboard/static/media/spinner.ef2d0235.svg",
+    "sha256": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
+    "source": "<svg width=\"26px\"  height=\"26px\"  xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid\" class=\"lds-ring\" style=\"background: none;\"><circle cx=\"50\" cy=\"50\" ng-attr-r=\"{{config.radius}}\" ng-attr-stroke=\"{{config.base}}\" ng-attr-stroke-width=\"{{config.width}}\" fill=\"none\" r=\"30\" stroke=\"rgba(26.66666666666669%,83.92156862745098%,17.25490196078431%,0.3)\" stroke-width=\"10\"></circle><circle cx=\"50\" cy=\"50\" ng-attr-r=\"{{config.radius}}\" ng-attr-stroke=\"{{config.stroke}}\" ng-attr-stroke-width=\"{{config.innerWidth}}\" ng-attr-stroke-linecap=\"{{config.linecap}}\" fill=\"none\" r=\"30\" stroke=\"#44d62c\" stroke-width=\"10\" stroke-linecap=\"square\" transform=\"rotate(56.0473 50 50)\"><animateTransform attributeName=\"transform\" type=\"rotate\" calcMode=\"linear\" values=\"0 50 50;180 50 50;720 50 50\" keyTimes=\"0;0.5;1\" dur=\"2s\" begin=\"0s\" repeatCount=\"indefinite\"></animateTransform><animate attributeName=\"stroke-dasharray\" calcMode=\"linear\" values=\"18.84955592153876 169.64600329384882;94.2477796076938 94.24777960769377;18.84955592153876 169.64600329384882\" keyTimes=\"0;0.5;1\" dur=\"2\" begin=\"0s\" repeatCount=\"indefinite\"></animate></circle></svg>"
+  },
+  "assets": [
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/arcade-controller-fw-update-disable.3348302b.svg",
+      "output": "assets/synapse/dashboard-card/arcade-controller-fw-update-disable.svg",
+      "source_sha256": "a25dfaf1c50709d4ee781e16f4bf03eb4837358a0c8b6a0dd09578d067cf9f26",
+      "sha256": "a25dfaf1c50709d4ee781e16f4bf03eb4837358a0c8b6a0dd09578d067cf9f26"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/arcade-controller-disable.ce6508f3.svg",
+      "output": "assets/synapse/dashboard-card/arcade-controller-disable.svg",
+      "source_sha256": "43d98a51864aff5fc646609d3f1b447a3ad503a6f779ab85d4cdd19a27e45f46",
+      "sha256": "43d98a51864aff5fc646609d3f1b447a3ad503a6f779ab85d4cdd19a27e45f46"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/ps-controller-disable.a16ccaff.avif",
+      "output": "assets/synapse/dashboard-card/ps-controller-disable.png",
+      "source_sha256": "63274179aaa9134918a667f09b269efbd95e78701453276241e33777529e536f",
+      "sha256": "ff66ebeac4874a019d59c6a96b692f6bca5de24914df5e8336b8d719019a318c",
+      "conversion": "Installed ImageMagick: -strip -depth 8 PNG32",
+      "width": 440,
+      "height": 345,
+      "mode": "RGBA"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/controller-disable.a11aa934.svg",
+      "output": "assets/synapse/dashboard-card/controller-disable.svg",
+      "source_sha256": "495b8f357e78c46d824e44c48590bab7dc5293e9e391f40bcb57f888e35b7322",
+      "sha256": "495b8f357e78c46d824e44c48590bab7dc5293e9e391f40bcb57f888e35b7322"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/earbuds-disable.6f9e24da.svg",
+      "output": "assets/synapse/dashboard-card/earbuds-disable.svg",
+      "source_sha256": "81ced7fbe021c0e8f8b80f24d75964d6edfb25f8699a982e9c75986baf7edbf6",
+      "sha256": "81ced7fbe021c0e8f8b80f24d75964d6edfb25f8699a982e9c75986baf7edbf6"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/windows_dynamic_lighting_active_icon.07524369.svg",
+      "output": "assets/synapse/dashboard-card/windows_dynamic_lighting_active_icon.svg",
+      "source_sha256": "1a4bd095ce85ca8c9b34b5b6ac282d5bde0c9350033406c6b6de554b20c04f8e",
+      "sha256": "1a4bd095ce85ca8c9b34b5b6ac282d5bde0c9350033406c6b6de554b20c04f8e"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/windows_dynamic_lighting_icon.00836c88.svg",
+      "output": "assets/synapse/dashboard-card/windows_dynamic_lighting_icon.svg",
+      "source_sha256": "e52dcaa0c2822d8235d1c3c72d54d953a23da3c7c6040cf1247a0bbcc7222679",
+      "sha256": "e52dcaa0c2822d8235d1c3c72d54d953a23da3c7c6040cf1247a0bbcc7222679"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-icon.11f09412.svg",
+      "output": "assets/synapse/dashboard-card/xbox-icon.svg",
+      "source_sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3",
+      "sha256": "31c6a0a45d7b5407c702f9292c41081895302e260abda0d67bb21f4e7d64afc3"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/icon_device_power_state_off.6b8c9694.svg",
+      "output": "assets/synapse/dashboard-card/icon_device_power_state_off.svg",
+      "source_sha256": "1228de7fa15c0c4cb59058fae9e70e14181a904d13f99881d00c224cff1970bc",
+      "sha256": "1228de7fa15c0c4cb59058fae9e70e14181a904d13f99881d00c224cff1970bc"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/headset-disable.6cb91cff.svg",
+      "output": "assets/synapse/dashboard-card/headset-disable.svg",
+      "source_sha256": "1f3e43d6a3bec3505faddd9f18653282695f3eb2c4e570e88ff702703fb3b525",
+      "sha256": "1f3e43d6a3bec3505faddd9f18653282695f3eb2c4e570e88ff702703fb3b525"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/ps-icon.54354df0.svg",
+      "output": "assets/synapse/dashboard-card/ps-icon.svg",
+      "source_sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa",
+      "sha256": "add148dec0fd9db3b341a3a87b032d1c10a3d42ce915098fe7f6ea6a8ef138fa"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/icon_firmware_update-3.0e8a265a.svg",
+      "output": "assets/synapse/dashboard-card/icon_firmware_update-3.svg",
+      "source_sha256": "411d5ec547deadacf22a5cb34b0a2e71bb44e8bc673855a66b6d87121eede19c",
+      "sha256": "411d5ec547deadacf22a5cb34b0a2e71bb44e8bc673855a66b6d87121eede19c"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/warning.95a829f6.svg",
+      "output": "assets/synapse/dashboard-card/warning.svg",
+      "source_sha256": "e7d619a099c1088fa6121012e472d23d11bc04ba02a04c108bd764e759836de8",
+      "sha256": "e7d619a099c1088fa6121012e472d23d11bc04ba02a04c108bd764e759836de8"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-o-white.722d78b0.svg",
+      "output": "assets/synapse/dashboard-card/xbox-o-white.svg",
+      "source_sha256": "123abb559544d343d459bf55836af196bf3e9a0aa347a16bfee160b7452ad274",
+      "sha256": "123abb559544d343d459bf55836af196bf3e9a0aa347a16bfee160b7452ad274"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-menu.029cb487.svg",
+      "output": "assets/synapse/dashboard-card/xbox-menu.svg",
+      "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993",
+      "sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-a-white.ddb51c5e.svg",
+      "output": "assets/synapse/dashboard-card/xbox-a-white.svg",
+      "source_sha256": "c6bc62edd016a2b3f46cb6d82362a5d8d157d2dd2ca743b28a0e8a6c91e2277a",
+      "sha256": "c6bc62edd016a2b3f46cb6d82362a5d8d157d2dd2ca743b28a0e8a6c91e2277a"
+    },
+    {
+      "source": ".ref/applications/synapse/dashboard/static/media/xbox-y-white.7078f657.svg",
+      "output": "assets/synapse/dashboard-card/xbox-y-white.svg",
+      "source_sha256": "d3637544f084cb6ef1d5b9a9ecf498a90002d3ce2f81fdd2cae95bc4b8356e8e",
+      "sha256": "d3637544f084cb6ef1d5b9a9ecf498a90002d3ce2f81fdd2cae95bc4b8356e8e"
+    }
+  ],
+  "implementation": [
+    {
+      "path": "src/shell/main_pages/dashboard_device_card.rs",
+      "sha256": "280862ef37ae341f2298fa267c932063ad16c7e97ae77fac9ca66f5d96d36493"
+    },
+    {
+      "path": "src/shell/main_pages/dashboard_device.rs",
+      "sha256": "9956d8c204fa1011f25b62321d7f641a3f07eed8ef095a9e67ef7facae3e2132"
+    },
+    {
+      "path": "src/shell/main_pages/dashboard_cards.rs",
+      "sha256": "fee3efd0025cf01a6a90274468ac85168178f9cf494ac3ffb36a1c8c511869e6"
+    },
+    {
+      "path": "src/shell/main_pages/dashboard_grid.rs",
+      "sha256": "5c78d9f6b2bd16f8ed45eae44e1c5b69c0dcb5d4394326d1718908d955aafd2a"
+    }
+  ],
+  "implemented": [
+    "Separate source image-container disabled and non-ready artwork blurred opacity; console name opacity and PlayStation artwork exception.",
+    "Known controller/headset/earbuds/firmware art, retry/offline, actual spinner curve and square caps, restart warning, WDL and firmware affordances.",
+    "Observed presetLoading value only, 100ms ease-in width and exact 600ms dot keyframes with 150/300ms initial delays; mixer init overlay.",
+    "Source short-drag overrideAction for nested mouse controls; native keyboard activation stops card bubbling.",
+    "Source can-focus short-circuit conditions and actual firmware-update inventory matching; recovery/install/restart-notification requests report missing transport without synthetic success.",
+    "Recovered standby-off and console glyphs; battery no-spinner gate, restart suppression, console text and edge-placement branches."
+  ],
+  "unresolved": [
+    "No runtime or pixel comparison is permitted; native layout/text rasterization and overlapping tooltip hit regions are not visually certified.",
+    "CSS normal line-height, CJK fallback and pre-wrap/shrink-to-fit equivalence remain open as recorded in the shell consistency audit.",
+    "Firmware navigates to Devices & Modules; source sessionStorage flag and smooth scroll to its first firmware row are not yet implemented.",
+    "Service transport and continuous reducer/storage updates for retryInstall, resuscitate, notification restart, noAliveSign and dynamic-lighting are not connected; metadata is an observed projection only.",
+    "Missing prepared ordinary artwork retains the source image slot; no Synapse-logo substitution or fabricated image-load failure fallback is used."
+  ]
+}

@@ -13,13 +13,15 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 #[path = "dashboard_grid_tests.rs"]
 mod tests;
 
-type Action = Rc<dyn Fn(&mut Window, &mut App)>;
+pub(super) type Action = Rc<dyn Fn(&mut Window, &mut App)>;
 
 pub(in crate::shell) struct DashboardState {
     preferences: DashboardPreferences,
     saved: DashboardPreferences,
     press: Option<Press>,
     release: Option<Subscription>,
+    override_action: Option<(String, Action)>,
+    hovering_card: Option<String>,
 }
 pub(in crate::shell) struct DashboardChanged;
 impl EventEmitter<DashboardChanged> for DashboardState {}
@@ -31,10 +33,27 @@ impl DashboardState {
             preferences,
             press: None,
             release: None,
+            override_action: None,
+            hovering_card: None,
         }
     }
     pub(in crate::shell) fn snapshot(&self) -> DashboardPreferences {
         self.preferences.clone()
+    }
+    pub(super) fn override_action(&mut self, card: String, action: Action) {
+        if let Some(press) = self.press.as_mut().filter(|press| press.card == card) {
+            press.action = Some(action);
+        } else {
+            self.override_action = Some((card, action));
+        }
+    }
+    pub(super) fn hover_card(&mut self, card: &str, hovered: bool, cx: &mut Context<Self>) {
+        if hovered {
+            self.hovering_card = Some(card.to_owned());
+        } else if self.hovering_card.as_deref() == Some(card) {
+            self.hovering_card = None;
+        }
+        cx.notify();
     }
     pub(in crate::shell) fn pending(&self) -> bool {
         self.preferences != self.saved
@@ -419,6 +438,7 @@ impl RenderOnce for DashboardGrid {
                     cx,
                 );
                 let id: SharedString = card.id.clone().into();
+                let hovering = state.read(cx).hovering_card.as_deref() == Some(card.id.as_str());
                 let highlight =
                     card.draggable && !matches!(card.id.as_str(), "synapse2" | "inDevelopment");
                 let border = div()
@@ -516,6 +536,8 @@ impl RenderOnce for DashboardGrid {
                     child: frame,
                     rank: if dragging.is_some() {
                         100
+                    } else if hovering {
+                        99
                     } else {
                         count - index + 1
                     },
@@ -596,6 +618,12 @@ fn wire_card<T: StatefulInteractiveElement + Styled>(
         .on_mouse_down(
             MouseButton::Left,
             window.listener_for(state, move |state, event: &MouseDownEvent, window, cx| {
+                let action = state
+                    .override_action
+                    .take()
+                    .filter(|(card, _)| card == &press_id)
+                    .map(|(_, action)| action)
+                    .or_else(|| action.clone());
                 state.press = Some(Press {
                     group,
                     card: press_id.clone(),
@@ -606,7 +634,7 @@ fn wire_card<T: StatefulInteractiveElement + Styled>(
                     metrics: metrics.clone(),
                     short: true,
                     session: None,
-                    action: action.clone(),
+                    action,
                     previous_saved_order: state.preferences.items_order.get(group).cloned(),
                 });
                 cx.notify();

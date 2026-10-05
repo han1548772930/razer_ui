@@ -24,6 +24,7 @@ pub(crate) mod shortcuts;
 mod workspace;
 pub use workspace::{DeviceWorkspace, WorkspaceEvent};
 
+mod product_surface;
 mod product_workspace;
 mod source_controls;
 mod source_help;

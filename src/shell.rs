@@ -1578,9 +1578,8 @@ impl AppShell {
             Location::ProfileMigration => crate::i18n::t("PROFILE_MIGRATION").into(),
             // 原版窗口名就是 `macro`（Dashboard 模块 69937 的 `O="macro"`）。
             Location::Macro => crate::i18n::t("MACRO_SOURCE.TEXT_PROFILE_BAR_MACRO").into(),
-            // 原版标题取 `isExchangeEnabled ? DASHBOARD_EXCHANGE : DASHBOARD_WORKSHOP`，
-            // 两个 key 在 zh-CN 语言包里都是「互换」。
-            Location::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_EXCHANGE"),
+            // Match the current hook's isExchangeEnabled=false until observed.
+            Location::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_WORKSHOP"),
             Location::Chroma => crate::i18n::t_or("CHROMA_STUDIO", "Chroma Studio").into(),
             // 模块表把 `linkedGames` 指向 profiles 窗口，标题用它的文案 key。
             Location::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),

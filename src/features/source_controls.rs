@@ -16,6 +16,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
+mod oled_page;
 mod oled_presets;
 mod receiver;
 
@@ -1535,48 +1536,15 @@ impl SourceControls {
     fn render_camera_column(&self, page: &'static PageSpec, cx: &mut Context<Self>) -> AnyElement {
         use crate::ui::theme::CameraProductColors as Colors;
         let mut column = v_flex()
+            .id("source-camera-settings-column")
             .w(surface::css(400.))
+            .h_full()
+            .min_h_0()
             .flex_shrink_0()
+            .overflow_y_scroll()
             .bg(Colors::background())
             .px(surface::css(20.))
             .py(surface::css(27.));
-        // The current camera roots mount a live preview beside this control
-        // column.  The native camera stream/device-enumeration service is not
-        // available in this workspace, so keep the source-sized surface while
-        // making the unavailable state explicit.  No frame or device identity
-        // is synthesized here; a future transport can replace this child
-        // without changing the surrounding controls.
-        if page.key == "CAMERA" {
-            column = column.child(
-                v_flex()
-                    .id("camera-preview-unavailable")
-                    .test_support()
-                    .w_full()
-                    .h(surface::css(202.))
-                    .mb(surface::css(20.))
-                    .px(surface::css(16.))
-                    .bg(gpui_kit::rgb(0x000000))
-                    .border_1()
-                    .border_color(Colors::border())
-                    .items_center()
-                    .justify_center()
-                    .gap(surface::css(8.))
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .line_height(surface::css(17.))
-                            .text_color(Colors::text())
-                            .child("实时预览不可用"),
-                    )
-                    .child(
-                        div()
-                            .text_size(surface::css(12.))
-                            .line_height(surface::css(15.))
-                            .text_color(Colors::placeholder())
-                            .child("当前未接入摄像头流服务"),
-                    ),
-            );
-        }
         for (index, section) in page.sections.iter().enumerate() {
             if index > 0 {
                 column = column.child(
@@ -1809,6 +1777,9 @@ fn merge_known(target: &mut Value, saved: &Value) {
 }
 impl Render for SourceControls {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.spec.product_id == 691 && self.page == "OLED" {
+            return self.render_oled_page(window, cx);
+        }
         if self.spec.product_id == 179 && self.page == "TAB_CUSTOMIZE" {
             return self.render_receiver(window, cx);
         }
@@ -1819,11 +1790,30 @@ impl Render for SourceControls {
                 .iter()
                 .find(|p| p.key == self.page && !p.sections.is_empty())
             {
-                return v_flex()
-                    .w_full()
-                    .min_w(surface::css(440.))
-                    .p(surface::css(20.))
+                // All four current roots mount renderView() then their video
+                // component inside `.advanced-camera-container`, which removes
+                // the shared body padding. A video transport is not connected;
+                // retain the empty video surface without fabricating a frame,
+                // camera failure, or reconnect acknowledgement.
+                return h_flex()
+                    .size_full()
+                    .min_h_0()
+                    .min_w(surface::css(600.))
+                    .items_stretch()
+                    .overflow_hidden()
+                    .font_family("Roboto")
+                    .font_weight(FontWeight::NORMAL)
+                    .text_size(surface::css(16.))
+                    .text_color(gpui_kit::rgb(0xcccccc))
                     .child(self.render_camera_column(page, cx))
+                    .child(
+                        div()
+                            .id("source-camera-video")
+                            .relative()
+                            .flex_1()
+                            .h_full()
+                            .bg(gpui_kit::rgb(0x000000)),
+                    )
                     .into_any_element();
             }
         }

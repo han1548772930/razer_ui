@@ -30,10 +30,13 @@ impl AssetSource for SynapseAssets {
 }
 pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
     cx.text_system().add_fonts(vec![
+        Cow::Borrowed(include_bytes!("../assets/synapse/Roboto-Light.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/Roboto-Regular.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/Roboto-Medium.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/Roboto-Bold.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Thin.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Regular.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Bold.ttf")),
     ])
 }
 #[derive(Clone, Copy, PartialEq, Eq)]

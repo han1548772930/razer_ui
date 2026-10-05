@@ -1168,7 +1168,7 @@ impl Render for MouseProductWorkspace {
             .min_h_0()
             .overflow_y_scroll()
             .track_scroll(&self.scroll)
-            .child(div().p_5().child(content))
+            .child(super::product_surface::body().child(content))
     }
 }
 

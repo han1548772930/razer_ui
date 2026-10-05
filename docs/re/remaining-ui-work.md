@@ -1,5 +1,7 @@
 # 尚未完成的界面与产品
 
+2026-10-05 用户要求把已有页面全部纳入字体、布局、颜色、图标、功能和动画复核。三个专项任务正在按当前实际挂载源码核对；本轮已暴露公共正文 padding、RazerF5 粗体未注册、Nommo 多余选项、相机分列及 Alexa 正文/提示等差异。见[完整覆盖索引](ui-consistency-round-2026-10-05.md)。以下可达性统计不是视觉或功能验收；旧记录中“已有”页面仍须逐项复核。
+
 2026-10-05 Macro Keyboard 已补当前窗口捕获、成对键事件和持久字段，见 [键盘审计](macro-keyboard-current-audit.md)。设备输入重定向、原光标、配对连线/动画、完整行复制与多选拖拽约束、Sequence/Phased 和运行验收仍缺；整体目标未完成。
 
 2026-10-05 Macro Launch 已补文件选择器和源草稿/定位规则，见 [Launch 审计](macro-launch-current-audit.md)；Phased 六层定位层级仍待完整编辑器接入。Text/emoji 已补分类、搜索、变体与字符面板，见 [文本审计](macro-text-current-audit.md)；原光标、DOM 生命周期边界、IME、最终像素与实际窗口验收仍待完成。

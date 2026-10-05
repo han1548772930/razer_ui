@@ -1,0 +1,291 @@
+{
+  "generator_sha256": "ec80007dc9cdaecbc2056e8a4163dc5037769fbd45723e9bfcdede595defdab0",
+  "method": "Current manifest JS literal DOM icon selectors; Acorn ownership, explicit mounted Macro component and unused Dashboard pairing wrapper; no reference execution",
+  "applications": [
+    {
+      "route": "synapse/dashboard",
+      "manifest": ".ref/applications/synapse/dashboard/asset-manifest.json",
+      "manifest_sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a",
+      "script_count": 113,
+      "scripts_sha256": "24193924f4303d31777265af2ece2f8caf6c19b60926cc8c9c1b0f557d4a1417",
+      "selectors": [
+        {
+          "selector": "link[rel=\"shortcut icon\"], link[rel=\"icon\"]",
+          "query_offset": 77457,
+          "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+          "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+          "offset": 77441,
+          "end": 77912,
+          "source": "e=>{const t=[...document.querySelectorAll('link[rel=\"shortcut icon\"], link[rel=\"icon\"]')];if(!t.length)return null;const s=t.map(e=>({el:e,href:e.getAttribute(\"href\"),dataFaviconSrc:e.getAttribute(\"data-favicon-src\")}));return t.forEach(t=>{t.setAttribute(\"href\",e),t.setAttribute(\"data-favicon-src\",e)}),()=>{s.forEach(e=>{let{el:t,href:s,dataFaviconSrc:i}=e;t.setAttribute(\"href\",s),null!=i?t.setAttribute(\"data-favicon-src\",i):t.removeAttribute(\"data-favicon-src\")})}}",
+          "behavior": "runtime-icon-selection"
+        },
+        {
+          "selector": "link[rel*=\"icon\"]",
+          "query_offset": 22407,
+          "path": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
+          "sha256": "c962f6962441b1b053a2789be110123e9a90279f205129960b531fbd3cbda40a",
+          "offset": 22245,
+          "end": 22637,
+          "source": "e=>{let t,a=!1;try{a=new URL(window.location.href).href.includes(\"appsbeta\")}catch(i){}t=e&&\"zh-cn\"===e.toLowerCase()?w.Rn:w.TV,document.title=t;let s=Array.from(document.querySelectorAll('link[rel*=\"icon\"]'));if(!s.length){const e=document.createElement(\"link\");e.rel=\"shortcut icon\",document.head.appendChild(e),s=[e]}const n=a?\"./synapse_beta.svg\":\"./synapse.svg\";s.forEach(e=>{e.href=n})}",
+          "behavior": "runtime-icon-selection"
+        },
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 215763,
+          "path": ".ref/applications/synapse/dashboard/static/js/main.01550b17.js",
+          "sha256": "b3a39adaa6507541fbdb3b16e5a9cd716b30289113859e057ef24a3925322917",
+          "offset": 215750,
+          "end": 216217,
+          "source": "()=>{const e=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(e){const t=e.getAttribute(\"data-favicon-src\")||e.href;(async e=>{const t=await fetch(e),n=await t.blob();return await new Promise(e=>{const t=new FileReader;t.readAsDataURL(n),t.onloadend=function(){const n=t.result;e(n)}})})(t).then(n=>{(e.getAttribute(\"data-favicon-src\")||e.getAttribute(\"href\"))===t&&e.setAttribute(\"href\",n)}).catch(t=>{console.warn(\"failed on fetch\",e.href,t)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    },
+    {
+      "route": "synapse/macro",
+      "manifest": ".ref/applications/synapse/macro/asset-manifest.json",
+      "manifest_sha256": "42c5f5a3f8dae356016443302d15926ce1746aa3e8aa7fce2afbc43596382884",
+      "script_count": 72,
+      "scripts_sha256": "1deae53c91bd0bcc0d37e77b107827b12233cc792d8c19483358674dbbe8fac9",
+      "selectors": [
+        {
+          "selector": "head link[rel~=\"icon\"]",
+          "query_offset": 687914,
+          "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+          "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+          "offset": 687909,
+          "end": 687998,
+          "source": "()=>{document.querySelector('head link[rel~=\"icon\"]').href=e?o.current.src:n.current.src}",
+          "behavior": "runtime-icon-selection"
+        },
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 773471,
+          "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+          "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+          "offset": 773458,
+          "end": 773925,
+          "source": "()=>{const e=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(e){const t=e.getAttribute(\"data-favicon-src\")||e.href;(async e=>{const t=await fetch(e),n=await t.blob();return await new Promise(e=>{const t=new FileReader;t.readAsDataURL(n),t.onloadend=function(){const n=t.result;e(n)}})})(t).then(n=>{(e.getAttribute(\"data-favicon-src\")||e.getAttribute(\"href\"))===t&&e.setAttribute(\"href\",n)}).catch(t=>{console.warn(\"failed on fetch\",e.href,t)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    },
+    {
+      "route": "synapse/armory",
+      "manifest": ".ref/applications/synapse/armory/asset-manifest.json",
+      "manifest_sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28",
+      "script_count": 19,
+      "scripts_sha256": "da6aef3e8d6bcbfd5e408bd271854748b75513b493c25da56c91d1e99c00dcbc",
+      "selectors": [
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 114290,
+          "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+          "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+          "offset": 114277,
+          "end": 114744,
+          "source": "()=>{const e=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(e){const t=e.getAttribute(\"data-favicon-src\")||e.href;(async e=>{const t=await fetch(e),n=await t.blob();return await new Promise(e=>{const t=new FileReader;t.readAsDataURL(n),t.onloadend=function(){const n=t.result;e(n)}})})(t).then(n=>{(e.getAttribute(\"data-favicon-src\")||e.getAttribute(\"href\"))===t&&e.setAttribute(\"href\",n)}).catch(t=>{console.warn(\"failed on fetch\",e.href,t)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        },
+        {
+          "selector": "link[rel*=\"icon\"]",
+          "query_offset": 469857,
+          "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+          "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+          "offset": 469768,
+          "end": 470254,
+          "source": "()=>{const e=a.A.get(\"isOnline\");q(!1===e),document.title=(0,s.JN)(we?D.VY_:D.rTA);let t=document.querySelector('link[rel*=\"icon\"]');t||(t=document.createElement(\"link\"),t.rel=\"shortcut icon\",document.head.appendChild(t));const n=\"\".concat(V.ADg,we?\"logo_armory_exchange.svg\":\"logo_armory_workshop.svg\");t.href=n,async function(){const e=await y.A.getMemoryStorageItem(\"gms-data\");if(e){var t;const n=null===(t=JSON.parse(e))||void 0===t?void 0:t[0];n&&await xe({newValue:n.value})}}()}",
+          "behavior": "runtime-icon-selection"
+        },
+        {
+          "selector": "head>link[rel*=\"icon\"]",
+          "query_offset": 880906,
+          "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+          "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+          "offset": 880852,
+          "end": 882090,
+          "source": "function(){const e=\"/synapse/assets/imgs/apps/\";let t=document.querySelector('head>link[rel*=\"icon\"]');t||(t=document.createElement(\"link\"),t.rel=\"shortcut icon\",document.head.appendChild(t));let n=!1;try{const e=localStorage.getItem(\"armory_exchange_enabled\");null!==e&&(n=\"true\"===e)}catch(i){console.log(\"\\ud83d\\udee0 [index.js] localStorage error:\",i)}function o(){try{const o=window.apiElectron||window.top&&window.top.apiElectron;if(o&&o.doElectronAction){const r=o.doElectronAction({action:\"getAppFeature\",key:\"global.armory\"}),s=o=>{if(o&&o.phase1){const r=o.phase1,s=o.phase2||{},a=r.profileSharing||!1,c=r.macroSharing||!1,l=s.chromaSharing||!1,d=r.armoryNameChangeToWorkshop||!1,u=!a&&!c&&!l||!d;n=u;const E=u?e+\"logo_armory_exchange.svg\":e+\"logo_armory_workshop.svg\";t.href=E+\"?t=\"+Date.now();const _=t.parentNode;if(_){_.removeChild(t);const e=document.createElement(\"link\");e.rel=\"shortcut icon\",e.href=E,document.head.appendChild(e)}try{localStorage.setItem(\"armory_exchange_enabled\",String(u))}catch(i){}}};return r&&\"function\"===typeof r.then?r.then(s).catch(()=>{}):s(r),!0}}catch(i){}return!1}t.href=n?e+\"logo_armory_exchange.svg\":e+\"logo_armory_workshop.svg\",o()||(setTimeout(()=>{o()},100),setTimeout(()=>{o()},500))}",
+          "behavior": "runtime-icon-selection"
+        }
+      ]
+    },
+    {
+      "route": "synapse/alexa",
+      "manifest": ".ref/applications/synapse/alexa/asset-manifest.json",
+      "manifest_sha256": "895bba650efd869414ac46d0d003b3ff3ae14ecb62cb0fa7fed167a45d994c01",
+      "script_count": 1,
+      "scripts_sha256": "93a17e13ed157a4748aa9411404031ca4ae3c8a90740a35da698c4f1a40da6eb",
+      "selectors": []
+    },
+    {
+      "route": "synapse/profiles",
+      "manifest": ".ref/applications/synapse/profiles/asset-manifest.json",
+      "manifest_sha256": "e3c1bb337ac0fe27d4e1fc0445614db613d150988110763c8d1e97553fbe7ca6",
+      "script_count": 64,
+      "scripts_sha256": "090e7adb971fd2d8c125c0d9e6054b2e20c523e767ba462e28af74944f5cd79a",
+      "selectors": [
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 2091271,
+          "path": ".ref/applications/synapse/profiles/static/js/main.776df2b1.js",
+          "sha256": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2",
+          "offset": 2091258,
+          "end": 2091725,
+          "source": "()=>{const t=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(t){const e=t.getAttribute(\"data-favicon-src\")||t.href;(async t=>{const e=await fetch(t),n=await e.blob();return await new Promise(t=>{const e=new FileReader;e.readAsDataURL(n),e.onloadend=function(){const n=e.result;t(n)}})})(e).then(n=>{(t.getAttribute(\"data-favicon-src\")||t.getAttribute(\"href\"))===e&&t.setAttribute(\"href\",n)}).catch(e=>{console.warn(\"failed on fetch\",t.href,e)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    },
+    {
+      "route": "synapse/introduction-tour",
+      "manifest": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+      "manifest_sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973",
+      "script_count": 21,
+      "scripts_sha256": "c1864bae78917eae34bbed1167f808ce9debf2d0d4eda448cdd2a3c308a4bc69",
+      "selectors": [
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 174230,
+          "path": ".ref/applications/synapse/introduction-tour/static/js/main.bf769e69.js",
+          "sha256": "5c54f5e892d53a27290ce6c8a67bec5310b5833bd75c74f062dd269a9dfc0130",
+          "offset": 174217,
+          "end": 174568,
+          "source": "()=>{const e=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');e&&(async e=>{const t=await fetch(e),n=await t.blob();return await new Promise(e=>{const t=new FileReader;t.readAsDataURL(n),t.onloadend=function(){const n=t.result;e(n)}})})(e.href).then(t=>{e.setAttribute(\"href\",t)}).catch(t=>{console.warn(\"failed on fetch\",e.href,t)})}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    },
+    {
+      "route": "feedback",
+      "manifest": ".ref/applications/feedback/asset-manifest.json",
+      "manifest_sha256": "ee198348cf297ad68f02d0a27542f6e51f489ad35ca77ef5f64e1c47567b737f",
+      "script_count": 15,
+      "scripts_sha256": "11685a429fd05cfad5e4989b531705651e41712dbce3b3f21d6fa5a71d8062c1",
+      "selectors": [
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 110135,
+          "path": ".ref/applications/feedback/static/js/main.28905525.js",
+          "sha256": "2b49e3fbc48b900ec0b59db567eabbe99eb586308d3c8f861c57c1028e476d37",
+          "offset": 110122,
+          "end": 110589,
+          "source": "()=>{const t=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(t){const e=t.getAttribute(\"data-favicon-src\")||t.href;(async t=>{const e=await fetch(t),o=await e.blob();return await new Promise(t=>{const e=new FileReader;e.readAsDataURL(o),e.onloadend=function(){const o=e.result;t(o)}})})(e).then(o=>{(t.getAttribute(\"data-favicon-src\")||t.getAttribute(\"href\"))===e&&t.setAttribute(\"href\",o)}).catch(e=>{console.warn(\"failed on fetch\",t.href,e)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    },
+    {
+      "route": "chroma-app/dashboard",
+      "manifest": ".ref/applications/chroma-app/dashboard/asset-manifest.json",
+      "manifest_sha256": "6ef65f426d2f63f9fbd02d6304949c26e2214ae487b98eb5c85ff03702aa5fda",
+      "script_count": 78,
+      "scripts_sha256": "e3966eab8a4aa11a4422e108fadc063e4b65470cbc4513012c25c49de6cf095d",
+      "selectors": [
+        {
+          "selector": "link[rel*=\"icon\"]",
+          "query_offset": 312920,
+          "path": ".ref/applications/chroma-app/dashboard/static/js/332.e7f2fd76.chunk.js",
+          "sha256": "40e4878dba8cfe91e226a75548c59f294366f97a1b8d436938a2a2c30ede464a",
+          "offset": 312817,
+          "end": 313176,
+          "source": "()=>{let e=!1;try{e=new URL(window.location.href).href.includes(\"appsbeta\")}catch(r){}let t=Array.from(document.querySelectorAll('link[rel*=\"icon\"]'));if(!t.length){const e=document.createElement(\"link\");e.rel=\"shortcut icon\",document.head.appendChild(e),t=[e]}const n=\"/chroma-app/dashboard\",a=e?`${n}/icon_beta.svg`:`${n}/icon.svg`;t.forEach(e=>{e.href=a})}",
+          "behavior": "runtime-icon-selection"
+        },
+        {
+          "selector": "head>link[rel~=\"shortcut\"][rel~=\"icon\"]",
+          "query_offset": 548628,
+          "path": ".ref/applications/chroma-app/dashboard/static/js/main.e3feeb1b.js",
+          "sha256": "119344e6da9e74ec689105e1a0ecab02757b33c4c9afd97540794738bdce9065",
+          "offset": 548615,
+          "end": 549082,
+          "source": "()=>{const _=document.querySelector('head>link[rel~=\"shortcut\"][rel~=\"icon\"]');if(_){const E=_.getAttribute(\"data-favicon-src\")||_.href;(async _=>{const E=await fetch(_),T=await E.blob();return await new Promise(_=>{const E=new FileReader;E.readAsDataURL(T),E.onloadend=function(){const T=E.result;_(T)}})})(E).then(T=>{(_.getAttribute(\"data-favicon-src\")||_.getAttribute(\"href\"))===E&&_.setAttribute(\"href\",T)}).catch(E=>{console.warn(\"failed on fetch\",_.href,E)})}}",
+          "behavior": "preserve-image-bytes-as-data-url"
+        }
+      ]
+    }
+  ],
+  "macro": {
+    "component": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 687782,
+      "end": 688164,
+      "source": "xr=()=>{const e=(0,c.useSelector)(e=>e.macroList.activeRecord),n=(0,t.useRef)(null),o=(0,t.useRef)(null);return(0,t.useEffect)(()=>{document.querySelector('head link[rel~=\"icon\"]').href=e?o.current.src:n.current.src},[e]),(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(\"img\",{ref:n,src:Lr,alt:\"\",style:{display:\"none\"}}),(0,a.jsx)(\"img\",{ref:o,src:Kr,alt:\"\",style:{display:\"none\"}})]})}"
+    },
+    "mount": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 713223,
+      "end": 713239,
+      "source": "(0,a.jsx)(xr,{})"
+    },
+    "assets": [
+      {
+        "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+        "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+        "offset": 687682,
+        "end": 687722,
+        "source": "Lr=n.p+\"static/media/macro.eba30c35.ico\""
+      },
+      {
+        "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+        "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+        "offset": 687729,
+        "end": 687781,
+        "source": "Kr=n.p+\"static/media/tabicon_recording.d215dc73.svg\""
+      }
+    ],
+    "native_state": "normal ICO; real activeRecord/recording transport is not connected"
+  },
+  "dashboard_pairing_override": {
+    "class": {
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 74895,
+      "end": 78906,
+      "source": "class Ft extends i.Component{constructor(e){var t;super(e),t=this,this._setupDeviceWindowWatch=async()=>{var e;const s=\"function\"===typeof(null===j.A||void 0===j.A?void 0:j.A.getApiElectron)?j.A.getApiElectron():null;if(null===j.A||void 0===j.A||!j.A.isElectron||\"function\"!==typeof(null===s||void 0===s?void 0:s.response))return;const i=++this._deviceWatchGeneration;try{if(\"function\"===typeof j.A.getWindowServiceClients){const e=JSON.parse(await j.A.getWindowServiceClients());if(i!==this._deviceWatchGeneration)return;this._hadSeenDeviceWindow=Array.isArray(e)&&e.some(e=>e.windowName===this._deviceWindowName)}}catch(n){console.error(\"Error syncing device window presence\",n)}i===this._deviceWatchGeneration&&(null===(e=j.A.callElectronAction)||void 0===e||e.call(j.A,{action:\"registerWindowListChange\"}),i===this._deviceWatchGeneration&&(this._removeWindowListListener=s.response(\"window-list-change\",function(){let{action:e,windowName:s}=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};s===t._deviceWindowName&&(\"create\"===e?t._hadSeenDeviceWindow=!0:\"close\"===e&&t._hadSeenDeviceWindow&&t._closeWindow())})))},this._teardownDeviceWindowWatch=()=>{this._deviceWatchGeneration+=1,\"function\"===typeof this._removeWindowListListener&&this._removeWindowListListener(),this._removeWindowListListener=null},this._closeWindow=()=>{this._isClosing||(this._isClosing=!0,this._hadSeenDeviceWindow=!1,this._teardownDeviceWindowWatch(),\"function\"===typeof(null===j.A||void 0===j.A?void 0:j.A.closeWindow)?j.A.closeWindow(window.name):window.close())},this.setDocumentTitle=()=>{document.title=`${(0,I.getTextItem)(f._ud,{_lang:this.props.lang})}...`},this.navigateBack=()=>{window.history.back()},this.navigateForward=()=>{window.history.forward()},this.renderView=()=>{const e=this.state.navs.find(e=>e.name===this.state.active_view);if(!e)return null;if(e.name===f.d9b){const e=window.location.href;return this._allMastersHrefKey!==e&&(this._allMastersHrefKey=e,this._allMastersCached=kt()),(0,C.jsx)(Rt,{deviceInfo:u.DeviceInfo,deviceName:u.DEVICE_NAME,allMasters:this._allMastersCached})}return null},this._allMastersHrefKey=null,this._allMastersCached=[],this._restoreFavicon=null,this._deviceWindowName=(0,Nt.Oh)(u.DeviceInfo.productId,!0),this._hadSeenDeviceWindow=!1,this._removeWindowListListener=null,this._deviceWatchGeneration=0,this._isClosing=!1,this.state={active_view:f.d9b,tabNavigations:[\"deviceRoot\",f.d9b],currentTabNavigation:1,navs:[{id:1,name:f.d9b}]}}componentDidMount(){this.setDocumentTitle(),this._restoreFavicon=(e=>{const t=[...document.querySelectorAll('link[rel=\"shortcut icon\"], link[rel=\"icon\"]')];if(!t.length)return null;const s=t.map(e=>({el:e,href:e.getAttribute(\"href\"),dataFaviconSrc:e.getAttribute(\"data-favicon-src\")}));return t.forEach(t=>{t.setAttribute(\"href\",e),t.setAttribute(\"data-favicon-src\",e)}),()=>{s.forEach(e=>{let{el:t,href:s,dataFaviconSrc:i}=e;t.setAttribute(\"href\",s),null!=i?t.setAttribute(\"data-favicon-src\",i):t.removeAttribute(\"data-favicon-src\")})}})(Ut),this._setupDeviceWindowWatch()}componentWillUnmount(){var e;null===(e=this._restoreFavicon)||void 0===e||e.call(this),this._restoreFavicon=null,this._teardownDeviceWindowWatch()}componentDidUpdate(e){e.lang!==this.props.lang&&this.setDocumentTitle()}render(){var e;const t=(null===(e=Nt.Ky.onLang(this.props.lang))||void 0===e?void 0:e.productName)||u.DEVICE_NAME||\"\";return(0,C.jsxs)(Pt.A,{children:[(0,C.jsx)(Bt.A,{tabNavigations:this.state.tabNavigations,title:t,navigateBack:this.navigateBack,navigateForward:this.navigateForward,currentTabNavigation:this.state.currentTabNavigation}),(0,C.jsx)(Tt.A,{navs:this.state.navs,activeView:this.state.active_view,changeView:()=>{},currentTabNavigation:this.state.currentTabNavigation,navigateBack:this.navigateBack,navigateForward:this.navigateForward,renderProfileBar:()=>null,displayProfileBar:!1,showSettings:!1,hasTHXWarning:!1,hasOBM:!1,hasBattery:!1}),(0,C.jsx)(Lt.A,{activeView:this.state.active_view,children:this.renderView()})]})}}"
+    },
+    "unused_connect": {
+      "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+      "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+      "offset": 78906,
+      "end": 78959,
+      "source": "(0,a.connect)(e=>({lang:e.languageReducer.lang}))(Ft)"
+    },
+    "conclusion": "The Ft class is only declared and passed to a connect call whose result is discarded. It is not mounted by this module; do not apply its HyperPolling icon to the main Dashboard."
+  },
+  "armory_feature_hooks": [
+    {
+      "module": 77989,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 294112,
+      "end": 296145,
+      "source": "(e,t,n){\"use strict\";n.d(t,{A:()=>s});var o=n(71748),i=n(41594),r=n(60094);const s=()=>{const e=(0,i.useState)(!1),t=(0,o.A)(e,2),n=t[0],s=t[1],a=(0,i.useState)(!1),c=(0,o.A)(a,2),l=c[0],d=c[1],u=(0,i.useState)(!1),E=(0,o.A)(u,2),_=E[0],p=E[1],h=(0,i.useState)(!1),m=(0,o.A)(h,2),f=m[0],g=m[1],A=(0,i.useState)(!1),v=(0,o.A)(A,2),S=v[0],y=v[1],D=(0,i.useState)(!1),N=(0,o.A)(D,2),C=N[0],M=N[1],O=(0,i.useState)(!1),T=(0,o.A)(O,2),I=T[0],w=T[1],K=(0,i.useState)(!0),R=(0,o.A)(K,2),P=R[0],Y=R[1],L=(0,i.useState)(null),b=(0,o.A)(L,2),U=b[0],x=b[1];return(0,i.useEffect)(()=>((async()=>{try{var e,t,n,i;console.log(\"[useArmoryFeatures] Starting to load Armory feature flags...\"),Y(!0),x(null);const a=await Promise.all([(0,r.kR)(),(0,r.$j)()]),c=(0,o.A)(a,2),l=c[0],u=c[1],E=null!==(e=null===l||void 0===l?void 0:l.profileSharing)&&void 0!==e&&e,_=null!==(t=null===l||void 0===l?void 0:l.macroSharing)&&void 0!==t&&t,h=null!==(n=null===l||void 0===l?void 0:l.armoryNameChangeToWorkshop)&&void 0!==n&&n,m=null!==(i=null===u||void 0===u?void 0:u.chromaSharing)&&void 0!==i&&i,f=E&&_&&h,A=m,v=!E&&!_&&!m||!h;s(E),d(_),p(h),g(m),y(f),M(A),w(v),console.log(\"[useArmoryFeatures] Feature flags loaded successfully:\",{phase1:{profileSharing:E,macroSharing:_,armoryNameChangeToWorkshop:h,isPhase1FeaturesEnabled:f},phase2:{chromaSharing:m,isPhase2FeaturesEnabled:A},isExchangeEnabled:I})}catch(a){console.warn(\"[useArmoryFeatures] Failed to load Armory feature flags\",a),console.error(\"[useArmoryFeatures] Error details:\",{message:null===a||void 0===a?void 0:a.message,stack:null===a||void 0===a?void 0:a.stack,error:a}),x(a instanceof Error?a:new Error(\"Unknown error\"))}finally{Y(!1),console.log(\"[useArmoryFeatures] Loading completed. isLoading:\",!1)}})(),()=>{console.log(\"[useArmoryFeatures] Hook unmounting, cleaning up...\")}),[]),{isPhase1FeaturesEnabled:S,isPhase2FeaturesEnabled:C,isProfileSharingEnabled:n,isMacroSharingEnabled:l,isArmoryNameChangeToWorkshopEnabled:_,isChromaSharingEnabled:f,isExchangeEnabled:I,isLoading:P,error:U}}}"
+    },
+    {
+      "module": 60094,
+      "path": ".ref/applications/synapse/armory/static/js/main.3d0e8bd0.js",
+      "sha256": "e6961462916cc05c09f0f00105a640500e4afc1676c2476fb54ba7ca05f8688f",
+      "offset": 875924,
+      "end": 876613,
+      "source": "(e,t,n){\"use strict\";n.d(t,{$j:()=>s,kR:()=>r});var o=n(42723);const i=\"global.armory\",r=async()=>{var e,t,n,r,s,a;const c=await(0,o.A)(i);return{profileSharing:null!==(e=null===c||void 0===c||null===(t=c.phase1)||void 0===t?void 0:t.profileSharing)&&void 0!==e&&e,macroSharing:null!==(n=null===c||void 0===c||null===(r=c.phase1)||void 0===r?void 0:r.macroSharing)&&void 0!==n&&n,armoryNameChangeToWorkshop:null!==(s=null===c||void 0===c||null===(a=c.phase1)||void 0===a?void 0:a.armoryNameChangeToWorkshop)&&void 0!==s&&s}},s=async()=>{var e,t;return{chromaSharing:null!==(e=null===(t=await(0,o.A)(i))||void 0===t||null===(t=t.phase2)||void 0===t?void 0:t.chromaSharing)&&void 0!==e&&e}}}"
+    }
+  ],
+  "final_icons": {
+    "dashboard": "./synapse.svg (production)",
+    "macro": "static/media/macro.eba30c35.ico (normal)",
+    "armory": "/synapse/assets/imgs/apps/logo_armory_workshop.svg (unobserved feature hook starts false)",
+    "armory_observed_exchange": "/synapse/assets/imgs/apps/logo_armory_exchange.svg",
+    "chroma": "/chroma-app/dashboard/icon.svg (production)",
+    "alexa": "HTML favicon.ico",
+    "profiles": "HTML favicon.svg",
+    "tour": "HTML favicon.svg",
+    "feedback": "HTML favicon.svg"
+  },
+  "limitations": [
+    "Static literal selector scan is not a browser event-order, cache, computed-selector or network test.",
+    "Product HTML icon mapping is audited separately; product-specific alternate-root icon overrides are not covered by this application receipt.",
+    "Armory feature/account transport and Macro recording are not fabricated; alternate observed states require their real service data."
+  ]
+}

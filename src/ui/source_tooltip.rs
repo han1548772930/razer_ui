@@ -23,6 +23,10 @@ pub(crate) enum SourceTooltipKind {
     LockedProfile,
     /// `.tooltip-razer.bottom-left`: 300px main, intrinsic wrapper, +5px below.
     Battery,
+    /// Alexa sE -> oE: bottom-left portal, 100ms mount delay and 100ms fade.
+    Alexa,
+    /// Profiles `.main-nav li:hover .tooltip`: immediate, +15/+30, max-content.
+    ProfilesNav,
     /// `.widget .help + .tip` / `.body-widget-tip-portal`: 14px/18px,
     /// `max-width:300px`, `right:14px;top:34px` against the widget box, and the
     /// trigger is the 14px `.widget .help` control at `right:10px;top:10px`.
@@ -45,6 +49,7 @@ struct HoverState {
     trigger: bool,
     content: bool,
     bounds: Rc<Cell<Bounds<Pixels>>>,
+    _activation: Option<Subscription>,
 }
 
 impl SourceTooltip {
@@ -74,32 +79,59 @@ impl SourceTooltip {
 
 impl RenderOnce for SourceTooltip {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state = window.use_keyed_state((self.id.clone(), "tip-hover"), cx, |_, _| {
-            HoverState::default()
-        });
+        let kind = self.kind;
+        let state =
+            window.use_keyed_state((self.id.clone(), "tip-hover"), cx, move |window, cx| {
+                let activation = (kind == SourceTooltipKind::Alexa).then(|| {
+                    cx.observe_window_activation(window, |state: &mut HoverState, window, cx| {
+                        if !window.is_window_active() {
+                            state.trigger = false;
+                            cx.notify();
+                        }
+                    })
+                });
+                HoverState {
+                    _activation: activation,
+                    ..Default::default()
+                }
+            });
         let hovered = state.read(cx).trigger
             || (self.kind == SourceTooltipKind::ProfileWarning && state.read(cx).content);
         let anchor = state.read(cx).bounds.clone();
         // Both CSS paths retain opacity while hidden, including on reversal.
-        let opacity = Presence::new((self.id.clone(), "tip-opacity"), hovered)
+        let presence = Presence::new((self.id.clone(), "tip-opacity"), hovered)
             .transition(
                 Transition::new(Duration::from_millis(
-                    if self.kind == SourceTooltipKind::Battery {
+                    if self.kind == SourceTooltipKind::ProfilesNav {
+                        0
+                    } else if matches!(
+                        self.kind,
+                        SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+                    ) {
                         100
                     } else {
                         300
                     },
                 ))
-                .easing(Easing::Linear),
+                .easing(Easing::Linear)
+                .delay(Duration::from_millis(
+                    if self.kind == SourceTooltipKind::Alexa && hovered {
+                        100
+                    } else {
+                        0
+                    },
+                )),
             )
-            .sample(window, cx)
-            .progress;
+            .sample(window, cx);
+        let opacity = presence.progress;
         let visible = if self.kind == SourceTooltipKind::DropTips {
             // `.drop-tips` transitions visibility over 200ms; `.tip` uses 0s.
             Presence::new((self.id.clone(), "tip-visibility"), hovered)
                 .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))
                 .sample(window, cx)
                 .should_render()
+        } else if self.kind == SourceTooltipKind::Alexa {
+            presence.should_render()
         } else {
             hovered
         };
@@ -232,6 +264,20 @@ impl Element for TipOverlay {
             // JS copies clientWidth/clientHeight (border excluded) to the
             // portal's border-box width/height. Its `.on` height is auto.
             measured.map(|length| (length - px(2.)).max(px(1.)))
+        } else if self.kind == SourceTooltipKind::ProfilesNav {
+            let mut measurement = tip_surface(
+                (self.id.clone(), "tip-measure").into(),
+                self.text.clone(),
+                width,
+            )
+            .w_auto()
+            .into_any_element();
+            let measured = measurement.layout_as_root(
+                size(AvailableSpace::MaxContent, AvailableSpace::MinContent),
+                window,
+                cx,
+            );
+            size(measured.width.max(px(1.)), px(0.))
         } else if self.kind == SourceTooltipKind::WidgetTip {
             // `width:max-content` with `max-width:300px`; the height stays auto.
             let mut measurement = widget_tip_surface(
@@ -260,8 +306,17 @@ impl Element for TipOverlay {
             text,
             source_size.width,
         )
-        .when(self.kind == SourceTooltipKind::Battery, |tip| {
-            tip.w_auto().max_w(source_size.width)
+        .when(
+            matches!(
+                self.kind,
+                SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+            ),
+            |tip| tip.w_auto().max_w(source_size.width),
+        )
+        .when(self.kind == SourceTooltipKind::Alexa, |tip| {
+            tip.px(surface::css(8.))
+                .py(surface::css(7.))
+                .line_height(relative(1.22))
         })
         .when(self.kind == SourceTooltipKind::WidgetTip, |tip| {
             // The measured max-content width is already the rendered width.
@@ -275,9 +330,13 @@ impl Element for TipOverlay {
             .id((self.id.clone(), "tip-popup"))
             .test_support()
             .opacity(self.opacity)
-            .when(self.kind == SourceTooltipKind::Battery, |view| {
-                view.w(width).flex().justify_end()
-            })
+            .when(
+                matches!(
+                    self.kind,
+                    SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+                ),
+                |view| view.w(width).flex().justify_end(),
+            )
             .when(!self.visible, |view| view.invisible())
             .when(
                 self.visible && self.kind == SourceTooltipKind::ProfileWarning,
@@ -330,6 +389,17 @@ impl Element for TipOverlay {
                             .max(margin),
                     );
                 point(left, trigger.bottom() + window.rem_size() * (5. / 16.))
+            }
+            SourceTooltipKind::Alexa => point(
+                trigger.right() - layout.source_size.width,
+                trigger.bottom() + window.rem_size() * (5. / 16.),
+            ),
+            SourceTooltipKind::ProfilesNav => {
+                trigger.origin
+                    + point(
+                        window.rem_size() * (15. / 16.),
+                        window.rem_size() * (30. / 16.),
+                    )
             }
             SourceTooltipKind::WidgetTip => {
                 widget_tip_position(trigger, layout.source_size.width, window.rem_size())

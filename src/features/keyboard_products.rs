@@ -9,7 +9,7 @@ use gpui_kit::component::{
     slider::{Slider, SliderEvent, SliderState},
     v_flex,
 };
-use gpui_kit::*;
+use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
@@ -596,6 +596,9 @@ impl KeyboardProductWorkspace {
             .into_any_element()
     }
     fn power(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 691 {
+            return self.power_691(cx);
+        }
         let mut left = v_flex().gap_5();
         let mut right = v_flex().gap_5();
         if let Some(kind) = self.spec.controls["dim_kind"].as_str() {
@@ -664,6 +667,113 @@ impl KeyboardProductWorkspace {
         surface::page_columns()
             .child(surface::page_column(left))
             .child(surface::page_column(right))
+            .into_any_element()
+    }
+    /// Current 691 Power `y/u`: switches are part of the title and choices
+    /// contain raw numeric labels. The other three source widgets are pending.
+    fn power_691(&self, cx: &Context<Self>) -> AnyElement {
+        let widget = |path: &'static str,
+                      title: &'static str,
+                      description: &'static str,
+                      help: &'static str,
+                      values: &'static str| {
+            let enabled_path = format!("{path}/isEnabled");
+            let value_path = format!("{path}/value");
+            let enabled = self
+                .draft
+                .pointer(&enabled_path)
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let switch =
+                surface::SynapseSwitch::new(SharedString::from(format!("691-power-{path}")))
+                    .accessibility_label(t(title))
+                    .checked(enabled)
+                    .on_change(cx.listener(move |this, enabled: &bool, _, cx| {
+                        this.write(&enabled_path, json!(*enabled), cx)
+                    }));
+            let choices = h_flex()
+                .relative()
+                .flex_wrap()
+                .gap(surface::css(10.))
+                .children(
+                    self.spec.config[values]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|value| {
+                            let value = value.as_u64()?;
+                            let value_path = value_path.clone();
+                            let selected = self.draft.pointer(&value_path).and_then(Value::as_u64)
+                                == Some(value);
+                            Some(
+                                gpui_kit::base::Button::new(SharedString::from(format!(
+                                    "691-power-{path}-{value}"
+                                )))
+                                .accessibility_label(value.to_string())
+                                .disabled(!enabled)
+                                .w(surface::css(48.))
+                                .h(surface::css(27.))
+                                .rounded(surface::css(3.))
+                                .bg(rgb(0x222222))
+                                .text_size(surface::css(14.))
+                                .text_color(rgb(0xcccccc))
+                                .border_1()
+                                .border_color(if selected {
+                                    rgb(0x44d62c)
+                                } else {
+                                    rgb(0x5d5d5d)
+                                })
+                                .hover(|button| button.border_color(rgb(0x44d62c)))
+                                .child(value.to_string())
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| this.write(&value_path, json!(value), cx),
+                                )),
+                            )
+                        }),
+                )
+                .when(!enabled, |row| {
+                    row.child(
+                        div()
+                            .absolute()
+                            .left_0()
+                            .top_0()
+                            .w(surface::css(300.))
+                            .h(surface::css(30.))
+                            .bg(rgb(0x111111))
+                            .opacity(0.5)
+                            .occlude(),
+                    )
+                });
+            surface::panel_with_title_switch(t(title), switch, div(), cx)
+                .relative()
+                .child(
+                    div()
+                        .absolute()
+                        .top(surface::css(10.))
+                        .right(surface::css(10.))
+                        .child(surface::help_control(
+                            SharedString::from(format!("691-power-help-{path}")),
+                            t(help),
+                        )),
+                )
+                .child(div().child(t(description)))
+                .child(div().mt(surface::css(20.)).child(choices))
+        };
+        surface::page_columns()
+            .child(surface::page_column(widget(
+                "/dimKeyboardLighting",
+                "DIM_LIGHTING_HEADER",
+                "DIM_KEYBOARD_LIGHTING_DESC",
+                "DIM_KEYBOARD_LIGHTING_TIPS",
+                "DIM_KEYBOARD_LIGHTING_VALUES",
+            )))
+            .child(surface::page_column(widget(
+                "/powerSaving",
+                "KEYBOARD_POWER_SAVING_TITLE",
+                "KEYBOARD_POWER_SAVING_DESC",
+                "KEYBOARD_POWER_SAVING_TIPS",
+                "KEYBOARD_WIRELESS_POWER_SAVING_VALUES",
+            )))
             .into_any_element()
     }
     fn gaming_mode(&self, cx: &Context<Self>) -> AnyElement {
@@ -1194,7 +1304,7 @@ impl Render for KeyboardProductWorkspace {
             .overflow_y_scroll()
             .track_scroll(&self.scroll)
             .text_color(cx.theme().foreground)
-            .child(div().p_5().child(content))
+            .child(super::product_surface::body().child(content))
             .children(self.calibration_modal.clone())
     }
 }

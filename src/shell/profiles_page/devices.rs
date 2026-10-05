@@ -149,7 +149,9 @@ impl DeviceGamesDialog {
             .new(|cx| SelectState::new(choices(&FILTER_KEYS), Some(IndexPath::new(0)), window, cx));
         let sort =
             cx.new(|cx| SelectState::new(choices(&SORT_KEYS), Some(IndexPath::new(0)), window, cx));
-        let name = cx.new(|cx| InputState::new(window, cx));
+        let name = cx.new(|cx| {
+            InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
+        });
         let mut games = Vec::<KnownGame>::new();
         for entity in devices {
             let owner = entity.read(cx);
@@ -166,10 +168,11 @@ impl DeviceGamesDialog {
         }
         let subscriptions = vec![
             cx.observe(&workspace, |_, _, cx| cx.notify()),
-            cx.subscribe_in(&profile, window, |this: &mut Self, _, event, window, cx| {
-                if let SelectEvent::Confirm(Some(id)) = event {
-                    this.workspace
-                        .update(cx, |workspace, cx| workspace.select_profile(id, window, cx));
+            cx.subscribe_in(&profile, window, |_: &mut Self, _, event, _, cx| {
+                if let SelectEvent::Confirm(Some(_)) = event {
+                    // Ua/Y changes the assignment target only. It does not
+                    // activate a hardware profile when browsing this list.
+                    cx.notify();
                 }
             }),
             cx.observe(&filter, |_, _, cx| cx.notify()),
@@ -233,10 +236,20 @@ impl DeviceGamesDialog {
     fn finish_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.renaming = false;
         if let Some(id) = self.selected_profile(cx) {
-            let name = self.name.read(cx).value().to_string();
-            self.workspace.update(cx, |workspace, cx| {
-                workspace.rename_profile(&id, name, window, cx)
-            });
+            let name = controls::trim_name(&self.name.read(cx).value()).to_string();
+            let duplicate = self
+                .workspace
+                .read(cx)
+                .device(cx)
+                .profiles
+                .iter()
+                .any(|profile| profile.name == name);
+            // Current 1867/p compares case-sensitively, including this profile.
+            if !name.is_empty() && !duplicate {
+                self.workspace.update(cx, |workspace, cx| {
+                    workspace.rename_profile(&id, name, window, cx)
+                });
+            }
             let options = profile_choices(self.workspace.read(cx).device(cx));
             self.profile.update(cx, |state, cx| {
                 state.set_items(options, window, cx);
@@ -267,30 +280,19 @@ impl DeviceGamesDialog {
         cx.notify();
     }
 
-    fn more_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn more_menu(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let owner = cx.entity().downgrade();
         let selected = self.selected_profile(cx).is_some();
+        let trigger = controls::more_button(self.menu_open, window, cx);
         gpui_kit::base::Popover::new("profiles-device-actions")
             .anchor(Anchor::TopLeft)
             .open(self.menu_open)
-            .trigger_with(move |_, _, _| {
-                BaseButton::new("profiles-device-more")
-                    .accessibility_label("profile actions")
-                    .size(css(26.))
-                    .mr(css(10.))
-                    .p_0()
-                    .border_1()
-                    .border_color(rgb(0x222222))
-                    .hover(|style| style.border_color(rgb(0x5d5d5d)))
-                    .active(|style| style.border_color(rgb(0x44d62c)))
-                    .child(img("synapse/profile-more.svg").size(css(20.)))
-                    .into_any_element()
-            })
+            .trigger_with(move |_, _, _| trigger.into_any_element())
             .on_open_change(cx.listener(|this, open: &bool, _, cx| {
                 this.menu_open = *open;
                 cx.notify();
             }))
-            .content(move |_, _, _cx| {
+            .content(move |_, window, cx| {
                 let mut menu = v_flex()
                     .min_w(css(155.))
                     .max_w(css(280.))
@@ -318,8 +320,21 @@ impl DeviceGamesDialog {
                     // Service commands remain unavailable until their payloads
                     // are implemented for every product; rename preserves them.
                     let unavailable = key != "RENAME";
+                    let pointer = controls::pointer(
+                        (ElementId::from("profiles-profile-menu"), key).into(),
+                        window,
+                        cx,
+                    );
+                    let hovered = pointer.read(cx).hovered && selected && !unavailable;
+                    let background = motion::transition(
+                        (ElementId::from("profiles-profile-menu-bg"), key),
+                        Hsla::from(rgba(if hovered { 0xffffff1a } else { 0x00000000 })),
+                        Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+                        window,
+                        cx,
+                    );
                     menu = menu.child(
-                        BaseButton::new(key)
+                        controls::track(BaseButton::new(key), &pointer, window)
                             .p_0()
                             .px(css(6.))
                             .py(css(5.))
@@ -332,7 +347,7 @@ impl DeviceGamesDialog {
                                 })
                             })
                             .styles(|style| style.disabled(|s| s.opacity(0.3)))
-                            .hover(|style| style.bg(gpui_kit::rgba(0xffffff1a)))
+                            .bg(background)
                             .child(i18n::t(key))
                             .on_click(move |_, window, cx| {
                                 let _ = owner.update(cx, |this, cx| {
@@ -347,7 +362,7 @@ impl DeviceGamesDialog {
             .into_any_element()
     }
 
-    fn toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn toolbar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let options = profile_choices(self.workspace.read(cx).device(cx));
         let field = if self.renaming {
             div()
@@ -413,13 +428,18 @@ impl DeviceGamesDialog {
                     .w(relative(0.5))
                     .h_full()
                     .child(div().mx(css(10.)).child(field))
-                    .child(self.more_menu(cx)),
+                    .child(self.more_menu(window, cx)),
             )
             .child(right)
             .into_any_element()
     }
 
-    fn game_tile(&self, game: KnownGame, cx: &mut Context<Self>) -> AnyElement {
+    fn game_tile(
+        &self,
+        game: KnownGame,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let id = self.selected_profile(cx);
         let workspace = self.workspace.read(cx);
         let linked_profile = workspace
@@ -439,131 +459,104 @@ impl DeviceGamesDialog {
         let busy = linked_profile.is_some() && !active;
         let name = game.name.clone();
         let target = self.workspace.clone();
-        BaseButton::new(SharedString::from(format!(
+        let tile_id = ElementId::from(SharedString::from(format!(
             "profiles-game-{}",
             game.executable
-        )))
-        .accessibility_label(name.clone())
-        .disabled(id.is_none())
-        .selected(active)
-        .group("profiles-linked-game")
-        .relative()
-        .p_0()
-        .flex()
-        .flex_col()
-        .justify_start()
-        .w(css(240.))
-        .h(css(190.))
-        .mx(css(5.))
-        .mt(css(10.))
-        .flex_shrink_0()
-        .bg(rgb(0x111111))
-        .border_1()
-        .rounded(css(5.))
-        .when(active, |tile| tile.border_2())
-        .border_color(if active { rgb(0x44d62c) } else { rgb(0x111111) })
-        .hover(|style| style.border_color(rgb(0x44d62c)))
-        .active(move |style| {
-            if active {
-                style.border_1()
-            } else {
-                style.border_2().border_color(rgb(0x44d62c))
-            }
-        })
-        .when(busy, |tile| {
-            tile.child(
+        )));
+        let pointer = controls::pointer(tile_id.clone(), window, cx);
+        let hovered = pointer.read(cx).hovered;
+        let pressed = pointer.read(cx).pressed;
+        controls::track(BaseButton::new(tile_id.clone()), &pointer, window)
+            .accessibility_label(name.clone())
+            .disabled(id.is_none())
+            .selected(active)
+            .group("profiles-linked-game")
+            .relative()
+            .p_0()
+            .flex()
+            .flex_col()
+            .justify_start()
+            .w(css(240.))
+            .h(css(190.))
+            .mx(css(5.))
+            .mt(css(10.))
+            .flex_shrink_0()
+            .bg(rgb(0x111111))
+            .border_1()
+            .rounded(css(5.))
+            .when(active, |tile| tile.border_2())
+            .border_color(if active { rgb(0x44d62c) } else { rgb(0x111111) })
+            .hover(|style| style.border_color(rgb(0x44d62c)))
+            .active(move |style| {
+                if active {
+                    style.border_1()
+                } else {
+                    style.border_2().border_color(rgb(0x44d62c))
+                }
+            })
+            .when(busy, |tile| {
+                tile.child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .top_0()
+                        .w_full()
+                        .h(css(40.))
+                        .bg(gpui_kit::rgba(0x11111180))
+                        .rounded_t(css(5.))
+                        .child(
+                            div()
+                                .absolute()
+                                .left(css(40.))
+                                .top(css(12.))
+                                .max_w(relative(0.8))
+                                .text_size(css(14.))
+                                .line_height(css(17.))
+                                .text_color(rgb(0x44d62c))
+                                .truncate()
+                                .child(
+                                    linked_profile
+                                        .as_ref()
+                                        .map(|(_, name)| name.clone())
+                                        .unwrap_or_default(),
+                                ),
+                        ),
+                )
+            })
+            .child(controls::linked_check(
+                tile_id, active, busy, hovered, pressed, window, cx,
+            ))
+            .child(div().h(css(120.)).w_full().flex_shrink_0())
+            .child(
                 div()
-                    .absolute()
-                    .left_0()
-                    .top_0()
+                    .h(css(70.))
                     .w_full()
-                    .h(css(40.))
-                    .bg(gpui_kit::rgba(0x11111180))
-                    .pl(css(40.))
-                    .pt(css(12.))
+                    .p(css(10.))
                     .text_size(css(14.))
-                    .line_height(css(17.))
-                    .text_color(rgb(0x44d62c))
-                    .truncate()
-                    .child(
-                        linked_profile
-                            .as_ref()
-                            .map(|(_, name)| name.clone())
-                            .unwrap_or_default(),
-                    ),
+                    .line_height(css(19.))
+                    .text_center()
+                    .text_color(rgb(0xcccccc))
+                    .group_hover("profiles-linked-game", |s| s.text_color(rgb(0x44d62c)))
+                    .child(div().truncate().child(name)),
             )
-        })
-        .child(
-            div()
-                .absolute()
-                .left(css(10.))
-                .top(css(10.))
-                .size(css(20.))
-                .border_1()
-                .border_color(if active { rgb(0x44d62c) } else { rgb(0x5d5d5d) })
-                .bg(if active { rgb(0x44d62c) } else { rgb(0x111111) })
-                .when(active, |check| {
-                    // The source uses `.check-box.checked:before/after` CSS
-                    // pseudo-elements rather than a media asset. Keep that
-                    // mark native so the resource table does not invent an
-                    // unrelated check icon.
-                    check.child(
-                        div()
-                            .absolute()
-                            .left(css(2.))
-                            .top(css(0.))
-                            .w(css(16.))
-                            .h(css(18.))
-                            .text_color(rgb(0x111111))
-                            .text_size(css(16.))
-                            .line_height(css(18.))
-                            .text_center()
-                            .child("✓"),
-                    )
-                })
-                .when(busy, |check| {
-                    check.child(
-                        div()
-                            .absolute()
-                            .left(css(4.))
-                            .top(css(8.))
-                            .w(css(10.))
-                            .h(css(2.))
-                            .bg(rgb(0x44d62c)),
-                    )
-                }),
-        )
-        .child(div().h(css(120.)).w_full().flex_shrink_0())
-        .child(
-            div()
-                .h(css(70.))
-                .w_full()
-                .p(css(10.))
-                .text_size(css(14.))
-                .line_height(css(19.))
-                .text_center()
-                .text_color(rgb(0xcccccc))
-                .group_hover("profiles-linked-game", |s| s.text_color(rgb(0x44d62c)))
-                .child(div().truncate().child(name)),
-        )
-        .on_click(move |_, window, cx| {
-            if let Some(id) = &id {
-                target.update(cx, |workspace, cx| {
-                    workspace.link_profile_game(
-                        id,
-                        game.name.clone(),
-                        game.executable.clone(),
-                        !active,
-                        window,
-                        cx,
-                    )
-                });
-            }
-        })
-        .into_any_element()
+            .on_click(move |_, window, cx| {
+                if let Some(id) = &id {
+                    target.update(cx, |workspace, cx| {
+                        workspace.link_profile_game(
+                            id,
+                            game.name.clone(),
+                            game.executable.clone(),
+                            !active,
+                            window,
+                            cx,
+                        )
+                    });
+                }
+            })
+            .into_any_element()
     }
 
-    fn game_tiles(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    fn game_tiles(&self, window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let removed = self
             .filter
             .read(cx)
@@ -588,20 +581,14 @@ impl DeviceGamesDialog {
         }
         let mut tiles: Vec<_> = games
             .into_iter()
-            .map(|game| self.game_tile(game, cx))
+            .map(|game| self.game_tile(game, window, cx))
             .collect();
         // Ua appends add-new even for the Removed filter; oe differs here.
-        tiles.push(crate::ui::game_tile::add_new_tile(
-            "profiles-device-add-game",
-            format!(
-                "{} {}\n{}",
-                i18n::t("CLICK_TO_ADD"),
-                i18n::t("GAME_PROGRAM"),
-                i18n::t("DRAG_AND_DROP_HERE")
-            ),
-            cx.listener(|this, _, window, cx| this.open_add(window, cx)),
-            cx,
-        ));
+        tiles.push(
+            controls::linked_add(window, cx)
+                .on_click(cx.listener(|this, _, window, cx| this.open_add(window, cx)))
+                .into_any_element(),
+        );
         tiles
     }
 }
@@ -690,12 +677,12 @@ impl Render for DeviceGamesDialog {
                     .line_height(css(17.))
                     .text_color(rgb(0xcccccc))
                     .child(
-                        h_flex()
+                        div()
                             .relative()
                             .w_full()
                             .h(css(36.))
                             .flex_shrink_0()
-                            .justify_center()
+                            .text_center()
                             .pt(css(20.))
                             .pb(css(10.))
                             .font_family("RazerF5")
@@ -711,19 +698,7 @@ impl Render for DeviceGamesDialog {
                             }])
                             .child(title)
                             .child(
-                                BaseButton::new("profiles-device-close")
-                                    .accessibility_label(i18n::t("CLOSE"))
-                                    .absolute()
-                                    .right_0()
-                                    .top_0()
-                                    .size(css(36.))
-                                    .p_0()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .hover(|style| style.bg(gpui_kit::rgba(0xffffff1a)))
-                                    .active(|style| style.bg(gpui_kit::rgba(0x0000001a)))
-                                    .child(img("synapse/profiles-close.svg").size(css(20.)))
+                                controls::close_button("profiles-device-close", window, cx)
                                     .on_click(
                                         cx.listener(|this, _, window, cx| this.close(window, cx)),
                                     ),
@@ -736,7 +711,7 @@ impl Render for DeviceGamesDialog {
                             .pt(css(20.))
                             .pl(css(25.))
                             .pb(css(42.))
-                            .child(self.toolbar(cx))
+                            .child(self.toolbar(window, cx))
                             .child(
                                 div()
                                     .id("profiles-device-games-scroll")
@@ -750,7 +725,7 @@ impl Render for DeviceGamesDialog {
                                             .min_w(css(800.))
                                             .mr(-css(5.))
                                             .pb(css(25.))
-                                            .children(self.game_tiles(cx)),
+                                            .children(self.game_tiles(window, cx)),
                                     ),
                             ),
                     ),

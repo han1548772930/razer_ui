@@ -115,8 +115,12 @@ for(const p of evidence){
     const enabled=typeof value.isEnabled==='boolean'?base+'/isEnabled':null;
     if(enabled)controls.push({path:enabled,label:title,kind:'toggle'});
     if(field==='switchOffLighting'){
-     if(typeof value.isDisplayOn==='boolean')controls.push({path:base+'/isDisplayOn',label:'SWITCH_OFF_LIGHTING_DISPLAY_OFF',kind:'toggle'});
-     if(typeof value.isIdleEnabled==='boolean')controls.push({path:base+'/isIdleEnabled',label:'SWITCH_OFF_LIGHTING_IDLE',kind:'toggle'});
+     // Current 1303 Wm / 1304 sp render only checkDisplay. Their stored idle
+     // fields are preserved by the event payload but do not mount another row.
+     // audit-product-content-current.cjs independently parses both components.
+     const displayOnly=[1303,1304].includes(p.product_id);
+     if(typeof value.isDisplayOn==='boolean')controls.push({path:base+'/isDisplayOn',label:'SWITCH_OFF_LIGHTING_DISPLAY_OFF',kind:'toggle',...(displayOnly?{enabled_by:locate('brightness')+'/isEnabled'}:{})});
+     if(!displayOnly&&typeof value.isIdleEnabled==='boolean')controls.push({path:base+'/isIdleEnabled',label:'SWITCH_OFF_LIGHTING_IDLE',kind:'toggle'});
      // Idle timing requires the actual mounted input bounds, not a family default.
      const slider=pg.components.flatMap(c=>c.jsx).find(j=>j.expressions.value?.includes('idleMinutes')&&number(j.props.min)&&number(j.props.max));
      if(slider&&number(value.idleMinutes))controls.push({path:base+'/idleMinutes',label:'MINUTES',kind:'slider',min:slider.props.min,max:slider.props.max,step:slider.props.step??1,enabled_by:base+'/isIdleEnabled'});

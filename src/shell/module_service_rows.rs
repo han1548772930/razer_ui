@@ -143,6 +143,60 @@ struct ServiceProgressBar {
     percent: f32,
     label: String,
 }
+
+/// 44442/w mounts this sibling `.tip` inside `.item-tooltip`. Keeping it in
+/// the row preserves the source anchor and 300ms fade; Component Tooltip's
+/// delayed portal has different geometry, typography and visibility rules.
+#[derive(IntoElement)]
+struct ServiceOfflineAction {
+    id: SharedString,
+    button: ModuleAction,
+    show_tip: bool,
+}
+impl RenderOnce for ServiceOfflineAction {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let state = window.use_keyed_state(
+            (ElementId::from(self.id.clone()), "offline-hover"),
+            cx,
+            |_, _| false,
+        );
+        let visible = self.show_tip && *state.read(cx);
+        let opacity = motion::Presence::new((self.id.clone(), "offline-opacity"), visible)
+            .transition(Transition::new(Duration::from_millis(300)).easing(Easing::Linear))
+            .sample(window, cx)
+            .progress;
+        div()
+            .id(self.id)
+            .relative()
+            .flex_shrink_0()
+            .on_hover(window.listener_for(&state, |hovered, next, _, cx| {
+                *hovered = *next;
+                cx.notify();
+            }))
+            .child(self.button)
+            .when(self.show_tip, |view| {
+                view.child(
+                    div()
+                        .absolute()
+                        .right(surface::css(-160.))
+                        .top(surface::css(32.))
+                        .px(surface::css(10.))
+                        .py(surface::css(8.))
+                        .border_1()
+                        .border_color(rgb(0x5d5d5d))
+                        .bg(rgb(0x000000))
+                        .font_family("Roboto")
+                        .text_size(surface::css(14.))
+                        .line_height(surface::css(16.))
+                        .text_color(rgb(0xcccccc))
+                        .whitespace_normal()
+                        .opacity(opacity)
+                        .when(!visible, |tip| tip.invisible())
+                        .child(i18n::t("INTERNET_CONNECTION_REQUIRED")),
+                )
+            })
+    }
+}
 struct ServiceProgressMotion {
     observed: f32,
     from: f32,
@@ -273,6 +327,8 @@ impl ModuleCatalog {
         let phase = service::string(progress, "phase");
         if phase == "error" {
             return div()
+                // `.second-from-left.info-text` supplies the 14px text size.
+                .text_size(surface::css(14.))
                 .text_color(crate::ui::theme::ProfileAlertColors::new().danger())
                 .child(i18n::t("INSTALLATION_FAILED"))
                 .into_any_element();
@@ -375,7 +431,7 @@ impl ModuleCatalog {
             _ => ("INSTALL", "install", !online, true),
         };
         let record = row.clone();
-        module_action(
+        let button = module_action(
             SharedString::from(format!("install-{}", service::identity(row))),
             i18n::t(label),
             primary,
@@ -389,13 +445,15 @@ impl ModuleCatalog {
                 record: record.clone(),
                 clear_settings: false,
             })
-        }))
-        .when(!online, |button| {
-            button.tooltip(|window, cx| {
-                gpui_kit::component::tooltip::Tooltip::new(i18n::t("INTERNET_CONNECTION_REQUIRED"))
-                    .build(window, cx)
-            })
-        })
+        }));
+        ServiceOfflineAction {
+            id: format!("install-tooltip-{}", service::identity(row)).into(),
+            button,
+            // Only default/error branches mount a hovered `.no-internet`.
+            // Downloading/installing and the canceled offline branch do not.
+            show_tip: !online
+                && !matches!(phase.as_str(), "downloading" | "installing" | "canceled"),
+        }
         .into_any_element()
     }
     fn available_service_module(

@@ -18,6 +18,8 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 #[path = "audio_demo.rs"]
 mod demo;
+#[path = "audio_nommo.rs"]
+mod nommo;
 
 #[derive(Deserialize)]
 struct AudioOption {
@@ -94,7 +96,6 @@ struct AudioEqualizer {
 #[derive(Deserialize)]
 pub(crate) struct AudioProductSpec {
     product_id: u32,
-    name: String,
     draft: Value,
     pages: Vec<AudioPage>,
     #[serde(default)]
@@ -155,6 +156,7 @@ pub(crate) struct AudioProductWorkspace {
     subscriptions: Vec<Subscription>,
     syncing: bool,
     selected_region: usize,
+    nommo_brightness_dragging: bool,
     demo: Option<Entity<demo::AudioDemo>>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
@@ -171,6 +173,7 @@ impl AudioProductWorkspace {
             subscriptions: Vec::new(),
             syncing: false,
             selected_region: 0,
+            nommo_brightness_dragging: false,
             demo: demo::AudioDemo::for_product(pid, cx),
         };
         this.initialize_equalizers();
@@ -263,6 +266,7 @@ impl AudioProductWorkspace {
     ) {
         self.draft = self.spec.draft.clone();
         self.selected_region = 0;
+        self.nommo_brightness_dragging = false;
         self.initialize_equalizers();
         if let Some(saved) = saved.filter(|v| v.is_object()) {
             merge_known(&mut self.draft, saved);
@@ -377,6 +381,17 @@ impl AudioProductWorkspace {
             window,
             move |this, _, event, window, cx| {
                 if this.syncing {
+                    return;
+                }
+                if matches!(this.spec.product_id, 1303 | 1304) && key == "/profile/brightness/value"
+                {
+                    match event {
+                        SliderEvent::Change(_) => cx.notify(),
+                        SliderEvent::Release(value) => {
+                            this.nommo_brightness_dragging = false;
+                            this.commit_nommo_brightness(value.start(), window, cx);
+                        }
+                    }
                     return;
                 }
                 if let SliderEvent::Change(value) = event {
@@ -727,28 +742,31 @@ impl AudioProductWorkspace {
     /// nor show the local product-name heading. The source root applies
     /// `.body-wrapper{padding:10px 20px 20px}`. Nommo 1303/1304 retain the
     /// body's 600px minimum; their root only unsets `.main-container`.
-    pub(crate) fn lighting_element(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn lighting_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
         let route = chroma_lighting_page(self.spec.product_id)?;
         Some(
-            div()
+            super::product_surface::body()
                 .min_w(surface::css(route.body_min_width))
-                .pt(surface::css(10.))
-                .px(surface::css(20.))
-                .pb(surface::css(20.))
-                .bg(rgb(0x222222))
-                .font_family("Roboto")
-                .text_size(surface::css(14.))
-                .text_color(cx.theme().foreground)
-                .child(self.page_body(&route.page, cx))
+                .child(self.page_body(&route.page, window, cx))
                 .into_any_element(),
         )
     }
 
-    fn page_body(&self, key: &str, cx: &mut Context<Self>) -> AnyElement {
+    fn page_body(&self, key: &str, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
+                if matches!(self.spec.product_id, 1303 | 1304) && key == "TAB_LIGHTING" {
+                    if let Some(panel) = self.nommo_lighting_section(section, window, cx) {
+                        sections.push(panel);
+                        continue;
+                    }
+                }
                 if section
                     .visible_when
                     .as_ref()
@@ -795,9 +813,9 @@ impl AudioProductWorkspace {
     }
 }
 impl Render for AudioProductWorkspace {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if matches!(self.spec.product_id, 1303 | 1304) && self.page == "TAB_LIGHTING" {
-            if let Some(lighting) = self.lighting_element(cx) {
+            if let Some(lighting) = self.lighting_element(window, cx) {
                 return lighting;
             }
         }
@@ -806,18 +824,8 @@ impl Render for AudioProductWorkspace {
                 return demo.clone().into_any_element();
             }
         }
-        v_flex()
-            .min_w_0()
-            .gap_5()
-            .p_5()
-            .text_color(cx.theme().foreground)
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(cx.theme().muted_foreground)
-                    .child(self.spec.name.clone()),
-            )
-            .child(self.page_body(&self.page, cx))
+        super::product_surface::body()
+            .child(self.page_body(&self.page, window, cx))
             .into_any_element()
     }
 }

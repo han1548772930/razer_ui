@@ -242,6 +242,7 @@ impl MacroPage {
             open: false,
             actions: vec![],
             macro_type: Default::default(),
+            record_delay: 0,
         });
         if kind == EntryKind::Macro {
             self.stash_current_draft();

@@ -78,6 +78,15 @@ impl ModuleServiceSnapshot {
     pub(crate) fn online(&self) -> bool {
         self.is_online == Some(true)
     }
+    /// Dashboard 22534/z.checkFWUpgrade reads the original update list, before
+    /// Devices & Modules merges its external firmware records into groups.
+    pub(crate) fn firmware_needs_upgrade(&self, product_id: u32, serial_number: &str) -> bool {
+        self.firmware_update_devices.iter().any(|record| {
+            number(record, "productId") == product_id
+                && string(record, "serialNumber") == serial_number
+                && flag(record, "needsUpgrade")
+        })
+    }
     pub(crate) fn macro_removable(&self) -> bool {
         self.can_remove_macro == Some(true)
     }

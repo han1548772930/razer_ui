@@ -10,6 +10,7 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 
 mod dashboard_cards;
 mod dashboard_device;
+mod dashboard_device_card;
 mod dashboard_grid;
 mod dashboard_group;
 mod dashboard_tutorial;
@@ -179,33 +180,6 @@ impl AppShell {
     pub(super) fn shortcuts_page(&self, _: &mut Context<Self>) -> AnyElement {
         self.shortcuts.clone().into_any_element()
     }
-}
-
-fn dashboard_image(pid: u32, edition: u32, layout: u32, width: f32, height: f32) -> AnyElement {
-    // PluginImages uses separate artwork. Missing downloads use a logo placeholder;
-    // Customize's prd artwork must not be silently substituted for Dashboard.
-    div()
-        .w(surface::css(width))
-        .h(surface::css(height))
-        .flex_shrink_0()
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(
-            if let Some(asset) = crate::resources::dashboard_image(pid, edition, layout) {
-                img(asset)
-                    .size_full()
-                    .object_fit(ObjectFit::Contain)
-                    .into_any_element()
-            } else {
-                img("synapse/synapse.svg")
-                    .size(surface::css(height.min(100.)))
-                    .opacity(0.3)
-                    .object_fit(ObjectFit::Contain)
-                    .into_any_element()
-            },
-        )
-        .into_any_element()
 }
 
 #[cfg(test)]

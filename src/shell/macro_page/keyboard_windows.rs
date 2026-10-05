@@ -23,6 +23,8 @@ mod native {
     struct State {
         hwnd: HWND,
         latest: Option<RawKey>,
+        stream: Option<Vec<RawKey>>,
+        overflowed: bool,
     }
     thread_local! {
         static ACTIVE: RefCell<Weak<RefCell<State>>> = const { RefCell::new(Weak::new()) };
@@ -35,6 +37,12 @@ mod native {
     }
     impl Capture {
         pub(super) fn start(window: &Window) -> Option<Self> {
+            Self::start_inner(window, false)
+        }
+        pub(super) fn start_stream(window: &Window) -> Option<Self> {
+            Self::start_inner(window, true)
+        }
+        fn start_inner(window: &Window, stream: bool) -> Option<Self> {
             let RawWindowHandle::Win32(handle) =
                 HasWindowHandle::window_handle(window).ok()?.as_raw()
             else {
@@ -51,6 +59,8 @@ mod native {
             let state = Rc::new(RefCell::new(State {
                 hwnd: handle.hwnd.get() as HWND,
                 latest: None,
+                stream: stream.then(Vec::new),
+                overflowed: false,
             }));
             let hook = unsafe {
                 SetWindowsHookExW(
@@ -68,6 +78,13 @@ mod native {
         }
         pub(super) fn take(&mut self) -> Option<RawKey> {
             self.state.borrow_mut().latest.take()
+        }
+        pub(super) fn take_all(&mut self) -> Option<Vec<RawKey>> {
+            let mut state = self.state.borrow_mut();
+            if state.overflowed {
+                return None;
+            }
+            state.stream.as_mut().map(std::mem::take)
         }
     }
     impl Drop for Capture {
@@ -98,7 +115,7 @@ mod native {
                 let down = matches!(msg.message, WM_KEYDOWN | WM_SYSKEYDOWN);
                 let up = matches!(msg.message, WM_KEYUP | WM_SYSKEYUP);
                 let active = unsafe { GetForegroundWindow() } == state.hwnd;
-                if (down || up) && (active || up && msg.wParam == 44) {
+                if (down || up) && (active || state.stream.is_none() && up && msg.wParam == 44) {
                     let event = RawKey {
                         code: msg.wParam as u16,
                         scan: ((msg.lParam as usize >> 16) & 0xff) as u8,
@@ -106,7 +123,16 @@ mod native {
                         down,
                         at: Instant::now(),
                     };
-                    if super::super::keyboard::accepts(&event) {
+                    if let Some(stream) = &mut state.stream {
+                        // Do not silently lose modifier releases. The owner
+                        // cancels capture after overflow rather than committing
+                        // a partial shortcut from a truncated input sequence.
+                        if stream.len() < 1024 {
+                            stream.push(event);
+                        } else {
+                            state.overflowed = true;
+                        }
+                    } else if super::super::keyboard::accepts(&event) {
                         state.latest = Some(event);
                     }
                     // Equivalent to the source's capture preventDefault and
@@ -131,6 +157,29 @@ pub(super) struct Capture {
     inner: native::Capture,
 }
 impl Capture {
+    pub(super) fn start_stream(window: &Window) -> Option<Self> {
+        #[cfg(target_os = "windows")]
+        {
+            Some(Self {
+                inner: native::Capture::start_stream(window)?,
+            })
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = window;
+            None
+        }
+    }
+    pub(super) fn take_all(&mut self) -> Option<Vec<RawKey>> {
+        #[cfg(target_os = "windows")]
+        {
+            self.inner.take_all()
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            None
+        }
+    }
     pub(super) fn start(window: &Window) -> Option<Self> {
         #[cfg(target_os = "windows")]
         {

@@ -1,5 +1,7 @@
 # 当前 UI 完成状态
 
+2026-10-05 已按用户要求开启已有页面的全面一致性复核，三个子任务分别检查公共壳层、产品正文和独立应用。本批已修正179接收器、实际字体面/字重、公共正文间距、Nommo与相机内容、Alexa和Armory正文及运行时页签图标；统一`cargo check --locked --all-targets`与专项静态校验通过。覆盖范围与未核项见[本轮索引](ui-consistency-round-2026-10-05.md)。**已有页面或编译通过均不代表一致，整体仍未完成。**
+
 2026-10-05 Macro Keyboard 已替换自由文本输入，接入当前窗口原始键码捕获、150ms 提交、按下/松开配对更新与本地持久字段，并补原方向图标。见 [键盘专项记录](macro-keyboard-current-audit.md)。设备重定向、配对连线/拖拽细节和完整 Sequence/Phased 仍缺；整体复刻未完成。
 
 2026-10-05 Macro Launch 已接入 null 初始模式、文件选择器、分离草稿、源按钮状态和 100px／−300px 定位规则，见 [Launch 审计](macro-launch-current-audit.md)。Text/emoji 已按 `58190.dn/on/en` 接入分类、搜索、变体、UTF-16 限制与源 clear-search/CSS 缺陷，见 [文本审计](macro-text-current-audit.md)。两者均未做实际窗口验收。

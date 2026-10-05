@@ -1,4 +1,4 @@
-"""Prepare exact 32-bit ICO frames as PNG using only the standard library.
+"""Extract embedded PNG or convert exact 32-bit ICO frames with the stdlib.
 
 No decoder DLLs, application or reference code are executed. The existing
 independently prepared 20px tray RGBA is also checked against the host frame.
@@ -53,6 +53,19 @@ def png(rgba, size):
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
+def embedded_png(data):
+    frames = []
+    for i in range(struct.unpack_from("<H", data, 4)[0]):
+        width, height, _, _, planes, bits, length, offset = struct.unpack_from("<BBBBHHII", data, 6 + i * 16)
+        frame = data[offset:offset + length]
+        if frame.startswith(b"\x89PNG\r\n\x1a\n"):
+            size = struct.unpack_from(">II", frame, 16)
+            assert size == (width or 256, height or 256)
+            frames.append((frame, size, offset))
+    assert len(frames) == 1, "Expected the source Macro ICO's single PNG frame"
+    return frames[0]
+
+
 def prepare(root=ROOT, output=None, check=False):
     output = output or root / "assets/synapse"
     records = []
@@ -76,6 +89,18 @@ def prepare(root=ROOT, output=None, check=False):
         if url:
             entry["source_url"] = url
         records.append(entry)
+    source = ".ref/applications/synapse/macro/static/media/macro.eba30c35.ico"
+    original = (root / source).read_bytes()
+    encoded, size, offset = embedded_png(original)
+    target = output / "host-macro-favicon.png"
+    if check:
+        assert target.read_bytes() == encoded
+    else:
+        target.write_bytes(encoded)
+    records.append(dict(source=source, output=target.relative_to(root).as_posix(),
+                        source_sha256=digest(original), sha256=digest(encoded), width=size[0], height=size[1],
+                        conversion="ico-embedded-png", ico_frame=dict(offset=offset, bytes=len(encoded)),
+                        source_url="https://apps.razer.com/synapse/macro/static/media/macro.eba30c35.ico"))
     return records
 
 
@@ -85,12 +110,12 @@ def main():
     args = parser.parse_args()
     records = prepare(check=args.check)
     receipt = ROOT / "docs/re/host-tab-ico-current-conversion.json"
-    rendered = json.dumps(dict(method="Static ICO32 BGRA frame extraction and PNG encoding; host pixels match existing tray-app.rgba; no resampling", entries=records), indent=2) + "\n"
+    rendered = json.dumps(dict(method="Static ICO32 BGRA frame extraction/PNG encoding, or byte-exact embedded PNG; host pixels match existing tray-app.rgba; no resampling", entries=records), indent=2) + "\n"
     if args.check:
         assert receipt.read_text(encoding="utf8") == rendered
     else:
         receipt.write_text(rendered, encoding="utf8")
-    print("Prepared/validated host 20px and Alexa 63px exact ICO frames.")
+    print("Prepared/validated host 20px, Alexa 63px and Macro 256px exact ICO frames.")
 
 
 if __name__ == "__main__":

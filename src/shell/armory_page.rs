@@ -713,8 +713,8 @@ impl ArmoryPage {
                             .text_color(rgb(0x44d62c))
                             .text_center()
                             .mb(surface::css(15.))
-                            // All source capabilities false -> isExchangeEnabled true.
-                            .child(tr("EXCHANGE_GET_STARTED").to_uppercase()),
+                            // 77989 starts isExchangeEnabled=false until a feature response.
+                            .child(tr("WORKSHOP_GET_STARTED").to_uppercase()),
                     )
                     .children(
                         ["AI_MACRO_DESC", "MACRO_USAGE_DESC", "ASSIGN_MACRO_DESC"].map(|key| {

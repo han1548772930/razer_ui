@@ -1,0 +1,643 @@
+{
+  "groups": [
+    {
+      "id": "startDelay",
+      "header": {
+        "type": "dropdown",
+        "dataList": [
+          {
+            "content": "0s"
+          },
+          {
+            "content": "1s"
+          },
+          {
+            "content": "2s"
+          },
+          {
+            "content": "3s"
+          },
+          {
+            "content": "4s"
+          },
+          {
+            "content": "5s"
+          }
+        ],
+        "name": "TEXT_START_DALAY",
+        "tip": "TEXT_RECORD_TOOLTIP_1"
+      }
+    },
+    {
+      "id": "shortcutKey",
+      "header": {
+        "name": "TEXT_SHORTCUT_KEY",
+        "tip": "TEXT_RECORD_TOOLTIP_2"
+      },
+      "content": [
+        {
+          "name": "TEXT_SHORTCUT_CONTENT",
+          "id": "shortcutKey",
+          "type": "shortcutKey",
+          "data": {
+            "keyPressed": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "macroType",
+      "header": {
+        "name": "TEXT_MACRO_TYPE",
+        "tip": "TEXT_MACRO_TYPE_TOOLTIP"
+      },
+      "content": [
+        {
+          "name": "TEXT_STANDARD_MACRO",
+          "id": 0,
+          "type": "radio",
+          "activeName": "TEXT_STANDARD_MACRO"
+        },
+        {
+          "name": "TEXT_SEQUENCE_MACRO",
+          "id": 1,
+          "type": "radio",
+          "activeName": "TEXT_SEQUENCE_MACRO",
+          "beta": false
+        },
+        {
+          "name": "TEXT_PHASED_MACRO",
+          "id": 2,
+          "type": "radio",
+          "activeName": "TEXT_PHASED_MACRO"
+        }
+      ]
+    },
+    {
+      "id": "delaySet",
+      "header": {
+        "name": "TEXT_DELAY_SETTINGS",
+        "tip": "TEXT_RECORD_TOOLTIP_3"
+      },
+      "content": [
+        {
+          "name": "TEXT_RECORD_DELAY_RECORD",
+          "id": "recordDelay",
+          "type": "radio",
+          "activeName": "TEXT_RECORD_DELAY"
+        },
+        {
+          "name": "TEXT_SEC_DELAY",
+          "id": "recordDelayTime",
+          "type": "radioInput",
+          "activeName": "TEXT_SECOND_DELAY"
+        },
+        {
+          "name": "RANDOMIZE_DELAY_TILE",
+          "name2": "secs",
+          "id": "randomized",
+          "type": "randomizedDelay",
+          "activeName": "TEXT_RANDOMIZE_DELAY"
+        },
+        {
+          "name": "TEXT_NO_DELAY",
+          "id": "noDelay",
+          "type": "radio",
+          "activeName": "TEXT_NO_DELAY"
+        }
+      ]
+    },
+    {
+      "id": "mmt",
+      "header": {
+        "name": "TEXT_MOUSE_MOVEMENT_TRACKING",
+        "tip": "TEXT_RECORD_TOOLTIP_4"
+      },
+      "content": [
+        {
+          "name": "TEXT_MOUSE_NONE",
+          "id": "none",
+          "type": "radio",
+          "activeName": "TEXT_NO_MOUSE_TRACKING"
+        },
+        {
+          "name": "TEXT_MOUSE_SCREEN",
+          "id": "screen",
+          "type": "radio",
+          "activeName": "TEXT_ABSOLUTE_POSITION_MOUSE"
+        },
+        {
+          "name": "TEXT_MOUSE_FOREGROUND",
+          "id": "foreground",
+          "type": "radio",
+          "activeName": "TEXT_RELATIVE_POSITION_MOUSE"
+        },
+        {
+          "name": "TEXT_MOUSE_START_POINT",
+          "id": "startPoint",
+          "type": "radio",
+          "activeName": "TEXT_MOUSE_TRACKING"
+        }
+      ]
+    }
+  ],
+  "keys": [
+    {
+      "inputID": "KEY_A",
+      "keyCode": "65"
+    },
+    {
+      "inputID": "KEY_B",
+      "keyCode": "66"
+    },
+    {
+      "inputID": "KEY_C",
+      "keyCode": "67"
+    },
+    {
+      "inputID": "KEY_D",
+      "keyCode": "68"
+    },
+    {
+      "inputID": "KEY_E",
+      "keyCode": "69"
+    },
+    {
+      "inputID": "KEY_F",
+      "keyCode": "70"
+    },
+    {
+      "inputID": "KEY_G",
+      "keyCode": "71"
+    },
+    {
+      "inputID": "KEY_H",
+      "keyCode": "72"
+    },
+    {
+      "inputID": "KEY_I",
+      "keyCode": "73"
+    },
+    {
+      "inputID": "KEY_J",
+      "keyCode": "74"
+    },
+    {
+      "inputID": "KEY_K",
+      "keyCode": "75"
+    },
+    {
+      "inputID": "KEY_L",
+      "keyCode": "76"
+    },
+    {
+      "inputID": "KEY_M",
+      "keyCode": "77"
+    },
+    {
+      "inputID": "KEY_N",
+      "keyCode": "78"
+    },
+    {
+      "inputID": "KEY_O",
+      "keyCode": "79"
+    },
+    {
+      "inputID": "KEY_P",
+      "keyCode": "80"
+    },
+    {
+      "inputID": "KEY_Q",
+      "keyCode": "81"
+    },
+    {
+      "inputID": "KEY_R",
+      "keyCode": "82"
+    },
+    {
+      "inputID": "KEY_S",
+      "keyCode": "83"
+    },
+    {
+      "inputID": "KEY_T",
+      "keyCode": "84"
+    },
+    {
+      "inputID": "KEY_U",
+      "keyCode": "85"
+    },
+    {
+      "inputID": "KEY_V",
+      "keyCode": "86"
+    },
+    {
+      "inputID": "KEY_W",
+      "keyCode": "87"
+    },
+    {
+      "inputID": "KEY_X",
+      "keyCode": "88"
+    },
+    {
+      "inputID": "KEY_Y",
+      "keyCode": "89"
+    },
+    {
+      "inputID": "KEY_Z",
+      "keyCode": "90"
+    },
+    {
+      "inputID": "KEY_0",
+      "keyCode": "48"
+    },
+    {
+      "inputID": "KEY_1",
+      "keyCode": "49"
+    },
+    {
+      "inputID": "KEY_2",
+      "keyCode": "50"
+    },
+    {
+      "inputID": "KEY_3",
+      "keyCode": "51"
+    },
+    {
+      "inputID": "KEY_4",
+      "keyCode": "52"
+    },
+    {
+      "inputID": "KEY_5",
+      "keyCode": "53"
+    },
+    {
+      "inputID": "KEY_6",
+      "keyCode": "54"
+    },
+    {
+      "inputID": "KEY_7",
+      "keyCode": "55"
+    },
+    {
+      "inputID": "KEY_8",
+      "keyCode": "56"
+    },
+    {
+      "inputID": "KEY_9",
+      "keyCode": "57"
+    },
+    {
+      "inputID": "KEY_F1",
+      "keyCode": "112"
+    },
+    {
+      "inputID": "KEY_F2",
+      "keyCode": "113"
+    },
+    {
+      "inputID": "KEY_F3",
+      "keyCode": "114"
+    },
+    {
+      "inputID": "KEY_F4",
+      "keyCode": "115"
+    },
+    {
+      "inputID": "KEY_F5",
+      "keyCode": "116"
+    },
+    {
+      "inputID": "KEY_F6",
+      "keyCode": "117"
+    },
+    {
+      "inputID": "KEY_F7",
+      "keyCode": "118"
+    },
+    {
+      "inputID": "KEY_F8",
+      "keyCode": "119"
+    },
+    {
+      "inputID": "KEY_F9",
+      "keyCode": "120"
+    },
+    {
+      "inputID": "KEY_F10",
+      "keyCode": "121"
+    },
+    {
+      "inputID": "KEY_F11",
+      "keyCode": "122"
+    },
+    {
+      "inputID": "KEY_F12",
+      "keyCode": "123"
+    },
+    {
+      "inputID": "KEY_F13",
+      "keyCode": "124"
+    },
+    {
+      "inputID": "KEY_F14",
+      "keyCode": "125"
+    },
+    {
+      "inputID": "KEY_F15",
+      "keyCode": "126"
+    },
+    {
+      "inputID": "KEY_F16",
+      "keyCode": "127"
+    },
+    {
+      "inputID": "KEY_F17",
+      "keyCode": "128"
+    },
+    {
+      "inputID": "KEY_F18",
+      "keyCode": "129"
+    },
+    {
+      "inputID": "KEY_F19",
+      "keyCode": "130"
+    },
+    {
+      "inputID": "KEY_F20",
+      "keyCode": "131"
+    },
+    {
+      "inputID": "KEY_F21",
+      "keyCode": "132"
+    },
+    {
+      "inputID": "KEY_F22",
+      "keyCode": "133"
+    },
+    {
+      "inputID": "KEY_F23",
+      "keyCode": "134"
+    },
+    {
+      "inputID": "KEY_F24",
+      "keyCode": "135"
+    },
+    {
+      "inputID": "KEY_NUMPAD_NUM_LOCK",
+      "keyCode": "144"
+    },
+    {
+      "inputID": "KEY_NUMPAD_0",
+      "keyCode": "96"
+    },
+    {
+      "inputID": "KEY_NUMPAD_1",
+      "keyCode": "97"
+    },
+    {
+      "inputID": "KEY_NUMPAD_2",
+      "keyCode": "98"
+    },
+    {
+      "inputID": "KEY_NUMPAD_3",
+      "keyCode": "99"
+    },
+    {
+      "inputID": "KEY_NUMPAD_4",
+      "keyCode": "100"
+    },
+    {
+      "inputID": "KEY_NUMPAD_5",
+      "keyCode": "101"
+    },
+    {
+      "inputID": "KEY_NUMPAD_6",
+      "keyCode": "102"
+    },
+    {
+      "inputID": "KEY_NUMPAD_7",
+      "keyCode": "103"
+    },
+    {
+      "inputID": "KEY_NUMPAD_8",
+      "keyCode": "104"
+    },
+    {
+      "inputID": "KEY_NUMPAD_9",
+      "keyCode": "105"
+    },
+    {
+      "inputID": "KEY_NUMPAD_SLASH",
+      "keyCode": "111"
+    },
+    {
+      "inputID": "KEY_NUMPAD_ASTERISK",
+      "keyCode": "106"
+    },
+    {
+      "inputID": "KEY_NUMPAD_DASH",
+      "keyCode": "109"
+    },
+    {
+      "inputID": "KEY_NUMPAD_PLUS",
+      "keyCode": "107"
+    },
+    {
+      "inputID": "KEY_NUMPAD_PERIOD",
+      "keyCode": "110"
+    },
+    {
+      "inputID": "KEY_NUMPAD_ENTER",
+      "keyCode": "13"
+    },
+    {
+      "inputID": "KEY_UP_ARROW",
+      "keyCode": "38"
+    },
+    {
+      "inputID": "KEY_DOWN_ARROW",
+      "keyCode": "40"
+    },
+    {
+      "inputID": "KEY_LEFT_ARROW",
+      "keyCode": "37"
+    },
+    {
+      "inputID": "KEY_RIGHT_ARROW",
+      "keyCode": "39"
+    },
+    {
+      "inputID": "KEY_UP_DPAD",
+      "keyCode": "38"
+    },
+    {
+      "inputID": "KEY_DOWN_DPAD",
+      "keyCode": "40"
+    },
+    {
+      "inputID": "KEY_LEFT_DPAD",
+      "keyCode": "37"
+    },
+    {
+      "inputID": "KEY_RIGHT_DPAD",
+      "keyCode": "39"
+    },
+    {
+      "inputID": "KEY_PAGE_UP",
+      "keyCode": "33"
+    },
+    {
+      "inputID": "KEY_PAGE_DOWN",
+      "keyCode": "34"
+    },
+    {
+      "inputID": "KEY_BACKSPACE",
+      "keyCode": "8"
+    },
+    {
+      "inputID": "KEY_TAB",
+      "keyCode": "9"
+    },
+    {
+      "inputID": "KEY_SPACEBAR",
+      "keyCode": "32"
+    },
+    {
+      "inputID": "KEY_ENTER",
+      "keyCode": "13"
+    },
+    {
+      "inputID": "KEY_ESC",
+      "keyCode": "27"
+    },
+    {
+      "inputID": "KEY_INSERT",
+      "keyCode": "45"
+    },
+    {
+      "inputID": "KEY_HOME",
+      "keyCode": "36"
+    },
+    {
+      "inputID": "KEY_DELETE",
+      "keyCode": "46"
+    },
+    {
+      "inputID": "KEY_END",
+      "keyCode": "35"
+    },
+    {
+      "inputID": "KEY_PRINT_SCREEN",
+      "keyCode": "44"
+    },
+    {
+      "inputID": "KEY_PAUSE",
+      "keyCode": "19"
+    },
+    {
+      "inputID": "KEY_CANCEL",
+      "keyCode": "3"
+    },
+    {
+      "inputID": "KEY_APPLICATION",
+      "keyCode": "93"
+    },
+    {
+      "inputID": "KEY_LEFT_CTRL",
+      "keyCode": "17"
+    },
+    {
+      "inputID": "KEY_RIGHT_CTRL",
+      "keyCode": "17"
+    },
+    {
+      "inputID": "KEY_LEFT_SHIFT",
+      "keyCode": "16"
+    },
+    {
+      "inputID": "KEY_RIGHT_SHIFT",
+      "keyCode": "16"
+    },
+    {
+      "inputID": "KEY_LEFT_ALT",
+      "keyCode": "18"
+    },
+    {
+      "inputID": "KEY_RIGHT_ALT",
+      "keyCode": "18"
+    },
+    {
+      "inputID": "KEY_LEFT_GUI",
+      "keyCode": "91"
+    },
+    {
+      "inputID": "KEY_CAPS_LOCK",
+      "keyCode": "20"
+    },
+    {
+      "inputID": "KEY_SCROLL_LOCK",
+      "keyCode": "145"
+    },
+    {
+      "inputID": "KEY_TILDE",
+      "keyCode": "192"
+    },
+    {
+      "inputID": "KEY_NON_US_POUND",
+      "keyCode": "51"
+    },
+    {
+      "inputID": "KEY_HYPEN",
+      "keyCode": "189"
+    },
+    {
+      "inputID": "KEY_EQUAL",
+      "keyCode": "187"
+    },
+    {
+      "inputID": "KEY_OPEN_SQUARE_BRACKET",
+      "keyCode": "219"
+    },
+    {
+      "inputID": "KEY_CLOSE_SQUARE_BRACKET",
+      "keyCode": "221"
+    },
+    {
+      "inputID": "KEY_BACKSLASH",
+      "keyCode": "220"
+    },
+    {
+      "inputID": "KEY_SEMICOLON",
+      "keyCode": "186"
+    },
+    {
+      "inputID": "KEY_APOSTROPHE",
+      "keyCode": "222"
+    },
+    {
+      "inputID": "KEY_COMMA",
+      "keyCode": "188"
+    },
+    {
+      "inputID": "KEY_PERIOD",
+      "keyCode": "190"
+    },
+    {
+      "inputID": "KEY_SLASH",
+      "keyCode": "191"
+    },
+    {
+      "inputID": "KEY_NON_US_BACKSLASH",
+      "keyCode": "226"
+    }
+  ],
+  "modifiers": [
+    "KEY_LEFT_ALT",
+    "KEY_RIGHT_ALT",
+    "KEY_RIGHT_SHIFT",
+    "KEY_LEFT_SHIFT",
+    "KEY_LEFT_GUI",
+    "KEY_LEFT_CTRL",
+    "KEY_RIGHT_CTRL"
+  ]
+}

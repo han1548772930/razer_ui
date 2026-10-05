@@ -53,6 +53,17 @@ for (const name of ['main.c0e644c4.css', '458.d86e844b.chunk.css']) {
 }
 const local = read('src/shell/armory_page.rs'), shell = read('src/shell.rs');
 const problems = [];
+const banner = source.snippet(3026, source.binding(3026, 'a'));
+const bannerKeys = Object.fromEntries(['$JL', 'HBy'].map(name => [name,
+  source.literal(54693, source.exported(54693, name))]));
+if (!banner.includes('isExchangeEnabled') || !banner.includes('text:a?s.$JL:s.HBy')
+  || bannerKeys.$JL !== 'EXCHANGE_GET_STARTED' || bannerKeys.HBy !== 'WORKSHOP_GET_STARTED') {
+  problems.push('Armory mounted banner feature/locale branch changed');
+}
+if (!local.includes('tr("WORKSHOP_GET_STARTED").to_uppercase()')
+  || local.includes('tr("EXCHANGE_GET_STARTED").to_uppercase()')) {
+  problems.push('Native no-response banner must use the initial Workshop branch');
+}
 const inlineIcons = [
   {module: 70017, output: 'assets/synapse/armory-filter.svg'},
   {module: 8679, output: 'assets/synapse/armory-sort.svg'},
@@ -81,6 +92,10 @@ const report = {schema_version: 1, method: 'Acorn module scopes and export gette
   behavior: {settled_without_features: ['BROWSE_HEADER', 'MY_DOWNLOADS_HEADER'],
     guest: true, feature_flags: false, data_grid_when_empty: null,
     banner_default: true, banner_close_source: 'localStorage boolean via module 95889',
+    banner_title: {source_module: 3026, locale_module: 54693, source_keys: bannerKeys,
+      native_no_response: 'WORKSHOP_GET_STARTED', initial_is_exchange_enabled: false,
+      resolved_all_false_features_is_exchange_enabled: true,
+      explanation: 'No service response preserves the hook initial value; a successful all-false feature response would select Exchange.'},
     filtering_bar: {mounted_for: ['BROWSE_HEADER', 'MY_DOWNLOADS_HEADER'],
       source_modules: [54408, 49496, 38198, 52259, 70017, 8679],
       local_state: ['filter_open', 'sort_open', 'filter_selection', 'sort_choice'],

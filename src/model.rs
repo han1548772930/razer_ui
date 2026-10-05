@@ -276,6 +276,31 @@ pub struct DashboardDeviceMetadata {
     pub is_playstation: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
+    /// Observations from Dashboard's reducer/storage branches, never inferred
+    /// from merely having a locally implemented product page.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub no_alive_sign: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_dynamic_lighting: Option<bool>,
+    #[serde(rename = "isWDLSupported", skip_serializing_if = "Option::is_none")]
+    pub is_wdl_supported: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firmware_update_info: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firmware_needs_upgrade: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upgrade_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_state: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_init_status_fail: Option<String>,
+    /// Preserve the original category spelling for the console-specific tree.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sub_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub controller_mode_variant: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

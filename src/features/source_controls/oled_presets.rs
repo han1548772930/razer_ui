@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 #[path = "oled_crop.rs"]
 mod crop;
+#[path = "oled_home_cards.rs"]
+mod home_cards;
 use crop::{CROP_HEIGHT, CROP_TOP, CropCanvas, HEIGHT, WIDTH};
 
 #[derive(Clone, Copy)]
@@ -67,13 +69,11 @@ impl OledMediaDraft {
         })
     }
 
-    fn preview(&self) -> AnyElement {
+    fn preview_content(&self) -> AnyElement {
         let mut preview = v_flex()
-            .w(surface::css(234.))
-            .h(surface::css(66.))
+            .w(surface::css(232.))
+            .h(surface::css(64.))
             .bg(OledColors::screen())
-            .border_1()
-            .border_color(OledColors::border())
             .items_center()
             .justify_center()
             .overflow_hidden();
@@ -102,11 +102,22 @@ impl OledMediaDraft {
         if self.info_enabled && self.info_position == "bottom" {
             preview = preview.child(media_info());
         }
+        preview.into_any_element()
+    }
+
+    fn preview(&self) -> AnyElement {
         div()
             .w(surface::css(236.))
             .h(surface::css(68.))
             .p(surface::css(1.))
-            .child(preview)
+            .child(
+                div()
+                    .w(surface::css(234.))
+                    .h(surface::css(66.))
+                    .border_1()
+                    .border_color(OledColors::border())
+                    .child(self.preview_content()),
+            )
             .into_any_element()
     }
 }
@@ -1152,206 +1163,6 @@ impl SourceControls {
                 .expect("validated OLED preset selection");
         selection.normalize();
         selection
-    }
-
-    pub(super) fn render_oled_presets(&self, disabled: bool, cx: &mut Context<Self>) -> AnyElement {
-        let selected = self
-            .draft
-            .pointer("/oled/homeScreenDisplay/selected")
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
-        let cards =
-            h_flex()
-                .gap(surface::css(10.))
-                .flex_wrap()
-                .when(selected <= 1, |view| {
-                    view.children([PresetKind::Animation, PresetKind::Image].into_iter().map(
-                        |kind| {
-                            let selection = self.preset_selection(kind);
-                            let source = selection
-                                .list
-                                .get(selection.selected_ix)
-                                .and_then(|preset| preset.src.clone())
-                                .unwrap_or_else(|| kind.asset(selection.selected_ix).to_string());
-                            let crop = selection
-                                .list
-                                .get(selection.selected_ix)
-                                .and_then(|preset| preset.local_crop.as_ref());
-                            v_flex()
-                                .w(surface::css(236.))
-                                .gap_1()
-                                .when(disabled, |view| view.opacity(0.2))
-                                .child(div().text_size(surface::css(14.)).child(t(kind.title())))
-                                .child(
-                                    h_flex()
-                                        .w(surface::css(236.))
-                                        .h(surface::css(68.))
-                                        .bg(OledColors::screen())
-                                        .border_2()
-                                        .border_color(OledColors::border())
-                                        .items_center()
-                                        .justify_center()
-                                        .child(cropped_preview(
-                                            format!("oled-home-{}", kind.key()).into(),
-                                            SharedString::from(source),
-                                            crop,
-                                        )),
-                                )
-                                .child(
-                                    Button::new(SharedString::from(format!(
-                                        "oled-edit-{}",
-                                        kind.key()
-                                    )))
-                                    .label(t("EDIT"))
-                                    .outline()
-                                    .disabled(disabled || self.is_ble)
-                                    .on_click(cx.listener(move |this, _, window, cx| {
-                                        this.open_oled_presets(kind, window, cx);
-                                    })),
-                                )
-                        },
-                    ))
-                });
-        v_flex()
-            .gap(surface::css(10.))
-            .child(cards)
-            .child(self.render_home_mode_branch(selected, disabled, cx))
-            .into_any_element()
-    }
-
-    /// Static counterparts of the source's emote, banner, media, system and
-    /// keyboard branches. Their samples are presentation-only; the device
-    /// service is not connected, so no telemetry or OLED payload is inferred.
-    fn render_home_mode_branch(
-        &self,
-        selected: u64,
-        disabled: bool,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        let unavailable = "Preview only; OLED content service is not connected.";
-        let black_preview = |label: &str| {
-            v_flex()
-                .w(surface::css(530.))
-                .h(surface::css(120.))
-                .bg(OledColors::screen())
-                .border_1()
-                .border_color(OledColors::border())
-                .items_center()
-                .justify_center()
-                .gap(surface::css(6.))
-                .child(
-                    div()
-                        .text_size(surface::css(15.))
-                        .text_color(OledColors::muted())
-                        .child(label.to_owned()),
-                )
-                .child(
-                    div()
-                        .text_size(surface::css(12.))
-                        .text_color(OledColors::muted())
-                        .child(unavailable),
-                )
-        };
-        let mut panel = v_flex().gap(surface::css(8.));
-        match selected {
-            4 => {
-                panel = panel
-                    .child(div().text_size(surface::css(14.)).child("Emote"))
-                    .child(black_preview("Emote preview"))
-                    .child(
-                        Button::new("oled-emote-edit")
-                            .label(t("EDIT"))
-                            .outline()
-                            .disabled(disabled || self.is_ble)
-                            .on_click(cx.listener(|_, _, window, cx| {
-                                window.open_dialog(cx, |dialog, _, cx| {
-                                    dialog
-                                        .title("Emote editor")
-                                        .child(surface::note(
-                                            "Emote catalog service is unavailable; no emote is selected.",
-                                            cx,
-                                        ))
-                                });
-                            })),
-                    );
-            }
-            2 => {
-                panel = panel
-                    .child(div().text_size(surface::css(14.)).child("Banner"))
-                    .child(black_preview("Banner preview"))
-                    .child(
-                        h_flex()
-                            .gap(surface::css(8.))
-                            .children(["Top", "Bottom"].into_iter().map(|position| {
-                                Button::new(SharedString::from(format!("oled-banner-{position}")))
-                                    .label(position)
-                                    .outline()
-                                    .disabled(disabled || self.is_ble)
-                            })),
-                    )
-                    .child(
-                        Button::new("oled-banner-edit")
-                            .label(t("EDIT"))
-                            .outline()
-                            .disabled(disabled || self.is_ble)
-                            .on_click(cx.listener(|_, _, window, cx| {
-                                window.open_dialog(cx, |dialog, _, cx| {
-                                    dialog
-                                        .title("Banner editor")
-                                        .child(surface::note(
-                                            "Banner image and text editing are staged locally; host transfer is unavailable.",
-                                            cx,
-                                        ))
-                                });
-                            })),
-                    );
-            }
-            5 => {
-                let media = OledMediaDraft::from_value(
-                    self.draft.pointer("/oled/media").unwrap_or(&Value::Null),
-                );
-                panel = panel
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .child(t("OLED_HOME_SCREEN_DISPLAY_TITLE_AUDIO_METER")),
-                    )
-                    .child(media.preview())
-                    .child(
-                        Button::new("oled-media-edit")
-                            .label(t("EDIT"))
-                            .outline()
-                            .disabled(disabled || self.is_ble)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.open_oled_media(window, cx);
-                            })),
-                    )
-                    .child(surface::note(
-                        "Media metadata and visualizer values are preview-only until the audio service connects.",
-                        cx,
-                    ));
-            }
-            6 => {
-                panel = panel
-                    .child(div().text_size(surface::css(14.)).child("System information"))
-                    .child(black_preview("System information preview"))
-                    .child(surface::note(
-                        "Battery, temperature and date samples are intentionally hidden; live system information is unavailable.",
-                        cx,
-                    ));
-            }
-            3 => {
-                panel = panel
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .child("Keyboard information"),
-                    )
-                    .child(black_preview("Keyboard information"));
-            }
-            _ => {}
-        }
-        panel.into_any_element()
     }
 
     fn open_oled_media(&mut self, window: &mut Window, cx: &mut Context<Self>) {
