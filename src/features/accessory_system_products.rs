@@ -109,6 +109,10 @@ pub(crate) struct AccessorySystemProductWorkspace {
     pip_source: Entity<SelectState<Vec<Choice>>>,
     /// `RSA` 的 `.screen-refresh-container` 配置文件下拉（`k6O`）。
     color_profile: Entity<SelectState<Vec<Choice>>>,
+    /// Runtime monitor-service observations. These never enter `draft` or a
+    /// profile snapshot; the source receives them through MW update events.
+    color_profiles: Vec<String>,
+    selected_color_profile: String,
     /// `SSA` primary-input-source prompt: the source waiting for confirmation.
     /// The source's `shouldAskAgainValue` starts true, so the first change asks.
     pending_input_source: Option<i64>,
@@ -331,6 +335,8 @@ impl AccessorySystemProductWorkspace {
             pip_hovered: false,
             pip_source: pip_source.clone(),
             color_profile,
+            color_profiles: Vec::new(),
+            selected_color_profile: String::new(),
             pending_input_source: None,
             ask_again: true,
             corex_graph: corex_fan::GraphInteraction::new(cx),
@@ -352,6 +358,7 @@ impl AccessorySystemProductWorkspace {
             },
         ));
         this.sync_pip_source(window, cx);
+        this.subscribe_color_profile(window, cx);
         match pid {
             3858 | 3880 => {
                 for field in ["brightness", "contrast"] {
@@ -449,6 +456,78 @@ impl AccessorySystemProductWorkspace {
         }
         this.sync_sliders(window, cx);
         this
+    }
+
+    /// Attach a monitor-service observation without treating it as profile
+    /// data. The current source reducer receives a flat payload with
+    /// `colorProfiles: string[]` and `selectedColorProfile: string`; unknown
+    /// shapes are ignored so a stale cache cannot manufacture options.
+    pub(crate) fn set_monitor_runtime(
+        &mut self,
+        runtime: Option<&Value>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(runtime) = runtime else {
+            return;
+        };
+        let profiles = runtime
+            .get("colorProfiles")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let selected = runtime
+            .get("selectedColorProfile")
+            .and_then(Value::as_str)
+            .filter(|value| profiles.iter().any(|profile| profile == value))
+            .unwrap_or_default()
+            .to_owned();
+        self.color_profiles = profiles;
+        self.selected_color_profile = selected;
+        let items = if self.color_profiles.is_empty() {
+            vec![Choice::new("", "")]
+        } else {
+            self.color_profiles
+                .iter()
+                .map(|profile| Choice::new(profile, profile))
+                .collect()
+        };
+        let selected = self.selected_color_profile.clone();
+        self.color_profile.update(cx, |state, cx| {
+            state.set_items(items, window, cx);
+            if !selected.is_empty() {
+                state.set_selected_value(&selected, window, cx);
+            }
+        });
+        cx.notify();
+    }
+
+    fn subscribe_color_profile(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let color_profile = self.color_profile.clone();
+        self.subscriptions.push(cx.subscribe_in(
+            &color_profile,
+            window,
+            |this, state, event, window, cx| {
+                if let SelectEvent::Confirm(Some(value)) = event
+                    && this.color_profiles.iter().any(|profile| profile == value)
+                {
+                    // The original dispatches `setMonitorColorProfile` here.
+                    // Keep the selected value as a runtime request for the
+                    // service boundary; it is intentionally excluded from
+                    // local profile snapshots.
+                    this.selected_color_profile = value.to_owned();
+                    state.set_selected_value(value, window, cx);
+                    cx.notify();
+                }
+            },
+        ));
     }
 
     pub(crate) fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
