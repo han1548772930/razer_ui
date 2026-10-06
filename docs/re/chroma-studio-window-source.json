@@ -1,0 +1,154 @@
+{
+  "method": "Current sources read statically; only favicon SVG downloaded as data",
+  "parent": "chroma-app",
+  "child": "chroma-studio",
+  "child_policy": 3,
+  "parent_size": [
+    1280,
+    720
+  ],
+  "parent_minimum_size": [
+    600,
+    500
+  ],
+  "receipts": [
+    {
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "symbol": "MC SubTabManager",
+      "offset": 450740,
+      "end": 458276,
+      "source": "class MC{appName;mainTabName=\"\";pendingOpenTab=new Map;openQueue=[];currentOpeningTab=null;tabOrderKey=\"\";closedTabKey=\"\";autoCloseTab=[];tabOrder=[];defaultHiddenTab=[];currentOrderedTabs=[];isInitialized=!1;isInitializing=!1;isHoldingAuthority=!1;windowId=0;isHibernating=!1;constructor(){this.appName=\"\"}async getWindowId(){const t=JSON.parse(await e.getWindowServiceClients()).find(e=>e?.window?.name===this.mainTabName);t&&(this.windowId=t.window?.id)}getTabOrderOnChanged(e){return e.filter(e=>e.windowId===this.windowId&&e.pos).sort((e,t)=>e.pos-t.pos).map(({name:e})=>RC.getIdFromTabName(e))}getTabOrderOnRead(e){return e.filter(e=>e.window&&e.window.id===this.windowId&&e.pos).sort((e,t)=>e.pos-t.pos).map(({windowName:e})=>RC.getIdFromTabName(e))}async getAllOpenedTab(){return JSON.parse(await e.getWindowServiceClients()).filter(e=>e.window&&e.window.id===this.windowId&&e.pos)}getTabPos(e){const t=RC.getIdFromTabName(e);if(!this.tabOrder.includes(t))return null;const a=[...this.currentOrderedTabs,t];return a.sort((e,t)=>this.tabOrder.indexOf(e)-this.tabOrder.indexOf(t)),a.indexOf(t)+1}async getAllUnderWatchTab(t){const a=JSON.parse(await e.getWindowServiceClients()),n=a.find(e=>e?.window?.name===t);if(n){this.windowId=n.window?.id;const e=this.getTabOrderOnRead(a);return this.currentOrderedTabs=this.currentOrderedTabs.concat(e),e}return[]}autoOpen=e=>{this.isHoldingAuthority&&this.handleOpen({...e,tabId:RC.getIdFromTabName(e.windowName),openParam:e.openParam||[$C.sameWindow,$C.tabVisible].join(\",\"),isAutoOpen:!0})};async checkRunClose(e){const t=RC.getIdFromTabName(e);if(this.pendingOpenTab.has(e))return console.log(\"checkRunClose: Tab in pendingOpenTab, removing -\",e),void this.pendingOpenTab.delete(e);if(!this.currentOrderedTabs.includes(t)){if(!(await OC(e,!1)))return void console.log(\"checkRunClose: Tab not in currentOrderedTabs -\",e);console.log(\"checkRunClose: Tab missing from currentOrderedTabs but still exists -\",e)}return!0}autoClose=async t=>{console.log(\"SubTabManager.autoClose called for:\",t);await this.checkRunClose(t)&&(this.autoCloseTab.push(t),this.isHoldingAuthority?(console.log(\"Calling RzWindow.closeWindow for:\",t),e.closeWindow(t)):console.log(\"WARNING: Not holding authority, cannot close:\",t))};terminate(){(this.isInitialized||this.isInitializing)&&(this.isInitialized=!1,this.isInitializing=!1,KS.removeListener(\"windowstorageevent\",this.onSubTabAuthorityEvent),WD.removeListener(\"windowHibernate\",this.onWindowHibernate),WD.removeListener(\"hibernate\",this.onHibernate),WD.removeListener(\"create\",this.onCreate),WD.removeListener(\"close\",this.onWindowClosed),WD.removeListener(\"pos-changed\",this.onTabPositionChange),WD.removeListener(\"create\",this.onWindowOpen),this.getAllOpenedTab().then(e=>e.forEach(({windowName:e})=>{e&&this.autoClose(e)})))}handleOpen(t){const{url:a,windowName:n,openParam:r=\"policy=3,tab_visible=1\",willShow:o,isAutoOpen:s}=t;switch(this.getNextAction(t)){case\"focus\":e.activateWindowServiceClient(n,null,o??!0);break;case\"canOpen\":{if(this.currentOpeningTab)return void this.openQueue.push(t);this.currentOpeningTab=t;const e=this.getTabPos(n);UC(a,n,r,s&&e?`tabPos=${e}`:\"\");break}}}getNextAction(e){const{windowName:t,isAutoOpen:a}=e;if(!this.isInitialized)return void this.pendingOpenTab.set(t,e);this.pendingOpenTab.has(t)&&this.pendingOpenTab.delete(t);const n=RC.getIdFromTabName(t);if(a){if(this.defaultHiddenTab.includes(n)||this.currentOrderedTabs.includes(n))return!1;if(this.openQueue.find(e=>e.windowName===t))return}return this.currentOrderedTabs.includes(n)?\"focus\":\"canOpen\"}onWindowHibernate=({windowName:e})=>{e===this.appName&&this.removeSubTabAuthority()};onHibernate=({windowName:e})=>{e===this.appName&&(this.getWindowId(),this.isHibernating=!0,this.setSubTabAuthority())};onCreate=({windowName:e})=>{e===this.appName&&(this.getWindowId(),this.isHibernating=!1,setTimeout(()=>this.removeSubTabAuthority(),500))};getDefaultHiddenTab=()=>JSON.parse(window.localStorage.getItem(this.closedTabKey)??\"[]\");onWindowClosed=async({windowName:e})=>{const t=RC.getIdFromTabName(e),a=this.autoCloseTab.includes(e);a&&(this.autoCloseTab=this.autoCloseTab.filter(t=>t!==e)),this.currentOrderedTabs.includes(t)&&(this.currentOrderedTabs=this.currentOrderedTabs.filter(e=>e!==t),a||(this.defaultHiddenTab.push(t),this.tabOrder=this.tabOrder.filter(e=>e!==t),this.isHoldingAuthority&&(window.localStorage.setItem(this.closedTabKey,JSON.stringify(this.defaultHiddenTab)),window.localStorage.setItem(this.tabOrderKey,JSON.stringify(this.tabOrder)))))};onTabPositionChange=async({data:e})=>{const t=this.getTabOrderOnChanged(e),a=this.currentOrderedTabs;this.currentOrderedTabs=t;const n=t.filter(e=>!this.tabOrder.includes(e));if(n.length>0)this.tabOrder=this.tabOrder.concat(n);else{t.map(e=>this.tabOrder.indexOf(e)).sort((e,t)=>e-t).forEach((e,a)=>{this.tabOrder[e]=t[a]})}const r=this.defaultHiddenTab.filter(e=>this.currentOrderedTabs.includes(e));r.length>0&&(this.defaultHiddenTab=this.defaultHiddenTab.filter(e=>!r.includes(e)),this.isHoldingAuthority&&window.localStorage.setItem(this.closedTabKey,JSON.stringify(this.defaultHiddenTab))),this.isHoldingAuthority&&window.localStorage.setItem(this.tabOrderKey,JSON.stringify(this.tabOrder));const o=t.filter(e=>!a.includes(e));if(1===o.length&&this.currentOpeningTab&&this.currentOpeningTab.tabId===o[0]&&(this.currentOpeningTab=null,this.openQueue.length>0)){const e=this.openQueue.shift();e&&this.isHoldingAuthority&&this.handleOpen(e)}};onWindowOpen=async()=>{};onSubTabAuthorityEvent=e=>{e.key===`subTabManager-${this.appName}`&&([\"removed\",\"cleared\"].includes(e.keyState)?this.removeSubTabAuthority():this.setSubTabAuthority())};setSubTabAuthority(){e.setWindowStorageItem(`subTabManagerAuthority-${this.appName}`,{windowName:window.name}),this.isHoldingAuthority=!0}removeSubTabAuthority(){e.removeWindowStorageItem(`subTabManagerAuthority-${this.appName}`),this.isHoldingAuthority=!1}async getSubTabAuthority(){const t=await e.getWindowStorageItem(`subTabManagerAuthority-${this.appName}`),a=JSON.parse(t);return 0===a.length||a[0]?.value?.windowName===window.name?void this.setSubTabAuthority():new Promise(e=>{const t=a=>{a.key===`subTabManager-${this.appName}`&&[\"removed\",\"cleared\"].includes(a.keyState)&&(this.setSubTabAuthority(),e(\"\"),KS.removeListener(\"windowstorageevent\",t))};KS.addListener(\"windowstorageevent\",t)})}init=async(t,a,n,r)=>{if(this.isInitialized||this.isInitializing)return;this.isInitializing=!0,this.appName=t,this.mainTabName=a;await Mt.getHibernateTab(t)&&(this.isHibernating=!0,this.setSubTabAuthority()),KS.addListener(\"windowstorageevent\",this.onSubTabAuthorityEvent),this.tabOrderKey=`${t}-tab-orders`,this.closedTabKey=`${t}-closed-tab`,WD.addListener(\"windowHibernate\",this.onWindowHibernate),WD.addListener(\"hibernate\",this.onHibernate),WD.addListener(\"create\",this.onCreate),WD.addListener(\"close\",this.onWindowClosed),WD.addListener(\"pos-changed\",this.onTabPositionChange),zt(\"4.0.175\",e.engineVersion)||WD.addListener(\"create\",this.onWindowOpen);let o=window.localStorage.getItem(this.closedTabKey),s=JSON.parse(o||\"null\");Array.isArray(s)?this.defaultHiddenTab=s:(this.defaultHiddenTab=n,window.localStorage.setItem(this.closedTabKey,JSON.stringify(this.defaultHiddenTab))),o=window.localStorage.getItem(this.tabOrderKey),s=JSON.parse(o||\"null\"),Array.isArray(s)?this.tabOrder=s:(this.tabOrder=r,window.localStorage.setItem(this.tabOrderKey,JSON.stringify(r))),await this.getAllUnderWatchTab(a),this.isInitialized=!0,this.isInitializing=!1}}"
+    },
+    {
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "symbol": "PC Chroma host child order",
+      "offset": 458503,
+      "end": 458636,
+      "source": "PC.init(\"chroma-app\",\"chroma-app\",[\"settings-chroma-app\",\"feedback-chroma-app\"],[\"chroma-studio\",\"audio-visualizer\",\"chroma-connect\"]"
+    },
+    {
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "symbol": "Studio title",
+      "offset": 478721,
+      "end": 478784,
+      "source": "{key:\"chroma-studio\",title:{en:\"STUDIO\",\"zh-cn\":\"控制室(STUDIO)\"}}"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/components/Tab/Tab.js",
+      "sha256": "67c2ea0b7da4ca555256ac89b483249b92a56f5f835e25cd31ea028042f7ba77",
+      "symbol": "favicon event",
+      "offset": 8088,
+      "end": 8329,
+      "source": "this.tab.webContents.on(\"page-favicon-updated\",(e,t)=>{const a=this.getWindowById(this.windowId);J.updateTabFeature(this.featureObj.frameName,{featureObj:{icons:t}}),z(a,{action:\"changeIcon\",data:{icons:t,name:this.featureObj.frameName}})}),"
+    },
+    {
+      "path": ".ref/applications/chroma-app/dashboard/static/js/main.e3feeb1b.js",
+      "sha256": "119344e6da9e74ec689105e1a0ecab02757b33c4c9afd97540794738bdce9065",
+      "symbol": "Chroma parent window flags",
+      "offset": 390850,
+      "end": 391005,
+      "source": "D_=\"policy=5,tab_visible=0,app_name=chroma-app,width=1280,height=720,minimum_width=600,minimum_height=500,app_icon_path=ChromaApp\\\\window.ico,title=Chroma\""
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/js/EditorCanvas.c3ee330f.chunk.js",
+      "sha256": "32bc4dd6a0e0de1ef7a185fb4f4754d195ed3fdd8504f8e49294fd0e1da42999",
+      "symbol": "4264 Z layer rename/visibility",
+      "offset": 21298,
+      "end": 24515,
+      "source": "function Z(e){let{layer:t,prevLayer:s,nextLayer:i,effectLayers:o,...c}=e;const{selectedLayer:l,draggingLayer:h,droppingLayer:u,renamingId:g,dropdownProps:m,dragging:v,dropType:p,contextMenu:x,effectLayerCurrent:y,isActive:w,setBtnsOnHover:j,setDropdownProps:N,setSelectedLayer:b,setDragStart:E,setDraggingLayer:S,setDroppingLayer:A,setDropType:L,setRenamingId:I,setChangingEffect:D,setContextMenu:P,renameLayer:k}=c,R=(0,a.useDispatch)(),T=(0,r.useRef)(!1),O=(0,r.useRef)(),[$,B]=(0,r.useState)(!1),[z,_]=(0,r.useState)(0),W=(0,r.useCallback)(e=>{null!==e&&e.focus()},[]),Y=\"layer\"===t.type,X=Array.isArray(t.layers)?t.layers:[],G=t.id===g;(0,r.useEffect)(()=>(T.current=!0,()=>{T.current=!1}),[]),(0,r.useEffect)(()=>{Y||_(40*X.length)},[Y,X.length]);const V=l.id===t.id&&!x;return(0,M.jsxs)(\"li\",{className:`layer-item  ${n()({animate:$,active:t.id===y.id&&w,renaming:G,group:!Y,hidden:!t.visible,show:t.opened,[t.name]:Y,dragging:v&&t.id===h.id,dropping:v&&t.id===u.id&&t.id!==h.id&&(!s||s.id!==h.id||\"before\"!==p)&&(!i||i.id!==h.id||\"after\"!==p)})}`,children:[(0,M.jsxs)(\"div\",{onClick:async()=>{Y?R((0,d.ed)(t)):G||(clearTimeout(O.current),B(!0),R((0,d.Pi)(t.id)),O.current=setTimeout(()=>{T.current&&B(!1)},200))},onMouseDown:e=>{let{button:s,pageX:i,pageY:n}=e;0!==s||G||(E({pageX:i,pageY:n}),S(t))},onMouseEnter:()=>A(t),onMouseMove:e=>{if(!v)return;const n=e.target.getBoundingClientRect(),r=Math.round(e.pageY-n.top)/Math.round(n.height);let o;switch(!0){case\"group\"===t.type&&((!t.opened||0===X.length)&&r>.333&&r<.667||t.opened&&0!==X.length&&r>=.5||s&&s.id===h.id&&r<.5||i&&i.id===h.id&&r>=.5):o=\"add\";break;case r<.5:o=\"before\";break;case r>=.5:o=\"after\"}L(o)},onContextMenu:e=>{e.persist(),P(!0),b(t),N({isMounted:Date.now(),target:{getBoundingClientRect:()=>({left:e.pageX-5,top:e.pageY+13,width:0,height:0})}}),S({}),D(!1)},className:\"main\",children:[(0,M.jsx)(\"div\",{className:\"icon\"}),g!==t.id?(0,M.jsxs)(r.Fragment,{children:[(0,M.jsx)(\"div\",{onDoubleClick:()=>k(t.id),className:\"title\",children:(0,M.jsx)(C.A,{text:t.title?t.title:(0,H.oT)(t.name)})}),(0,M.jsxs)(\"div\",{onMouseEnter:()=>j(!0),onMouseLeave:()=>j(!1),className:\"btns \"+(V?\"active\":\"\"),children:[(0,M.jsx)(\"button\",{onClick:e=>{e.preventDefault(),e.stopPropagation(),m.isMounted||(b(t),N({isMounted:Date.now(),target:e.target}))},className:\"btn-icon btn-ellipsis \"+(V?\"active\":\"\")}),(0,M.jsx)(\"button\",{onClick:e=>{e.stopPropagation(),R((0,d.AM)(t))},className:\"btn-icon \"+(t.visible?\"btn-eye\":\"btn-eye-disabled\")})]})]}):(0,M.jsx)(U.A,{ref:W,className:\"title\",defaultValue:(0,F.JN)(t.title),onFocus:e=>{let{target:t}=e;return t.select()},onKeyDown:e=>{const{key:t}=e;\"Enter\"===t?e.target.blur():\"Escape\"===t&&I(void 0)},onBlur:e=>{let{target:s}=e;I(void 0);let{value:i}=s;if(i=i.trim(),i){if(\"group\"===t.type){if(-1!==o.findIndex(e=>e.title===i&&\"group\"===e.type))return}else{if(-1!==o.reduce((e,t)=>\"layer\"===t.type?e.concat(t):e.concat(t.layers),[]).findIndex(e=>e.title===i))return}R((0,d.aM)(t,i))}},maxLength:f.TH,draggable:!1})]}),Y?null:(0,M.jsx)(\"ul\",{style:{height:t.opened?z:0},className:\"layers list-unstyled\",children:X.map((e,s)=>(0,M.jsx)(Z,{layer:e,prevLayer:X[s-1],nextLayer:t[s+1],effectLayers:o,...c},e.id))})]})}"
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/js/main.6b22e9cc.js",
+      "sha256": "9f486d37e4da89a6541137d81b99cedcebe77947b73571d1a0232f385478ef3e",
+      "symbol": "6257 L title limit",
+      "offset": 222591,
+      "end": 223331,
+      "source": "L={NODE_ENV:\"production\",PUBLIC_URL:\".\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-m15-beta#be6b4223afc345da74630f06bf019c3a8889ee15#2608310346\",BUILD_TAG:\"master-m15-beta#be6b4223afc345da74630f06bf019c3a8889ee15#2608310346@1788148147970\",IS_OPTIMIZED:!0}.REACT_APP_TITLE_LIMIT?Number({NODE_ENV:\"production\",PUBLIC_URL:\".\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-m15-beta#be6b4223afc345da74630f06bf019c3a8889ee15#2608310346\",BUILD_TAG:\"master-m15-beta#be6b4223afc345da74630f06bf019c3a8889ee15#2608310346@1788148147970\",IS_OPTIMIZED:!0}.REACT_APP_TITLE_LIMIT):32"
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/index.html",
+      "sha256": "e1699cd32976bd16e39963d6cf4ef7d8af74d5f02e7bd062cc5005ef9617f214",
+      "symbol": "Studio favicon link",
+      "offset": 60,
+      "end": 108,
+      "source": "<link rel=\"shortcut icon\" href=\"./favicon.svg\"/>"
+    }
+  ],
+  "css": {
+    "path": ".ref/host-4.0.827/electron/index.css",
+    "sha256": "30e429ff6289bd694e8c519a73ef42f7cb181e11c8687d44fe59893ecf95792c",
+    "rules": [
+      ".etabs-tabgroup{width:100%;background-color:#000;cursor:default;font-size:14px;display:none;font-family:Roboto,sans-serif;height:42px;position:relative;z-index:2}",
+      ".custom-mac .main-tab .etabs-tab-title{display:none;visibility:hidden}",
+      ".custom-mac .main-tab{min-width:44px}",
+      ".etabs-tabgroup.custom-win10-border{width:calc(100% - 2px);border-bottom:none}",
+      ".etabs-tabgroup.custom-win10-border.maximized{border:none;width:100%}",
+      ".etabs-tabgroup.visible{display:flex}",
+      ".etabs-tabs{height:42px;width:calc(100vw - 365px);overflow:hidden;-webkit-app-region:drag;position:relative;scroll-behavior:smooth}",
+      ".etabs-tab.manual-close .btn-close,.etabs-tab.manual-close .etabs-tab-buttons{display:none!important}",
+      ".etabs-tabs.dragging{-webkit-app-region:no-drag}",
+      ".etabs-tab.dragging{z-index:20;scroll-behavior:auto}",
+      ".etabs-tab.main-tab{position:relative;left:0;top:0;align-self:flex-end;flex:0 1 auto;margin-left:8px}",
+      ".non-collapsible-tab .etabs-tab-buttons{display:none}",
+      ".etabs-tab{display:none;color:#111;background-color:#000;padding:1px;border-radius:5px 5px 0 0;border-bottom:none;border-left:none;font-size:12px;cursor:default;min-width:90px;max-width:240px;user-select:none;-webkit-app-region:no-drag;position:absolute;bottom:0}",
+      ".etabs-tab:not(.dragging){transition:.2s}",
+      ".debug .etabs-tab{background:#00f}",
+      ".etabs-tab.overflow:after{content:'';position:absolute;display:block;right:1px;border-top-right-radius:5px;width:45px;height:34px;top:18px;transform:translate(0,-50%);background-image:linear-gradient(to right,rgba(34,34,34,0) 0,#000 75%)}",
+      ".etabs-tab.overflow:hover:after{background-image:none}",
+      ".etabs-tab.active.overflow:after,.etabs-tab:active.overflow:after{background-image:linear-gradient(to right,rgba(34,34,34,0) 0,#222 75%)}",
+      ".etabs-tab.gu-mirror{padding-bottom:0}",
+      ".etabs-tabs:first-child{margin-left:0}",
+      ".etabs-tab.visible{display:block}",
+      ".etabs-tab.inactive:hover,.etabs-tab:hover,.etabs-tab:hover .etabs-content{background:linear-gradient(to top,#222 20%,#444 100%)}",
+      ".etabs-tab.inactive:active .etabs-content{background:#222}",
+      ".etabs-tab.show-close-btn:hover .btn-close{pointer-events:visible!important;display:block!important}",
+      ".etabs-tab.show-close-btn.btn-close-selected .etabs-tab-buttons,.etabs-tab.show-close-btn.btn-close-selected:active .etabs-tab-buttons,.etabs-tab.show-close-btn:hover .etabs-tab-buttons{visibility:visible!important;left:calc(100% - 30px)}",
+      ".etabs-tab.active:hover .btn-close{pointer-events:visible;display:block}",
+      ".etabs-tab.active.btn-close-selected .etabs-tab-buttons,.etabs-tab.active.btn-close-selected:active .etabs-tab-buttons,.etabs-tab.active:hover .etabs-tab-buttons{visibility:visible;left:calc(100% - 30px)}",
+      ".etabs-content{display:flex;align-items:center;padding:6px 12px;border-radius:5px 5px 0 0;background:#000;box-sizing:border-box;position:relative;pointer-events:none}",
+      ".etabs-tab.active,.etabs-tab.inactive:active{background:linear-gradient(to top,#222 20%,#44d62c 100%),#222}",
+      ".etabs-tab.active .etabs-content,.etabs-tab:active .etabs-content{background:#222}",
+      ".etabs-tab.flash{background:linear-gradient(to bottom,#fff3aa 0,#ffe325 100%)}",
+      ".etabs-tab-icon{height:20px;background-image:url('./resources/images/rzAppEngine.ico');display:block;width:20px;background-size:contain;background-position:center;flex:0 0 20px}",
+      ".loading .etabs-tab-icon{background-image:url('./assets/image/tab/progress_spinner.svg')!important;animation:spin 1s linear infinite}",
+      ".etabs-tab-title{margin-left:10px;color:#ccc;text-transform:uppercase;font-weight:300;white-space:nowrap;display:inline-block;max-width:200px;overflow:hidden}",
+      ".etabs-tab.inactive .etabs-tab-title,.etabs-tab.inactive.btn-close-selected .etabs-tab-title{color:#999}",
+      ".inactive:active .etabs-tab-title{color:#ccc}",
+      ".etabs-tab-buttons{position:absolute;right:5px;left:calc(100% - 20px);bottom:0;top:0;z-index:2;visibility:hidden}",
+      ".etabs-tab:active .etabs-tab-buttons{left:calc(100% - 0px)}",
+      ".etabs-tab:active .btn-close{display:none}",
+      ".etabs-tab.hidden-tab{width:0}",
+      ".etabs-tab.btn-close-selected:active .btn-close{display:block;pointer-events:visible}",
+      ".etabs-tab.btn-close-selected.inactive:active .etabs-content,.etabs-tab.btn-close-selected.inactive:active .etabs-tab-buttons{background:linear-gradient(to top,#222 20%,#444 100%)}",
+      ".etabs-tab.btn-close-selected.inactive:after{display:none}",
+      ".etabs-tab.btn-close-selected.inactive:active{background:0 0}",
+      ".main-tab .btn-close{display:none;visibility:hidden}",
+      ".etabs-tab .etabs-tab-buttons::before{content:'';position:absolute;display:block;left:-20px;right:14px;height:24px;top:50%;transform:translate(0,-50%);width:20px;background:linear-gradient(to top,#222 20%,#444 100%);-webkit-mask-image:linear-gradient(to right,rgba(0,0,0,0),rgba(0,0,0,1));mask-image:linear-gradient(to right,rgba(0,0,0,0),rgba(0,0,0,1))}",
+      ".etabs-tab.active .etabs-tab-buttons::before,.etabs-tab.inactive:active .etabs-tab-buttons::before{background-image:linear-gradient(to right,rgba(34,34,34,0) 0,#222 75%)}",
+      ".etabs-tab.inactive.btn-close-selected:active .etabs-tab-buttons,.etabs-tab.inactive.btn-close-selected:active .etabs-tab-buttons::before{background:linear-gradient(to top,#222 20%,#444 100%)}",
+      ".etabs-tab.active .etabs-tab-buttons,.etabs-tab.inactive:active .etabs-tab-buttons{background:#222}",
+      ".etabs-tab.active:active .etabs-tab-buttons{background:#222}",
+      ".etabs-tab.active .btn-close{background-image:url('./assets/image/tab/close_active_tab.svg')}",
+      ".etabs-tab.active .btn-close:hover{background-image:url('./assets/image/tab/close_active_tab_hover.svg')}",
+      ".etabs-tab.active .btn-close:active{background-image:url('./assets/image/tab/close_pressed.svg')}",
+      ".etabs-tab .btn-close{background-image:url('./assets/image/tab/close-original.svg')}",
+      ".etabs-tab .etabs-tab-buttons{background:linear-gradient(to top,#222 20%,#444 100%)}",
+      ".etabs-tab .btn-close:hover{background-image:url('./assets/image/tab/close_active_tab_hover.svg')}",
+      ".etabs-tab .btn-close:active{background-image:url('./assets/image/tab/close_pressed.svg')}",
+      ".etabs-window-control-btns{display:flex;position:absolute;right:0;top:0;bottom:0;height:100%}",
+      ".etabs-window-control-btns>div{width:48px;display:flex;align-items:center;justify-content:center;background-repeat:no-repeat;background-position:center;user-select:auto;-webkit-app-region:no-drag;-webkit-user-select:auto}",
+      ".etabs-window-control-btns>div:hover{background-color:#222}",
+      ".etabs-tabs-wrapper{display:flex;align-items:center;flex:1 0 auto;margin-left:4px}",
+      ".etabs-tabs-wrapper::after{content:'';flex:1 0 auto;height:100%;-webkit-app-region:drag}"
+    ]
+  },
+  "favicon": {
+    "url": "https://apps.razer.com/synapse/chroma-studio/favicon.svg",
+    "source": ".ref/applications/synapse/chroma-studio/favicon.svg",
+    "output": "assets/synapse/host-chroma-studio-favicon.svg",
+    "sha256": "ceb14ca48686034903a07d0780d0060a1d3ac818a3a33eed1cbbf1d1a0b80293"
+  }
+}

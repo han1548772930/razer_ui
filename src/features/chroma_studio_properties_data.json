@@ -1,0 +1,1007 @@
+{
+  "effects": {
+    "ambient": {
+      "module": 1958,
+      "controls": [
+        {
+          "kind": "screen",
+          "field": "screen",
+          "presets": [
+            "full",
+            "left",
+            "top",
+            "right",
+            "bottom"
+          ],
+          "native_required": true
+        },
+        {
+          "kind": "slider",
+          "field": "blur",
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "with_tip": false
+        }
+      ]
+    },
+    "audio": {
+      "module": 9120,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "boost",
+          "min": 0.25,
+          "max": 4,
+          "step": 0.25,
+          "disabled_when": "autoBoost"
+        },
+        {
+          "kind": "checkbox",
+          "field": "autoBoost"
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "decay",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.1
+        }
+      ]
+    },
+    "breathing": {
+      "module": 2777,
+      "controls": [
+        {
+          "kind": "color_dropdown",
+          "field": "color",
+          "disabled_when": "randomColor",
+          "empty_color": 1677721600
+        },
+        {
+          "kind": "color_dropdown",
+          "field": "color2",
+          "disabled_when": "randomColor",
+          "empty_color": 1677721600
+        },
+        {
+          "kind": "checkbox",
+          "field": "randomColor"
+        },
+        {
+          "kind": "duration",
+          "field": "duration",
+          "values": [
+            28000,
+            14000,
+            6000
+          ]
+        },
+        {
+          "kind": "playback"
+        }
+      ]
+    },
+    "chroma-generate": {
+      "module": 2474,
+      "controls": [
+        {
+          "kind": "media",
+          "accept": "image/*, .mp4",
+          "field": "mediaSrc"
+        },
+        {
+          "kind": "generate",
+          "max_configs": 5,
+          "fields": [
+            "effectConfigList",
+            "currentConfigId",
+            "currentConfig"
+          ]
+        }
+      ]
+    },
+    "fire": {
+      "module": 5591,
+      "controls": [
+        {
+          "kind": "color_dropdown",
+          "field": "color",
+          "meaning": "hot"
+        },
+        {
+          "kind": "color_dropdown",
+          "field": "color2",
+          "meaning": "cold"
+        }
+      ]
+    },
+    "reactive": {
+      "module": 7518,
+      "controls": [
+        {
+          "kind": "color_dropdown",
+          "field": "color",
+          "disabled_when": "randomColor"
+        },
+        {
+          "kind": "checkbox",
+          "field": "randomColor"
+        },
+        {
+          "kind": "duration",
+          "field": "duration",
+          "values": [
+            2000,
+            1500,
+            500
+          ]
+        }
+      ]
+    },
+    "ripple": {
+      "module": 5305,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "speed",
+          "min": 1,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "width",
+          "min": 100,
+          "max": 400,
+          "step": 100
+        },
+        {
+          "kind": "playback"
+        }
+      ]
+    },
+    "spectrum": {
+      "module": 8552,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180
+        },
+        {
+          "kind": "duration",
+          "field": "duration",
+          "values": [
+            75480,
+            37740,
+            18870
+          ]
+        }
+      ]
+    },
+    "starlight": {
+      "module": 6548,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180,
+          "disabled_when": "randomColor"
+        },
+        {
+          "kind": "checkbox",
+          "field": "randomColor"
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "density",
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "duration",
+          "field": "duration",
+          "values": [
+            3000,
+            1700,
+            500
+          ]
+        }
+      ]
+    },
+    "static": {
+      "module": 3181,
+      "controls": [
+        {
+          "kind": "color",
+          "field": "color",
+          "canvas_width": 228,
+          "canvas_height": 136
+        }
+      ]
+    },
+    "tidal": {
+      "module": 8154,
+      "controls": [
+        {
+          "kind": "color_dropdown",
+          "field": "color",
+          "disabled_when": "randomColor",
+          "empty_color": 1677721600
+        },
+        {
+          "kind": "color_dropdown",
+          "field": "color2",
+          "disabled_when": "randomColor",
+          "empty_color": 1677721600
+        },
+        {
+          "kind": "checkbox",
+          "field": "randomColor"
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "speed",
+          "min": 0,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "center_point",
+          "field": "isTidalCenterPointActive",
+          "buffer": "editor"
+        },
+        {
+          "kind": "direction",
+          "field": "counterclockwise",
+          "buffer": "params2"
+        },
+        {
+          "kind": "playback"
+        }
+      ]
+    },
+    "wave": {
+      "module": 1591,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "speed",
+          "min": 0,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "number_input",
+          "field": "pause",
+          "min": 0,
+          "max": 60,
+          "step": 1,
+          "storage_multiplier": 1000
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "width",
+          "min": 10,
+          "max": 400,
+          "step": 1
+        },
+        {
+          "kind": "switch",
+          "field": "split"
+        },
+        {
+          "kind": "angle",
+          "field": "angle",
+          "min": 0,
+          "max": 359,
+          "step": 1
+        },
+        {
+          "kind": "playback"
+        }
+      ]
+    },
+    "wheel": {
+      "module": 8379,
+      "controls": [
+        {
+          "kind": "gradient",
+          "field": "colorStops",
+          "canvas_width": 180
+        },
+        {
+          "kind": "slider_stepper",
+          "field": "speed",
+          "min": 0,
+          "max": 360,
+          "step": 1
+        },
+        {
+          "kind": "center_point",
+          "field": "isCenterPointActive",
+          "buffer": "editor"
+        },
+        {
+          "kind": "direction",
+          "field": "counterclockwise",
+          "buffer": "params2"
+        },
+        {
+          "kind": "playback"
+        }
+      ]
+    }
+  },
+  "shared": {
+    "color": 1698,
+    "color_dropdown": 16,
+    "gradient": 3690,
+    "playback": 5805,
+    "slider_stepper": 768,
+    "number_input": 2245,
+    "slider": 2132,
+    "duration": 1991,
+    "custom_colors": 4809
+  },
+  "playback": {
+    "start": [
+      "random",
+      "onPress",
+      "onSelectedKeys"
+    ],
+    "end": [
+      "never",
+      "after",
+      "toggle"
+    ],
+    "cycles_min": 1,
+    "cycles_max": 100,
+    "inactive_cycles": -1
+  },
+  "gradients": {
+    "default": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.26,
+            "rgb": [
+              255,
+              243,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              54,
+              255,
+              72
+            ]
+          },
+          {
+            "stop": 0.55,
+            "rgb": [
+              98,
+              241,
+              255
+            ]
+          },
+          {
+            "stop": 0.68,
+            "rgb": [
+              0,
+              12,
+              255
+            ]
+          },
+          {
+            "stop": 0.81,
+            "rgb": [
+              128,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.25,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.75,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 7,
+      "min_stops": 1
+    },
+    "audio": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.51,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.26,
+            "rgb": [
+              255,
+              243,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              54,
+              255,
+              72
+            ]
+          },
+          {
+            "stop": 0.55,
+            "rgb": [
+              98,
+              241,
+              255
+            ]
+          },
+          {
+            "stop": 0.68,
+            "rgb": [
+              0,
+              12,
+              255
+            ]
+          },
+          {
+            "stop": 0.81,
+            "rgb": [
+              128,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 0.51,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 7,
+      "min_stops": 1
+    },
+    "spectrum": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          },
+          {
+            "stop": 0.18,
+            "rgb": [
+              255,
+              16,
+              16
+            ]
+          },
+          {
+            "stop": 0.28,
+            "rgb": [
+              255,
+              128,
+              0
+            ]
+          },
+          {
+            "stop": 0.35,
+            "rgb": [
+              239,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              223,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.49,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.52,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.64,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 0.77,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.16,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 0.32,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.48,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 0.64,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.8,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.27,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.39,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.61,
+            "rgb": [
+              0,
+              120,
+              255
+            ]
+          },
+          {
+            "stop": 0.73,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          },
+          {
+            "stop": 0.25,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.75,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              239,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 10,
+      "min_stops": 2
+    }
+  },
+  "color": {
+    "canvas_width": 228,
+    "canvas_height": 136,
+    "dropdown_canvas_width": 208,
+    "brightness_min": 0,
+    "brightness_max": 100,
+    "brightness_threshold": 0.7490196078431373,
+    "hex_max_length": 6,
+    "rgb_min": 0,
+    "rgb_max": 255,
+    "custom_slots": 8,
+    "presets": [
+      null,
+      [
+        255,
+        0,
+        0
+      ],
+      [
+        255,
+        128,
+        0
+      ],
+      [
+        255,
+        255,
+        0
+      ],
+      [
+        0,
+        255,
+        0
+      ],
+      [
+        0,
+        255,
+        255
+      ],
+      [
+        0,
+        0,
+        255
+      ],
+      [
+        255,
+        0,
+        255
+      ]
+    ],
+    "native_eyedropper": true
+  },
+  "semantics": {
+    "params": "UA/HZ merges working effectLayer.params and removes patched keys from paramsMixed; it does not synchronize defaults, layer.params or params2.",
+    "params2": "RZ/XF merges effectLayer.params2; wheel/tidal center-point and direction use this separate buffer.",
+    "commit": "9286:U applies working parameters to device regions. Without real devices do not invent region writes.",
+    "tool_change": "9870:d preserves parameters between pen and bucket; transitions involving select/move reset or merge source defaults.",
+    "preview": "HZ defaults preview=true; previewEffect runs only with select tool. Continuous slider changes use false; afterChange uses true.",
+    "selection": "4264:se disables properties when no devices are selected and tool is select or move.",
+    "generate": "UA derives currentConfig from effectConfigList[currentConfigId] or {} only when both list and index occur in the patch."
+  }
+}

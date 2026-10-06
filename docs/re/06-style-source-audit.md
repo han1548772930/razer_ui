@@ -107,7 +107,7 @@ python -B tools/validate-resources.py
 - 校准介绍按 `DD` 修正为 26px 标题、36×36 关闭命中区内的 20px 原图；保持介绍确认偏好的持久化行为。此前文档写成 20px 标题已纠正。
 - 182/777 电源继续使用各自的范围和禁用规则，恢复滑条端点/数值提示；777 开关放入卡片标题行。
 - Profile、映射与灯效下拉使用同一个 `surface::select` 外观包装：27px 高、14px 文字、透明底、直角边框、原展开箭头、展开/焦点绿色边和 0.3 禁用态。原 SelectState、选择事件与键盘/焦点仍由框架管理。
-- 普通菜单已通过 Base Select + Base Popover + List 组合恢复黑底、25px 行、无外围 padding、无勾选占位、绿色已选文字和白色10% hover；保留原 SelectState 与 Confirm 订阅，完整说明见[页面覆盖](07-page-coverage.md)。
+- 普通菜单已通过 Base Select + Base Popover + List 组合恢复黑底、25px 行、无外围 padding、无勾选占位、绿色已选文字和白色10% hover；保留原 SelectState 与 Confirm 订阅，当前工作入口见[剩余工作](remaining-ui-work.md)。
 - Audio Meter 的 `DU` 已从滑条改为 60×27 数字步进框：右侧18px上下箭头使用原 SVG，范围 .25–4、步长 .25。输入期间保留草稿，Enter/失焦提交，按原 Stepper 44230 和 DU 的规则向上对齐到下一档；此前四舍五入已纠正。方向键和箭头由 Base NumberInput 驱动，当前没有实现原版按住箭头每300ms连发和聚焦后滚轮步进。
 
 ## 9. 动态产品图片与对应几何
@@ -118,7 +118,7 @@ python -B tools/validate-resources.py
 
 缺失 edition 按原 ProductImage 的回退逻辑尝试 edition 0，保留同一 layout。`km.render` 传入 `layoutId || 1`，因此旧配置没有 layout 或为 0 时使用原布局 1 并启用对应命中。非零且无法识别的编号显示基础布局预览，这是本项目补充的失败显示策略；解析结果标记 `is_fallback_preview`，不启用命中或映射。全部 16 个已知布局使用各自位图、精确形状和完整 groupList；每布局 4 个无几何拨轮子输入也接入抽屉和编辑器。腕托连接及拨轮 hover 图层仍缺运行时状态，不能把子输入已可编辑记成真实设备图层已接通。
 
-全部主页面和附属界面的实际入口及剩余差异见[完整覆盖记录](07-page-coverage.md)。
+当前主导航统计见[产品覆盖](native-product-coverage.md)，内部控件和附属界面见[剩余工作](remaining-ui-work.md)。
 
 ## 10. 原版响应式规则与正文滚动
 

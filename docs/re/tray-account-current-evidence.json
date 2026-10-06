@@ -44,10 +44,22 @@
       "source": "ce=function(){return(0,Q.jsx)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"14.026\",height:\"14\",viewBox:\"0 0 14.026 14\",children:(0,Q.jsx)(\"path\",{d:\"M1118.3,15.3h-1.43a4.823,4.823,0,0,0-.94-2.243l1.02-1.017a.7.7,0,1,0-.99-.99l-1.02,1.021a4.925,4.925,0,0,0-2.24-.918V9.7a.7.7,0,1,0-1.4,0v1.458a4.885,4.885,0,0,0-2.23.926l-1.03-1.033a.7.7,0,0,0-.99.99l1.03,1.034a4.857,4.857,0,0,0-.92,2.226h-1.46a.7.7,0,0,0,0,1.4h1.45a4.9,4.9,0,0,0,.92,2.239l-1.02,1.021a.7.7,0,0,0,.99.99l1.02-1.017a4.876,4.876,0,0,0,2.24.938V22.3a.7.7,0,1,0,1.4,0V20.876a4.91,4.91,0,0,0,2.26-.931l1,1a.7.7,0,0,0,.99-.99l-1-1a4.966,4.966,0,0,0,.93-2.256h1.42a.7.7,0,1,0,0-1.4Zm-6.29,4.229a3.515,3.515,0,1,1,3.52-3.515A3.515,3.515,0,0,1,1112.01,19.529Z\",transform:\"translate(-1105 -9)\"})})}"
     },
     {
+      "symbol": "de",
+      "start": 29637,
+      "end": 30939,
+      "source": "class de extends i.Component{constructor(e){super(e),this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let{position:t}=e.props;e.setState({position:t}),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})},100)})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position})},100)})},this.state={shouldRender:!1,showClassName:\"\",position:e.position,style:{}},this._timeout=0,this.tooltip=(0,i.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"blur\",this.hideTooltip)}componentDidUpdate(e){const{isMounted:t}=this.props;e.isMounted!==t&&(t?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"blur\",this.hideTooltip)}render(){const{tooltip:e,showTooltip:t,hideTooltip:n}=this,{shouldRender:i,showClassName:r,position:a}=this.state,{className:o,children:s}=this.props;return(0,Q.jsx)(\"div\",{onMouseEnter:t,onMouseLeave:n,className:`tooltip-razer ${a} ${r} ${o}`,children:i?(0,Q.jsx)(\"div\",{ref:e,className:\"main\",children:(0,Q.jsx)(\"div\",{className:\"wrapper\",children:s})}):null})}}"
+    },
+    {
       "symbol": "he",
       "start": 31006,
       "end": 31839,
       "source": "he=function(){const e=(0,o.useSelector)(e=>e.view.current),t=(0,o.useSelector)(e=>e.notification.items.length),n=(0,o.useSelector)(e=>e.notification.hasItems),i=(0,o.useDispatch)();return(0,Q.jsxs)(\"div\",{className:\"navbar\",children:[(0,Q.jsx)(\"ul\",{className:\"tabs list-unstyled\",children:Object.keys(M.W0).map(r=>(0,Q.jsxs)(\"li\",{onClick:()=>{return i((e=r,async t=>{await t({type:N.hZ,payload:e})}));var e},className:\"\"+(e===r?\"active\":\"\"),children:[(0,Q.jsx)(X.A,{text:le(r)}),\"notifications\"===r&&n&&0!==t?(0,Q.jsx)(\"span\",{className:\"badge\",children:t}):null]},r))}),(0,Q.jsxs)(\"span\",{onClick:()=>{re.A.setBrowserVisible(!1),RazerApp.launchSettings(\"\",{minimum_height:768,minimum_width:1e3})},className:\"btn-settings\",children:[(0,Q.jsx)(ce,{}),(0,Q.jsx)(ue,{position:\"bottom-left\",children:(0,Q.jsx)(X.A,{text:J.yB})})]})]})}"
+    },
+    {
+      "symbol": "ye",
+      "start": 32892,
+      "end": 33055,
+      "source": "ye=e=>{let{children:t,className:n,active:i,disabled:r,...a}=e;return(0,Q.jsx)(\"button\",{className:`btn-text ${n} ${we()({active:i,disabled:r})}`,...a,children:t})}"
     },
     {
       "symbol": "be",
@@ -75,6 +87,9 @@
     }
   ],
   "rules": [
+    ".systray>.body{height:547px;overflow-x:hidden;overflow-y:auto;position:relative}",
+    ".systray>.body.taller{min-height:306px}",
+    ".systray .app-section-title{background-color:#222;border-top:2px solid #111;color:#999;font-size:10px;padding:6px 0;position:sticky;text-align:center;text-transform:uppercase;top:0;z-index:0}",
     ".systray .app-section-title>.btn-text{font-size:10px;position:absolute;right:20px;text-decoration:underline;text-transform:uppercase}",
     ".systray .app-section-title>.btn-text:not(:hover){color:#ccc}",
     ".systray>.header,.systray>.header-2{align-items:center;background-color:#000;display:flex;height:60px;padding:0 20px;position:relative}",
@@ -109,6 +124,18 @@
     ".navbar>.btn-settings:hover path{fill:#fff}",
     ".navbar>.tabs>li>.badge{align-items:center;border-radius:50%;color:#111;display:inline-block;font-size:12px;justify-content:center;line-height:1;margin-left:5px;padding:0 6px;position:relative;text-align:center;z-index:1}",
     ".navbar>.tabs>li>.badge:before{background-color:#44d62c;border-radius:19px;content:\"\";height:19px;left:0;position:absolute;top:-4px;width:100%;z-index:-1}",
+    ".tooltip-razer{height:100%;left:0;position:absolute;top:0;width:100%;z-index:1060}",
+    ".tooltip-razer.bottom-left>.main,.tooltip-razer.bottom-right>.main,.tooltip-razer.bottom>.main{bottom:auto;margin-bottom:0;top:100%}",
+    ".tooltip-razer.bottom-right>.main,.tooltip-razer.top-right>.main{justify-content:flex-start;left:0;margin-left:0}",
+    ".tooltip-razer.bottom-left>.main,.tooltip-razer.top-left>.main{justify-content:flex-end;left:auto;margin-left:0;right:0}",
+    ".tooltip-razer>.main{bottom:100%;display:flex;justify-content:center;left:50%;margin-left:-150px;opacity:0;pointer-events:none;position:absolute;transition:opacity .1s linear;width:300px}",
+    ".tooltip-razer.show>.main{opacity:1}",
+    ".tooltip-razer>.main>.wrapper{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:inline-block;font-size:14px;line-height:1.22;padding:7px 8px;text-align:left;text-transform:none}",
+    ".tooltip-razer .title{text-transform:uppercase}",
+    ".tooltip-razer .title>span{color:#44d62c;margin-left:10px;text-transform:none}",
+    ".tooltip-razer .title+*{margin-top:10px}",
+    ".systray>.apps>li .tooltip-razer>.main{max-width:234px}",
+    ".systray>.apps>li .tooltip-razer.top>.main{margin-left:-117px}",
     ".notifications-spinner.spinner-razer{bottom:0;height:31px;left:0;margin:auto;position:absolute;right:0;top:0;width:31px}",
     ".notifications>li{background-color:#111;cursor:pointer;margin-bottom:10px}",
     ".notifications>li:last-child{margin-bottom:0}",

@@ -15,6 +15,16 @@ const AUDIO_OLED_SYSTEM_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/audio-oled-system-embedded.rs");
 const TRAY_ACCOUNT_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/tray-account-embedded.rs");
+const SETTINGS_WINDOW_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/settings-window-embedded.rs");
+const CHROMA_STUDIO_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/chroma-studio-embedded.rs");
+const CHROMA_STUDIO_COLOR_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/chroma-studio-color-embedded.rs");
+const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/host-chroma-studio-favicon.svg",
+    include_bytes!("../assets/synapse/host-chroma-studio-favicon.svg"),
+)];
 const AUDIO_OLED_RUNTIME_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/audio-oled-runtime-warning.svg",
     include_bytes!("../assets/synapse/audio-oled-runtime-warning.svg"),
@@ -29,6 +39,10 @@ impl AssetSource for SynapseAssets {
             .chain(AUDIO_OLED_BANNER_ASSETS)
             .chain(AUDIO_OLED_SYSTEM_ASSETS)
             .chain(TRAY_ACCOUNT_ASSETS)
+            .chain(SETTINGS_WINDOW_ASSETS)
+            .chain(CHROMA_STUDIO_ASSETS)
+            .chain(CHROMA_STUDIO_COLOR_ASSETS)
+            .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .find(|(key, _)| *key == path)
         {
@@ -47,6 +61,10 @@ impl AssetSource for SynapseAssets {
                 .chain(AUDIO_OLED_BANNER_ASSETS)
                 .chain(AUDIO_OLED_SYSTEM_ASSETS)
                 .chain(TRAY_ACCOUNT_ASSETS)
+                .chain(SETTINGS_WINDOW_ASSETS)
+                .chain(CHROMA_STUDIO_ASSETS)
+                .chain(CHROMA_STUDIO_COLOR_ASSETS)
+                .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
                 .map(|(key, _)| SharedString::from(*key)),

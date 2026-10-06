@@ -1,0 +1,27 @@
+[
+  {
+    "source": ".ref/applications/synapse/chroma-studio/static/media/checkered.8a71b98b.svg",
+    "source_sha256": "abd6d3c1044a90323891316e13c71879ee373f50cc0a2795c3ae0c7790bc8146",
+    "output": "assets/synapse/chroma-studio-checkered.svg",
+    "output_sha256": "abd6d3c1044a90323891316e13c71879ee373f50cc0a2795c3ae0c7790bc8146"
+  },
+  {
+    "source": ".ref/applications/synapse/chroma-studio/static/media/eyedropper-white.fae40f76.svg",
+    "source_sha256": "abc32cbe43d9fc5927e8115da19b8e98d8959cd9fe4e61280523e360fe7aa25b",
+    "output": "assets/synapse/chroma-studio-eyedropper-white.svg",
+    "output_sha256": "abc32cbe43d9fc5927e8115da19b8e98d8959cd9fe4e61280523e360fe7aa25b"
+  },
+  {
+    "source": ".ref/applications/synapse/chroma-studio/static/media/add-gray.762e876e.svg",
+    "source_sha256": "289d462fedaf840e31cf45f6285b8d604c093b55782098bfbfea9092c7d363c5",
+    "output": "assets/synapse/chroma-studio-add-gray.svg",
+    "output_sha256": "289d462fedaf840e31cf45f6285b8d604c093b55782098bfbfea9092c7d363c5"
+  },
+  {
+    "source": ".ref/applications/synapse/chroma-studio/static/css/255.94f4f150.chunk.css",
+    "source_sha256": "5c9e9882eb07532fa002234ee65cff41adef18cf38f12dde79cf7084c9701d12",
+    "output": "assets/synapse/chroma-studio-brightness-pointer.svg",
+    "output_sha256": "e0aa33d24be70dd12373a35f3eef6d7b13a0d1c13aceef3ac8248f58ae9bbfc5",
+    "method": "4px CSS border triangle"
+  }
+]

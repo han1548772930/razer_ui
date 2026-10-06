@@ -163,6 +163,7 @@ pub(crate) fn supports_chroma_lighting_page(pid: u32) -> bool {
     chroma_lighting_page(pid).is_some()
 }
 pub(crate) struct AudioProductChanged;
+pub(crate) struct AudioStudioRequested;
 pub(crate) struct AudioProductWorkspace {
     spec: &'static AudioProductSpec,
     page: String,
@@ -180,6 +181,7 @@ pub(crate) struct AudioProductWorkspace {
     demo: Option<Entity<demo::AudioDemo>>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
+impl EventEmitter<AudioStudioRequested> for AudioProductWorkspace {}
 
 impl AudioProductWorkspace {
     pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -297,9 +299,13 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
         self.draft = self.spec.draft.clone();
         self.selected_region = 0;
         self.staged.clear();
+        if let Some(value) = staged_oled_language {
+            self.staged.insert("/device/oledLanguage".into(), value);
+        }
         self.nommo_brightness_dragging = false;
         self.initialize_equalizers();
         self.initialize_nommo_draft();
@@ -373,8 +379,13 @@ impl AudioProductWorkspace {
         self.sync(window, cx);
         cx.notify();
     }
-    pub(crate) fn set_page(&mut self, page: &str, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            if self.page == "TAB_OLED" || page == "TAB_OLED" {
+                // Bv's staged selection is local to the mounted OLED page.
+                self.staged.remove("/device/oledLanguage");
+                self.sync_oled_runtime_select(window, cx);
+            }
             self.page = page.into();
             if page == "TAB_OLED" {
                 self.request_oled_runtime_data(cx);
@@ -629,7 +640,10 @@ impl AudioProductWorkspace {
             }
         }
         for (path, state) in &self.selects {
-            if let Some(value) = self.draft.pointer(path) {
+            if let Some(value) = self
+                .control(path)
+                .and_then(|control| self.selection_value(control))
+            {
                 state.update(cx, |s, cx| {
                     s.set_selected_value(&value.to_string(), window, cx)
                 });

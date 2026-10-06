@@ -41,4 +41,10 @@
     ("synapse/chroma-studio-icon-chroma-preview.svg", include_bytes!("chroma-studio-icon-chroma-preview.svg")),
     ("synapse/chroma-studio-icon-chroma-slow-preview.svg", include_bytes!("chroma-studio-icon-chroma-slow-preview.svg")),
     ("synapse/chroma-studio-icon-chroma-stop.svg", include_bytes!("chroma-studio-icon-chroma-stop.svg")),
+    ("synapse/chroma-studio-tooltip_questionmark.svg", include_bytes!("chroma-studio-tooltip_questionmark.svg")),
+    ("synapse/chroma-studio-wave-lg-gray.svg", include_bytes!("chroma-studio-wave-lg-gray.svg")),
+    ("synapse/chroma-studio-wave-md-gray.svg", include_bytes!("chroma-studio-wave-md-gray.svg")),
+    ("synapse/chroma-studio-wave-sm-gray.svg", include_bytes!("chroma-studio-wave-sm-gray.svg")),
+    ("synapse/chroma-studio-wave-reactive-md-gray.svg", include_bytes!("chroma-studio-wave-reactive-md-gray.svg")),
+    ("synapse/chroma-studio-wave-reactive-sm-gray.svg", include_bytes!("chroma-studio-wave-reactive-sm-gray.svg")),
 ]

@@ -29,6 +29,7 @@ mod app_picker;
 mod app_picker_host;
 mod armory_page;
 mod chroma_page;
+mod chroma_studio_window;
 mod chroma_window;
 mod display_window;
 mod feedback_page;
@@ -47,6 +48,7 @@ mod release_notes;
 mod runtime_page;
 mod service_pages;
 mod settings_page;
+mod settings_window;
 mod tray;
 use introduction_tour::TourKind;
 
@@ -113,7 +115,6 @@ enum HistoryTarget {
 }
 
 pub struct AppShell {
-    #[cfg(target_os = "windows")]
     main_window: AnyWindowHandle,
     tray: Option<tray::DesktopTray>,
     tray_events: Option<Task<()>>,
@@ -145,6 +146,8 @@ pub struct AppShell {
     macro_library: Entity<crate::features::macro_library::MacroLibrary>,
     armory_page: Option<Entity<armory_page::ArmoryPage>>,
     chroma_page: Entity<chroma_page::ChromaPage>,
+    chroma_studio: Option<Entity<chroma_studio_window::StudioSession>>,
+    chroma_host: Option<Entity<chroma_window::ChromaWindow>>,
     profiles_page: Option<Entity<profiles_page::ProfilesPage>>,
     feedback_page: Option<Entity<feedback_page::FeedbackPage>>,
     tour_trigger: FocusHandle,
@@ -238,7 +241,6 @@ impl AppShell {
             pending_saves: VecDeque::new(),
             close_requested: false,
             tray: None,
-            #[cfg(target_os = "windows")]
             main_window: window.window_handle(),
             tray_events: None,
             tray_startup: None,
@@ -257,6 +259,8 @@ impl AppShell {
             macro_library,
             armory_page: None,
             chroma_page: cx.new(|cx| chroma_page::ChromaPage::new(window, cx)),
+            chroma_studio: None,
+            chroma_host: None,
             profiles_page: None,
             feedback_page: None,
             tour_trigger: cx.focus_handle().tab_stop(true),
@@ -293,6 +297,7 @@ impl AppShell {
             &this.chroma_page,
             window,
             |this, _, event: &chroma_page::ChromaPageEvent, window, cx| match event {
+                chroma_page::ChromaPageEvent::OpenStudio => this.open_chroma_studio(cx),
                 chroma_page::ChromaPageEvent::OpenSettings => {
                     this.navigate(Location::Main(Tab::Setting), window, cx)
                 }
@@ -747,6 +752,7 @@ impl AppShell {
                     // state.
                     this.open_chroma_window(cx);
                 }
+                WorkspaceEvent::OpenStudio => this.open_chroma_studio(cx),
                 WorkspaceEvent::OpenDevice {
                     product_id,
                     edition_id,
@@ -900,6 +906,9 @@ impl AppShell {
     pub(super) fn open_chroma_window(&mut self, cx: &mut Context<Self>) {
         let owner = cx.entity().downgrade();
         let devices = self.devices.clone();
+        let existing = self.chroma_host.clone();
+        let created = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let result = created.clone();
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(size(px(1280.), px(720.)), cx)),
             window_min_size: Some(size(px(600.), px(500.))),
@@ -911,10 +920,18 @@ impl AppShell {
             display_window::WindowPolicy::Different,
             options,
             move |window, cx| {
-                cx.new(|cx| chroma_window::ChromaWindow::new(owner, devices, window, cx))
+                let host = existing.unwrap_or_else(|| {
+                    cx.new(|cx| chroma_window::ChromaWindow::new(owner, devices, window, cx))
+                });
+                host.update(cx, |host, cx| host.bind_window(window, cx));
+                result.replace(Some(host.clone()));
+                host
             },
         ) {
             eprintln!("无法打开 Chroma 窗口：{error}");
+        }
+        if let Some(host) = created.take() {
+            self.chroma_host = Some(host);
         }
     }
     /// Dashboard modules use policy=3: a named tab in the current host window.
@@ -1482,6 +1499,11 @@ impl AppShell {
         }
         let queued = !self.pending_saves.is_empty();
         let auxiliary_pending = self.auxiliary_preferences_pending(cx);
+        // A separately stored Studio draft is another requested write. Keep the
+        // exit intent until its session reports completion; do not autosave edits.
+        if succeeded && !queued && !auxiliary_pending && self.studio_save_pending(cx) {
+            return;
+        }
         match save_continuation(
             &mut self.close_requested,
             succeeded,
@@ -1587,7 +1609,10 @@ impl AppShell {
         }
         // Closing is not a Save command. Drain only writes already requested;
         // unsubmitted profile/mapping drafts do not create an exit prompt.
-        if self.save_task.is_some() || !self.pending_saves.is_empty() {
+        if self.save_task.is_some()
+            || !self.pending_saves.is_empty()
+            || self.studio_save_pending(cx)
+        {
             self.close_requested = true;
             self.start_pending_save(cx);
         } else {

@@ -1,7 +1,7 @@
 //! 设备与配置的数据模型。
 //!
-//! 本文件的字段**逐字对应**雷云 4 在运行日志中真实吐出的 JSON，
-//! 不是凭空设计的。证据见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2 与 `.ref/notes/device-model.json`。
+//! 本文件保留早期运行日志对应的模型，历史记录为 `.ref/notes/device-model.json`。
+//! 这不证明当前版本字段已全部复核；当前工作入口见 `docs/README.md`。
 //!
 //! 关键点：
 //! - 设备名称是 9 语区的 i18n 对象，不是单个字符串。
@@ -545,7 +545,7 @@ pub fn region_label_zh(input_id: &str) -> String {
 
 /// 本机实测的设备快照。
 ///
-/// 这里只放**实际探测到**的设备（见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §2）：
+/// 这里只保留早期日志中探测到的设备，不代表当前机器连接状态：
 ///
 /// | productId | 设备 | 类别 |
 /// |---|---|---|

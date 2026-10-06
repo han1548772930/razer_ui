@@ -68,6 +68,7 @@ impl AppShell {
             PickerModule::Alexa,
             PickerModule::AddWifi,
             PickerModule::Macro,
+            PickerModule::ChromaStudio,
             PickerModule::LinkedGames,
             PickerModule::Armory,
             // The Dashboard's FEEDBACK box targets the named
@@ -132,6 +133,9 @@ impl AppShell {
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Macro)) => {
                 self.open_module_tab(service_pages::ModulePage::Macro, window, cx);
+            }
+            AppPickerEvent::Open(PickerTarget::Module(PickerModule::ChromaStudio)) => {
+                self.open_chroma_studio(cx);
             }
             AppPickerEvent::Open(PickerTarget::Module(PickerModule::Armory)) => {
                 self.open_module_tab(service_pages::ModulePage::Armory, window, cx);

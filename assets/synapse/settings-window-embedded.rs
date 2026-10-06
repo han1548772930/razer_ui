@@ -4,4 +4,13 @@
     ("synapse/settings-window-back.svg", include_bytes!("settings-window-back.svg")),
     ("synapse/settings-window-forward.svg", include_bytes!("settings-window-forward.svg")),
     ("synapse/settings-window-refresh.svg", include_bytes!("settings-window-refresh.svg")),
+    ("synapse/settings-window-social-facebook-social-mask.svg", include_bytes!("settings-window-social-facebook-social-mask.svg")),
+    ("synapse/settings-window-social-instagram-social-mask.svg", include_bytes!("settings-window-social-instagram-social-mask.svg")),
+    ("synapse/settings-window-social-twitter-social-mask.svg", include_bytes!("settings-window-social-twitter-social-mask.svg")),
+    ("synapse/settings-window-social-youtube-social-mask.svg", include_bytes!("settings-window-social-youtube-social-mask.svg")),
+    ("synapse/settings-window-social-tiktok-social-mask.svg", include_bytes!("settings-window-social-tiktok-social-mask.svg")),
+    ("synapse/settings-window-social-twitch-social-mask.svg", include_bytes!("settings-window-social-twitch-social-mask.svg")),
+    ("synapse/settings-window-social-discord-social-mask.svg", include_bytes!("settings-window-social-discord-social-mask.svg")),
+    ("synapse/settings-window-social-insider-razergreen-mask.svg", include_bytes!("settings-window-social-insider-razergreen-mask.svg")),
+    ("synapse/settings-window-social-insider-grey-mask.svg", include_bytes!("settings-window-social-insider-grey-mask.svg")),
 ]

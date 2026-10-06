@@ -2,7 +2,7 @@
 //!
 //! # 方案 2：复用雷云现有后端引擎
 //!
-//! 逆向确认（`docs/re/01-ipc-api-surface.md` §21）：雷云的行为几乎全在
+//! 逆向确认（`docs/re/dll-readonly-inventory.md` §21）：雷云的行为几乎全在
 //! 与 Electron 无关的原生 DLL 里，因此 Rust 可以**绕过整个 Electron 层**
 //! 直接复用它们。
 //!

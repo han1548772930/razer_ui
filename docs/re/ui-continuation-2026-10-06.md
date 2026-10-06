@@ -7,8 +7,8 @@
 ## 已接入的界面与条件
 
 - [Nommo 1303/1304](nommo-effects-native.md)：灯光页右列快速/高级效果、六种灯效
-  参数、颜色弹层、方向切换及对应过渡。Studio 的真正目标仍未实现，按钮保持不可用，
-  不把 Chroma Dashboard 误作 Studio，也不显示下载/安装门控。
+  参数、颜色弹层、方向切换及对应过渡。后续批次已接通专用 Studio 根，按钮直接
+  打开 Chroma 宿主中的 Studio 子标签，不显示下载/安装门控。
 - [四款相机](camera-presentation-current-audit.md)：首批 58 个分组、45 个折叠区域、
   31 项帮助和 3 项条件警告；修正 3594、3595 的质量控件挂载，补回 3592 PROCESSING
   的分辨率选择。[提示层级](camera-tooltip-layer-current-audit.md)按原始悬停状态在
@@ -81,3 +81,47 @@ source 路径归属其自身产品。没有通过放宽控件种类或允许缺�
 保留相同三项既有Rust警告。嵌入JSON增加到45份、0失败、4项原有跳过。横幅textarea默认
 样式通过当前官方宿主的浏览器版本字符串与匹配的上游UA CSS恢复，不再随意设定其padding。
 上述通过仍不表示应用已运行或全产品复刻已完成。
+
+## 中断后的续接批次
+
+- [独立 Settings](settings-window-implementation.md)：托盘四个设置命令打开或聚焦
+  `/settings/` 对应窗口，首次选择 Software，重入保留页签；源中不存在旧的
+  `settingsScrollToSection` 监听，不强制跳转 Notifications。语言与本地设置同步。
+- [Studio 独立根](chroma-studio-native-root.md)与[宿主接线](chroma-studio-shell-integration.md)：
+  接入专用画布、图层和工具入口、本地历史与草稿保存。其与 Chroma Dashboard
+  保持各自页面身份；原始设备集合为空，不以产品目录填造连接状态。
+- [OLED runtime 复核](audio-oled-runtime-current-audit.md)：修正重复语言观察清除暂存值、
+  profile restore 和页面重入的状态一致性，保留源码挂载条件和真实观察边界。
+- [托盘提示与空态交互](tray-account-continuation-2026-10-06.md)：补回设置提示的
+  延迟/淡入淡出、失焦关闭和文本按钮过渡，处理此前丢弃的访客命令。
+
+上述记录只覆盖本批可由当前源码证明的实现；Studio 属性编辑器、设备/LED 服务、
+Settings 宿主目录、托盘实际账户/通知与其余产品的未完成项仍保留在各审计中。
+
+Studio 窗口归属经当前宿主 `PC.init` / `MC.handleOpen` 重新取证：它是 Chroma
+父窗口中的 policy-3 子标签，父窗口为 1280×720、最小 600×500。没有把它当作
+另一独立系统窗口。Settings 的最小尺寸也已从当前 constants.js 的
+`WINDOW_SIZE_DEFAULTS` 追溯为 600×500，只有托盘齿轮首次启动覆盖为 1000×768。
+
+最终格式检查与 `cargo check --locked --all-targets` 通过，保留原有三项未使用
+方法警告。49 份嵌入 JSON 为 0 失败、4 项原有结构推断跳过；统一资源校验通过
+1257 项共享资源、35 项服务 SVG、176 项 OLED 素材、49 项新增根/宿主 SVG 和
+1 项 OLED runtime 图标，并继续核验产品图与 1901 个键盘输入形状。
+Settings、Studio、托盘和 OLED 的当前源码提取/只读检查通过。没有执行应用、
+构建、测试、安装器、厂商 JavaScript 或 DLL；不以编译通过代替像素/运行时验收。
+
+
+## 属性编辑、只读路线与文档清理批次
+
+- Studio 接入 Ambient 区域预设、模糊度、原始滑条及 Static HSV 调色器，保留工具切换和临时 effectLayer.params 语义。临时属性修改不冒充区域应用或设备保存；原生区域选择与取色仍需服务证据。
+- 颜色编辑补齐源 HEX 展开、RGB 数字过滤与上下键、失焦及 Enter/Escape 提交、自定义颜色删除和禁用边界。自定义颜色仅会话保存；HEX 显示大小写仍有源 CSS 差异。
+- 图层补齐命名、复制、删除、效果切换及选择恢复；嵌套分组和拖排尚未完成，效果切换菜单形式仍有差异。图层收据为 14 条。
+- 独立 Settings 补齐社交图标遮罩、过渡和提示尺寸时序。保持当前宿主窗口策略。
+- 新增 [DLL 只读盘点](dll-readonly-inventory.md) 与 [实施路线](ui-readonly-first-roadmap.md)。UI 编辑、增删、应用、保存和本地草稿现在实现；DLL 查询读取现在核实，只有 DLL 修改状态、写回和保存后置。当前官方封装的静态证据仍不等于实际安装 DLL 的 ABI 或读取结果已验证。
+- [文档清理](documentation-cleanup-2026-10-06.md)删除 5 份过期总览，重写当前入口，纠正失效引用和历史注释，清除损坏文字并保留独有页面证据。
+
+本批 cargo fmt 和 cargo check --locked --all-targets 通过，保留原有 3 项未使用方法警告。
+Studio 根、属性、颜色、图层和 Settings 当前源码检查通过；属性收据 36 条、13 个效果根、16 份 CSS，缺失为 0。
+嵌入 JSON 为 49 份、0 失败、4 项原有跳过。资源检查为 1257 项共享资源、35 项服务 SVG、176 项 OLED 素材、63 项独立根 SVG、1 项 OLED runtime 图标；并检查 133 项 Webpack 请求、74 个产品变体、59 个 Dashboard 变体和 1901 个键盘输入形状。
+
+未运行应用、构建、测试、安装器、下载的 JavaScript 或 DLL。上述结果不代表视觉或真实设备验收；Ambient/Static 之外的 11 个 Studio 属性根仍待接入，全产品完整复刻仍未完成。

@@ -445,7 +445,7 @@ v = <div className="titleRow"><div className="title"><Text/>{H}{A}</div><div>{O}
   `_ if !supports_page(...)` 描述符守卫放在实现分支之前，而 3858/3880 的
   Gaming/Color/Display 与 3893/3900/3907 的 Performance、3921 的 Customize 都没有生成
   描述符表（描述符只覆盖 Lighting），因此这些**已实现页面全部被守卫挡在一个乱码占位
-  （`"?????????????"`）之后**。现已改为实现分支优先、守卫只兜底没有描述符且没有渲染器的页，
+  （旧提示文字已损坏，不作还原）之后**。现已改为实现分支优先、守卫只兜底没有描述符且没有渲染器的页，
   并删掉该乱码字符串（另一处同样的乱码在 `shell.rs` 的深链失败提示里，已换成明确中文）。
   机检 `python tools/audit-page-coverage.py` 会报「实现分支出现在描述符守卫之后」的错误，
   该检查自带 `--self-test` 的四个合成用例（其中「守卫在前」的用例必须被报出来），

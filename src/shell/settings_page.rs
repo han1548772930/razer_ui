@@ -57,6 +57,30 @@ pub(super) struct SettingsPage {
 }
 impl EventEmitter<SettingsEvent> for SettingsPage {}
 impl SettingsPage {
+    /// Shared locale owner for the independent current `/settings/` window.
+    pub(super) fn set_language(
+        &mut self,
+        language: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((code, _)) = LANGUAGES
+            .iter()
+            .find(|(code, _)| code.eq_ignore_ascii_case(language))
+        else {
+            return;
+        };
+        if self.values.language.eq_ignore_ascii_case(code) {
+            return;
+        }
+        self.values.language = (*code).into();
+        self.language.update(cx, |state, cx| {
+            state.set_selected_value(&self.values.language, window, cx)
+        });
+        i18n::set_locale(code);
+        cx.emit(SettingsEvent::Language);
+        self.changed(cx);
+    }
     pub(super) fn new(
         mut values: AppPreferences,
         runtime: Entity<super::runtime_page::RuntimePanel>,

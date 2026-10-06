@@ -26,6 +26,8 @@ pub enum WorkspaceEvent {
     /// Navigation request for the locally implemented Chroma app window.
     /// This does not assert external Chroma installation or service state.
     OpenChroma,
+    /// Open the independent Studio editor, not Chroma Dashboard.
+    OpenStudio,
     PairingRequested(crate::model::Device),
     /// 164/241 配对页：源 `Es(peer, devices)` 命中应用设备列表时，配对文案里的设备名
     /// 渲染成 `.deviceNameLink` 可点链接，点击切到该设备的工作区（`z(e)`）。

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">
+  <g id="checkered_bg" transform="translate(3008 1229)">
+    <rect id="Rectangle_4356" data-name="Rectangle 4356" width="4" height="4" transform="translate(-3008 -1229)" fill="#dedede"/>
+    <rect id="Rectangle_4357" data-name="Rectangle 4357" width="4" height="4" transform="translate(-3004 -1225)" fill="#dedede"/>
+    <rect id="Rectangle_4358" data-name="Rectangle 4358" width="4" height="4" transform="translate(-3004 -1229)" fill="#fff"/>
+    <rect id="Rectangle_4359" data-name="Rectangle 4359" width="4" height="4" transform="translate(-3008 -1225)" fill="#fff"/>
+  </g>
+</svg>

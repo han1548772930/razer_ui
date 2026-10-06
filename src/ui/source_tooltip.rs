@@ -25,6 +25,8 @@ pub(crate) enum SourceTooltipKind {
     Battery,
     /// Alexa sE -> oE: bottom-left portal, 100ms mount delay and 100ms fade.
     Alexa,
+    /// Current Studio 2925 → 7155: same delayed portal, final main.css padding.
+    Studio,
     /// Profiles `.main-nav li:hover .tooltip`: immediate, +15/+30, max-content.
     ProfilesNav,
     /// `.widget .help + .tip` / `.body-widget-tip-portal`: 14px/18px,
@@ -86,7 +88,9 @@ impl SourceTooltip {
     }
 
     fn draw_priority(&self, hovered: bool) -> usize {
-        let default = if matches!(
+        let default = if self.kind == SourceTooltipKind::Studio {
+            1060
+        } else if matches!(
             self.kind,
             SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal
         ) {
@@ -116,7 +120,11 @@ impl RenderOnce for SourceTooltip {
         let kind = self.kind;
         let state =
             window.use_keyed_state((self.id.clone(), "tip-hover"), cx, move |window, cx| {
-                let activation = (kind == SourceTooltipKind::Alexa).then(|| {
+                let activation = matches!(
+                    kind,
+                    SourceTooltipKind::Alexa | SourceTooltipKind::Studio
+                )
+                .then(|| {
                     cx.observe_window_activation(window, |state: &mut HoverState, window, cx| {
                         if !window.is_window_active() {
                             state.trigger = false;
@@ -149,7 +157,9 @@ impl RenderOnce for SourceTooltip {
                         0
                     } else if matches!(
                         self.kind,
-                        SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+                        SourceTooltipKind::Battery
+                            | SourceTooltipKind::Alexa
+                            | SourceTooltipKind::Studio
                     ) {
                         100
                     } else {
@@ -158,7 +168,11 @@ impl RenderOnce for SourceTooltip {
                 ))
                 .easing(Easing::Linear)
                 .delay(Duration::from_millis(
-                    if self.kind == SourceTooltipKind::Alexa && hovered {
+                    if matches!(
+                        self.kind,
+                        SourceTooltipKind::Alexa | SourceTooltipKind::Studio
+                    ) && hovered
+                    {
                         100
                     } else {
                         0
@@ -173,7 +187,10 @@ impl RenderOnce for SourceTooltip {
                 .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))
                 .sample(window, cx)
                 .should_render()
-        } else if self.kind == SourceTooltipKind::Alexa {
+        } else if matches!(
+            self.kind,
+            SourceTooltipKind::Alexa | SourceTooltipKind::Studio
+        ) {
             presence.should_render()
         } else {
             hovered
@@ -370,7 +387,7 @@ impl Element for TipOverlay {
         .when(
             matches!(
                 self.kind,
-                SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+                SourceTooltipKind::Battery | SourceTooltipKind::Alexa | SourceTooltipKind::Studio
             ),
             |tip| tip.w_auto().max_w(source_size.width),
         )
@@ -402,7 +419,9 @@ impl Element for TipOverlay {
             .when(
                 matches!(
                     self.kind,
-                    SourceTooltipKind::Battery | SourceTooltipKind::Alexa
+                    SourceTooltipKind::Battery
+                        | SourceTooltipKind::Alexa
+                        | SourceTooltipKind::Studio
                 ),
                 |view| view.w(width).flex().justify_end(),
             )
@@ -459,7 +478,7 @@ impl Element for TipOverlay {
                     );
                 point(left, trigger.bottom() + window.rem_size() * (5. / 16.))
             }
-            SourceTooltipKind::Alexa => point(
+            SourceTooltipKind::Alexa | SourceTooltipKind::Studio => point(
                 trigger.right() - layout.source_size.width,
                 trigger.bottom() + window.rem_size() * (5. / 16.),
             ),

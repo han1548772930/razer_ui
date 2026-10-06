@@ -1,6 +1,17 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Current independent Settings `.installed-software .action`.
+pub(crate) struct SettingsWindowColors;
+impl SettingsWindowColors {
+    pub(crate) fn navigation_border() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn installed_action() -> Hsla {
+        rgb(0x707070).into()
+    }
+}
+
 /// Current Feedback application's mounted form and privacy-overlay CSS.
 pub(crate) struct FeedbackColors;
 impl FeedbackColors {
@@ -778,6 +789,9 @@ impl AetherStripColors {
 /// of the Windows-native right-click menu's system appearance.
 pub(crate) struct TrayColors;
 impl TrayColors {
+    pub(crate) fn tooltip_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
     pub(crate) fn selected_text() -> Hsla {
         rgb(0xffffff).into()
     }

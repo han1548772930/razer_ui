@@ -30,7 +30,7 @@ mod tests;
 mod drag;
 
 #[path = "host_window.rs"]
-mod host_window;
+pub(super) mod host_window;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum HostTab {
@@ -829,7 +829,7 @@ impl AppShell {
     }
 }
 
-fn tab_width(label: &str, window: &Window) -> f32 {
+pub(super) fn tab_width(label: &str, window: &Window) -> f32 {
     let mut font = window.text_style().font();
     font.weight = FontWeight::LIGHT;
     let width = window
@@ -874,7 +874,7 @@ fn scroll_tabs(scroll: &ScrollHandle, event: &ScrollWheelEvent, window: &mut Win
     window.refresh();
 }
 
-fn titlebar_frame(dragging_tab: bool) -> Stateful<Div> {
+pub(super) fn titlebar_frame(dragging_tab: bool) -> Stateful<Div> {
     // Electron `.etabs-tabs` and the wrapper's ::after are native drag areas.
     // Include all empty space and the strip above the tabs. Interactive children
     // occlude this hitbox; stopping event bubbling alone does not affect Win32's
@@ -890,7 +890,7 @@ fn titlebar_frame(dragging_tab: bool) -> Stateful<Div> {
         })
 }
 
-fn tab_frame(id: SharedString, active: bool) -> Stateful<Div> {
+pub(super) fn tab_frame(id: SharedString, active: bool) -> Stateful<Div> {
     div()
         .id(SharedString::from(format!("{id}-frame")))
         .group(id)
@@ -913,7 +913,7 @@ fn tab_frame(id: SharedString, active: bool) -> Stateful<Div> {
         })
 }
 
-fn maximize_button(maximized: bool) -> Button {
+pub(super) fn maximize_button(maximized: bool) -> Button {
     window_button(
         "window-maximize",
         if maximized {
@@ -929,7 +929,7 @@ fn maximize_button(maximized: bool) -> Button {
     )
 }
 
-fn window_button(id: &'static str, asset: &'static str, label: &'static str) -> Button {
+pub(super) fn window_button(id: &'static str, asset: &'static str, label: &'static str) -> Button {
     // Electron index.css centers each background at its intrinsic size. Only
     // minimize/maximize include a 48x32 canvas; close/restore are tight glyphs.
     let (width, height) = match asset {

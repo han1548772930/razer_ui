@@ -16,11 +16,11 @@ function declared(suffix) {
 }
 const js = declared('554.2573b048.chunk.js'), css = declared('554.7cdbd936.chunk.css');
 const source = read(js), styles = read(css), ast = acorn.parse(source, {ecmaVersion:'latest'});
-const wanted = new Set(['oe','se','he','Oe','_e','Re','ce','be','W','F']);
+const wanted = new Set(['oe','se','he','Oe','_e','Re','ce','be','W','F','de','ye']);
 const nodes = [];
 function walk(n) {
   if (!n?.type) return;
-  if (['VariableDeclarator','FunctionDeclaration'].includes(n.type) && wanted.has(n.id?.name)
+  if (['VariableDeclarator','FunctionDeclaration','ClassDeclaration'].includes(n.type) && wanted.has(n.id?.name)
       && (n.id.name !== 'W' || source.slice(n.start,n.end).includes('hasItems:!1'))
       && (n.id.name !== 'F' || source.slice(n.start,n.end).includes('case N.OC:')))
     nodes.push({symbol:n.id.name, start:n.start, end:n.end, source:source.slice(n.start,n.end)});
@@ -41,7 +41,7 @@ for(const key of ['xmlns','width','height','viewBox','d','transform'])if(!attrs.
 const esc = s => String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
 const svg = `<svg xmlns="${esc(attrs.get('xmlns'))}" width="${esc(attrs.get('width'))}" height="${esc(attrs.get('height'))}" viewBox="${esc(attrs.get('viewBox'))}"><path d="${esc(attrs.get('d'))}" transform="${esc(attrs.get('transform'))}"/></svg>\n`;
 write('assets/synapse/tray-settings-current.svg',svg);
-const rules = styles.split('}').filter(r=>/\.systray>\.header|\.navbar|\.notifications|\.btn-text|\.spinner-razer|^\.btn/.test(r)).map(r=>r+'}');
+const rules = styles.split('}').filter(r=>/\.systray>\.(?:header|body)|\.app-section-title|\.tooltip-razer|\.navbar|\.notifications|\.btn-text|\.spinner-razer|^\.btn/.test(r)).map(r=>r+'}');
 for(const fact of ['padding:9px 20px 8px','opacity:0','transition:opacity .1s ease-out','height:31px'])if(!rules.some(r=>r.includes(fact)))throw Error('Changed CSS '+fact);
 const main = declared('main.9579c403.js'), mainSource=read(main), geometry=[];
 function findGeometry(n){if(!n?.type)return;if(n.type==='FunctionDeclaration'&&n.id.name==='c'&&mainSource.slice(n.start,n.end).includes('dpiScaleY'))geometry.push({start:n.start,end:n.end,source:mainSource.slice(n.start,n.end)});for(const v of Object.values(n))if(Array.isArray(v))v.forEach(findGeometry);else if(v?.type)findGeometry(v);}
@@ -49,4 +49,4 @@ findGeometry(acorn.parse(mainSource,{ecmaVersion:'latest'}));
 if(geometry.length!==1)throw Error('Missing geometry');
 const report = {schema:1, manifest:{path:base+'/asset-manifest.json',sha256:hash(read(base+'/asset-manifest.json'))},js:{path:js,sha256:hash(source)},css:{path:css,sha256:hash(styles)},nodes,rules,geometry:{path:main,sha256:hash(mainSource),...geometry[0]},gear:{path:'assets/synapse/tray-settings-current.svg',sha256:hash(svg)},scope:'Account header, navigation and unloaded/empty notification branch. Populated notifications, widgets, real account transport and dynamic placement remain incomplete.'};
 write('docs/re/tray-account-current-evidence.json',JSON.stringify(report,null,2)+'\n');
-console.log('Current tray: 10 AST slices, CSS, gear and placement source validated.');
+console.log('Current tray: 12 AST slices, CSS, gear and placement source validated.');

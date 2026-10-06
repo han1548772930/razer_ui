@@ -92,7 +92,9 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_oled_runtime(observation, window, cx));
+            body.update(cx, |body, cx| {
+                body.observe_oled_runtime(observation, window, cx)
+            });
         }
     }
     pub(crate) fn new(
@@ -109,6 +111,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
+                    WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
@@ -135,6 +138,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
+                    WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
@@ -148,10 +152,10 @@ impl ProductWorkspace {
                 });
                 cx.notify();
             });
-            let oled_subscription = cx.subscribe(
-                &entity,
-                |_, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
-            );
+            let oled_subscription = cx
+                .subscribe(&entity, |_, _, event: &super::OledRuntimeRequested, cx| {
+                    cx.emit(event.clone())
+                });
             Self {
                 body: Body::Source(entity),
                 _subscription: subscription,

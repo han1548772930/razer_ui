@@ -134,6 +134,9 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // Bv's counter effect reads the rendered selection before its raw-value
+        // synchronization effects run for the incoming observation.
+        let selected_language = self.oled_language_values().2;
         let Some(home) = self.oled_home.as_mut() else {
             return;
         };
@@ -175,15 +178,21 @@ impl AudioProductWorkspace {
             }
             OledRuntimeObservation::Language { value, changed } => {
                 let old_changed = state.language.changed;
+                let old_value = state.language.value;
                 state.language = Language { value, changed };
                 self.draft["device"]["oledLanguage"] = json!(value);
-                self.staged.remove("/device/oledLanguage");
+                // Bv synchronizes local i only when raw t changes, not on
+                // every MW update of the independent changed counter.
+                if value != old_value {
+                    self.staged.remove("/device/oledLanguage");
+                }
                 // Bv's mounted effect runs only for changed > 1 and selected=6.
                 if changed != old_changed
                     && changed > 1
+                    && self.page == "TAB_OLED"
                     && self.draft["oledHome"]["home"]["selected"] == 6
                 {
-                    let language = decode_language(value);
+                    let language = selected_language;
                     let info = self.draft["oledHome"]["system"]["info"].clone();
                     if let Some(slides) = self.draft["oledHome"]["system"]["slides"].as_array_mut()
                     {
@@ -253,6 +262,8 @@ impl AudioProductWorkspace {
         if self.oled_home.is_none() {
             return;
         }
+        // Language belongs to the device reducer, outside profile snapshots.
+        self.draft["device"]["oledLanguage"] = json!(self.oled_language_values().0);
         let value = self.oled_language_values().2.to_string();
         let syncing = self.syncing;
         self.syncing = true;

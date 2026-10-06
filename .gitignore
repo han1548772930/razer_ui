@@ -203,3 +203,17 @@
 !/tools/extract-current-browser-ua.py
 !/tools/prepare-tray-account.cjs
 !/tools/prepare-tray-account-assets.py
+!/tools/audit-tray-account.cjs
+!/tools/prepare-settings-window.cjs
+!/tools/prepare-settings-window-assets.py
+!/tools/extract-audio-oled-runtime.cjs
+!/tools/validate-audio-oled-runtime.py
+!/tools/audit-chroma-studio.cjs
+!/tools/prepare-chroma-studio-assets.py
+!/tools/prepare-chroma-studio.cjs
+!/tools/validate-chroma-studio.py
+!/tools/audit-chroma-studio-window.py
+!/tools/prepare-chroma-studio-properties.cjs
+!/tools/prepare-chroma-studio-color.cjs
+!/tools/prepare-chroma-studio-layers.cjs
+!/tools/validate-chroma-studio-layers.py

@@ -197,7 +197,7 @@ manifest 的 background_color=#ffffff 是 PWA 元信息，不代表应用内白�
 
 资源显示按实际用途区分：Dashboard 走专用产品卡资源，Customize 与设备设置页根据设备产品、edition、layout 动态选择其产品图；缺少一种 Dashboard 图不会用 Customize 的 `prd` 图充当同一资源。未连接的服务不显示安装或连接成功。
 
-全部 **14 个普通页面实例**，以及 HELP、独立 Pairing、Profile/板载/关联游戏、抽屉、映射编辑与教程的覆盖记录见[全部页面与附属界面](../re/07-page-coverage.md)。后续验证继续覆盖动态设备增减/去重、卡片目标、安装/升级/失败、分组排序/缩放、快捷键捕获和失焦、草稿保护及资源缺失状态。
+全部 **14 个普通页面实例**，以及 HELP、独立 Pairing、Profile/板载/关联游戏、抽屉、映射编辑与教程属于本页历史范围；当前主导航统计见[产品覆盖](../re/native-product-coverage.md)。后续验证继续覆盖动态设备增减/去重、卡片目标、安装/升级/失败、分组排序/缩放、快捷键捕获和失焦、草稿保护及资源缺失状态。
 
 当前保留[快捷键交互](../../src/features/shortcuts_tests.rs)与[引擎编码](../../src/features/shortcut_engine_tests.rs)回归源码。本轮只做 `cargo check`；未运行测试、应用、DLL 或原生注册，也未启动快捷键目标程序。
 

@@ -44782,6 +44782,1576 @@
           "important": false
         }
       ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 0,
+      "selector": ".custom-reactive .input-group>.colors",
+      "conditions": [],
+      "declarations": "margin-right:10px",
+      "properties": [
+        {
+          "property": "margin-right",
+          "value": "10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 56,
+      "selector": ".color-selector>.dropdown-razer-2",
+      "conditions": [],
+      "declarations": "min-width:auto;width:230px",
+      "properties": [
+        {
+          "property": "min-width",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "230px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 117,
+      "selector": ".color-selector .color-picker,.color-selector.gradient-selector .gradient-picker",
+      "conditions": [],
+      "declarations": "padding:10px",
+      "properties": [
+        {
+          "property": "padding",
+          "value": "10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 211,
+      "selector": ".color-selector.gradient-selector .color-picker",
+      "conditions": [],
+      "declarations": "padding:0",
+      "properties": [
+        {
+          "property": "padding",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 269,
+      "selector": ".color-selector .color-picker>.input-group>.input-container:first-child",
+      "conditions": [],
+      "declarations": "width:65px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "65px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 352,
+      "selector": ".color-selector .color-picker>.input-group>.input-container",
+      "conditions": [],
+      "declarations": "width:40px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "40px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 423,
+      "selector": ".color-selector .color-picker>.presets",
+      "conditions": [],
+      "declarations": "grid-template-columns:repeat(8,1fr);margin:-3.5px -5px",
+      "properties": [
+        {
+          "property": "grid-template-columns",
+          "value": "repeat(8,1fr)",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "-3.5px -5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 517,
+      "selector": ".color-selector .color-picker>.presets>li",
+      "conditions": [],
+      "declarations": "margin:3.5px",
+      "properties": [
+        {
+          "property": "margin",
+          "value": "3.5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 572,
+      "selector": ".color-picker",
+      "conditions": [],
+      "declarations": "position:relative",
+      "properties": [
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 604,
+      "selector": ".color-picker.disabled-2",
+      "conditions": [],
+      "declarations": "pointer-events:none",
+      "properties": [
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 649,
+      "selector": ".color-picker>.box",
+      "conditions": [],
+      "declarations": "border:1px solid #5d5d5d;height:138px;margin-bottom:10px;overflow:hidden;position:relative",
+      "properties": [
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "138px",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 759,
+      "selector": ".color-picker>.box>.btn-drag",
+      "conditions": [],
+      "declarations": "background-color:#1235fb;border:2px solid #fff;border-radius:50%;box-shadow:0 0 2px 0 #000;height:14px;left:-14px;pointer-events:none;position:absolute;top:-14px;width:14px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#1235fb",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "2px solid #fff",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "box-shadow",
+          "value": "0 0 2px 0 #000",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-14px",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "-14px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "14px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 961,
+      "selector": ".color-picker>.tools",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;margin-bottom:22px",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "22px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1033,
+      "selector": ".color-picker>.tools>.current",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/checkered.8a71b98b.svg);border:1px solid #fff;height:24px;margin-right:11px;width:24px",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/checkered.8a71b98b.svg)",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #fff",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "24px",
+          "important": false
+        },
+        {
+          "property": "margin-right",
+          "value": "11px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "24px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1190,
+      "selector": ".color-picker.mixed-values>.tools>.current",
+      "conditions": [],
+      "declarations": "background-color:#000;background-image:url(../../static/media/question-mark-gray.66a8aa01.svg);background-position:50%;background-repeat:no-repeat;background-size:6px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/question-mark-gray.66a8aa01.svg)",
+          "important": false
+        },
+        {
+          "property": "background-position",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "background-repeat",
+          "value": "no-repeat",
+          "important": false
+        },
+        {
+          "property": "background-size",
+          "value": "6px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1400,
+      "selector": ".color-picker>.tools>.slider-brightness",
+      "conditions": [],
+      "declarations": "flex:1 1;margin-bottom:0",
+      "properties": [
+        {
+          "property": "flex",
+          "value": "1 1",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1465,
+      "selector": ".color-picker>.tools>.slider-brightness input",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/checkered.8a71b98b.svg);border:none;border-radius:3px;height:16px;margin:0",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/checkered.8a71b98b.svg)",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1626,
+      "selector": ".color-picker>.tools>.slider-brightness input:before",
+      "conditions": [],
+      "declarations": "border:1px solid #0000004d;border-radius:3px;bottom:0;content:\"\";left:0;pointer-events:none;position:absolute;right:0;top:0",
+      "properties": [
+        {
+          "property": "border",
+          "value": "1px solid #0000004d",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\"\"",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1803,
+      "selector": ".color-picker>.tools>.slider-brightness .thumb",
+      "conditions": [],
+      "declarations": "background-color:initial;border:1px solid #fff;border-radius:0;height:16px;outline:1px solid #000;width:6px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "initial",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #fff",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "outline",
+          "value": "1px solid #000",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "6px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 1958,
+      "selector": ".color-picker>.tools>.slider-brightness .thumb:before",
+      "conditions": [],
+      "declarations": "border-left:4px solid #0000;border-right:4px solid #0000;border-top:4px solid #fff;bottom:100%;content:\"\";left:-2px;margin-bottom:2px;position:absolute",
+      "properties": [
+        {
+          "property": "border-left",
+          "value": "4px solid #0000",
+          "important": false
+        },
+        {
+          "property": "border-right",
+          "value": "4px solid #0000",
+          "important": false
+        },
+        {
+          "property": "border-top",
+          "value": "4px solid #fff",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "\"\"",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "-2px",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "2px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2164,
+      "selector": ".color-picker>.tools>.btn-eyedropper",
+      "conditions": [],
+      "declarations": "margin-left:13px",
+      "properties": [
+        {
+          "property": "margin-left",
+          "value": "13px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2218,
+      "selector": ".color-picker>.input-group",
+      "conditions": [],
+      "declarations": "display:flex;justify-content:space-between",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-between",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2288,
+      "selector": ".color-picker>.input-group>.input-container",
+      "conditions": [],
+      "declarations": "margin-bottom:0;margin-right:5px;width:46px",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "margin-right",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "46px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2376,
+      "selector": ".color-picker>.input-group>.input-container:first-child",
+      "conditions": [],
+      "declarations": "width:77px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "77px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2443,
+      "selector": ".color-picker>.input-group>.input-container:first-child>.form-control",
+      "conditions": [],
+      "declarations": "padding-left:0;padding-right:0;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "padding-left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "padding-right",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2569,
+      "selector": ".color-picker>.input-group>.input-container:last-child",
+      "conditions": [],
+      "declarations": "margin-right:0",
+      "properties": [
+        {
+          "property": "margin-right",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2639,
+      "selector": ".color-picker>.input-group .form-control",
+      "conditions": [],
+      "declarations": "text-align:center",
+      "properties": [
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2698,
+      "selector": ".color-picker>.divider",
+      "conditions": [],
+      "declarations": "background-color:#5d5d5d;height:1px;margin:10px 0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#5d5d5d",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "10px 0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2771,
+      "selector": ".color-picker>.presets",
+      "conditions": [],
+      "declarations": "display:grid;grid-template-columns:repeat(8,1fr);margin:-5px",
+      "properties": [
+        {
+          "property": "display",
+          "value": "grid",
+          "important": false
+        },
+        {
+          "property": "grid-template-columns",
+          "value": "repeat(8,1fr)",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "-5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 2855,
+      "selector": ".color-picker>.presets>li",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/checkered.8a71b98b.svg);border-radius:3px;height:20px;margin:5px;overflow:hidden;position:relative;transition:border-color .1s ease-in-out;width:20px",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/checkered.8a71b98b.svg)",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "border-color .1s ease-in-out",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3071,
+      "selector": ".color-picker>.presets>li:last-child",
+      "conditions": [],
+      "declarations": "margin-right:0",
+      "properties": [
+        {
+          "property": "margin-right",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3123,
+      "selector": ".color-picker>.presets>li:before",
+      "conditions": [],
+      "declarations": "content:\"\";height:100%;left:0;opacity:0;position:absolute;top:0;transition:opacity .1s linear;width:100%",
+      "properties": [
+        {
+          "property": "content",
+          "value": "\"\"",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "opacity .1s linear",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3261,
+      "selector": ".color-picker>.presets>.color",
+      "conditions": [],
+      "declarations": "border:1px solid #0000004d",
+      "properties": [
+        {
+          "property": "border",
+          "value": "1px solid #0000004d",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3318,
+      "selector": ".color-picker>.presets>.color:before",
+      "conditions": [],
+      "declarations": "background-color:#000",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3377,
+      "selector": ".color-picker>.presets>.color.active,.color-picker>.presets>.color:active,.color-picker>.presets>.color:active:before,.color-picker>.presets>.color:hover",
+      "conditions": [],
+      "declarations": "border-color:#000;box-shadow:0 0 0 2px #fff",
+      "properties": [
+        {
+          "property": "border-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "box-shadow",
+          "value": "0 0 0 2px #fff",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3575,
+      "selector": ".color-picker>.presets>.color.active:before,.color-picker>.presets>.color:active:before",
+      "conditions": [],
+      "declarations": "opacity:.3",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3674,
+      "selector": ".color-picker>.presets>.btn-add",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/add-gray.762e876e.svg);background-position:50%;background-repeat:no-repeat;background-size:14px;border:1px solid #5d5d5d;height:20px;width:20px",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/add-gray.762e876e.svg)",
+          "important": false
+        },
+        {
+          "property": "background-position",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "background-repeat",
+          "value": "no-repeat",
+          "important": false
+        },
+        {
+          "property": "background-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3890,
+      "selector": ".color-picker>.presets>.btn-add:before",
+      "conditions": [],
+      "declarations": "background-color:#fff",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#fff",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 3951,
+      "selector": ".color-picker>.presets>.btn-add:hover",
+      "conditions": [],
+      "declarations": "border-color:#44d62c",
+      "properties": [
+        {
+          "property": "border-color",
+          "value": "#44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4010,
+      "selector": ".color-picker>.presets>.btn-add:active:before",
+      "conditions": [],
+      "declarations": "opacity:.1",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".1",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4067,
+      "selector": ".color-picker .dropdown-razer-2",
+      "conditions": [],
+      "declarations": "left:0;min-width:90px;top:0",
+      "properties": [
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "90px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4127,
+      "selector": ".slider",
+      "conditions": [],
+      "declarations": "margin-bottom:10px;position:relative;transition:opacity .1s linear",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "opacity .1s linear",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4202,
+      "selector": ".slider.disabled",
+      "conditions": [],
+      "declarations": "opacity:.3;pointer-events:none",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4250,
+      "selector": ".slider>.range",
+      "conditions": [],
+      "declarations": "display:flex;position:relative;width:100%",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4307,
+      "selector": ".slider>.range>.progress",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;border-radius:3px;bottom:0;height:5px;left:0;margin:auto;pointer-events:none;position:absolute;top:1px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "1px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4460,
+      "selector": ".slider>.range>.thumb,.slider>.range>.tip",
+      "conditions": [],
+      "declarations": "pointer-events:none;position:absolute;z-index:1",
+      "properties": [
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "1",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4550,
+      "selector": ".slider>.range>.tip",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;border-radius:3px;bottom:100%;color:#000;font-size:12px;margin-bottom:7px;min-width:32px;opacity:0;padding:4px;text-align:center;transition:opacity .1s linear",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "12px",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "7px",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "32px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "4px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "opacity .1s linear",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4754,
+      "selector": ".slider.dragging>.range>.tip,.slider.thumb-on-hover>.range>.tip",
+      "conditions": [],
+      "declarations": "opacity:1",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4828,
+      "selector": ".slider.dragging>.range>.thumb,.slider.thumb-on-hover>.range>.thumb",
+      "conditions": [],
+      "declarations": "color:#0000",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#0000",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4908,
+      "selector": ".slider.thumb-on-hover>.range>.thumb",
+      "conditions": [],
+      "declarations": "background-color:#5d5d5d",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#5d5d5d",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 4970,
+      "selector": ".slider.dragging>.range>.thumb",
+      "conditions": [],
+      "declarations": "background-color:#404040",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#404040",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5026,
+      "selector": ".slider>.range>.thumb,.slider>.range>input::-webkit-slider-thumb",
+      "conditions": [],
+      "declarations": "border-radius:50%;height:16px;width:16px",
+      "properties": [
+        {
+          "property": "border-radius",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "16px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5132,
+      "selector": ".slider>.range>.thumb",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;border:1px solid #44d62c;color:#111;font-size:12px;line-height:16px;text-align:center;transition:background-color .1s ease-in-out,color .1s linear",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #44d62c",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#111",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "12px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "background-color .1s ease-in-out,color .1s linear",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5326,
+      "selector": ".slider>.range>input",
+      "conditions": [],
+      "declarations": "appearance:none;background:#44d62c4d;border-radius:3px;height:5px;margin:6px 0 5px;outline:none;transition:background-image .2s ease-in-out;width:100%",
+      "properties": [
+        {
+          "property": "appearance",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "background",
+          "value": "#44d62c4d",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "6px 0 5px",
+          "important": false
+        },
+        {
+          "property": "outline",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "background-image .2s ease-in-out",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5498,
+      "selector": ".slider>.range>input::-webkit-slider-thumb",
+      "conditions": [],
+      "declarations": "appearance:none;background:#0000",
+      "properties": [
+        {
+          "property": "appearance",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "background",
+          "value": "#0000",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5574,
+      "selector": ".slider>.labels",
+      "conditions": [],
+      "declarations": "display:flex;justify-content:space-between;margin-top:3px;pointer-events:none",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-between",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5668,
+      "selector": ".duration-preview",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/wave-lg-gray.65f05630.svg);background-repeat:repeat-x;background-size:218px;height:100px;position:relative;width:100%",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/wave-lg-gray.65f05630.svg)",
+          "important": false
+        },
+        {
+          "property": "background-repeat",
+          "value": "repeat-x",
+          "important": false
+        },
+        {
+          "property": "background-size",
+          "value": "218px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5844,
+      "selector": ".duration-preview.moderate",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/wave-md-gray.27aa9f17.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/wave-md-gray.27aa9f17.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 5938,
+      "selector": ".duration-preview.fast",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/wave-sm-gray.28286149.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/wave-sm-gray.28286149.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 6028,
+      "selector": ".duration-preview.moderate.reactive",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/wave-reactive-md-gray.027a9638.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/wave-reactive-md-gray.027a9638.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+      "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+      "offset": 6140,
+      "selector": ".duration-preview.fast.reactive",
+      "conditions": [],
+      "declarations": "background-image:url(../../static/media/wave-reactive-sm-gray.9560ba21.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(../../static/media/wave-reactive-sm-gray.9560ba21.svg)",
+          "important": false
+        }
+      ]
     }
   ],
   "assets": [
@@ -45071,6 +46641,48 @@
       "source": ".ref/applications/synapse/chroma-studio/static/media/icon_stop-1.de578f9a.svg",
       "url": "https://apps.razer.com/synapse/chroma-studio/static/media/icon_stop-1.de578f9a.svg",
       "output": "assets/synapse/chroma-studio-icon-chroma-stop.svg"
+    },
+    {
+      "name": "tooltip_questionmark",
+      "manifest_key": "static/media/tooltip_questionmark.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/tooltip_questionmark.96138d2f.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/tooltip_questionmark.96138d2f.svg",
+      "output": "assets/synapse/chroma-studio-tooltip_questionmark.svg"
+    },
+    {
+      "name": "wave-lg-gray",
+      "manifest_key": "static/media/wave-lg-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/wave-lg-gray.65f05630.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-lg-gray.65f05630.svg",
+      "output": "assets/synapse/chroma-studio-wave-lg-gray.svg"
+    },
+    {
+      "name": "wave-md-gray",
+      "manifest_key": "static/media/wave-md-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/wave-md-gray.27aa9f17.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-md-gray.27aa9f17.svg",
+      "output": "assets/synapse/chroma-studio-wave-md-gray.svg"
+    },
+    {
+      "name": "wave-sm-gray",
+      "manifest_key": "static/media/wave-sm-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/wave-sm-gray.28286149.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-sm-gray.28286149.svg",
+      "output": "assets/synapse/chroma-studio-wave-sm-gray.svg"
+    },
+    {
+      "name": "wave-reactive-md-gray",
+      "manifest_key": "static/media/wave-reactive-md-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/wave-reactive-md-gray.027a9638.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-reactive-md-gray.027a9638.svg",
+      "output": "assets/synapse/chroma-studio-wave-reactive-md-gray.svg"
+    },
+    {
+      "name": "wave-reactive-sm-gray",
+      "manifest_key": "static/media/wave-reactive-sm-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/wave-reactive-sm-gray.9560ba21.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-reactive-sm-gray.9560ba21.svg",
+      "output": "assets/synapse/chroma-studio-wave-reactive-sm-gray.svg"
     }
   ]
 }

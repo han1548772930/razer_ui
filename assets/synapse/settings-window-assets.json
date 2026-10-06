@@ -31,6 +31,87 @@
       "output": "assets/synapse/settings-window-refresh.svg",
       "sha256": "b78569e26ef2eef49e571b1a03089da3345f7722ff12fc127d504357de73c074",
       "source_kind": "downloaded_static_asset"
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-facebook-social-mask.svg",
+      "sha256": "b3237b130e1510baecfbc65ea59cd8febabdc5ecbce755cf45d94e2c3218fefe",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-instagram-social-mask.svg",
+      "sha256": "c7ba9adbab50a5e76cf5784e5c67003aa207725401eb9c33a878e0feb76ccd4a",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-twitter-social-mask.svg",
+      "sha256": "26592c38d5f70aa837ae9e724b9bd82b0e488d25d1a6e16eaf125d4f7b69b1ac",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-youtube-social-mask.svg",
+      "sha256": "8dc909ef1c76e42c8547dbd58340b0ab57b813c00a3316fe29f2f0bd0074f726",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-tiktok-social-mask.svg",
+      "sha256": "2fd3ec6adec78cf97b40c57323661fc2bafdbe16d42ee77ba316a697057c0117",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-twitch-social-mask.svg",
+      "sha256": "4f65f18d750470200dc52ce089ef12eeb979d4c46f9de1ff990c8dc474ae81b8",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-discord-social-mask.svg",
+      "sha256": "e3b1b26238bc9417ceea027fd7533d75d3015f6ed13658ab7eb3c7278420429c",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "social",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-insider-razergreen-mask.svg",
+      "sha256": "3087d0c6017f6523066656a5da4aa72275c915e7d8b961a818aaf024bf3dd551",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "razergreen",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
+    },
+    {
+      "source": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "source_sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "output": "assets/synapse/settings-window-social-insider-grey-mask.svg",
+      "sha256": "61ad58e3bfd31823e369a76669edddff67383d7410c3957c413e04d25b39b152",
+      "source_kind": "current_inline_svg_path_mask",
+      "class": "grey",
+      "transform": "Preserve literal path geometry; split by source class; white alpha mask for native animated source fill."
     }
   ],
   "verified_shared": [

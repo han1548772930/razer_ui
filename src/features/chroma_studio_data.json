@@ -4724,6 +4724,12 @@
     "icon-label-disable": "synapse/chroma-studio-icon-label-disable.svg",
     "icon-chroma-preview": "synapse/chroma-studio-icon-chroma-preview.svg",
     "icon-chroma-slow-preview": "synapse/chroma-studio-icon-chroma-slow-preview.svg",
-    "icon-chroma-stop": "synapse/chroma-studio-icon-chroma-stop.svg"
+    "icon-chroma-stop": "synapse/chroma-studio-icon-chroma-stop.svg",
+    "tooltip_questionmark": "synapse/chroma-studio-tooltip_questionmark.svg",
+    "wave-lg-gray": "synapse/chroma-studio-wave-lg-gray.svg",
+    "wave-md-gray": "synapse/chroma-studio-wave-md-gray.svg",
+    "wave-sm-gray": "synapse/chroma-studio-wave-sm-gray.svg",
+    "wave-reactive-md-gray": "synapse/chroma-studio-wave-reactive-md-gray.svg",
+    "wave-reactive-sm-gray": "synapse/chroma-studio-wave-reactive-sm-gray.svg"
   }
 }

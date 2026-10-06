@@ -2,7 +2,7 @@
 //! GPUI 0.3.7's Windows zoom() only calls SW_MAXIMIZE, so it cannot restore.
 use gpui_kit::Window;
 
-pub(super) fn toggle_maximize(window: &Window) -> anyhow::Result<()> {
+pub(in crate::shell) fn toggle_maximize(window: &Window) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
         use raw_window_handle::RawWindowHandle;

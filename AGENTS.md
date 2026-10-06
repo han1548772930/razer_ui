@@ -8,3 +8,11 @@ The user requires the latest stable Razer Synapse UI, not the historical referen
 - Use maintained static extraction tools in `tools/`. Historical `.ref/tools/` scripts may execute downloaded JavaScript or refer to obsolete sources and must not be used.
 - Older audit documents are historical where marked. Renamed links do not prove that old minified symbols or behavior were re-audited.
 - Do not run the application, builds, tests, installers, downloaded JavaScript, or DLLs. Permitted verification includes `cargo check --locked --all-targets`, formatting, static source parsing, resource preparation and validation.
+
+# Work sequence confirmed on 2026-10-06
+
+- Follow `docs/re/ui-readonly-first-roadmap.md`. Audit and finish missing UI items individually against current source; routes and descriptors alone do not count as completed UI.
+- Include source-verified DLL read/query capabilities and state observation in the current scope. During development, inspect DLL files and wrappers statically only; do not load or execute them for verification.
+- UI editing, add/delete/change actions, Apply/Save flows and local draft persistence remain in scope now. Only the DLL-backed mutation/write-back leg is deferred; do not omit UI operations or replace them with fake device success.
+- Defer changes, device/service write-back and persistence through DLL APIs to a later coordinated integration phase. Do not mix those write operations into the current read-only interface work.
+- Existing local draft persistence is separate from DLL write-back and must be identified as local. Do not fabricate successful device reads, writes or saves.

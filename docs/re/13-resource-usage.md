@@ -122,4 +122,4 @@
 
 另外**57个文件**是：41个Dashboard原AVIF、1个迁移宏原AVIF、2个原SVG（热点与箭头）、4个自有窗口SVG、1个历史Dashboard PNG、4份生成Rust表，以及manifest/product-image-map/dashboard-image-map/pairing-manifest共4份追溯表。它们不是额外的57个界面消费者。自有窗口SVG仍未接入，当前窗口按钮来自Kit。历史Dashboard PNG保留追溯，已不用于生成本轮图像。
 
-来源：[原资源索引](04-resource-index.md)、[页面覆盖](07-page-coverage.md)、[Customize 调用链](../screens/01-customize.md)、[资源 resolver](../../src/resources.rs)、[生成器](../../tools/prepare-resources.py)、[静态消费审计](../../tools/audit-resource-usage.py)。
+来源：[原资源索引](04-resource-index.md)、[页面覆盖](native-product-coverage.md)、[Customize 调用链](../screens/01-customize.md)、[资源 resolver](../../src/resources.rs)、[生成器](../../tools/prepare-resources.py)、[静态消费审计](../../tools/audit-resource-usage.py)。

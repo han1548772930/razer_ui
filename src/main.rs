@@ -1,6 +1,6 @@
 //! 雷云 4 的 Rust 原生替代 UI。
 //!
-//! 原版 UI 规格见 `docs/RAZER-SYNAPSE-UI-SPEC.md`，IPC 契约见 `docs/re/01-ipc-api-surface.md`。
+//! 当前 UI 文档入口见 `docs/README.md`，DLL 查询审计见 `docs/re/dll-readonly-inventory.md`。
 //!
 //! 架构现状（方案 2 的起点）：
 //!   UI（gpui-kit）→ 本地配置；DLL 探测/调用仍由显式命令行路径触发。
@@ -430,7 +430,7 @@ fn main() {
             // 圆角：雷云是**两级**，正好对上主题的命名档位。
             //   .thx-btn { border-radius:3px }  → radius    → tokens.md（控件）
             //   .widget  { border-radius:5px }  → radius_lg → tokens.lg（卡片）
-            // 见 docs/RAZER-SYNAPSE-UI-SPEC.md §3、§5。
+            // 早期公共基线；当前产品特有 CSS 应由对应页面覆盖。
             theme.radius = px(3.);
             theme.radius_lg = px(5.);
         });

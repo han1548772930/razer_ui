@@ -39,7 +39,7 @@ Rust 产品入口已包含 **182、653、777** 及 **3072、3073、3074、3076�
 
 本地另有 `.ref/background-manager/assets/index-8d39b3d5.js` 单个 bundle、`.ref/release-patch-note` 的入口及 main JS/CSS，以及解包的 `.ref/host-4.0.827` 宿主代码。这些资料各自提供服务、窗口入口或界面证据，不能计作更多已完整取得的产品 UI。Settings 清单使用 `/synapse/settings/` 绝对 URL 前缀，核对本地文件时已去除该前缀。
 
-上表保留最初三款产品及独立应用资料；新增七款鼠标垫见[逐页规格](../screens/17-mouse-mat-lighting.md)，其余 321 个产品的 JS/CSS 取得情况见最新目录。原宿主还声明 Chroma、Streamer Companion、THX Spatial Audio、Virtual Ring Light、Cortex、7.1 Surround Sound、Razer Settings 等独立应用路由，详见[子应用与路由](01-ipc-api-surface.md#18-razer-sub-applications-and-routes)。已知启动入口不等于已取得目标应用的完整渲染源码。头像菜单 `/rz-user-profile-menu/` 的入口与清单所列 JS/CSS 已取得；账户会话与反馈宿主仍未接入。
+上表保留最初三款产品及独立应用资料；新增七款鼠标垫见[逐页规格](../screens/17-mouse-mat-lighting.md)，其余 321 个产品的 JS/CSS 取得情况见最新目录。原宿主还声明 Chroma、Streamer Companion、THX Spatial Audio、Virtual Ring Light、Cortex、7.1 Surround Sound、Razer Settings 等独立应用路由，详见[独立应用目录](17-application-catalog.md)。已知启动入口不等于已取得目标应用的完整渲染源码。头像菜单 `/rz-user-profile-menu/` 的入口与清单所列 JS/CSS 已取得；账户会话与反馈宿主仍未接入。
 
 ## 已取得源码的入口复核
 

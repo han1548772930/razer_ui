@@ -2,13 +2,9 @@
 //!
 //! # 证据等级说明
 //!
-//! 这些设置**由设备模块在运行时下发**（`products/{id}/ui/{productId}_{edition}/`），
-//! 本地快照里只有基础字段（DPI 范围、dkmKeys、电量等）。
-//! 因此本文件的默认值属于 `docs/RAZER-SYNAPSE-UI-SPEC.md` 证据分级里的 **[推断]**：
-//! 依据雷云公开的产品行为与实测字段命名设定，接上设备模块后应以模块下发值为准。
-//!
-//! 已经 **[实测]** 的部分：`dpiStages` 结构、`minDPI/maxDPI/dpiStep`、
-//! `dkmKeys`、`powerStatus`、`hasBattery`。
+//! 本文件保留早期模型和默认值，其中包含当时的推断，尚未全部按当前产品源码复核。
+//! 当前产品实现应逐项使用自身源码与真实读取状态，不能把这些默认值当作设备读数。
+//! 当前来源与待核实项见 `docs/README.md`、`docs/re/dll-readonly-inventory.md`。
 // 该模块的 API 面是**故意完整**的：逐条对应逆向雷云得到的功能层/模型定义，
 // 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
@@ -771,10 +767,8 @@ pub const KEYBOARD_LAYOUTS: [(&str, &str); 4] = [
 
 /// Chroma 灯光效果。
 ///
-/// ⚠️ 效果名清单属于 **[推断]**：真正的效果名定义在远程前端里，
-/// 本机无法访问 `apps.razer.com`（见 `docs/RAZER-SYNAPSE-UI-SPEC.md` §11）。
-/// 这里列出的是雷云公开的效果集合，日志中实测出现过 `static`（213 次）
-/// 与 `Reactive`（60 次）。
+/// 早期通用效果集合，尚未逐产品复核；不能用它推断当前设备支持哪些效果。
+/// 当前产品效果与参数应以各自已获取的官方源码为准。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightingEffect {
     Off,
@@ -1223,7 +1217,7 @@ impl Default for Pairing {
 //   `.widget-prod img.audio-left, .widget-prod img.audio-right
 //    { left:auto; position:static; top:auto }`
 // 即**产品图片**的类名。真正的分栏是 `.widget-col { width:600px }`。
-// 见 docs/RAZER-SYNAPSE-UI-SPEC.md §3、§5。
+// 以上为早期样式记录；当前产品需按自身 CSS 复核，见 docs/re/06-style-source-audit.md。
 
 /// 音效增强模式（`AUDIO_ENHANCEMENT_HEADER` = 音效增强）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

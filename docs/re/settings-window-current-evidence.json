@@ -284,6 +284,14 @@
       "source": "case\"razer-settings\":n=`${ze}${R.SETTINGS}/`,i=Rn({app_name:\"Razer_Settings\",width:1280,height:720,minimum_width:M.minimumWidth,minimum_height:M.minimumHeight,policy:5,browser_visible:1,app_icon_path:\"\",window_icon_path:\"\",...t});break;"
     },
     {
+      "name": "host-window-size-defaults",
+      "path": ".ref/host-4.0.827/electron/constants.js",
+      "sha256": "7df3eed519fb81696dae3e7d7ac0773150758dbfbf8bce3cc88a6ca766b3eee6",
+      "offset": 2227,
+      "end": 2337,
+      "source": "module.exports.WINDOW_SIZE_DEFAULTS={width:200,height:300,margin:{x:0,y:0},minimumWidth:600,minimumHeight:500}"
+    },
+    {
       "name": "policy-FAQ",
       "module": 5596,
       "path": ".ref/applications/settings/static/js/main.eda30dd1.js",
@@ -318,6 +326,15 @@
       "offset": 18787,
       "end": 19554,
       "source": "{NODE_ENV:\"production\",PUBLIC_URL:\"/settings\",WDS_SOCKET_HOST:void 0,WDS_SOCKET_PATH:void 0,WDS_SOCKET_PORT:void 0,FAST_REFRESH:!0,EXTERNAL_ASSETS:void 0,BRANCH_VERSION:\"master-m15-beta#41ce32fc559b43e0b0f3eb3863a77670d48494dd#2606221239\",BUILD_TAG:\"master-m15-beta#41ce32fc559b43e0b0f3eb3863a77670d48494dd#2606221239@1782132273933\",IS_OPTIMIZED:!0,REACT_APP_ENVIRONMENT:\"production\",REACT_APP_SHOW_VERSION:\"0\",REACT_APP_SHOW_REDUX:\"0\",REACT_APP_SHOW_LOGS:\"0\",REACT_APP_DEVELOPER_SHORTCUTS_ENABLED:\"0\",REACT_APP_URL_RAZER_GOLD_AND_SILVER:\"https://gold.razer.com/account-summary\",REACT_APP_URL_RAZER_GOLD_AND_SILVER_GUEST:\"https://gold.razer.com\"}.REACT_APP_URL_RAZER_OPEN_SOURCE_SOFTWARE_NOTICES||\"https://support.razer.com/razer-central-open-source-software-notices\""
+    },
+    {
+      "module": 3414,
+      "name": "ye",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 34847,
+      "end": 35633,
+      "source": "{facebook:{translationType:\"FOLLOW_SOCIAL_FACEBOOK\",link:\"https://www.facebook.com/razer\",component:(0,p.jsx)(R,{})},ig:{translationType:\"FOLLOW_SOCIAL_IG\",link:\"https://www.instagram.com/razer\",component:(0,p.jsx)(W,{})},twitter:{translationType:\"FOLLOW_SOCIAL_TWITTER\",link:\"https://www.twitter.com/Razer\",component:(0,p.jsx)(re,{})},youtube:{translationType:\"FOLLOW_SOCIAL_YOUTUBE\",link:\"https://www.youtube.com/Razer\",component:(0,p.jsx)(de,{})},tiktok:{translationType:\"FOLLOW_SOCIAL_TIKTOK\",link:\"https://www.tiktok.com/@razer\",component:(0,p.jsx)(Y,{})},twitch:{translationType:\"FOLLOW_SOCIAL_TWITCH\",link:\"https://www.twitch.tv/razer\",component:(0,p.jsx)(K,{})},discord:{translationType:\"FOLLOW_SOCIAL_DISCORD\",link:\"https://discord.com/invite/razer\",component:(0,p.jsx)(S,{})}}"
     },
     {
       "module": 3414,
@@ -3270,6 +3287,146 @@
         {
           "property": "margin-right",
           "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 70048,
+      "selector": "[tooltip]:before",
+      "conditions": [],
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;content:attr(tooltip);display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;pointer-events:none;position:absolute;right:0;text-align:left;top:calc(100% + 5px);transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:nowrap;width:auto;will-change:visibility,opacity;z-index:100",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "box-sizing",
+          "value": "border-box",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "attr(tooltip)",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "8px 10px",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "calc(100% + 5px)",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "visibility 0s,opacity .3s linear",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "white-space",
+          "value": "nowrap",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "visibility,opacity",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "100",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 70470,
+      "selector": "[tooltip]:hover:before",
+      "conditions": [],
+      "declarations": "opacity:1;visibility:visible",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "visible",
           "important": false
         }
       ]
@@ -6501,6 +6658,26 @@
         {
           "property": "width",
           "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 191133,
+      "selector": ".disabled",
+      "conditions": [],
+      "declarations": "opacity:.3;pointer-events:none",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
           "important": false
         }
       ]

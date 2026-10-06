@@ -9,6 +9,9 @@
       "TEXT_SOFTWARE": "SOFTWARE",
       "TEXT_SYSTRAY_SETTING": "Systray",
       "TEXT_GENERAL_SETTING": "GENERAL",
+      "BACK": "Back",
+      "FORWARD": "Forward",
+      "REFRESH": "Refresh",
       "SETTINGS_HEADER": "SETTINGS",
       "TEXT_INSTALLED": "Installed",
       "TEXT_AUTO_UPDATE_ENABLED": "Auto-updates Enabled",
@@ -45,6 +48,9 @@
       "TEXT_SOFTWARE": "SOFTWARE",
       "TEXT_SYSTRAY_SETTING": "Ajustes de la bandeja del sistema",
       "TEXT_GENERAL_SETTING": "GENERALES",
+      "BACK": "Atrás",
+      "FORWARD": "Avanzar",
+      "REFRESH": "Actualizar",
       "SETTINGS_HEADER": "AJUSTES",
       "TEXT_INSTALLED": "Instalado",
       "TEXT_AUTO_UPDATE_ENABLED": "Actualizaciones automáticas habilitadas",
@@ -81,6 +87,9 @@
       "TEXT_SOFTWARE": "SOFTWARE",
       "TEXT_SYSTRAY_SETTING": "Taskleiste",
       "TEXT_GENERAL_SETTING": "ALLGEMEINE",
+      "BACK": "Zurück",
+      "FORWARD": "Vorwärts",
+      "REFRESH": "Aktualisieren",
       "SETTINGS_HEADER": "EINSTELLUNGEN",
       "TEXT_INSTALLED": "Installiert",
       "TEXT_AUTO_UPDATE_ENABLED": "Auto-Updates aktiviert",
@@ -117,6 +126,9 @@
       "TEXT_SOFTWARE": "LOGICIELS",
       "TEXT_SYSTRAY_SETTING": "Systray (zone de notification)",
       "TEXT_GENERAL_SETTING": "GÉNÉRAUX",
+      "BACK": "Retour",
+      "FORWARD": "Avant",
+      "REFRESH": "Actualiser",
       "SETTINGS_HEADER": "PARAMÈTRES",
       "TEXT_INSTALLED": "Installé",
       "TEXT_AUTO_UPDATE_ENABLED": "Mises à jour automatiques activées",
@@ -153,6 +165,9 @@
       "TEXT_SOFTWARE": "ソフトウェア",
       "TEXT_SYSTRAY_SETTING": "システムトレイ",
       "TEXT_GENERAL_SETTING": "一般",
+      "BACK": "戻る",
+      "FORWARD": "進む",
+      "REFRESH": "更新",
       "SETTINGS_HEADER": "設定",
       "TEXT_INSTALLED": "インストール済み",
       "TEXT_AUTO_UPDATE_ENABLED": "自動更新有効",
@@ -189,6 +204,9 @@
       "TEXT_SOFTWARE": "소프트웨어",
       "TEXT_SYSTRAY_SETTING": "시스템 트레이",
       "TEXT_GENERAL_SETTING": "일반",
+      "BACK": "뒤로",
+      "FORWARD": "앞으로",
+      "REFRESH": "새로 고침",
       "SETTINGS_HEADER": "설정",
       "TEXT_INSTALLED": "설치되었습니다",
       "TEXT_AUTO_UPDATE_ENABLED": "자동 업데이트 활성화됨",
@@ -225,6 +243,9 @@
       "TEXT_SOFTWARE": "ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ",
       "TEXT_SYSTRAY_SETTING": "Настройка области уведомлений",
       "TEXT_GENERAL_SETTING": "Общая информация",
+      "BACK": "Назад",
+      "FORWARD": "Вперед",
+      "REFRESH": "Обновить",
       "SETTINGS_HEADER": "НАСТРОЙКИ",
       "TEXT_INSTALLED": "Установлено",
       "TEXT_AUTO_UPDATE_ENABLED": "Автоматические обновления включены",
@@ -261,6 +282,9 @@
       "TEXT_SOFTWARE": "SOFTWARE",
       "TEXT_SYSTRAY_SETTING": "Bandeja do Sistema",
       "TEXT_GENERAL_SETTING": "GERAIS",
+      "BACK": "Voltar",
+      "FORWARD": "Para Frente",
+      "REFRESH": "Atualizar",
       "SETTINGS_HEADER": "CONFIGURAÇÕES",
       "TEXT_INSTALLED": "Instalados",
       "TEXT_AUTO_UPDATE_ENABLED": "Atualizações Automáticas Ativadas",
@@ -297,6 +321,9 @@
       "TEXT_SOFTWARE": "软件",
       "TEXT_SYSTRAY_SETTING": "系统托盘",
       "TEXT_GENERAL_SETTING": "常规",
+      "BACK": "返回",
+      "FORWARD": "前进",
+      "REFRESH": "刷新",
       "SETTINGS_HEADER": "设置",
       "TEXT_INSTALLED": "已安装",
       "TEXT_AUTO_UPDATE_ENABLED": "自动更新已启用",
@@ -333,6 +360,9 @@
       "TEXT_SOFTWARE": "軟體",
       "TEXT_SYSTRAY_SETTING": "系統匣",
       "TEXT_GENERAL_SETTING": "一般設",
+      "BACK": "返回",
+      "FORWARD": "前进",
+      "REFRESH": "更新",
       "SETTINGS_HEADER": "設定",
       "TEXT_INSTALLED": "已安装",
       "TEXT_AUTO_UPDATE_ENABLED": "自動更新已啟用",
@@ -414,5 +444,47 @@
     "TEXT_PRIVACY_POLICY": "https://www.razer.com/legal/privacy-policy",
     "TEXT_OPEN_SOURCE_SOFTWARE_NOTICE": "https://support.razer.com/razer-central-open-source-software-notices"
   },
-  "version": "4.0.14.2609150422"
+  "version": "4.0.14.2609150422",
+  "socialLinks": [
+    {
+      "name": "facebook",
+      "translationType": "FOLLOW_SOCIAL_FACEBOOK",
+      "link": "https://www.facebook.com/razer"
+    },
+    {
+      "name": "ig",
+      "translationType": "FOLLOW_SOCIAL_IG",
+      "link": "https://www.instagram.com/razer"
+    },
+    {
+      "name": "twitter",
+      "translationType": "FOLLOW_SOCIAL_TWITTER",
+      "link": "https://www.twitter.com/Razer"
+    },
+    {
+      "name": "youtube",
+      "translationType": "FOLLOW_SOCIAL_YOUTUBE",
+      "link": "https://www.youtube.com/Razer"
+    },
+    {
+      "name": "tiktok",
+      "translationType": "FOLLOW_SOCIAL_TIKTOK",
+      "link": "https://www.tiktok.com/@razer"
+    },
+    {
+      "name": "twitch",
+      "translationType": "FOLLOW_SOCIAL_TWITCH",
+      "link": "https://www.twitch.tv/razer"
+    },
+    {
+      "name": "discord",
+      "translationType": "FOLLOW_SOCIAL_DISCORD",
+      "link": "https://discord.com/invite/razer"
+    }
+  ],
+  "toolbarKeys": {
+    "back": "BACK",
+    "forward": "FORWARD",
+    "refresh": "REFRESH"
+  }
 }

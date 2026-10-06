@@ -110,6 +110,9 @@ struct TrayPopup {
     account_avatar: Option<SharedString>,
     hovered_tab: Option<TraySection>,
     settings_hovered: bool,
+    settings_tip_mounted: bool,
+    settings_tip_visible: bool,
+    settings_tip_task: Option<Task<()>>,
     notifications_loaded_empty: bool,
 }
 
@@ -135,6 +138,7 @@ impl TrayPopup {
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             this.blur_task = None;
             if !window.is_window_active() {
+                this.hover_settings(false, cx);
                 this.blur_task = Some(cx.spawn_in(window, async move |this, cx| {
                     cx.background_executor()
                         .timer(Duration::from_millis(300))
@@ -166,6 +170,9 @@ impl TrayPopup {
             account_avatar: None,
             hovered_tab: None,
             settings_hovered: false,
+            settings_tip_mounted: false,
+            settings_tip_visible: false,
+            settings_tip_task: None,
             notifications_loaded_empty: false,
         }
     }
@@ -592,31 +599,21 @@ impl crate::shell::AppShell {
                 }
                 match command.as_str() {
                     "synapse" => show_main(window),
-                    "settings" => {
-                        show_main(window);
-                        self.navigate(
-                            crate::shell::Location::Main(crate::nav::Tab::Setting),
-                            window,
-                            cx,
-                        );
-                    }
-                    "settings-widgets" | "settings-notifications" => {
-                        // The local Settings page is available directly. Its
-                        // notification toggle remains local-only until the
-                        // host service is connected.
-                        show_main(window);
-                        self.navigate(
-                            crate::shell::Location::Main(crate::nav::Tab::Setting),
-                            window,
-                            cx,
-                        );
+                    "settings"
+                    | "settings-quick-panel"
+                    | "settings-widgets"
+                    | "settings-notifications" => {
+                        // Current /settings/ has no legacy section listener.
+                        self.open_settings_window(command == "settings-quick-panel", cx);
                     }
                     "account-online" => {
                         show_main(window);
                         self.status = "账户服务尚未连接，无法打开在线账户。".into();
                         cx.notify();
                     }
-                    "login" => {
+                    // Guest's source command is logOut(), which starts the
+                    // account flow. No provider is available to perform it.
+                    "login" | "account-guest-logout" => {
                         show_main(window);
                         self.status = "账户登录服务尚未连接。".into();
                         cx.notify();

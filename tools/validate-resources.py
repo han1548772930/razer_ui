@@ -228,6 +228,60 @@ for family, receipt_path in [
     ("system", "docs/re/audio-oled-system-source.json"),
 ]:
     oled_keys.extend(validate_oled_family(family, receipt_path))
+
+# Independently embedded current roots must have the same provenance and key
+# checks as the original shared table, rather than bypassing the literal scan.
+root_keys = []
+for family in ("tray-account", "settings-window", "chroma-studio", "chroma-studio-color"):
+    payload = json.loads((directory / f"{family}-assets.json").read_text(encoding="utf-8"))
+    rows = payload["entries"] if isinstance(payload, dict) else payload
+    include = (directory / f"{family}-embedded.rs").read_text(encoding="utf-8")
+    keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', include)
+    assert len(keys) == len(rows) and len(set(keys)) == len(keys), family
+    for row in rows:
+        assert row["source"].startswith(".ref/applications/"), row["source"]
+        source = (ROOT / row["source"]).read_bytes()
+        output = ROOT / row["output"]
+        data = output.read_bytes()
+        assert hashlib.sha256(source).hexdigest() == row["source_sha256"]
+        assert hashlib.sha256(data).hexdigest() == row.get("output_sha256", row.get("sha256"))
+        assert ET.fromstring(data).tag.endswith("svg"), output
+        assert (row["output"].removeprefix("assets/"), output.name) in keys
+        if Path(row["source"]).suffix == ".svg":
+            assert data == source, output
+    assert expected.isdisjoint(filename for _, filename in keys), family
+    expected.update(filename for _, filename in keys)
+    root_keys.extend(keys)
+
+studio_host = json.loads((ROOT / "docs/re/chroma-studio-window-source.json").read_text(encoding="utf-8"))
+favicon = studio_host["favicon"]
+assert favicon["source"] == ".ref/applications/synapse/chroma-studio/favicon.svg"
+icon_bytes = (ROOT / favicon["source"]).read_bytes()
+assert icon_bytes == (ROOT / favicon["output"]).read_bytes()
+assert hashlib.sha256(icon_bytes).hexdigest() == favicon["sha256"]
+assert ET.fromstring(icon_bytes).tag.endswith("svg")
+assert 'href="./favicon.svg"' in (ROOT / ".ref/applications/synapse/chroma-studio/index.html").read_text(encoding="utf-8")
+favicon_key = favicon["output"].removeprefix("assets/")
+assert favicon_key in (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+assert Path(favicon_key).name not in expected
+expected.add(Path(favicon_key).name)
+root_keys.append((favicon_key, Path(favicon_key).name))
+
+runtime_evidence = json.loads((ROOT / "docs/re/audio-oled-runtime-current-evidence.json").read_text(encoding="utf-8"))
+for icon in runtime_evidence["icons"]:
+    receipt = icon["receipt"]
+    assert receipt["path"].startswith(".ref/devices/1383/")
+    source = (ROOT / receipt["path"]).read_bytes()
+    assert hashlib.sha256(source).hexdigest() == receipt["sha256"]
+    utf16 = source.decode("utf-8").encode("utf-16-le")
+    assert utf16[receipt["offset"] * 2:receipt["end"] * 2].decode("utf-16-le") == receipt["source"]
+    output = ROOT / "assets" / icon["output"]
+    assert output.read_text(encoding="utf-8") == icon["svg"]
+    assert ET.fromstring(icon["svg"]).tag.endswith("svg")
+    assert icon["output"] in (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+    assert output.name not in expected
+    expected.add(output.name)
+
 image_map = json.loads((directory / "product-image-map.json").read_text(encoding="utf-8"))
 sources = {entry["output"]: entry for entry in entries}
 source_text = {}
@@ -411,6 +465,7 @@ for layout in layout_sources["layouts"]:
 print(f"Validated {len(entries)} source/output hashes, image formats and embedded keys; "
       f"{len(service_keys)} current service SVGs; "
       f"{len(oled_keys)} OLED media assets; "
+      f"{len(root_keys)} independent-root SVGs / {len(runtime_evidence['icons'])} OLED runtime icons; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
       f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")

@@ -71,7 +71,9 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Audio(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_oled_runtime(observation, window, cx));
+            body.update(cx, |body, cx| {
+                body.observe_oled_runtime(observation, window, cx)
+            });
         }
     }
     /// Report pages backed by entities this workspace actually owns. A help
@@ -385,6 +387,12 @@ impl SourceProductWorkspace {
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, _: &super::audio_products::AudioStudioRequested, cx| {
+                    cx.emit(WorkspaceEvent::OpenStudio)
+                },
             ));
             subscriptions.push(cx.subscribe(
                 &body,

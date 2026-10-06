@@ -482,7 +482,7 @@ impl AudioProductWorkspace {
             .child(div().flex().mt(surface::css(5.)).child(tabs))
             .into_any_element()
     }
-    fn nommo_advanced_effects(&self, _cx: &mut Context<Self>) -> AnyElement {
+    fn nommo_advanced_effects(&self, cx: &mut Context<Self>) -> AnyElement {
         let state = self.nommo_effects.as_ref().expect("Nommo state");
         // Mm/fM installed-branch layout. um/mM requests Studio through the
         // Chroma host. The local Dashboard cannot fulfill that Studio target.
@@ -509,8 +509,7 @@ impl AudioProductWorkspace {
             )
             .child(
                 BaseButton::new("nommo-launch-chroma")
-                    .disabled(true)
-                    .opacity(0.3)
+                    .on_click(cx.listener(|_, _, _, cx| cx.emit(AudioStudioRequested)))
                     .mt(surface::css(20.))
                     .w(surface::css(240.))
                     .h(surface::css(50.))

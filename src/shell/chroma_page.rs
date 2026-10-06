@@ -50,6 +50,7 @@ impl ChromaTab {
 }
 pub(super) enum ChromaPageEvent {
     OpenSettings,
+    OpenStudio,
     OpenTour(TourKind),
 }
 
@@ -1035,13 +1036,22 @@ impl ChromaPage {
                     .child(
                         super::service_pages::module_action(
                             module.key(),
-                            tr("INSTALL"),
+                            if module == PickerModule::ChromaStudio {
+                                i18n::t("TEXT_OPEN")
+                            } else {
+                                tr("INSTALL")
+                            },
                             true,
-                            true,
+                            module != PickerModule::ChromaStudio,
                             cx,
                         )
                         .w(css(90.))
-                        .ml(css(30.)),
+                        .ml(css(30.))
+                        .on_click(cx.listener(move |_, _, _, cx| {
+                            if module == PickerModule::ChromaStudio {
+                                cx.emit(ChromaPageEvent::OpenStudio);
+                            }
+                        })),
                     )
             }))
             .into_any_element()

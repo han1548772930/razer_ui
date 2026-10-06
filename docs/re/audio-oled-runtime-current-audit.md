@@ -75,6 +75,29 @@ Verification is limited to static AST/CSS parsing, source/locale/resource
 validation, formatting and the parent-owned `cargo check --locked --all-targets`.
 No application, build, test, installer, downloaded JavaScript or DLL was run.
 
+## Continuation review — 2026-10-06
+
+Re-read the current `Bv`, `xx`, language reducer and GET action receipts, then
+checked the Audio → SourceProduct → Product request/observation seams. Product
+1383 begins on `TAB_SOUND`; entering `TAB_OLED` reaches `set_page` and emits
+the GET broadcast. The SVG referenced by the runtime warning is embedded.
+
+The review corrected language lifecycle differences. `Bv`'s `[t]` effect
+replaces a staged choice only when the raw language changes; an MW observation
+that increments the counter with the same raw value now preserves that choice.
+The `[s]` effect uses the selection from its current render and runs only while
+the OLED page is mounted. Leaving and reopening the page clears the component's
+local staged choice, as the original unmount/remount does. Profile draft restore
+preserves this mounted choice and obtains the device language from the retained
+runtime reducer rather than from a saved profile. General Select synchronization
+now uses its existing staged-value reader, removing that reader's unused warning.
+
+Both maintained static commands below passed: 46 exact source receipts, 47 CSS
+rules, current manifest/source hashes, locales, warning SVG and resource entry,
+language lifecycle guards, tab-entry request, and both forwarding seams. These
+checks establish static wiring and source agreement, not live transport behavior.
+The parent agent owns the final compile check for this continuation.
+
 ```text
 node tools/extract-audio-oled-runtime.cjs --check
 python tools/validate-audio-oled-runtime.py
