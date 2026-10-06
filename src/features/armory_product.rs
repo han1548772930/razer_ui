@@ -1,8 +1,10 @@
 //! Independent Armory roots from each current product bundle.
 //!
-//! 1303/jg, 1304/Qf and 1313/IK mount only ProductImage. 3893/HH mounts
+//! The audited audio roots mount only ProductImage. 3893/HH mounts
 //! CoolerInfo (`fg`), including its three metric groups, not fan controls.
-//! See docs/re/armory-product-roots-current-evidence.json.
+//! See docs/re/armory-product-roots-current-evidence.json and
+//! docs/re/armory-audio-roots-current-evidence.json and
+//! docs/re/armory-audio-next-roots-current-evidence.json.
 use crate::{
     i18n,
     model::Device,
@@ -18,7 +20,12 @@ mod cooling_pad;
 pub(crate) fn supports(device: &Device) -> bool {
     // 3894 is Head Cushion Chroma. Its current 8193.DeviceInfo.category is
     // statically ACCESSORY; the root does not inspect our discovery category.
-    matches!(device.product_id, 1303 | 1304 | 1313 | 3893 | 3894 | 3907)
+    // The audio roots are individually audited. 1335's own DeviceInfo sets
+    // specialAudio=true, so its ProductImage wrapper has a separate height.
+    matches!(
+        device.product_id,
+        1303 | 1304 | 1313 | 1319 | 1325 | 1328 | 1330 | 1331 | 1332 | 1335 | 3893 | 3894 | 3907
+    )
 }
 
 /// 3893's BC.runtimeData initial values. These are source initialization,
@@ -50,10 +57,18 @@ impl ArmoryProduct {
     }
 
     fn product_image(&self, cx: &App) -> AnyElement {
-        let height = if self.device.product_id == 3893 {
+        let image_height = if self.device.product_id == 3893 {
             200.
         } else {
             250.
+        };
+        // 1335 xf/Kf changes `.widget-prod.dot-bg` to height:390px, but
+        // fc still passes `this.props.height || 250` to its image. The image
+        // stays centered at 250px; stretching it to the wrapper is incorrect.
+        let height = if self.device.product_id == 1335 {
+            390.
+        } else {
+            image_height
         };
         // Source dl/ry retries edition zero. Only its `img_prods/prd` artwork
         // may fill this slot. A missing asset preserves the source empty-image
@@ -66,6 +81,9 @@ impl ArmoryProduct {
         );
         div()
             .relative()
+            .flex()
+            .items_center()
+            .justify_center()
             .w_full()
             .min_w_0()
             .max_w(css(1220.))
@@ -78,7 +96,9 @@ impl ArmoryProduct {
                 view.child(
                     img(path)
                         .relative()
-                        .size_full()
+                        .w_full()
+                        .h(css(image_height))
+                        .flex_shrink_0()
                         .object_fit(ObjectFit::Contain),
                 )
             })

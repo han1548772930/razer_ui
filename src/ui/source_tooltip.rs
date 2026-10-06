@@ -47,6 +47,7 @@ pub(crate) struct SourceTooltip {
     text: SharedString,
     width: f32,
     kind: SourceTooltipKind,
+    hovered_priority: Option<usize>,
     trigger: Trigger,
 }
 
@@ -65,6 +66,7 @@ impl SourceTooltip {
             text: text.into(),
             width,
             kind: SourceTooltipKind::DropTips,
+            hovered_priority: None,
             trigger: Box::new(|_, _, _| div().into_any_element()),
         }
     }
@@ -72,6 +74,32 @@ impl SourceTooltip {
     pub(crate) fn kind(mut self, kind: SourceTooltipKind) -> Self {
         self.kind = kind;
         self
+    }
+
+    /// Override the deferred drawing priority only while hovered. The current
+    /// camera `.drop-tips.on` uses 9999, then returns to `.drop-tips`'s 200 as
+    /// soon as `.on` is removed, even while its visibility/opacity fades out.
+    /// Callers without an override retain their kind's existing layer policy.
+    pub(crate) fn hovered_priority(mut self, priority: usize) -> Self {
+        self.hovered_priority = Some(priority);
+        self
+    }
+
+    fn draw_priority(&self, hovered: bool) -> usize {
+        let default = if matches!(
+            self.kind,
+            SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal
+        ) {
+            // `.body-widget-tip-portal{z-index:10001}`.
+            10001
+        } else {
+            200
+        };
+        if hovered {
+            self.hovered_priority.unwrap_or(default)
+        } else {
+            default
+        }
     }
 
     pub(crate) fn trigger(
@@ -103,6 +131,7 @@ impl RenderOnce for SourceTooltip {
             });
         let hovered = state.read(cx).trigger
             || (self.kind == SourceTooltipKind::ProfileWarning && state.read(cx).content);
+        let priority = self.draw_priority(hovered);
         let anchor = state.read(cx).bounds.clone();
         // Both CSS paths retain opacity while hidden, including on reversal.
         let presence = Presence::new((self.id.clone(), "tip-opacity"), hovered)
@@ -175,17 +204,7 @@ impl RenderOnce for SourceTooltip {
                     visible,
                     opacity,
                 })
-                .with_priority(
-                    // `.body-widget-tip-portal{z-index:10001}`。
-                    if matches!(
-                        kind,
-                        SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal
-                    ) {
-                        10001
-                    } else {
-                        200
-                    },
-                ),
+                .with_priority(priority),
             )
     }
 }

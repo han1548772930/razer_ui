@@ -23,6 +23,10 @@ MODULE_EXPORT = re.compile(
     r'(?<![\w])(?P<id>\d+):\([^)]*\)=>\{(?:"use strict";)?'
     r'\w+\.exports=\w+\.p\+"(?P<path>static/media/[^"\\]+)";?\}'
 )
+INLINE_EXPORT = re.compile(
+    r'(?<![\w])(?P<id>\d+):(?:\([^)]*\)|\w+)=>\{(?:"use strict";)?'
+    r'\w+\.exports="data:image/(?:png|avif);base64,[A-Za-z0-9+/=]+";?\}'
+)
 
 
 def source_jobs(root, pid):
@@ -31,11 +35,19 @@ def source_jobs(root, pid):
     main = next(path for path in scripts if path.name.startswith("main."))
     modules = {}
     for script in scripts:
-        for match in MODULE_EXPORT.finditer(script.read_text(encoding="utf-8")):
+        text = script.read_text(encoding="utf-8")
+        for match in MODULE_EXPORT.finditer(text):
             module_id, media = int(match["id"]), match["path"]
             if module_id in modules and modules[module_id] != media:
                 raise ValueError(f"Conflicting media module {pid}:{module_id}")
             modules[module_id] = media
+        for match in INLINE_EXPORT.finditer(text):
+            # This image is already a literal inside the manifest-declared JS.
+            # Static resource preparation decodes it; there is no media URL.
+            module_id = int(match['id'])
+            if module_id in modules and modules[module_id] is not None:
+                raise ValueError(f'Conflicting inline media module {pid}:{module_id}')
+            modules[module_id] = None
     requests = set(re.findall(
         r'"\./' + str(pid) + r'_(\d+)/img_prods/([^"\\]+)":\[(\d+),[^\]]+\]',
         main.read_text(encoding="utf-8")))
@@ -46,9 +58,10 @@ def source_jobs(root, pid):
     variants = set()
     for edition, name, module_id in sorted(requests):
         media = modules[int(module_id)]
-        if not re.fullmatch(r"static/media/[A-Za-z0-9_.@-]+\.avif", media):
+        if media is not None and not re.fullmatch(r"static/media/[A-Za-z0-9_.@-]+\.avif", media):
             raise ValueError(f"Unexpected product image export: {pid}:{media}")
-        jobs.append((base + media, directory / media, "media"))
+        if media is not None:
+            jobs.append((base + media, directory / media, "media"))
         if name == "prd-3x.png":
             variants.add((int(edition), 0))
         elif re.fullmatch(r"\d+-3x\.png", name):

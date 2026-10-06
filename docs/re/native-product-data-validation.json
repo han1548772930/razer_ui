@@ -4,15 +4,15 @@
   "camera": {
     "products": 7,
     "controls": {
-      "switch": 37,
-      "slider": 46,
-      "options": 29,
+      "switch": 36,
+      "slider": 44,
+      "options": 27,
       "toggle": 7,
       "direction": 1,
       "pan_tilt": 4,
       "preset": 4,
       "keys": 4,
-      "select": 6,
+      "select": 7,
       "reset": 3
     },
     "inactive_sentinels": []
@@ -69,13 +69,13 @@
     "mounted_pages": 322
   },
   "inputs_sha256": {
-    "src/features/source_controls_data.json": "7242f9f5d9476d8baefe9199f67266d3ea9ab8c976f92016979389c2740090a2",
-    "src/features/accessory_controls_data.json": "b32c1ccbfcb0bd595866348979db8c779fb017d3a06ab92f9418af500ae2dd74",
-    "src/features/keyboard_oled_data.json": "41acde997d14de32dd834229b300934cb2fdc1ed7904e5b2c10a6b14947f0264",
+    "src/features/source_controls_data.json": "209ee1a543fecdd0f04a51ebcb567685218005c222653ea5a85f98346d98b047",
+    "src/features/accessory_controls_data.json": "58c1ea61e75e20d69fe3d63aa9b39c31799fffe3ed2a1fccf0fc0f9d47d97cb0",
+    "src/features/keyboard_oled_data.json": "f83571f4f20f4809e5bb056904650f66cc4443d8281c58e487981b3d28415dab",
     "src/features/keyboard_oled_editor_data.json": "d23d48ffc96e19b16a097e21b39bb886205562de40f92a2764917302f3f0fb3c",
     "docs/re/keyboard-oled-current-evidence.json": "47cd01a746a6fed8f951aadf6706e2cb17a3460b0685c8dfc2e061f7191a3cf8",
     "src/features/corex_fan_data.json": "96a7ce3c23776b78b728a3a17220ec4d43dc526a61fd5199d0da29a7416e3766",
-    "src/features/accessory_system_products_data.json": "be795550239ba518007eb0251e4217678d1d2ffbb3292f8ad34a37abcdad02b9",
+    "src/features/accessory_system_products_data.json": "25f601f32c7e91cfb506b76c23625d3df2197fd8811ffb0869b78ba10609c7b8",
     "src/features/source_help_data.json": "d6cd92a5b11b01b8161d6195aeeee4d1ea505c872ad94baf18f550ed6a6b3cff",
     "docs/re/product-registration-audit.json": "8f9975d00624bdd0f09e6f9e02299fc78baf7081cc086c0f9df06f8c62a77bec"
   }

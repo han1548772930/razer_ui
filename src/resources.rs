@@ -5,11 +5,31 @@ pub struct SynapseAssets;
 const ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/embedded.rs");
 const MODULE_SERVICE_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/module-service-embedded.rs");
+const AUDIO_OLED_HOME_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/audio-oled-home-embedded.rs");
+const AUDIO_OLED_ARTWORK_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/audio-oled-artwork-embedded.rs");
+const AUDIO_OLED_BANNER_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/audio-oled-banner-embedded.rs");
+const AUDIO_OLED_SYSTEM_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/audio-oled-system-embedded.rs");
+const TRAY_ACCOUNT_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/tray-account-embedded.rs");
+const AUDIO_OLED_RUNTIME_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/audio-oled-runtime-warning.svg",
+    include_bytes!("../assets/synapse/audio-oled-runtime-warning.svg"),
+)];
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
         if let Some((_, bytes)) = ASSETS
             .iter()
             .chain(MODULE_SERVICE_ASSETS)
+            .chain(AUDIO_OLED_HOME_ASSETS)
+            .chain(AUDIO_OLED_ARTWORK_ASSETS)
+            .chain(AUDIO_OLED_BANNER_ASSETS)
+            .chain(AUDIO_OLED_SYSTEM_ASSETS)
+            .chain(TRAY_ACCOUNT_ASSETS)
+            .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .find(|(key, _)| *key == path)
         {
             return Ok(Some(Cow::Borrowed(bytes)));
@@ -22,6 +42,12 @@ impl AssetSource for SynapseAssets {
             ASSETS
                 .iter()
                 .chain(MODULE_SERVICE_ASSETS)
+                .chain(AUDIO_OLED_HOME_ASSETS)
+                .chain(AUDIO_OLED_ARTWORK_ASSETS)
+                .chain(AUDIO_OLED_BANNER_ASSETS)
+                .chain(AUDIO_OLED_SYSTEM_ASSETS)
+                .chain(TRAY_ACCOUNT_ASSETS)
+                .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
                 .map(|(key, _)| SharedString::from(*key)),
         );
@@ -36,6 +62,7 @@ pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
         Cow::Borrowed(include_bytes!("../assets/synapse/Roboto-Bold.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Thin.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Regular.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-SemiBold.ttf")),
         Cow::Borrowed(include_bytes!("../assets/synapse/RazerF5-Bold.ttf")),
     ])
 }
@@ -50,12 +77,16 @@ pub(crate) enum DeviceImage {
 
 type ProductAsset = (u32, u32, u32, DeviceImage, &'static str);
 const PRODUCT_IMAGES: &[ProductAsset] = include!("../assets/synapse/product-images.rs");
+const ARMORY_PRODUCT_IMAGES: &[ProductAsset] =
+    include!("../assets/synapse/armory-product-images.rs");
 
 /// Dashboard and pairing cards use the original PluginImages artwork. An
 /// unavailable edition/layout stays unavailable instead of changing its color
 /// or substituting Customize artwork. Old keyboard data defaults to layout one.
 pub(crate) fn dashboard_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
     const IMAGES: &[(u32, u32, u32, &str)] = include!("../assets/synapse/dashboard-images.rs");
+    const ARMORY_IMAGES: &[(u32, u32, u32, &str)] =
+        include!("../assets/synapse/armory-dashboard-images.rs");
     let pid = if pid == crate::demo::DEMO_PRODUCT_ID {
         653
     } else {
@@ -64,6 +95,7 @@ pub(crate) fn dashboard_image(pid: u32, edition_id: u32, layout_id: u32) -> Opti
     let layout_id = if pid == 653 { layout_id.max(1) } else { 0 };
     IMAGES
         .iter()
+        .chain(ARMORY_IMAGES)
         .find_map(|&(product, edition, layout, asset)| {
             (product == pid && edition == edition_id && layout == layout_id).then_some(asset)
         })
@@ -110,9 +142,8 @@ pub(crate) fn resolve_device_image(
         0
     };
     let lookup = |requested_edition, requested_layout| {
-        PRODUCT_IMAGES
-            .iter()
-            .find_map(|&(product, edition, layout, purpose, asset)| {
+        PRODUCT_IMAGES.iter().chain(ARMORY_PRODUCT_IMAGES).find_map(
+            |&(product, edition, layout, purpose, asset)| {
                 (product == pid
                     && edition == requested_edition
                     && layout == requested_layout
@@ -123,7 +154,8 @@ pub(crate) fn resolve_device_image(
                         layout_id: layout,
                         is_fallback_preview: false,
                     })
-            })
+            },
+        )
     };
     let lookup_layout = |layout| lookup(edition_id, layout).or_else(|| lookup(0, layout));
     lookup_layout(layout_id).or_else(|| {

@@ -1,0 +1,32 @@
+{
+  "source_url": "https://apps.razer.com/synapse/products/1325/ui/1325_0/PluginImages/1325_0_0_dashboard3x.avif",
+  "final_url": "https://apps.razer.com/synapse/products/1325/ui/1325_0/PluginImages/1325_0_0_dashboard3x.avif",
+  "redirected": false,
+  "http_status": 200,
+  "fetched_at_utc": "2026-10-06T02:07:37Z",
+  "content_type": "image/avif",
+  "last_modified": "Mon, 05 Oct 2026 05:44:32 GMT",
+  "etag": "\"1ecdf9ef6dfcd8e53813134c42910f6b\"",
+  "result": "ok",
+  "sha256": "ffcbb66120147da27f8b45f9d11f0b58444f0969693526036376fb9a701418b2",
+  "bytes": 15822,
+  "validation": {
+    "valid": true,
+    "kind": "media",
+    "reason": null
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "started_at_utc": "2026-10-06T02:07:36Z",
+      "completed_at_utc": "2026-10-06T02:07:37Z",
+      "status": 200,
+      "result": "ok",
+      "error": null,
+      "final_url": "https://apps.razer.com/synapse/products/1325/ui/1325_0/PluginImages/1325_0_0_dashboard3x.avif",
+      "redirect_chain": []
+    }
+  ],
+  "error": null,
+  "body_file": "dashboard-1325-0-0-source.avif"
+}

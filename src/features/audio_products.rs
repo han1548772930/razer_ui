@@ -20,8 +20,13 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod demo;
 #[path = "audio_nommo.rs"]
 mod nommo;
+#[path = "audio_nommo_effects.rs"]
+mod nommo_effects;
 #[path = "audio_oled.rs"]
 mod oled;
+#[path = "audio_oled_home.rs"]
+mod oled_home;
+pub(crate) use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
 
 #[derive(Deserialize)]
 struct AudioOption {
@@ -170,6 +175,8 @@ pub(crate) struct AudioProductWorkspace {
     staged: BTreeMap<String, Value>,
     selected_region: usize,
     nommo_brightness_dragging: bool,
+    nommo_effects: Option<nommo_effects::NommoEffectsState>,
+    oled_home: Option<oled_home::OledHomeState>,
     demo: Option<Entity<demo::AudioDemo>>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
@@ -188,9 +195,14 @@ impl AudioProductWorkspace {
             staged: BTreeMap::new(),
             selected_region: 0,
             nommo_brightness_dragging: false,
+            nommo_effects: nommo_effects::NommoEffectsState::new(pid, window, cx),
+            oled_home: oled_home::OledHomeState::new(pid),
             demo: demo::AudioDemo::for_product(pid, cx),
         };
         this.initialize_equalizers();
+        this.initialize_nommo_draft();
+        this.initialize_oled_home(window);
+        this.subscribe_nommo_effects(window, cx);
         for control in spec
             .pages
             .iter()
@@ -290,9 +302,14 @@ impl AudioProductWorkspace {
         self.staged.clear();
         self.nommo_brightness_dragging = false;
         self.initialize_equalizers();
+        self.initialize_nommo_draft();
+        self.initialize_oled_home(window);
         if let Some(saved) = saved.filter(|v| v.is_object()) {
             merge_known(&mut self.draft, saved);
+            self.restore_oled_home_saved(saved);
         }
+        self.normalize_nommo_draft();
+        self.normalize_oled_home(window);
         // Restored snapshots never widen a current source's supported range.
         for control in self
             .spec
@@ -359,6 +376,9 @@ impl AudioProductWorkspace {
     pub(crate) fn set_page(&mut self, page: &str, _: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
             self.page = page.into();
+            if page == "TAB_OLED" {
+                self.request_oled_runtime_data(cx);
+            }
             cx.notify();
         }
     }
@@ -615,6 +635,8 @@ impl AudioProductWorkspace {
                 });
             }
         }
+        self.sync_nommo_effects(window, cx);
+        self.sync_oled_runtime_select(window, cx);
         self.syncing = false;
     }
     fn render_control(&self, control: &AudioControl, cx: &mut Context<Self>) -> AnyElement {
@@ -792,13 +814,17 @@ impl AudioProductWorkspace {
         // 1383 的 TAB_OLED 由自己的 OLED 根（`xx`）渲染：两列 `.widget-col` 与
         // 屏保网格都不是通用音频控件的形态，见 audio_oled.rs。
         if self.spec.product_id == 1383 && key == "TAB_OLED" {
-            return self.kraken_oled_page(cx);
+            return self.kraken_oled_page(window, cx);
         }
         let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
                 if matches!(self.spec.product_id, 1303 | 1304) && key == "TAB_LIGHTING" {
+                    if section.title == "EFFECTS" {
+                        sections.push(self.render_nommo_effects(window, cx));
+                        continue;
+                    }
                     if let Some(panel) = self.nommo_lighting_section(section, window, cx) {
                         sections.push(panel);
                         continue;
@@ -863,6 +889,7 @@ impl Render for AudioProductWorkspace {
         }
         super::product_surface::body()
             .child(self.page_body(&self.page, window, cx))
+            .children(self.oled_home_dialog())
             .into_any_element()
     }
 }

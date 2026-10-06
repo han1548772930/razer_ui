@@ -1,0 +1,39 @@
+{
+  "connection": {
+    "isBle": false,
+    "isDongle": false
+  },
+  "language": {
+    "value": 0,
+    "changed": 0
+  },
+  "loading": {
+    "target": "animation",
+    "type": "none",
+    "totalItems": 0,
+    "currentItem": 0,
+    "progress": 0
+  },
+  "error": null,
+  "labels": {
+    "QAd": "OLED_NOT_SUPPORTED_WIRED_WARNING_TITLE",
+    "l2t": "OLED_NOT_SUPPORTED_WIRED_WARNING_DESC",
+    "QWf": "OLED_WARNING_LANGUAGE_TITLE",
+    "bOp": "CANCEL",
+    "Jf5": "OLED_WARNING_LANGUAGE_CONTINUE_UPDATE",
+    "$PN": "OLED_WARNING_LANGUAGE_DESC",
+    "JQR": "OLED_HOME_SCREEN_DISPLAY_TITLE",
+    "B3A": "OLED_WARNING_REVERT_TO_PREVIOUS",
+    "p6C": "RETRY",
+    "sUR": "OLED_WARNING_HOME_SCREEN_DISPLAY_DESC_1",
+    "ZV_": "OLED_WARNING_HOME_SCREEN_DISPLAY_DESC_2",
+    "_Hj": "OLED_LOADING_LANGUAGE_TITLE",
+    "kM7": "OLED_LOADING_PROGRESS_DESC_1",
+    "dt6": "OLED_LOADING_PROGRESS_DESC_2",
+    "R42": "OLED_LOADING_PROGRESS_UPDATING",
+    "stg": "OLED_LOADING_PROGRESS_ITEM_TRACKING",
+    "tus": "OLED_LOADING_PROGRESS_CANCEL_ALL",
+    "De8": "OLED_DISABLE_EDIT_BLE_MODE_TOOLTIP",
+    "XVF": "OLED_HOME_SCREEN_DISPLAY_TURN_OFF_BLE_MODE_TOOLTIP"
+  }
+}

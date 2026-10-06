@@ -912,13 +912,28 @@
             ]
           },
           {
-            "title": "MIRROR_VIDEO",
+            "title": "ANTI_FLICKER",
             "controls": [
               {
-                "kind": "switch",
-                "key": "3592:mirror",
-                "label": "MIRROR_VIDEO",
-                "path": "/camera/mirrorVideo"
+                "kind": "options",
+                "key": "3592:anti-flicker",
+                "label": "ANTI_FLICKER",
+                "path": "/camera/antiFlicker",
+                "options": [
+                  {
+                    "label": "50 hz",
+                    "value": 1
+                  },
+                  {
+                    "label": "60 hz",
+                    "value": 2
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4562420,
+                  "end": 4566369
+                }
               }
             ]
           },
@@ -973,30 +988,97 @@
             ]
           },
           {
-            "title": "ANTI_FLICKER",
+            "title": "MIRROR_VIDEO",
             "controls": [
               {
-                "kind": "options",
-                "key": "3592:anti-flicker",
-                "label": "ANTI_FLICKER",
-                "path": "/camera/antiFlicker",
-                "options": [
-                  {
-                    "label": "50 hz",
-                    "value": 1
-                  },
-                  {
-                    "label": "60 hz",
-                    "value": 2
-                  }
-                ],
-                "source": {
-                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
-                  "offset": 4562420,
-                  "end": 4566369
-                }
+                "kind": "switch",
+                "key": "3592:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
               }
             ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3592:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3592:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          {
+            "key": "3592:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3592:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3592:brightness"
+          },
+          {
+            "key": "3592:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3592:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:contrast"
+          },
+          {
+            "key": "3592:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3592:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:saturation"
+          },
+          {
+            "key": "3592:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3592:white-balance",
+              "3592:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:white-balance",
+            "header_checkbox": "3592:auto-white-balance"
+          },
+          {
+            "key": "3592:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3592:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          {
+            "key": "3592:IMAGE:WATERMARK",
+            "title": "WATERMARK",
+            "controls": [
+              "3592:watermark",
+              "3592:watermark-position"
+            ],
+            "collapsible": true,
+            "tooltip": "WATERMARK_TOOLTIP",
+            "header_switch": "3592:watermark"
+          },
+          {
+            "key": "3592:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3592:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3592:mirror"
           }
         ]
       },
@@ -1595,53 +1677,152 @@
               }
             ]
           }
+        ],
+        "camera_groups": [
+          {
+            "key": "3592:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3592:zoom",
+              "3592:pan-tilt",
+              "3592:view-preset",
+              "3592:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3592:zoom"
+          },
+          {
+            "key": "3592:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3592:autofocus",
+              "3592:focus",
+              "3592:focus-mode",
+              "3592:focus-tracking",
+              "3592:focus-lighting"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT",
+            "header_switch": "3592:autofocus"
+          },
+          {
+            "key": "3592:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3592:auto-exposure",
+              "3592:iso",
+              "3592:shutter",
+              "3592:metering",
+              "3592:compensation",
+              "3592:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT",
+            "header_switch": "3592:auto-exposure",
+            "header_reset": "3592:reset-exposure"
+          }
         ]
       },
       {
         "key": "PROCESSING",
         "sections": [
           {
-            "title": "LENS_DISTORTION_COMPENSATION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3592:ldc",
-                "label": "LENS_DISTORTION_COMPENSATION",
-                "path": "/camera/ldc"
-              }
-            ]
-          },
-          {
-            "title": "LOW_LIGHT_COMPENSATION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3592:lowLightCompensation",
-                "label": "LOW_LIGHT_COMPENSATION",
-                "path": "/camera/lowLightCompensation"
-              }
-            ]
-          },
-          {
-            "title": "DYNAMIC_NOISE_REDUCTION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3592:state2D",
-                "label": "TWO_D_NOISE_REDUCTION",
-                "path": "/camera/dynamicNoiseReduction/state2D"
-              },
-              {
-                "kind": "switch",
-                "key": "3592:state3D",
-                "label": "THREE_D_NOISE_REDUCTION",
-                "path": "/camera/dynamicNoiseReduction/state3D"
-              }
-            ]
-          },
-          {
             "title": "RESOLUTION_AND_MJPEG_QUALITY",
             "controls": [
+              {
+                "kind": "select",
+                "key": "3592:processing-resolution",
+                "label": "PREVIEW_RESOLUTION",
+                "path": "/camera/resolution",
+                "options": [
+                  {
+                    "label": "4K 30FPS",
+                    "value": {
+                      "width": 3840,
+                      "height": 2160,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1440p 30FPS",
+                    "value": {
+                      "width": 2560,
+                      "height": 1440,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "1080p 60FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "1080p 30FPS",
+                    "value": {
+                      "width": 1920,
+                      "height": 1080,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "720p 60FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "720p 30FPS",
+                    "value": {
+                      "width": 1280,
+                      "height": 720,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "480p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "480p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 480,
+                      "fps": 30
+                    }
+                  },
+                  {
+                    "label": "360p 60FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 60
+                    }
+                  },
+                  {
+                    "label": "360p 30FPS",
+                    "value": {
+                      "width": 640,
+                      "height": 360,
+                      "fps": 30
+                    }
+                  }
+                ],
+                "source": {
+                  "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+                  "offset": 4552437,
+                  "end": 4555586
+                }
+              },
               {
                 "kind": "switch",
                 "key": "3592:auto-quality",
@@ -1735,6 +1916,104 @@
                 }
               }
             ]
+          },
+          {
+            "title": "LENS_DISTORTION_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:ldc",
+                "label": "LENS_DISTORTION_COMPENSATION",
+                "path": "/camera/ldc"
+              }
+            ]
+          },
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3592:state2D",
+                "label": "TWO_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state2D"
+              },
+              {
+                "kind": "switch",
+                "key": "3592:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3592:PROCESSING:RESOLUTION_AND_MJPEG_QUALITY",
+            "title": "RESOLUTION_AND_MJPEG_QUALITY",
+            "controls": [
+              "3592:processing-resolution",
+              "3592:auto-quality",
+              "3592:quality-mode",
+              "3592:manual-quality"
+            ],
+            "collapsible": false,
+            "tooltip": "RESOLUTION_QUALITY_TOOLTIP"
+          },
+          {
+            "key": "3592:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3592:hdr",
+              "3592:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3592:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          {
+            "key": "3592:PROCESSING:LENS_DISTORTION_COMPENSATION",
+            "title": "LENS_DISTORTION_COMPENSATION",
+            "controls": [
+              "3592:ldc"
+            ],
+            "collapsible": false,
+            "tooltip": "LENS_DISTORTION_COMPENSATION_TOOLTIP",
+            "header_switch": "3592:ldc",
+            "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+            "description_when_enabled": "/camera/ldc",
+            "description_min_height": 1440
+          },
+          {
+            "key": "3592:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3592:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3592:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          {
+            "key": "3592:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3592:state2D",
+              "3592:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
           }
         ]
       }
@@ -2044,17 +2323,6 @@
             ]
           },
           {
-            "title": "MIRROR_VIDEO",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3594:mirror",
-                "label": "MIRROR_VIDEO",
-                "path": "/camera/mirrorVideo"
-              }
-            ]
-          },
-          {
             "title": "ANTI_FLICKER",
             "controls": [
               {
@@ -2079,6 +2347,88 @@
                 }
               }
             ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3594:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3594:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          {
+            "key": "3594:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3594:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3594:brightness"
+          },
+          {
+            "key": "3594:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3594:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:contrast"
+          },
+          {
+            "key": "3594:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3594:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:saturation"
+          },
+          {
+            "key": "3594:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3594:white-balance",
+              "3594:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:white-balance",
+            "header_checkbox": "3594:auto-white-balance"
+          },
+          {
+            "key": "3594:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3594:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          {
+            "key": "3594:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3594:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3594:mirror"
           }
         ]
       },
@@ -2729,92 +3079,101 @@
               }
             ]
           }
-        ]
+        ],
+        "camera_groups": [
+          {
+            "key": "3594:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          {
+            "key": "3594:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          {
+            "key": "3594:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3594:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          {
+            "key": "3594:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3594:zoom",
+              "3594:pan-tilt",
+              "3594:view-preset",
+              "3594:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3594:zoom"
+          },
+          {
+            "key": "3594:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3594:autofocus",
+              "3594:focus",
+              "3594:focus-tracking"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3594:autofocus"
+          },
+          {
+            "key": "3594:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3594:auto-exposure",
+              "3594:iso",
+              "3594:shutter",
+              "3594:metering",
+              "3594:compensation",
+              "3594:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT_V2",
+            "header_switch": "3594:auto-exposure",
+            "header_reset": "3594:reset-exposure"
+          }
+        ],
+        "camera_preview": {
+          "activation": true,
+          "promo_title": "AI_FEATURES",
+          "promo_intro": "UNLOCK_CAMO_STUDIO_PRO",
+          "promo_items": [
+            "AI_AUTO_FRAMING",
+            "CUSTOM_SCENES",
+            "IMAGE_ENHANCEMENTS",
+            "FILTERS",
+            "BACKGROUND_REPLACEMENT",
+            "MUCH_MORE"
+          ],
+          "promo_link": "CAMO_STUDIO_PRO_LICENSE_CODE",
+          "source_title": "PREVIEW_SOURCE",
+          "source_tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+          "preview_off": "PREVIEW_DISABLED",
+          "enable_preview": "ENABLE",
+          "higher_gen_cable": "HIGHER_GEN_CABLE_REQUIRED"
+        }
       },
       {
         "key": "PROCESSING",
         "sections": [
-          {
-            "title": "LOW_LIGHT_COMPENSATION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3594:lowLightCompensation",
-                "label": "LOW_LIGHT_COMPENSATION",
-                "path": "/camera/lowLightCompensation"
-              }
-            ]
-          },
-          {
-            "title": "DYNAMIC_NOISE_REDUCTION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3594:state3D",
-                "label": "THREE_D_NOISE_REDUCTION",
-                "path": "/camera/dynamicNoiseReduction/state3D"
-              }
-            ]
-          },
-          {
-            "title": "MJPEG_QUALITY",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3594:auto-quality",
-                "label": "AUTO_MJPEG_QUALITY",
-                "path": "/camera/mjpegQuality/autoQuality",
-                "source": {
-                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
-                  "offset": 6998745,
-                  "end": 7001356
-                }
-              },
-              {
-                "kind": "options",
-                "key": "3594:quality-mode",
-                "label": "MJPEG_QUALITY",
-                "path": "/camera/mjpegQuality/mode",
-                "options": [
-                  {
-                    "label": "PERFORMANCE_MAXIMUM_POWER",
-                    "value": 5
-                  },
-                  {
-                    "label": "QUALITY",
-                    "value": 7
-                  }
-                ],
-                "visible_when": {
-                  "path": "/camera/mjpegQuality/autoQuality",
-                  "value": true
-                },
-                "source": {
-                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
-                  "offset": 6998745,
-                  "end": 7001356
-                }
-              },
-              {
-                "kind": "slider",
-                "key": "3594:manual-quality",
-                "label": "MJPEG_QUALITY",
-                "path": "/camera/mjpegQuality/manualQuality",
-                "min": 10,
-                "max": 90,
-                "step": 1,
-                "visible_when": {
-                  "path": "/camera/mjpegQuality/autoQuality",
-                  "value": false
-                },
-                "source": {
-                  "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
-                  "offset": 6998745,
-                  "end": 7001356
-                }
-              }
-            ]
-          },
           {
             "title": "HDR",
             "controls": [
@@ -2852,6 +3211,61 @@
                 }
               }
             ]
+          },
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3594:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3594:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3594:hdr",
+              "3594:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3594:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          {
+            "key": "3594:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3594:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3594:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          {
+            "key": "3594:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3594:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
           }
         ]
       }
@@ -3163,17 +3577,6 @@
             ]
           },
           {
-            "title": "MIRROR_VIDEO",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3595:mirror",
-                "label": "MIRROR_VIDEO",
-                "path": "/camera/mirrorVideo"
-              }
-            ]
-          },
-          {
             "title": "ANTI_FLICKER",
             "controls": [
               {
@@ -3198,6 +3601,88 @@
                 }
               }
             ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3595:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3595:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          {
+            "key": "3595:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3595:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3595:brightness"
+          },
+          {
+            "key": "3595:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3595:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:contrast"
+          },
+          {
+            "key": "3595:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3595:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:saturation"
+          },
+          {
+            "key": "3595:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3595:white-balance",
+              "3595:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:white-balance",
+            "header_checkbox": "3595:auto-white-balance"
+          },
+          {
+            "key": "3595:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3595:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          {
+            "key": "3595:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3595:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3595:mirror"
           }
         ]
       },
@@ -3847,39 +4332,101 @@
               }
             ]
           }
-        ]
+        ],
+        "camera_groups": [
+          {
+            "key": "3595:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          {
+            "key": "3595:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          {
+            "key": "3595:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3595:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          {
+            "key": "3595:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3595:zoom",
+              "3595:pan-tilt",
+              "3595:view-preset",
+              "3595:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3595:zoom"
+          },
+          {
+            "key": "3595:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3595:autofocus",
+              "3595:focus",
+              "3595:focus-tracking"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3595:autofocus"
+          },
+          {
+            "key": "3595:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3595:auto-exposure",
+              "3595:iso",
+              "3595:shutter",
+              "3595:metering",
+              "3595:compensation",
+              "3595:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT_V2",
+            "header_switch": "3595:auto-exposure",
+            "header_reset": "3595:reset-exposure"
+          }
+        ],
+        "camera_preview": {
+          "activation": true,
+          "promo_title": "AI_FEATURES",
+          "promo_intro": "UNLOCK_CAMO_STUDIO_PRO",
+          "promo_items": [
+            "AI_AUTO_FRAMING",
+            "CUSTOM_SCENES",
+            "IMAGE_ENHANCEMENTS",
+            "FILTERS",
+            "BACKGROUND_REPLACEMENT",
+            "MUCH_MORE"
+          ],
+          "promo_link": "CAMO_STUDIO_PRO_LICENSE_CODE",
+          "source_title": "PREVIEW_SOURCE",
+          "source_tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+          "preview_off": "PREVIEW_DISABLED",
+          "enable_preview": "ENABLE",
+          "higher_gen_cable": "HIGHER_GEN_CABLE_REQUIRED"
+        }
       },
       {
         "key": "PROCESSING",
         "sections": [
-          {
-            "title": "LOW_LIGHT_COMPENSATION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3595:lowLightCompensation",
-                "label": "LOW_LIGHT_COMPENSATION",
-                "path": "/camera/lowLightCompensation"
-              }
-            ]
-          },
-          {
-            "title": "DYNAMIC_NOISE_REDUCTION",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3595:state2D",
-                "label": "TWO_D_NOISE_REDUCTION",
-                "path": "/camera/dynamicNoiseReduction/state2D"
-              },
-              {
-                "kind": "switch",
-                "key": "3595:state3D",
-                "label": "THREE_D_NOISE_REDUCTION",
-                "path": "/camera/dynamicNoiseReduction/state3D"
-              }
-            ]
-          },
           {
             "title": "MJPEG_QUALITY",
             "controls": [
@@ -3888,49 +4435,6 @@
                 "key": "3595:auto-quality",
                 "label": "AUTO_MJPEG_QUALITY",
                 "path": "/camera/mjpegQuality/autoQuality",
-                "source": {
-                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
-                  "offset": 4576194,
-                  "end": 4578731
-                }
-              },
-              {
-                "kind": "options",
-                "key": "3595:quality-mode",
-                "label": "MJPEG_QUALITY",
-                "path": "/camera/mjpegQuality/mode",
-                "options": [
-                  {
-                    "label": "PERFORMANCE_MAXIMUM_POWER",
-                    "value": 5
-                  },
-                  {
-                    "label": "QUALITY",
-                    "value": 7
-                  }
-                ],
-                "visible_when": {
-                  "path": "/camera/mjpegQuality/autoQuality",
-                  "value": true
-                },
-                "source": {
-                  "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
-                  "offset": 4576194,
-                  "end": 4578731
-                }
-              },
-              {
-                "kind": "slider",
-                "key": "3595:manual-quality",
-                "label": "MJPEG_QUALITY",
-                "path": "/camera/mjpegQuality/manualQuality",
-                "min": 10,
-                "max": 90,
-                "step": 1,
-                "visible_when": {
-                  "path": "/camera/mjpegQuality/autoQuality",
-                  "value": false
-                },
                 "source": {
                   "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
                   "offset": 4576194,
@@ -3976,6 +4480,77 @@
                 }
               }
             ]
+          },
+          {
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:lowLightCompensation",
+                "label": "LOW_LIGHT_COMPENSATION",
+                "path": "/camera/lowLightCompensation"
+              }
+            ]
+          },
+          {
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3595:state2D",
+                "label": "TWO_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state2D"
+              },
+              {
+                "kind": "switch",
+                "key": "3595:state3D",
+                "label": "THREE_D_NOISE_REDUCTION",
+                "path": "/camera/dynamicNoiseReduction/state3D"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3595:PROCESSING:MJPEG_QUALITY",
+            "title": "MJPEG_QUALITY",
+            "controls": [
+              "3595:auto-quality"
+            ],
+            "collapsible": true,
+            "tooltip": "RESOLUTION_QUALITY_TOOLTIP"
+          },
+          {
+            "key": "3595:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3595:hdr",
+              "3595:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3595:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          {
+            "key": "3595:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3595:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3595:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          {
+            "key": "3595:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3595:state2D",
+              "3595:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
           }
         ]
       },
@@ -4326,17 +4901,6 @@
             ]
           },
           {
-            "title": "MIRROR_VIDEO",
-            "controls": [
-              {
-                "kind": "switch",
-                "key": "3596:mirror",
-                "label": "MIRROR_VIDEO",
-                "path": "/camera/mirrorVideo"
-              }
-            ]
-          },
-          {
             "title": "ANTI_FLICKER",
             "controls": [
               {
@@ -4361,6 +4925,88 @@
                 }
               }
             ]
+          },
+          {
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              {
+                "kind": "switch",
+                "key": "3596:mirror",
+                "label": "MIRROR_VIDEO",
+                "path": "/camera/mirrorVideo"
+              }
+            ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3596:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3596:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          {
+            "key": "3596:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3596:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3596:brightness"
+          },
+          {
+            "key": "3596:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3596:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:contrast"
+          },
+          {
+            "key": "3596:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3596:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:saturation"
+          },
+          {
+            "key": "3596:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3596:white-balance",
+              "3596:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:white-balance",
+            "header_checkbox": "3596:auto-white-balance"
+          },
+          {
+            "key": "3596:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3596:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          {
+            "key": "3596:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3596:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3596:mirror"
           }
         ]
       },
@@ -4743,7 +5389,91 @@
               }
             ]
           }
-        ]
+        ],
+        "camera_groups": [
+          {
+            "key": "3596:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          {
+            "key": "3596:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          {
+            "key": "3596:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3596:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          {
+            "key": "3596:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3596:zoom",
+              "3596:pan-tilt",
+              "3596:view-preset",
+              "3596:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3596:zoom"
+          },
+          {
+            "key": "3596:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3596:autofocus",
+              "3596:focus"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3596:autofocus"
+          },
+          {
+            "key": "3596:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3596:auto-exposure",
+              "3596:manual-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT",
+            "header_switch": "3596:auto-exposure"
+          }
+        ],
+        "camera_preview": {
+          "activation": false,
+          "promo_title": "AI_FEATURES",
+          "promo_intro": "UNLOCK_SUITE",
+          "promo_items": [
+            "AI_AUTO_FRAMING",
+            "CUSTOM_SCENES",
+            "IMAGE_ENHANCEMENTS",
+            "FILTERS",
+            "BACKGROUND_REPLACEMENT",
+            "MUCH_MORE"
+          ],
+          "promo_link": "LEARN_MORE_ABOUT_CAMO_STUDIO",
+          "source_title": "PREVIEW_SOURCE",
+          "source_tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+          "preview_off": "PREVIEW_DISABLED",
+          "enable_preview": "ENABLE",
+          "higher_gen_cable": "HIGHER_GEN_CABLE_REQUIRED"
+        }
       },
       {
         "key": "PROCESSING",
@@ -4775,6 +5505,28 @@
                 "path": "/camera/dynamicNoiseReduction/state3D"
               }
             ]
+          }
+        ],
+        "camera_groups": [
+          {
+            "key": "3596:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3596:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3596:lowLightCompensation"
+          },
+          {
+            "key": "3596:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3596:state2D",
+              "3596:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
           }
         ]
       }

@@ -21,6 +21,8 @@ use tray_icon::{
     menu::{IconMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
 };
 
+mod account;
+
 actions!(tray_popup, [Dismiss]);
 
 pub(super) enum Event {
@@ -102,6 +104,13 @@ struct TrayPopup {
     // without treating local workspace data as an account response.
     session: TraySession,
     section: TraySection,
+    account_hovered: bool,
+    account_pressed: bool,
+    account_name: String,
+    account_avatar: Option<SharedString>,
+    hovered_tab: Option<TraySection>,
+    settings_hovered: bool,
+    notifications_loaded_empty: bool,
 }
 
 #[allow(dead_code)]
@@ -151,6 +160,13 @@ impl TrayPopup {
             // the audited `!user.item.id` branch as the visible default.
             session: TraySession::SignedOut,
             section: TraySection::Widgets,
+            account_hovered: false,
+            account_pressed: false,
+            account_name: String::new(),
+            account_avatar: None,
+            hovered_tab: None,
+            settings_hovered: false,
+            notifications_loaded_empty: false,
         }
     }
 
@@ -160,6 +176,7 @@ impl TrayPopup {
     #[allow(dead_code)]
     fn set_session(&mut self, session: TraySession) {
         self.session = session;
+        self.notifications_loaded_empty = false;
         self.section = TraySection::Widgets;
     }
 
@@ -168,136 +185,6 @@ impl TrayPopup {
         self.section = section;
     }
 
-    fn guest_header(&self) -> AnyElement {
-        let sender = self.sender.clone();
-        h_flex()
-            .id("tray-account-header")
-            .w_full()
-            .h(surface::css(60.))
-            .flex_shrink_0()
-            .items_center()
-            .px(surface::css(20.))
-            .bg(rgb(0x000000))
-            .child(
-                div()
-                    .w(surface::css(40.))
-                    .h(surface::css(40.))
-                    .child(img("synapse/account-guest.svg").size(surface::css(40.))),
-            )
-            .child(
-                div()
-                    .ml(surface::css(10.))
-                    .flex_1()
-                    .text_color(TrayColors::text())
-                    .font_weight(FontWeight::BOLD)
-                    .child(text("popup", "TEXT_GUEST")),
-            )
-            .child(
-                gpui_kit::base::Button::new("tray-view-online")
-                    .accessibility_label(text("popup", "TEXT_VIEW_ONLINE"))
-                    .text_size(surface::css(12.))
-                    .text_color(TrayColors::text())
-                    .border_1()
-                    .border_color(TrayColors::text())
-                    .px(surface::css(7.))
-                    .py(surface::css(6.))
-                    .on_click(move |_, _, _| {
-                        let _ = sender.try_send(Event::Menu("account-online".to_owned()));
-                    })
-                    .child(text("popup", "TEXT_VIEW_ONLINE")),
-            )
-            .into_any_element()
-    }
-
-    fn guest_navigation(&self, cx: &mut Context<Self>) -> AnyElement {
-        let widgets_active = self.section == TraySection::Widgets;
-        let notifications_active = self.section == TraySection::Notifications;
-        h_flex()
-            .id("tray-navbar")
-            .w_full()
-            .h(surface::css(38.))
-            .flex_shrink_0()
-            .border_t_1()
-            .border_color(TrayColors::launcher())
-            .bg(TrayColors::surface())
-            .child(
-                gpui_kit::base::Button::new("tray-tab-widgets")
-                    .h_full()
-                    .px(surface::css(20.))
-                    .text_size(surface::css(12.))
-                    .text_color(if widgets_active {
-                        TrayColors::text()
-                    } else {
-                        TrayColors::muted()
-                    })
-                    .when(widgets_active, |button| button.bg(TrayColors::launcher()))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.section = TraySection::Widgets;
-                        cx.notify();
-                    }))
-                    .child(text("popup", "TEXT_WIDGETS")),
-            )
-            .child(
-                gpui_kit::base::Button::new("tray-tab-notifications")
-                    .h_full()
-                    .px(surface::css(20.))
-                    .text_size(surface::css(12.))
-                    .text_color(if notifications_active {
-                        TrayColors::text()
-                    } else {
-                        TrayColors::muted()
-                    })
-                    .when(notifications_active, |button| {
-                        button.bg(TrayColors::launcher())
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.section = TraySection::Notifications;
-                        cx.notify();
-                    }))
-                    .child(text("popup", "TEXT_NOTIFICATIONS")),
-            )
-            .child(div().flex_1())
-            .into_any_element()
-    }
-
-    fn guest_body(&self) -> AnyElement {
-        let (placeholder, settings_label, command) = match self.section {
-            TraySection::Widgets => (
-                "TEXT_WIDGETS_PLACEHOLDER",
-                "TEXT_CHANGE_wIDGETS_SETTINGS",
-                "settings-widgets",
-            ),
-            TraySection::Notifications => (
-                "TEXT_NOTIFICATIONS_PLACEHOLDER",
-                "TEXT_CHANGE_NOTIFICATION_SETTINGS",
-                "settings-notifications",
-            ),
-        };
-        let sender = self.sender.clone();
-        v_flex()
-            .id("tray-body")
-            .w_full()
-            .h(surface::css(60.))
-            .flex_shrink_0()
-            .items_center()
-            .justify_center()
-            .gap(surface::css(8.))
-            .bg(TrayColors::surface())
-            .text_color(TrayColors::muted())
-            .text_size(surface::css(14.))
-            .child(text("popup", placeholder))
-            .child(
-                gpui_kit::base::Button::new("tray-content-settings")
-                    .text_size(surface::css(14.))
-                    .text_color(TrayColors::muted())
-                    .hover(|button| button.text_color(TrayColors::hover_text()))
-                    .on_click(move |_, _, _| {
-                        let _ = sender.try_send(Event::Menu(command.to_owned()));
-                    })
-                    .child(text("popup", settings_label)),
-            )
-            .into_any_element()
-    }
     fn command(&self, id: &str) {
         let _ = self.sender.try_send(Event::Menu(id.to_owned()));
     }
@@ -385,7 +272,7 @@ impl Render for TrayPopup {
                 .on_click(cx.listener(|this, _, _, _| this.command("login")))
                 .into_any_element()
         } else {
-            self.guest_header()
+            self.account_header(window, cx)
         };
 
         v_flex()
@@ -406,8 +293,8 @@ impl Render for TrayPopup {
             .line_height(relative(1.22))
             .child(account_surface)
             .when(!signed_out, |root| {
-                root.child(self.guest_navigation(cx))
-                    .child(self.guest_body())
+                root.child(self.account_navigation(window, cx))
+                    .child(self.account_body(window, cx))
             })
             .child(
                 gpui_kit::base::Button::new("tray-launch-synapse")

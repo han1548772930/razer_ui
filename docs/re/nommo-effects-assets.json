@@ -1,0 +1,218 @@
+[
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\chroma_sync_v3_static.c8ddf315.svg",
+    "asset": "assets\\synapse\\chroma-sync.svg",
+    "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+    "bytes": 310620,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/logo_chromastudio.5b277459.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\logo_chromastudio.5b277459.svg",
+    "asset": "assets\\synapse\\hue-logo_chromastudio.svg",
+    "sha256": "917585df1dcb00e83a79330503f232c20396cfdd5c7ba293c232c772b8bbfc68",
+    "bytes": 1275135,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_cw.075c1730.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_cw.075c1730.svg",
+    "asset": "assets\\synapse\\direction-cw.svg",
+    "sha256": "57b6cb9f6f45d016788d6045013b7979970b314fffb12bc9f0d19600aeed7ba6",
+    "bytes": 529,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_cw_1.0d8f9301.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_cw_1.0d8f9301.svg",
+    "asset": "assets\\synapse\\direction-cw-active.svg",
+    "sha256": "682abb4cfcbe0b193e318a5fef73438d4a9455bd9d6530628e6e30f771ca8a42",
+    "bytes": 525,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_ccw.e34b12f6.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_ccw.e34b12f6.svg",
+    "asset": "assets\\synapse\\direction-ccw.svg",
+    "sha256": "ae872f3333639d2ed72c3032c3a453dacde00292e4c0bcc63b997275d0bdc341",
+    "bytes": 533,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_ccw_1.3dffaadc.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_ccw_1.3dffaadc.svg",
+    "asset": "assets\\synapse\\direction-ccw-active.svg",
+    "sha256": "289e47a4c1b43c7f8c5e5547407225c18380e350aa967be56663c5e5d4d4834c",
+    "bytes": 529,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_outward_999.4cd91b14.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_outward_999.4cd91b14.svg",
+    "asset": "assets\\synapse\\direction-out.svg",
+    "sha256": "c362a890befc5be8d1e68d64cb8cedf19b8ec84baacd7a7a412cb74eda40530c",
+    "bytes": 505,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_outward.7c388a12.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_outward.7c388a12.svg",
+    "asset": "assets\\synapse\\direction-out-active.svg",
+    "sha256": "50f258b2b96f029c4ec8b13dc44c406469b3c0b1247a87560a112db5b1ef5641",
+    "bytes": 508,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_inward_999.29221403.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_inward_999.29221403.svg",
+    "asset": "assets\\synapse\\direction-in.svg",
+    "sha256": "cf4eba18daa0d2956194fe9d9536c0cf4faa22594e5c5574b6324033037bfd15",
+    "bytes": 506,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/icon_direction_inward.29c0ed8a.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\icon_direction_inward.29c0ed8a.svg",
+    "asset": "assets\\synapse\\direction-in-active.svg",
+    "sha256": "de79d250140e091299d02d8b3378e3ab4b3a3ef49f2239277dec40bb72742566",
+    "bytes": 509,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/stepper_up.dcb04520.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\stepper_up.dcb04520.svg",
+    "asset": "assets\\synapse\\stepper-up.svg",
+    "sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c",
+    "bytes": 466,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1303,
+    "source_url": "https://apps.razer.com/synapse/products/1303/ui/static/media/stepper_down.349f755c.svg",
+    "source": ".ref\\devices\\1303\\static\\media\\stepper_down.349f755c.svg",
+    "asset": "assets\\synapse\\stepper-down.svg",
+    "sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa",
+    "bytes": 466,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\chroma_sync_v3_static.c8ddf315.svg",
+    "asset": "assets\\synapse\\chroma-sync.svg",
+    "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+    "bytes": 310620,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/logo_chromastudio.5b277459.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\logo_chromastudio.5b277459.svg",
+    "asset": "assets\\synapse\\hue-logo_chromastudio.svg",
+    "sha256": "917585df1dcb00e83a79330503f232c20396cfdd5c7ba293c232c772b8bbfc68",
+    "bytes": 1275135,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_cw.075c1730.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_cw.075c1730.svg",
+    "asset": "assets\\synapse\\direction-cw.svg",
+    "sha256": "57b6cb9f6f45d016788d6045013b7979970b314fffb12bc9f0d19600aeed7ba6",
+    "bytes": 529,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_cw_1.0d8f9301.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_cw_1.0d8f9301.svg",
+    "asset": "assets\\synapse\\direction-cw-active.svg",
+    "sha256": "682abb4cfcbe0b193e318a5fef73438d4a9455bd9d6530628e6e30f771ca8a42",
+    "bytes": 525,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_ccw.e34b12f6.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_ccw.e34b12f6.svg",
+    "asset": "assets\\synapse\\direction-ccw.svg",
+    "sha256": "ae872f3333639d2ed72c3032c3a453dacde00292e4c0bcc63b997275d0bdc341",
+    "bytes": 533,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_ccw_1.3dffaadc.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_ccw_1.3dffaadc.svg",
+    "asset": "assets\\synapse\\direction-ccw-active.svg",
+    "sha256": "289e47a4c1b43c7f8c5e5547407225c18380e350aa967be56663c5e5d4d4834c",
+    "bytes": 529,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_outward_999.4cd91b14.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_outward_999.4cd91b14.svg",
+    "asset": "assets\\synapse\\direction-out.svg",
+    "sha256": "c362a890befc5be8d1e68d64cb8cedf19b8ec84baacd7a7a412cb74eda40530c",
+    "bytes": 505,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_outward.7c388a12.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_outward.7c388a12.svg",
+    "asset": "assets\\synapse\\direction-out-active.svg",
+    "sha256": "50f258b2b96f029c4ec8b13dc44c406469b3c0b1247a87560a112db5b1ef5641",
+    "bytes": 508,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_inward_999.29221403.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_inward_999.29221403.svg",
+    "asset": "assets\\synapse\\direction-in.svg",
+    "sha256": "cf4eba18daa0d2956194fe9d9536c0cf4faa22594e5c5574b6324033037bfd15",
+    "bytes": 506,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/icon_direction_inward.29c0ed8a.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\icon_direction_inward.29c0ed8a.svg",
+    "asset": "assets\\synapse\\direction-in-active.svg",
+    "sha256": "de79d250140e091299d02d8b3378e3ab4b3a3ef49f2239277dec40bb72742566",
+    "bytes": 509,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/stepper_up.dcb04520.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\stepper_up.dcb04520.svg",
+    "asset": "assets\\synapse\\stepper-up.svg",
+    "sha256": "f56d5fccf24c370b7f170057e6afa79636e2ac08b403aa629d126ff19d40a93c",
+    "bytes": 466,
+    "matches_prepared_asset": true
+  },
+  {
+    "product_id": 1304,
+    "source_url": "https://apps.razer.com/synapse/products/1304/ui/static/media/stepper_down.349f755c.svg",
+    "source": ".ref\\devices\\1304\\static\\media\\stepper_down.349f755c.svg",
+    "asset": "assets\\synapse\\stepper-down.svg",
+    "sha256": "45f867045c1ca91e478d143e26ca6b8dd606f265336c9c5e60dd57cea3cbf7aa",
+    "bytes": 466,
+    "matches_prepared_asset": true
+  }
+]

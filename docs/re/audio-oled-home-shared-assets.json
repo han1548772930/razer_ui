@@ -1,0 +1,8 @@
+[
+  {
+    "source": ".ref/devices/1383/static/media/icon_close.55fe41f1.svg",
+    "output": "assets/synapse/mapping-close.svg",
+    "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+    "method": "1383 manifest-declared resource byte-identical to shared native resource"
+  }
+]

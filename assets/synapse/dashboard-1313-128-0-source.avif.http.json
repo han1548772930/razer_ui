@@ -2,27 +2,31 @@
   "source_url": "https://apps.razer.com/synapse/products/1313/ui/1313_128/PluginImages/1313_128_0_dashboard3x.avif",
   "final_url": "https://apps.razer.com/synapse/products/1313/ui/1313_128/PluginImages/1313_128_0_dashboard3x.avif",
   "redirected": false,
-  "http_status": null,
-  "fetched_at_utc": "2026-10-05T05:10:00Z",
-  "content_type": null,
-  "last_modified": null,
-  "etag": null,
-  "result": "network_error",
-  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "bytes": 0,
-  "validation": null,
+  "http_status": 200,
+  "fetched_at_utc": "2026-10-06T02:08:32Z",
+  "content_type": "image/avif",
+  "last_modified": "Mon, 05 Oct 2026 05:44:08 GMT",
+  "etag": "\"819c0ee987f39424ee2ffcc75f873881\"",
+  "result": "ok",
+  "sha256": "f07fe874a09d878aa4ae0c18ec6ec8174a044b1366d51078d618c6f368b6f2f1",
+  "bytes": 29411,
+  "validation": {
+    "valid": true,
+    "kind": "media",
+    "reason": null
+  },
   "attempts": [
     {
       "attempt": 1,
-      "started_at_utc": "2026-10-05T05:10:00Z",
-      "completed_at_utc": "2026-10-05T05:10:00Z",
-      "status": null,
-      "result": "network_error",
-      "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/1313/ui/1313_128/PluginImages/1313_128_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000022FD3E262D0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+      "started_at_utc": "2026-10-06T02:08:32Z",
+      "completed_at_utc": "2026-10-06T02:08:32Z",
+      "status": 200,
+      "result": "ok",
+      "error": null,
       "final_url": "https://apps.razer.com/synapse/products/1313/ui/1313_128/PluginImages/1313_128_0_dashboard3x.avif",
       "redirect_chain": []
     }
   ],
-  "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/products/1313/ui/1313_128/PluginImages/1313_128_0_dashboard3x.avif (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x0000022FD3E262D0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
-  "body_file": "dashboard-1313-128-0-source.avif.response"
+  "error": null,
+  "body_file": "dashboard-1313-128-0-source.avif"
 }

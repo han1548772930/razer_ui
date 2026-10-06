@@ -5,8 +5,8 @@
 //!
 //! 原版 `xx` 的两列归属是 `widget-col col-left`（亮度、语言）与
 //! `widget-col col-right`（回主屏时间、息屏变暗、屏保），本模块按该归属分发描述符里的分区。
-//! `Dv`（Home Screen Display 卡片网格）依赖设备侧 `GET_OLED_DATA` 的动画/图片列表与
-//! 六个编辑弹层，本地没有该数据源，暂不在本模块伪造；见审计文档的边界说明。
+//! `Dv`（Home Screen Display 卡片网格）及 `Kg` Media 编辑器由 `audio_oled_home`
+//! 依据 1383 自身的 reducer 初始预览数据实现；真实硬件与其余编辑器边界见审计文档。
 use super::*;
 use crate::ui::source_slider::SourceSlider;
 
@@ -15,7 +15,11 @@ const KRAKEN_OLED_LEFT_COLUMN: [&str; 2] = ["OLED_BRIGHTNESS_TITLE", "OLED_LANGU
 
 impl AudioProductWorkspace {
     /// 原版 `xx`：`body-widgets` 里两列 `.widget-col`，每列一个竖排 `.widget` 堆叠。
-    pub(super) fn kraken_oled_page(&self, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn kraken_oled_page(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let Some(page) = self.spec.pages.iter().find(|page| page.key == "TAB_OLED") else {
             return div().into_any_element();
         };
@@ -29,12 +33,17 @@ impl AudioProductWorkspace {
                 right.push(panel);
             }
         }
-        crate::features::product_surface::body()
+        v_flex()
+            .relative()
+            .max_w(surface::css(1240.))
+            .mx_auto()
+            .child(self.kraken_oled_home(window, cx))
             .child(
                 surface::page_columns()
                     .child(surface::page_column(v_flex().children(left)))
                     .child(surface::page_column(v_flex().children(right))),
             )
+            .children(self.oled_runtime_layers(window, cx))
             .into_any_element()
     }
 
@@ -102,8 +111,9 @@ impl AudioProductWorkspace {
             .apply_label
             .as_deref()
             .expect("1383 OLED language apply label");
-        let unchanged = self.selection_value(control) == self.draft.pointer(&control.path).cloned();
-        let path = control.path.clone();
+        let (raw, staged, selected) = self.oled_language_values();
+        let unchanged = staged == raw && staged == selected;
+        let disabled = self.oled_is_ble() || self.oled_is_loading();
         let apply_button = gpui_kit::base::Button::new("kraken-oled-language-apply")
             .accessibility_label(t(label))
             .disabled(unchanged)
@@ -116,13 +126,7 @@ impl AudioProductWorkspace {
             .text_size(surface::css(14.))
             .child(t(label).to_uppercase());
         let apply_button = apply_button.on_click(cx.listener(move |this, _, window, cx| {
-            let staged = this
-                .control(&path)
-                .and_then(|control| this.selection_value(control));
-            if let Some(value) = staged {
-                this.staged.remove(&path);
-                this.edit(&path, value, window, cx);
-            }
+            this.apply_oled_language(window, cx);
         }));
         let mut panel = kraken_oled_panel(section, cx)
             .child(div().child(t(&control.label)))
@@ -139,7 +143,13 @@ impl AudioProductWorkspace {
             // `.OLEDLanguage_desc{color:#999}`。
             panel = panel.child(div().text_color(rgb(0x999999)).child(t(description)));
         }
-        panel.into_any_element()
+        div()
+            .relative()
+            .child(panel)
+            .when(disabled, |el| {
+                el.opacity(0.3).child(div().absolute().inset_0().occlude())
+            })
+            .into_any_element()
     }
 
     /// `Ov`/`Uv`：`.polling-btn-set` 里每个 `.customize-polling-rate-button.keyboard-btn-size`
@@ -310,7 +320,7 @@ fn kraken_oled_panel(section: &AudioSection, cx: &App) -> Div {
     }
 }
 
-fn kraken_oled_help(id: &str, text: &str) -> AnyElement {
+pub(super) fn kraken_oled_help(id: &str, text: &str) -> AnyElement {
     div()
         .absolute()
         .top(surface::css(10.))

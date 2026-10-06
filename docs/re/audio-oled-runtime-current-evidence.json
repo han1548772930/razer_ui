@@ -1,0 +1,1993 @@
+{
+  "method": "Current manifest-selected static AST/CSS; UTF16 source offsets and full-file SHA256.",
+  "manifest": {
+    "path": ".ref/devices/1383/asset-manifest.json",
+    "sha256": "907cb71cc714fad99364461824738821cfe57e188efefe1a732196754eaa1fcc"
+  },
+  "receipts": [
+    {
+      "module": 33397,
+      "symbol": "I",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 371370,
+      "end": 372440,
+      "source": "{productId:null===p||void 0===p||null===(s=p.DeviceInfo)||void 0===s?void 0:s.productId,category:null===p||void 0===p||null===(c=p.DeviceInfo)||void 0===c?void 0:c.category,subCategory:null===p||void 0===p||null===(l=p.DeviceInfo)||void 0===l?void 0:l.subCategory,masterGuide:null===p||void 0===p||null===(u=p.DeviceInfo)||void 0===u?void 0:u.masterGuideURL,supportPage:null===p||void 0===p||null===(_=p.DeviceInfo)||void 0===_?void 0:_.supportPage,productName:{en:\"\",\"zh-cn\":\"\"},deviceName:{en:\"\",\"zh-cn\":\"\"},editionId:0,layoutId:0,sidepadLayout:3,sidepadConnected:!1,serialNumber:\"\",wristrestConnected:!1,externalPowerConnected:!1,isBle:!1,isDongle:!1,isHyperPollingPaired:!1,isInHighSpeedPollingRate:!1,currentFWVersion:null,firmwareDetails:null,newFWVersion:null,currentBIOSVersion:null,currentECVersion:null,currentVBIOSVersion:null,newBIOSVersion:null,newECVersion:null,newVBIOSVersion:null,pairedInfo:[],isDualLinkWarning:!1,cancelPairing:!1,continuePairing:!1,isWindowsMode:!0,vendorId:null===p||void 0===p||null===(E=p.DeviceInfo)||void 0===E?void 0:E.vendorId}"
+    },
+    {
+      "module": 33397,
+      "symbol": "hn",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 451299,
+      "end": 451397,
+      "source": "{oledLanguage:0,oledLanguageChanged:0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+    },
+    {
+      "module": 33397,
+      "symbol": "Cn",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 451603,
+      "end": 451687,
+      "source": "{oledLoading:{target:\"animation\",type:\"none\",totalItems:0,currentItem:0,progress:0}}"
+    },
+    {
+      "module": 79826,
+      "symbol": "T",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 1016847,
+      "end": 1018873,
+      "source": "{homeScreenDisplay:{enabled:!0,selected:0},animation:{selectedIdx:0,list:[{id:\"animation-1\",src:O(a.A[0].src),custom:!1,enabled:!0},{id:\"animation-2\",src:O(a.A[1].src),custom:!1,enabled:!0},{id:\"animation-3\",src:O(a.A[2].src),custom:!1,enabled:!0},{id:\"animation-4\",src:O(a.A[3].src),custom:!1,enabled:!0},{id:\"animation-5\",src:O(a.A[4].src),custom:!1,enabled:!0},{id:\"animation-6\",src:O(a.A[5].src),custom:!1,enabled:!0}]},image:{selectedIdx:0,list:[{id:\"image-1\",src:O(o.A[0].src),custom:!1,enabled:!0},{id:\"image-2\",src:O(o.A[1].src),custom:!1,enabled:!0},{id:\"image-3\",src:O(o.A[2].src),custom:!1,enabled:!0},{id:\"image-4\",src:O(o.A[3].src),custom:!1,enabled:!0},{id:\"image-5\",src:O(o.A[4].src),custom:!1,enabled:!0},{id:\"image-6\",src:O(o.A[5].src),custom:!1,enabled:!0},{id:\"image-7\",src:O(o.A[6].src),custom:!1,enabled:!0},{id:\"image-8\",src:O(o.A[7].src),custom:!1,enabled:!0},{id:\"image-9\",src:O(o.A[8].src),custom:!1,enabled:!0},{id:\"image-10\",src:O(o.A[9].src),custom:!1,enabled:!0}]},emote:{src:i.aN,isDataMatch:!0},banner:{image:{enabled:!0,selected:s.Ay[0],selectedIdx:0,position:\"top\"},text:{value:\"For Gamers. By Gamers.\",style:{fontFamily:s.ay[0],fontSize:s.Z4[8],fontWeight:null,fontStyle:null,textDecoration:null},scroll:\"left\"},imageData:\"\"},media:{info:{enabled:!0,selected:\"top\"},visualizer:{enabled:!0,selected:0}},system:{timeBetweenSlides:3,selectedSlideIdx:0,triggerHomeScreenSlide:!1,temperatureUnit:\"celsius\",timeFormat:0,dateFormat:0,slides:[{left:c.hJ[0],right:c.hJ[1]},{left:c.hJ[2],right:c.hJ[3]},{left:c.hJ[5],right:c.hJ[6]}],info:{cpuUsage:{label:\"CPU\",value:\"25%\"},cpuTemp:{label:\"CPU Temp\",value:\"35°C\"},gpuUsage:{label:\"GPU\",value:\"35%\"},gpuTemp:{label:\"GPU Temp\",value:\"45°C\"},memory:{label:\"Memory\",value:\"15%\"},date:{label:\"\",value:\"07/15/2024\"},time:{label:\"\",value:\"13:00\"},laptopBattery:{label:\"Laptop\",value:100},keyboardBattery:{label:\"Keyboard\",value:100},headsetBattery:{label:\"Headset\",value:\"100%\"}}},errorPayload:null,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+    },
+    {
+      "module": 33397,
+      "symbol": "oledLanguageReducer",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 472448,
+      "end": 473836,
+      "source": "function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:hn,t=arguments.length>1?arguments[1]:void 0;if(\"undefined\"===typeof e)return hn;switch(t.type){case Tn.SET_OLED_LANGUAGE:{var n;let r={...e,oledLanguage:t.payload};const a=new _n.A(\"ON_SET_OLED_LANGUAGE\",void 0,{oledLanguage:t.payload});null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_OLED_LANGUAGE\",timerTick:a.stateMachineEvent.timerTick,payload:{oledLanguage:t.payload}});const o={timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload};return r=g.Rs(r,o),r}case Tn.MW_SET_OLED_LANGUAGE_TO_UI:return{...e,oledLanguage:t.payload.oledLanguage,oledLanguageChanged:e.oledLanguageChanged+1};case Tn.MW_UPDATE_OLED_LANGUAGE_UI_ACTION_LOCAL_STORAGE:return g.Cr(e,t);case Tn.MW_UPDATE_OLED_LANGUAGE_UI_ACTION_DEVICE:return g.yg(e,t);case Tn.MW_POST_PROCESS_COMPLETED_OLED_LANGUAGE_UI_ACTION:return g.G6(e,t);case Tn.MW_ADD_NEW_OLED_LANGUAGE_LOCALSTORAGE_ACTION:return g.zE(e,t);case Tn.MW_UPDATE_OLED_LANGUAGE_LOCALSTORAGE_ACTION_DEVICE:return g.Uy(e,t);case Tn.MW_POST_PROCESS_COMPLETED_OLED_LANGUAGE_LOCALSTORAGE_ACTION:return g.c4(e,t);case Tn.CANCEL_OLED_LANGUAGE_UPDATE:var r;return null===(r=window.mwBroadcastChannel)||void 0===r||r.postMessage({type:\"ON_CANCEL_OLED_LANGUAGE_UPDATE\",timerTick:Date.now()}),e;default:return e}}"
+    },
+    {
+      "module": 33397,
+      "symbol": "oledLoadingReducer",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 476473,
+      "end": 477212,
+      "source": "function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Cn,t=arguments.length>1?arguments[1]:void 0;if(\"undefined\"===typeof e)return Cn;switch(t.type){case Tn.MW_UPDATE_OLED_DOWNLOAD_PROGRESS:return console.log(\"payload oledLoading: \",t.payload),{...e,oledLoading:{...e.oledLoading,target:t.payload.target,type:t.payload.type,totalItems:t.payload.totalItems,currentItem:t.payload.currentItem,progress:t.payload.progress}};case Tn.CANCEL_OLED_DOWNLOAD_PROCESS:var n;return null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_CANCEL_OLED_DOWNLOAD_PROCESS\",timerTick:Date.now()}),{...e,oledLoading:{...e.oledLoading,target:\"none\",type:\"none\",totalItems:0,currentItem:0,progress:0}};default:return e}}"
+    },
+    {
+      "module": 79826,
+      "symbol": "SET_OLED_HOME_SCREEN_DISPLAY_ERROR_REVERT",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 1020603,
+      "end": 1020848,
+      "source": "case r.SET_OLED_HOME_SCREEN_DISPLAY_ERROR_REVERT:var S;return null===(S=window.mwBroadcastChannel)||void 0===S||S.postMessage({type:\"ON_SET_OLED_HOME_SCREEN_DISPLAY_ERROR_REVERT\",timerTick:Date.now(),payload:t.payload}),{...e,errorPayload:null};"
+    },
+    {
+      "module": 79826,
+      "symbol": "SET_OLED_HOME_SCREEN_DISPLAY_ERROR_RETRY",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 1020848,
+      "end": 1021091,
+      "source": "case r.SET_OLED_HOME_SCREEN_DISPLAY_ERROR_RETRY:var h;return null===(h=window.mwBroadcastChannel)||void 0===h||h.postMessage({type:\"ON_SET_OLED_HOME_SCREEN_DISPLAY_ERROR_RETRY\",timerTick:Date.now(),payload:t.payload}),{...e,errorPayload:null};"
+    },
+    {
+      "module": 79826,
+      "symbol": "GET_OLED_DATA",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 1032057,
+      "end": 1032211,
+      "source": "case r.GET_OLED_DATA:var L;return null===(L=window.mwBroadcastChannel)||void 0===L||L.postMessage({type:\"ON_SET_OLED_DATA_TO_UI\",timerTick:Date.now()}),e;"
+    },
+    {
+      "module": 51278,
+      "symbol": "xx",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 661198,
+      "end": 662123,
+      "source": "()=>{const e=(0,w.useDispatch)(),[t,s]=(0,S.useState)(!1),[i,a]=(0,S.useState)(null),{isDongle:o}=(0,w.useSelector)(e=>e.deviceReducer),n=(0,w.useSelector)(e=>\"progress\"===e.oledLoadingReducer.oledLoading.type);return(0,S.useEffect)(()=>{e({type:cp.GET_OLED_DATA})},[]),(0,P.jsxs)(P.Fragment,{children:[!o&&(0,P.jsx)(hx,{height:\"117px\",width:\"400px\",showFooter:!1,type:\"warning\",title:V.QAd,children:(0,P.jsx)(J.A,{text:V.l2t})}),(0,P.jsxs)(eo.A,{children:[(0,P.jsx)(gx,{}),(0,P.jsx)(vx,{}),(0,P.jsxs)(eo.A,{children:[(0,P.jsx)(Dv,{onEdit:e=>{a(e),s(!0)},deviceStatus:\"headset\",isLoading:n}),(0,P.jsxs)(to.A,{direction:\"left\",children:[(0,P.jsx)(Nv,{min:30,minTag:30}),(0,P.jsx)(Bv,{})]}),(0,P.jsxs)(to.A,{direction:\"right\",children:[(0,P.jsx)(Ov,{hasSwitch:!1}),(0,P.jsx)(Uv,{hasSwitch:!1,dimToBrightness:30}),(0,P.jsx)(Kv,{})]})]}),t&&(0,P.jsx)(Mv,{selectedEdit:i,show:t,onClose:()=>{a(null),s(!1)},animationFPS:15})]})]})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "Dv",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 642546,
+      "end": 649272,
+      "source": "e=>{let{onEdit:t,deviceStatus:s=\"keyboard\",isLoading:i=!1}=e;const a=(0,w.useDispatch)(),{enabled:o,selected:n}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.homeScreenDisplay),{selectedIdx:r,list:l}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.animation),{selectedIdx:d,list:c}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.image),{src:m,isDataMatch:p}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.emote),{text:h,image:u}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.banner),{info:g,visualizer:v}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.media),x=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.system),f=x.slides.filter(e=>{let{left:t,right:s}=e;return t||s}),_=f.length,[C,y]=(0,S.useState)(0),b=(0,S.useRef)(null),E=(0,w.useSelector)(e=>e.deviceReducer.isBle),D=(0,w.useSelector)(e=>e.oledLanguageReducer.oledLanguage);(0,S.useEffect)(()=>{y(0)},[_]),(0,S.useEffect)(()=>(b.current&&clearInterval(b.current),y(0),b.current=setInterval(()=>{y(e=>(e+1)%_)},1e3*x.timeBetweenSlides),()=>clearInterval(b.current)),[x.triggerHomeScreenSlide]);const M=e=>{if(6===e){let e={...x};e.slides.forEach(t=>{1===D?(t.left.deviceLabel=(0,A.getTextItem)(t.left.deviceLabelKey,{_lang:\"zh-CN\"}),t.right.deviceLabel=(0,A.getTextItem)(t.right.deviceLabelKey,{_lang:\"zh-CN\"})):(t.left.deviceLabel=e.info[t.left.id].label,t.right.deviceLabel=e.info[t.right.id].label)}),a(hp(e))}else a(mp({enabled:o,selected:e}))};return(0,P.jsx)(\"div\",{className:(i?\"disabled\":\"\")+\"  \",children:(0,P.jsxs)(ho.A,{title:V.JQR,tips:V.O0W,hasSwitch:!0,toggleSwitch:()=>{a(mp({enabled:!o,selected:n}))},active:o,extraClass:bv,children:[(0,P.jsx)(J.A,{text:V.Tcb}),(0,P.jsxs)(\"div\",{className:Av,children:[(0,P.jsx)(Hp,{id:\"animation\",type:0,title:V.RG,selected:n,onEdit:t,onApply:M,isBle:E,children:l[r].src?(0,P.jsx)(\"img\",{src:l[r].src}):(0,P.jsx)(su,{})}),(0,P.jsx)(Hp,{id:\"image\",type:1,title:V.KTY,selected:n,onEdit:t,onApply:M,isBle:E,children:c[d].src?(0,P.jsx)(\"img\",{src:c[d].src}):(0,P.jsx)(_u,{})}),(0,P.jsx)(Hp,{id:\"emote\",type:4,title:V.Nj5,selected:n,onEdit:t,onApply:M,isBle:E,children:(0,P.jsx)(Pu,{emote:m,isDataMatch:p})}),(0,P.jsx)(Hp,{id:\"banner\",type:2,title:V.$Mz,selected:n,onEdit:t,onApply:M,isBle:E,children:(0,P.jsx)(Hg,{image:u,text:h})}),(0,P.jsx)(Hp,{id:\"media\",type:5,title:V.rwQ,selected:n,onEdit:t,onApply:M,requireSynapse:!0,disable:E,children:(0,P.jsx)(Zg,{info:g,visualizer:v})}),(0,P.jsx)(Hp,{id:\"system\",type:6,title:V.FSz,selected:n,onEdit:t,onApply:M,requireSynapse:!0,disable:E,children:(0,P.jsx)(vv,{slide:f[C],info:x.info,oledLang:D})}),\"keyboard\"===s&&(0,P.jsx)(Hp,{id:\"keyboard\",type:3,title:V.lwA,selected:n,editable:!1,onApply:M,children:(0,P.jsx)(\"img\",{src:\"data:image/png;base64,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\"})}),\"headset\"===s&&(0,P.jsx)(Hp,{id:\"headset\",type:3,title:V.w23,selected:n,editable:!1,onApply:M,children:(0,P.jsx)(wv,{})}),!o&&(0,P.jsx)(\"div\",{className:Ev})]})]})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "Hp",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 581827,
+      "end": 583078,
+      "source": "e=>{let{id:t,title:s,selected:i,editable:a=!0,onEdit:o=null,onApply:n,children:r,preview:l=!1,requireSynapse:d=!1,type:c,disable:m=!1,isBle:p=!1}=e;const[h,u]=(0,S.useState)(!1),[g,v]=(0,S.useState)(!1),x=(0,w.useSelector)(e=>e.languageReducer.lang),f=e=>`${e} ${i===c?jp:\"\"} ${h?Ip:\"\"}`;if(l)return(0,P.jsxs)(\"div\",{className:Dp,children:[(0,P.jsx)(\"div\",{className:Mp,children:(0,P.jsx)(J.A,{text:V.$yX})}),(0,P.jsx)(\"div\",{className:`${Tp} ${Op}`,children:r})]});const _=(0,A.getTextItem)(V.XVF,{_lang:x});return(0,P.jsx)(\"div\",{className:m?\"flex\":\"\",...m?{\"turn-off-ble-tooltip\":_}:{},children:(0,P.jsx)(\"div\",{style:{opacity:m?.5:1},children:(0,P.jsxs)(\"div\",{className:Dp,children:[(0,P.jsxs)(\"div\",{className:f(Mp),children:[(0,P.jsx)(J.A,{text:s}),d&&(0,P.jsxs)(P.Fragment,{children:[(0,P.jsx)(Ep,{id:`require-synapse-icon-${t}`,className:Np,onMouseEnter:()=>!m&&v(!0),onMouseLeave:()=>!m&&v(!1)}),(0,P.jsx)(st.A,{position:\"bottom-right\",className:Vp,isMounted:g,target:`require-synapse-icon-${t}`,children:(0,P.jsx)(J.A,{text:V.vs6})})]})]}),(0,P.jsxs)(\"div\",{className:f(Tp),onMouseEnter:()=>!m&&u(!0),onMouseLeave:()=>!m&&u(!1),children:[r,h&&!m&&(0,P.jsx)(Bp,{isBle:p,selected:i===c,editable:a,onEdit:()=>o(t),onApply:()=>n(c)})]})]})})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "Bp",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 581316,
+      "end": 581823,
+      "source": "e=>{let{selected:t,editable:s,onEdit:i,onApply:a,isBle:o}=e;return(0,P.jsxs)(\"div\",{className:Rp,children:[s&&(0,P.jsxs)(\"div\",{className:`${Pp} ${o?Lp+\" ble-edit\":\"\"}`,onClick:i,children:[(0,P.jsx)(xp,{className:`${Np} ${o?jp:\"\"}`}),(0,P.jsx)(J.A,{text:V.zxY}),o&&(0,P.jsx)(\"div\",{className:\"ble-edit-tip\",children:(0,P.jsx)(J.A,{text:V.De8})})]}),(0,P.jsxs)(\"div\",{className:`${Pp} ${kp} ${t?jp:\"\"}`,onClick:a,children:[(0,P.jsx)(Sp,{className:`${Np} ${kp} ${t?jp:\"\"}`}),(0,P.jsx)(J.A,{text:V.pJk})]})]})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "Bv",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 651603,
+      "end": 653172,
+      "source": "()=>{const e=(0,w.useDispatch)(),t=(0,w.useSelector)(e=>e.oledLanguageReducer.oledLanguage),s=(0,w.useSelector)(e=>e.oledLanguageReducer.oledLanguageChanged),[i,a]=(0,S.useState)(t),[o,n]=(0,S.useState)(t<127?t:255&~t),r=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.system),{selected:l}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer.homeScreenDisplay),d=(0,w.useSelector)(e=>e.deviceReducer.isBle),c=(0,w.useSelector)(e=>\"progress\"===e.oledLoadingReducer.oledLoading.type),m=(0,S.useRef)(!1);let p={...r};(0,S.useEffect)(()=>{a(t)},[t]);(0,S.useEffect)(()=>{6===l&&s>1&&m.current&&(p.slides.forEach(e=>{1===o?(e.left.deviceLabel=(0,A.getTextItem)(e.left.deviceLabelKey,{_lang:\"zh-CN\"}),e.right.deviceLabel=(0,A.getTextItem)(e.right.deviceLabelKey,{_lang:\"zh-CN\"})):(e.left.deviceLabel=p.info[e.left.id].label,e.right.deviceLabel=p.info[e.right.id].label)}),console.log(\"%c >>> Updated Slide: \",\"color: lightgreen\",p.slides),e(hp(p))),m.current=!0},[s]),(0,S.useEffect)(()=>{n(i<127?i:255&~i)},[i]);return(0,P.jsx)(\"div\",{className:\"\"+(c||d?\"disabled\":\"\"),children:(0,P.jsxs)(ho.A,{title:V.XQ1,tips:V.tKs,children:[(0,P.jsx)(J.A,{text:V.UM5}),(0,P.jsxs)(\"div\",{className:`${Rv} check-dropdown`,children:[(0,P.jsx)(ut.A,{dataSet:Vv,value:Vv.findIndex(e=>{let{value:t}=e;return t===o}),selectOption:e=>{a(Vv[e].value)},extraStyle:{zIndex:106}}),(0,P.jsx)(mm.A,{name:V.pJk,extraClass:`${Pv} ${i===t&&i===o?kv:\"\"}`,onClick:()=>{var t;e((t=o,{type:cp.SET_OLED_LANGUAGE,payload:t}))}})]}),(0,P.jsx)(\"div\",{className:Lv,children:(0,P.jsx)(J.A,{text:V.gGr})})]})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "gx",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 659336,
+      "end": 659825,
+      "source": "()=>{const e=(0,w.useDispatch)(),{target:t,type:s,totalItems:i,currentItem:a,progress:o}=(0,w.useSelector)(e=>e.oledLoadingReducer.oledLoading);if(\"none\"===s)return(0,P.jsx)(P.Fragment,{});if(\"simple\"===s)return(0,P.jsx)(ix,{});if(\"progress\"===s){if(\"animation\"===t||\"image\"===t||\"reset\"===t)return(0,P.jsx)(cx,{title:V.JQR,progress:o,currentItem:a,totalItems:i,isDisable:\"reset\"===t,onCancel:()=>e(Yv())});if(\"language\"===t)return(0,P.jsx)(ux,{progress:o})}return(0,P.jsx)(P.Fragment,{})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "ix",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 656644,
+      "end": 656717,
+      "source": "()=>(0,P.jsx)(\"div\",{className:tx,children:(0,P.jsx)(ex,{className:sx})})"
+    },
+    {
+      "module": 51278,
+      "symbol": "Qv",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 655170,
+      "end": 656514,
+      "source": "(e,t)=>{let{title:s,titleId:i,...a}=e;return S.createElement(\"svg\",Jv({width:\"26px\",height:\"26px\",xmlns:\"http://www.w3.org/2000/svg\",viewBox:\"0 0 100 100\",preserveAspectRatio:\"xMidYMid\",className:\"lds-ring\",style:{background:\"none\"},ref:t,\"aria-labelledby\":i},a),s?S.createElement(\"title\",{id:i},s):null,Xv||(Xv=S.createElement(\"circle\",{cx:50,cy:50,\"ng-attr-r\":\"{{config.radius}}\",\"ng-attr-stroke\":\"{{config.base}}\",\"ng-attr-stroke-width\":\"{{config.width}}\",fill:\"none\",r:30,stroke:\"rgba(26.66666666666669%,83.92156862745098%,17.25490196078431%,0.3)\",strokeWidth:10})),qv||(qv=S.createElement(\"circle\",{cx:50,cy:50,\"ng-attr-r\":\"{{config.radius}}\",\"ng-attr-stroke\":\"{{config.stroke}}\",\"ng-attr-stroke-width\":\"{{config.innerWidth}}\",\"ng-attr-stroke-linecap\":\"{{config.linecap}}\",fill:\"none\",r:30,stroke:\"#44d62c\",strokeWidth:10,strokeLinecap:\"square\",transform:\"rotate(56.0473 50 50)\"},S.createElement(\"animateTransform\",{attributeName:\"transform\",type:\"rotate\",calcMode:\"linear\",values:\"0 50 50;180 50 50;720 50 50\",keyTimes:\"0;0.5;1\",dur:\"2s\",begin:\"0s\",repeatCount:\"indefinite\"}),S.createElement(\"animate\",{attributeName:\"stroke-dasharray\",calcMode:\"linear\",values:\"18.84955592153876 169.64600329384882;94.2477796076938 94.24777960769377;18.84955592153876 169.64600329384882\",keyTimes:\"0;0.5;1\",dur:2,begin:\"0s\",repeatCount:\"indefinite\"}))))}"
+    },
+    {
+      "module": 51278,
+      "symbol": "cx",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 656994,
+      "end": 657767,
+      "source": "e=>{let{title:t,showItemTracking:s=!0,progress:i,currentItem:a,totalItems:o,onCancel:n,isDisable:r=!1}=e;return(0,P.jsx)(\"div\",{className:ax,children:(0,P.jsxs)(\"div\",{className:ox,children:[(0,P.jsx)(\"span\",{className:nx,children:(0,P.jsx)(J.A,{text:t})}),(0,P.jsx)(\"span\",{children:(0,P.jsx)(J.A,{text:V.kM7})}),(0,P.jsx)(\"span\",{children:(0,P.jsx)(J.A,{text:V.dt6})}),(0,P.jsx)(\"br\",{}),(0,P.jsxs)(\"div\",{className:rx,children:[(0,P.jsxs)(\"span\",{children:[(0,P.jsx)(J.A,{text:V.R42}),\"...\"]}),(0,P.jsx)(\"span\",{children:`${i}%`})]}),(0,P.jsx)(k,{progress:i,extraStyle:{},text:\"\"}),s&&(0,P.jsx)(\"div\",{className:lx,children:(0,P.jsx)(J.A,{text:V.stg,data:{currentItem:a,totalItems:o}})}),(0,P.jsx)(mm.A,{extraClass:`${dx} ${r?\"disabled\":\"\"}`,name:V.tus,onClick:n})]})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "hx",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 658098,
+      "end": 658869,
+      "source": "e=>{let{title:t,children:s,height:i=\"auto\",width:a=\"330px\",onCancel:o,onConfirm:n,cancelText:r,confirmText:l,wideCancelBtn:d=!1,wideConfirmBtn:c=!1,showIcon:m=!0,showFooter:p=!0,type:h=\"warning\"}=e;return(0,P.jsx)(\"div\",{className:px.backdrop,children:(0,P.jsxs)(\"div\",{className:`${px.body} ${\"warning\"===h?px.warning:\"\"}`,style:{height:i,width:a},children:[(0,P.jsxs)(\"div\",{className:`${px.header} ${\"warning\"===h?px.warning:\"\"}`,children:[m&&(0,P.jsx)(mx.h,{}),(0,P.jsx)(J.A,{text:t})]}),(0,P.jsx)(\"div\",{className:px.content,children:s}),p&&(0,P.jsxs)(\"div\",{className:px.footer,children:[(0,P.jsx)(mm.A,{extraClass:`${px[\"cancel-btn\"]} ${d?px.wide:\"\"}`,name:r,onClick:o}),(0,P.jsx)(mm.A,{extraClass:`${px[\"confirm-btn\"]} ${c?px.wide:\"\"}`,name:l,onClick:n})]})]})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "ux",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 658873,
+      "end": 659332,
+      "source": "e=>{let{progress:t}=e;const s=(0,w.useDispatch)(),[i,a]=(0,S.useState)(!1);return(0,S.useEffect)(()=>()=>a(!1),[]),(0,P.jsxs)(P.Fragment,{children:[i&&(0,P.jsx)(hx,{title:V.QWf,cancelText:V.bOp,confirmText:V.Jf5,onCancel:()=>{s({type:cp.CANCEL_OLED_LANGUAGE_UPDATE}),a(!1)},onConfirm:()=>a(!1),wideConfirmBtn:!0,children:(0,P.jsx)(J.A,{text:V.$PN})}),(0,P.jsx)(cx,{title:V._Hj,progress:t,showItemTracking:!1,currentItem:0,totalItems:0,onCancel:()=>a(!0)})]})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "vx",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 659829,
+      "end": 661194,
+      "source": "()=>{const e=(0,w.useDispatch)(),{errorPayload:t}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer),{target:s,type:i}=(0,w.useSelector)(e=>e.oledLoadingReducer.oledLoading),[a,o]=(0,S.useState)(!1),{animation:n,image:r,emote:l,banner:d,media:c,system:m}=(0,w.useSelector)(e=>e.oledHomeScreenDisplayReducer);(0,S.useEffect)(()=>()=>o(!1),[]),(0,S.useEffect)(()=>{t&&o(!0)},[t]);if(!t)return null;const p=\"progress\"===i&&\"reset\"===s,h=p?()=>{var e;o(!1);const t={animation:n,image:r,emote:{...l,imageData:l.src},banner:{...d,imageState:d.image.enabled?1:0,imagePos:\"top\"===d.image.position?0:1,imageData:d.imageData,imageIndex:0},media:{...c,mediaState:c.info.enabled?1:0,visualizerState:c.visualizer.enabled?1:0},system:{...m,interval:m.timeBetweenSlides,tempFormat:m.temperatureUnit,dateFormat:m.dateFormat,timeFormat:m.timeFormat,slides:m.slides}};null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_RESET_OLED\",payload:t})}:()=>{return e((s=t,{type:cp.SET_OLED_HOME_SCREEN_DISPLAY_ERROR_RETRY,payload:s}));var s},u=p?()=>{e(Yv()),e(pp(t)),o(!1)}:()=>e(pp(t));return p&&!a?null:(0,P.jsxs)(hx,{title:V.JQR,cancelText:V.B3A,confirmText:V.p6C,onCancel:u,onConfirm:h,wideCancelBtn:!0,height:\"200px\",children:[(0,P.jsx)(\"div\",{children:(0,P.jsx)(J.A,{text:V.sUR})}),(0,P.jsx)(\"br\",{}),(0,P.jsx)(\"div\",{children:(0,P.jsx)(J.A,{text:V.ZV_})})]})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "pp",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 577668,
+      "end": 577734,
+      "source": "e=>({type:cp.SET_OLED_HOME_SCREEN_DISPLAY_ERROR_REVERT,payload:e})"
+    },
+    {
+      "module": 51278,
+      "symbol": "Yv",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 654887,
+      "end": 654931,
+      "source": "()=>({type:cp.CANCEL_OLED_DOWNLOAD_PROCESS})"
+    },
+    {
+      "module": 51278,
+      "symbol": "k",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 13845,
+      "end": 14478,
+      "source": "e=>{let{progress:t,extraStyle:s,...i}=e;const a=y().useRef(null),o=y().useRef(0);return y().useEffect(()=>{const e=a.current,s=(t,s)=>{if(s){const t=()=>{s(),e.removeEventListener(\"transitionend\",t)};e.addEventListener(\"transitionend\",t)}t&&t()},i=t=>{e.style.width=t+\"%\"};if(t<o.current){const a=()=>{s(()=>{o.current=0,e.setAttribute(\"data-transition\",\"0\"),i(0)},()=>{e.removeAttribute(\"data-transition\"),i(t),o.current=t})};o.current<100?s(()=>{i(100)},a):a()}else t>o.current?(i(t),o.current=t):o.current=t},[t]),(0,P.jsx)(\"div\",{className:\"progress-bar\",...i||{},style:s,children:(0,P.jsx)(\"div\",{className:\"progress\",ref:a})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "px",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 657793,
+      "end": 658094,
+      "source": "{backdrop:\"WarningAlert_backdrop__8GZfx\",body:\"WarningAlert_body__086Du\",warning:\"WarningAlert_warning__oLyQs\",header:\"WarningAlert_header__NoSu5\",content:\"WarningAlert_content__bPsJj\",footer:\"WarningAlert_footer__P9-K-\",\"confirm-btn\":\"WarningAlert_confirm-btn__IZuRC\",wide:\"WarningAlert_wide__+aLcT\"}"
+    },
+    {
+      "module": 50151,
+      "symbol": "button",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 10988,
+      "end": 11237,
+      "source": "(e,t,s)=>{\"use strict\";s.d(t,{A:()=>o});s(41594);var i=s(10264),a=s(92722);const o=function(e){const{name:t,onClick:s,extraClass:o}=e;return(0,a.jsx)(\"div\",{className:`customize-setting-button ${o||\"\"}`,onClick:s,children:(0,a.jsx)(i.A,{text:t})})}}"
+    },
+    {
+      "module": 54693,
+      "symbol": "QAd",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 853097,
+      "end": 853099,
+      "source": "lp"
+    },
+    {
+      "module": 54693,
+      "symbol": "l2t",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 857921,
+      "end": 857923,
+      "source": "up"
+    },
+    {
+      "module": 54693,
+      "symbol": "QWf",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 853152,
+      "end": 853154,
+      "source": "BE"
+    },
+    {
+      "module": 54693,
+      "symbol": "bOp",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 855834,
+      "end": 855836,
+      "source": "pn"
+    },
+    {
+      "module": 54693,
+      "symbol": "Jf5",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 851459,
+      "end": 851461,
+      "source": "xE"
+    },
+    {
+      "module": 54693,
+      "symbol": "$PN",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 849358,
+      "end": 849360,
+      "source": "kE"
+    },
+    {
+      "module": 54693,
+      "symbol": "JQR",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 851404,
+      "end": 851406,
+      "source": "jE"
+    },
+    {
+      "module": 54693,
+      "symbol": "B3A",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 849709,
+      "end": 849711,
+      "source": "WE"
+    },
+    {
+      "module": 54693,
+      "symbol": "p6C",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 859041,
+      "end": 859043,
+      "source": "ge"
+    },
+    {
+      "module": 54693,
+      "symbol": "sUR",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 859740,
+      "end": 859742,
+      "source": "HE"
+    },
+    {
+      "module": 54693,
+      "symbol": "ZV_",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 855179,
+      "end": 855181,
+      "source": "FE"
+    },
+    {
+      "module": 54693,
+      "symbol": "_Hj",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 855375,
+      "end": 855377,
+      "source": "GE"
+    },
+    {
+      "module": 54693,
+      "symbol": "kM7",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 857757,
+      "end": 857759,
+      "source": "RE"
+    },
+    {
+      "module": 54693,
+      "symbol": "dt6",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 856381,
+      "end": 856383,
+      "source": "PE"
+    },
+    {
+      "module": 54693,
+      "symbol": "R42",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 853295,
+      "end": 853297,
+      "source": "bE"
+    },
+    {
+      "module": 54693,
+      "symbol": "stg",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 859916,
+      "end": 859918,
+      "source": "UE"
+    },
+    {
+      "module": 54693,
+      "symbol": "tus",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 860135,
+      "end": 860137,
+      "source": "wE"
+    },
+    {
+      "module": 54693,
+      "symbol": "De8",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 850344,
+      "end": 850346,
+      "source": "od"
+    },
+    {
+      "module": 54693,
+      "symbol": "XVF",
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+      "offset": 854817,
+      "end": 854819,
+      "source": "ad"
+    },
+    {
+      "module": 27875,
+      "symbol": "r",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 6471,
+      "end": 7166,
+      "source": "(e,t)=>{let{title:s,titleId:r,...l}=e;return o.createElement(\"svg\",n({id:\"Layer_1\",xmlns:\"http://www.w3.org/2000/svg\",xmlnsXlink:\"http://www.w3.org/1999/xlink\",x:\"0px\",y:\"0px\",viewBox:\"0 0 20 20\",style:{enableBackground:\"new 0 0 20 20\",width:20,height:27},xmlSpace:\"preserve\",ref:t,\"aria-labelledby\":r},l),s?o.createElement(\"title\",{id:r},s):null,i||(i=o.createElement(\"style\",{type:\"text/css\",nonce:\"8UD4JWbGO0qjjysmZthjFQ==\"},\".st0{fill:#fd8611;}\")),a||(a=o.createElement(\"path\",{className:\"st0\",d:\"M9.16,2.48L0.15,17.49C-0.25,18.15,0.22,19,0.98,19h18.04c0.76,0,1.23-0.85,0.84-1.51L10.84,2.48 C10.45,1.84,9.55,1.84,9.16,2.48z M11,16H9v-2h2V16z M11,12H9V8c0-0.55,0.46-1,1-1s1,0.45,1,1V12z\"})))}"
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 70925,
+      "selector": ".progress-bar",
+      "conditions": [],
+      "declarations": "background-color:#2c5824;border-radius:4px;height:5px;overflow:hidden;position:relative;width:100%",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#2c5824",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "4px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 71038,
+      "selector": ".progress-bar .progress",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;border-radius:15px;height:100%;left:0;position:absolute;top:0;transition:width .3s linear;width:0",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "15px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "width .3s linear",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 71185,
+      "selector": ".progress-bar .progress[data-transition=\"0\"]",
+      "conditions": [],
+      "declarations": "transition-duration:1ms",
+      "properties": [
+        {
+          "property": "transition-duration",
+          "value": "1ms",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 73097,
+      "selector": ".body-widgets .widget .ble-edit-tip,.body-widgets .widget .shortcut-tip",
+      "conditions": [],
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:39px;text-align:left;text-transform:none;top:67px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:max-content;will-change:visibility,opacity;z-index:99",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "max-width",
+          "value": "300px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "8px 10px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "39px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "67px",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "visibility 0s,opacity .3s linear",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "white-space",
+          "value": "pre-wrap",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "max-content",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "visibility,opacity",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "99",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 154978,
+      "selector": ".disabled",
+      "conditions": [],
+      "declarations": "opacity:.3;pointer-events:none",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 268657,
+      "selector": ".main-setting .device-setting .setting-block .customize-setting-button",
+      "conditions": [],
+      "declarations": "margin-left:5px",
+      "properties": [
+        {
+          "property": "margin-left",
+          "value": "5px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 269598,
+      "selector": ".main-setting .about-setting .customize-setting-button",
+      "conditions": [],
+      "declarations": "margin-bottom:50px;margin-left:50%;transform:translateX(-50%);width:150px",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "50px",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "transform",
+          "value": "translateX(-50%)",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "150px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 275967,
+      "selector": ".customize-setting-button",
+      "conditions": [],
+      "declarations": "align-items:center;background-color:#707070;border-radius:3px;color:#fff;display:flex;font-size:12px;height:27px;justify-content:center;min-width:90px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "background-color",
+          "value": "#707070",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#fff",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "12px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "27px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "90px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 276169,
+      "selector": ".customize-setting-button:active",
+      "conditions": [],
+      "declarations": "opacity:.3",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 149906,
+      "selector": ".DisplayWidget_wrapper__8YQHU",
+      "conditions": [],
+      "declarations": "position:relative;width:236px",
+      "properties": [
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "236px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 149966,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_title__cGCY3",
+      "conditions": [],
+      "declarations": "align-items:center;color:#ccc;display:flex;font-size:14px;gap:7px;height:19px;padding:2px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "7px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "19px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "2px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150139,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_title__cGCY3 .DisplayWidget_icon__MUdFx",
+      "conditions": [],
+      "declarations": "height:15px;width:15px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "15px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "15px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150247,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_title__cGCY3.DisplayWidget_loading__L9t8-,.DisplayWidget_wrapper__8YQHU .DisplayWidget_title__cGCY3.DisplayWidget_selected__2f6M\\+",
+      "conditions": [],
+      "declarations": "color:#44d62c",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150437,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_title__cGCY3.DisplayWidget_hover__b4TKP",
+      "conditions": [],
+      "declarations": "color:#44d62c4d",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c4d",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150538,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_body__Jdrn-",
+      "conditions": [],
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;box-sizing:initial;display:flex;flex-direction:column;height:64px;justify-content:center;margin:1px;width:232px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "box-sizing",
+          "value": "initial",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "64px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "1px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "232px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150754,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_body__Jdrn-.DisplayWidget_preview__xk2d5",
+      "conditions": [],
+      "declarations": "box-sizing:initial;height:64px;padding:0;width:232px",
+      "properties": [
+        {
+          "property": "box-sizing",
+          "value": "initial",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "64px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "232px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 150893,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_body__Jdrn-.DisplayWidget_selected__2f6M\\+",
+      "conditions": [],
+      "declarations": "border:2px solid #44d62c;margin:0",
+      "properties": [
+        {
+          "property": "border",
+          "value": "2px solid #44d62c",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151015,
+      "selector": ".DisplayWidget_wrapper__8YQHU .DisplayWidget_body__Jdrn-.DisplayWidget_hover__b4TKP",
+      "conditions": [],
+      "declarations": "border:2px solid #44d62c4d;margin:0",
+      "properties": [
+        {
+          "property": "border",
+          "value": "2px solid #44d62c4d",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151135,
+      "selector": ".DisplayWidget_overlay__XgwTO",
+      "conditions": [],
+      "declarations": "align-items:center;background-color:#000c;border:2px solid #44d62c4d;display:flex;flex-direction:row;flex-wrap:nowrap;height:68px;justify-content:space-around;left:0;position:absolute;top:18px;width:236px;z-index:100",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "background-color",
+          "value": "#000c",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "2px solid #44d62c4d",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "row",
+          "important": false
+        },
+        {
+          "property": "flex-wrap",
+          "value": "nowrap",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "68px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-around",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "18px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "236px",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "100",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151382,
+      "selector": ".DisplayWidget_overlay__XgwTO.DisplayWidget_loading__L9t8-",
+      "conditions": [],
+      "declarations": "border:2px solid #44d62c",
+      "properties": [
+        {
+          "property": "border",
+          "value": "2px solid #44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151466,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_item__fd4vI",
+      "conditions": [],
+      "declarations": "align-content:center;align-items:center;color:#fff;display:flex;flex-direction:column;flex-wrap:wrap;font-size:12px;font-weight:400;line-height:14px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#fff",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "flex-wrap",
+          "value": "wrap",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "12px",
+          "important": false
+        },
+        {
+          "property": "font-weight",
+          "value": "400",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151697,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_item__fd4vI.DisplayWidget_apply__1jEGB",
+      "conditions": [],
+      "declarations": "color:#44d62c",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151795,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_item__fd4vI.DisplayWidget_selected__2f6M\\+",
+      "conditions": [],
+      "declarations": "color:#707070;pointer-events:none",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#707070",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 151917,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_item__fd4vI.DisplayWidget_disabled__oypyy",
+      "conditions": [],
+      "declarations": "color:#707070",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#707070",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152018,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_icon__MUdFx",
+      "conditions": [],
+      "declarations": "height:24px;margin:8px;width:24px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "24px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "8px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "24px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152109,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_icon__MUdFx.DisplayWidget_apply__1jEGB path",
+      "conditions": [],
+      "declarations": "fill:#44d62c",
+      "properties": [
+        {
+          "property": "fill",
+          "value": "#44d62c",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152211,
+      "selector": ".DisplayWidget_overlay__XgwTO .DisplayWidget_icon__MUdFx.DisplayWidget_selected__2f6M\\+ path",
+      "conditions": [],
+      "declarations": "fill:#707070",
+      "properties": [
+        {
+          "property": "fill",
+          "value": "#707070",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152317,
+      "selector": "[turn-off-ble-tooltip]:before",
+      "conditions": [],
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;content:attr(turn-off-ble-tooltip);font-size:14px;left:20px;line-height:16px;opacity:0;padding:8px 10px;position:absolute;top:185px;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:106",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "content",
+          "value": "attr(turn-off-ble-tooltip)",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "8px 10px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "185px",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "visibility 0s,opacity .3s linear",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "visibility,opacity",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "106",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152642,
+      "selector": "[turn-off-ble-tooltip]:hover:before",
+      "conditions": [],
+      "declarations": "opacity:1;visibility:visible;z-index:107",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "visible",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "107",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152719,
+      "selector": ".DisplayWidget_tooltip__j4KNA",
+      "conditions": [],
+      "declarations": "float:left;margin-left:285px;margin-top:-3px",
+      "properties": [
+        {
+          "property": "float",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "285px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 199376,
+      "selector": ".SimpleLoading_simple-loading-backdrop__0hIoY",
+      "conditions": [],
+      "declarations": "background-color:#111111b3;display:flex;height:100%;justify-content:center;margin:-20px;position:absolute;width:100%;z-index:100",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111111b3",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "-20px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "100",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 199551,
+      "selector": ".SimpleLoading_simple-loading-icon__OJJ3W",
+      "conditions": [],
+      "declarations": "height:100px;margin-top:40px;width:100px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "40px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 199634,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2",
+      "conditions": [],
+      "declarations": "background-color:#111111b3;display:flex;justify-content:center;margin-top:10px;min-height:260px;position:absolute;width:400px;z-index:100",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111111b3",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "min-height",
+          "value": "260px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "400px",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "100",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 199822,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2 .ProgressLoading_progress-loading-body__cvshQ",
+      "conditions": [],
+      "declarations": "background-color:#111;border:1px solid #707070;border-radius:3px;box-shadow:0 6px 10px 0 #0003;color:#ccc;display:flex;flex-direction:column;font-size:14px;gap:10px;justify-content:center;min-height:260px;padding:20px;text-align:center;width:400px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #707070",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "box-shadow",
+          "value": "0 6px 10px 0 #0003",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "min-height",
+          "value": "260px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "400px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 200166,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2 .ProgressLoading_progress-loading-body__cvshQ .ProgressLoading_title__Y14N8",
+      "conditions": [],
+      "declarations": "font-size:16px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "font-size",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 200332,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2 .ProgressLoading_progress-loading-body__cvshQ .ProgressLoading_progress-bar-header__Rv0uB",
+      "conditions": [],
+      "declarations": "display:flex;justify-content:space-between",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-between",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 200515,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2 .ProgressLoading_progress-loading-body__cvshQ .ProgressLoading_progress-bar-footer__p4Zds",
+      "conditions": [],
+      "declarations": "text-align:end",
+      "properties": [
+        {
+          "property": "text-align",
+          "value": "end",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 200670,
+      "selector": ".ProgressLoading_progress-loading-backdrop__bXpb2 .ProgressLoading_progress-loading-body__cvshQ .ProgressLoading_cancel-btn__LFS4F",
+      "conditions": [],
+      "declarations": "margin:auto;padding:5px;width:100px",
+      "properties": [
+        {
+          "property": "margin",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 200837,
+      "selector": ".WarningAlert_backdrop__8GZfx",
+      "conditions": [],
+      "declarations": "background-color:#111111b3;display:flex;height:100%;justify-content:center;margin:-12px -20px;position:absolute;width:100%;z-index:200!important",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111111b3",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "-12px -20px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "200",
+          "important": true
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201012,
+      "selector": ".WarningAlert_body__086Du",
+      "conditions": [],
+      "declarations": "background:#111;border:1px solid #707070;border-radius:3px;box-shadow:0 6px 10px 0 #0003;color:#ccc;display:flex;flex-direction:column;font-size:14px;gap:10px;justify-content:center;margin-top:100px;padding:20px;width:330px",
+      "properties": [
+        {
+          "property": "background",
+          "value": "#111",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #707070",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "box-shadow",
+          "value": "0 6px 10px 0 #0003",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "100px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "330px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201262,
+      "selector": ".WarningAlert_body__086Du.WarningAlert_warning__oLyQs",
+      "conditions": [],
+      "declarations": "border:1px solid #fd8611",
+      "properties": [
+        {
+          "property": "border",
+          "value": "1px solid #fd8611",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201341,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_header__NoSu5",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;font-size:16px;gap:5px;justify-content:center;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201498,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_header__NoSu5.WarningAlert_warning__oLyQs",
+      "conditions": [],
+      "declarations": "color:#fd8611",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#fd8611",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201594,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_content__bPsJj",
+      "conditions": [],
+      "declarations": "margin-bottom:5px;text-align:center",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201685,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_footer__P9-K-",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;gap:5px;justify-content:center",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201802,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_footer__P9-K- .WarningAlert_confirm-btn__IZuRC",
+      "conditions": [],
+      "declarations": "background:#44d62c;border:1px solid rgba(0,0,0,.302);color:#222",
+      "properties": [
+        {
+          "property": "background",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid rgba(0,0,0,.302)",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#222",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 201953,
+      "selector": ".WarningAlert_body__086Du .WarningAlert_footer__P9-K- .WarningAlert_wide__\\+aLcT",
+      "conditions": [],
+      "declarations": "width:150px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "150px",
+          "important": false
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "output": "synapse/audio-oled-runtime-warning.svg",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"27\" viewBox=\"0 0 20 20\"><path fill=\"#fd8611\" d=\"M9.16,2.48L0.15,17.49C-0.25,18.15,0.22,19,0.98,19h18.04c0.76,0,1.23-0.85,0.84-1.51L10.84,2.48 C10.45,1.84,9.55,1.84,9.16,2.48z M11,16H9v-2h2V16z M11,12H9V8c0-0.55,0.46-1,1-1s1,0.45,1,1V12z\"/></svg>\n",
+      "receipt": {
+        "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+        "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+        "offset": 6471,
+        "end": 7166,
+        "source": "(e,t)=>{let{title:s,titleId:r,...l}=e;return o.createElement(\"svg\",n({id:\"Layer_1\",xmlns:\"http://www.w3.org/2000/svg\",xmlnsXlink:\"http://www.w3.org/1999/xlink\",x:\"0px\",y:\"0px\",viewBox:\"0 0 20 20\",style:{enableBackground:\"new 0 0 20 20\",width:20,height:27},xmlSpace:\"preserve\",ref:t,\"aria-labelledby\":r},l),s?o.createElement(\"title\",{id:r},s):null,i||(i=o.createElement(\"style\",{type:\"text/css\",nonce:\"8UD4JWbGO0qjjysmZthjFQ==\"},\".st0{fill:#fd8611;}\")),a||(a=o.createElement(\"path\",{className:\"st0\",d:\"M9.16,2.48L0.15,17.49C-0.25,18.15,0.22,19,0.98,19h18.04c0.76,0,1.23-0.85,0.84-1.51L10.84,2.48 C10.45,1.84,9.55,1.84,9.16,2.48z M11,16H9v-2h2V16z M11,12H9V8c0-0.55,0.46-1,1-1s1,0.45,1,1V12z\"})))}"
+      }
+    }
+  ]
+}

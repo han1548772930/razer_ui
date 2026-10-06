@@ -8,6 +8,7 @@ const traces=JSON.parse(read('docs/re/source-product-pages.json')).products;
 const evidence=JSON.parse(read('docs/re/camera-product-evidence.json'));
 if(evidence.parser_sha256!==hash(fs.readFileSync(path.join(__dirname,'extract-audio-evidence.cjs'))))throw Error('Regenerate camera evidence with current parser');
 const output=[],receipts=[],stepperReceipts=[];
+const presentation=require('./camera-presentation.cjs');
 const walk=(n,fn)=>{if(!n?.type||fn(n)===false)return;for(const v of Object.values(n)){if(Array.isArray(v))v.forEach(x=>walk(x,fn));else if(v?.type)walk(v,fn);}};
 function stepperEvidence(pid,file,source) {
  const classes=[],mounts=[];
@@ -429,6 +430,7 @@ for(const p of configs.filter(p=>p.family==='camera')) {
    }
   }
  }
+ if(!legacy)presentation.prepare({result,audited,label,source,file});
  const limitations=legacy
   ? ['Live video, camera enumeration, view presets/framing, source overlays and device commands remain incomplete. Mic controls retain independent local device state; no firmware/reboot or hardware success is synthesized.']
   : ['The mounted framing controls include the LDC/resolution disable branch and white-box dragging. Numeric editors retain source parsing, keyboard steps and 300 ms pointer repeat; live-window verification has not been run. Live video, camera enumeration, watermark appearance and processing notes, third-party integrations and device commands remain incomplete. The current roots disable AI auto-framing and sharpness/gain rows at their mounts. Mic controls retain independent local device state; no hardware success is synthesized.'];
@@ -446,4 +448,5 @@ for(const p of configs.filter(p=>p.family==='camera')) {
 fs.writeFileSync(path.join(root,'src/features/source_controls_data.json'),JSON.stringify(output,null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/camera-controls-source.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:receipts},null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/camera-stepper-current-evidence.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:stepperReceipts},null,2)+'\n');
+presentation.write();
 console.log(`Generated ${output.length} source-specific camera control descriptors.`);

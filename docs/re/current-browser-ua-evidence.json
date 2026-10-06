@@ -1,0 +1,30 @@
+{
+  "method": "Static archive extraction, ASCII browser-version strings, version-matched upstream Chromium CSS; browser not executed.",
+  "host_version": "4.0.827",
+  "archive": ".work/latest-source-check/host-current/static-unpack/RazerAppEngineUpgradeSetup-Internal-v.exe",
+  "archive_sha256": "9d4765d46c5c5e1ff9c11d16452bd12a9eb43f14cd70be893fa843df3882cd90",
+  "archive_entry": "win-unpacked/RazerAppEngine.exe",
+  "engine_sha256": "9b796816dc65318d496a0caa10eebf8b0814987e92cb19607fd406e92fb5e0dc",
+  "chromium": {
+    "version": "146.0.7680.179",
+    "offset": 185116955,
+    "source": "Chrome/146.0.7680.179"
+  },
+  "electron": {
+    "version": "41.2.0",
+    "offset": 185174818,
+    "source": "Electron/41.2.0"
+  },
+  "css": {
+    "path": ".ref/host-4.0.827/source-evidence/browser-ua/html.css",
+    "sha256": "ef0cd4d436929b88bb0cabaa2ac847605a5bee016f028abd4c016071fdaa4474",
+    "url": "https://chromium.googlesource.com/chromium/src/+/146.0.7680.179/third_party/blink/renderer/core/html/resources/html.css?format=TEXT"
+  },
+  "textarea": {
+    "offset": 10178,
+    "end": 10499,
+    "source": "textarea {\n  appearance: auto;\n  border: 1px solid light-dark(#767676, #858585);\n  column-count: initial !important;\n  -webkit-rtl-ordering: logical;\n  resize: -internal-textarea-auto;\n  cursor: text;\n  padding: 2px;\n  white-space: pre-wrap;\n  word-wrap: break-word;\n  background-color: Field;\n  font-family: monospace;\n}",
+    "padding_css_px": 2
+  },
+  "scope": "Upstream html.css for the exact binary-reported Chromium version. This does not claim binary-byte equivalence of all compiled Chromium styles or native font line-gap parity."
+}

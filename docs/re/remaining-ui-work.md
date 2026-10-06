@@ -1,5 +1,11 @@
 # 尚未完成的界面与产品
 
+2026-10-06 OLED后续：1383的动画/图片/表情/横幅/系统信息编辑器已接入原EDIT入口，
+与已有Media共同使用源弹层。当前范围和真实未完成项见
+[OLED编辑器续接](audio-oled-editors-2026-10-06.md)；下文旧日期记录中的“五编辑器未接入”已过时。
+
+2026-10-06 当前续接进展见 [本轮记录](ui-continuation-2026-10-06.md)：Nommo 1303/1304 效果参数、相机分组与条件、七个新增 Armory 独立根和精确产品图片、AppPicker 本地入口、公共滑条过渡已继续接入。下文是按日期保留的历史记录，不可把早期缺口或早期“已实现”结论直接作为当前实现证据。尤其 2026-10-04 所称“Chroma Studio 已本地实现”不准确：本地 Chroma Dashboard 与独立 Studio 是不同目标，当前不能把 Dashboard 跳转计作 Studio 实现。当前主页面覆盖口径见 [原生页面覆盖](native-product-coverage.md)，所有产品仍为部分实现。
+
 2026-10-06 784 Aether 链接形态与图标提示框收口：源里 `Gl` 的两个调用点都不传 `supportsLinked`（恒 undefined）、`hasPowerButton` 恒为默认 true、卡片 `<ol>` 没有 `isLinked`，因此 `.button--cta-link`、`.indicator.linked`、`.device.linked` 在当前页面**不可达**——本轮不再把它们列为缺口，也不实现不可达 UI（相关文案 `DEVICES_*` 本地已有，将来某产品真传该 prop 可直接接）；同时 `TipCommand::icon` 的 `trigger.origin + (2, 34)` 无源码依据，改用全局 `[tooltip]:before{right:0;top:calc(100% + 5px);width:auto;white-space:nowrap}` 对应的 `TipAnchor::Right` + 5px。机检并入 `tools/validate-aether-strip.py`。
 
 2026-10-06 784 Aether 徽标可见性：四个徽标按源改成「每张卡片都渲染、按状态决定可见」——`power/find` 仅选中且非离线（忙碌时仍可见）、`del` 仅选中且(`:hover` 或离线或忙碌)、忙碌徽标在任意忙碌卡片上（选中用 `busy-btn-white`/`#fff` 边框/`top:calc(50% - 8px)`，否则 `busy-btn`/`hsla(0,0%,44%,.302)`/`- 10px`，42×27 居中，选中时 `:hover #707070`）、离线徽标在任意离线且非忙碌卡片上（选中 `right:10%;top:34%`，否则 `right:25%;top:40%`）；`tools/validate-aether-strip.py` 增加 11 条 CSS 与本地状态表达式断言。**数据缺口**：`isLinked`（`.device.linked` 的隐藏分支）与 `hasPowerButton` 本地 `Observation` 里没有，已登记。

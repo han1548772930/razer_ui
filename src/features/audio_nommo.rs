@@ -2,7 +2,7 @@
 //! These speakers mount only the display-off checkbox; their stored idle fields
 //! do not establish a mounted idle control.
 use super::*;
-use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack};
+use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderTrack};
 
 impl AudioProductWorkspace {
     pub(super) fn commit_nommo_brightness(
@@ -180,26 +180,13 @@ impl AudioProductWorkspace {
                             .right(surface::css(8.))
                             .h_full()
                             .child(
-                                SliderThumb::new(state)
+                                crate::ui::source_slider::source_thumb(state, active, window, cx)
+                                    .disabled(false)
                                     .absolute()
                                     .left(relative(progress))
                                     .ml(surface::css(-8.))
                                     .size(surface::css(16.))
-                                    .rounded(surface::css(8.))
-                                    .bg(rgb(0x44d62c))
-                                    .when(active, |thumb| {
-                                        thumb
-                                            .hover(|s| {
-                                                s.bg(rgb(0x5d5d5d))
-                                                    .border_2()
-                                                    .border_color(rgb(0x44d62c))
-                                            })
-                                            .active(|s| {
-                                                s.bg(rgb(0x383838))
-                                                    .border_2()
-                                                    .border_color(rgb(0x44d62c))
-                                            })
-                                    }),
+                                    .rounded(surface::css(8.)),
                             ),
                     ),
             )

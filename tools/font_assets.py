@@ -3,7 +3,8 @@ from hashlib import sha256
 from fontTools.ttLib import TTFont
 
 # Only faces used by currently mounted native pages. Both current Dashboard and
-# host CSS declare these aliases; current Alexa also uses RazerF5 Thin (100).
+# host CSS declare these aliases; Alexa uses Thin (100), and the 1383 OLED
+# headset status uses SemiBold (600).
 FACES = (
     ("Roboto-Light", "Roboto", "Light", 300),
     ("Roboto-Regular", "Roboto", "Regular", 400),
@@ -11,6 +12,7 @@ FACES = (
     ("Roboto-Bold", "Roboto", "Bold", 700),
     ("RazerF5-Thin", "RazerF5", "Thin", 100),
     ("RazerF5-Regular", "RazerF5", "Regular", 400),
+    ("RazerF5-SemiBold", "RazerF5", "SemiBold", 600),
     ("RazerF5-Bold", "RazerF5", "Bold", 700),
 )
 

@@ -1,5 +1,7 @@
 # 产品独立 Armory 页面接入（含 2026-10-05 续接审计）
 
+> 2026-10-06 续接说明：下文“六个产品”、网络失败与产品位图缺失是 2026-10-05 的历史状态。本轮已新增 1319/1325 独立根，并恢复全部八款的产品原图和 Dashboard 图；最新实现、静态证据与资源收据见 [Armory 音频根与直达入口](armory-audio-entrypoints-2026-10-06.md)。本文尚未实现的运行时遥测与其他状态限制仍适用。
+
 本轮在 `src/features/armory_product.rs` 实现独立产品内容，并在 `SourceProductWorkspace::supports_mapping_page / mapping_page_element` 优先选择该内容。不是把 Customize 页面换个入口名称。
 
 当前源的完整 root condition、词法作用域解析、render 函数、CSS、图片导入表和初始化值见 [静态证据](armory-product-roots-current-evidence.json)。由 `tools/audit-armory-product-roots.cjs` 读取每个产品自己的当前 manifest、JS 与 CSS，不执行下载代码。

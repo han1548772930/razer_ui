@@ -2891,7 +2891,7 @@
   },
   "native": {
     "path": "src/ui/stepper.rs",
-    "sha256": "1b0f92dac7402f70f357cdf0d2f94b45934f6935eacda77614dd18dd61d15566"
+    "sha256": "90486d9d0d14ff1273890663d5561b6042afdb535fa729246bd717e4e463af8b"
   },
   "limitations": [
     "Static cascade receipts do not certify rendered pixel equality."

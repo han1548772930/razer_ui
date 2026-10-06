@@ -1,0 +1,270 @@
+{
+  "product_id": 1383,
+  "default": {
+    "timeBetweenSlides": 3,
+    "selectedSlideIdx": 0,
+    "triggerHomeScreenSlide": false,
+    "temperatureUnit": "celsius",
+    "timeFormat": 0,
+    "dateFormat": 0,
+    "slides": [
+      {
+        "left": {
+          "id": "cpuUsage",
+          "label": "OLED_CPU",
+          "deviceLabel": "OLED_DEVICE_LABEL_CPU",
+          "deviceLabelKey": "OLED_DEVICE_LABEL_CPU",
+          "previewSrc": "static/media/cpu_usage.40da1439.svg",
+          "showLabel": true,
+          "type": 1
+        },
+        "right": {
+          "id": "cpuTemp",
+          "label": "OLED_CPU_TEMP",
+          "deviceLabel": "OLED_DEVICE_LABEL_CPU_TEMP",
+          "deviceLabelKey": "OLED_DEVICE_LABEL_CPU_TEMP",
+          "previewSrc": "static/media/cpu_temp.b9448451.svg",
+          "showLabel": true,
+          "type": 2
+        }
+      },
+      {
+        "left": {
+          "id": "gpuUsage",
+          "label": "OLED_GPU",
+          "deviceLabel": "OLED_DEVICE_LABEL_GPU",
+          "deviceLabelKey": "OLED_DEVICE_LABEL_GPU",
+          "previewSrc": "static/media/gpu_usage.fc23e5e9.svg",
+          "showLabel": true,
+          "type": 3
+        },
+        "right": {
+          "id": "gpuTemp",
+          "label": "OLED_GPU_TEMP",
+          "deviceLabel": "OLED_DEVICE_LABEL_GPU_TEMP",
+          "deviceLabelKey": "OLED_DEVICE_LABEL_GPU_TEMP",
+          "previewSrc": "static/media/gpu_temp.e4e80122.svg",
+          "showLabel": true,
+          "type": 4
+        }
+      },
+      {
+        "left": {
+          "id": "date",
+          "label": "OLED_DATE",
+          "deviceLabel": "OLED_DATE",
+          "previewSrc": "static/media/date.acc342cb.svg",
+          "showLabel": false,
+          "type": 6
+        },
+        "right": {
+          "id": "time",
+          "label": "OLED_TIME",
+          "deviceLabel": "OLED_TIME",
+          "previewSrc": "static/media/time.c85d4a49.svg",
+          "showLabel": false,
+          "type": 7
+        }
+      }
+    ],
+    "info": {
+      "cpuUsage": {
+        "label": "CPU",
+        "value": "25%"
+      },
+      "cpuTemp": {
+        "label": "CPU Temp",
+        "value": "35°C"
+      },
+      "gpuUsage": {
+        "label": "GPU",
+        "value": "35%"
+      },
+      "gpuTemp": {
+        "label": "GPU Temp",
+        "value": "45°C"
+      },
+      "memory": {
+        "label": "Memory",
+        "value": "15%"
+      },
+      "date": {
+        "label": "",
+        "value": "07/15/2024"
+      },
+      "time": {
+        "label": "",
+        "value": "13:00"
+      },
+      "laptopBattery": {
+        "label": "Laptop",
+        "value": 100
+      },
+      "keyboardBattery": {
+        "label": "Keyboard",
+        "value": 100
+      },
+      "headsetBattery": {
+        "label": "Headset",
+        "value": "100%"
+      }
+    }
+  },
+  "tags": [
+    {
+      "id": "cpuUsage",
+      "label": "OLED_CPU",
+      "deviceLabel": "OLED_DEVICE_LABEL_CPU",
+      "deviceLabelKey": "OLED_DEVICE_LABEL_CPU",
+      "previewSrc": "static/media/cpu_usage.40da1439.svg",
+      "showLabel": true,
+      "type": 1,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-cpuUsage.svg"
+    },
+    {
+      "id": "cpuTemp",
+      "label": "OLED_CPU_TEMP",
+      "deviceLabel": "OLED_DEVICE_LABEL_CPU_TEMP",
+      "deviceLabelKey": "OLED_DEVICE_LABEL_CPU_TEMP",
+      "previewSrc": "static/media/cpu_temp.b9448451.svg",
+      "showLabel": true,
+      "type": 2,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-cpuTemp.svg"
+    },
+    {
+      "id": "gpuUsage",
+      "label": "OLED_GPU",
+      "deviceLabel": "OLED_DEVICE_LABEL_GPU",
+      "deviceLabelKey": "OLED_DEVICE_LABEL_GPU",
+      "previewSrc": "static/media/gpu_usage.fc23e5e9.svg",
+      "showLabel": true,
+      "type": 3,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-gpuUsage.svg"
+    },
+    {
+      "id": "gpuTemp",
+      "label": "OLED_GPU_TEMP",
+      "deviceLabel": "OLED_DEVICE_LABEL_GPU_TEMP",
+      "deviceLabelKey": "OLED_DEVICE_LABEL_GPU_TEMP",
+      "previewSrc": "static/media/gpu_temp.e4e80122.svg",
+      "showLabel": true,
+      "type": 4,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-gpuTemp.svg"
+    },
+    {
+      "id": "memory",
+      "label": "OLED_MEMORY",
+      "deviceLabel": "OLED_MEMORY",
+      "deviceLabelKey": "OLED_MEMORY",
+      "previewSrc": "static/media/memory.439f4636.svg",
+      "showLabel": true,
+      "type": 5,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-memory.svg"
+    },
+    {
+      "id": "date",
+      "label": "OLED_DATE",
+      "deviceLabel": "OLED_DATE",
+      "previewSrc": "static/media/date.acc342cb.svg",
+      "showLabel": false,
+      "type": 6,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-date.svg"
+    },
+    {
+      "id": "time",
+      "label": "OLED_TIME",
+      "deviceLabel": "OLED_TIME",
+      "previewSrc": "static/media/time.c85d4a49.svg",
+      "showLabel": false,
+      "type": 7,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-time.svg"
+    },
+    {
+      "id": "laptopBattery",
+      "label": "OLED_LAPTOP_BATTERY",
+      "deviceLabel": "OLED_DEVICE_LABEL_LAPTOP",
+      "deviceLabelKey": "OLED_DEVICE_LABEL_LAPTOP",
+      "previewSrc": "static/media/laptop_battery.2671c3ec.svg",
+      "showLabel": true,
+      "type": 8,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-laptopBattery.svg"
+    },
+    {
+      "id": "headsetBattery",
+      "label": "HEADSET BATTERY",
+      "deviceLabel": "HEADSET",
+      "deviceLabelKey": "HEADSET",
+      "showLabel": true,
+      "previewSrc": "static/media/headset_battery.cf813166.svg",
+      "type": 9,
+      "previewAsset": "synapse/audio-oled-1383-system-tag-headsetBattery.svg"
+    }
+  ],
+  "slide_titles": [
+    {
+      "id": "slide1",
+      "title": "OLED_SLIDE_1"
+    },
+    {
+      "id": "slide2",
+      "title": "OLED_SLIDE_2"
+    },
+    {
+      "id": "slide3",
+      "title": "OLED_SLIDE_3"
+    }
+  ],
+  "intervals": [
+    3,
+    5,
+    10
+  ],
+  "date_formats": [
+    {
+      "id": 0,
+      "name": "mm/dd/yyyy"
+    },
+    {
+      "id": 1,
+      "name": "dd/mm/yyyy"
+    },
+    {
+      "id": 2,
+      "name": "yyyy/mm/dd"
+    }
+  ],
+  "labels": {
+    "G9b": "CUSTOMIZE_MODAL_SYSTEM_INFO_TITLE",
+    "$yX": "PREVIEW",
+    "VLI": "RESET_BTN",
+    "OcK": "CUSTOMIZE_SYSTEM_INFO_TITLE",
+    "btK": "CUSTOMIZE_SYSTEM_INFO_TOOLTIP",
+    "RtR": "CUSTOMIZE_SYSTEM_INFO_TIME_BETWEEN_SLIDE_LABEL",
+    "OLp": "CUSTOMIZE_SYSTEM_INFO_TIME_BETWEEN_SLIDE_DESC",
+    "tI_": "CUSTOMIZE_SYSTEM_INFO_TEMPERATURE_LABEL",
+    "qu5": "CUSTOMIZE_SYSTEM_INFO_TEMPERATURE_DESC",
+    "hIg": "CUSTOMIZE_SYSTEM_INFO_DATE_FORMAT_LABEL",
+    "ylX": "CUSTOMIZE_SYSTEM_INFO_TIME_FORMAT_LABEL",
+    "SJi": "DELETE",
+    "EyM": "CUSTOMIZE_SYSTEM_INFO_DROP_TOOLTIP",
+    "eWG": "CUSTOMIZE_SYSTEM_INFO_DRAG_TOOLTIP",
+    "pJk": "APPLY",
+    "bOp": "CANCEL"
+  },
+  "dots": [
+    "synapse/audio-oled-1383-system-dot-0.png",
+    "synapse/audio-oled-1383-system-dot-1.png"
+  ],
+  "batteries": [
+    "synapse/audio-oled-1383-system-battery-0.svg",
+    "synapse/audio-oled-1383-system-battery-25.svg",
+    "synapse/audio-oled-1383-system-battery-50.svg",
+    "synapse/audio-oled-1383-system-battery-75.svg",
+    "synapse/audio-oled-1383-system-battery-100.svg"
+  ],
+  "icons": {
+    "add": "synapse/audio-oled-1383-system-add.svg",
+    "delete": "synapse/audio-oled-1383-system-delete.svg",
+    "help": "synapse/audio-oled-1383-system-help.svg"
+  }
+}

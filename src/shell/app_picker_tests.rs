@@ -51,10 +51,22 @@ fn local_page_capabilities_never_become_installation_evidence() {
         .launchable_modules([PickerModule::Alexa])
         .launchable_apps([PickerApp::Chroma]);
     assert!(unknown.status_unknown());
-    assert!(unknown.sections().is_empty());
+    assert!(unknown.installed_modules.is_none());
+    assert!(unknown.native_apps.is_none());
+    assert_eq!(unknown.modules(), vec![PickerModule::Alexa]);
+    assert_eq!(unknown.other_apps(), vec![PickerApp::Chroma]);
+    assert!(
+        unknown
+            .sections()
+            .iter()
+            .flat_map(|section| &section.items)
+            .all(|item| item.reason.is_none()
+                && !item.busy
+                && matches!(&item.target, super::PickerRequest::Open(_)))
+    );
     let storage_only = unknown.clone().installed_modules(["alexa", "chroma-app"]);
     assert_eq!(storage_only.modules(), vec![PickerModule::Alexa]);
-    assert!(storage_only.other_apps().is_empty());
+    assert_eq!(storage_only.other_apps(), vec![PickerApp::Chroma]);
     assert!(
         !storage_only
             .sections()

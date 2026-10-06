@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scanner_sha256": "a5570989eaf71d1dd177b43025b879cd7b0f3128c0b63e6f1e2dd85afd2a70c2",
+  "scanner_sha256": "57ac63057390631da0a4a51cf82153c30bf7f3035e5955c03dffec5e6b888c32",
   "products": [
     {
       "sharpness_gain_rows": {
@@ -128,10 +128,10 @@
             "3592:saturation",
             "3592:auto-white-balance",
             "3592:white-balance",
-            "3592:mirror",
+            "3592:anti-flicker",
             "3592:watermark",
             "3592:watermark-position",
-            "3592:anti-flicker"
+            "3592:mirror"
           ],
           "source_navigation_offset": 4586488
         },
@@ -159,15 +159,16 @@
         {
           "key": "PROCESSING",
           "control_keys": [
-            "3592:ldc",
-            "3592:lowLightCompensation",
-            "3592:state2D",
-            "3592:state3D",
+            "3592:processing-resolution",
             "3592:auto-quality",
             "3592:quality-mode",
             "3592:manual-quality",
             "3592:hdr",
-            "3592:hdr-mode"
+            "3592:hdr-mode",
+            "3592:ldc",
+            "3592:lowLightCompensation",
+            "3592:state2D",
+            "3592:state3D"
           ],
           "source_navigation_offset": 4586441
         }
@@ -201,8 +202,8 @@
             "3594:saturation",
             "3594:auto-white-balance",
             "3594:white-balance",
-            "3594:mirror",
-            "3594:anti-flicker"
+            "3594:anti-flicker",
+            "3594:mirror"
           ],
           "source_navigation_offset": 7036642
         },
@@ -229,13 +230,10 @@
         {
           "key": "PROCESSING",
           "control_keys": [
-            "3594:lowLightCompensation",
-            "3594:state3D",
-            "3594:auto-quality",
-            "3594:quality-mode",
-            "3594:manual-quality",
             "3594:hdr",
-            "3594:hdr-mode"
+            "3594:hdr-mode",
+            "3594:lowLightCompensation",
+            "3594:state3D"
           ],
           "source_navigation_offset": 7036595
         }
@@ -269,8 +267,8 @@
             "3595:saturation",
             "3595:auto-white-balance",
             "3595:white-balance",
-            "3595:mirror",
-            "3595:anti-flicker"
+            "3595:anti-flicker",
+            "3595:mirror"
           ],
           "source_navigation_offset": 4618040
         },
@@ -297,14 +295,12 @@
         {
           "key": "PROCESSING",
           "control_keys": [
+            "3595:auto-quality",
+            "3595:hdr",
+            "3595:hdr-mode",
             "3595:lowLightCompensation",
             "3595:state2D",
-            "3595:state3D",
-            "3595:auto-quality",
-            "3595:quality-mode",
-            "3595:manual-quality",
-            "3595:hdr",
-            "3595:hdr-mode"
+            "3595:state3D"
           ],
           "source_navigation_offset": 4617993
         },
@@ -346,8 +342,8 @@
             "3596:saturation",
             "3596:auto-white-balance",
             "3596:white-balance",
-            "3596:mirror",
-            "3596:anti-flicker"
+            "3596:anti-flicker",
+            "3596:mirror"
           ],
           "source_navigation_offset": 4599431
         },

@@ -87,7 +87,7 @@ impl AppShell {
             let workspace = entity.read(cx);
             let device = workspace.device(cx);
             let key = workspace.identity(cx);
-            let supported = crate::features::has_product_workspace(device.product_id);
+            let supported = workspace.has_local_page(cx);
             let name = dashboard_device::name(device).to_owned();
             let restart = device.setup_status == crate::model::SetupStatus::RestartRequired;
             let owner = cx.entity().downgrade();
@@ -103,6 +103,7 @@ impl AppShell {
             let content = dashboard_device_card::DeviceCard {
                 id: format!("open-{key}"), device: observed_device,
                 state: self.dashboard_state.clone(), online,
+                open_without_installation: local_installation_entry(device, supported),
                 actions: dashboard_device_card::Actions {
                     retry: std::rc::Rc::new(move |window, cx| {
                         let _ = retry_owner.update(cx, |shell, cx| {

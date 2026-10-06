@@ -3,7 +3,7 @@
 2026-10-06。产品 1383（Razer Kraken V4 Pro）的 `TAB_OLED` 页由自己的 OLED 根渲染，之前本地描述符把它
 按通用音频控件（一个滑条 + 三个下拉框）挂载。本轮按当前源把这一页改成源码的形态。
 
-来源与逐条标记（含文件 SHA-256、根/控件字节区间、语言符号解析、CSS 规则收据、本地文件指纹）见
+来源与逐条标记（含文件 SHA-256、根/控件 UTF-16 code-unit 区间、语言符号解析、CSS 规则收据、本地文件指纹）见
 [机器可读收据](audio-oled-1383-current-evidence.json)，由 `node tools/audit-audio-oled-1383.cjs`
 生成/校验（`--check` 与工作区当前状态比对）。
 
@@ -17,8 +17,9 @@
   margin:auto;max-width:1240px}`），内层按列挂五个 `.widget`：
   - `widget-col col-left`：亮度 `Nv`（调用点 `min:30,minTag:30`）、语言 `Bv`；
   - `widget-col col-right`：回主屏时间 `Ov`、息屏变暗 `Uv`、屏保 `Kv`。
-- 另外还挂 `Dv`（Home Screen Display 卡片网格，`extraClass=HomeScreenDisplay_body__ZOBui`，
-  `min-width:1220px!important`），它依赖设备侧 `GET_OLED_DATA` 的动画/图片列表与六个编辑弹层。
+- 内层五个控件前还挂 `Dv`（Home Screen Display 卡片网格，`extraClass=HomeScreenDisplay_body__ZOBui`）。
+  当前 reducer 自带初始动画、图片及示例预览，不必等待 `GET_OLED_DATA` 才能恢复初始卡片。
+  七卡、资源、响应式宽度及编辑器的独立复核见 [audio-oled-home-native.md](audio-oled-home-native.md)。
 
 各控件的当前源形态：
 
@@ -50,8 +51,8 @@
 
 ## 明确未完成
 
-- `Dv`（Home Screen Display）卡片网格与它引出的动画/图片/表情/横幅/音频表/系统信息六个编辑器未实现：
-  这些内容来自设备 `GET_OLED_DATA` 与本地资源集中不存在的动画/图片素材，本地不伪造。
+- `Dv` 七卡和六个可编辑模式均已接入本地编辑器，后续范围见
+  [编辑器续接记录](audio-oled-editors-2026-10-06.md)。
 - 语言下载（`ux`/`cx` 进度弹层）、动画/图片上传、`OLED Not Configurable` 警告的 dongle 判定、
   以及设备更新流程仍属服务边界；本地不生成成功状态。
 - 滑条外观已改由共享的 `src/ui/source_slider.rs`（`SourceSlider`）绘制，与 `STA`/`uo.A` 同一份
@@ -64,7 +65,8 @@
   `#44d62c`、`border-radius:8px` 的圆点，本地画的正是它。
 - 未运行应用、构建或测试，因此没有实际窗口的像素、焦点、滚动验收结论。
 
-验证：`node tools/prepare-audio-products.cjs`、`node tools/validate-audio-products.cjs`、
+此前五控件阶段验证：`node tools/prepare-audio-products.cjs`、`node tools/validate-audio-products.cjs`、
 `node tools/audit-audio-oled-1383.cjs --check`、`python tools/validate-resources.py`、
 `python tools/validate-embedded-json.py`、`python tools/audit-locale-keys.py --check`、
 `cargo fmt --all -- --check`、`cargo check --locked --all-targets` 全部通过。
+后续新增卡片和编辑器的验证与边界单独记录在上述 Home Screen 审计中。

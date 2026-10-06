@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "manifest": {
+    "path": ".ref/applications/systray/systrayv2/asset-manifest.json",
+    "sha256": "61ee57bcc40a28bd007239168ed66c042e6a0e7093b0b15fe3d6a4c6dc36a9dc"
+  },
+  "js": {
+    "path": ".ref/applications/systray/systrayv2/static/js/554.2573b048.chunk.js",
+    "sha256": "e492fee599908243b58597175bb101a8e44c2357fee6fbec341efac7653a439f"
+  },
+  "css": {
+    "path": ".ref/applications/systray/systrayv2/static/css/554.7cdbd936.chunk.css",
+    "sha256": "af7e89ac1df1c2e5e0f423fe6695f2845f9a43705ce9747c3740e92a30e951c3"
+  },
+  "nodes": [
+    {
+      "symbol": "W",
+      "start": 25630,
+      "end": 25654,
+      "source": "W={items:[],hasItems:!1}"
+    },
+    {
+      "symbol": "F",
+      "start": 25655,
+      "end": 25912,
+      "source": "function F(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:W,t=arguments.length>1?arguments[1]:void 0;switch(t.type){case N.OC:case N.qs:return{items:t.payload,hasItems:!0};case N.Vm:return{...e,items:[]};case N.wL:return W;default:return e}}"
+    },
+    {
+      "symbol": "oe",
+      "start": 27960,
+      "end": 28592,
+      "source": "function oe(e){let{user:t}=e;const[n,r]=(0,i.useState)(!1),a=()=>{re.A.setBrowserVisible(!1),n||(t.isGuest?RazerApp.logOut():(r(!0),RazerApp.viewProfileInWeb().then(()=>r(!1))))};return(0,Q.jsxs)(\"header\",{className:\"header\",children:[(0,Q.jsx)(\"div\",{onClick:a,className:\"avatar \"+(t.isGuest?\"guest\":\"\"),style:t.avatar?{backgroundImage:`url(${t.avatar})`}:{}}),(0,Q.jsx)(\"div\",{className:\"info\",onClick:a,children:(0,Q.jsx)(\"div\",{className:\"username\",children:t.razerId||(0,Q.jsx)(X.A,{text:J.p8})})}),(0,Q.jsx)(ie.A,{className:\"btn-view-online btn-outline-white\",onClick:a,children:(0,Q.jsx)(X.A,{text:t.isGuest?J.FR:J.Il})})]})}"
+    },
+    {
+      "symbol": "se",
+      "start": 28592,
+      "end": 28777,
+      "source": "function se(){return(0,Q.jsx)(\"header\",{onClick:()=>{re.A.setBrowserVisible(!1),RazerApp.logIn()},className:\"header-2\",children:(0,Q.jsx)(\"div\",{children:(0,Q.jsx)(X.A,{text:J.KW})})})}"
+    },
+    {
+      "symbol": "ce",
+      "start": 28877,
+      "end": 29636,
+      "source": "ce=function(){return(0,Q.jsx)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",width:\"14.026\",height:\"14\",viewBox:\"0 0 14.026 14\",children:(0,Q.jsx)(\"path\",{d:\"M1118.3,15.3h-1.43a4.823,4.823,0,0,0-.94-2.243l1.02-1.017a.7.7,0,1,0-.99-.99l-1.02,1.021a4.925,4.925,0,0,0-2.24-.918V9.7a.7.7,0,1,0-1.4,0v1.458a4.885,4.885,0,0,0-2.23.926l-1.03-1.033a.7.7,0,0,0-.99.99l1.03,1.034a4.857,4.857,0,0,0-.92,2.226h-1.46a.7.7,0,0,0,0,1.4h1.45a4.9,4.9,0,0,0,.92,2.239l-1.02,1.021a.7.7,0,0,0,.99.99l1.02-1.017a4.876,4.876,0,0,0,2.24.938V22.3a.7.7,0,1,0,1.4,0V20.876a4.91,4.91,0,0,0,2.26-.931l1,1a.7.7,0,0,0,.99-.99l-1-1a4.966,4.966,0,0,0,.93-2.256h1.42a.7.7,0,1,0,0-1.4Zm-6.29,4.229a3.515,3.515,0,1,1,3.52-3.515A3.515,3.515,0,0,1,1112.01,19.529Z\",transform:\"translate(-1105 -9)\"})})}"
+    },
+    {
+      "symbol": "he",
+      "start": 31006,
+      "end": 31839,
+      "source": "he=function(){const e=(0,o.useSelector)(e=>e.view.current),t=(0,o.useSelector)(e=>e.notification.items.length),n=(0,o.useSelector)(e=>e.notification.hasItems),i=(0,o.useDispatch)();return(0,Q.jsxs)(\"div\",{className:\"navbar\",children:[(0,Q.jsx)(\"ul\",{className:\"tabs list-unstyled\",children:Object.keys(M.W0).map(r=>(0,Q.jsxs)(\"li\",{onClick:()=>{return i((e=r,async t=>{await t({type:N.hZ,payload:e})}));var e},className:\"\"+(e===r?\"active\":\"\"),children:[(0,Q.jsx)(X.A,{text:le(r)}),\"notifications\"===r&&n&&0!==t?(0,Q.jsx)(\"span\",{className:\"badge\",children:t}):null]},r))}),(0,Q.jsxs)(\"span\",{onClick:()=>{re.A.setBrowserVisible(!1),RazerApp.launchSettings(\"\",{minimum_height:768,minimum_width:1e3})},className:\"btn-settings\",children:[(0,Q.jsx)(ce,{}),(0,Q.jsx)(ue,{position:\"bottom-left\",children:(0,Q.jsx)(X.A,{text:J.yB})})]})]})}"
+    },
+    {
+      "symbol": "be",
+      "start": 33099,
+      "end": 34081,
+      "source": "be=e=>{let{className:t,children:n}=e;return(0,Q.jsxs)(\"div\",{className:`spinner-razer ${t}`,children:[(0,Q.jsxs)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",viewBox:\"0 0 100 100\",preserveAspectRatio:\"xMidYMid\",children:[(0,Q.jsx)(\"circle\",{cx:\"50\",cy:\"50\",fill:\"none\",r:\"30\",stroke:\"rgba(26.66666666666669%,83.92156862745098%,17.25490196078431%,0.3)\",strokeWidth:\"10\"}),(0,Q.jsxs)(\"circle\",{cx:\"50\",cy:\"50\",fill:\"none\",r:\"30\",stroke:\"#44d62c\",strokeWidth:\"10\",strokeLinecap:\"square\",transform:\"rotate(56.0473 50 50)\",children:[(0,Q.jsx)(\"animateTransform\",{attributeName:\"transform\",type:\"rotate\",calcMode:\"linear\",values:\"0 50 50;180 50 50;720 50 50\",keyTimes:\"0;0.5;1\",dur:\"2s\",begin:\"0s\",repeatCount:\"indefinite\"}),(0,Q.jsx)(\"animate\",{attributeName:\"stroke-dasharray\",calcMode:\"linear\",values:\"18.84955592153876 169.64600329384882;94.2477796076938 94.24777960769377;18.84955592153876 169.64600329384882\",keyTimes:\"0;0.5;1\",dur:\"2\",begin:\"0s\",repeatCount:\"indefinite\"})]})]}),n]})}"
+    },
+    {
+      "symbol": "_e",
+      "start": 34204,
+      "end": 36189,
+      "source": "_e=function(){const e=(0,o.useSelector)(e=>e.notification.items),t=(0,o.useSelector)(e=>e.notification.hasItems),n=(0,o.useSelector)(e=>e.languageReducer.lang),r=(0,o.useDispatch)(),a=(0,i.useCallback)(()=>t?e.length>0?(0,Q.jsx)(\"ul\",{className:\"notifications list-unstyled\",children:e.map(e=>(0,Q.jsxs)(\"li\",{onClick:()=>{return r((t=e,async(e,n)=>{RazerApp.openInDefaultBrowser(t.url);let i=n().notification.items;const r=i.findIndex(e=>e.id===t.id),a=\"read\";-1!==r&&i[r].status!==a&&await RazerApp.updateUserNotificationStatus(t.id,a)&&(i=[...i],i[r]={...i[r],status:a},e({type:N.qs,payload:i}))}));var t},children:[(0,Q.jsx)(\"div\",{style:{backgroundImage:`url(${e.image})`},className:\"img\"}),(0,Q.jsxs)(\"div\",{className:\"info\",children:[(0,Q.jsx)(\"div\",{className:\"title\",children:e.title}),(0,Q.jsx)(\"div\",{className:\"desc\",children:e.subtitle}),(0,Q.jsxs)(\"div\",{className:\"helper\",children:[(0,Q.jsx)(\"div\",{className:\"date\",children:Ne(e.startDate,n)}),(0,Q.jsx)(\"div\",{className:\"desc\",children:e.urlHostname})]})]})]},e.id))}):(0,Q.jsxs)(\"div\",{className:\"notifications-default\",children:[(0,Q.jsx)(\"div\",{className:\"desc\",children:(0,Q.jsx)(X.A,{text:J.fw})}),(0,Q.jsx)(Ae,{onClick:()=>{re.A.setBrowserVisible(!1);RazerApp.launchSettings({section:\"notifications\"})&&RazerApp.broadcastMessage({action:\"settingsScrollToSection\",payload:\"notifications\"})},disabled:!1,active:!1,className:\"\",children:(0,Q.jsx)(X.A,{text:J.vp})})]}):(0,Q.jsx)(ve,{className:\"notifications-spinner\"}),[t,e,r,n]);return(0,i.useEffect)(()=>{r(async e=>{let t;try{t=await RazerApp.getUserNotifications()}catch(n){return Y.A.error(`RazerApp.getUserNotifications() - ${n.message}`)}e(Se(t))})},[]),(0,Q.jsxs)(i.Fragment,{children:[(0,Q.jsxs)(\"div\",{className:\"app-section-title\",children:[(0,Q.jsx)(X.A,{text:J.BI}),t&&e.length>0?(0,Q.jsx)(Ae,{onClick:()=>r(e=>{RazerApp.clearUserNotifications(),e({type:N.Vm})}),disabled:!1,active:!1,className:\"\",children:(0,Q.jsx)(X.A,{text:J.UZ})}):null]}),a()]})}"
+    },
+    {
+      "symbol": "Re",
+      "start": 36612,
+      "end": 37707,
+      "source": "function Re(){const e=(0,o.useSelector)(e=>!!e.user.item.id),t=(0,o.useSelector)(e=>e.app.launchers.length),n=(0,o.useSelector)(e=>e.view.current),r=(0,i.useRef)(0),[a,s]=(0,i.useState)(!1);var l;((0,i.useEffect)(()=>{var e,t;(a&&(0,ne.Zw)(),n===M.W0.widgets)&&(r.current=null!==(e=null===(t=document.getElementById(\"systrayBody\"))||void 0===t?void 0:t.clientHeight)&&void 0!==e?e:0)},[a,n]),(0,i.useEffect)(()=>{const e=()=>{s(\"visible\"===document.visibilityState)};return document.addEventListener(\"visibilitychange\",e),(0,ne.Zw)(),()=>{document.removeEventListener(\"visibilitychange\",e)}},[]),M.W0.widgets)&&(r.current=null===(l=document.getElementById(\"systrayBody\"))||void 0===l?void 0:l.clientHeight);const c=n===M.W0.notifications&&r.current?{height:r.current}:null,d=0===t?\"body taller\":\"body\";return(0,Q.jsxs)(\"div\",{id:\"systray\",className:\"systray\",style:{visibility:a?\"visible\":\"none\"},children:[(0,Q.jsx)(ae,{}),e?(0,Q.jsxs)(i.Fragment,{children:[(0,Q.jsx)(he,{}),(0,Q.jsx)(\"div\",{id:\"systrayBody\",className:d,style:c,children:(0,Q.jsx)(Oe,{})})]}):null,t>0?(0,Q.jsx)(me,{}):null]})}"
+    },
+    {
+      "symbol": "Oe",
+      "start": 37707,
+      "end": 39239,
+      "source": "function Oe(e){const t=(0,o.useSelector)(e=>e.view.current),r=(0,o.useSelector)(e=>e.app.items),a=(0,o.useSelector)(e=>!0===e.user.item.isGuest),s=(0,o.useSelector)(e=>e.app.installedApps);let l=r.filter(e=>e.showWidget&&e.hasWidget&&(e.name!==M.xh||!r.find(e=>e.name===M.SE)));l=(0,te.v)(l,{widgetIndex:1}),l=l.filter(e=>!!(\"app\"!==e.type||\"synapse\"!==e.name&&\"chroma-app\"!==e.name||s.includes(e.name)));const c=e=>{const{name:t}=e,i={app:e,key:t};return{[M.xh]:r.find(e=>e.name===M.SE)?null:(0,Q.jsx)(Ce.kg,{lazy:()=>n.e(219).then(n.bind(n,219)),...i}),[M.SE]:(0,Q.jsx)(Ce.kg,{lazy:()=>n.e(190).then(n.bind(n,3190)),...i}),[M.ut]:(0,Q.jsx)(Ce.kg,{lazy:()=>Promise.all([n.e(994),n.e(492)]).then(n.bind(n,5492)),...i}),[M.fq]:(0,Q.jsx)(Ce.kg,{lazy:()=>n.e(215).then(n.bind(n,2215)),...i,isRunning:e.isRunning}),[M.Uw]:(0,Q.jsx)(Ce.kg,{lazy:()=>n.e(414).then(n.bind(n,2033)),...i}),[M._k]:a?null:(0,Q.jsx)(Ce.kg,{lazy:()=>n.e(482).then(n.bind(n,3482)),...i})}[t]},d=()=>{re.A.setBrowserVisible(!1);RazerApp.launchSettings({section:\"notifications\"})&&RazerApp.broadcastMessage({action:\"settingsScrollToSection\",payload:\"widgets\"})};if(\"notifications\"===t)return(0,Q.jsx)(_e,{});if(\"widgets\"===t){const e=l.map(c).filter(e=>null!==e);return 0===e.length?(0,Q.jsxs)(\"div\",{className:\"notifications-default\",children:[(0,Q.jsx)(\"div\",{className:\"desc\",children:(0,Q.jsx)(X.A,{text:J.yf})}),(0,Q.jsx)(Ae,{onClick:d,disabled:!1,active:!1,className:\"\",children:(0,Q.jsx)(X.A,{text:J.pt})})]}):(0,Q.jsx)(i.Fragment,{children:e})}return null}"
+    }
+  ],
+  "rules": [
+    ".systray .app-section-title>.btn-text{font-size:10px;position:absolute;right:20px;text-decoration:underline;text-transform:uppercase}",
+    ".systray .app-section-title>.btn-text:not(:hover){color:#ccc}",
+    ".systray>.header,.systray>.header-2{align-items:center;background-color:#000;display:flex;height:60px;padding:0 20px;position:relative}",
+    ".systray>.header:before{background-color:#000;content:\"\";height:100%;left:0;opacity:0;pointer-events:none;position:absolute;top:0;transition:opacity .1s linear;width:100%}",
+    ".systray>.header:active:before{opacity:.1}",
+    ".systray>.header>.avatar{background-image:url(../../static/media/user.53ceca5f.svg);background-repeat:no-repeat;background-size:100%;border-radius:50%;flex-shrink:0;height:40px;margin-right:10px;width:40px}",
+    ".systray>.header>.avatar.guest{background-image:url(../../static/media/guest.99887b67.svg)}",
+    ".systray>.header>.info{margin-right:10px;min-width:0}",
+    ".systray>.header>.info>.username{color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".systray>.header>.btn-view-online{margin-left:auto;opacity:0;padding-left:7px;padding-right:7px;transition:opacity .1s ease-out}",
+    ".systray>.header:hover>.btn-view-online{opacity:1}",
+    ".systray>.header-2{background-color:#222;justify-content:center;padding-bottom:1px;transition:background-color .1s ease-in-out,color .1s ease-in-out}",
+    ".systray>.header-2:hover{background-color:#000;color:#eee}",
+    ".btn{backface-visibility:hidden;background-color:initial;border:1px solid #0000004d;border-radius:2px;color:#fff;cursor:default;display:inline-block;font-size:12px;line-height:1;min-width:90px;outline:none;padding:7px 16px 6px;text-align:center;text-decoration:none;text-transform:uppercase;transition:opacity .2s ease-out,background-color .2s ease-out;-webkit-user-select:none;user-select:none}",
+    ".btn:hover{opacity:.8}",
+    ".btn:active{opacity:.6}",
+    ".btn.disabled{opacity:.3}",
+    ".btn.disabled,.btn[readonly]{pointer-events:none}",
+    ".btn.btn-outline-white{border-color:#ccc;color:#ccc}",
+    ".btn.btn-outline-white:hover{background-color:#000;opacity:1}",
+    ".btn.btn-outline-white:active{background-color:initial;opacity:1}",
+    ".btn.btn-outline-black{border-color:#212121;color:#212121}",
+    ".navbar{border-top:1px solid #111;display:flex;position:relative}",
+    ".navbar:after{background-color:#111;content:\"\";height:2px;position:absolute;top:100%;width:100%}",
+    ".navbar>.tabs{display:flex}",
+    ".navbar>.btn-settings,.navbar>.tabs>li{color:#999;font-size:12px;text-transform:uppercase;transition:background-color .1s ease-in-out,color .1s ease-in-out}",
+    ".navbar>.tabs>li{padding:9px 20px 8px;vertical-align:middle}",
+    ".navbar>.tabs>li.active{color:#fff}",
+    ".navbar>.btn-settings:hover,.navbar>.tabs>li:hover{background-color:#111}",
+    ".navbar>.btn-settings{align-items:center;display:flex;margin-left:auto;padding:0 23px;position:relative}",
+    ".navbar>.btn-settings path{fill:#999;transition:fill .1s ease-in-out}",
+    ".navbar>.btn-settings:hover path{fill:#fff}",
+    ".navbar>.tabs>li>.badge{align-items:center;border-radius:50%;color:#111;display:inline-block;font-size:12px;justify-content:center;line-height:1;margin-left:5px;padding:0 6px;position:relative;text-align:center;z-index:1}",
+    ".navbar>.tabs>li>.badge:before{background-color:#44d62c;border-radius:19px;content:\"\";height:19px;left:0;position:absolute;top:-4px;width:100%;z-index:-1}",
+    ".notifications-spinner.spinner-razer{bottom:0;height:31px;left:0;margin:auto;position:absolute;right:0;top:0;width:31px}",
+    ".notifications>li{background-color:#111;cursor:pointer;margin-bottom:10px}",
+    ".notifications>li:last-child{margin-bottom:0}",
+    ".notifications>li>.img{background-position:50%;background-repeat:no-repeat;background-size:cover;height:102px;width:100%}",
+    ".notifications>li>.info{padding:20px}",
+    ".notifications>li>.info>.title{line-height:1;margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}",
+    ".notifications>li>.info>.desc{-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#999;display:-webkit-box;font-size:14px;height:34px;margin-bottom:4px;overflow:hidden}",
+    ".notifications>li>.info>.helper{color:#999;display:flex;font-size:12px}",
+    ".notifications>li>.info>.helper>.date{flex-shrink:0;margin-right:10px}",
+    ".notifications>li>.info>.helper>.desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".notifications-default{padding:20px;text-align:center}",
+    ".notifications-default>.btn-text,.notifications-default>.desc{font-size:14px}",
+    ".notifications-default>.desc{margin-bottom:10px}",
+    ".notifications-default>.btn-text{text-decoration:underline}",
+    ".btn-text{color:#ccc;cursor:default;font-size:14px;transition:color .1s ease-in-out,opacity .1s linear}",
+    ".btn-text:hover{color:#44d62c}",
+    ".btn-text:active{opacity:.7}",
+    ".btn-text.disabled{opacity:.3;pointer-events:none}",
+    ".spinner-razer{display:inline-block;height:27px;width:27px}",
+    ".spinner-razer>svg{height:100%;width:100%}"
+  ],
+  "geometry": {
+    "path": ".ref/applications/systray/systrayv2/static/js/main.9579c403.js",
+    "sha256": "f77242abe6648164d2da401814b0dd4cd872526d81811caa455c69b85beb06b2",
+    "start": 9734,
+    "end": 11134,
+    "source": "async function c(e,t,n,s){let c=d();const l=700;let u=360,p=l;const _=document.querySelector(\".header-2\");if(_){u=360,p=_.clientHeight;const e=document.querySelector(\".app.list-unstyled\");e&&(p+=e.clientHeight)}i.A.log(`window.resizeTo(${u}, ${p})`);let h=r.t.prevX||window.screenX,f=r.t.prevY||window.screenY;\"undefined\"===typeof e&&\"undefined\"===typeof t||(h=e,f=t),\"undefined\"!==typeof n&&\"undefined\"!==typeof s&&(h=n,f=s,r.t.prevX=n,r.t.prevY=s);const g=f;f-=p,h-=u/2;const E=await o.A.getMonitorInfo(),m=null===E||void 0===E?void 0:E.find(e=>{let{isPrimaryMonitor:t}=e;return t}),{width:y,height:S}=a(m);if(m){if(h+u>y&&(h=y-u-10),h+u>m.WorkRect.right/m.dpiScaleX){h=h-Math.abs(h+u-m.WorkRect.right/m.dpiScaleX)-10}h<m.WorkRect.left&&(h=m.WorkRect.left)}if(m&&c){var v;const e=c.children;if(p=(null===(v=Array.from(e))||void 0===v?void 0:v.reduce((e,t)=>e+(null===t||void 0===t?void 0:t.offsetHeight),0))+153,p<400?p=400:p>l&&(p=l),f=f+l-p,f<m.WorkRect.top){f+=Math.abs(f-m.WorkRect.top)}const t=Math.ceil(.5*m.dpiScaleY);(f+p)*m.dpiScaleY>S+t&&(p=Math.min(S/m.dpiScaleY*.7,l),f=g-p),document.querySelector(\"#systrayBody\").style.maxHeight=p-153+\"px\"}\"function\"!==typeof o.A.setBounds?(i.A.log(`window.moveTo(${h}, ${f})`),window.moveTo(h,f)):(i.A.log(`zxc window.setBounds(${h}, ${f}, ${u}, ${p})`),o.A.setBounds(h,f,u,p)),r.t.prevWidth=u,r.t.prevHeight=p,c&&(r.t.bodyPrevHeight=c.offsetHeight)}"
+  },
+  "gear": {
+    "path": "assets/synapse/tray-settings-current.svg",
+    "sha256": "54e9e14578a925678b4218f5797fd3c58c32cb6da8abc7bdea6e999d7bfca5d8"
+  },
+  "scope": "Account header, navigation and unloaded/empty notification branch. Populated notifications, widgets, real account transport and dynamic placement remain incomplete."
+}

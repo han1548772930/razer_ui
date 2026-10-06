@@ -76,10 +76,25 @@ pub(super) fn edit_profile_metadata(
 pub(crate) struct ProductWorkspace {
     body: Body,
     _subscription: Subscription,
+    _oled_subscription: Option<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
+impl EventEmitter<super::OledRuntimeRequested> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    /// Adapter boundary for real 1383 runtime observations. Profile data never
+    /// supplies BLE/dongle status or a synthetic download reply.
+    #[allow(dead_code)]
+    pub(crate) fn observe_oled_runtime(
+        &mut self,
+        observation: super::OledRuntimeObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_oled_runtime(observation, window, cx));
+        }
+    }
     pub(crate) fn new(
         device: Device,
         intro: bool,
@@ -110,6 +125,7 @@ impl ProductWorkspace {
             Self {
                 body: Body::Existing(entity),
                 _subscription: subscription,
+                _oled_subscription: None,
             }
         } else {
             let entity = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
@@ -132,9 +148,14 @@ impl ProductWorkspace {
                 });
                 cx.notify();
             });
+            let oled_subscription = cx.subscribe(
+                &entity,
+                |_, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
+            );
             Self {
                 body: Body::Source(entity),
                 _subscription: subscription,
+                _oled_subscription: Some(oled_subscription),
             }
         }
     }
@@ -164,6 +185,14 @@ impl ProductWorkspace {
     }
     pub(crate) fn snapshot(&self, cx: &App) -> Device {
         self.device(cx).clone()
+    }
+    /// A retained product renderer with at least one implemented non-help page.
+    /// Registry membership alone can still lead to a Pending source body.
+    pub(crate) fn has_local_page(&self, cx: &App) -> bool {
+        match &self.body {
+            Body::Existing(_) => true,
+            Body::Source(workspace) => workspace.read(cx).has_local_page(),
+        }
     }
     /// The current 653 chromaApp root mounts the same lighting content as its
     /// normal lighting tab, without the product navigation/profile chrome.

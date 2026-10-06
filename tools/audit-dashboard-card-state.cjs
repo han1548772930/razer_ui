@@ -75,12 +75,14 @@ const implementation = [
 ].map(file=>({path:file,sha256:hash(read(file))}));
 const report={verification:'Current module-local AST, final CSS, maintained resource preparation and hash checks. No application, build, test or reference JavaScript was executed.',
   contracts,labels,css:{path:cssPath,sha256:hash(css),rules,keyframes},spinner:{path:spinnerPath,sha256:hash(spinner),source:spinner},assets,batteryMasks,powerLifecycle,powerStateWriters,implementation,
+  local_entrypoints:'docs/re/local-device-entrypoints-current-evidence.json',
   implemented:[
     'Separate source image-container disabled and non-ready artwork blurred opacity; console name opacity and PlayStation artwork exception.',
     'Known controller/headset/earbuds/firmware art, retry/offline, actual spinner curve and square caps, restart warning, WDL and firmware affordances.',
     'Observed presetLoading value only, 100ms ease-in width and exact 600ms dot keyframes with 150/300ms initial delays; mixer init overlay.',
     'Source short-drag overrideAction for nested mouse controls; native keyboard activation stops card bubbling.',
     'Source can-focus short-circuit conditions and actual firmware-update inventory matching; recovery/install/restart-notification requests report missing transport without synthetic success.',
+    'User-requested local entry override suppresses only installer spinner/retry/status/blur for held non-help renderers in six explicit setup phases, retaining can-focus and noAliveSign guards. Source device fields, readiness and battery observations are unchanged.',
     'Recovered standby-off and console glyphs; battery no-spinner gate, restart suppression, console text and edge-placement branches.',
     'Ready/waiting acceptance of actual power observations, retained display state in other setup states, raw power used independently for spinner, source 2-second display-only timers.',
     'Mask sizing separated from 20px background images: 26px viewBox-only power mask, intrinsic 26px Xbox and 24px PlayStation at the default top-left mask origin.',

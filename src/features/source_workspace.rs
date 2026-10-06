@@ -61,8 +61,66 @@ pub(crate) struct SourceProductWorkspace {
     _subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
+impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(crate) fn observe_oled_runtime(
+        &mut self,
+        observation: super::OledRuntimeObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_oled_runtime(observation, window, cx));
+        }
+    }
+    /// Report pages backed by entities this workspace actually owns. A help
+    /// renderer or a registered navigation with only Pending content is not a
+    /// locally implemented product destination.
+    pub(crate) fn has_local_page(&self) -> bool {
+        let Some(navigation) = product::registered(self.device.product_id)
+            .and_then(|product| product.primary_navigation())
+        else {
+            return false;
+        };
+        navigation.pages().iter().any(|page| {
+            if page.role() == ProductPageRole::Help {
+                return false;
+            }
+            let key = page.kind().key();
+            if self.dock_pairing.is_some()
+                && super::dock_pairing::supports_page(self.device.product_id, key)
+            {
+                return true;
+            }
+            if self
+                .accessory
+                .as_ref()
+                .is_some_and(|view| view.supports_page(self.device.product_id, key))
+                || (self.supplement.is_some() && self.use_supplement_for(key))
+            {
+                return true;
+            }
+            match &self.body {
+                FamilyBody::Audio(_) => {
+                    super::audio_products::supports_page(self.device.product_id, key)
+                }
+                FamilyBody::AccessorySystem(_) => {
+                    super::accessory_system_products::supports_page(self.device.product_id, key)
+                }
+                FamilyBody::Controls(_) => {
+                    super::source_controls::supports_page(self.device.product_id, key)
+                }
+                FamilyBody::Pending => false,
+                FamilyBody::Mouse(_)
+                | FamilyBody::Keyboard(_)
+                | FamilyBody::Gamepad(_)
+                | FamilyBody::System(_)
+                | FamilyBody::Hue(_) => true,
+            }
+        })
+    }
+
     pub(super) fn select_profile(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
         if !self.device.profiles.iter().any(|profile| profile.id == id)
             || self.device.active_profile == id
@@ -326,6 +384,10 @@ impl SourceProductWorkspace {
             });
             subscriptions.push(cx.subscribe(
                 &body,
+                |_: &mut Self, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
                 |this: &mut Self, body, _: &super::audio_products::AudioProductChanged, cx| {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
@@ -379,6 +441,17 @@ impl SourceProductWorkspace {
                     cx.emit(WorkspaceEvent::PairingRequested(this.device.clone()));
                 },
             ));
+            subscriptions.push(cx.subscribe_in(
+                &body,
+                window,
+                |this: &mut Self,
+                 _,
+                 _: &super::source_controls::SourceControlsHelpRequested,
+                 window,
+                 cx| {
+                    this.set_page_key("HELP", window, cx);
+                },
+            ));
             FamilyBody::Controls(body)
         } else {
             FamilyBody::Pending
@@ -405,6 +478,17 @@ impl SourceProductWorkspace {
                  _: &super::source_controls::SourceControlsPairingRequested,
                  cx| {
                     cx.emit(WorkspaceEvent::PairingRequested(this.device.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe_in(
+                &controls,
+                window,
+                |this: &mut Self,
+                 _,
+                 _: &super::source_controls::SourceControlsHelpRequested,
+                 window,
+                 cx| {
+                    this.set_page_key("HELP", window, cx);
                 },
             ));
             Some(controls)

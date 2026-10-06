@@ -1,0 +1,40 @@
+{
+  "sizes": {
+    "synapse/audio-oled-1383-system-tag-cpuUsage.svg": [
+      47.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-cpuTemp.svg": [
+      72.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-gpuUsage.svg": [
+      48.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-gpuTemp.svg": [
+      72.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-memory.svg": [
+      63.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-date.svg": [
+      41.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-time.svg": [
+      40.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-laptopBattery.svg": [
+      110.0,
+      24.0
+    ],
+    "synapse/audio-oled-1383-system-tag-headsetBattery.svg": [
+      118.0,
+      24.0
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/guest.99887b67.svg",
+    "source_sha256": "6c7b23907ed81e42d6044017c2a675a7a38fe63a782a10fe34eebdf3757f37f4",
+    "output": "assets/synapse/tray-guest-current.svg",
+    "output_sha256": "6c7b23907ed81e42d6044017c2a675a7a38fe63a782a10fe34eebdf3757f37f4",
+    "method": "Original source bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/user.53ceca5f.svg",
+    "source_sha256": "a3551eee0e7332bc0aac87d462e221b014d118f3d2132a61010881098f34e446",
+    "output": "assets/synapse/tray-user-current.svg",
+    "output_sha256": "a3551eee0e7332bc0aac87d462e221b014d118f3d2132a61010881098f34e446",
+    "method": "Original source bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/js/554.2573b048.chunk.js",
+    "source_sha256": "e492fee599908243b58597175bb101a8e44c2357fee6fbec341efac7653a439f",
+    "output": "assets/synapse/tray-settings-current.svg",
+    "output_sha256": "54e9e14578a925678b4218f5797fd3c58c32cb6da8abc7bdea6e999d7bfca5d8",
+    "method": "Static literal React SVG serialization; ce AST slice"
+  }
+]

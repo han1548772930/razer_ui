@@ -1,5 +1,6 @@
 //! Current product numeric editor; Kiyo and automation module 44230 share behavior.
 use crate::ui::{surface, theme::CameraProductColors as Colors};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
 use gpui_kit::component::input::{Input, InputEvent, InputState, MaskPattern};
 use gpui_kit::prelude::FluentBuilder as _;
@@ -29,9 +30,11 @@ pub(crate) struct Stepper {
     round_up_decimals: bool,
     modes_area: bool,
     custom_keymapping: bool,
+    reveal_spinners_on_hover: bool,
     allow_live_update: bool,
     disabled: bool,
     focused: bool,
+    hovered: bool,
     interacting: bool,
     draft_from_typing: bool,
     suppress_pointer_click: bool,
@@ -114,9 +117,11 @@ impl Stepper {
             round_up_decimals,
             modes_area: false,
             custom_keymapping: false,
+            reveal_spinners_on_hover: false,
             allow_live_update: false,
             disabled: false,
             focused: false,
+            hovered: false,
             interacting: false,
             draft_from_typing: false,
             suppress_pointer_click: false,
@@ -128,6 +133,14 @@ impl Stepper {
     /// `.modes-area .stepper` wins over the later generic Kiyo dimensions.
     pub(crate) fn in_modes_area(mut self) -> Self {
         self.modes_area = true;
+        self
+    }
+
+    /// Nommo's generic spinner CSS hides arrows until hover/focus-within.
+    /// Camera and custom-keymapping callers have explicit always-visible
+    /// overrides, so they must not inherit this policy from shared behavior.
+    pub(crate) fn reveal_spinners_on_hover(mut self) -> Self {
+        self.reveal_spinners_on_hover = true;
         self
     }
 
@@ -303,9 +316,47 @@ impl Stepper {
         cx.notify();
     }
 
-    fn spinner(&self, button: BaseButton, action: StepAction, cx: &Context<Self>) -> BaseButton {
+    fn spinner(
+        &self,
+        button: BaseButton,
+        action: StepAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> BaseButton {
         let at_limit = self.at_limit(action);
         let disabled = self.disabled || at_limit;
+        let revealed = !self.disabled && (self.hovered || self.focused);
+        let opacity = if self.reveal_spinners_on_hover {
+            // The hover/focus selector has higher specificity than generic
+            // `.icon.spinner.*.disabled`: even a bound arrow is fully opaque
+            // while revealed. The bound guard still prevents a numeric step.
+            // NumberInput retains the button hitbox even at that bound.
+            let target = if revealed {
+                1.
+            } else if at_limit {
+                0.3
+            } else {
+                0.
+            };
+            motion::transition(
+                (
+                    ElementId::from(("source-stepper", cx.entity_id())),
+                    if action == StepAction::Increment {
+                        "stepper-up-opacity"
+                    } else {
+                        "stepper-down-opacity"
+                    },
+                ),
+                target,
+                Transition::new(Duration::from_millis(100)).easing(Easing::Linear),
+                window,
+                cx,
+            )
+        } else if at_limit && !self.custom_keymapping {
+            0.3
+        } else {
+            1.
+        };
         let owner = cx.entity().downgrade();
         let down = owner.clone();
         let up = owner.clone();
@@ -316,12 +367,10 @@ impl Stepper {
             .h(surface::css(12.))
             .p_0()
             .relative()
-            // The custom selector overrides the source disabled opacity,
-            // while pointer interaction remains disabled at a numeric bound.
-            .opacity(if at_limit && !self.custom_keymapping {
-                0.3
-            } else {
-                1.
+            .opacity(opacity)
+            // `visibility 0s` switches immediately; retain geometry while hidden.
+            .when(self.reveal_spinners_on_hover && !revealed, |button| {
+                button.invisible()
             })
             .when(!disabled, |button| {
                 button
@@ -380,8 +429,18 @@ impl Render for Stepper {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus = self.input.focus_handle(cx);
         let owner = cx.entity().downgrade();
-        let increment = self.spinner(BaseButton::new("increment"), StepAction::Increment, cx);
-        let decrement = self.spinner(BaseButton::new("decrement"), StepAction::Decrement, cx);
+        let increment = self.spinner(
+            BaseButton::new("increment"),
+            StepAction::Increment,
+            window,
+            cx,
+        );
+        let decrement = self.spinner(
+            BaseButton::new("decrement"),
+            StepAction::Decrement,
+            window,
+            cx,
+        );
         let opacity = if self.disabled { 0.3 } else { 1. };
         let opacity = if self.custom_keymapping {
             // The final .key-config .stepper shorthand replaces the generic
@@ -422,6 +481,12 @@ impl Render for Stepper {
                 },
             )
             .opacity(opacity)
+            .on_hover(cx.listener(|this, hovered, _, cx| {
+                if this.hovered != *hovered {
+                    this.hovered = *hovered;
+                    cx.notify();
+                }
+            }))
             .when(!self.disabled, |root| {
                 root.hover(|style| style.border_color(Colors::focus()))
             })

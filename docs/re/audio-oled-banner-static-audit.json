@@ -1,0 +1,208 @@
+{
+  "product_id": 1383,
+  "method": "Static AST/CSS/resource/locale validation only; no application or tests executed.",
+  "fonts": [
+    "RazerF5",
+    "Arial",
+    "Arial Black",
+    "Bahnschrift",
+    "Calibri",
+    "Cambria",
+    "Cambria Math",
+    "Candara",
+    "Cascadia Code",
+    "Cascadia Mono",
+    "Comic Sans MS",
+    "Consolas",
+    "Constantia",
+    "Corbel",
+    "Courier New",
+    "Ebrima",
+    "Franklin Gothic Medium",
+    "Gabriola",
+    "Gadugi",
+    "Georgia",
+    "HoloLens MDL2 Assets",
+    "Impact",
+    "Ink Free",
+    "Javanese Text",
+    "Leelawadee UI",
+    "Lucida Console",
+    "Lucida Sans Unicode",
+    "Malgun Gothic",
+    "Marlett",
+    "Microsoft Himalaya",
+    "Microsoft JhengHei",
+    "Microsoft New Tai Lue",
+    "Microsoft PhagsPa",
+    "Microsoft Sans Serif",
+    "Microsoft Tai Le",
+    "Microsoft YaHei",
+    "Microsoft Yi Baiti",
+    "MingLiU-ExtB",
+    "Mongolian Baiti",
+    "MS Gothic",
+    "MV Boli",
+    "Myanmar Text",
+    "Nirmala UI",
+    "Palatino Linotype",
+    "Segoe Fluent Icons",
+    "Segoe MDL2 Assets",
+    "Segoe Print",
+    "Segoe Script",
+    "Segoe UI",
+    "Segoe UI Emoji",
+    "Segoe UI Historic",
+    "Segoe UI Symbol",
+    "Segoe UI Variable",
+    "SimSun",
+    "Sitka",
+    "Sylfaen",
+    "Symbol",
+    "Tahoma",
+    "Times New Roman",
+    "Trebuchet MS",
+    "Verdana",
+    "Webdings",
+    "Wingdings",
+    "Yu Gothic"
+  ],
+  "sizes": [
+    "8px",
+    "9px",
+    "10px",
+    "11px",
+    "12px",
+    "14px",
+    "16px",
+    "18px",
+    "20px",
+    "22px",
+    "24px",
+    "26px",
+    "28px",
+    "30px"
+  ],
+  "images": [
+    "banner-1",
+    "banner-2",
+    "banner-3",
+    "banner-4",
+    "banner-5",
+    "banner-6",
+    "banner-7",
+    "banner-8"
+  ],
+  "icons": [
+    "restart",
+    "pause",
+    "increase",
+    "decrease",
+    "bold",
+    "italic",
+    "underline",
+    "left",
+    "right",
+    "up",
+    "down"
+  ],
+  "limits": {
+    "horizontal_width": 920,
+    "vertical_with_image": 176,
+    "vertical_without_image": 256
+  },
+  "textarea": {
+    "content_width": 385,
+    "content_height": 98,
+    "padding": 2,
+    "border": 1,
+    "outer_width": 391,
+    "outer_height": 104
+  },
+  "ua_receipt": "docs/re/current-browser-ua-evidence.json",
+  "motion": {
+    "horizontal_base_ms": 3400,
+    "horizontal_width_ms": 28,
+    "vertical_ms": 5000,
+    "restart_ms": 100,
+    "horizontal_duration_dependencies": [
+      "text.value",
+      "text.scroll"
+    ],
+    "cache": "local_duration_ms; zero means not yet measured; Home and editor Hg have independent mount measurements"
+  },
+  "directions": [
+    {
+      "value": "left",
+      "source": {
+        "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+        "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+        "offset": 182550,
+        "end": 182792,
+        "source": "@keyframes CustomizeBanner_scroll-horizontal-left-to-right__JJLWj{0%{opacity:1;transform:translateX(0)}49%{opacity:1}50%{opacity:0;transform:translateX(-100%)}51%{opacity:0;transform:translateX(100%)}52%{opacity:1}to{transform:translateX(0)}}"
+      }
+    },
+    {
+      "value": "right",
+      "source": {
+        "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+        "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+        "offset": 182792,
+        "end": 183034,
+        "source": "@keyframes CustomizeBanner_scroll-horizontal-right-to-left__oqKE0{0%{opacity:1;transform:translateX(0)}49%{opacity:1}50%{opacity:0;transform:translateX(100%)}51%{opacity:0;transform:translateX(-100%)}52%{opacity:1}to{transform:translateX(0)}}"
+      }
+    },
+    {
+      "value": "up",
+      "source": {
+        "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+        "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+        "offset": 183034,
+        "end": 183298,
+        "source": "@keyframes CustomizeBanner_scroll-vertical-top-to-bottom__OQbMg{0%{opacity:1;transform:translateY(0)}49%{opacity:1}50%{opacity:0;transform:translateY(calc(-100% - 5px))}51%{opacity:0;transform:translateY(calc(100% + 5px))}52%{opacity:1}to{transform:translateY(0)}}"
+      }
+    },
+    {
+      "value": "down",
+      "source": {
+        "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+        "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+        "offset": 183298,
+        "end": 183552,
+        "source": "@keyframes CustomizeBanner_scroll-vertical-bottom-to-top__Y2x0Z{0%{transform:translateY(0)}49%{opacity:1}50%{opacity:0;transform:translateY(calc(100% + 5px))}51%{opacity:0;transform:translateY(calc(-100% - 5px))}52%{opacity:1}to{transform:translateY(0)}}"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": ".ref/devices/1383/asset-manifest.json",
+      "sha256": "907cb71cc714fad99364461824738821cfe57e188efefe1a732196754eaa1fcc"
+    },
+    {
+      "path": ".ref/devices/1383/static/js/main.a86f6801.js",
+      "sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd"
+    },
+    {
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969"
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed"
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880"
+    }
+  ],
+  "native": [
+    {
+      "path": "src/features/audio_oled_banner.rs",
+      "sha256": "d6d557507b79b8652a6d2d17db35f10362a4e1f502b52e3bb9dc64e41b525215"
+    },
+    {
+      "path": "src/features/audio_oled_banner_theme.rs",
+      "sha256": "f89011e776ef36db7ee7d5abf1bd5f75fd343e19144553831a537c69cdb95313"
+    }
+  ]
+}

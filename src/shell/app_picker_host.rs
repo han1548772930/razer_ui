@@ -20,6 +20,7 @@ impl AppShell {
             .map(|(index, workspace)| {
                 let workspace = workspace.read(cx);
                 let device = workspace.device(cx);
+                let has_local_page = workspace.has_local_page(cx);
                 let icon = resources::dashboard_image(
                     device.product_id,
                     device.edition_id,
@@ -37,6 +38,10 @@ impl AppShell {
                     icon,
                 )
                 .ready(device.setup_status == SetupStatus::Ready)
+                .mixer_failed(
+                    device.dashboard.device_init_status_fail.as_deref()
+                        == Some("mixer_system_check_failed"),
+                )
                 .powered_off(
                     device
                         .power_status
@@ -44,7 +49,10 @@ impl AppShell {
                         .is_some_and(|power| power.charging_status.eq_ignore_ascii_case("off")),
                 )
                 .section_position(position)
-                .launchable(crate::features::has_product_workspace(device.product_id));
+                .launchable(has_local_page)
+                .open_without_installation(
+                    super::main_pages::local_installation_entry(device, has_local_page),
+                );
                 for (locale, name) in &device.name.values {
                     item = item.localized_name(locale.clone(), name.clone());
                 }
@@ -82,10 +90,8 @@ impl AppShell {
             .devices(devices)
             .bundled_modules(bundled_modules)
             // Chroma is a separately named local application. Keep it in the
-            // picker as an installed/launchable app so its entry opens the
+            // picker as a launchable app so its entry opens the
             // policy=5 `chroma-app` window without an installer service.
-            .installed_modules([PickerApp::Chroma.key()])
-            .native_apps([PickerApp::Chroma])
             .launchable_modules(launchable_modules)
             .launchable_apps([PickerApp::Synapse, PickerApp::Chroma]);
         self.app_picker
@@ -108,7 +114,7 @@ impl AppShell {
                     let device = workspace.device(cx);
                     (device.product_id == *product_id
                         && device.device_container_id == *container_id
-                        && crate::features::has_product_workspace(device.product_id))
+                        && workspace.has_local_page(cx))
                     .then(|| workspace.identity(cx))
                 });
                 if let Some(key) = key {

@@ -19,6 +19,27 @@ pub(super) use dashboard_grid::{DashboardChanged, DashboardState};
 use dashboard_group::{CollapseIcon, DashboardGroupContent};
 pub(super) use dashboard_tutorial::{DashboardTutorial, DashboardTutorialEvent};
 
+/// Local product pages bypass the external installer's presentation only.
+/// Preserve every observed firmware, console, preset-loading and power guard.
+pub(super) fn local_installation_entry(
+    device: &crate::model::Device,
+    has_local_page: bool,
+) -> bool {
+    use crate::model::SetupStatus;
+    has_local_page
+        && matches!(
+            device.setup_status,
+            SetupStatus::Waiting
+                | SetupStatus::Downloading
+                | SetupStatus::Installing
+                | SetupStatus::Syncing
+                | SetupStatus::InstallCanceled
+                | SetupStatus::Error
+        )
+        && device.dashboard.no_alive_sign != Some(true)
+        && dashboard_device::can_focus(device)
+}
+
 /// 55 CSS's 1279/600 breakpoints and current 22534/Pi.getMaxColumns.
 /// Normalize by our rem scale so larger text also causes the grid to reflow.
 pub(super) struct MainLayout {

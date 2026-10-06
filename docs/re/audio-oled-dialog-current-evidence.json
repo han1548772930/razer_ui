@@ -1,0 +1,1684 @@
+{
+  "product_id": 1383,
+  "method": "Static Acorn declarations and CSS only; no vendor execution. Offsets are UTF-16 code units.",
+  "manifest": {
+    "path": ".ref/devices/1383/asset-manifest.json",
+    "sha256": "907cb71cc714fad99364461824738821cfe57e188efefe1a732196754eaa1fcc"
+  },
+  "receipts": [
+    {
+      "module": 51278,
+      "symbol": "Tn",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 316828,
+      "end": 317706,
+      "source": "class Tn extends S.Component{constructor(){super(...arguments),this.clickedGoBack=()=>{void 0!==this.props.onClose&&this.props.goBack()},this.clickedClose=()=>{this.props.onClose()}}render(){return(0,P.jsx)(\"div\",{className:\"popup-widget\",children:(0,P.jsx)(\"div\",{className:`backdrop ${this.props.extraClass?this.props.extraClass:\"\"} ${this.props.show?\"show\":\"\"}`,children:(0,P.jsxs)(\"div\",{className:\"choose-a-mat linked-games-popup\",style:this.props.extraStyleForMat,children:[(0,P.jsxs)(\"div\",{className:\"head\",children:[void 0!==this.props.goBack?(0,P.jsx)(\"div\",{className:\"back\",onClick:this.clickedGoBack}):\"\",this.props.name,(0,P.jsx)(\"div\",{className:\"close\",onClick:this.clickedClose})]}),(0,P.jsx)(\"div\",{id:\"transparent-scrollbar\",className:\"body \"+(this.props.notScrollable?\"\":\"scrollable\"),style:this.props.extraStyle||null,children:this.props.children})]})})})}}"
+    },
+    {
+      "module": 51278,
+      "symbol": "Mv",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 649276,
+      "end": 650132,
+      "source": "e=>{let{selectedEdit:t,show:s,onClose:i,animationFPS:a=30}=e;return(0,P.jsx)(On,{show:s,name:\"animation\"===t?(0,P.jsx)(J.A,{text:V.scg}):\"image\"===t?(0,P.jsx)(J.A,{text:V.jJm}):\"emote\"===t?(0,P.jsx)(J.A,{text:V.Qt7}):\"banner\"===t?(0,P.jsx)(J.A,{text:V.ADx}):\"media\"===t?(0,P.jsx)(J.A,{text:V.wLL}):\"system\"===t?(0,P.jsx)(J.A,{text:V.G9b}):void 0,onClose:i,extraStyleForMat:{maxWidth:[\"animation\",\"image\",\"emote\"].includes(t)?\"800px\":\"850px\"},extraStyle:{overflow:\"visible\"},children:(0,P.jsx)(\"div\",{className:eh,style:\"emote\"===t?{overflowY:\"hidden\"}:{overflowY:\"scroll\"},children:(0,P.jsx)(et.wi,{$name:t,children:{animation:(0,P.jsx)(au,{onCancel:i,animationFPS:a}),image:(0,P.jsx)(Su,{onCancel:i}),emote:(0,P.jsx)(Vu,{onCancel:i}),banner:(0,P.jsx)(Ug,{onCancel:i}),media:(0,P.jsx)(Kg,{onCancel:i}),system:(0,P.jsx)(_v,{onCancel:i}),default:null}})})})}"
+    },
+    {
+      "module": 51278,
+      "symbol": "oh",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 585205,
+      "end": 585490,
+      "source": "e=>{let{onCancel:t,onApply:s,disabled:i=!1,applyBtnName:a=null}=e;return(0,P.jsx)(\"div\",{className:th,children:(0,P.jsxs)(\"div\",{className:sh,children:[(0,P.jsx)(mm.A,{name:V.bOp,onClick:t}),(0,P.jsx)(mm.A,{extraClass:`${ih} ${i?ah:\"\"}`,name:a&&\"Crop\"===a?V.wQ3:V.pJk,onClick:s})]})})}"
+    },
+    {
+      "module": 58837,
+      "symbol": "d",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 680766,
+      "end": 680780,
+      "source": "\"bottom-right\""
+    },
+    {
+      "module": 58837,
+      "symbol": "p",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 680818,
+      "end": 681358,
+      "source": "function p(e,t){let s={x:0,y:0,width:0,height:0};const i=document.getElementById(\"body-wrapper\");if(!i)return s;const a=\"string\"===typeof e?document.getElementById(e):e;if(!a)return s;const o=i.getBoundingClientRect(),n=a.getBoundingClientRect();return t===d?{x:n.left-320+n.width,y:n.top,width:n.width,height:n.height}:t===c?{x:n.left+320-n.width,y:n.top,width:n.width,height:n.height}:t===m||\"bottom-right-edge\"===t||\"top\"===t?{x:n.left,y:n.top,width:n.width,height:n.height}:{x:n.left-o.left,y:n.top-o.top,width:n.width,height:n.height}}"
+    },
+    {
+      "module": 58837,
+      "symbol": "h",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 681358,
+      "end": 684652,
+      "source": "class h extends i.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const t=null===(e=this.tooltip)||void 0===e?void 0:e.current,s=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(t){const e=t.getBoundingClientRect();if(this.state.position===c&&\"number\"===typeof this.state.style.left&&this.props.target){var i;const s=(null===(i=t.firstElementChild)||void 0===i?void 0:i.getBoundingClientRect().width)||e.width,a=p(this.props.target,m);let o=a.x;o+s>window.innerWidth-8?o=window.innerWidth-8-s:o<8&&(o=8),this.setState(e=>({style:{...e.style,left:o+s-a.width}}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(t=>({style:{...t.style,left:t.style.left+window.innerWidth-8-e.right}}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(t=>({style:{...t.style,left:t.style.left+8-e.left}}));else if(e.right>window.innerWidth){const e=s.findIndex(e=>this.state.position===e);this.setState({position:s[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let{position:t}=e.props;const{target:s}=e.props;console.log(s);let i={};if(s){const e=p(s,t);i={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:t,style:i},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,o.jsx)(r,{children:e=>{let{x:t,y:s,visible:i}=e;const a=window.innerWidth,n=window.innerHeight,r=Math.min(320,320),l=r/2,d=s+25+40<n?s+25:Math.max(8,s-40-8),c=Math.min(Math.max(t+50,8+l),a-8-l);return i&&(0,o.jsx)(\"div\",{style:{position:\"fixed\",top:d,left:c,maxWidth:r,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||c,style:{}},this.tooltip=(0,i.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const{isMounted:t}=this.props;e.isMounted!==t&&(t?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const{tooltip:e,showTooltip:t,hideTooltip:s,renderTooltipWithCursor:i}=this,{shouldRender:a,showClassName:n,position:r,style:d}=this.state,{isMounted:c,className:m,children:p,target:h,isFollowCursor:u=!1}=this.props;if(u&&c)return(0,o.jsx)(l.A,{children:i()});const g=(0,o.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof c?t:()=>{},onMouseLeave:\"boolean\"!==typeof c?s:()=>{},className:`tooltip-razer ${r} ${n} ${m}`,style:{...d,pointerEvents:h?\"none\":\"inherit\"},children:a?(0,o.jsx)(\"div\",{ref:e,className:\"main\",children:(0,o.jsx)(\"div\",{className:\"wrapper\",children:p})}):null});return h?(0,o.jsx)(l.A,{children:g}):g}}"
+    },
+    {
+      "module": 58837,
+      "symbol": "tooltip_module",
+      "path": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+      "sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+      "offset": 679830,
+      "end": 684703,
+      "source": "(e,t,s)=>{\"use strict\";s.d(t,{A:()=>u});var i=s(41594),a=s.n(i),o=s(92722);class n extends a().Component{constructor(e){super(e),this.handleMouseMove=e=>{this.raf&&cancelAnimationFrame(this.raf),this.raf=requestAnimationFrame(()=>{this.setState({x:e.clientX,y:e.clientY,visible:!0})})},this.handleMouseLeave=()=>{this.raf&&cancelAnimationFrame(this.raf),this.setState({visible:!1})},this.state={x:0,y:0,visible:!1},this.raf=null}componentDidMount(){window.addEventListener(\"mousemove\",this.handleMouseMove,{passive:!0}),window.addEventListener(\"mouseout\",this.handleMouseLeave,{passive:!0})}componentWillUnmount(){this.raf&&cancelAnimationFrame(this.raf),window.removeEventListener(\"mousemove\",this.handleMouseMove),window.removeEventListener(\"mouseout\",this.handleMouseLeave)}render(){const{x:e,y:t,visible:s}=this.state;return(0,o.jsx)(o.Fragment,{children:this.props.children({x:e,y:t,visible:s})})}}const r=n;var l=s(87837);const d=\"bottom-right\",c=\"bottom-left\",m=\"bottom-left-edge\";function p(e,t){let s={x:0,y:0,width:0,height:0};const i=document.getElementById(\"body-wrapper\");if(!i)return s;const a=\"string\"===typeof e?document.getElementById(e):e;if(!a)return s;const o=i.getBoundingClientRect(),n=a.getBoundingClientRect();return t===d?{x:n.left-320+n.width,y:n.top,width:n.width,height:n.height}:t===c?{x:n.left+320-n.width,y:n.top,width:n.width,height:n.height}:t===m||\"bottom-right-edge\"===t||\"top\"===t?{x:n.left,y:n.top,width:n.width,height:n.height}:{x:n.left-o.left,y:n.top-o.top,width:n.width,height:n.height}}class h extends i.Component{constructor(e){super(e),this.handleWindowResize=()=>{this.handleReposition()},this.handleReposition=()=>{var e;const t=null===(e=this.tooltip)||void 0===e?void 0:e.current,s=[\"bottom-left\",\"bottom\",\"bottom-right\",\"bottom-left-edge\",\"bottom-right-edge\",\"top\"];if(t){const e=t.getBoundingClientRect();if(this.state.position===c&&\"number\"===typeof this.state.style.left&&this.props.target){var i;const s=(null===(i=t.firstElementChild)||void 0===i?void 0:i.getBoundingClientRect().width)||e.width,a=p(this.props.target,m);let o=a.x;o+s>window.innerWidth-8?o=window.innerWidth-8-s:o<8&&(o=8),this.setState(e=>({style:{...e.style,left:o+s-a.width}}))}else if(\"number\"===typeof this.state.style.left&&e.right>window.innerWidth-8)this.setState(t=>({style:{...t.style,left:t.style.left+window.innerWidth-8-e.right}}));else if(\"number\"===typeof this.state.style.left&&e.left<8)this.setState(t=>({style:{...t.style,left:t.style.left+8-e.left}}));else if(e.right>window.innerWidth){const e=s.findIndex(e=>this.state.position===e);this.setState({position:s[Math.max(e-1,0)]})}}},this.showTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({shouldRender:!0},()=>{let{position:t}=e.props;const{target:s}=e.props;console.log(s);let i={};if(s){const e=p(s,t);i={position:\"fixed\",left:e.x,top:e.y,width:e.width,height:e.height}}e.setState({position:t,style:i},e.handleReposition),e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:\"show\"})})})},this.hideTooltip=()=>{const e=this;clearTimeout(e._timeout),e.setState({showClassName:\"\"},()=>{e._timeout=setTimeout(()=>{e._isMounted&&e.setState({shouldRender:!1,position:e.props.position,style:{}})})})},this.renderTooltipWithCursor=()=>(0,o.jsx)(r,{children:e=>{let{x:t,y:s,visible:i}=e;const a=window.innerWidth,n=window.innerHeight,r=Math.min(320,320),l=r/2,d=s+25+40<n?s+25:Math.max(8,s-40-8),c=Math.min(Math.max(t+50,8+l),a-8-l);return i&&(0,o.jsx)(\"div\",{style:{position:\"fixed\",top:d,left:c,maxWidth:r,pointerEvents:\"none\",zIndex:999999,transform:\"translate(-50%, 0)\",backgroundColor:\"#000000\",color:\"#ccc\",fontSize:14,padding:\"8px 10px\",border:\"1px solid #5d5d5d\"},role:\"tooltip\",children:this.props.children})}}),this.state={shouldRender:!1,showClassName:\"\",position:e.position||c,style:{}},this.tooltip=(0,i.createRef)()}componentDidMount(){this._isMounted=!0,this.props.isMounted&&this.showTooltip(),window.addEventListener(\"resize\",this.handleWindowResize)}componentDidUpdate(e){const{isMounted:t}=this.props;e.isMounted!==t&&(t?this.showTooltip():this.hideTooltip())}componentWillUnmount(){this._isMounted=!1,window.removeEventListener(\"resize\",this.handleWindowResize)}render(){const{tooltip:e,showTooltip:t,hideTooltip:s,renderTooltipWithCursor:i}=this,{shouldRender:a,showClassName:n,position:r,style:d}=this.state,{isMounted:c,className:m,children:p,target:h,isFollowCursor:u=!1}=this.props;if(u&&c)return(0,o.jsx)(l.A,{children:i()});const g=(0,o.jsx)(\"div\",{onMouseEnter:\"boolean\"!==typeof c?t:()=>{},onMouseLeave:\"boolean\"!==typeof c?s:()=>{},className:`tooltip-razer ${r} ${n} ${m}`,style:{...d,pointerEvents:h?\"none\":\"inherit\"},children:a?(0,o.jsx)(\"div\",{ref:e,className:\"main\",children:(0,o.jsx)(\"div\",{className:\"wrapper\",children:p})}):null});return h?(0,o.jsx)(l.A,{children:g}):g}}h.defaultProps={position:d,className:\"\"};const u=h}"
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 3439,
+      "selector": "div",
+      "conditions": [],
+      "declarations": "box-sizing:border-box",
+      "properties": [
+        {
+          "property": "box-sizing",
+          "value": "border-box",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 13031,
+      "selector": ".backdrop",
+      "conditions": [],
+      "declarations": "background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#00000080",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "150%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "visibility 0s,opacity .1s linear",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "visibility,opacity",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 13225,
+      "selector": ".backdrop,.backdrop.glow",
+      "conditions": [],
+      "declarations": "background-position:bottom;background-repeat:no-repeat",
+      "properties": [
+        {
+          "property": "background-position",
+          "value": "bottom",
+          "important": false
+        },
+        {
+          "property": "background-repeat",
+          "value": "no-repeat",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 13305,
+      "selector": ".backdrop.glow",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/background_glow.43f70cb2.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/background_glow.43f70cb2.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 13410,
+      "selector": ".backdrop.show",
+      "conditions": [],
+      "declarations": "opacity:1;visibility:visible;z-index:106",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        },
+        {
+          "property": "visibility",
+          "value": "visible",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "106",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 13466,
+      "selector": ".backdrop.show .choose-a-mat",
+      "conditions": [],
+      "declarations": "top:100px",
+      "properties": [
+        {
+          "property": "top",
+          "value": "100px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 33396,
+      "selector": ".tooltip-razer",
+      "conditions": [],
+      "declarations": "height:100%;left:0;position:absolute;top:0;width:100%;z-index:1060",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "1060",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 33478,
+      "selector": ".tooltip-razer.bottom-left-edge>.main,.tooltip-razer.bottom-left>.main,.tooltip-razer.bottom-right-edge>.main,.tooltip-razer.bottom-right>.main,.tooltip-razer.bottom>.main,.tooltip-razer.top>.main",
+      "conditions": [],
+      "declarations": "bottom:auto;margin-bottom:0;margin-top:5px;top:100%",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 33727,
+      "selector": ".tooltip-razer.bottom-right-edge>.main,.tooltip-razer.bottom-right>.main,.tooltip-razer.top-right>.main",
+      "conditions": [],
+      "declarations": "justify-content:flex-start;left:0;margin-left:0",
+      "properties": [
+        {
+          "property": "justify-content",
+          "value": "flex-start",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 33879,
+      "selector": ".tooltip-razer.top>.main",
+      "conditions": [],
+      "declarations": "bottom:100%;left:50%;margin-bottom:5px;margin-left:-150px;margin-top:0;top:auto",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "-150px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "auto",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 33984,
+      "selector": ".tooltip-razer.bottom-left-edge>.main,.tooltip-razer.bottom-left>.main,.tooltip-razer.top-left>.main",
+      "conditions": [],
+      "declarations": "justify-content:flex-end;left:auto;margin-left:0;right:0",
+      "properties": [
+        {
+          "property": "justify-content",
+          "value": "flex-end",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34142,
+      "selector": ".tooltip-razer>.main",
+      "conditions": [],
+      "declarations": "bottom:100%;display:flex;justify-content:center;left:50%;margin-bottom:5px;margin-left:-150px;opacity:0;pointer-events:none;position:absolute;transition:opacity .1s linear;width:300px",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "-150px",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "opacity .1s linear",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "300px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34347,
+      "selector": ".tooltip-razer.show>.main",
+      "conditions": [],
+      "declarations": "opacity:1",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": "1",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34383,
+      "selector": ".tooltip-razer>.main>.wrapper",
+      "conditions": [],
+      "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:inline-block;font-family:Roboto;font-size:14px;line-height:16px;padding:8px 10px;text-align:left;text-transform:none",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "inline-block",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "Roboto",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "8px 10px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34596,
+      "selector": ".tooltip-razer .title",
+      "conditions": [],
+      "declarations": "text-transform:uppercase",
+      "properties": [
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34643,
+      "selector": ".tooltip-razer .title>span",
+      "conditions": [],
+      "declarations": "color:#44d62c;margin-left:10px;text-transform:none",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34721,
+      "selector": ".tooltip-razer .title+*",
+      "conditions": [],
+      "declarations": "margin-top:10px",
+      "properties": [
+        {
+          "property": "margin-top",
+          "value": "10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 34761,
+      "selector": ".tooltip-razer.text-transform-capitalize .wrapper",
+      "conditions": [],
+      "declarations": "text-transform:capitalize",
+      "properties": [
+        {
+          "property": "text-transform",
+          "value": "capitalize",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/main.7a0131e4.css",
+      "sha256": "8bd5089781accf65d67b3490af7f2875f2151161a9bc6bb225c49a7b65e4b880",
+      "offset": 188487,
+      "selector": ".backdrop",
+      "conditions": [],
+      "declarations": "height:100%!important",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": true
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 73687,
+      "selector": ".choose-a-mat",
+      "conditions": [],
+      "declarations": "background-color:#222;border-radius:5px 5px 0 0;bottom:0;left:50%;max-height:95vh;max-width:1050px;min-width:800px;position:absolute;top:100%;transform:translate(-50%);transition:top .3s;will-change:top",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#222",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "5px 5px 0 0",
+          "important": false
+        },
+        {
+          "property": "bottom",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "95vh",
+          "important": false
+        },
+        {
+          "property": "max-width",
+          "value": "1050px",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "800px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "transform",
+          "value": "translate(-50%)",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "top .3s",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "top",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 73974,
+      "selector": ".choose-a-mat .head .close",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/icon_close.55fe41f1.svg);right:0",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/icon_close.55fe41f1.svg)",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74094,
+      "selector": ".choose-a-mat .head .back,.choose-a-mat .head .close",
+      "conditions": [],
+      "declarations": "background-color:#0000;background-position:50%;background-repeat:no-repeat;background-size:20px;height:36px;position:absolute;top:0;transition:background-color .2s;width:36px;will-change:background-color",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#0000",
+          "important": false
+        },
+        {
+          "property": "background-position",
+          "value": "50%",
+          "important": false
+        },
+        {
+          "property": "background-repeat",
+          "value": "no-repeat",
+          "important": false
+        },
+        {
+          "property": "background-size",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "36px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "background-color .2s",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "36px",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "background-color",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74351,
+      "selector": ".choose-a-mat .head .back",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/icon_back_arrow.b39e4841.svg);left:0",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/icon_back_arrow.b39e4841.svg)",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74474,
+      "selector": ".choose-a-mat .head",
+      "conditions": [],
+      "declarations": "box-shadow:0 1px 0 0 #5d5d5d;color:#999;font-family:RazerF5;font-size:16px;height:36px;line-height:19px;padding:9px 0 8px;position:relative;text-align:center;text-transform:uppercase;z-index:1",
+      "properties": [
+        {
+          "property": "box-shadow",
+          "value": "0 1px 0 0 #5d5d5d",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#999",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "RazerF5",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "36px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "19px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "9px 0 8px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        },
+        {
+          "property": "z-index",
+          "value": "1",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74687,
+      "selector": ".choose-a-mat .head .back:hover,.choose-a-mat .head .close:hover",
+      "conditions": [],
+      "declarations": "background-color:#ffffff1a",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#ffffff1a",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74779,
+      "selector": ".choose-a-mat .head .back:active,.choose-a-mat .head .close:active",
+      "conditions": [],
+      "declarations": "background-color:#0000001a",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#0000001a",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74873,
+      "selector": ".choose-a-mat .body.scrollable",
+      "conditions": [],
+      "declarations": "max-height:calc(100% - 36px);overflow-y:scroll;padding:20px 0 30px 25px",
+      "properties": [
+        {
+          "property": "max-height",
+          "value": "calc(100% - 36px)",
+          "important": false
+        },
+        {
+          "property": "overflow-y",
+          "value": "scroll",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "20px 0 30px 25px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 74976,
+      "selector": ".choose-a-mat .body .desc",
+      "conditions": [],
+      "declarations": "color:#ccc;font-size:14px;line-height:17px;margin-bottom:10px;text-align:center",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "17px",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 75436,
+      "selector": ".choose-a-mat",
+      "conditions": [
+        "@media screen and (min-width:1400px)"
+      ],
+      "declarations": "width:1050px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "1050px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 75522,
+      "selector": ".choose-a-mat.popup-calibration",
+      "conditions": [
+        "@media screen and (max-width:1398px)and (min-width:800px)"
+      ],
+      "declarations": "width:800px",
+      "properties": [
+        {
+          "property": "width",
+          "value": "800px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 75603,
+      "selector": ".choose-a-mat.popup-calibration",
+      "conditions": [
+        "@media screen and (max-width:799px)"
+      ],
+      "declarations": "min-width:546px",
+      "properties": [
+        {
+          "property": "min-width",
+          "value": "546px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 76791,
+      "selector": ".choose-a-mat .body .illust,.illust-inverted",
+      "conditions": [],
+      "declarations": "height:340px;margin:20px auto;width:500px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "340px",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "20px auto",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "500px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 76878,
+      "selector": ".choose-a-mat .body .step-1 .illust",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_1.f0c7bbe8.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_1.f0c7bbe8.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 77008,
+      "selector": ".choose-a-mat .body .step-1 .illust-inverted",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_1_inverted.defc1125.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_1_inverted.defc1125.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 77156,
+      "selector": ".choose-a-mat .body .step-2 .illust",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_2.518758cc.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_2.518758cc.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 77286,
+      "selector": ".choose-a-mat .body .step-2 .illust-inverted",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_2_inverted.8ce2cf1f.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_2_inverted.8ce2cf1f.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 77434,
+      "selector": ".choose-a-mat .body .complete .illust",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_complete.0fcb4d53.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_complete.0fcb4d53.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 77573,
+      "selector": ".choose-a-mat .body .error .illust",
+      "conditions": [],
+      "declarations": "background-image:url(/synapse/products/1383/ui/static/media/mouse_calibration_error.a227b74c.svg)",
+      "properties": [
+        {
+          "property": "background-image",
+          "value": "url(/synapse/products/1383/ui/static/media/mouse_calibration_error.a227b74c.svg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 81685,
+      "selector": ".choose-a-mat .body .span",
+      "conditions": [],
+      "declarations": "animation:blink 2s linear infinite;color:#fff;font-family:cursive;font-size:26px;text-align:center",
+      "properties": [
+        {
+          "property": "animation",
+          "value": "blink 2s linear infinite",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#fff",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "cursive",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "26px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82227,
+      "selector": ".popup-widget .backdrop",
+      "conditions": [],
+      "declarations": "height:100%;overflow:hidden;position:fixed",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "fixed",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82294,
+      "selector": ".popup-widget .backdrop .choose-a-mat",
+      "conditions": [],
+      "declarations": "border-radius:5px 5px 0 0;margin-top:110px;max-height:calc(100vh - 110px)!important",
+      "properties": [
+        {
+          "property": "border-radius",
+          "value": "5px 5px 0 0",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "110px",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "calc(100vh - 110px)",
+          "important": true
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82416,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar::-webkit-scrollbar-track",
+      "conditions": [],
+      "declarations": "background:#0000",
+      "properties": [
+        {
+          "property": "background",
+          "value": "#0000",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82519,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar",
+      "conditions": [],
+      "declarations": "height:100%;overflow-y:hidden;padding:20px 0 42px 25px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "overflow-y",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "20px 0 42px 25px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82635,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .drag-area",
+      "conditions": [],
+      "declarations": "padding-bottom:25px",
+      "properties": [
+        {
+          "property": "padding-bottom",
+          "value": "25px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82727,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content",
+      "conditions": [],
+      "declarations": "height:calc(100% - 10px);overflow-y:scroll",
+      "properties": [
+        {
+          "property": "height",
+          "value": "calc(100% - 10px)",
+          "important": false
+        },
+        {
+          "property": "overflow-y",
+          "value": "scroll",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 82840,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp",
+      "conditions": [],
+      "declarations": "grid-gap:8px;display:grid;gap:8px;grid-template-columns:repeat(3,33%);height:calc(100% - 10px);overflow-x:hidden;overflow-y:scroll;padding:0 32px 20px 0",
+      "properties": [
+        {
+          "property": "grid-gap",
+          "value": "8px",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "grid",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "8px",
+          "important": false
+        },
+        {
+          "property": "grid-template-columns",
+          "value": "repeat(3,33%)",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "calc(100% - 10px)",
+          "important": false
+        },
+        {
+          "property": "overflow-x",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "overflow-y",
+          "value": "scroll",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "0 32px 20px 0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 83070,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app",
+      "conditions": [],
+      "declarations": "align-items:center;color:#ccc;display:flex;flex-direction:column;font-size:14px;justify-content:center;line-height:17px",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-direction",
+          "value": "column",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "17px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 83284,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .no-available",
+      "conditions": [],
+      "declarations": "margin-bottom:10px;text-align:center",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 83429,
+      "selector": ".popup-widget .backdrop .choose-a-mat #transparent-scrollbar .content-addApp.no-available-app .add-app-description>span",
+      "conditions": [],
+      "declarations": "color:#44d62c;cursor:pointer;margin-right:3px;text-decoration:underline",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "cursor",
+          "value": "pointer",
+          "important": false
+        },
+        {
+          "property": "margin-right",
+          "value": "3px",
+          "important": false
+        },
+        {
+          "property": "text-decoration",
+          "value": "underline",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 83621,
+      "selector": ".popup-widget .backdrop .choose-a-mat .head",
+      "conditions": [],
+      "declarations": "padding:20px 0 10px",
+      "properties": [
+        {
+          "property": "padding",
+          "value": "20px 0 10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 83685,
+      "selector": ".popup-widget .backdrop.no-popup,.popup-widget .backdrop.no-popup .choose-a-mat",
+      "conditions": [],
+      "declarations": "transition:none 0s ease 0s;transition:initial;-webkit-transition:unset;will-change:auto",
+      "properties": [
+        {
+          "property": "transition",
+          "value": "none 0s ease 0s",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "initial",
+          "important": false
+        },
+        {
+          "property": "-webkit-transition",
+          "value": "unset",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "auto",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 152719,
+      "selector": ".DisplayWidget_tooltip__j4KNA",
+      "conditions": [],
+      "declarations": "float:left;margin-left:285px;margin-top:-3px",
+      "properties": [
+        {
+          "property": "float",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "285px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "-3px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 157904,
+      "selector": ".CustomizeModal_body__gnjqM",
+      "conditions": [],
+      "declarations": "height:100%;max-height:calc(100% - 55px);overflow-x:hidden;padding-right:25px",
+      "properties": [
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "calc(100% - 55px)",
+          "important": false
+        },
+        {
+          "property": "overflow-x",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "padding-right",
+          "value": "25px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 158010,
+      "selector": ".CustomizeModal_footer__xeSg3",
+      "conditions": [],
+      "declarations": "bottom:35px;left:0;margin:0 auto;position:absolute;right:0;width:190px",
+      "properties": [
+        {
+          "property": "bottom",
+          "value": "35px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0 auto",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "absolute",
+          "important": false
+        },
+        {
+          "property": "right",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "190px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 158111,
+      "selector": ".CustomizeModal_footer__xeSg3 .CustomizeModal_group__gg2RC",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;gap:10px;justify-content:center",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "gap",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 158234,
+      "selector": ".CustomizeModal_footer__xeSg3 .CustomizeModal_group__gg2RC .CustomizeModal_primary__j2owS",
+      "conditions": [],
+      "declarations": "background-color:#44d62c;color:#222",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#222",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 158360,
+      "selector": ".CustomizeModal_footer__xeSg3 .CustomizeModal_group__gg2RC .CustomizeModal_primary__j2owS.CustomizeModal_disabled__IQMwp",
+      "conditions": [],
+      "declarations": "cursor:none;opacity:.3;pointer-events:none",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 165178,
+      "selector": ".CustomizeAnimation_tooltip__WEWaQ",
+      "conditions": [],
+      "declarations": "float:left;margin-left:270px",
+      "properties": [
+        {
+          "property": "float",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "270px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1383/static/css/6141.d8b30400.chunk.css",
+      "sha256": "29800ac0015dba26765c2a1210b6e19e7838a34a5e03670fbe5c981f41d464ed",
+      "offset": 171596,
+      "selector": ".CustomizeImage_tooltip__haCIB",
+      "conditions": [],
+      "declarations": "float:left;margin-left:270px",
+      "properties": [
+        {
+          "property": "float",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "margin-left",
+          "value": "270px",
+          "important": false
+        }
+      ]
+    }
+  ],
+  "local": [
+    {
+      "path": "src/features/audio_oled_dialog.rs",
+      "sha256": "edbbafe39b8bec508a0eb62b8b11c570be4755ba415ef874dbb5507d8549ea96"
+    },
+    {
+      "path": "src/features/audio_oled_tooltip.rs",
+      "sha256": "2bb6a44dc5dcef880184cd5706d30807ee9ddd7d1c99b1a32420a15e75b15b94"
+    },
+    {
+      "path": "src/features/audio_oled_media.rs",
+      "sha256": "c7201bbf7669ff7cfb6c78e39c2019006a5bf5933b2a241d0d4ea68db1bdd757"
+    }
+  ],
+  "review": {
+    "dialog": "Retained focus capture/return, source immediate unmount, 100ms backdrop/300ms top/200ms close background. Width branch remains per editor. Native Base Dialog owns modal semantics.",
+    "tooltip": "300px main width measured for collision; p plus DisplayWidget offsets(285,-3) or Artwork offsets(270,0); defaultProps bottom-right; right then left 8px guard; no vertical flip; viewport portal layer1060; 100ms mount fade. Native Tooltip owns accessible role."
+  }
+}

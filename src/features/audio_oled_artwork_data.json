@@ -1,0 +1,629 @@
+{
+  "product_id": 1383,
+  "fps": 15,
+  "labels": {
+    "scg": "CUSTOMIZE_MODAL_ANIMATION_TITLE",
+    "jJm": "CUSTOMIZE_MODAL_IMAGE_TITLE",
+    "Qt7": "CUSTOMIZE_MODAL_EMOTE_TITLE",
+    "PYB": "CUSTOMIZE_ANIMATION_DESC",
+    "Qg_": "CUSTOMIZE_IMAGE_DESC",
+    "djP": "REPLACE",
+    "VLI": "RESET_BTN",
+    "bOp": "CANCEL",
+    "pJk": "APPLY",
+    "pc9": "CUSTOMIZE_ANIMATION_EST_TIME_MIN",
+    "Qj6": "CUSTOMIZE_ANIMATION_EST_TIME_SEC",
+    "CHf": "ANIMATION_CROPPER_TITLE",
+    "SKm": "ANIMATION_CROPPER_INFO",
+    "Yre": "CUSTOMIZE_ANIMATION_NOT_FOUND",
+    "boQ": "CUSTOMIZE_IMAGE_NOT_FOUND",
+    "avz": "CUSTOMIZE_EMOTE_NOT_FOUND"
+  },
+  "animations": [
+    {
+      "id": "animation-1",
+      "name": "Arcade Game Shooting",
+      "asset": "synapse/audio-oled-1383-animation-1.webp"
+    },
+    {
+      "id": "animation-2",
+      "name": "Startup Screen",
+      "asset": "synapse/audio-oled-1383-animation-2.webp"
+    },
+    {
+      "id": "animation-3",
+      "name": "3D THS Wordmark",
+      "asset": "synapse/audio-oled-1383-animation-3.webp"
+    },
+    {
+      "id": "animation-4",
+      "name": "Glitch",
+      "asset": "synapse/audio-oled-1383-animation-4.webp"
+    },
+    {
+      "id": "animation-5",
+      "name": "3D THS",
+      "asset": "synapse/audio-oled-1383-animation-5.webp"
+    },
+    {
+      "id": "animation-6",
+      "name": "3D Razer Wordmark",
+      "asset": "synapse/audio-oled-1383-animation-6.webp"
+    }
+  ],
+  "images": [
+    {
+      "id": "image-1",
+      "name": "Preset 1",
+      "asset": "synapse/audio-oled-1383-image-1.png"
+    },
+    {
+      "id": "image-2",
+      "name": "Preset 2",
+      "asset": "synapse/audio-oled-1383-image-2.png"
+    },
+    {
+      "id": "image-3",
+      "name": "Preset 3",
+      "asset": "synapse/audio-oled-1383-image-3.png"
+    },
+    {
+      "id": "image-4",
+      "name": "Preset 4",
+      "asset": "synapse/audio-oled-1383-image-4.png"
+    },
+    {
+      "id": "image-5",
+      "name": "Preset 5",
+      "asset": "synapse/audio-oled-1383-image-5.png"
+    },
+    {
+      "id": "image-6",
+      "name": "Preset 6",
+      "asset": "synapse/audio-oled-1383-image-6.png"
+    },
+    {
+      "id": "image-7",
+      "name": "Preset 7",
+      "asset": "synapse/audio-oled-1383-image-7.png"
+    },
+    {
+      "id": "image-8",
+      "name": "Preset 8",
+      "asset": "synapse/audio-oled-1383-image-8.png"
+    },
+    {
+      "id": "image-9",
+      "name": "Preset 9",
+      "asset": "synapse/audio-oled-1383-image-9.png"
+    },
+    {
+      "id": "image-10",
+      "name": "Preset 10",
+      "asset": "synapse/audio-oled-1383-image-10.png"
+    }
+  ],
+  "emotes": [
+    {
+      "id": "plus-one-follower-animated",
+      "name": "+1",
+      "asset": "synapse/audio-oled-1383-emote-plus-one-follower-animated.webp"
+    },
+    {
+      "id": "gg-animated",
+      "name": "GG",
+      "asset": "synapse/audio-oled-1383-emote-gg-animated.webp"
+    },
+    {
+      "id": "lets-go-animated",
+      "name": "Lets Go",
+      "asset": "synapse/audio-oled-1383-emote-lets-go-animated.webp"
+    },
+    {
+      "id": "face-tongue",
+      "name": "Face Tongue",
+      "asset": "synapse/audio-oled-1383-emote-face-tongue.webp"
+    },
+    {
+      "id": "face-tongue-animated",
+      "name": "Face Tongue Animated",
+      "asset": "synapse/audio-oled-1383-emote-face-tongue-animated.webp"
+    },
+    {
+      "id": "flushed-face",
+      "name": "Flushed Face",
+      "asset": "synapse/audio-oled-1383-emote-flushed-face.webp"
+    },
+    {
+      "id": "rolling-eyes",
+      "name": "Rolling Eyes",
+      "asset": "synapse/audio-oled-1383-emote-rolling-eyes.webp"
+    },
+    {
+      "id": "deal-with-it",
+      "name": "Deal With It",
+      "asset": "synapse/audio-oled-1383-emote-deal-with-it.webp"
+    },
+    {
+      "id": "deal-with-it-animated",
+      "name": "Deal With It Animated",
+      "asset": "synapse/audio-oled-1383-emote-deal-with-it-animated.webp"
+    },
+    {
+      "id": "smiley-face",
+      "name": "Smiley Face",
+      "asset": "synapse/audio-oled-1383-emote-smiley-face.webp"
+    },
+    {
+      "id": "grin",
+      "name": "Grin",
+      "asset": "synapse/audio-oled-1383-emote-grin.webp"
+    },
+    {
+      "id": "loud-cry",
+      "name": "Loud Cry",
+      "asset": "synapse/audio-oled-1383-emote-loud-cry.webp"
+    },
+    {
+      "id": "loud-cry-animated",
+      "name": "Loud Cry Animated",
+      "asset": "synapse/audio-oled-1383-emote-loud-cry-animated.webp"
+    },
+    {
+      "id": "grin-xl",
+      "name": "Grin XL",
+      "asset": "synapse/audio-oled-1383-emote-grin-xl.webp"
+    },
+    {
+      "id": "upside-smiley",
+      "name": "Upside Down Smiley",
+      "asset": "synapse/audio-oled-1383-emote-upside-smiley.webp"
+    },
+    {
+      "id": "winky-face",
+      "name": "Winky Face",
+      "asset": "synapse/audio-oled-1383-emote-winky-face.webp"
+    },
+    {
+      "id": "super-smiley",
+      "name": "Super Smiley",
+      "asset": "synapse/audio-oled-1383-emote-super-smiley.webp"
+    },
+    {
+      "id": "smile-heart",
+      "name": "Smile Heart",
+      "asset": "synapse/audio-oled-1383-emote-smile-heart.webp"
+    },
+    {
+      "id": "kiss-blow",
+      "name": "Kiss Blow",
+      "asset": "synapse/audio-oled-1383-emote-kiss-blow.webp"
+    },
+    {
+      "id": "kiss-blow-animated",
+      "name": "Kiss Blow Animated",
+      "asset": "synapse/audio-oled-1383-emote-kiss-blow-animated.webp"
+    },
+    {
+      "id": "kiss-closed-eyes",
+      "name": "Kiss Closed Eyes",
+      "asset": "synapse/audio-oled-1383-emote-kiss-closed-eyes.webp"
+    },
+    {
+      "id": "licking-lips",
+      "name": "Licking Lips",
+      "asset": "synapse/audio-oled-1383-emote-licking-lips.webp"
+    },
+    {
+      "id": "licking-lips-animated",
+      "name": "Licking Lips Animated",
+      "asset": "synapse/audio-oled-1383-emote-licking-lips-animated.webp"
+    },
+    {
+      "id": "winking-tongue",
+      "name": "Winking Tongue",
+      "asset": "synapse/audio-oled-1383-emote-winking-tongue.webp"
+    },
+    {
+      "id": "squinting-tongue",
+      "name": "Squinting Tongue",
+      "asset": "synapse/audio-oled-1383-emote-squinting-tongue.webp"
+    },
+    {
+      "id": "squinting-tongue-animated",
+      "name": "Squinting Tongue Animated",
+      "asset": "synapse/audio-oled-1383-emote-squinting-tongue-animated.webp"
+    },
+    {
+      "id": "raised-eyebrow",
+      "name": "Raised Eyebrow",
+      "asset": "synapse/audio-oled-1383-emote-raised-eyebrow.webp"
+    },
+    {
+      "id": "neutral-face",
+      "name": "Neutral Face",
+      "asset": "synapse/audio-oled-1383-emote-neutral-face.webp"
+    },
+    {
+      "id": "expressionless-face",
+      "name": "Expressionless Face",
+      "asset": "synapse/audio-oled-1383-emote-expressionless-face.webp"
+    },
+    {
+      "id": "no-mouth",
+      "name": "No Mouth",
+      "asset": "synapse/audio-oled-1383-emote-no-mouth.webp"
+    },
+    {
+      "id": "smirking-face",
+      "name": "Smirking Face",
+      "asset": "synapse/audio-oled-1383-emote-smirking-face.webp"
+    },
+    {
+      "id": "thug-life-animated",
+      "name": "Thug Life Animated",
+      "asset": "synapse/audio-oled-1383-emote-thug-life-animated.webp"
+    },
+    {
+      "id": "puke-chroma-animated",
+      "name": "Puke Chroma Animated",
+      "asset": "synapse/audio-oled-1383-emote-puke-chroma-animated.webp"
+    },
+    {
+      "id": "shocked-face",
+      "name": "Shocked Face",
+      "asset": "synapse/audio-oled-1383-emote-shocked-face.webp"
+    },
+    {
+      "id": "crossed-fingers",
+      "name": "Crossed Fingers",
+      "asset": "synapse/audio-oled-1383-emote-crossed-fingers.webp"
+    },
+    {
+      "id": "folded-hands",
+      "name": "Folded Hands",
+      "asset": "synapse/audio-oled-1383-emote-folded-hands.webp"
+    },
+    {
+      "id": "handshake",
+      "name": "Handshake",
+      "asset": "synapse/audio-oled-1383-emote-handshake.webp"
+    },
+    {
+      "id": "index-point-down",
+      "name": "Index Point Down",
+      "asset": "synapse/audio-oled-1383-emote-index-point-down.webp"
+    },
+    {
+      "id": "index-point-left",
+      "name": "Index Point Left",
+      "asset": "synapse/audio-oled-1383-emote-index-point-left.webp"
+    },
+    {
+      "id": "index-point-right",
+      "name": "Index Point Right",
+      "asset": "synapse/audio-oled-1383-emote-index-point-right.webp"
+    },
+    {
+      "id": "index-point-up",
+      "name": "Index Point Up",
+      "asset": "synapse/audio-oled-1383-emote-index-point-up.webp"
+    },
+    {
+      "id": "love-you",
+      "name": "Love You",
+      "asset": "synapse/audio-oled-1383-emote-love-you.webp"
+    },
+    {
+      "id": "okay",
+      "name": "Okay",
+      "asset": "synapse/audio-oled-1383-emote-okay.webp"
+    },
+    {
+      "id": "raise-hand",
+      "name": "Raise Hand",
+      "asset": "synapse/audio-oled-1383-emote-raise-hand.webp"
+    },
+    {
+      "id": "thumbs-down",
+      "name": "Thumbs Down",
+      "asset": "synapse/audio-oled-1383-emote-thumbs-down.webp"
+    },
+    {
+      "id": "thumbs-up",
+      "name": "Thumbs Up",
+      "asset": "synapse/audio-oled-1383-emote-thumbs-up.webp"
+    },
+    {
+      "id": "victory-hand",
+      "name": "Victory Hand",
+      "asset": "synapse/audio-oled-1383-emote-victory-hand.webp"
+    },
+    {
+      "id": "eye",
+      "name": "Eye",
+      "asset": "synapse/audio-oled-1383-emote-eye.webp"
+    },
+    {
+      "id": "mouth",
+      "name": "Mouth",
+      "asset": "synapse/audio-oled-1383-emote-mouth.webp"
+    },
+    {
+      "id": "tongue",
+      "name": "Tongue",
+      "asset": "synapse/audio-oled-1383-emote-tongue.webp"
+    },
+    {
+      "id": "skull",
+      "name": "Skull",
+      "asset": "synapse/audio-oled-1383-emote-skull.webp"
+    },
+    {
+      "id": "skull-animated",
+      "name": "Skull Animated",
+      "asset": "synapse/audio-oled-1383-emote-skull-animated.webp"
+    },
+    {
+      "id": "eyes",
+      "name": "Eyes",
+      "asset": "synapse/audio-oled-1383-emote-eyes.webp"
+    },
+    {
+      "id": "alien",
+      "name": "Alien",
+      "asset": "synapse/audio-oled-1383-emote-alien.webp"
+    },
+    {
+      "id": "boo-animated",
+      "name": "Boo Animated",
+      "asset": "synapse/audio-oled-1383-emote-boo-animated.webp"
+    },
+    {
+      "id": "baby",
+      "name": "Baby",
+      "asset": "synapse/audio-oled-1383-emote-baby.webp"
+    },
+    {
+      "id": "baby-rage-animated",
+      "name": "Baby Rage Animated",
+      "asset": "synapse/audio-oled-1383-emote-baby-rage-animated.webp"
+    },
+    {
+      "id": "ghost",
+      "name": "Ghost",
+      "asset": "synapse/audio-oled-1383-emote-ghost.webp"
+    },
+    {
+      "id": "goblin",
+      "name": "Goblin",
+      "asset": "synapse/audio-oled-1383-emote-goblin.webp"
+    },
+    {
+      "id": "ninja",
+      "name": "Ninja",
+      "asset": "synapse/audio-oled-1383-emote-ninja.webp"
+    },
+    {
+      "id": "robot",
+      "name": "Robot",
+      "asset": "synapse/audio-oled-1383-emote-robot.webp"
+    },
+    {
+      "id": "crown",
+      "name": "Crown",
+      "asset": "synapse/audio-oled-1383-emote-crown.webp"
+    },
+    {
+      "id": "chroma-crown-animated",
+      "name": "Chroma Crown Animated",
+      "asset": "synapse/audio-oled-1383-emote-chroma-crown-animated.webp"
+    },
+    {
+      "id": "shiny-diamond-animated",
+      "name": "Shiny Diamond Animated",
+      "asset": "synapse/audio-oled-1383-emote-shiny-diamond-animated.webp"
+    },
+    {
+      "id": "retro-tv",
+      "name": "Retro TV",
+      "asset": "synapse/audio-oled-1383-emote-retro-tv.webp"
+    },
+    {
+      "id": "umbrella",
+      "name": "Umbrella",
+      "asset": "synapse/audio-oled-1383-emote-umbrella.webp"
+    },
+    {
+      "id": "fire-animated",
+      "name": "Fire Animated",
+      "asset": "synapse/audio-oled-1383-emote-fire-animated.webp"
+    },
+    {
+      "id": "lightning-animated",
+      "name": "Lightning Animated",
+      "asset": "synapse/audio-oled-1383-emote-lightning-animated.webp"
+    },
+    {
+      "id": "poop-animated",
+      "name": "Poop Animated",
+      "asset": "synapse/audio-oled-1383-emote-poop-animated.webp"
+    },
+    {
+      "id": "cactus-animated",
+      "name": "Cactus Animated",
+      "asset": "synapse/audio-oled-1383-emote-cactus-animated.webp"
+    },
+    {
+      "id": "bone",
+      "name": "Bone",
+      "asset": "synapse/audio-oled-1383-emote-bone.webp"
+    },
+    {
+      "id": "raining-animated",
+      "name": "Raining Animated",
+      "asset": "synapse/audio-oled-1383-emote-raining-animated.webp"
+    },
+    {
+      "id": "cat-angry",
+      "name": "Angry Cat",
+      "asset": "synapse/audio-oled-1383-emote-cat-angry.webp"
+    },
+    {
+      "id": "cat-crying",
+      "name": "Crying Cat",
+      "asset": "synapse/audio-oled-1383-emote-cat-crying.webp"
+    },
+    {
+      "id": "cat-heart",
+      "name": "Heart Cat",
+      "asset": "synapse/audio-oled-1383-emote-cat-heart.webp"
+    },
+    {
+      "id": "cat-kiss",
+      "name": "Kiss Cat",
+      "asset": "synapse/audio-oled-1383-emote-cat-kiss.webp"
+    },
+    {
+      "id": "cat-joy-tears",
+      "name": "Joy Tears Cat",
+      "asset": "synapse/audio-oled-1383-emote-cat-joy-tears.webp"
+    },
+    {
+      "id": "cat-smirk",
+      "name": "Cat Smirk",
+      "asset": "synapse/audio-oled-1383-emote-cat-smirk.webp"
+    },
+    {
+      "id": "beer-animated",
+      "name": "Beer Animated",
+      "asset": "synapse/audio-oled-1383-emote-beer-animated.webp"
+    },
+    {
+      "id": "eggplant-animated",
+      "name": "Eggplant Animated",
+      "asset": "synapse/audio-oled-1383-emote-eggplant-animated.webp"
+    },
+    {
+      "id": "salt-animated",
+      "name": "Salt Animated",
+      "asset": "synapse/audio-oled-1383-emote-salt-animated.webp"
+    },
+    {
+      "id": "popcorn-animated",
+      "name": "Popcorn Animated",
+      "asset": "synapse/audio-oled-1383-emote-popcorn-animated.webp"
+    },
+    {
+      "id": "fireworks-animated",
+      "name": "Fireworks Animated",
+      "asset": "synapse/audio-oled-1383-emote-fireworks-animated.webp"
+    },
+    {
+      "id": "heart",
+      "name": "Heart",
+      "asset": "synapse/audio-oled-1383-emote-heart.webp"
+    },
+    {
+      "id": "heart-animated",
+      "name": "Heart Animated",
+      "asset": "synapse/audio-oled-1383-emote-heart-animated.webp"
+    },
+    {
+      "id": "dollar2",
+      "name": "Dollar",
+      "asset": "synapse/audio-oled-1383-emote-dollar2.webp"
+    },
+    {
+      "id": "dollar2-animated",
+      "name": "Dollar Animated",
+      "asset": "synapse/audio-oled-1383-emote-dollar2-animated.webp"
+    },
+    {
+      "id": "arrow-up",
+      "name": "Up",
+      "asset": "synapse/audio-oled-1383-emote-arrow-up.webp"
+    },
+    {
+      "id": "arrow-down",
+      "name": "Down",
+      "asset": "synapse/audio-oled-1383-emote-arrow-down.webp"
+    },
+    {
+      "id": "arrow-left",
+      "name": "Left",
+      "asset": "synapse/audio-oled-1383-emote-arrow-left.webp"
+    },
+    {
+      "id": "arrow-right",
+      "name": "Right",
+      "asset": "synapse/audio-oled-1383-emote-arrow-right.webp"
+    },
+    {
+      "id": "angry-veins",
+      "name": "Angry Veins",
+      "asset": "synapse/audio-oled-1383-emote-angry-veins.webp"
+    },
+    {
+      "id": "angry-veins-animated",
+      "name": "Angry Veins Animated",
+      "asset": "synapse/audio-oled-1383-emote-angry-veins-animated.webp"
+    },
+    {
+      "id": "spiral-animated",
+      "name": "Spiral Animated",
+      "asset": "synapse/audio-oled-1383-emote-spiral-animated.webp"
+    },
+    {
+      "id": "chat-bubble",
+      "name": "Chat Bubble",
+      "asset": "synapse/audio-oled-1383-emote-chat-bubble.webp"
+    },
+    {
+      "id": "skull-n-bones",
+      "name": "Skull and Bones",
+      "asset": "synapse/audio-oled-1383-emote-skull-n-bones.webp"
+    },
+    {
+      "id": "star",
+      "name": "Star",
+      "asset": "synapse/audio-oled-1383-emote-star.webp"
+    },
+    {
+      "id": "stop",
+      "name": "Stop",
+      "asset": "synapse/audio-oled-1383-emote-stop.webp"
+    },
+    {
+      "id": "stop-hand",
+      "name": "Stop Hand",
+      "asset": "synapse/audio-oled-1383-emote-stop-hand.webp"
+    },
+    {
+      "id": "sparkles",
+      "name": "Sparkles",
+      "asset": "synapse/audio-oled-1383-emote-sparkles.webp"
+    },
+    {
+      "id": "zz",
+      "name": "ZZ",
+      "asset": "synapse/audio-oled-1383-emote-zz.webp"
+    },
+    {
+      "id": "zz-animated",
+      "name": "ZZ Animated",
+      "asset": "synapse/audio-oled-1383-emote-zz-animated.webp"
+    },
+    {
+      "id": "sweat-bubble",
+      "name": "Sweat Bubble",
+      "asset": "synapse/audio-oled-1383-emote-sweat-bubble.webp"
+    },
+    {
+      "id": "sweat-bubble-animated",
+      "name": "Sweat Bubble Animated",
+      "asset": "synapse/audio-oled-1383-emote-sweat-bubble-animated.webp"
+    }
+  ],
+  "default_emote": "face-tongue-animated"
+}

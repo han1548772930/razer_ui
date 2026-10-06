@@ -41,6 +41,7 @@ pub(crate) fn has_product_workspace(pid: u32) -> bool {
 
 mod armory_product;
 mod audio_products;
+pub(crate) use audio_products::{OledRuntimeObservation, OledRuntimeRequested};
 
 mod system_products;
 

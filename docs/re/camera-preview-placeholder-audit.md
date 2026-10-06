@@ -1,3 +1,5 @@
+> 2026-10-06 correction: [Current camera presentation audit](camera-presentation-current-audit.md) supersedes the processing mount, resolution-selector, disclosure and tooltip claims below. In particular, 3592 mounts a resolution selector on PROCESSING, and current advanced-camera preview layout retains the empty right-hand video surface; the earlier 360?202 placeholder description is historical.
+
 # Camera preview service boundary (2026-10-04)
 
 The current Kiyo roots mount a live camera preview either alongside the

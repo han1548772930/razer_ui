@@ -1,0 +1,205 @@
+[
+  {
+    "id": "tag-cpuUsage",
+    "source": ".ref/devices/1383/static/media/cpu_usage.40da1439.svg",
+    "source_sha256": "1e00c993e66bc92c2ece5e3b75691d34371273e375c47fce085c1a7313c2eac6",
+    "output": "assets/synapse/audio-oled-1383-system-tag-cpuUsage.svg",
+    "output_sha256": "1e00c993e66bc92c2ece5e3b75691d34371273e375c47fce085c1a7313c2eac6",
+    "method": "Original source bytes",
+    "viewBox": "0 0 47 24",
+    "width": "47",
+    "height": "24"
+  },
+  {
+    "id": "tag-cpuTemp",
+    "source": ".ref/devices/1383/static/media/cpu_temp.b9448451.svg",
+    "source_sha256": "3b43d771d4ac5ae73c520397e6e41f5de3f991c8dfa13a14e056996efea6999d",
+    "output": "assets/synapse/audio-oled-1383-system-tag-cpuTemp.svg",
+    "output_sha256": "3b43d771d4ac5ae73c520397e6e41f5de3f991c8dfa13a14e056996efea6999d",
+    "method": "Original source bytes",
+    "viewBox": "0 0 72 24",
+    "width": "72",
+    "height": "24"
+  },
+  {
+    "id": "tag-gpuUsage",
+    "source": ".ref/devices/1383/static/media/gpu_usage.fc23e5e9.svg",
+    "source_sha256": "10b3adec175cb67496b1606bf5ae0c8988b77826a779ae829973c7e86f02ad10",
+    "output": "assets/synapse/audio-oled-1383-system-tag-gpuUsage.svg",
+    "output_sha256": "10b3adec175cb67496b1606bf5ae0c8988b77826a779ae829973c7e86f02ad10",
+    "method": "Original source bytes",
+    "viewBox": "0 0 48 24",
+    "width": "48",
+    "height": "24"
+  },
+  {
+    "id": "tag-gpuTemp",
+    "source": ".ref/devices/1383/static/media/gpu_temp.e4e80122.svg",
+    "source_sha256": "630ec624952a5ecfeb0ce79dfab089c17dfe472b8fddbb9c54db5172a597defc",
+    "output": "assets/synapse/audio-oled-1383-system-tag-gpuTemp.svg",
+    "output_sha256": "630ec624952a5ecfeb0ce79dfab089c17dfe472b8fddbb9c54db5172a597defc",
+    "method": "Original source bytes",
+    "viewBox": "0 0 72 24",
+    "width": "72",
+    "height": "24"
+  },
+  {
+    "id": "tag-memory",
+    "source": ".ref/devices/1383/static/media/memory.439f4636.svg",
+    "source_sha256": "06e327c92b9e77404bc85aa82930115f25f12a0f2204b8b48138d426b54fd942",
+    "output": "assets/synapse/audio-oled-1383-system-tag-memory.svg",
+    "output_sha256": "06e327c92b9e77404bc85aa82930115f25f12a0f2204b8b48138d426b54fd942",
+    "method": "Original source bytes",
+    "viewBox": "0 0 63 24",
+    "width": "63",
+    "height": "24"
+  },
+  {
+    "id": "tag-date",
+    "source": ".ref/devices/1383/static/media/date.acc342cb.svg",
+    "source_sha256": "eae4b787b891613a8fb5bd82b2bf50a5d11e11a3deda66af3ec084567df8c174",
+    "output": "assets/synapse/audio-oled-1383-system-tag-date.svg",
+    "output_sha256": "eae4b787b891613a8fb5bd82b2bf50a5d11e11a3deda66af3ec084567df8c174",
+    "method": "Original source bytes",
+    "viewBox": "0 0 41 24",
+    "width": "41",
+    "height": "24"
+  },
+  {
+    "id": "tag-time",
+    "source": ".ref/devices/1383/static/media/time.c85d4a49.svg",
+    "source_sha256": "38b3799343cb42037eab26bf21f2b455ca3c4ae67919a08b998c746e48eb0486",
+    "output": "assets/synapse/audio-oled-1383-system-tag-time.svg",
+    "output_sha256": "38b3799343cb42037eab26bf21f2b455ca3c4ae67919a08b998c746e48eb0486",
+    "method": "Original source bytes",
+    "viewBox": "0 0 40 24",
+    "width": "40",
+    "height": "24"
+  },
+  {
+    "id": "tag-laptopBattery",
+    "source": ".ref/devices/1383/static/media/laptop_battery.2671c3ec.svg",
+    "source_sha256": "1460db8457885898ffc80f450676d44007fb1868a1ec814ab7922397738d5ab1",
+    "output": "assets/synapse/audio-oled-1383-system-tag-laptopBattery.svg",
+    "output_sha256": "1460db8457885898ffc80f450676d44007fb1868a1ec814ab7922397738d5ab1",
+    "method": "Original source bytes",
+    "viewBox": "0 0 110 24",
+    "width": "110",
+    "height": "24"
+  },
+  {
+    "id": "tag-headsetBattery",
+    "source": ".ref/devices/1383/static/media/headset_battery.cf813166.svg",
+    "source_sha256": "e1e8daf337a919806726e37bb43873826041bcf6369750bcb2f041304c2f1894",
+    "output": "assets/synapse/audio-oled-1383-system-tag-headsetBattery.svg",
+    "output_sha256": "e1e8daf337a919806726e37bb43873826041bcf6369750bcb2f041304c2f1894",
+    "method": "Original source bytes",
+    "viewBox": "0 0 118 24",
+    "width": "118",
+    "height": "24"
+  },
+  {
+    "id": "dot-0",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-1383-system-dot-0.png",
+    "output_sha256": "ae98e769fd81dee1a03f6d53a49e47514bf931eddc24ec03554c833b5e469515",
+    "method": "Original source bytes",
+    "inline_sha256": "ae98e769fd81dee1a03f6d53a49e47514bf931eddc24ec03554c833b5e469515",
+    "width": 6,
+    "height": 6
+  },
+  {
+    "id": "dot-1",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-1383-system-dot-1.png",
+    "output_sha256": "5968f0ee7350cb5c3f2c50b475e67e57388f0bed2436c75b11f77eb909117df7",
+    "method": "Original source bytes",
+    "inline_sha256": "5968f0ee7350cb5c3f2c50b475e67e57388f0bed2436c75b11f77eb909117df7",
+    "width": 6,
+    "height": 6
+  },
+  {
+    "id": "battery-0",
+    "source": ".ref/devices/1383/static/media/battery_0.f39dc833.svg",
+    "source_sha256": "e3aef86b4b7977a071e6fea6bd9b1fb5d6694cc2c50ba8f43703b1fdb3ae10fe",
+    "output": "assets/synapse/audio-oled-1383-system-battery-0.svg",
+    "output_sha256": "e3aef86b4b7977a071e6fea6bd9b1fb5d6694cc2c50ba8f43703b1fdb3ae10fe",
+    "method": "Original source bytes",
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24"
+  },
+  {
+    "id": "battery-25",
+    "source": ".ref/devices/1383/static/media/battery_25.6f78f794.svg",
+    "source_sha256": "8a7af6d3c9c6561bf7631235a5cf70bb2aafd83b1f7cc6029943af51532e7fcf",
+    "output": "assets/synapse/audio-oled-1383-system-battery-25.svg",
+    "output_sha256": "8a7af6d3c9c6561bf7631235a5cf70bb2aafd83b1f7cc6029943af51532e7fcf",
+    "method": "Original source bytes",
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24"
+  },
+  {
+    "id": "battery-50",
+    "source": ".ref/devices/1383/static/media/battery_50.ff6ed454.svg",
+    "source_sha256": "7396de9f4e63099b327d9cc9e5121a77fc08f582223994132173675dc1458324",
+    "output": "assets/synapse/audio-oled-1383-system-battery-50.svg",
+    "output_sha256": "7396de9f4e63099b327d9cc9e5121a77fc08f582223994132173675dc1458324",
+    "method": "Original source bytes",
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24"
+  },
+  {
+    "id": "battery-75",
+    "source": ".ref/devices/1383/static/media/battery_75.449b22ba.svg",
+    "source_sha256": "04382b933a7851486fa35b21ed488f89b00680cab1a1fdea84200e694e1e3bb2",
+    "output": "assets/synapse/audio-oled-1383-system-battery-75.svg",
+    "output_sha256": "04382b933a7851486fa35b21ed488f89b00680cab1a1fdea84200e694e1e3bb2",
+    "method": "Original source bytes",
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24"
+  },
+  {
+    "id": "battery-100",
+    "source": ".ref/devices/1383/static/media/battery_100.0bde0b07.svg",
+    "source_sha256": "290d4cd24c09f044d58c5e7707b1015d86958d45ea6f0fc8bbf4a38ce26e8002",
+    "output": "assets/synapse/audio-oled-1383-system-battery-100.svg",
+    "output_sha256": "290d4cd24c09f044d58c5e7707b1015d86958d45ea6f0fc8bbf4a38ce26e8002",
+    "method": "Original source bytes",
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24"
+  },
+  {
+    "id": "help",
+    "source": ".ref/devices/1383/static/media/tooltip_questionmark.96138d2f.svg",
+    "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "output": "assets/synapse/audio-oled-1383-system-help.svg",
+    "output_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+    "method": "Original source bytes",
+    "viewBox": "0 0 14 14",
+    "width": null,
+    "height": null
+  },
+  {
+    "id": "add",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-1383-system-add.svg",
+    "output_sha256": "c6d2735347c72511ca285b92e77a1b023ad0ff1ddb036dc1b3ed35906a7198d7",
+    "method": "Static literal React SVG serialization"
+  },
+  {
+    "id": "delete",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-1383-system-delete.svg",
+    "output_sha256": "35ad9aca43e1c18a5f98827845ee3f9b671672639bdfb74d81126c61293ce050",
+    "method": "Static literal React SVG serialization"
+  }
+]

@@ -1,0 +1,210 @@
+{
+  "product_id": 1383,
+  "labels": {
+    "JQR": "OLED_HOME_SCREEN_DISPLAY_TITLE",
+    "O0W": "OLED_HOME_SCREEN_DISPLAY_TIPS",
+    "Tcb": "OLED_HOME_SCREEN_DISPLAY_DESC",
+    "RG": "OLED_HOME_SCREEN_DISPLAY_TITLE_ANIMATION",
+    "KTY": "OLED_HOME_SCREEN_DISPLAY_TITLE_IMAGE",
+    "Nj5": "OLED_HOME_SCREEN_DISPLAY_TITLE_EMOTE",
+    "$Mz": "OLED_HOME_SCREEN_DISPLAY_TITLE_BANNER",
+    "rwQ": "OLED_HOME_SCREEN_DISPLAY_TITLE_AUDIO_METER",
+    "FSz": "OLED_HOME_SCREEN_DISPLAY_TITLE_SYSTEM_INFO",
+    "w23": "OLED_HOME_SCREEN_DISPLAY_TITLE_HEADSET_INFO",
+    "zxY": "EDIT",
+    "pJk": "APPLY",
+    "$yX": "PREVIEW",
+    "VLI": "RESET_BTN",
+    "VKN": "CUSTOMIZE_MEDIA_INFO_LABEL",
+    "CMJ": "CUSTOMIZE_MEDIA_INFO_DESC",
+    "wv5": "TOP",
+    "_NK": "BOTTOM",
+    "RYc": "CUSTOMIZE_MEDIA_VISUALIZER_LABEL",
+    "GOv": "CUSTOMIZE_MEDIA_VISUALIZER_DESC",
+    "wLL": "CUSTOMIZE_MODAL_AUDIO_METER_TITLE",
+    "bOp": "CANCEL",
+    "vs6": "OLED_REQUIRE_SYNAPSE_RUNNING_TOOLTIP",
+    "XVF": "OLED_HOME_SCREEN_DISPLAY_TURN_OFF_BLE_MODE_TOOLTIP"
+  },
+  "home": {
+    "enabled": true,
+    "selected": 0
+  },
+  "media": {
+    "info": {
+      "enabled": true,
+      "selected": "top"
+    },
+    "visualizer": {
+      "enabled": true,
+      "selected": 0
+    }
+  },
+  "animations": [
+    {
+      "id": "animation-1",
+      "name": "Arcade Game Shooting",
+      "asset": "synapse/audio-oled-1383-animation-1.webp"
+    },
+    {
+      "id": "animation-2",
+      "name": "Startup Screen",
+      "asset": "synapse/audio-oled-1383-animation-2.webp"
+    },
+    {
+      "id": "animation-3",
+      "name": "3D THS Wordmark",
+      "asset": "synapse/audio-oled-1383-animation-3.webp"
+    },
+    {
+      "id": "animation-4",
+      "name": "Glitch",
+      "asset": "synapse/audio-oled-1383-animation-4.webp"
+    },
+    {
+      "id": "animation-5",
+      "name": "3D THS",
+      "asset": "synapse/audio-oled-1383-animation-5.webp"
+    },
+    {
+      "id": "animation-6",
+      "name": "3D Razer Wordmark",
+      "asset": "synapse/audio-oled-1383-animation-6.webp"
+    }
+  ],
+  "images": [
+    {
+      "id": "image-1",
+      "name": "Preset 1",
+      "asset": "synapse/audio-oled-1383-image-1.png"
+    },
+    {
+      "id": "image-2",
+      "name": "Preset 2",
+      "asset": "synapse/audio-oled-1383-image-2.png"
+    },
+    {
+      "id": "image-3",
+      "name": "Preset 3",
+      "asset": "synapse/audio-oled-1383-image-3.png"
+    },
+    {
+      "id": "image-4",
+      "name": "Preset 4",
+      "asset": "synapse/audio-oled-1383-image-4.png"
+    },
+    {
+      "id": "image-5",
+      "name": "Preset 5",
+      "asset": "synapse/audio-oled-1383-image-5.png"
+    },
+    {
+      "id": "image-6",
+      "name": "Preset 6",
+      "asset": "synapse/audio-oled-1383-image-6.png"
+    },
+    {
+      "id": "image-7",
+      "name": "Preset 7",
+      "asset": "synapse/audio-oled-1383-image-7.png"
+    },
+    {
+      "id": "image-8",
+      "name": "Preset 8",
+      "asset": "synapse/audio-oled-1383-image-8.png"
+    },
+    {
+      "id": "image-9",
+      "name": "Preset 9",
+      "asset": "synapse/audio-oled-1383-image-9.png"
+    },
+    {
+      "id": "image-10",
+      "name": "Preset 10",
+      "asset": "synapse/audio-oled-1383-image-10.png"
+    }
+  ],
+  "emote": "synapse/audio-oled-1383-emote-default.webp",
+  "banner": "synapse/audio-oled-1383-banner-default.png",
+  "visualizers": [
+    "synapse/audio-oled-1383-visualizer-0.webp",
+    "synapse/audio-oled-1383-visualizer-1.webp",
+    "synapse/audio-oled-1383-visualizer-2.webp"
+  ],
+  "headset": [
+    "synapse/audio-oled-1383-headset-0.png",
+    "synapse/audio-oled-1383-headset-1.png",
+    "synapse/audio-oled-1383-headset-2.png"
+  ],
+  "battery_default": 0,
+  "system_info": {
+    "cpuUsage": {
+      "label": "CPU",
+      "value": "25%"
+    },
+    "cpuTemp": {
+      "label": "CPU Temp",
+      "value": "35°C"
+    },
+    "gpuUsage": {
+      "label": "GPU",
+      "value": "35%"
+    },
+    "gpuTemp": {
+      "label": "GPU Temp",
+      "value": "45°C"
+    },
+    "memory": {
+      "label": "Memory",
+      "value": "15%"
+    },
+    "date": {
+      "label": "",
+      "value": "07/15/2024"
+    },
+    "time": {
+      "label": "",
+      "value": "13:00"
+    },
+    "laptopBattery": {
+      "label": "Laptop",
+      "value": 100
+    },
+    "keyboardBattery": {
+      "label": "Keyboard",
+      "value": 100
+    },
+    "headsetBattery": {
+      "label": "Headset",
+      "value": "100%"
+    }
+  },
+  "system_label_keys": {
+    "cpuUsage": "OLED_DEVICE_LABEL_CPU",
+    "cpuTemp": "OLED_DEVICE_LABEL_CPU_TEMP",
+    "gpuUsage": "OLED_DEVICE_LABEL_GPU",
+    "gpuTemp": "OLED_DEVICE_LABEL_GPU_TEMP",
+    "memory": "OLED_MEMORY",
+    "date": "OLED_DATE",
+    "time": "OLED_TIME",
+    "laptopBattery": "OLED_DEVICE_LABEL_LAPTOP"
+  },
+  "system_slides": [
+    [
+      "cpuUsage",
+      "cpuTemp"
+    ],
+    [
+      "gpuUsage",
+      "gpuTemp"
+    ],
+    [
+      "date",
+      "time"
+    ]
+  ],
+  "system_interval": 3,
+  "banner_text": "For Gamers. By Gamers.",
+  "banner_font": "RazerF5",
+  "banner_font_size": "20px"
+}

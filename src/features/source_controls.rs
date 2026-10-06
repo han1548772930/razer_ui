@@ -16,6 +16,9 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
+mod camera_preview;
+mod camera_sections;
+mod camera_theme;
 mod oled_page;
 mod oled_presets;
 mod oled_system_editor;
@@ -136,6 +139,10 @@ struct SectionSpec {
 struct PageSpec {
     key: String,
     sections: Vec<SectionSpec>,
+    #[serde(default)]
+    camera_groups: Vec<camera_sections::CameraGroup>,
+    #[serde(default)]
+    camera_preview: Option<camera_preview::CameraPreviewSpec>,
 }
 #[derive(Deserialize)]
 struct ProductSpec {
@@ -188,6 +195,9 @@ pub(crate) fn supports_page(pid: u32, key: &str) -> bool {
 }
 pub(crate) struct SourceControlsChanged;
 pub(crate) struct SourceControlsPairingRequested;
+pub(crate) struct SourceControlsHelpRequested;
+/// A UI request at the camera transport boundary; it is not a completion.
+pub(crate) struct SourceControlsPreviewRefreshRequested;
 pub(crate) struct SourceControls {
     spec: &'static ProductSpec,
     page: String,
@@ -208,6 +218,8 @@ pub(crate) struct SourceControls {
     /// 原版白框按下后记录的抓取偏移（`left/top/bottom/right`）。
     pan_tilt_drag: Option<PanTiltDrag>,
     receiver: receiver::ReceiverState,
+    collapsed_camera_groups: std::collections::BTreeSet<String>,
+    camera_preview: Option<camera_preview::CameraPreviewState>,
 }
 /// 原版 `white box` 的 onMouseDown 状态：光标相对白框四条边的距离。
 #[derive(Clone)]
@@ -220,6 +232,8 @@ struct PanTiltDrag {
 }
 impl EventEmitter<SourceControlsChanged> for SourceControls {}
 impl EventEmitter<SourceControlsPairingRequested> for SourceControls {}
+impl EventEmitter<SourceControlsHelpRequested> for SourceControls {}
+impl EventEmitter<SourceControlsPreviewRefreshRequested> for SourceControls {}
 impl SourceControls {
     pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let spec = specs()
@@ -242,6 +256,12 @@ impl SourceControls {
             pan_tilt_bounds: Rc::new(Cell::new(None)),
             pan_tilt_drag: None,
             receiver: receiver::ReceiverState::default(),
+            collapsed_camera_groups: Default::default(),
+            camera_preview: spec
+                .pages
+                .iter()
+                .any(|page| page.camera_preview.is_some())
+                .then(|| camera_preview::CameraPreviewState::new(window, cx)),
         };
         for control in spec
             .pages
@@ -828,6 +848,7 @@ impl SourceControls {
                 self.receiver.restart_indicator();
             }
             self.staged.clear();
+            self.collapsed_camera_groups.clear();
             self.sync(window, cx);
         }
         self.page = page.into();
@@ -1210,6 +1231,15 @@ impl SourceControls {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        self.render_control_with_label(control, true, window, cx)
+    }
+    fn render_control_with_label(
+        &self,
+        control: &ControlSpec,
+        show_label: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if control.visible_when.as_ref().is_some_and(|condition| {
             self.draft.pointer(&self.resolve_path(&condition.path)) != Some(&condition.value)
         }) {
@@ -1232,7 +1262,7 @@ impl SourceControls {
                 use crate::ui::theme::CameraProductColors as Colors;
                 v_flex()
                     .gap_2()
-                    .when(!control.hide_label, |view| view.child(label))
+                    .when(!control.hide_label && show_label, |view| view.child(label))
                     .when(disabled, |view| {
                         view.when_some(control.description.as_ref(), |view, description| {
                             view.child(
@@ -1414,7 +1444,7 @@ impl SourceControls {
             }
             "options" => v_flex()
                 .gap_2()
-                .when(!control.hide_label, |view| view.child(label))
+                .when(!control.hide_label && show_label, |view| view.child(label))
                 .child(h_flex().gap(surface::css(10.)).flex_wrap().children(
                     control.options.iter().map(|option| {
                         use crate::ui::theme::CameraProductColors as Colors;
@@ -1495,6 +1525,11 @@ impl SourceControls {
                 }))
                 .into_any_element(),
             "slider" => {
+                if !show_label {
+                    return Slider::new(&self.sliders[&key])
+                        .disabled(disabled)
+                        .into_any_element();
+                }
                 // 原版设置行把步进器放在标题行右侧，内容区才是滑块。
                 let stepper = control.has_stepper.then(|| self.steppers[&key].clone());
                 v_flex()
@@ -1510,7 +1545,7 @@ impl SourceControls {
             }
             "select" => v_flex()
                 .gap_2()
-                .when(!control.hide_label, |view| view.child(label))
+                .when(!control.hide_label && show_label, |view| view.child(label))
                 .child(
                     h_flex()
                         .gap_3()
@@ -1556,6 +1591,15 @@ impl SourceControls {
             .bg(Colors::background())
             .px(surface::css(20.))
             .py(surface::css(27.));
+        if !page.camera_groups.is_empty() {
+            return column
+                .children(
+                    page.camera_groups.iter().enumerate().map(|(index, group)| {
+                        self.render_camera_group(group, index > 0, window, cx)
+                    }),
+                )
+                .into_any_element();
+        }
         for (index, section) in page.sections.iter().enumerate() {
             if index > 0 {
                 column = column.child(
@@ -1804,8 +1848,8 @@ impl Render for SourceControls {
                 // All four current roots mount renderView() then their video
                 // component inside `.advanced-camera-container`, which removes
                 // the shared body padding. A video transport is not connected;
-                // retain the empty video surface without fabricating a frame,
-                // camera failure, or reconnect acknowledgement.
+                // preserve the audited preview-off overlay where mounted,
+                // without fabricating a frame, failure or reconnect result.
                 return h_flex()
                     .size_full()
                     .min_h_0()
@@ -1823,7 +1867,10 @@ impl Render for SourceControls {
                             .relative()
                             .flex_1()
                             .h_full()
-                            .bg(gpui_kit::rgb(0x000000)),
+                            .bg(gpui_kit::rgb(0x000000))
+                            .when(self.camera_preview.is_some(), |video| {
+                                video.child(self.render_camera_preview_off(cx))
+                            }),
                     )
                     .into_any_element();
             }

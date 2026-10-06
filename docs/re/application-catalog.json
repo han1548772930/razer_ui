@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-10-05T03:47:32Z",
+  "generated_at_utc": "2026-10-06T04:16:22Z",
   "summary": {
     "routes": 24,
-    "html_found": 21,
-    "manifest_code_complete": 21,
+    "html_found": 22,
+    "manifest_code_complete": 22,
     "code_results": {
-      "ok": 877
+      "ok": 950
     }
   },
   "scope": "Source-defined route literals. Routes can share an app. Manifest completeness excludes dynamically composed resources and is not UI implementation coverage.",
@@ -5055,90 +5055,634 @@
           "source_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
           "final_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
           "redirected": false,
-          "http_status": null,
-          "fetched_at_utc": "2026-10-05T03:47:32Z",
-          "content_type": null,
-          "last_modified": null,
-          "etag": null,
-          "result": "network_error",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "bytes": 0,
-          "validation": null,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-06T04:16:18Z",
+          "content_type": "text/html",
+          "last_modified": "Mon, 05 Oct 2026 05:41:59 GMT",
+          "etag": "\"af1e7d557929460770285bfbcdcb06ca\"",
+          "result": "ok",
+          "sha256": "e1699cd32976bd16e39963d6cf4ef7d8af74d5f02e7bd062cc5005ef9617f214",
+          "bytes": 4400,
+          "validation": {
+            "valid": true,
+            "kind": "app_html",
+            "reason": null,
+            "scripts": [
+              "/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+              "/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+              "/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+              "/synapse/assets/js/jszip/3.10.1/jszip.min.js",
+              "/synapse/assets/js/@sentry/react@7.72.0/react.js",
+              "/synapse/assets/js/xml-js@1.6.11/xml-js.js",
+              "/synapse/assets/js/manifest.js",
+              "./static/js/main.6b22e9cc.js"
+            ],
+            "styles": [
+              "./static/css/main.8ec0cda4.css"
+            ],
+            "manifests": [
+              "./manifest.json"
+            ]
+          },
           "attempts": [
             {
               "attempt": 1,
-              "started_at_utc": "2026-10-05T03:47:31Z",
-              "completed_at_utc": "2026-10-05T03:47:32Z",
-              "status": null,
-              "result": "network_error",
-              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/index.html (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9D00>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "started_at_utc": "2026-10-06T04:16:17Z",
+              "completed_at_utc": "2026-10-06T04:16:18Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
               "final_url": "https://apps.razer.com/synapse/chroma-studio/index.html",
               "redirect_chain": []
             }
           ],
-          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/index.html (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9D00>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
-          "body_file": "index.html.response"
+          "error": null,
+          "body_file": "index.html"
         },
         "manifest.json": {
           "source_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
           "final_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
           "redirected": false,
-          "http_status": null,
-          "fetched_at_utc": "2026-10-05T03:47:32Z",
-          "content_type": null,
-          "last_modified": null,
-          "etag": null,
-          "result": "network_error",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "bytes": 0,
-          "validation": null,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-06T04:16:18Z",
+          "content_type": "application/json",
+          "last_modified": "Mon, 05 Oct 2026 05:42:00 GMT",
+          "etag": "\"ff80a37881cf31f88585fbcc4e9046d9\"",
+          "result": "ok",
+          "sha256": "3477bcf5d4477c070f9ed9d47a83295b0fcf227d1c5be31b26427d75a7315dc8",
+          "bytes": 1635,
+          "validation": {
+            "valid": true,
+            "kind": "manifest",
+            "reason": null,
+            "declared_product_ids": [],
+            "requested_product_id_declared": null,
+            "identity_warning": null,
+            "application_name": "Razer Chroma Studio"
+          },
           "attempts": [
             {
               "attempt": 1,
-              "started_at_utc": "2026-10-05T03:47:31Z",
-              "completed_at_utc": "2026-10-05T03:47:32Z",
-              "status": null,
-              "result": "network_error",
-              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D99A0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "started_at_utc": "2026-10-06T04:16:17Z",
+              "completed_at_utc": "2026-10-06T04:16:18Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
               "final_url": "https://apps.razer.com/synapse/chroma-studio/manifest.json",
               "redirect_chain": []
             }
           ],
-          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D99A0>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
-          "body_file": "manifest.json.response"
+          "error": null,
+          "body_file": "manifest.json"
         },
         "asset-manifest.json": {
           "source_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
           "final_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
           "redirected": false,
-          "http_status": null,
-          "fetched_at_utc": "2026-10-05T03:47:32Z",
-          "content_type": null,
-          "last_modified": null,
-          "etag": null,
-          "result": "network_error",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "bytes": 0,
-          "validation": null,
+          "http_status": 200,
+          "fetched_at_utc": "2026-10-06T04:16:18Z",
+          "content_type": "application/json",
+          "last_modified": "Mon, 05 Oct 2026 05:41:59 GMT",
+          "etag": "\"17e1f4ef7f4437bc748c48f49a128d24\"",
+          "result": "ok",
+          "sha256": "80aa60655a1922f26dd280cd17b2f471d0dab9b95c095142c3143e352a6a03d1",
+          "bytes": 29240,
+          "validation": {
+            "valid": true,
+            "kind": "assets",
+            "reason": null
+          },
           "attempts": [
             {
               "attempt": 1,
-              "started_at_utc": "2026-10-05T03:47:31Z",
-              "completed_at_utc": "2026-10-05T03:47:32Z",
-              "status": null,
-              "result": "network_error",
-              "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/asset-manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9B50>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
+              "started_at_utc": "2026-10-06T04:16:17Z",
+              "completed_at_utc": "2026-10-06T04:16:18Z",
+              "status": 200,
+              "result": "ok",
+              "error": null,
               "final_url": "https://apps.razer.com/synapse/chroma-studio/asset-manifest.json",
               "redirect_chain": []
             }
           ],
-          "error": "URLError: <urlopen error HTTPSConnectionPool(host='apps.razer.com', port=443): Max retries exceeded with url: /synapse/chroma-studio/asset-manifest.json (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001A2D07D9B50>: Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。'))>",
-          "body_file": "asset-manifest.json.response"
+          "error": null,
+          "body_file": "asset-manifest.json"
         }
       },
-      "files": [],
+      "files": [
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/@sentry/react@7.72.0/react.js",
+          "path": ".ref/applications/synapse/assets/js/@sentry/react@7.72.0/react.js",
+          "result": "ok",
+          "sha256": "ed59fb1e8b34b48fc3d6b8b8009c7bdd91126efee0cbecfd530967b232fd852d",
+          "bytes": 310060
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/jszip/3.10.1/jszip.min.js",
+          "path": ".ref/applications/synapse/assets/js/jszip/3.10.1/jszip.min.js",
+          "result": "ok",
+          "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e",
+          "bytes": 97630
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/manifest.js",
+          "path": ".ref/applications/synapse/assets/js/manifest.js",
+          "result": "ok",
+          "sha256": "679467dcd799d92ad996c4945913ea7620c911bc804ca10358bf269a8553c9b1",
+          "bytes": 10260
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+          "path": ".ref/applications/synapse/assets/js/react-dom/18.2.0/umd/react-dom.production.min.js",
+          "result": "ok",
+          "sha256": "21758ed084cd0e37e735722ee4f3957ea960628a29dfa6c3ce1a1d47a2d6e4f7",
+          "bytes": 131882
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+          "path": ".ref/applications/synapse/assets/js/react-redux/8.0.5/react-redux.min.js",
+          "result": "ok",
+          "sha256": "d7a12ddd229d8f62fd6fc3ec8a0d8255f03974165bd4508147311458a98728da",
+          "bytes": 15241
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+          "path": ".ref/applications/synapse/assets/js/react/18.2.0/umd/react.production.min.js",
+          "result": "ok",
+          "sha256": "4b4969fa4ef3594324da2c6d78ce8766fbbc2fd121fff395aedf997db0a99a06",
+          "bytes": 10737
+        },
+        {
+          "url": "https://apps.razer.com/synapse/assets/js/xml-js@1.6.11/xml-js.js",
+          "path": ".ref/applications/synapse/assets/js/xml-js@1.6.11/xml-js.js",
+          "result": "ok",
+          "sha256": "6b4d7a0c1b906c9dff1c27a2716e382decb95280bc531848352930e3d78cf66f",
+          "bytes": 65903
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/service-worker.js",
+          "path": ".ref/applications/synapse/chroma-studio/service-worker.js",
+          "result": "ok",
+          "sha256": "50dace9331c4305f124eded06bb072e1d0e0a03f4dbad3a66a0fc9187fc53e9f",
+          "bytes": 48420
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/255.94f4f150.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/255.94f4f150.chunk.css",
+          "result": "ok",
+          "sha256": "5c9e9882eb07532fa002234ee65cff41adef18cf38f12dde79cf7084c9701d12",
+          "bytes": 9309
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/285.de8b11fb.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/285.de8b11fb.chunk.css",
+          "result": "ok",
+          "sha256": "e85e54acbca148ba5401f3b04de689107101373b88a09bdfe9e231e8efc593ea",
+          "bytes": 10021
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/412.e96cf1f2.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/412.e96cf1f2.chunk.css",
+          "result": "ok",
+          "sha256": "fa4963421b99eada8e7ae70946b502818a7f12aa297e3bcda1fe74ea9051bac7",
+          "bytes": 9628
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/42.04f66612.chunk.css",
+          "result": "ok",
+          "sha256": "61d968fe4b7fc3588050e203ba227648d23162c17ad503bff69fc42b004b2de6",
+          "bytes": 6330
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/435.fe817acc.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/435.fe817acc.chunk.css",
+          "result": "ok",
+          "sha256": "13ca51fa6f9143b3e51b7e74c765bed2c86afdbfef1c762d4ca0a5f9f9b973fc",
+          "bytes": 5179
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/474.e81b3771.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/474.e81b3771.chunk.css",
+          "result": "ok",
+          "sha256": "000c7b9c1f5c9060a40e54f5a9710e7f24eb05eb2febd340c2c290511c50d794",
+          "bytes": 2391
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/510.2ae6883e.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/510.2ae6883e.chunk.css",
+          "result": "ok",
+          "sha256": "0f1741e96c1986a5413a2c020be6387b1bed0639916903253ffd0b3357d07f3d",
+          "bytes": 7856
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/679.3a183f43.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/679.3a183f43.chunk.css",
+          "result": "ok",
+          "sha256": "cfc30c43f8d0090038b8c8b2a8337c8fa7fae449f02f4cbeff82b4691341d7e9",
+          "bytes": 7942
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/729.f3554698.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/729.f3554698.chunk.css",
+          "result": "ok",
+          "sha256": "8d0b33ddf2b6a412fd4ac40cd6bd7cce859669f3b0c33eea8973321b59361890",
+          "bytes": 9807
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/813.c2bd8d82.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/813.c2bd8d82.chunk.css",
+          "result": "ok",
+          "sha256": "119f9e60556c7904a69b76a855cf6faaf927d056e61136ff570b44bc1a7cc8f1",
+          "bytes": 9889
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/820.bab154a5.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/820.bab154a5.chunk.css",
+          "result": "ok",
+          "sha256": "7f6c19f1d0c50530fe5f0bf11a718e339b85c499db8c741044f63441ea01fbd2",
+          "bytes": 8279
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/941.c98fc25e.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/941.c98fc25e.chunk.css",
+          "result": "ok",
+          "sha256": "74f863cd3bdf6029362ce9bb958321723421e3677bdb73615a9f3f1e808a65ca",
+          "bytes": 5695
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/958.eb094e3a.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/958.eb094e3a.chunk.css",
+          "result": "ok",
+          "sha256": "50ce8066e6ba72c69414a56233bef4e7655807f47f912641bcaf69c197c5f435",
+          "bytes": 4839
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/EditorCanvas.1012a47a.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/EditorCanvas.1012a47a.chunk.css",
+          "result": "ok",
+          "sha256": "2728a49f0b64d4ea807bd38ecd5dd6bf323211c03792c7778b3b81c96be86f45",
+          "bytes": 45869
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/HeaderAlexa.3323da4d.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/HeaderAlexa.3323da4d.chunk.css",
+          "result": "ok",
+          "sha256": "547ef9edc5268fa5114ceaa97d183068d1fc294caf92f364781f2e2e214230b0",
+          "bytes": 1114
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/HeaderUnsaved.9ba1fe76.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/HeaderUnsaved.9ba1fe76.chunk.css",
+          "result": "ok",
+          "sha256": "d7f2af53adf6cca912ed072da6f6654247725434ec169437c133a6a9d5999b25",
+          "bytes": 1822
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/Help.866f3609.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/Help.866f3609.chunk.css",
+          "result": "ok",
+          "sha256": "146ac00aea4bfea9925848c8e93147468bba999300ff808f27a5e1c779bb62b8",
+          "bytes": 19551
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalExport.b549d2bf.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalExport.b549d2bf.chunk.css",
+          "result": "ok",
+          "sha256": "1a39a515aa2cd794f91e30cbae29227ae42355dc0b2d746dbb4bacb7f4b3430c",
+          "bytes": 6212
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalImport.5bf0344e.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalImport.5bf0344e.chunk.css",
+          "result": "ok",
+          "sha256": "b49e96b9cffbc980b87cc81c00be27c166a83b90d13a18ecd838e56cdb5831c5",
+          "bytes": 6212
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalNoDevices.067b09b1.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalNoDevices.067b09b1.chunk.css",
+          "result": "ok",
+          "sha256": "9abd97966c61aaa1bebe7a657578032ea6771af5f84f7d0ce1df4419cc04f144",
+          "bytes": 219
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalPatchNotes.eef86e52.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalPatchNotes.eef86e52.chunk.css",
+          "result": "ok",
+          "sha256": "7fcf4246da4626a94e77908ae56d2bb5d8b8cff4989f5765b122d357c0708fa5",
+          "bytes": 3620
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalSave.ad3a0de9.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalSave.ad3a0de9.chunk.css",
+          "result": "ok",
+          "sha256": "75da40b45a3680fe21c9b7c95a96a86ae70c3123312dd24b493492f1a9600dfa",
+          "bytes": 215
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalUnableToCopy.a42512c6.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalUnableToCopy.a42512c6.chunk.css",
+          "result": "ok",
+          "sha256": "bf27b72dc327d26555023f55421fbbcdd83f2582d39bf82157451a6de43a12d4",
+          "bytes": 474
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/ModalUnableToRotate.a42512c6.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/ModalUnableToRotate.a42512c6.chunk.css",
+          "result": "ok",
+          "sha256": "1884330f48c601d2fa3f5f2fb0539bd905694fac8f060f1b236505ed80607419",
+          "bytes": 476
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/Onboarding.817249e7.chunk.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/Onboarding.817249e7.chunk.css",
+          "result": "ok",
+          "sha256": "db693d59a000d236c270d30c8e8df1fa878a9922f66fad4360ea90a5948d193d",
+          "bytes": 4357
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/css/main.8ec0cda4.css",
+          "path": ".ref/applications/synapse/chroma-studio/static/css/main.8ec0cda4.css",
+          "result": "ok",
+          "sha256": "9403a1c785049a2830c680ec8f25f0fa09d98ebbd38296258062a13cdbc6b38b",
+          "bytes": 132633
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/11.0b5db8f1.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/11.0b5db8f1.chunk.js",
+          "result": "ok",
+          "sha256": "67b0fd180daa3926196c64ed86e43e7231831ae025d4626c836754a18d2bb970",
+          "bytes": 27817
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/175.101cca41.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/175.101cca41.chunk.js",
+          "result": "ok",
+          "sha256": "fe127c1f8621af32aefeeca86212387fcc544464b2e6f0a89c980b3eff195a69",
+          "bytes": 27729
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/185.220c36eb.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/185.220c36eb.chunk.js",
+          "result": "ok",
+          "sha256": "a56cdd6c48cc02df0d5e18e9032c06276b5b422bc843dd03e85e4aa78ec175c9",
+          "bytes": 31020
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/234.e2038bb9.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/234.e2038bb9.chunk.js",
+          "result": "ok",
+          "sha256": "6496c924c5c39da42926104711bc449aa0cb50be53e24faf30307c6e61a16479",
+          "bytes": 39101
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/255.55c55ae1.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/255.55c55ae1.chunk.js",
+          "result": "ok",
+          "sha256": "5db8f9a76b5ee2642f93aa149cfe46198b67795cf32c19e903b038ce270649fb",
+          "bytes": 16377
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/285.bbf66b46.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/285.bbf66b46.chunk.js",
+          "result": "ok",
+          "sha256": "26d485a43d4d4e36f0c071c0cf5af0d384be9d637b76812a592dab37e7c3cab6",
+          "bytes": 19419
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/362.540bd3a2.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/362.540bd3a2.chunk.js",
+          "result": "ok",
+          "sha256": "73162540f86da17545c54cbafb92f88522988143667aebd88e433427fde91142",
+          "bytes": 25753
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/408.b43659c3.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/408.b43659c3.chunk.js",
+          "result": "ok",
+          "sha256": "c8aefc20bad0e334528b3667824e8552cce7799f9332d579943ce21eea488ba8",
+          "bytes": 28402
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/412.2045a1a6.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/412.2045a1a6.chunk.js",
+          "result": "ok",
+          "sha256": "cef576f5951f1a0e41ed3e62bb1cc0efc2c06b993635efd9a1a0fa8e101f88fc",
+          "bytes": 14308
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/42.02817760.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/42.02817760.chunk.js",
+          "result": "ok",
+          "sha256": "70ecc5ccdd8ae3ff20b3f16913cc87f607ab6e39ec20af7f436cc67ce9b4ccf4",
+          "bytes": 5126
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/435.fba6194a.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/435.fba6194a.chunk.js",
+          "result": "ok",
+          "sha256": "b5ad313bb0b7b2a1231add549855ec52fe9185b832b4b89b6740f22ec6cd68c3",
+          "bytes": 1698
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/442.0372e707.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/442.0372e707.chunk.js",
+          "result": "ok",
+          "sha256": "9f961ae496258026c5f57c54cbf94ee4c3069f8c311f898ea83c0f61c742eb9c",
+          "bytes": 1087
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/474.2374fc9f.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/474.2374fc9f.chunk.js",
+          "result": "ok",
+          "sha256": "bd45fd9c8a23c692850c57bf4e95f73cae42d3fa968fbb061ba4efac02b00a5a",
+          "bytes": 7669
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/510.7368f605.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/510.7368f605.chunk.js",
+          "result": "ok",
+          "sha256": "99fcc304753fa8077200bc51bc390248905b6e500e0dc55a6d4098a6da3588b3",
+          "bytes": 10982
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/606.b47ade77.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/606.b47ade77.chunk.js",
+          "result": "ok",
+          "sha256": "5d746a6673508c691e01ae7663930087b4ac152c3c037afd162d985b736723c8",
+          "bytes": 12853
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/641.6c006a9b.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/641.6c006a9b.chunk.js",
+          "result": "ok",
+          "sha256": "2f799c1da9dba8141ed1241951b4872cfb0ef14dff18aadc90bdbcd9a3e4e274",
+          "bytes": 25645
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/679.0781b947.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/679.0781b947.chunk.js",
+          "result": "ok",
+          "sha256": "4e8cd7e37da3ed3305db88044b31e407ab2a280f384fe1a1059779cd89311b29",
+          "bytes": 10504
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/729.84fd7088.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/729.84fd7088.chunk.js",
+          "result": "ok",
+          "sha256": "d7198c17fae7ad5dd636d708d557ed58d16fc4be4863d683db16c860ae80bd31",
+          "bytes": 16686
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/813.7628f9a2.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/813.7628f9a2.chunk.js",
+          "result": "ok",
+          "sha256": "9079f051b72a356bc1a351acd15eb6c9e4f6e5c9d5cfcbc2e35ec430161f1e86",
+          "bytes": 15406
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/820.c393c8b8.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/820.c393c8b8.chunk.js",
+          "result": "ok",
+          "sha256": "1179031f38c7bf389721a4421456258d71d78714bf45a6777a1cc3078e6350a0",
+          "bytes": 11156
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/843.4202fc26.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/843.4202fc26.chunk.js",
+          "result": "ok",
+          "sha256": "090db2e48e120d2f21b47b8af1d7c2c8939dc5087bfe0487e0d15d48140d9643",
+          "bytes": 24839
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/941.5700335c.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/941.5700335c.chunk.js",
+          "result": "ok",
+          "sha256": "0b5f811aeb1c5e949c95c098c9270fd6b0ee7f7467e13dced41e62aa97a18909",
+          "bytes": 3027
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/958.e77237aa.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/958.e77237aa.chunk.js",
+          "result": "ok",
+          "sha256": "8a7a6dc82fe37b24b9ac1ec88a7d8e974a0b52e04504f9a8d2b09a3247252ed4",
+          "bytes": 8182
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/962.1e8cdd6a.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/962.1e8cdd6a.chunk.js",
+          "result": "ok",
+          "sha256": "b96392d6c2d2452bffcc6a39c501428de41bb3eb0c12f50b4f37ed89899c612b",
+          "bytes": 27833
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/990.28e82a03.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/990.28e82a03.chunk.js",
+          "result": "ok",
+          "sha256": "a06ef4120406b6958e895c8764b770a9af4f9c7731bf89db6088c5f199154899",
+          "bytes": 29084
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/993.c6cc23ab.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/993.c6cc23ab.chunk.js",
+          "result": "ok",
+          "sha256": "66d68a1a0cb91152453bad92b09c6bf3f5704076acf7c97937028448692a340a",
+          "bytes": 25275
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/EditorCanvas.c3ee330f.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/EditorCanvas.c3ee330f.chunk.js",
+          "result": "ok",
+          "sha256": "32bc4dd6a0e0de1ef7a185fb4f4754d195ed3fdd8504f8e49294fd0e1da42999",
+          "bytes": 118834
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/HeaderAlexa.50fb976f.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/HeaderAlexa.50fb976f.chunk.js",
+          "result": "ok",
+          "sha256": "b70cf381d0c70997daaff296bc85937466ed09cbabe9b05ddc9d6a17dbc4892c",
+          "bytes": 2327
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/HeaderUnsaved.3f615546.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/HeaderUnsaved.3f615546.chunk.js",
+          "result": "ok",
+          "sha256": "bd30331f1c5cf3697814bd542d19adc1d8d4e3e27884c467e737eec370030670",
+          "bytes": 5709
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/Help.ce47c2bb.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/Help.ce47c2bb.chunk.js",
+          "result": "ok",
+          "sha256": "d7e46f76f61f6b87f313ff95d1968c71075de712aa6d35060449180c99fd4aa4",
+          "bytes": 6845
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalExport.5d3609fd.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalExport.5d3609fd.chunk.js",
+          "result": "ok",
+          "sha256": "f4385b1afdcf9ed9361d4fe6738d78ddcb98ac6cb3127bf72a6fdd78c548c1e5",
+          "bytes": 3759
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalImport.320c0aae.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalImport.320c0aae.chunk.js",
+          "result": "ok",
+          "sha256": "d0a3ba6f2317b3589a7a255e5eb9d3f05dae6632bac720f924996dc0cd0a2d35",
+          "bytes": 9341
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalNoDevices.31016b1e.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalNoDevices.31016b1e.chunk.js",
+          "result": "ok",
+          "sha256": "81f15079c5e5fb28b6fabf248c1c0b1792550cdea1e6f2536bcfc43f2e4086e7",
+          "bytes": 933
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalPatchNotes.7a23d673.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalPatchNotes.7a23d673.chunk.js",
+          "result": "ok",
+          "sha256": "8405521bf282bdc5640ebd1559de87f51a8024519f3ff9c9fb9dccc40f39d127",
+          "bytes": 34626
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalSave.f069cb78.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalSave.f069cb78.chunk.js",
+          "result": "ok",
+          "sha256": "0c63f5ee1654d2ae244a838cb4f2d383f469491ea3cd0471bf9cbdef7281d561",
+          "bytes": 1652
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalUnableToCopy.6bce775f.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalUnableToCopy.6bce775f.chunk.js",
+          "result": "ok",
+          "sha256": "5053410ae40243678ca9bffd3d09784f4ee87fa18bac58272e988eadf58f436b",
+          "bytes": 1245
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/ModalUnableToRotate.c538232c.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/ModalUnableToRotate.c538232c.chunk.js",
+          "result": "ok",
+          "sha256": "48fb6b297ca7ac5880122c85ccd5293c75779ee68829965b6bc833462132163b",
+          "bytes": 1190
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/Onboarding.899a8c41.chunk.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/Onboarding.899a8c41.chunk.js",
+          "result": "ok",
+          "sha256": "a14987e31dab37f2188d66e6a2b14676d943c512a9273662791ef2edb0c6e76a",
+          "bytes": 5350
+        },
+        {
+          "url": "https://apps.razer.com/synapse/chroma-studio/static/js/main.6b22e9cc.js",
+          "path": ".ref/applications/synapse/chroma-studio/static/js/main.6b22e9cc.js",
+          "result": "ok",
+          "sha256": "9f486d37e4da89a6541137d81b99cedcebe77947b73571d1a0232f385478ef3e",
+          "bytes": 450389
+        }
+      ],
       "skipped": [],
-      "manifest_code_complete": false
+      "manifest_code_complete": true
     },
     {
       "route": "/synapse/dashboard/",

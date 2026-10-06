@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="0 0 10 5">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ccc;
+      }
+    </style>
+  </defs>
+  <path id="Step_Down" data-name="Step Down" class="cls-1" d="M734,111h10l-5.056,5Z" transform="translate(-734 -111)"/>
+</svg>

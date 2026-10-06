@@ -28,6 +28,8 @@ pub(super) struct DeviceCard {
     pub state: Entity<DashboardState>,
     pub actions: Actions,
     pub online: bool,
+    /// Independent local page capability; never changes the device snapshot.
+    pub open_without_installation: bool,
 }
 
 /// Nested mousedown only changes the short-drag release action, as in xi/xe.
@@ -60,15 +62,18 @@ impl RenderOnce for DeviceCard {
         let device = &self.device;
         let fields = &device.dashboard;
         let ready = device.setup_status == SetupStatus::Ready;
+        let installation_gate = !self.open_without_installation;
         let raw_off = device_state::power_off(device);
         let observed_power = device_state::observed_power(&self.id, device, window, cx);
         let off = observed_power.off();
-        let retry = matches!(
-            device.setup_status,
-            SetupStatus::InstallCanceled | SetupStatus::Error
-        ) || fields.no_alive_sign == Some(true);
+        let retry = (installation_gate
+            && matches!(
+                device.setup_status,
+                SetupStatus::InstallCanceled | SetupStatus::Error
+            ))
+            || fields.no_alive_sign == Some(true);
         let source_spinner = device_state::show_spinner(device.setup_status, raw_off);
-        let spinner = source_spinner && !retry;
+        let spinner = source_spinner && !retry && installation_gate;
         let image_disabled = !spinner
             && if !off || fields.is_playstation == Some(true) || !ready {
                 observed_power.standby_or_off()
@@ -116,7 +121,7 @@ impl RenderOnce for DeviceCard {
             artwork.push((
                 "synapse/dashboard-card/arcade-controller-fw-update-disable.svg",
                 250.,
-                !ready,
+                !ready && installation_gate,
             ));
         }
         if !xbox && !ps && !min_firmware {
@@ -125,7 +130,7 @@ impl RenderOnce for DeviceCard {
                 device.edition_id,
                 device.layout_id,
             ) {
-                artwork.push((asset, 250., !ready));
+                artwork.push((asset, 250., !ready && installation_gate));
             }
         }
         if xbox && category == "Controller" {
@@ -343,7 +348,11 @@ impl RenderOnce for DeviceCard {
                             ))
                             .text_center()
                             .text_ellipsis()
-                            .child(device_state::status(device)),
+                            .child(if self.open_without_installation {
+                                String::new()
+                            } else {
+                                device_state::status(device)
+                            }),
                     )
                 })
                 .when(xbox && category == "Controller", |view| {

@@ -1,0 +1,110 @@
+[
+  {
+    "product_id": 1303,
+    "effects": [
+      {
+        "name": "AUDIO_METER",
+        "id": 12
+      },
+      {
+        "name": "BREATHING",
+        "id": 2
+      },
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      },
+      {
+        "name": "TIDAL",
+        "id": 19
+      },
+      {
+        "name": "WAVE",
+        "id": 4
+      }
+    ],
+    "wave_default_direction": 12,
+    "defaults": {
+      "1": {
+        "color1": "#00ff00"
+      },
+      "2": {
+        "color1": "#00ff00",
+        "color2": "no-color",
+        "isRandom": false
+      },
+      "3": {},
+      "4": {
+        "direction": 2
+      },
+      "12": {
+        "color1": "#00ff00",
+        "colorBoost": 1
+      },
+      "19": {
+        "color1": "#00ff00",
+        "color2": "#0000FF",
+        "isRandom": false,
+        "direction": 1
+      }
+    }
+  },
+  {
+    "product_id": 1304,
+    "effects": [
+      {
+        "name": "AUDIO_METER",
+        "id": 12
+      },
+      {
+        "name": "BREATHING",
+        "id": 2
+      },
+      {
+        "name": "SPECTRUM_CYCLING",
+        "id": 3
+      },
+      {
+        "name": "STATIC",
+        "id": 1
+      },
+      {
+        "name": "TIDAL",
+        "id": 19
+      },
+      {
+        "name": "WAVE",
+        "id": 4
+      }
+    ],
+    "wave_default_direction": 12,
+    "defaults": {
+      "1": {
+        "color1": "#00ff00"
+      },
+      "2": {
+        "color1": "#00ff00",
+        "color2": "no-color",
+        "isRandom": false
+      },
+      "3": {},
+      "4": {
+        "direction": 2
+      },
+      "12": {
+        "color1": "#00ff00",
+        "colorBoost": 1
+      },
+      "19": {
+        "color1": "#00ff00",
+        "color2": "#0000FF",
+        "isRandom": false,
+        "direction": 1
+      }
+    }
+  }
+]

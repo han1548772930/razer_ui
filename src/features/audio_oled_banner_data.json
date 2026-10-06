@@ -1,0 +1,362 @@
+{
+  "product_id": 1383,
+  "labels": {
+    "ADx": "CUSTOMIZE_MODAL_BANNER_TITLE",
+    "$yX": "PREVIEW",
+    "Ufo": "RESET_TO_DEFAULT_LOWER",
+    "wLi": "CUSTOMIZE_BANNER_IMAGE_LABEL",
+    "MV7": "CUSTOMIZE_BANNER_IMAGE_POSITION_LABEL",
+    "wv5": "TOP",
+    "_NK": "BOTTOM",
+    "gc6": "CUSTOMIZE_BANNER_TEXT_LABEL",
+    "Xpn": "CUSTOMIZE_BANNER_TEXT_LENGTH_INFO",
+    "erU": "CUSTOMIZE_BANNER_TEXT_MAX_LENGTH_REACHED",
+    "gv6": "CUSTOMIZE_BANNER_FONT_LABEL",
+    "E_v": "CUSTOMIZE_BANNER_FONT_SIZE_LABEL",
+    "WAD": "CUSTOMIZE_BANNER_STYLE_LABEL",
+    "sn9": "CUSTOMIZE_BANNER_SCROLL_LABEL",
+    "BZ0": "CUSTOMIZE_BANNER_TEXT_LENGTH_TIPS",
+    "pJk": "APPLY",
+    "bOp": "CANCEL"
+  },
+  "fonts": [
+    {
+      "name": "RazerF5"
+    },
+    {
+      "name": "Arial"
+    },
+    {
+      "name": "Arial Black"
+    },
+    {
+      "name": "Bahnschrift"
+    },
+    {
+      "name": "Calibri"
+    },
+    {
+      "name": "Cambria"
+    },
+    {
+      "name": "Cambria Math"
+    },
+    {
+      "name": "Candara"
+    },
+    {
+      "name": "Cascadia Code"
+    },
+    {
+      "name": "Cascadia Mono"
+    },
+    {
+      "name": "Comic Sans MS"
+    },
+    {
+      "name": "Consolas"
+    },
+    {
+      "name": "Constantia"
+    },
+    {
+      "name": "Corbel"
+    },
+    {
+      "name": "Courier New"
+    },
+    {
+      "name": "Ebrima"
+    },
+    {
+      "name": "Franklin Gothic Medium"
+    },
+    {
+      "name": "Gabriola"
+    },
+    {
+      "name": "Gadugi"
+    },
+    {
+      "name": "Georgia"
+    },
+    {
+      "name": "HoloLens MDL2 Assets"
+    },
+    {
+      "name": "Impact"
+    },
+    {
+      "name": "Ink Free"
+    },
+    {
+      "name": "Javanese Text"
+    },
+    {
+      "name": "Leelawadee UI"
+    },
+    {
+      "name": "Lucida Console"
+    },
+    {
+      "name": "Lucida Sans Unicode"
+    },
+    {
+      "name": "Malgun Gothic"
+    },
+    {
+      "name": "Marlett"
+    },
+    {
+      "name": "Microsoft Himalaya"
+    },
+    {
+      "name": "Microsoft JhengHei"
+    },
+    {
+      "name": "Microsoft New Tai Lue"
+    },
+    {
+      "name": "Microsoft PhagsPa"
+    },
+    {
+      "name": "Microsoft Sans Serif"
+    },
+    {
+      "name": "Microsoft Tai Le"
+    },
+    {
+      "name": "Microsoft YaHei"
+    },
+    {
+      "name": "Microsoft Yi Baiti"
+    },
+    {
+      "name": "MingLiU-ExtB"
+    },
+    {
+      "name": "Mongolian Baiti"
+    },
+    {
+      "name": "MS Gothic"
+    },
+    {
+      "name": "MV Boli"
+    },
+    {
+      "name": "Myanmar Text"
+    },
+    {
+      "name": "Nirmala UI"
+    },
+    {
+      "name": "Palatino Linotype"
+    },
+    {
+      "name": "Segoe Fluent Icons"
+    },
+    {
+      "name": "Segoe MDL2 Assets"
+    },
+    {
+      "name": "Segoe Print"
+    },
+    {
+      "name": "Segoe Script"
+    },
+    {
+      "name": "Segoe UI"
+    },
+    {
+      "name": "Segoe UI Emoji"
+    },
+    {
+      "name": "Segoe UI Historic"
+    },
+    {
+      "name": "Segoe UI Symbol"
+    },
+    {
+      "name": "Segoe UI Variable"
+    },
+    {
+      "name": "SimSun"
+    },
+    {
+      "name": "Sitka"
+    },
+    {
+      "name": "Sylfaen"
+    },
+    {
+      "name": "Symbol"
+    },
+    {
+      "name": "Tahoma"
+    },
+    {
+      "name": "Times New Roman"
+    },
+    {
+      "name": "Trebuchet MS"
+    },
+    {
+      "name": "Verdana"
+    },
+    {
+      "name": "Webdings"
+    },
+    {
+      "name": "Wingdings"
+    },
+    {
+      "name": "Yu Gothic"
+    }
+  ],
+  "sizes": [
+    {
+      "name": "8px"
+    },
+    {
+      "name": "9px"
+    },
+    {
+      "name": "10px"
+    },
+    {
+      "name": "11px"
+    },
+    {
+      "name": "12px"
+    },
+    {
+      "name": "14px"
+    },
+    {
+      "name": "16px"
+    },
+    {
+      "name": "18px"
+    },
+    {
+      "name": "20px"
+    },
+    {
+      "name": "22px"
+    },
+    {
+      "name": "24px"
+    },
+    {
+      "name": "26px"
+    },
+    {
+      "name": "28px"
+    },
+    {
+      "name": "30px"
+    }
+  ],
+  "defaults": {
+    "image": {
+      "enabled": true,
+      "selected": {
+        "id": "banner-1",
+        "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADrklEQVRoge2a3XHrIBCFebjvlIA7UDpQCUoHSgdyKpA7sFMB7sAlMK7A7kCTCjSpYO/DGe8QBGjlvweH7+l6rxBCOhyWDYoKhXtjjFG/McYQUdu2QYSIuq4LIn3fK6XqusbPcRy11s45vwv1nJEU/g7OOTXBWgv9caTve7qIkq/xI4fDATe01rKImSLcwp2p6zpQrdZ6HEf4qB+hi7lO7ZZ/EpExhkXMRIQ7nS7oabvdLh2A/OJop8GQovivIzrRr+i06zr5kxd8onbb933UbomIgxxBmsEfzlobFcC/lEzf3t78yPF4/Pz8XK1W7+/vGaEw+/3+eDyez+fgPimm0xSd4laZhqvVKtoW//Xx8bG06/P5/PX1pZTa7XazbQsB05emtV6v1/v9/ufnh4Pr9VopxUFcg8j397cxhj/cZrPZbDaRnqZaVl5eHMwkuYlCDW3bCq+fEmTojyD6BtgbHtfvqzIMw1RgWL787RqrgoOB3fLa7pxLrbdS4VLiM+cHwKnMUlg9wzBc0VxIakSYdY/r91XxiwbMMAzW2iBCRH4QIkHE10xd16kE9SHCRYEDystnmSnwCh6daxbh3pGo3cJco3ZbVVUQwWtn93XOZYxPKlws3E3TSMYAySK7qKpK0sTndDrd4tZyosLFY2utH9r168Hl2MBcD4eDHzmdTvR7DwcD5tfOH71pGhbxFGlVAQRF4CgwfEwjzCo8qxzMPKFV56sK+UrI1Q0LAUHRAMDm/L0vGyIHA7vln8Mw5J1LJFytddM0EtXSRay42BexEDSR+3RGuMaYvGdHW9V1Pa0aFvJEv4JzLqiOQRV+EKaGNVZ5W5q2bfOymUkVlsoIT8A7QUxE+aI/jiPyIeEkuRG8LPwbKdoT8pPXI2q3kJBvt6wi3sOxzBDx7VbN7cvnc9xFCzeewL8YEeHKuyiTvh1fuHTJ0m4p4f1NgqIBm2uwXYMq/CDsiSOs1K7rZr/CvHCnWXOKqL8GHpwBac3sVLsjgXDZOZYm5X+cRUdqUnYbHKmZ1YCoqoBbZ7Z4IJXRwrNnV39hL3ckEC4Rbbfb6fALGaJ2a62dtVs+UuO7LxH1fS95/yLhCr0wVUOQbNE4Ya+qqp6QaYijQykkZxWioyj7MyESu+XaYupITf4EY5S71XGREqS2cdB9JtlInTeY9eBMVWE2vYkKF1NIktsUnnOCMUr5+1Dhep5zgjFKEW7hSp52gjFKEW7hSqZHamCu2OAywZEaNmBEAruVn2z5DxYUdefH435OAAAAAElFTkSuQmCC"
+      },
+      "selectedIdx": 0,
+      "position": "top"
+    },
+    "text": {
+      "value": "For Gamers. By Gamers.",
+      "style": {
+        "fontFamily": {
+          "name": "RazerF5"
+        },
+        "fontSize": {
+          "name": "20px"
+        },
+        "fontWeight": null,
+        "fontStyle": null,
+        "textDecoration": null
+      },
+      "scroll": "left"
+    },
+    "imageData": ""
+  },
+  "images": [
+    {
+      "id": "banner-1",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADrklEQVRoge2a3XHrIBCFebjvlIA7UDpQCUoHSgdyKpA7sFMB7sAlMK7A7kCTCjSpYO/DGe8QBGjlvweH7+l6rxBCOhyWDYoKhXtjjFG/McYQUdu2QYSIuq4LIn3fK6XqusbPcRy11s45vwv1nJEU/g7OOTXBWgv9caTve7qIkq/xI4fDATe01rKImSLcwp2p6zpQrdZ6HEf4qB+hi7lO7ZZ/EpExhkXMRIQ7nS7oabvdLh2A/OJop8GQovivIzrRr+i06zr5kxd8onbb933UbomIgxxBmsEfzlobFcC/lEzf3t78yPF4/Pz8XK1W7+/vGaEw+/3+eDyez+fgPimm0xSd4laZhqvVKtoW//Xx8bG06/P5/PX1pZTa7XazbQsB05emtV6v1/v9/ufnh4Pr9VopxUFcg8j397cxhj/cZrPZbDaRnqZaVl5eHMwkuYlCDW3bCq+fEmTojyD6BtgbHtfvqzIMw1RgWL787RqrgoOB3fLa7pxLrbdS4VLiM+cHwKnMUlg9wzBc0VxIakSYdY/r91XxiwbMMAzW2iBCRH4QIkHE10xd16kE9SHCRYEDystnmSnwCh6daxbh3pGo3cJco3ZbVVUQwWtn93XOZYxPKlws3E3TSMYAySK7qKpK0sTndDrd4tZyosLFY2utH9r168Hl2MBcD4eDHzmdTvR7DwcD5tfOH71pGhbxFGlVAQRF4CgwfEwjzCo8qxzMPKFV56sK+UrI1Q0LAUHRAMDm/L0vGyIHA7vln8Mw5J1LJFytddM0EtXSRay42BexEDSR+3RGuMaYvGdHW9V1Pa0aFvJEv4JzLqiOQRV+EKaGNVZ5W5q2bfOymUkVlsoIT8A7QUxE+aI/jiPyIeEkuRG8LPwbKdoT8pPXI2q3kJBvt6wi3sOxzBDx7VbN7cvnc9xFCzeewL8YEeHKuyiTvh1fuHTJ0m4p4f1NgqIBm2uwXYMq/CDsiSOs1K7rZr/CvHCnWXOKqL8GHpwBac3sVLsjgXDZOZYm5X+cRUdqUnYbHKmZ1YCoqoBbZ7Z4IJXRwrNnV39hL3ckEC4Rbbfb6fALGaJ2a62dtVs+UuO7LxH1fS95/yLhCr0wVUOQbNE4Ya+qqp6QaYijQykkZxWioyj7MyESu+XaYupITf4EY5S71XGREqS2cdB9JtlInTeY9eBMVWE2vYkKF1NIktsUnnOCMUr5+1Dhep5zgjFKEW7hSp52gjFKEW7hSqZHamCu2OAywZEaNmBEAruVn2z5DxYUdefH435OAAAAAElFTkSuQmCC",
+      "asset": "synapse/audio-oled-banner-banner-1.png"
+    },
+    {
+      "id": "banner-2",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADv0lEQVRoge2a0XHrIBBF+Xj/KgF3oHSgEpQOlA7kVCB34KQC3IFLYFyB3YEmFWhSwebjTvZhWBCSnbzJC+cr3iCwxNVlWaMoD621ukZrTURd13kRIur73osMw6CUapoGH6dpqqrKWps5eqHgoXIaWWtVgDEG+uPIMAz0KUpu40aOxyM6NMawiAuFFWQJt2kaT7VVVU3TBB91I/RprqHd8kci0lqziAuFFcwLV7TbYRhEuyUiDnIEaQbcl4iMMa6ICwnCJw+P2O/3i/pZtL6Jg3pmJOIaWQgLYNGgfd+L7f8kRgIvLy/hg9tut4fD4f39nYPb7VYpxUG0QeTt7U1r/fT0hJa73W63282OWwBVVT08PLiR0+n0/Py82WweHx9zejgcDqfT6XK5eP3ECBdYDIquEhduNhvxWvyLBZA/9OVyeX19VZIIZxx3HMewd7wE7nat6zq056Bnt+wQ1tpit/koZ0fLYA3MN1GogedoBd7e+isQ1cirutA+3Z1bNGDGcTTGeBEicoPIdxHh9JeImqZZusz9ZmJyyTEdwNbjzsIiWD2Y5S8idkd464T2ib5Eu8WLK9ptXddeBKOy+1prVz++38ntwkVpEspLZ5kxYF6xXPNe3FO4XI71zPV4PLqR8/lM13s4vJqIuEpt25ZFXMhBFC4W7rZtc3qAZDEXdV0v/QLn8/kWt85HFC5LSGgf68grGgA8LDeD5sfKQc9u+eM4jsVulxIaB5Pz8w1SNUwB1kO4TD6YxEyrTlcV0ini0gujwhW/hLXWq47h8blBPBq8qcpJjLquu2V/8DsJp6CqqrZtM390hFjR2BVxJrgk36cTwtVapz1LvKppmli9XxauaLcwV9du+ZZ4D8cGjIhrt+qLs/v/EveRLpURvINrOJjT/EVvmibsZL7nl3noB39DLemvKgvXKxqwuXrbNawgbhA3yRFWat/3xW5XoK5z3EULN7zDbYxIZlVnUSZ9O65w6XN/ldCMLNxFR2pidusdqSl2uwJPuOF+N4bor54HJ8CG5DsXSU+4vObHknJBuKLdGmNm7ZaP1LjuS0TDMJQjNetQQVUBpjBbnIlltPDs2dU/c5Q74gmXiPb7fXj7f9uHoRy75QpF7EhNOcF4F8KZy/TCWA0hZ4vGW+26rpuAxIU49Bcj56yCeBfi/kyunIV2W04w/hNEy5nNPpESxLZxmKBEshE7bzDrwYmqwmx6IwoXahRzG79pOcFY+BFcCbecYCz8FK6EGx6pgbkiTWa8IzVswIh4drvu9/FCIc0HkBZ15zslUP8AAAAASUVORK5CYII=",
+      "asset": "synapse/audio-oled-banner-banner-2.png"
+    },
+    {
+      "id": "banner-3",
+      "src": "data:image/png;base64,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",
+      "asset": "synapse/audio-oled-banner-banner-3.png"
+    },
+    {
+      "id": "banner-4",
+      "src": "data:image/png;base64,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",
+      "asset": "synapse/audio-oled-banner-banner-4.png"
+    },
+    {
+      "id": "banner-5",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADd0lEQVRoge1abZXrIBClz0AiAQlIQEIlIKESIqESIgEHTR1EAusAB7wf9+wcDlACpLtLsnt/NXQ6uQzDfEAZOw6u1+tPU/jDHyrBOXfOcc6/4V3zPLtizPP8G5Qci1tHwAy/gfo8z9Za51yJsHPOWhuzOpmSGD1z6whSStp2Xxp0YUohRLk1hRCBQU+mJEbP3PrCsizfky9gHXygQSGEMYYIWGvHcSR5CPjySSXMS4vBFAqV0NvxiFjlf1vOJEjBeSYNVjLGQKCWG/2cfS56LbeOQOFWKRX4zSvc7/e2dwV+AMCCy7JM0zRNk688KZ8cZIyt62qMMcas67r50njQzzmo+GPHLWQC55g+sSkfIGMlrbXWGuaqnWAwx6TjbnLrCJgAohQ++7aOcbvdnHO3263hXRlrVsnHg3ikdW1QQouqlMIe3uO4vmNtypeIOedoQ67rWuKjyUFkEqXUsR0X4Zai7PV6zQddzjlmXhKYY7yyJpaZcy6llFJuyseDmAginHOuQQloYA+j6vCXttZxrbXLsizLopTalA+QtxJ7keVLuEGJtVZrnVfyL8OvByAv3+931HZa64+Pj2EYfHP7mOd5GAbG2DAM+cDcAKXU4/F4PB4Nv0U9B1+hxwY8n08hhBDi+Xy2aegfWmt/Yx8PyaIWg6jfA6BIsNZSJq31j0z+YoxxzpuTYHBg6fdnVREXARvBe0/E7bZUQBKgmqGWWxdAlxoHTowHQZeKBFS3cYtQgqR1qO2YpgmvzssnB9d1pexsrfX7syrHpVZVSrnHcd/enMFZqYxpmCDNcRxH2uG13H4emTMERNYg6FLvj0fy46qL4qR1guOwPbHEp1qrhDRQvbHHccunE2PTSsnjsBJuNEdsg5y86xvJw4FxHAOnpCLBv56grLqJwpWLt1BSPq8kRqESKWVQ+QghqBb8OibNYnn5vUre4FxfhmQhC8Apqdn3iwTCOI5BpHyFt1nzjEqaxX6EW++goEulXm05mwSM4t8wbwIxL16S0yjp2UqHBJoAOrV9y38YYBRjjNa6RF5rjbQQL8lplMTomdsB4F97tt2TxXDOTdNUvg1QpaBuOauSGD1zOwboAuldChG8q24uYP1gSc6kJEbP3I4B7MI3/tHRZTvCV4gPd8+kJEYP3C61v+wNaM7epW3Pbr5cLqdUEqMHbv8B6P/JX3Mo07YAAAAASUVORK5CYII=",
+      "asset": "synapse/audio-oled-banner-banner-5.png"
+    },
+    {
+      "id": "banner-6",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADDElEQVRoge2Z7ZGyMBSFwztbQMYCDB2INmA6kA6wBG3AYSyAsQTsgA6kAqWEQAFOrODujzubYQAxIG+IH8+Pnd1MPDkHb8jHOp7nkfEoiuJ6vWp2nkwm0+n0JXR0sM2zyezP82/EsYuiiKIItImiqCgK+3W+2d+cOI6llACg0xkApJRxHNuvo4Ntnk1mHwTH933zo57P5/1+7/s+5/xyuTiO8/AjADCfz9M0TZJkt9stFgsLdXSwzbPJ7AMyzlahKIogCDjnWZaV29frtVqM1ut15VNZlnHOgyBQi9Q9HUJIZWnrpwMAaZoSQnzfBwAhRLvOM9krhivxO3lWSCkH0dHx8ymoYipXVRzHWCsAUFmJGvu3twshwj/66ajCRWM6OjrcGwsNZ1mGNdfb81g6H0FjeCEEAHieV3+99ShcrDmdce+1owilFN86lNKHOjq0T5LNZlOJ32+ycc7Rtuu6z+jo+zHJT/ktYozGQSmljLE8z7Msy/OcMUYpLU/0ukK7eUop55wQIoSoTAN9Hdd18d1/PB7vmXnoRLOn53lpmi6Xy/ZuDz1j8M1mg3/2zt7Jj2HGvA6rgEWGOy38iS29mc1mp9PpdDrVt8v6MMZWqxUhpKVqh+V2u5HnqgGDo+3tdju6n7eivtwcDofKgeBwOLT0f9iOBwjOuVoru+rgcum6Lm7yzGwV1BLf2zMGV/uu3jpd/XwE9fB4CEj/wC+gpf/D9qH2uIQQ9GPycPZM4aJnfBGUz7hddbr6+Qjq4etPp/eXR4YuXLwOG+pkfW8sReUaq59nPOM+c6vQ1Y9JnFH+/4H3tXjXrX5pp9Ifbdumo4Ntnk1mHxCLDmdfvrwAuMqojb8OeMnQuMzZo/PN/uZgZiFEkiQ6/ZMkwfvIxoduj44Otnk2mf3lAYAwDKWU5buqFlzXlVKGYVh/6Fbp6GCbZ5PZXx4AwPD6H8GHW3/oVunoYJtnk9mHwmm8M/rf4HYqz3PNKa4QQjDGHMcp343bo6ODbZ5NZh+QH/NDKhhjg0xZ23RMjmWbjjF+AXym6R1hnTyUAAAAAElFTkSuQmCC",
+      "asset": "synapse/audio-oled-banner-banner-6.png"
+    },
+    {
+      "id": "banner-7",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAAEC0lEQVRoge1a7W2kMBD1nvIflAICHeBUEDpYOohLQNtASAMrSnA6YDuACpZ0QCggWirgfoxiOZiPAY/J3enejxVY8GbsGY+fvRw45+wLdV2ra6r2RXDO7e22bfv5+Ym0eH9///Dw4JQH7/9auOYh9F+94iKvfmE8sEEzCxITbduez+cejfP53LatOx4kpJR4W1JK1zxrsUNkZ3BHyGVTADYDsi1JEsbY4XBYfL7ve3j4dDq54EFCSrnWlpRSCOGIxwWc5gNl4jLGRqfa6DBRTX3ItjiOr9cr8pU4jsuyHDhGxbOItm0h2zbYklKeTifQJ1Q8lpgKrpkJYRjam1P4Nk3jOFbXEJL5dhNrExc6s9auai/Lsu/7x8fHuq77vldVh3NeFEUQBHDbdV0YhrfbjTEGj3HOr9fr4XAAKioepP+jtvq+18dHr6ADW6t4dKopng3jX5YlxBpflczE3Rx3Zl9xzUw1ewIthOpqAHNJyvM8CIKqqqDbvu9Dts28QsizzWfG2MfHx8woIX1+fX2FiyRJoijqug7DQwWI9aikGaSKZQEmlgomVB+EEBAVdxms8PT0xL5P0J/lQaJpmizLLEmAgXOepiljDH7dAaI5yFcVa3egSVx9hiHrK63iMVFVFVgBQ/MKZwceDDjnwC+ltAm87/tSSs/z3t7e3CUQDMjiAYJZg0lcuoM9KaAoCnW9ql1tVEfr61QqK6rNdhchhHh5eWHTm25kIuJ5Fv3HOz8FoJrhyfM8iqL39/f5cks+/mas59dbffDX2nUuFdgu2sAEHFzDvjuKoh/nwaCua3tZIoR4fn7uuk4IMVDkO2C3WNv+AaFW/MF8Gu2A5QqIR1VVnucVRSGE8H3/x3mQCMMw+8JmkjzPGWNN0yRJYkmFx1RkB/mgbu2FIn3F1TswKhJcq1vGWJqmRVEcj8fj8fgn8CARBAEIEva1x9oAz/MYY1EUqfXBae6OKl097lOlKkkSG9X0TbHpkggm7mK7ulWu67JGPan3IQxD/cVtdlWjOsLUzzJnMHgeqKh4kP5b2iLn2Tz+TCvwbHYfNlprbezaSoU0TV0fuPzHf5gg+8hGHRgpuaPPNtfqFvY0mK9M2Oy5LBXPv+rzPAaBVmmgVlpClUiTuFNFd5CvtK4PDF0ulwMCl8tlZgpR8fyrPk9hENmpOkW4ON/pyt3yOssyJdWl9oeKiTzPqezCre/7yEFJ07Sua8WgSygSnkWf4cLGlmIg4cH4jLk2t4CmriWMO+Wpgj6ggH0Ov2Crh/wGtGmaPM9HI03Fg8Hf6DMS+wTdyYfk4RdckJu43W6rTnyyLBs9mafiweBv9HktnKYB/Tmufui9T+4GQdAb3/L9IM+etvb0eRGDcM+oCHv8Bo9wewSPgSsfAAAAAElFTkSuQmCC",
+      "asset": "synapse/audio-oled-banner-banner-7.png"
+    },
+    {
+      "id": "banner-8",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOgAAAAUCAIAAAAIm+ZNAAAACXBIWXMAAAsSAAALEgHS3X78AAADQElEQVRoge2Z33HjIBDG0U3exaQAiw6spIFQgjqQSkgFGZwCPCpBJVACFSS4A6wCMqSCvYf1cTpbkvXHEUqO70kh4jcLwrsfEKVpStakuq4/Pj4Gvnx/f7/ZbALHI8eXfvkO4B/Vdb3f72Gw9vt9XdeB44sTdFJVVdZaABjyMgBYa6uqChxfHI+KsizzHQMhhLy9vb2+vmZZxjl/f3+PouhqFwB4eHhQSkkpX15eHh8fA2cxjnetxSrUdZ3nOedca91sf35+dgWLc37WS2vNOc/z3BWyLg4KAJRSl+0DOS4SSikhpCxL/NMxh8fTLMTW2qIopo2LUqqUcqiyLKdxLu1BPyfor9xkNWetqioA0FoDgBDi6vs97aRj4Q7nuI+KZQqjcsxR8QCAMUYIgSW7GdUoDs6PMaYsS0S538AojhBCCIHDweer8QSd1DpBxhjMtQAgpbz6fk87ucXCxXjKsqSUYrKcvHCxF5aU5tDGcgCAMUYIybKsOcBp89Pa2PW+R92dpTFfag2DUpokyeFwwI9xaRUuCfOH088xxmAkeIwopczzfFo8aZoqpZBzVuJHcY7HI0aFs4Q2ZgJnoFayYNbicVuFKxXd2OFwiOMYU4tfKaW22y3G1uqYByqO46enpziOCSFnHneUcNUSQqy1hJDtdjsZFTRFlyUJXZcxRimFRbl5BuLFKiiliqLAkmqMQQ8zxyo42rRxoV3BZ8bY/2MVvkHGTZLEZaZ+t7CM3MqYk24JIZRSzvnMEX1+fsZxjAkbi7hbx0ELqWsXj89pms7ZfbuW+RmX/NkyFkUxJ+M21fS4ozjuKMDJ/RJ+dsa9W8mNSKvJ2+12zsBprXe7XQ8BB9JvFpvACRzX3VltxlgXsz+e5liklK2nzkM4Qgh0LIwxrbWUsqsODJyfnv82Od515zuAPp1tYL3viC+741ns8pE0VVXVrRbTSk4MvpmwEmHxHSgsi62lMHC+mhN0Es6LMebsoqFLUkqs0a0fJnC+mhN0EgDgFejAw1rGmLUWdyeBszwn6CQAwAka3sXd9QfO8hy/imYeRt5KaLmOx+PYuzFjTJIkURS5a+HAWYDjXes6VUiS5CY/68BZhuNRvwHiyD/sTaLIYQAAAABJRU5ErkJggg==",
+      "asset": "synapse/audio-oled-banner-banner-8.png"
+    }
+  ],
+  "icons": {
+    "restart": "synapse/audio-oled-banner-restart.svg",
+    "pause": "synapse/audio-oled-banner-pause.svg",
+    "increase": "synapse/audio-oled-banner-increase.svg",
+    "decrease": "synapse/audio-oled-banner-decrease.svg",
+    "bold": "synapse/audio-oled-banner-bold.svg",
+    "italic": "synapse/audio-oled-banner-italic.svg",
+    "underline": "synapse/audio-oled-banner-underline.svg",
+    "left": "synapse/audio-oled-banner-left.svg",
+    "right": "synapse/audio-oled-banner-right.svg",
+    "up": "synapse/audio-oled-banner-up.svg",
+    "down": "synapse/audio-oled-banner-down.svg"
+  },
+  "limits": {
+    "horizontal_width": 920,
+    "vertical_with_image": 176,
+    "vertical_without_image": 256
+  },
+  "motion": {
+    "horizontal_base_ms": 3400,
+    "horizontal_width_ms": 28,
+    "vertical_ms": 5000,
+    "restart_ms": 100
+  },
+  "textarea": {
+    "content_width": 385,
+    "content_height": 98,
+    "padding": 2,
+    "border": 1,
+    "outer_width": 391,
+    "outer_height": 104
+  },
+  "placeholder": "Enter text here"
+}

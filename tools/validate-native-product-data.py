@@ -55,6 +55,12 @@ def validate_controls(filename):
                 assert section.get('column') in (None, 'left', 'right')
                 for control in section['controls']:
                     key, kind = control['key'], control['kind']
+                    # Descriptors cannot borrow another product's control id
+                    # or implementation evidence. This caught a 179 pairing
+                    # action accidentally inserted into 126's lighting page.
+                    assert key.startswith(f'{pid}:'), (pid, key)
+                    if source := control.get('source'):
+                        assert source['path'].startswith(f'.ref/devices/{pid}/'), (key, source)
                     assert key not in keys, (pid, key)
                     keys.add(key)
                     counts[kind] += 1

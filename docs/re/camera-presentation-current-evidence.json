@@ -1,0 +1,2118 @@
+{
+  "schema_version": 1,
+  "scanner_sha256": "44c92d224f0b7a07bd2dcb65ccc1fa922957da5ff9efb654931f9940432cac8f",
+  "products": [
+    {
+      "product_id": 3592,
+      "source": ".ref/devices/3592/static/js/main.323f0a8a.js",
+      "sha256": "e2752209d1aa227aca1dbaee32f7ef1ef261ac9b8ccb906636976174dc4e464b",
+      "wrapper": {
+        "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+        "offset": 4429188,
+        "end": 4431461,
+        "sha256": "9e7c652dbdde37ca11fb15145bc39e5e58b386e7902ec3d285d244a7a4016e2b",
+        "source": "e=>{const E=e.checkBoxName,a=e.hasStepper,_=e.hasCheckbox,t=e.hasSwitch,o=e.hasReset,i=e.showPreview,n=void 0!==i&&i,r=e.showRefreshButton,s=void 0!==r&&r,T=e.isActiveSwitch,I=e.handleOnSwitch,O=e.noToggle,A=e.tooltipContent,S=e.infoContent,l=e.className,R=e.allowDecimal,N=e.stepValue,d=e.handleStepperValue,c=e.handleCheckbox,u=e.handleOnReset,C=e.checkBoxValue,D=e.stepperValue,P=e.disabledStepper,p=e.minStepper,M=e.maxStepper,U=e.maxLength,h=e.disableSwitch,G=void 0!==h&&h,g=e.warningTooltip,H=(0,m.useDispatch)(),f=(0,L.useState)(!0),v=(0,Pe.A)(f,2),B=v[0],F=v[1],y=(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),V=(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera});return(0,Ye.jsxs)(\"div\",{className:\"wrapper-container \".concat(null!==l&&void 0!==l?l:\"\"),children:[(0,Ye.jsxs)(\"div\",{className:\"header-wrapper\",children:[(0,Ye.jsxs)(\"div\",{className:\"wrapper-button\",onClick:()=>{O||F(!B)},children:[!O&&(0,Ye.jsx)(Ye.Fragment,{children:B?(0,Ye.jsx)(\"i\",{className:\"step-down-icon\"}):(0,Ye.jsx)(\"i\",{className:\"step-right-icon\"})}),(0,Ye.jsx)(\"div\",{className:\"function-name \".concat(G?\"disabled\":\"\"),children:(0,Ye.jsx)(ye.A,{text:e.name})})]}),t&&(0,Ye.jsx)(al,{active:T,onClick:I,disable:G}),o&&(0,Ye.jsx)(\"div\",{role:\"button\",className:\"btn-reset\",style:{cursor:\"pointer\"},onClick:()=>{u&&u()}}),A&&(0,Ye.jsx)(Pa,{text:A}),S&&(0,Ye.jsx)(Pa,{text:S,isInfo:!0}),g&&(0,Ye.jsx)(\"div\",{className:\"mode-name mode-name-s2\",children:(0,Ye.jsx)(Pa,{text:g})}),s&&(0,Ye.jsx)(\"div\",{role:\"button\",onClick:()=>{V||(Jl(!0)(H),Ql(!0)(H))},className:\"btn-reset reset-setting invert-horizontal btn-reset-close\",style:{marginLeft:g?\"10px\":\"auto\"}}),n&&(0,Ye.jsx)(\"i\",{role:\"button\",className:\"show-preview \".concat(y?\"icon-open-eye\":\"icon-close-eye\",\" \").concat(s?\"btn-show-preview-close\":\"\"),onClick:()=>{n&&ul(!y)(H)}}),a&&(0,Ye.jsx)(kU,{minValue:p,maxValue:M,maxLength:U,value:D,stepValue:N,active:!P,extraClass:\"override-stepper\",setParentState:e=>{d&&d(e)},allowDecimals:null!==R&&void 0!==R&&R}),_&&(0,Ye.jsx)(RA,{id:\"wrapperCheckBox\",onCheck:()=>{c&&c(!C)},active:C,name:E})]}),B&&(0,Ye.jsx)(\"div\",{className:\"content-wrapper\",children:e.children})]})}"
+      },
+      "tooltip": {
+        "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+        "offset": 3874734,
+        "end": 3875784,
+        "sha256": "aafdd94cbbc371638c12e7beb7d8188ef757b48096205a85f8259df45499a5a1",
+        "source": "e=>{const E=(0,L.useState)(!1),a=(0,Pe.A)(E,2),_=a[0],t=a[1],o=(0,L.useState)({left:\"0\",top:\"0\",width:\"0\",height:\"0\"}),i=(0,Pe.A)(o,2),n=i[0],r=i[1],s=(0,L.useRef)(null),T=e=>{const E=e.getBoundingClientRect(),a=e.parentNode.querySelector(\".tip\"),_=a.clientHeight,t=a.clientWidth;let o=\"0\",i=\"0\";return o=E.right+\"px\",i=E.bottom+\"px\",E.right+t>window.innerWidth&&(o=E.left-t+\"px\"),E.bottom+_>window.innerHeight&&(i=E.bottom-_+\"px\"),{left:o,top:i,width:t+\"px\",height:_+\"px\"}};(0,L.useEffect)(()=>{const e=s.current;r(T(e))},[]);return e.text?(0,Ye.jsxs)(\"div\",{className:\"tooltip_parent\",children:[(0,Ye.jsx)(\"div\",{className:e.isInfo?\"info-icon\":\"help\",onMouseEnter:e=>{r(T(e.target)),t(!0)},onMouseLeave:()=>{t(!1)},ref:s}),(0,Ye.jsx)(\"div\",{className:\"tip\",style:(0,D.A)({visibility:\"hidden\",opacity:0},e.style),children:(0,Ye.jsx)(ye.A,{text:e.text})}),(0,p.createPortal)((0,Ye.jsx)(\"div\",{className:\"\".concat(_?\"drop-tips on\":\"drop-tips\"),style:(0,D.A)((0,D.A)({},n),e.style),children:_?(0,Ye.jsx)(ye.A,{text:e.text}):\"\"}),document.body)]}):null}"
+      },
+      "processing_mount": {
+        "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+        "offset": 4555590,
+        "end": 4557699,
+        "sha256": "4c73d7b301a78fedd375a77ea12973c32d24dfbb3b04a830356919d333a99795",
+        "source": "()=>{const e=(0,m.useDispatch)(),E=$h().isDisabled,a=(0,m.useSelector)(e=>e.advancedWebcamReducer.ldc,m.shallowEqual),_=(0,m.useSelector)(e=>e.advancedWebcamReducer.lowLightCompensation,m.shallowEqual),t=(0,m.useSelector)(e=>e.advancedWebcamReducer.dynamicNoiseReduction,m.shallowEqual),o=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolution,m.shallowEqual);return(0,Ye.jsxs)(\"div\",{className:\"camera-container processing-container scrollable \".concat(E?\"disabled\":\"\"),children:[(0,Ye.jsx)(AG,{}),(0,Ye.jsx)(\"div\",{className:\"camera-divider\"}),(0,Ye.jsx)(xU,{noToggle:!0,className:\"wrapper-custom\",name:Ve._Kh,isActiveSwitch:a,handleOnSwitch:async()=>{Dl(!0)(e),Zl(!0)(e),Kl(!a)(e),Oi({category:Zo,eventCategory:ri,action:Ao,data:{enabled:!a}})},hasSwitch:!0,tooltipContent:Ve.AVN,children:a&&(null===o||void 0===o?void 0:o.height)>=1440&&(0,Ye.jsx)(\"div\",{className:\"mode-description\",children:(0,Ye.jsx)(ye.A,{text:Ve.zjd})})}),(0,Ye.jsx)(\"div\",{className:\"camera-divider\"}),(0,Ye.jsx)(xU,{noToggle:!0,name:Ve.RAi,isActiveSwitch:_,handleOnSwitch:()=>{Zl(!0)(e),wl(!_)(e),Oi({category:Zo,eventCategory:ri,action:So,data:{enabled:!_}})},tooltipContent:Ve.jn6,hasSwitch:!0,children:(0,Ye.jsx)(\"div\",{className:\"mode-description\",children:(0,Ye.jsx)(ye.A,{text:Ve.guc})})}),(0,Ye.jsx)(\"div\",{className:\"camera-divider\"}),(0,Ye.jsxs)(xU,{name:Ve.VMM,tooltipContent:Ve.xAV,children:[(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.XXG})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:t.state2D,onClick:()=>{Zl(!0)(e),zl((0,D.A)((0,D.A)({},t),{},{state2D:!t.state2D}))(e),rh((0,D.A)((0,D.A)({},t),{},{state2D:!t.state2D}))}})]}),(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,Ye.jsx)(ye.A,{text:Ve.rI2})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:t.state3D,onClick:()=>{Zl(!0)(e),zl((0,D.A)((0,D.A)({},t),{},{state3D:!t.state3D}))(e),rh((0,D.A)((0,D.A)({},t),{},{state3D:!t.state3D}))}})]})]})]})}"
+      },
+      "groups": [
+        {
+          "group": {
+            "key": "3592:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3592:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4558941,
+            "end": 4559512,
+            "sha256": "a3b879e5f4d8c9101606c435162e72f2099d4ebd9b9676de0647e7552b91bad3",
+            "source": "{name:Ve.JGr,tooltipContent:Ve.VEI,children:(0,Ye.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:RG.map(e=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(O===e.id?\"selected\":\"\"),onClick:()=>(e=>{if(e===O)return;const E=Z.DEFAULTPROFILE.image.find(E=>E.name===e),a=NG.find(E=>E.name===e),_=(0,D.A)((0,D.A)((0,D.A)((0,D.A)({},a),\"custom\"===e&&n),\"custom\"!==e&&{userSettings:(0,D.A)({},E.dataSet.userSettings)}),{},{name:e});kl(_)(o),Zl(!0)(o),sh((0,D.A)((0,D.A)({},_),{},{dataSet:_}))})(e.id),children:(0,Ye.jsx)(ye.A,{text:e.name})},e.id))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3592:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3592:brightness"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4559575,
+            "end": 4559843,
+            "sha256": "fb6e2a178b48a90720808acf3a0450e0bfa9bd06531831c881471485fa798bcc",
+            "source": "{name:Ve.a1g,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.brightness,handleStepperValue:A,hasStepper:!0,noTooltip:!0,children:(0,Ye.jsx)(QU,{noTip:!0,min:0,max:255,value:i.brightness,step:1,active:!0,changeValue:e=>A(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3592:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:contrast"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4559940,
+            "end": 4560204,
+            "sha256": "93b8a5d5935df72b2838eaa07d632e66a06bd2c802fcdbeb18300aed58c44e9e",
+            "source": "{name:Ve.DkT,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.contrast,handleStepperValue:S,hasStepper:!0,noTooltip:!0,children:(0,Ye.jsx)(QU,{noTip:!0,min:0,max:255,value:i.contrast,step:1,active:!0,changeValue:e=>S(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3592:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:saturation"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4560301,
+            "end": 4560569,
+            "sha256": "4e8c7f45f32a613aff58717c175f48f301c3563434061f320062ec8c586ae0d3",
+            "source": "{name:Ve.Bq1,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.saturation,handleStepperValue:l,hasStepper:!0,noTooltip:!0,children:(0,Ye.jsx)(QU,{noTip:!0,min:0,max:255,value:i.saturation,step:1,active:!0,changeValue:e=>l(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3592:white-balance",
+              "3592:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3592:white-balance",
+            "header_checkbox": "3592:auto-white-balance"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4561464,
+            "end": 4562265,
+            "sha256": "9399dfd5e7f60e9cc58cb9b9868fa937d617a791bf527247a4762a7ae55874cb",
+            "source": "{name:Ve.Z8r,checkBoxName:Ve.Q8g,stepValue:10,minStepper:Z.DeviceInfo.whiteBalance.min,maxStepper:Z.DeviceInfo.whiteBalance.max,maxLength:Z.DeviceInfo.whiteBalance&&null!=Z.DeviceInfo.whiteBalance.max?Z.DeviceInfo.whiteBalance.max.toString().length:4,stepperValue:i.whiteBalance.value,checkBoxValue:i.whiteBalance.isAuto,disabledStepper:i.whiteBalance.isAuto,handleStepperValue:d,handleCheckbox:()=>{const e=T.whiteBalance;c(\"whiteBalance\",(0,D.A)((0,D.A)({},e),{},{isAuto:!(null!==e&&void 0!==e&&e.isAuto)}),!0)},hasStepper:!0,hasCheckbox:!0,noTooltip:!0,children:(0,Ye.jsx)(QU,{noTip:!0,min:Z.DeviceInfo.whiteBalance.min,max:Z.DeviceInfo.whiteBalance.max,value:i.whiteBalance.value,step:10,active:!i.whiteBalance.isAuto,changeValue:e=>d(e),minTag:Ve.Y7F,maxTag:Ve.ScM,extraClass:\"gradient_slider\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3592:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4564143,
+            "end": 4564396,
+            "sha256": "2dedc576154866f390a05c82a6bd12e080c221926a2e88020aa4c9bf918c2a5d",
+            "source": "{name:Ve.qJr,noTooltip:!0,children:(0,Ye.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:CG.map(e=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(e.value===R?\"selected\":\"\"),onClick:()=>v(e.value),children:e.name},e.name))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:WATERMARK",
+            "title": "WATERMARK",
+            "controls": [
+              "3592:watermark",
+              "3592:watermark-position"
+            ],
+            "collapsible": true,
+            "tooltip": "WATERMARK_TOOLTIP",
+            "header_switch": "3592:watermark"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4564497,
+            "end": 4565397,
+            "sha256": "5eaa0a9381ddce5e4ffdb079bed6ab4f4feed52c403e05a839ff25bfbe8ef05d",
+            "source": "{name:Ve.Tjs,isActiveSwitch:S.isEnabled,handleOnSwitch:async()=>{Dl(!0)(I),Zl(!0)(I),Xl((0,D.A)((0,D.A)({},S),{},{isEnabled:!S.isEnabled}))(I),Th((0,D.A)((0,D.A)({},S),{},{isEnabled:!S.isEnabled}))},hasSwitch:!0,tooltipContent:Ve.LLi,infoContent:r&&N.isEnabled?Ve.M6Z:null,disableSwitch:r&&N.isEnabled,children:[(0,Ye.jsx)(\"div\",{className:\"mode-description \".concat(S.isEnabled?\"\":\"disabled\"),style:{marginTop:10},children:(0,Ye.jsx)(ye.A,{text:Ve._al})}),(0,Ye.jsx)(\"div\",{className:\"direction-container \".concat(S.isEnabled?\"\":\"disabled\"),children:uG.map((e,E)=>(0,Ye.jsx)(\"div\",{id:e.name,className:\"direction-item\",onClick:()=>{var E;(E=e.name)!==S.position&&(Dl(!0)(I),Zl(!0)(I),Xl((0,D.A)((0,D.A)({},S),{},{position:E}))(I),Th((0,D.A)((0,D.A)({},S),{},{position:E})))},children:(0,Ye.jsx)(\"div\",{className:\"direction-line \".concat(e.name,\" \").concat(S.position===e.name?\"active\":\"\")})},E))})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3592:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3592:mirror"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4565468,
+            "end": 4565640,
+            "sha256": "b1b7bd877113388fd119358f7c41b7b71aa13a354754005b769150c047828e62",
+            "source": "{name:Ve.S7W,isActiveSwitch:l,handleOnSwitch:()=>{Zl(!0)(I),jl(!l)(I),Oi({category:Zo,eventCategory:ri,action:uo,data:{enabled:!l}})},hasSwitch:!0,noTooltip:!0,noToggle:!0}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3592:zoom",
+              "3592:pan-tilt",
+              "3592:view-preset",
+              "3592:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3592:zoom"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4539909,
+            "end": 4540837,
+            "sha256": "b065c5df4eaa19aa50173608c0150e82a285ebdc9a72c49583caad07644d6005",
+            "source": "{disabledStepper:i(),name:Ve.c23,tooltipContent:Ve.Kat,stepValue:.1,minStepper:1,maxStepper:4,stepperValue:t.zoom,handleStepperValue:o,hasStepper:!0,allowDecimal:!0,roundUpDecimals:!0,children:[(0,Ye.jsx)(QU,{noTip:!0,noTag:!0,min:1,max:4,step:.1,active:!i(),value:t.zoom,changeValue:e=>o(e)}),(0,Ye.jsx)(hh,{isDisabled:i()}),i()?(0,Ye.jsx)(\"div\",{className:\"mode-description\",children:(0,Ye.jsx)(ye.A,{text:Ve.zjd})}):null,(0,Ye.jsxs)(\"div\",{className:\"\".concat(i()?\"disabled\":\"\"),children:[(0,Ye.jsx)(\"div\",{className:\"preset-name\",children:(0,or.JN)(Ve.QaP)}),(0,Ye.jsx)(\"div\",{className:\"preset-container\",children:E.data.map((a,_)=>(0,Ye.jsx)(\"div\",{className:\"preset-item \".concat(a.mode===E.viewMode?\"selected\":\"\"),onClick:()=>{var _;(_=a.mode)!==E.viewMode&&pl(_)(e)},children:a.mode},\"\".concat(a.mode,\"_\").concat(_)))}),(0,Ye.jsx)(\"div\",{className:\"shortcut-key-name\",children:(0,or.JN)(Ve.R95)}),(0,Ye.jsx)(qh,{})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3592:autofocus",
+              "3592:focus",
+              "3592:focus-mode",
+              "3592:focus-tracking",
+              "3592:focus-lighting"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT",
+            "header_switch": "3592:autofocus"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4449753,
+            "end": 4451568,
+            "sha256": "d7d3d15564747c05ae4365e9b8d5d9f38936347810764d8850bac261edd7f5a5",
+            "source": "{name:Ve.dgn,tooltipContent:Ve.$iM,hasSwitch:!0,isActiveSwitch:E.isEnabled,handleOnSwitch:()=>{hl(!E.isEnabled)(e),th({enabled:!E.isEnabled,type:q.ozT})},children:(0,Ye.jsxs)(\"div\",{className:\"auto-focus-container\",children:[!E.isEnabled&&(0,Ye.jsxs)(\"div\",{children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.EzE})}),(0,Ye.jsx)(QU,{noTip:!0,noTag:!0,min:1,max:450,value:E.manualFocus,step:1,active:!0,changeValue:E=>(E=>{Zl(!0)(e),Gl(E)(e)})(E),minTag:\"\",maxTag:\"\",midTag:\"\",thumbTag:\"\"})]}),E.isEnabled&&(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.gah})}),(0,Ye.jsx)(\"div\",{className:\"container-focus\",children:dr.map((a,_)=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(a.value===E.mode?\"selected\":\"\"),onClick:()=>{return _=a.value,Zl(!0)(e),gl(_)(e),void th({enabled:E.isEnabled,type:q.kKG,payload:_});var _},children:(0,Ye.jsx)(ye.A,{text:a.name})},_))}),(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.eWS})}),(0,Ye.jsx)(\"div\",{className:\"container-focus\",children:ur.map((a,_)=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(a.value===E.tracking?\"selected\":\"\"),onClick:()=>{return _=a.value,Zl(!0)(e),Hl(_)(e),void th({enabled:E.isEnabled,type:q.gtA,payload:_});var _},children:(0,Ye.jsx)(ye.A,{text:a.name})},_))})]}),(0,Ye.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:\"\".concat(E.isEnabled?10:0,\"px\")},children:(0,Ye.jsx)(ye.A,{text:Ve.Tf7})}),(0,Ye.jsx)(\"div\",{className:\"container-focus\",children:Cr.map((a,_)=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(a.value===E.lightingType?\"selected\":\"\"),onClick:()=>{return _=a.value,Zl(!0)(e),fl(_)(e),void th({enabled:E.isEnabled,type:q.ebH,payload:_});var _},children:(0,Ye.jsx)(ye.A,{text:a.name})},_))})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3592:auto-exposure",
+              "3592:iso",
+              "3592:shutter",
+              "3592:metering",
+              "3592:compensation",
+              "3592:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT",
+            "header_switch": "3592:auto-exposure",
+            "header_reset": "3592:reset-exposure"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4447147,
+            "end": 4449603,
+            "sha256": "5988b4da3c734db9fadd654bd36dffb3c106a16538c0a5fcced99b641f3d2879",
+            "source": "{name:Ve.aDz,tooltipContent:i,hasSwitch:!0,hasReset:!0,isActiveSwitch:O,handleOnReset:()=>{Bl(Z.DEFAULTPROFILE.camera.autoExposure)(n)},handleOnSwitch:()=>{Zl(!0)(n),vl(!O)(n),oh((0,D.A)((0,D.A)({},s),{},{isEnabled:!O}))},children:(0,Ye.jsxs)(\"div\",{className:\"auto-exposure-container\",children:[!O&&(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsxs)(\"div\",{className:\"mode-name\",children:[\"ISO\",(0,Ye.jsx)(Pa,{text:Ve.GOR})]}),(0,Ye.jsx)(\"div\",{className:\"common-container\",children:Dr.map((e,E)=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(e.value===d?\"selected\":\"\"),style:{minWidth:\"75px\"},onClick:()=>U(e.value),children:e.name},\"\".concat(E,\"_\").concat(e.name)))}),(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,Ye.jsxs)(\"div\",{className:\"mode-name\",children:[(0,Ye.jsx)(ye.A,{text:Ve.SJ$}),(0,Ye.jsx)(Pa,{text:Ve.e08})]}),(0,Ye.jsxs)(\"div\",{className:\"mode-name\",style:{marginLeft:10},children:[h,\"s\"]})]}),(0,Ye.jsx)(eh,{noTip:!0,originData:pr,min:Z.DeviceInfo.shutterSpeed.min,max:Z.DeviceInfo.shutterSpeed.max,value:u,active:!0,changeValue:e=>(e=>{e!==u&&(Zl(!0)(n),P(O),yl(e)(n))})(e),minTag:Ve.NWy,maxTag:Ve.kL5})]})]}),O&&(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsxs)(\"div\",{className:\"mode-name\",children:[(0,Ye.jsx)(ye.A,{text:Ve.cSt}),(0,Ye.jsx)(Pa,{text:Ve.cTh})]}),(0,Ye.jsx)(\"div\",{className:\"common-container\",children:Lr.map(e=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(e.value===S?\"selected\":\"\"),onClick:()=>M(e.value),children:(0,Ye.jsx)(ye.A,{text:e.name})},e.value))}),(0,Ye.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.F9S})}),(0,Ye.jsx)(Pa,{text:Ve.ztv}),(0,Ye.jsx)(kU,{minValue:C,maxValue:3,maxLength:1,stepValue:.1,value:R,active:!0,extraClass:\"override-stepper\",setParentState:p,roundUpDecimals:!0,allowDecimals:!0})]}),(0,Ye.jsx)(QU,{noTip:!0,min:C,max:3,value:R,step:.1,active:!0,changeValue:e=>p(e),minTag:\"\".concat(C,\".0\"),maxTag:\"+3.0\"}),a&&(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:\"10px\"},children:(0,Ye.jsx)(ye.A,{text:Ve.Tf7})}),(0,Ye.jsx)(\"div\",{className:\"common-container\",children:Cr.map((e,E)=>(0,Ye.jsx)(\"div\",{className:\"default-button \".concat(e.value===T.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,Zl(!0)(n),P(O),void fl(E)(n);var E},children:(0,Ye.jsx)(ye.A,{text:e.name})},E))})]})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:PROCESSING:RESOLUTION_AND_MJPEG_QUALITY",
+            "title": "RESOLUTION_AND_MJPEG_QUALITY",
+            "controls": [
+              "3592:processing-resolution",
+              "3592:auto-quality",
+              "3592:quality-mode",
+              "3592:manual-quality"
+            ],
+            "collapsible": false,
+            "tooltip": "RESOLUTION_QUALITY_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4552965,
+            "end": 4554687,
+            "sha256": "c2841cab5067595d8d63ad4f32ab5a6f40ce39c8b464834e23b3b91a3b63b42b",
+            "source": "{name:Ve.L7_,tooltipContent:Ve.p_4,noToggle:!0,children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.kM4})}),(0,Ye.jsx)(Qe,{dataSet:Pr,value:o,selectOption:E=>{if(E===o)return;const a=Pr[E];Dl(!0)(e),Zl(!0)(e),Yl({width:null===a||void 0===a?void 0:a.width,height:null===a||void 0===a?void 0:a.height,fps:null===a||void 0===a?void 0:a.fps})(e),(e=>{const E=\"\".concat(null===e||void 0===e?void 0:e.height,\"p\"),a=null===e||void 0===e?void 0:e.fps;Oi({category:Zo,eventCategory:ri,action:To,data:{resolution:E,frameRate:a}})})({height:null===a||void 0===a?void 0:a.height,fps:null===a||void 0===a?void 0:a.fps})}}),(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.ezb})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:_.autoQuality,onClick:async()=>{Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{autoQuality:!_.autoQuality}))(e),ih((0,D.A)((0,D.A)({},_),{},{autoQuality:!_.autoQuality}))}})]}),_.autoQuality?(0,Ye.jsx)(OG,{outerClass:\"two-way-tab-custom\",modeA:Ve._TM,modeB:Ve.kuU,firstTabOn:_.mode===Nr.PERFORMANCE,toggleTab:async()=>{let E=_.mode;E=E===Nr.PERFORMANCE?Nr.QUALITY:Nr.PERFORMANCE,Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{mode:E}))(e),ih((0,D.A)((0,D.A)({},_),{},{mode:E}))},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"}):(0,Ye.jsx)(QU,{allowSettingValue:!0,noTip:!0,min:10,max:90,value:_.manualQuality,step:1,active:!E,changeValue:PS()(async E=>{E!==_.manualQuality&&(Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{manualQuality:E}))(e),ih((0,D.A)((0,D.A)({},_),{},{manualQuality:E})))},250),minTag:Ve._TM,maxTag:Ve.kuU})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3592:hdr",
+              "3592:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3592:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4552437,
+            "end": 4555586,
+            "sha256": "074cdc8ecca5a4ac3712001cebf2e3412e4f7c4b4b7d28b9ff3883bd09d44c57",
+            "source": "()=>{const e=(0,m.useDispatch)(),E=$h().isDisabled,a=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolution,m.shallowEqual),_=(0,m.useSelector)(e=>e.advancedWebcamReducer.mjpegQuality,m.shallowEqual),t=(0,m.useSelector)(e=>e.advancedWebcamReducer.hdr,m.shallowEqual);let o=(0,L.useMemo)(()=>Pr.findIndex(e=>e.width===(null===a||void 0===a?void 0:a.width)&&e.height===(null===a||void 0===a?void 0:a.height)&&e.fps===(null===a||void 0===a?void 0:a.fps)),[a]);-1===o&&(o=0);return(0,Ye.jsxs)(Ye.Fragment,{children:[(0,Ye.jsxs)(xU,{name:Ve.L7_,tooltipContent:Ve.p_4,noToggle:!0,children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.kM4})}),(0,Ye.jsx)(Qe,{dataSet:Pr,value:o,selectOption:E=>{if(E===o)return;const a=Pr[E];Dl(!0)(e),Zl(!0)(e),Yl({width:null===a||void 0===a?void 0:a.width,height:null===a||void 0===a?void 0:a.height,fps:null===a||void 0===a?void 0:a.fps})(e),(e=>{const E=\"\".concat(null===e||void 0===e?void 0:e.height,\"p\"),a=null===e||void 0===e?void 0:e.fps;Oi({category:Zo,eventCategory:ri,action:To,data:{resolution:E,frameRate:a}})})({height:null===a||void 0===a?void 0:a.height,fps:null===a||void 0===a?void 0:a.fps})}}),(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.ezb})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:_.autoQuality,onClick:async()=>{Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{autoQuality:!_.autoQuality}))(e),ih((0,D.A)((0,D.A)({},_),{},{autoQuality:!_.autoQuality}))}})]}),_.autoQuality?(0,Ye.jsx)(OG,{outerClass:\"two-way-tab-custom\",modeA:Ve._TM,modeB:Ve.kuU,firstTabOn:_.mode===Nr.PERFORMANCE,toggleTab:async()=>{let E=_.mode;E=E===Nr.PERFORMANCE?Nr.QUALITY:Nr.PERFORMANCE,Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{mode:E}))(e),ih((0,D.A)((0,D.A)({},_),{},{mode:E}))},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"}):(0,Ye.jsx)(QU,{allowSettingValue:!0,noTip:!0,min:10,max:90,value:_.manualQuality,step:1,active:!E,changeValue:PS()(async E=>{E!==_.manualQuality&&(Dl(!0)(e),Zl(!0)(e),bl((0,D.A)((0,D.A)({},_),{},{manualQuality:E}))(e),ih((0,D.A)((0,D.A)({},_),{},{manualQuality:E})))},250),minTag:Ve._TM,maxTag:Ve.kuU})]}),(0,Ye.jsx)(\"div\",{className:\"camera-divider\"}),(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:\"HDR\"}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:t.isEnabled,onClick:async()=>{Dl(!0)(e),Zl(!0)(e),Wl((0,D.A)((0,D.A)({},t),{},{isEnabled:!t.isEnabled}))(e),nh((0,D.A)((0,D.A)({},t),{},{hdrActive:!t.isEnabled}))}}),(0,Ye.jsx)(Pa,{text:Ve.hd_})]}),(0,Ye.jsx)(OG,{outerClass:\"two-way-tab-custom \".concat(t.isEnabled?\"\":\"disabled\"),modeA:Ve.$3b,modeB:Ve.pG,firstTabOn:t.mode===Rr.DARK_MODE,toggleTab:async()=>{let E=t.mode;E=E===Rr.DARK_MODE?Rr.BRIGHT_MODE:Rr.DARK_MODE,Dl(!0)(e),Zl(!0)(e),Wl((0,D.A)((0,D.A)({},t),{},{mode:E}))(e),nh({hdrActive:t.isEnabled,hdrMode:E})},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:PROCESSING:LENS_DISTORTION_COMPENSATION",
+            "title": "LENS_DISTORTION_COMPENSATION",
+            "controls": [
+              "3592:ldc"
+            ],
+            "collapsible": false,
+            "tooltip": "LENS_DISTORTION_COMPENSATION_TOOLTIP",
+            "header_switch": "3592:ldc",
+            "description": "LENS_DISTORTION_COMPENSATION_DESCRIPTION",
+            "description_when_enabled": "/camera/ldc",
+            "description_min_height": 1440
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4556151,
+            "end": 4556521,
+            "sha256": "9b8540850dbd776c0f609f31a1a16768811cbbcf3586432d21263869466a2620",
+            "source": "{noToggle:!0,className:\"wrapper-custom\",name:Ve._Kh,isActiveSwitch:a,handleOnSwitch:async()=>{Dl(!0)(e),Zl(!0)(e),Kl(!a)(e),Oi({category:Zo,eventCategory:ri,action:Ao,data:{enabled:!a}})},hasSwitch:!0,tooltipContent:Ve.AVN,children:a&&(null===o||void 0===o?void 0:o.height)>=1440&&(0,Ye.jsx)(\"div\",{className:\"mode-description\",children:(0,Ye.jsx)(ye.A,{text:Ve.zjd})})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3592:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3592:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4556584,
+            "end": 4556863,
+            "sha256": "c7c83766e0552cf15194ca588c2a65897c7afcecd90c7ad96c63bb50324c5987",
+            "source": "{noToggle:!0,name:Ve.RAi,isActiveSwitch:_,handleOnSwitch:()=>{Zl(!0)(e),wl(!_)(e),Oi({category:Zo,eventCategory:ri,action:So,data:{enabled:!_}})},tooltipContent:Ve.jn6,hasSwitch:!0,children:(0,Ye.jsx)(\"div\",{className:\"mode-description\",children:(0,Ye.jsx)(ye.A,{text:Ve.guc})})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3592:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3592:state2D",
+              "3592:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3592/static/js/main.323f0a8a.js",
+            "offset": 4556927,
+            "end": 4557694,
+            "sha256": "21ba8325528b798d3f54b70add6d133b64f6dcb96e0a48489656a82e56429367",
+            "source": "{name:Ve.VMM,tooltipContent:Ve.xAV,children:[(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",children:(0,Ye.jsx)(ye.A,{text:Ve.XXG})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:t.state2D,onClick:()=>{Zl(!0)(e),zl((0,D.A)((0,D.A)({},t),{},{state2D:!t.state2D}))(e),rh((0,D.A)((0,D.A)({},t),{},{state2D:!t.state2D}))}})]}),(0,Ye.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,Ye.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,Ye.jsx)(ye.A,{text:Ve.rI2})}),(0,Ye.jsx)(al,{className:\"switch-custom\",active:t.state3D,onClick:()=>{Zl(!0)(e),zl((0,D.A)((0,D.A)({},t),{},{state3D:!t.state3D}))(e),rh((0,D.A)((0,D.A)({},t),{},{state3D:!t.state3D}))}})]})]}"
+          }
+        }
+      ],
+      "css": {
+        "path": ".ref/devices/3592/static/css/main.4a286209.css",
+        "sha256": "6a7d2189332d9304050e71a44ecfe24c4e415da1b8aaf55aa6c9461c996af6bd",
+        "rules": [
+          {
+            "offset": 42116,
+            "source": ".drop-tips{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:top .1s,left .1s,visibility .2s,opacity .3s linear;visibility:hidden;width:300px;will-change:top,left,visibility,opacity;z-index:200}"
+          },
+          {
+            "offset": 42448,
+            "source": ".drop-tips.on{height:auto!important;opacity:1;visibility:visible;white-space:pre-line;z-index:9999}"
+          },
+          {
+            "offset": 62810,
+            "source": ".obm-menu .tooltip_parent{display:inline-block}"
+          },
+          {
+            "offset": 62857,
+            "source": ".obm-menu .tooltip_parent .help{vertical-align:text-top}"
+          },
+          {
+            "offset": 62913,
+            "source": ".obm-menu .tooltip_parent .help:hover{background-color:#6c6c6c}"
+          },
+          {
+            "offset": 224618,
+            "source": ".power-saving-effect .content .tooltip_parent{position:relative}"
+          },
+          {
+            "offset": 224682,
+            "source": ".power-saving-effect .content .tooltip_parent .help{position:static!important}"
+          },
+          {
+            "offset": 224760,
+            "source": ".power-saving-effect .content .tooltip_parent:hover{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 224853,
+            "source": ".power-saving-effect .content .tooltip_parent .tip{left:-197px;white-space:normal;width:305px}"
+          },
+          {
+            "offset": 269354,
+            "source": ".tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 269422,
+            "source": ".tooltip_parent .tip{background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;left:calc(100% - 20px);line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-line;width:210px;will-change:visibility,opacity;z-index:99}"
+          },
+          {
+            "offset": 269773,
+            "source": ".tooltip_parent .help{background-color:#6c6c6c;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);background-repeat:no-repeat;border-radius:7px;display:inline-block;height:14px;transition:background-color .3s;width:14px;will-change:background-color}"
+          },
+          {
+            "offset": 270046,
+            "source": ".tooltip_parent .help:hover{background-color:#ffffff4d;cursor:pointer}"
+          },
+          {
+            "offset": 270116,
+            "source": ".tooltip_parent .help:hover+.tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 270716,
+            "source": ".maptext .tooltip_parent{position:absolute;right:0;top:4px}"
+          },
+          {
+            "offset": 270775,
+            "source": ".maptext .tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 270852,
+            "source": ".maptext .tooltip_parent .tip{left:-197px;white-space:normal;width:210px}"
+          },
+          {
+            "offset": 285351,
+            "source": ".map_controller .analog_sensitivity_text .tooltip_parent{float:right;position:relative;top:1px}"
+          },
+          {
+            "offset": 286389,
+            "source": ".with-tooltip .tooltip_parent{margin-top:2px}"
+          },
+          {
+            "offset": 431542,
+            "source": ".advanced-camera-container .camera-container .auto-exposure-container .shutter-speed-header,.advanced-camera-container .center-flex-box,.advanced-camera-container .tooltip_parent,.advanced-camera-container .wrapper-container .header-wrapper,.advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{align-items:center;display:flex}"
+          },
+          {
+            "offset": 431980,
+            "source": ".advanced-camera-container .default-margin-left,.advanced-camera-container .wrapper-container .header-wrapper .stepper,.advanced-camera-container .wrapper-container .header-wrapper .switch{margin-left:10px}"
+          },
+          {
+            "offset": 432186,
+            "source": ".advanced-camera-container .default-icon-style,.advanced-camera-container .wrapper-container .icon-close-eye,.advanced-camera-container .wrapper-container .icon-open-eye,.advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;font-style:normal;height:10px;min-height:10px;min-width:10px;position:relative;width:10px}"
+          },
+          {
+            "offset": 435305,
+            "source": ".advanced-camera-container .camera-container .camera-divider{border:1px solid #222;border-radius:2px;margin-bottom:20px;margin-top:20px;width:100%}"
+          },
+          {
+            "offset": 440534,
+            "source": ".advanced-camera-container .camera-container .mode-description{font:14px/17px Roboto;margin-top:10px}"
+          },
+          {
+            "offset": 444290,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name{font:14px/16px Roboto;text-transform:uppercase}"
+          },
+          {
+            "offset": 444414,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name.disabled{opacity:30%}"
+          },
+          {
+            "offset": 444512,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{cursor:pointer}"
+          },
+          {
+            "offset": 444605,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .check-item{margin-bottom:0;margin-left:10px;margin-top:3px}"
+          },
+          {
+            "offset": 444727,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset{align-items:center;background-image:url(../../static/media/icon_reset.f416d0b7.svg);background-position:50%;background-repeat:no-repeat;background-size:initial;display:flex;height:20px;justify-content:center;margin-left:10px;width:20px}"
+          },
+          {
+            "offset": 445036,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset:hover{opacity:.7}"
+          },
+          {
+            "offset": 445126,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .info-icon{background-image:url(../../static/media/info_outline.b491abc9.svg);background-position:50%;background-repeat:no-repeat;background-size:cover;height:24px;width:24px}"
+          },
+          {
+            "offset": 445363,
+            "source": ".advanced-camera-container .wrapper-container .show-preview{cursor:pointer;margin-left:auto}"
+          },
+          {
+            "offset": 445455,
+            "source": ".advanced-camera-container .wrapper-container .show-preview:hover{opacity:.7}"
+          },
+          {
+            "offset": 445532,
+            "source": ".advanced-camera-container .wrapper-container .icon-close-eye{background-image:url(../../static/media/icon_close_eye.af02ee38.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 445686,
+            "source": ".advanced-camera-container .wrapper-container .icon-open-eye{background-image:url(../../static/media/icon_open_eye.4957a8f7.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 445838,
+            "source": ".advanced-camera-container .wrapper-container .override-stepper{margin-bottom:0!important}"
+          },
+          {
+            "offset": 445928,
+            "source": ".advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-image:url(../../static/media/step_down.03eaacfd.svg);margin-right:10px}"
+          },
+          {
+            "offset": 446135,
+            "source": ".advanced-camera-container .wrapper-container .step-right-icon{transform:rotate(-90deg)}"
+          },
+          {
+            "offset": 446223,
+            "source": ".advanced-camera-container .tooltip_parent{margin-left:10px}"
+          },
+          {
+            "offset": 446991,
+            "source": ".save-settings-container .left-side .tooltip_parent{margin-right:10px}"
+          },
+          {
+            "offset": 448992,
+            "source": ".device-preview-container .tooltip_parent{margin-right:25px}"
+          },
+          {
+            "offset": 449285,
+            "source": ".mode-name-s2{margin-left:auto}"
+          },
+          {
+            "offset": 449316,
+            "source": ".mode-name-s2 .tooltip_parent{height:20px;margin-right:0!important}"
+          },
+          {
+            "offset": 449383,
+            "source": ".mode-name-s2 .tooltip_parent .help{background-color:#0000;background-image:url(../../static/media/warning-icon.b0086fcc.svg)!important;height:20px;margin:0;width:20px}"
+          },
+          {
+            "offset": 449551,
+            "source": ".mode-name-s2 .tooltip_parent .tip{width:280px}"
+          }
+        ]
+      }
+    },
+    {
+      "product_id": 3594,
+      "source": ".ref/devices/3594/static/js/main.bb246bb0.js",
+      "sha256": "3ac856b9d24a80432ee50a8d785a1fc230568b9231ce760c95e059e110415170",
+      "wrapper": {
+        "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+        "offset": 6088375,
+        "end": 6090711,
+        "sha256": "1a2be406bdd97a7fd7d232f6c7bc51cc03d9478b0ba865fc07ff5ab84eca01ff",
+        "source": "e=>{const E=e.checkBoxName,a=e.hasStepper,A=e.hasCheckbox,S=e.hasSwitch,l=e.hasReset,R=e.showPreview,N=void 0!==R&&R,d=e.showRefreshButton,c=void 0!==d&&d,u=e.isActiveSwitch,C=e.handleOnSwitch,D=e.noToggle,L=e.tooltipContent,P=e.infoContent,p=e.className,M=e.allowDecimal,m=e.stepValue,U=e.handleStepperValue,h=e.handleCheckbox,G=e.handleOnReset,g=e.checkBoxValue,H=e.stepperValue,f=e.disabledStepper,v=e.minStepper,B=e.maxStepper,F=e.maxLength,V=e.disableSwitch,y=void 0!==V&&V,b=e.warningTooltip,W=(0,t.useDispatch)(),Y=(0,n.useState)(!0),K=(0,_.A)(Y,2),w=K[0],z=K[1],k=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),x=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera});(0,t.useSelector)(e=>e.advancedWebcamReducer.isVideoLoading);return(0,O.jsxs)(\"div\",{className:\"wrapper-container \".concat(null!==p&&void 0!==p?p:\"\"),children:[(0,O.jsxs)(\"div\",{className:\"header-wrapper\",children:[(0,O.jsxs)(\"div\",{className:\"wrapper-button\",onClick:()=>{D||z(!w)},children:[!D&&(0,O.jsx)(O.Fragment,{children:w?(0,O.jsx)(\"i\",{className:\"step-down-icon\"}):(0,O.jsx)(\"i\",{className:\"step-right-icon\"})}),(0,O.jsx)(\"div\",{className:\"function-name \".concat(y?\"disabled\":\"\"),children:(0,O.jsx)(s.A,{text:e.name})})]}),S&&(0,O.jsx)(i.A,{active:u,onClick:C,disable:y}),l&&(0,O.jsx)(\"div\",{role:\"button\",className:\"btn-reset\",style:{cursor:\"pointer\"},onClick:()=>{G&&G()}}),L&&(0,O.jsx)(r.A,{text:L}),P&&(0,O.jsx)(r.A,{text:P,isInfo:!0}),b&&(0,O.jsx)(\"div\",{className:\"mode-name mode-name-s2\",children:(0,O.jsx)(r.A,{text:b})}),c&&(0,O.jsx)(\"div\",{role:\"button\",onClick:()=>{x||((0,I.Ty)(!0)(W),(0,I.F4)(!0)(W))},className:\"btn-reset reset-setting invert-horizontal btn-reset-close\",style:{marginLeft:b?\"10px\":\"auto\"}}),N&&(0,O.jsx)(\"i\",{role:\"button\",className:\"show-preview \".concat(k?\"icon-open-eye\":\"icon-close-eye\",\" \").concat(c?\"btn-show-preview-close\":\"\"),onClick:()=>{N&&(0,I.WD)(!k)(W)}}),a&&(0,O.jsx)(o.A,{minValue:v,maxValue:B,maxLength:F,value:H,stepValue:m,active:!f,extraClass:\"override-stepper\",setParentState:e=>{U&&U(e)},allowDecimals:null!==M&&void 0!==M&&M}),A&&(0,O.jsx)(T.A,{id:\"wrapperCheckBox\",onCheck:()=>{h&&h(!g)},active:g,name:E})]}),w&&(0,O.jsx)(\"div\",{className:\"content-wrapper\",children:e.children})]})}"
+      },
+      "tooltip": {
+        "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+        "offset": 6095004,
+        "end": 6096044,
+        "sha256": "7dcd2c8ca2cf5b4306645e31e6a969bd09ad9a69c4f9af161f070175453453a2",
+        "source": "e=>{const E=(0,o.useState)(!1),a=(0,t.A)(E,2),s=a[0],T=a[1],I=(0,o.useState)({left:\"0\",top:\"0\",width:\"0\",height:\"0\"}),O=(0,t.A)(I,2),A=O[0],S=O[1],l=(0,o.useRef)(null),R=e=>{const E=e.getBoundingClientRect(),a=e.parentNode.querySelector(\".tip\"),_=a.clientHeight,t=a.clientWidth;let o=\"0\",i=\"0\";return o=E.right+\"px\",i=E.bottom+\"px\",E.right+t>window.innerWidth&&(o=E.left-t+\"px\"),E.bottom+_>window.innerHeight&&(i=E.bottom-_+\"px\"),{left:o,top:i,width:t+\"px\",height:_+\"px\"}};(0,o.useEffect)(()=>{const e=l.current;S(R(e))},[]);return e.text?(0,r.jsxs)(\"div\",{className:\"tooltip_parent\",children:[(0,r.jsx)(\"div\",{className:e.isInfo?\"info-icon\":\"help\",onMouseEnter:e=>{S(R(e.target)),T(!0)},onMouseLeave:()=>{T(!1)},ref:l}),(0,r.jsx)(\"div\",{className:\"tip\",style:(0,_.A)({visibility:\"hidden\",opacity:0},e.style),children:(0,r.jsx)(i.A,{text:e.text})}),(0,n.createPortal)((0,r.jsx)(\"div\",{className:\"\".concat(s?\"drop-tips on\":\"drop-tips\"),style:(0,_.A)((0,_.A)({},A),e.style),children:s?(0,r.jsx)(i.A,{text:e.text}):\"\"}),document.body)]}):null}"
+      },
+      "processing_mount": {
+        "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+        "offset": 7001360,
+        "end": 7002600,
+        "sha256": "e7d0077c01bd2f025a89acb125e11052c0e6a90e73ed51d3fe8521aae46dd28f",
+        "source": "()=>{const e=(0,M.useDispatch)(),E=km().isDisabled,a=((0,M.useSelector)(e=>e.advancedWebcamReducer.ldc,M.shallowEqual),(0,M.useSelector)(e=>e.advancedWebcamReducer.lowLightCompensation,M.shallowEqual)),_=(0,M.useSelector)(e=>e.advancedWebcamReducer.dynamicNoiseReduction,M.shallowEqual);(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual);return(0,P_.jsxs)(\"div\",{className:\"camera-container processing-container scrollable \".concat(E?\"disabled\":\"\"),children:[(0,P_.jsx)(oU,{supportMJPEG:!1}),(0,P_.jsx)(\"div\",{className:\"camera-divider\"}),(0,P_.jsx)(HM.A,{noToggle:!0,name:Ta.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,YA.Ys)(!0)(e),(0,YA.bg)(!a)(e)},tooltipContent:Ta.jn6,hasSwitch:!0,children:(0,P_.jsx)(\"div\",{className:\"mode-description\",children:(0,P_.jsx)(sa.A,{text:Ta.guc})})}),(0,P_.jsx)(\"div\",{className:\"camera-divider\"}),(0,P_.jsx)(HM.A,{name:Ta.VMM,tooltipContent:Ta.xAV,children:(0,P_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.rI2})}),(0,P_.jsx)(DA.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,YA.Ys)(!0)(e),(0,YA.Xo)((0,g.A)((0,g.A)({},_),{},{state3D:!_.state3D}))(e)}})]})})]})}"
+      },
+      "groups": [
+        {
+          "group": {
+            "key": "3594:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3594:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7003858,
+            "end": 7004443,
+            "sha256": "2c4d1005e94dc4ae2e4742bd12529f26628d99d4a2e08f4810a78185c9d1c2d7",
+            "source": "{name:Ta.JGr,tooltipContent:Ta.VEI,children:(0,P_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:rU.map(e=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(O===e.id?\"selected\":\"\"),onClick:()=>(e=>{if(e===O)return;const E=Z.DEFAULTPROFILE.image.find(E=>E.name===e),a=sU.find(E=>E.name===e),_=(0,g.A)((0,g.A)((0,g.A)((0,g.A)({},a),\"custom\"===e&&n),\"custom\"!==e&&{userSettings:(0,g.A)({},E.dataSet.userSettings)}),{},{name:e});(0,YA.z6)(_)(o),(0,YA.Ys)(!0)(o),xM((0,g.A)((0,g.A)({},_),{},{dataSet:_}))})(e.id),children:(0,P_.jsx)(sa.A,{text:e.name})},e.id))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3594:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3594:brightness"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7004508,
+            "end": 7004776,
+            "sha256": "ee3498f34fdfa5f22ec64f8efd87e78a79e5129384d3bbf3f75e8c95048309f4",
+            "source": "{name:Ta.a1g,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.brightness,handleStepperValue:A,hasStepper:!0,noTooltip:!0,children:(0,P_.jsx)(VM,{noTip:!0,min:0,max:255,value:i.brightness,step:1,active:!0,changeValue:e=>A(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3594:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:contrast"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7004875,
+            "end": 7005139,
+            "sha256": "b9d542cbc878aa61083d7282e4f45bb82f2902e7153913340311e44d3bf3e214",
+            "source": "{name:Ta.DkT,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.contrast,handleStepperValue:S,hasStepper:!0,noTooltip:!0,children:(0,P_.jsx)(VM,{noTip:!0,min:0,max:255,value:i.contrast,step:1,active:!0,changeValue:e=>S(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3594:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:saturation"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7005238,
+            "end": 7005506,
+            "sha256": "3a7e461917a57fe8f336aa39aeac1b008757c21b6480e53c102076e731874cd5",
+            "source": "{name:Ta.Bq1,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.saturation,handleStepperValue:l,hasStepper:!0,noTooltip:!0,children:(0,P_.jsx)(VM,{noTip:!0,min:0,max:255,value:i.saturation,step:1,active:!0,changeValue:e=>l(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3594:white-balance",
+              "3594:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3594:white-balance",
+            "header_checkbox": "3594:auto-white-balance"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7006407,
+            "end": 7007208,
+            "sha256": "e34a6fb3bfe89f2b41cf46ac66649eb667a4f0397b448c3851f99b8b86b52c41",
+            "source": "{name:Ta.Z8r,checkBoxName:Ta.Q8g,stepValue:10,minStepper:Z.DeviceInfo.whiteBalance.min,maxStepper:Z.DeviceInfo.whiteBalance.max,maxLength:Z.DeviceInfo.whiteBalance&&null!=Z.DeviceInfo.whiteBalance.max?Z.DeviceInfo.whiteBalance.max.toString().length:4,stepperValue:i.whiteBalance.value,checkBoxValue:i.whiteBalance.isAuto,disabledStepper:i.whiteBalance.isAuto,handleStepperValue:d,handleCheckbox:()=>{const e=T.whiteBalance;c(\"whiteBalance\",(0,g.A)((0,g.A)({},e),{},{isAuto:!(null!==e&&void 0!==e&&e.isAuto)}),!0)},hasStepper:!0,hasCheckbox:!0,noTooltip:!0,children:(0,P_.jsx)(VM,{noTip:!0,min:Z.DeviceInfo.whiteBalance.min,max:Z.DeviceInfo.whiteBalance.max,value:i.whiteBalance.value,step:10,active:!i.whiteBalance.isAuto,changeValue:e=>d(e),minTag:Ta.Y7F,maxTag:Ta.ScM,extraClass:\"gradient_slider\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3594:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7009080,
+            "end": 7009333,
+            "sha256": "f08b8259a9f3d24374d5bdbb75b404b88484f787616253f2bca46718b5f75841",
+            "source": "{name:Ta.qJr,noTooltip:!0,children:(0,P_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:AU.map(e=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===R?\"selected\":\"\"),onClick:()=>v(e.value),children:e.name},e.name))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3594:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3594:mirror"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7010451,
+            "end": 7010637,
+            "sha256": "06db669a8f0b4abfdd8b444a36db53c4f6e12b27927eb93a27aa21255ee71977",
+            "source": "{name:Ta.S7W,isActiveSwitch:l,handleOnSwitch:()=>{(0,YA.Ys)(!0)(I),(0,YA.r8)(!l)(I),zo({category:mo,eventCategory:Wo,action:io,data:{enabled:!l}})},hasSwitch:!0,noTooltip:!0,noToggle:!0}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3594:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6986214,
+            "end": 6986790,
+            "sha256": "29efb4460cf34d7fd962aa8344f882e58f2e9f83e1c879ab2fa6bddb3216d2ce",
+            "source": "{name:Ta.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Ta.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,P_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,P_.jsx)(Ve.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,YA.ur)(!0)(I),(0,YA.Ys)(!0)(I),(0,YA.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,P_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,P_.jsx)(sa.A,{text:Ta.VZD})})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3594:zoom",
+              "3594:pan-tilt",
+              "3594:view-preset",
+              "3594:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3594:zoom"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6976629,
+            "end": 6977631,
+            "sha256": "c14c66e6b4a2af8c055abcdb78ee9d4c9de360a9db5b09ca80514bd3646a2938",
+            "source": "{disabledStepper:L(),name:Ta.c23,tooltipContent:Ta.Kat,stepValue:A,minStepper:I,maxStepper:O,stepperValue:C.zoom,handleStepperValue:D,hasStepper:!0,allowDecimal:!0,roundUpDecimals:!0,noToggle:E,children:[(0,P_.jsx)(VM,{noTip:!0,noTag:!0,min:I,max:O,step:A,active:!L(),value:C.zoom,changeValue:e=>D(e)}),(0,P_.jsx)(lm,{isDisabled:L(),maxPanTilt:r}),L()?(0,P_.jsx)(\"div\",{className:\"mode-description\",children:(0,P_.jsx)(sa.A,{text:Ta.zjd})}):null,(0,P_.jsxs)(\"div\",{className:\"\".concat(L()?\"disabled\":\"\"),children:[(0,P_.jsx)(\"div\",{className:\"preset-name\",children:(0,P_.jsx)(sa.A,{text:Ta.QaP})}),(0,P_.jsx)(\"div\",{className:\"preset-container\",children:R.data.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"preset-item \".concat(e.mode===R.viewMode?\"selected\":\"\"),onClick:()=>{var E;(E=e.mode)!==R.viewMode&&((0,YA.Ys)(!0)(S),(0,YA.aH)(E)(S))},children:e.mode},\"\".concat(e.mode,\"_\").concat(E)))}),(0,P_.jsx)(\"div\",{className:\"shortcut-key-name\",children:(0,P_.jsx)(sa.A,{text:Ta.R95})}),(0,P_.jsx)(Fm,{})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3594:autofocus",
+              "3594:focus",
+              "3594:focus-tracking"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3594:autofocus"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6884802,
+            "end": 6886897,
+            "sha256": "96d616137f8b83a0832e3df54cd628a69b1e866920809821a7e9f43edc8d4bd4",
+            "source": "{name:Ta.dgn,tooltipContent:Ta.WKf,hasSwitch:!0,isActiveSwitch:r.isEnabled,handleOnSwitch:()=>{(0,YA.Ys)(!0)(n),(0,YA.wp)(!r.isEnabled)(n)},children:(0,P_.jsxs)(\"div\",{className:\"auto-focus-container\",children:[!r.isEnabled&&(0,P_.jsxs)(\"div\",{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.EzE})}),(0,P_.jsx)(VM,{noTip:!0,noTag:!0,min:o,max:i,value:r.manualFocus,step:1,active:!0,changeValue:e=>(e=>{(0,YA.Ys)(!0)(n),(0,YA.Yt)(e)(n)})(e),minTag:\"\",maxTag:\"\",midTag:\"\",thumbTag:\"\"})]}),r.isEnabled&&(0,P_.jsxs)(P_.Fragment,{children:[E?(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.gah})}),(0,P_.jsx)(\"div\",{className:\"container-focus\",children:qn.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,P_.jsx)(sa.A,{text:e.name})},E))})]}):null,a?(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.gah})}),(0,P_.jsx)(\"div\",{className:\"container-focus\",children:Qn.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,P_.jsx)(sa.A,{text:e.name})},E))})]}):null,_?(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.eWS})}),(0,P_.jsx)(\"div\",{className:\"container-focus\",children:Jn.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.tracking?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,YA.Ys)(!0)(n),void(0,YA.DP)(E)(n);var E},children:(0,P_.jsx)(sa.A,{text:e.name})},E))})]}):null,t?(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.Tf7})}),(0,P_.jsx)(\"div\",{className:\"container-focus\",children:$n.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,YA.Ys)(!0)(n),void(0,YA.me)(E)(n);var E},children:(0,P_.jsx)(sa.A,{text:e.name})},E))})]}):null]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3594:auto-exposure",
+              "3594:iso",
+              "3594:shutter",
+              "3594:metering",
+              "3594:compensation",
+              "3594:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT_V2",
+            "header_switch": "3594:auto-exposure",
+            "header_reset": "3594:reset-exposure"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6881332,
+            "end": 6884381,
+            "sha256": "8c4400bc524a5bd34337f9e93bc8e2af49459eee2a1554763f7a1873d7095731",
+            "source": "{name:Ta.aDz,tooltipContent:i,hasSwitch:!0,hasReset:!0,isActiveSwitch:O,handleOnReset:()=>{(0,YA.GB)(Z.DEFAULTPROFILE.camera.autoExposure)(n)},handleOnSwitch:()=>{(0,YA.Ys)(!0)(n),(0,YA.Xr)(!O)(n),kM((0,g.A)((0,g.A)({},s),{},{isEnabled:!O}))},children:(0,P_.jsxs)(\"div\",{className:\"auto-exposure-container\",children:[!O&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(\"div\",{className:\"mode-name\",children:[\"ISO\",(0,P_.jsx)(Ia.A,{text:Ta.GOR})]}),(0,P_.jsx)(\"div\",{className:\"common-container\",children:er.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===d?\"selected\":\"\"),style:{minWidth:\"75px\"},onClick:()=>{var E;(E=e.value)!==d&&(p(O),(0,YA.EM)(E)(n))},children:e.name},\"\".concat(E,\"_\").concat(e.name)))}),(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,P_.jsxs)(\"div\",{className:\"mode-name\",children:[(0,P_.jsx)(sa.A,{text:Ta.SJ$}),(0,P_.jsx)(Ia.A,{text:Ta.e08})]}),(0,P_.jsxs)(\"div\",{className:\"mode-name\",style:{marginLeft:10},children:[U,\"s\"]})]}),(0,P_.jsx)(YM,{noTip:!0,originData:_r,min:Z.DeviceInfo.shutterSpeed.min,max:Z.DeviceInfo.shutterSpeed.max,value:u,active:!0,changeValue:e=>(e=>{e!==u&&((0,YA.Ys)(!0)(n),p(O),(0,YA.zt)(e)(n))})(e),minTag:Ta.NWy,maxTag:Ta.kL5})]})]}),O&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(\"div\",{className:\"mode-name\",children:[(0,P_.jsx)(sa.A,{text:Ta.cSt}),(0,P_.jsx)(Ia.A,{text:Ta.cTh})]}),(0,P_.jsx)(\"div\",{className:\"common-container\",children:Er.map(e=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===S?\"selected\":\"\"),onClick:()=>{var E;(E=e.value)!==S&&((0,YA.Ys)(!0)(n),p(O),(0,YA.Kl)(E)(n),kM((0,g.A)((0,g.A)({},s),{},{metering:E})))},children:(0,P_.jsx)(sa.A,{text:e.name})},e.value))}),(0,P_.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.F9S})}),(0,P_.jsx)(Ia.A,{text:Ta.ztv}),(0,P_.jsx)(yM.A,{minValue:P,maxValue:3,maxLength:1,stepValue:.1,value:R,active:!0,extraClass:\"override-stepper\",setParentState:m,roundUpDecimals:!0,allowDecimals:!0})]}),(0,P_.jsx)(VM,{noTip:!0,min:P,max:3,value:R,step:.1,active:!0,changeValue:e=>m(e),minTag:\"\".concat(P,\".0\"),maxTag:\"+3.0\"}),a&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:\"10px\"},children:(0,P_.jsx)(sa.A,{text:Ta.Tf7})}),(0,P_.jsx)(\"div\",{className:\"common-container\",children:$n.map((e,E)=>(0,P_.jsx)(\"div\",{className:\"default-button \".concat(e.value===T.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,YA.Ys)(!0)(n),p(O),void(0,YA.me)(E)(n);var E},children:(0,P_.jsx)(sa.A,{text:e.name})},E))})]})]}),O&&Z.DeviceInfo.supportShutterLimitControl&&(0,P_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginTop:10},children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,P_.jsx)(sa.A,{text:Ta.Wom})}),(0,P_.jsx)(DA.A,{className:\"switch-custom\",active:L===ZM,onClick:()=>{(0,YA.Ys)(!0)(n),p(O),(0,YA.Sv)(L===ZM?\"normal\":ZM)(n)}}),(0,P_.jsx)(Ia.A,{text:Ta.SG6})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3594:hdr",
+              "3594:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3594:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6998745,
+            "end": 7001356,
+            "sha256": "538f735d978f40b23540a54b9ba952585b29f8e05b0b88623749e15a062ba610",
+            "source": "e=>{let E=e.supportMJPEG,a=void 0===E||E,_=e.disableHDRSwitch;const t=(0,M.useDispatch)(),o=km().isDisabled,i=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),n=(0,M.useSelector)(e=>e.advancedWebcamReducer.mjpegQuality,M.shallowEqual),r=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual);let s=(0,D.useMemo)(()=>ar.findIndex(e=>e.width===(null===i||void 0===i?void 0:i.width)&&e.height===(null===i||void 0===i?void 0:i.height)&&e.fps===(null===i||void 0===i?void 0:i.fps)),[i]);-1===s&&(s=0);return(0,P_.jsxs)(P_.Fragment,{children:[a&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(HM.A,{name:Ta.G4E,tooltipContent:Ta.p_4,children:[(0,P_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:(0,P_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.ezb})}),(0,P_.jsx)(DA.A,{className:\"switch-custom\",active:n.autoQuality,onClick:async()=>{(0,YA.ur)(!0)(t),(0,YA.Ys)(!0)(t),(0,YA.LX)((0,g.A)((0,g.A)({},n),{},{autoQuality:!n.autoQuality}))(t)}})]})}),_?null:n.autoQuality?(0,P_.jsx)(tU,{outerClass:\"two-way-tab-custom\",modeA:Ta._TM,modeB:Ta.kuU,firstTabOn:n.mode===Zn.PERFORMANCE,toggleTab:async()=>{let e=n.mode;e=e===Zn.PERFORMANCE?Zn.QUALITY:Zn.PERFORMANCE,(0,YA.ur)(!0)(t),(0,YA.Ys)(!0)(t),(0,YA.LX)((0,g.A)((0,g.A)({},n),{},{mode:e}))(t)},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"}):(0,P_.jsx)(VM,{allowSettingValue:!0,noTip:!0,min:10,max:90,value:n.manualQuality,step:1,active:!o,changeValue:QO()(async e=>{e!==n.manualQuality&&((0,YA.ur)(!0)(t),(0,YA.Ys)(!0)(t),(0,YA.LX)((0,g.A)((0,g.A)({},n),{},{manualQuality:e}))(t))},250),minTag:Ta._TM,maxTag:Ta.kuU})]}),(0,P_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,P_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:\"HDR\"}),(0,P_.jsx)(DA.A,{className:\"switch-custom\",active:r.isEnabled,onClick:async()=>{(0,YA.ur)(!0)(t),(0,YA.Ys)(!0)(t),(0,YA.Fr)((0,g.A)((0,g.A)({},r),{},{isEnabled:!r.isEnabled}))(t)}}),(0,P_.jsx)(Ia.A,{text:Ta.hd_})]}),(0,P_.jsx)(tU,{outerClass:\"two-way-tab-custom \".concat(r.isEnabled?\"\":\"disabled\"),modeA:Ta.$3b,modeB:Ta.pG,firstTabOn:r.mode===jn.DARK_MODE,toggleTab:async()=>{let e=r.mode;e=e===jn.DARK_MODE?jn.BRIGHT_MODE:jn.DARK_MODE,(0,YA.ur)(!0)(t),(0,YA.Ys)(!0)(t),(0,YA.Fr)((0,g.A)((0,g.A)({},r),{},{mode:e}))(t)},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3594:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3594:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7001936,
+            "end": 7002166,
+            "sha256": "f2fd419160ef3df2d3249bf7600ef6d0b4c39206fbd3412ce3679adcda819349",
+            "source": "{noToggle:!0,name:Ta.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,YA.Ys)(!0)(e),(0,YA.bg)(!a)(e)},tooltipContent:Ta.jn6,hasSwitch:!0,children:(0,P_.jsx)(\"div\",{className:\"mode-description\",children:(0,P_.jsx)(sa.A,{text:Ta.guc})})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3594:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 7002231,
+            "end": 7002595,
+            "sha256": "5fcaaf808bf73d2f1a05c37d27c5e10983753c7cdac19c040baa2a9862d81f29",
+            "source": "{name:Ta.VMM,tooltipContent:Ta.xAV,children:(0,P_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,P_.jsx)(\"div\",{className:\"mode-name\",children:(0,P_.jsx)(sa.A,{text:Ta.rI2})}),(0,P_.jsx)(DA.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,YA.Ys)(!0)(e),(0,YA.Xo)((0,g.A)((0,g.A)({},_),{},{state3D:!_.state3D}))(e)}})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6979883,
+            "end": 6986798,
+            "sha256": "2bfb382b4eb21e838060bb10521f6f380e30e335fa2290c024b26ef1d35ad364",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,D.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,M.useDispatch)(),O=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),A=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,M.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,M.useSelector)(e=>e.languageReducer.lang),R=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,M.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,M.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,M.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,M.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,M.useSelector)(e=>e.advancedWebcamReducer.autoFraming,M.shallowEqual),L=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual),P=(0,M.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),p=(0,M.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),m=(0,M.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),U=((0,M.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,M.useSelector)(e=>e.deviceReducer.serialNumber)),h=(0,D.useState)(\"\"),G=(0,Pe.A)(h,2),H=G[0],f=G[1],v=(0,D.useState)(0),B=(0,Pe.A)(v,2),F=B[0],V=B[1],y=[Ta.eXB,Ta.GRK,Ta.k$y,Ta.SCX,Ta.OvL,Ta.Q$X];(0,D.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,YA.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);V(_)}},[i,O]),(0,D.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,YA.Ag)(e)(I)})()},[l,P,p,m]),(0,D.useEffect)(()=>{b()},[R]),(0,D.useEffect)(()=>{c&&(W(),(0,YA.Ty)(!1)(I))},[c]),(0,D.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,YA.su)((0,g.A)((0,g.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,D.useEffect)(()=>{A&&W()},[A]);const b=async()=>{if(R&&R.length>0){var e;let E=f_.A.get(\"cameraHardwareId_\".concat(U)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},W=async()=>{const e=await K();(0,YA.Ag)(e)(I),await b()};function Y(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(U)){if(f_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=f_.A.get(\"cameraHardwareDeviceId_\".concat(U));if(!r&&n.length>0){for(const e of n)if(!Y(e.deviceId)){r=e.deviceId;break}f_.A.set(\"cameraHardwareDeviceId_\".concat(U),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&f_.A.set(\"cameraHardwareDeviceId_\".concat(U),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:rs.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=wm||ar;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,YA.yj)(!0)(I);(0,YA.Tl)(a)(I)}}else(0,YA.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),f_.A.set(\"cameraHardwareId_\".concat(U),R[e].value),(0,YA.ur)(!0)(I),(0,YA.Ti)(e)(I),(0,YA.HG)(R[e].value)(I),(0,YA.ey)({name:R[e].name,value:R[e].value})(I),(0,YA.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Ta.m96),(0,YA.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Ta.qmR),(0,YA.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Ta.wXh),(0,YA.M8)(\"VCam Camera\")(I))};return(0,P_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!P&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(HM.A,{name:Ta.vad,children:[(0,P_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,P_.jsx)(\"span\",{className:\"mr5\",children:(0,P_.jsx)(sa.A,{text:t?Ta.zpZ:Ta.cYg})}),(0,P_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:y.map(e=>(0,P_.jsx)(\"li\",{children:(0,P_.jsx)(sa.A,{text:e})},e))})]}),(0,P_.jsx)(P_.Fragment,{children:(0,P_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,P_.jsx)(WA.A,{withArrowIcon:t,withIcon:!t,text:t?Ta._A9:Ta.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,P_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,P_.jsxs)(HM.A,{name:Ta.Vug,tooltipContent:Ta.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,P_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,P_.jsx)(Ve.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,P_.jsx)(P_.Fragment,{children:(0,P_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,P_.jsx)(WA.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,YA.oA)(e)(I)}})})})]}),!u&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"camera-divider\"}),(0,P_.jsx)(HM.A,{name:Ta.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Ta.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,P_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,P_.jsx)(Ve.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,YA.ur)(!0)(I),(0,YA.Ys)(!0)(I),(0,YA.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,P_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,P_.jsx)(sa.A,{text:Ta.VZD})})]})})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3594:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          "jsx": {
+            "path": ".ref/devices/3594/static/js/main.bb246bb0.js",
+            "offset": 6979883,
+            "end": 6986798,
+            "sha256": "2bfb382b4eb21e838060bb10521f6f380e30e335fa2290c024b26ef1d35ad364",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,D.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,M.useDispatch)(),O=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),A=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,M.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,M.useSelector)(e=>e.languageReducer.lang),R=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,M.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,M.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,M.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,M.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,M.useSelector)(e=>e.advancedWebcamReducer.autoFraming,M.shallowEqual),L=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual),P=(0,M.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),p=(0,M.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),m=(0,M.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),U=((0,M.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,M.useSelector)(e=>e.deviceReducer.serialNumber)),h=(0,D.useState)(\"\"),G=(0,Pe.A)(h,2),H=G[0],f=G[1],v=(0,D.useState)(0),B=(0,Pe.A)(v,2),F=B[0],V=B[1],y=[Ta.eXB,Ta.GRK,Ta.k$y,Ta.SCX,Ta.OvL,Ta.Q$X];(0,D.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,YA.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);V(_)}},[i,O]),(0,D.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,YA.Ag)(e)(I)})()},[l,P,p,m]),(0,D.useEffect)(()=>{b()},[R]),(0,D.useEffect)(()=>{c&&(W(),(0,YA.Ty)(!1)(I))},[c]),(0,D.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,YA.su)((0,g.A)((0,g.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,D.useEffect)(()=>{A&&W()},[A]);const b=async()=>{if(R&&R.length>0){var e;let E=f_.A.get(\"cameraHardwareId_\".concat(U)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},W=async()=>{const e=await K();(0,YA.Ag)(e)(I),await b()};function Y(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(U)){if(f_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=f_.A.get(\"cameraHardwareDeviceId_\".concat(U));if(!r&&n.length>0){for(const e of n)if(!Y(e.deviceId)){r=e.deviceId;break}f_.A.set(\"cameraHardwareDeviceId_\".concat(U),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&f_.A.set(\"cameraHardwareDeviceId_\".concat(U),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:rs.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=wm||ar;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,YA.yj)(!0)(I);(0,YA.Tl)(a)(I)}}else(0,YA.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),f_.A.set(\"cameraHardwareId_\".concat(U),R[e].value),(0,YA.ur)(!0)(I),(0,YA.Ti)(e)(I),(0,YA.HG)(R[e].value)(I),(0,YA.ey)({name:R[e].name,value:R[e].value})(I),(0,YA.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Ta.m96),(0,YA.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Ta.qmR),(0,YA.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Ta.wXh),(0,YA.M8)(\"VCam Camera\")(I))};return(0,P_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!P&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsxs)(HM.A,{name:Ta.vad,children:[(0,P_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,P_.jsx)(\"span\",{className:\"mr5\",children:(0,P_.jsx)(sa.A,{text:t?Ta.zpZ:Ta.cYg})}),(0,P_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:y.map(e=>(0,P_.jsx)(\"li\",{children:(0,P_.jsx)(sa.A,{text:e})},e))})]}),(0,P_.jsx)(P_.Fragment,{children:(0,P_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,P_.jsx)(WA.A,{withArrowIcon:t,withIcon:!t,text:t?Ta._A9:Ta.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,P_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,P_.jsxs)(HM.A,{name:Ta.Vug,tooltipContent:Ta.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,P_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,P_.jsx)(Ve.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,P_.jsx)(P_.Fragment,{children:(0,P_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,P_.jsx)(WA.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,YA.oA)(e)(I)}})})})]}),!u&&(0,P_.jsxs)(P_.Fragment,{children:[(0,P_.jsx)(\"div\",{className:\"camera-divider\"}),(0,P_.jsx)(HM.A,{name:Ta.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Ta.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,P_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,P_.jsx)(Ve.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,YA.ur)(!0)(I),(0,YA.Ys)(!0)(I),(0,YA.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,P_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,P_.jsx)(sa.A,{text:Ta.VZD})})]})})]})]})}"
+          }
+        }
+      ],
+      "css": {
+        "path": ".ref/devices/3594/static/css/main.adc2e258.css",
+        "sha256": "3c1ea914562ce339f1190de2dd42da19dfa2e9293bc5e5db5e7e50e9e3d25828",
+        "rules": [
+          {
+            "offset": 42103,
+            "source": ".drop-tips{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:top .1s,left .1s,visibility .2s,opacity .3s linear;visibility:hidden;width:300px;will-change:top,left,visibility,opacity;z-index:200}"
+          },
+          {
+            "offset": 42435,
+            "source": ".drop-tips.on{height:auto!important;opacity:1;visibility:visible;white-space:pre-line;z-index:9999}"
+          },
+          {
+            "offset": 62782,
+            "source": ".obm-menu .tooltip_parent{display:inline-block}"
+          },
+          {
+            "offset": 62829,
+            "source": ".obm-menu .tooltip_parent .help{vertical-align:text-top}"
+          },
+          {
+            "offset": 62885,
+            "source": ".obm-menu .tooltip_parent .help:hover{background-color:#6c6c6c}"
+          },
+          {
+            "offset": 224434,
+            "source": ".power-saving-effect .content .tooltip_parent{position:relative}"
+          },
+          {
+            "offset": 224498,
+            "source": ".power-saving-effect .content .tooltip_parent .help{position:static!important}"
+          },
+          {
+            "offset": 224576,
+            "source": ".power-saving-effect .content .tooltip_parent:hover{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 224669,
+            "source": ".power-saving-effect .content .tooltip_parent .tip{left:-197px;white-space:normal;width:305px}"
+          },
+          {
+            "offset": 268012,
+            "source": ".tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 268080,
+            "source": ".tooltip_parent .tip{background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;left:calc(100% - 20px);line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-line;width:210px;will-change:visibility,opacity;z-index:99}"
+          },
+          {
+            "offset": 268431,
+            "source": ".tooltip_parent .help{background-color:#6c6c6c;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);background-repeat:no-repeat;border-radius:7px;display:inline-block;height:14px;transition:background-color .3s;width:14px;will-change:background-color}"
+          },
+          {
+            "offset": 268704,
+            "source": ".tooltip_parent .help:hover{background-color:#ffffff4d;cursor:pointer}"
+          },
+          {
+            "offset": 268774,
+            "source": ".tooltip_parent .help:hover+.tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 269374,
+            "source": ".maptext .tooltip_parent{position:absolute;right:0;top:4px}"
+          },
+          {
+            "offset": 269433,
+            "source": ".maptext .tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 269510,
+            "source": ".maptext .tooltip_parent .tip{left:-197px;white-space:normal;width:210px}"
+          },
+          {
+            "offset": 283977,
+            "source": ".map_controller .analog_sensitivity_text .tooltip_parent{float:right;position:relative;top:1px}"
+          },
+          {
+            "offset": 285015,
+            "source": ".with-tooltip .tooltip_parent{margin-top:2px}"
+          },
+          {
+            "offset": 433092,
+            "source": ".advanced-camera-container .camera-container .auto-exposure-container .shutter-speed-header,.advanced-camera-container .center-flex-box,.advanced-camera-container .tooltip_parent,.advanced-camera-container .wrapper-container .header-wrapper,.advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{align-items:center;display:flex}"
+          },
+          {
+            "offset": 433530,
+            "source": ".advanced-camera-container .default-margin-left,.advanced-camera-container .wrapper-container .header-wrapper .stepper,.advanced-camera-container .wrapper-container .header-wrapper .switch{margin-left:10px}"
+          },
+          {
+            "offset": 433736,
+            "source": ".advanced-camera-container .default-icon-style,.advanced-camera-container .wrapper-container .icon-close-eye,.advanced-camera-container .wrapper-container .icon-open-eye,.advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;font-style:normal;height:10px;min-height:10px;min-width:10px;position:relative;width:10px}"
+          },
+          {
+            "offset": 436855,
+            "source": ".advanced-camera-container .camera-container .camera-divider{border:1px solid #222;border-radius:2px;margin-bottom:20px;margin-top:20px;width:100%}"
+          },
+          {
+            "offset": 442084,
+            "source": ".advanced-camera-container .camera-container .mode-description{font:14px/17px Roboto;margin-top:10px}"
+          },
+          {
+            "offset": 445840,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name{font:14px/16px Roboto;text-transform:uppercase}"
+          },
+          {
+            "offset": 445964,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name.disabled{opacity:30%}"
+          },
+          {
+            "offset": 446062,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{cursor:pointer}"
+          },
+          {
+            "offset": 446155,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .check-item{margin-bottom:0;margin-left:10px;margin-top:3px}"
+          },
+          {
+            "offset": 446277,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset{align-items:center;background-image:url(../../static/media/icon_reset.f416d0b7.svg);background-position:50%;background-repeat:no-repeat;background-size:initial;display:flex;height:20px;justify-content:center;margin-left:10px;width:20px}"
+          },
+          {
+            "offset": 446586,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset:hover{opacity:.7}"
+          },
+          {
+            "offset": 446676,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .info-icon{background-image:url(../../static/media/info_outline.b491abc9.svg);background-position:50%;background-repeat:no-repeat;background-size:cover;height:24px;width:24px}"
+          },
+          {
+            "offset": 446913,
+            "source": ".advanced-camera-container .wrapper-container .show-preview{cursor:pointer;margin-left:auto}"
+          },
+          {
+            "offset": 447005,
+            "source": ".advanced-camera-container .wrapper-container .show-preview:hover{opacity:.7}"
+          },
+          {
+            "offset": 447082,
+            "source": ".advanced-camera-container .wrapper-container .icon-close-eye{background-image:url(../../static/media/icon_close_eye.af02ee38.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 447236,
+            "source": ".advanced-camera-container .wrapper-container .icon-open-eye{background-image:url(../../static/media/icon_open_eye.4957a8f7.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 447388,
+            "source": ".advanced-camera-container .wrapper-container .override-stepper{margin-bottom:0!important}"
+          },
+          {
+            "offset": 447478,
+            "source": ".advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-image:url(../../static/media/step_down.03eaacfd.svg);margin-right:10px}"
+          },
+          {
+            "offset": 447685,
+            "source": ".advanced-camera-container .wrapper-container .step-right-icon{transform:rotate(-90deg)}"
+          },
+          {
+            "offset": 447773,
+            "source": ".advanced-camera-container .tooltip_parent{margin-left:10px}"
+          },
+          {
+            "offset": 448541,
+            "source": ".save-settings-container .left-side .tooltip_parent{margin-right:10px}"
+          },
+          {
+            "offset": 450542,
+            "source": ".device-preview-container .tooltip_parent{margin-right:25px}"
+          },
+          {
+            "offset": 450835,
+            "source": ".mode-name-s2{margin-left:auto}"
+          },
+          {
+            "offset": 450866,
+            "source": ".mode-name-s2 .tooltip_parent{height:20px;margin-right:0!important}"
+          },
+          {
+            "offset": 450933,
+            "source": ".mode-name-s2 .tooltip_parent .help{background-color:#0000;background-image:url(../../static/media/warning-icon.b0086fcc.svg)!important;height:20px;margin:0;width:20px}"
+          },
+          {
+            "offset": 451101,
+            "source": ".mode-name-s2 .tooltip_parent .tip{width:280px}"
+          }
+        ]
+      }
+    },
+    {
+      "product_id": 3595,
+      "source": ".ref/devices/3595/static/js/main.19c1ceba.js",
+      "sha256": "a6dcff393dd84d2b8cfeae2a31c5a457201609f6f3ddef68877c87ef85414377",
+      "wrapper": {
+        "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+        "offset": 3821726,
+        "end": 3824001,
+        "sha256": "ce7714a56b0f9434963764b58ac3900ce1496712a3613eaa551c08e5bed7c0c5",
+        "source": "e=>{const E=e.checkBoxName,a=e.hasStepper,A=e.hasCheckbox,S=e.hasSwitch,l=e.hasReset,R=e.showPreview,N=void 0!==R&&R,d=e.showRefreshButton,c=void 0!==d&&d,u=e.isActiveSwitch,C=e.handleOnSwitch,D=e.noToggle,L=e.tooltipContent,P=e.infoContent,p=e.className,M=e.allowDecimal,m=e.stepValue,U=e.handleStepperValue,h=e.handleCheckbox,G=e.handleOnReset,g=e.checkBoxValue,H=e.stepperValue,f=e.disabledStepper,v=e.minStepper,B=e.maxStepper,F=e.maxLength,y=e.disableSwitch,V=void 0!==y&&y,b=e.warningTooltip,Y=(0,t.useDispatch)(),W=(0,n.useState)(!0),K=(0,_.A)(W,2),w=K[0],z=K[1],k=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),x=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera});return(0,O.jsxs)(\"div\",{className:\"wrapper-container \".concat(null!==p&&void 0!==p?p:\"\"),children:[(0,O.jsxs)(\"div\",{className:\"header-wrapper\",children:[(0,O.jsxs)(\"div\",{className:\"wrapper-button\",onClick:()=>{D||z(!w)},children:[!D&&(0,O.jsx)(O.Fragment,{children:w?(0,O.jsx)(\"i\",{className:\"step-down-icon\"}):(0,O.jsx)(\"i\",{className:\"step-right-icon\"})}),(0,O.jsx)(\"div\",{className:\"function-name \".concat(V?\"disabled\":\"\"),children:(0,O.jsx)(s.A,{text:e.name})})]}),S&&(0,O.jsx)(i.A,{active:u,onClick:C,disable:V}),l&&(0,O.jsx)(\"div\",{role:\"button\",className:\"btn-reset\",style:{cursor:\"pointer\"},onClick:()=>{G&&G()}}),L&&(0,O.jsx)(r.A,{text:L}),P&&(0,O.jsx)(r.A,{text:P,isInfo:!0}),b&&(0,O.jsx)(\"div\",{className:\"mode-name mode-name-s2\",children:(0,O.jsx)(r.A,{text:b})}),c&&(0,O.jsx)(\"div\",{role:\"button\",onClick:()=>{x||((0,I.Ty)(!0)(Y),(0,I.F4)(!0)(Y))},className:\"btn-reset reset-setting invert-horizontal btn-reset-close\",style:{marginLeft:b?\"10px\":\"auto\"}}),N&&(0,O.jsx)(\"i\",{role:\"button\",className:\"show-preview \".concat(k?\"icon-open-eye\":\"icon-close-eye\",\" \").concat(c?\"btn-show-preview-close\":\"\"),onClick:()=>{N&&(0,I.WD)(!k)(Y)}}),a&&(0,O.jsx)(o.A,{minValue:v,maxValue:B,maxLength:F,value:H,stepValue:m,active:!f,extraClass:\"override-stepper\",setParentState:e=>{U&&U(e)},allowDecimals:null!==M&&void 0!==M&&M}),A&&(0,O.jsx)(T.A,{id:\"wrapperCheckBox\",onCheck:()=>{h&&h(!g)},active:g,name:E})]}),w&&(0,O.jsx)(\"div\",{className:\"content-wrapper\",children:e.children})]})}"
+      },
+      "tooltip": {
+        "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+        "offset": 12474,
+        "end": 13514,
+        "sha256": "7dcd2c8ca2cf5b4306645e31e6a969bd09ad9a69c4f9af161f070175453453a2",
+        "source": "e=>{const E=(0,o.useState)(!1),a=(0,t.A)(E,2),s=a[0],T=a[1],I=(0,o.useState)({left:\"0\",top:\"0\",width:\"0\",height:\"0\"}),O=(0,t.A)(I,2),A=O[0],S=O[1],l=(0,o.useRef)(null),R=e=>{const E=e.getBoundingClientRect(),a=e.parentNode.querySelector(\".tip\"),_=a.clientHeight,t=a.clientWidth;let o=\"0\",i=\"0\";return o=E.right+\"px\",i=E.bottom+\"px\",E.right+t>window.innerWidth&&(o=E.left-t+\"px\"),E.bottom+_>window.innerHeight&&(i=E.bottom-_+\"px\"),{left:o,top:i,width:t+\"px\",height:_+\"px\"}};(0,o.useEffect)(()=>{const e=l.current;S(R(e))},[]);return e.text?(0,r.jsxs)(\"div\",{className:\"tooltip_parent\",children:[(0,r.jsx)(\"div\",{className:e.isInfo?\"info-icon\":\"help\",onMouseEnter:e=>{S(R(e.target)),T(!0)},onMouseLeave:()=>{T(!1)},ref:l}),(0,r.jsx)(\"div\",{className:\"tip\",style:(0,_.A)({visibility:\"hidden\",opacity:0},e.style),children:(0,r.jsx)(i.A,{text:e.text})}),(0,n.createPortal)((0,r.jsx)(\"div\",{className:\"\".concat(s?\"drop-tips on\":\"drop-tips\"),style:(0,_.A)((0,_.A)({},A),e.style),children:s?(0,r.jsx)(i.A,{text:e.text}):\"\"}),document.body)]}):null}"
+      },
+      "processing_mount": {
+        "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+        "offset": 4578735,
+        "end": 4580313,
+        "sha256": "0de8c88383a68901f5305d27884001f2665bd991b9db06ce3955d4a8512b37fb",
+        "source": "()=>{const e=(0,M.useDispatch)(),E=$U().isDisabled,a=((0,M.useSelector)(e=>e.advancedWebcamReducer.ldc,M.shallowEqual),(0,M.useSelector)(e=>e.advancedWebcamReducer.lowLightCompensation,M.shallowEqual)),_=(0,M.useSelector)(e=>e.advancedWebcamReducer.dynamicNoiseReduction,M.shallowEqual);(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual);return(0,M_.jsxs)(\"div\",{className:\"camera-container processing-container scrollable \".concat(E?\"disabled\":\"\"),children:[(0,M_.jsx)(Ah,{disableHDRSwitch:!0}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsx)(Wm.A,{noToggle:!0,name:Aa.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,jS.Ys)(!0)(e),(0,jS.bg)(!a)(e)},tooltipContent:Aa.jn6,hasSwitch:!0,children:(0,M_.jsx)(\"div\",{className:\"mode-description\",children:(0,M_.jsx)(Oa.A,{text:Aa.guc})})}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsxs)(Wm.A,{name:Aa.VMM,tooltipContent:Aa.xAV,children:[(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.XXG})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:_.state2D,onClick:()=>{(0,jS.Ys)(!0)(e),(0,jS.Xo)((0,g.A)((0,g.A)({},_),{},{state2D:!_.state2D}))(e)}})]}),(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,M_.jsx)(Oa.A,{text:Aa.rI2})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,jS.Ys)(!0)(e),(0,jS.Xo)((0,g.A)((0,g.A)({},_),{},{state3D:!_.state3D}))(e)}})]})]})]})}"
+      },
+      "groups": [
+        {
+          "group": {
+            "key": "3595:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3595:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4581571,
+            "end": 4582156,
+            "sha256": "9cdcc23e6212e7569cb5f4a2f18032b9e166395db0443fe88ca8ede4195aae61",
+            "source": "{name:Aa.JGr,tooltipContent:Aa.VEI,children:(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:Rh.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(O===e.id?\"selected\":\"\"),onClick:()=>(e=>{if(e===O)return;const E=Z.DEFAULTPROFILE.image.find(E=>E.name===e),a=Nh.find(E=>E.name===e),_=(0,g.A)((0,g.A)((0,g.A)((0,g.A)({},a),\"custom\"===e&&n),\"custom\"!==e&&{userSettings:(0,g.A)({},E.dataSet.userSettings)}),{},{name:e});(0,jS.z6)(_)(o),(0,jS.Ys)(!0)(o),EU((0,g.A)((0,g.A)({},_),{},{dataSet:_}))})(e.id),children:(0,M_.jsx)(Oa.A,{text:e.name})},e.id))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3595:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3595:brightness"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4582221,
+            "end": 4582489,
+            "sha256": "76603399b39ac4af1bfcb177abde81e68a2b0bcfdbb69b9df8c426dc9c3eb79c",
+            "source": "{name:Aa.a1g,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.brightness,handleStepperValue:A,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(xm,{noTip:!0,min:0,max:255,value:i.brightness,step:1,active:!0,changeValue:e=>A(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3595:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:contrast"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4582588,
+            "end": 4582852,
+            "sha256": "fca64e42fb68d6df4b19842a6a97d4bffe0e4e1f70afb6884fece9ed63a12b94",
+            "source": "{name:Aa.DkT,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.contrast,handleStepperValue:S,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(xm,{noTip:!0,min:0,max:255,value:i.contrast,step:1,active:!0,changeValue:e=>S(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3595:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:saturation"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4582951,
+            "end": 4583219,
+            "sha256": "a16de4cc35d7153183056b8631b8d4e14e43299f9eb9ec9db09b315b068d13be",
+            "source": "{name:Aa.Bq1,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.saturation,handleStepperValue:l,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(xm,{noTip:!0,min:0,max:255,value:i.saturation,step:1,active:!0,changeValue:e=>l(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3595:white-balance",
+              "3595:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3595:white-balance",
+            "header_checkbox": "3595:auto-white-balance"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4584120,
+            "end": 4584921,
+            "sha256": "a956bf9925094eb1eb421b6bada738c994752660617ba974d30a8589560833d3",
+            "source": "{name:Aa.Z8r,checkBoxName:Aa.Q8g,stepValue:10,minStepper:Z.DeviceInfo.whiteBalance.min,maxStepper:Z.DeviceInfo.whiteBalance.max,maxLength:Z.DeviceInfo.whiteBalance&&null!=Z.DeviceInfo.whiteBalance.max?Z.DeviceInfo.whiteBalance.max.toString().length:4,stepperValue:i.whiteBalance.value,checkBoxValue:i.whiteBalance.isAuto,disabledStepper:i.whiteBalance.isAuto,handleStepperValue:d,handleCheckbox:()=>{const e=T.whiteBalance;c(\"whiteBalance\",(0,g.A)((0,g.A)({},e),{},{isAuto:!(null!==e&&void 0!==e&&e.isAuto)}),!0)},hasStepper:!0,hasCheckbox:!0,noTooltip:!0,children:(0,M_.jsx)(xm,{noTip:!0,min:Z.DeviceInfo.whiteBalance.min,max:Z.DeviceInfo.whiteBalance.max,value:i.whiteBalance.value,step:10,active:!i.whiteBalance.isAuto,changeValue:e=>d(e),minTag:Aa.Y7F,maxTag:Aa.ScM,extraClass:\"gradient_slider\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3595:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4586793,
+            "end": 4587046,
+            "sha256": "3143afe16ee0b650b4854ad6f98ca72eb851d6d284daec369db3a3480e5a8476",
+            "source": "{name:Aa.qJr,noTooltip:!0,children:(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:Ch.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===R?\"selected\":\"\"),onClick:()=>v(e.value),children:e.name},e.name))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3595:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3595:mirror"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4588164,
+            "end": 4588350,
+            "sha256": "6a906168e28db3e7422b15da5bc10f4a68772fb0da089f52a41c73fd13c471ee",
+            "source": "{name:Aa.S7W,isActiveSwitch:l,handleOnSwitch:()=>{(0,jS.Ys)(!0)(I),(0,jS.r8)(!l)(I),xo({category:ho,eventCategory:Ko,action:ro,data:{enabled:!l}})},hasSwitch:!0,noTooltip:!0,noToggle:!0}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3595:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4563527,
+            "end": 4564103,
+            "sha256": "059b90473ee6993cfaeebb03329f579fed98fd963dd5efbcd50b23bc4ac5f205",
+            "source": "{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,jS.ur)(!0)(I),(0,jS.Ys)(!0)(I),(0,jS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3595:zoom",
+              "3595:pan-tilt",
+              "3595:view-preset",
+              "3595:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3595:zoom"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4553968,
+            "end": 4554944,
+            "sha256": "c0c8f1373d7cdaa3ae05de9f4f96e58e50900e909f8a42bfb448f0a69d8434c6",
+            "source": "{disabledStepper:L(),name:Aa.c23,tooltipContent:Aa.Kat,stepValue:A,minStepper:I,maxStepper:O,stepperValue:C.zoom,handleStepperValue:D,hasStepper:!0,allowDecimal:!0,roundUpDecimals:!0,noToggle:E,children:[(0,M_.jsx)(xm,{noTip:!0,noTag:!0,min:I,max:O,step:A,active:!L(),value:C.zoom,changeValue:e=>D(e)}),(0,M_.jsx)(LU,{isDisabled:L(),maxPanTilt:r}),L()?(0,M_.jsx)(\"div\",{className:\"mode-description\",children:(0,M_.jsx)(Oa.A,{text:Aa.zjd})}):null,(0,M_.jsxs)(\"div\",{className:\"\".concat(L()?\"disabled\":\"\"),children:[(0,M_.jsx)(\"div\",{className:\"preset-name\",children:(0,bn.JN)(Aa.QaP)}),(0,M_.jsx)(\"div\",{className:\"preset-container\",children:R.data.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"preset-item \".concat(e.mode===R.viewMode?\"selected\":\"\"),onClick:()=>{var E;(E=e.mode)!==R.viewMode&&((0,jS.Ys)(!0)(S),(0,jS.aH)(E)(S))},children:e.mode},\"\".concat(e.mode,\"_\").concat(E)))}),(0,M_.jsx)(\"div\",{className:\"shortcut-key-name\",children:(0,bn.JN)(Aa.R95)}),(0,M_.jsx)(zU,{})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3595:autofocus",
+              "3595:focus",
+              "3595:focus-tracking"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3595:autofocus"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4462752,
+            "end": 4464847,
+            "sha256": "9224061e330667e064d077c6eac6838b0428bb22c5cc678d01154f5393ec5d6a",
+            "source": "{name:Aa.dgn,tooltipContent:Aa.WKf,hasSwitch:!0,isActiveSwitch:r.isEnabled,handleOnSwitch:()=>{(0,jS.Ys)(!0)(n),(0,jS.wp)(!r.isEnabled)(n)},children:(0,M_.jsxs)(\"div\",{className:\"auto-focus-container\",children:[!r.isEnabled&&(0,M_.jsxs)(\"div\",{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.EzE})}),(0,M_.jsx)(xm,{noTip:!0,noTag:!0,min:o,max:i,value:r.manualFocus,step:1,active:!0,changeValue:e=>(e=>{(0,jS.Ys)(!0)(n),(0,jS.Yt)(e)(n)})(e),minTag:\"\",maxTag:\"\",midTag:\"\",thumbTag:\"\"})]}),r.isEnabled&&(0,M_.jsxs)(M_.Fragment,{children:[E?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.gah})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Jn.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,a?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.gah})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:$n.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,_?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.eWS})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:er.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.tracking?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,jS.Ys)(!0)(n),void(0,jS.DP)(E)(n);var E},children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,t?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.Tf7})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Er.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,jS.Ys)(!0)(n),void(0,jS.me)(E)(n);var E},children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3595:auto-exposure",
+              "3595:iso",
+              "3595:shutter",
+              "3595:metering",
+              "3595:compensation",
+              "3595:reset-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT_V2",
+            "header_switch": "3595:auto-exposure",
+            "header_reset": "3595:reset-exposure"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4459666,
+            "end": 4462331,
+            "sha256": "5a9554252b2c89cba616ba216618abefe734be416fde72f5705cf88745304c52",
+            "source": "{name:Aa.aDz,tooltipContent:i,hasSwitch:!0,hasReset:!0,isActiveSwitch:O,handleOnReset:()=>{(0,jS.GB)(Z.DEFAULTPROFILE.camera.autoExposure)(n)},handleOnSwitch:()=>{(0,jS.Ys)(!0)(n),(0,jS.Xr)(!O)(n),eU((0,g.A)((0,g.A)({},s),{},{isEnabled:!O}))},children:(0,M_.jsxs)(\"div\",{className:\"auto-exposure-container\",children:[!O&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(\"div\",{className:\"mode-name\",children:[\"ISO\",(0,M_.jsx)(Sa.A,{text:Aa.GOR})]}),(0,M_.jsx)(\"div\",{className:\"common-container\",children:ar.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===d?\"selected\":\"\"),style:{minWidth:\"75px\"},onClick:()=>{var E;(E=e.value)!==d&&(L(O),(0,jS.Ys)(!0)(n),(0,jS.EM)(E)(n))},children:e.name},\"\".concat(E,\"_\").concat(e.name)))}),(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,M_.jsxs)(\"div\",{className:\"mode-name\",children:[(0,M_.jsx)(Oa.A,{text:Aa.SJ$}),(0,M_.jsx)(Sa.A,{text:Aa.e08})]}),(0,M_.jsxs)(\"div\",{className:\"mode-name\",style:{marginLeft:10},children:[p,\"s\"]})]}),(0,M_.jsx)(qm,{noTip:!0,originData:or,min:Z.DeviceInfo.shutterSpeed.min,max:Z.DeviceInfo.shutterSpeed.max,value:u,active:!0,changeValue:e=>(e=>{e!==u&&((0,jS.Ys)(!0)(n),L(O),(0,jS.zt)(e)(n))})(e),minTag:Aa.NWy,maxTag:Aa.kL5})]})]}),O&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(\"div\",{className:\"mode-name\",children:[(0,M_.jsx)(Oa.A,{text:Aa.cSt}),(0,M_.jsx)(Sa.A,{text:Aa.cTh})]}),(0,M_.jsx)(\"div\",{className:\"common-container\",children:_r.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===S?\"selected\":\"\"),onClick:()=>{var E;(E=e.value)!==S&&((0,jS.Ys)(!0)(n),L(O),(0,jS.Kl)(E)(n),eU((0,g.A)((0,g.A)({},s),{},{metering:E})))},children:(0,M_.jsx)(Oa.A,{text:e.name})},e.value))}),(0,M_.jsxs)(\"div\",{className:\"shutter-speed-header\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.F9S})}),(0,M_.jsx)(Sa.A,{text:Aa.ztv}),(0,M_.jsx)(Xm.A,{minValue:C,maxValue:3,maxLength:1,stepValue:.1,value:R,active:!0,extraClass:\"override-stepper\",setParentState:P,roundUpDecimals:!0,allowDecimals:!0})]}),(0,M_.jsx)(xm,{noTip:!0,min:C,max:3,value:R,step:.1,active:!0,changeValue:e=>P(e),minTag:\"\".concat(C,\".0\"),maxTag:\"+3.0\"}),a&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:\"10px\"},children:(0,M_.jsx)(Oa.A,{text:Aa.Tf7})}),(0,M_.jsx)(\"div\",{className:\"common-container\",children:Er.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===T.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,jS.Ys)(!0)(n),L(O),void(0,jS.me)(E)(n);var E},children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:PROCESSING:MJPEG_QUALITY",
+            "title": "MJPEG_QUALITY",
+            "controls": [
+              "3595:auto-quality"
+            ],
+            "collapsible": true,
+            "tooltip": "RESOLUTION_QUALITY_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4576748,
+            "end": 4577879,
+            "sha256": "98e1f944e11a51ec6e2bf3dbbf2de1202b926603142c2efa53a65ab85614464c",
+            "source": "{name:Aa.G4E,tooltipContent:Aa.p_4,children:[(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.ezb})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:o.autoQuality,onClick:async()=>{(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{autoQuality:!o.autoQuality}))(a)}})]})}),E?null:o.autoQuality?(0,M_.jsx)(Oh,{outerClass:\"two-way-tab-custom\",modeA:Aa._TM,modeB:Aa.kuU,firstTabOn:o.mode===Qn.PERFORMANCE,toggleTab:async()=>{let e=o.mode;e=e===Qn.PERFORMANCE?Qn.QUALITY:Qn.PERFORMANCE,(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{mode:e}))(a)},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"}):(0,M_.jsx)(xm,{allowSettingValue:!0,noTip:!0,min:10,max:90,value:o.manualQuality,step:1,active:!_,changeValue:JA()(async e=>{e!==o.manualQuality&&((0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{manualQuality:e}))(a))},250),minTag:Aa._TM,maxTag:Aa.kuU})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:PROCESSING:HDR",
+            "title": "HDR",
+            "controls": [
+              "3595:hdr",
+              "3595:hdr-mode"
+            ],
+            "collapsible": false,
+            "header_switch": "3595:hdr",
+            "tooltip": "CAMERA_HDR_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4576194,
+            "end": 4578731,
+            "sha256": "94c75c1f73626c17e28a7e94ba1640690498d4c024d59845eeb2afe074ea8cfb",
+            "source": "e=>{let E=e.disableHDRSwitch;const a=(0,M.useDispatch)(),_=$U().isDisabled,t=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),o=(0,M.useSelector)(e=>e.advancedWebcamReducer.mjpegQuality,M.shallowEqual),i=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual);let n=(0,D.useMemo)(()=>tr.findIndex(e=>e.width===(null===t||void 0===t?void 0:t.width)&&e.height===(null===t||void 0===t?void 0:t.height)&&e.fps===(null===t||void 0===t?void 0:t.fps)),[t]);-1===n&&(n=0);return(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(Wm.A,{name:Aa.G4E,tooltipContent:Aa.p_4,children:[(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.ezb})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:o.autoQuality,onClick:async()=>{(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{autoQuality:!o.autoQuality}))(a)}})]})}),E?null:o.autoQuality?(0,M_.jsx)(Oh,{outerClass:\"two-way-tab-custom\",modeA:Aa._TM,modeB:Aa.kuU,firstTabOn:o.mode===Qn.PERFORMANCE,toggleTab:async()=>{let e=o.mode;e=e===Qn.PERFORMANCE?Qn.QUALITY:Qn.PERFORMANCE,(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{mode:e}))(a)},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"}):(0,M_.jsx)(xm,{allowSettingValue:!0,noTip:!0,min:10,max:90,value:o.manualQuality,step:1,active:!_,changeValue:JA()(async e=>{e!==o.manualQuality&&((0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.LX)((0,g.A)((0,g.A)({},o),{},{manualQuality:e}))(a))},250),minTag:Aa._TM,maxTag:Aa.kuU})]}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:\"HDR\"}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:i.isEnabled,onClick:async()=>{(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.Fr)((0,g.A)((0,g.A)({},i),{},{isEnabled:!i.isEnabled}))(a)}}),(0,M_.jsx)(Sa.A,{text:Aa.hd_})]}),(0,M_.jsx)(Oh,{outerClass:\"two-way-tab-custom \".concat(i.isEnabled?\"\":\"disabled\"),modeA:Aa.$3b,modeB:Aa.pG,firstTabOn:i.mode===qn.DARK_MODE,toggleTab:async()=>{let e=i.mode;e=e===qn.DARK_MODE?qn.BRIGHT_MODE:qn.DARK_MODE,(0,jS.ur)(!0)(a),(0,jS.Ys)(!0)(a),(0,jS.Fr)((0,g.A)((0,g.A)({},i),{},{mode:e}))(a)},extraClass:\"twoway-lighting no-inner-border\",extraClassA:\"lighting-effect\",extraClassB:\"lighting-effect\"})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3595:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3595:lowLightCompensation",
+            "description": "DESCRIPTION_LOW_LIGHT_COMPENSATION"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4579315,
+            "end": 4579545,
+            "sha256": "b7d67e69de1778eb70992dce57c1f5c4ca2e249851a8938b013437c0a04c6049",
+            "source": "{noToggle:!0,name:Aa.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,jS.Ys)(!0)(e),(0,jS.bg)(!a)(e)},tooltipContent:Aa.jn6,hasSwitch:!0,children:(0,M_.jsx)(\"div\",{className:\"mode-description\",children:(0,M_.jsx)(Oa.A,{text:Aa.guc})})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3595:state2D",
+              "3595:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4579611,
+            "end": 4580308,
+            "sha256": "f08153526878a8176733dfc27f880537916973ffa4f9f0e4763b227c592f6801",
+            "source": "{name:Aa.VMM,tooltipContent:Aa.xAV,children:[(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.XXG})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:_.state2D,onClick:()=>{(0,jS.Ys)(!0)(e),(0,jS.Xo)((0,g.A)((0,g.A)({},_),{},{state2D:!_.state2D}))(e)}})]}),(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,M_.jsx)(Oa.A,{text:Aa.rI2})}),(0,M_.jsx)(hS.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,jS.Ys)(!0)(e),(0,jS.Xo)((0,g.A)((0,g.A)({},_),{},{state3D:!_.state3D}))(e)}})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4557196,
+            "end": 4564111,
+            "sha256": "e0b265960f2cc43beb04f976493d43f3e902e162967efab52248af47d10380c8",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,D.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,M.useDispatch)(),O=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),A=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,M.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,M.useSelector)(e=>e.languageReducer.lang),R=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,M.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,M.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,M.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,M.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,M.useSelector)(e=>e.advancedWebcamReducer.autoFraming,M.shallowEqual),L=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual),P=(0,M.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),p=(0,M.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),m=(0,M.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),U=((0,M.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,M.useSelector)(e=>e.deviceReducer.serialNumber)),h=(0,D.useState)(\"\"),G=(0,Pe.A)(h,2),H=G[0],f=G[1],v=(0,D.useState)(0),B=(0,Pe.A)(v,2),F=B[0],y=B[1],V=[Aa.eXB,Aa.GRK,Aa.k$y,Aa.SCX,Aa.OvL,Aa.Q$X];(0,D.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,jS.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);y(_)}},[i,O]),(0,D.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,jS.Ag)(e)(I)})()},[l,P,p,m]),(0,D.useEffect)(()=>{b()},[R]),(0,D.useEffect)(()=>{c&&(Y(),(0,jS.Ty)(!1)(I))},[c]),(0,D.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,jS.su)((0,g.A)((0,g.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,D.useEffect)(()=>{A&&Y()},[A]);const b=async()=>{if(R&&R.length>0){var e;let E=F_.A.get(\"cameraHardwareId_\".concat(U)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},Y=async()=>{const e=await K();(0,jS.Ag)(e)(I),await b()};function W(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(U)){if(F_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=F_.A.get(\"cameraHardwareDeviceId_\".concat(U));if(!r&&n.length>0){for(const e of n)if(!W(e.deviceId)){r=e.deviceId;break}F_.A.set(\"cameraHardwareDeviceId_\".concat(U),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&F_.A.set(\"cameraHardwareDeviceId_\".concat(U),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:is.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=QU||tr;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,jS.yj)(!0)(I);(0,jS.Tl)(a)(I)}}else(0,jS.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),F_.A.set(\"cameraHardwareId_\".concat(U),R[e].value),(0,jS.ur)(!0)(I),(0,jS.Ti)(e)(I),(0,jS.HG)(R[e].value)(I),(0,jS.ey)({name:R[e].name,value:R[e].value})(I),(0,jS.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Aa.m96),(0,jS.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Aa.qmR),(0,jS.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Aa.wXh),(0,jS.M8)(\"VCam Camera\")(I))};return(0,M_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!P&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(Wm.A,{name:Aa.vad,children:[(0,M_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,M_.jsx)(\"span\",{className:\"mr5\",children:(0,M_.jsx)(Oa.A,{text:t?Aa.zpZ:Aa.cYg})}),(0,M_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:V.map(e=>(0,M_.jsx)(\"li\",{children:(0,M_.jsx)(Oa.A,{text:e})},e))})]}),(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,M_.jsx)(XS.A,{withArrowIcon:t,withIcon:!t,text:t?Aa._A9:Aa.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,M_.jsxs)(Wm.A,{name:Aa.Vug,tooltipContent:Aa.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(ye.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(XS.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,jS.oA)(e)(I)}})})})]}),!u&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsx)(Wm.A,{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,jS.ur)(!0)(I),(0,jS.Ys)(!0)(I),(0,jS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3595:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          "jsx": {
+            "path": ".ref/devices/3595/static/js/main.19c1ceba.js",
+            "offset": 4557196,
+            "end": 4564111,
+            "sha256": "e0b265960f2cc43beb04f976493d43f3e902e162967efab52248af47d10380c8",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,D.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,M.useDispatch)(),O=(0,M.useSelector)(e=>e.advancedWebcamReducer.resolution,M.shallowEqual),A=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,M.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,M.useSelector)(e=>e.languageReducer.lang),R=(0,M.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,M.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,M.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,M.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,M.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,M.useSelector)(e=>e.advancedWebcamReducer.autoFraming,M.shallowEqual),L=(0,M.useSelector)(e=>e.advancedWebcamReducer.hdr,M.shallowEqual),P=(0,M.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),p=(0,M.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),m=(0,M.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),U=((0,M.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,M.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,M.useSelector)(e=>e.deviceReducer.serialNumber)),h=(0,D.useState)(\"\"),G=(0,Pe.A)(h,2),H=G[0],f=G[1],v=(0,D.useState)(0),B=(0,Pe.A)(v,2),F=B[0],y=B[1],V=[Aa.eXB,Aa.GRK,Aa.k$y,Aa.SCX,Aa.OvL,Aa.Q$X];(0,D.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,jS.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);y(_)}},[i,O]),(0,D.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,jS.Ag)(e)(I)})()},[l,P,p,m]),(0,D.useEffect)(()=>{b()},[R]),(0,D.useEffect)(()=>{c&&(Y(),(0,jS.Ty)(!1)(I))},[c]),(0,D.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,jS.su)((0,g.A)((0,g.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,D.useEffect)(()=>{A&&Y()},[A]);const b=async()=>{if(R&&R.length>0){var e;let E=F_.A.get(\"cameraHardwareId_\".concat(U)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},Y=async()=>{const e=await K();(0,jS.Ag)(e)(I),await b()};function W(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(U)){if(F_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=F_.A.get(\"cameraHardwareDeviceId_\".concat(U));if(!r&&n.length>0){for(const e of n)if(!W(e.deviceId)){r=e.deviceId;break}F_.A.set(\"cameraHardwareDeviceId_\".concat(U),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&F_.A.set(\"cameraHardwareDeviceId_\".concat(U),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:is.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=QU||tr;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,jS.yj)(!0)(I);(0,jS.Tl)(a)(I)}}else(0,jS.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),F_.A.set(\"cameraHardwareId_\".concat(U),R[e].value),(0,jS.ur)(!0)(I),(0,jS.Ti)(e)(I),(0,jS.HG)(R[e].value)(I),(0,jS.ey)({name:R[e].name,value:R[e].value})(I),(0,jS.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Aa.m96),(0,jS.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Aa.qmR),(0,jS.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Aa.wXh),(0,jS.M8)(\"VCam Camera\")(I))};return(0,M_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!P&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(Wm.A,{name:Aa.vad,children:[(0,M_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,M_.jsx)(\"span\",{className:\"mr5\",children:(0,M_.jsx)(Oa.A,{text:t?Aa.zpZ:Aa.cYg})}),(0,M_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:V.map(e=>(0,M_.jsx)(\"li\",{children:(0,M_.jsx)(Oa.A,{text:e})},e))})]}),(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,M_.jsx)(XS.A,{withArrowIcon:t,withIcon:!t,text:t?Aa._A9:Aa.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,M_.jsxs)(Wm.A,{name:Aa.Vug,tooltipContent:Aa.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(ye.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(XS.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,jS.oA)(e)(I)}})})})]}),!u&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsx)(Wm.A,{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==L&&void 0!==L&&L.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,jS.ur)(!0)(I),(0,jS.Ys)(!0)(I),(0,jS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})})]})]})}"
+          }
+        }
+      ],
+      "css": {
+        "path": ".ref/devices/3595/static/css/main.9616d4be.css",
+        "sha256": "aae1c49abffc3614c8671290b11f68d7dbb5d4de8b92c7dc4dcfd3b7af1e0b63",
+        "rules": [
+          {
+            "offset": 42116,
+            "source": ".drop-tips{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:top .1s,left .1s,visibility .2s,opacity .3s linear;visibility:hidden;width:300px;will-change:top,left,visibility,opacity;z-index:200}"
+          },
+          {
+            "offset": 42448,
+            "source": ".drop-tips.on{height:auto!important;opacity:1;visibility:visible;white-space:pre-line;z-index:9999}"
+          },
+          {
+            "offset": 62810,
+            "source": ".obm-menu .tooltip_parent{display:inline-block}"
+          },
+          {
+            "offset": 62857,
+            "source": ".obm-menu .tooltip_parent .help{vertical-align:text-top}"
+          },
+          {
+            "offset": 62913,
+            "source": ".obm-menu .tooltip_parent .help:hover{background-color:#6c6c6c}"
+          },
+          {
+            "offset": 224618,
+            "source": ".power-saving-effect .content .tooltip_parent{position:relative}"
+          },
+          {
+            "offset": 224682,
+            "source": ".power-saving-effect .content .tooltip_parent .help{position:static!important}"
+          },
+          {
+            "offset": 224760,
+            "source": ".power-saving-effect .content .tooltip_parent:hover{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 224853,
+            "source": ".power-saving-effect .content .tooltip_parent .tip{left:-197px;white-space:normal;width:305px}"
+          },
+          {
+            "offset": 269354,
+            "source": ".tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 269422,
+            "source": ".tooltip_parent .tip{background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;left:calc(100% - 20px);line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-line;width:210px;will-change:visibility,opacity;z-index:99}"
+          },
+          {
+            "offset": 269773,
+            "source": ".tooltip_parent .help{background-color:#6c6c6c;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);background-repeat:no-repeat;border-radius:7px;display:inline-block;height:14px;transition:background-color .3s;width:14px;will-change:background-color}"
+          },
+          {
+            "offset": 270046,
+            "source": ".tooltip_parent .help:hover{background-color:#ffffff4d;cursor:pointer}"
+          },
+          {
+            "offset": 270116,
+            "source": ".tooltip_parent .help:hover+.tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 270716,
+            "source": ".maptext .tooltip_parent{position:absolute;right:0;top:4px}"
+          },
+          {
+            "offset": 270775,
+            "source": ".maptext .tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 270852,
+            "source": ".maptext .tooltip_parent .tip{left:-197px;white-space:normal;width:210px}"
+          },
+          {
+            "offset": 285351,
+            "source": ".map_controller .analog_sensitivity_text .tooltip_parent{float:right;position:relative;top:1px}"
+          },
+          {
+            "offset": 286389,
+            "source": ".with-tooltip .tooltip_parent{margin-top:2px}"
+          },
+          {
+            "offset": 435017,
+            "source": ".advanced-camera-container .camera-container .auto-exposure-container .shutter-speed-header,.advanced-camera-container .center-flex-box,.advanced-camera-container .tooltip_parent,.advanced-camera-container .wrapper-container .header-wrapper,.advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{align-items:center;display:flex}"
+          },
+          {
+            "offset": 435455,
+            "source": ".advanced-camera-container .default-margin-left,.advanced-camera-container .wrapper-container .header-wrapper .stepper,.advanced-camera-container .wrapper-container .header-wrapper .switch{margin-left:10px}"
+          },
+          {
+            "offset": 435661,
+            "source": ".advanced-camera-container .default-icon-style,.advanced-camera-container .wrapper-container .icon-close-eye,.advanced-camera-container .wrapper-container .icon-open-eye,.advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;font-style:normal;height:10px;min-height:10px;min-width:10px;position:relative;width:10px}"
+          },
+          {
+            "offset": 438780,
+            "source": ".advanced-camera-container .camera-container .camera-divider{border:1px solid #222;border-radius:2px;margin-bottom:20px;margin-top:20px;width:100%}"
+          },
+          {
+            "offset": 444009,
+            "source": ".advanced-camera-container .camera-container .mode-description{font:14px/17px Roboto;margin-top:10px}"
+          },
+          {
+            "offset": 447765,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name{font:14px/16px Roboto;text-transform:uppercase}"
+          },
+          {
+            "offset": 447889,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name.disabled{opacity:30%}"
+          },
+          {
+            "offset": 447987,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{cursor:pointer}"
+          },
+          {
+            "offset": 448080,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .check-item{margin-bottom:0;margin-left:10px;margin-top:3px}"
+          },
+          {
+            "offset": 448202,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset{align-items:center;background-image:url(../../static/media/icon_reset.f416d0b7.svg);background-position:50%;background-repeat:no-repeat;background-size:initial;display:flex;height:20px;justify-content:center;margin-left:10px;width:20px}"
+          },
+          {
+            "offset": 448511,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset:hover{opacity:.7}"
+          },
+          {
+            "offset": 448601,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .info-icon{background-image:url(../../static/media/info_outline.b491abc9.svg);background-position:50%;background-repeat:no-repeat;background-size:cover;height:24px;width:24px}"
+          },
+          {
+            "offset": 448838,
+            "source": ".advanced-camera-container .wrapper-container .show-preview{cursor:pointer;margin-left:auto}"
+          },
+          {
+            "offset": 448930,
+            "source": ".advanced-camera-container .wrapper-container .show-preview:hover{opacity:.7}"
+          },
+          {
+            "offset": 449007,
+            "source": ".advanced-camera-container .wrapper-container .icon-close-eye{background-image:url(../../static/media/icon_close_eye.af02ee38.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 449161,
+            "source": ".advanced-camera-container .wrapper-container .icon-open-eye{background-image:url(../../static/media/icon_open_eye.4957a8f7.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 449313,
+            "source": ".advanced-camera-container .wrapper-container .override-stepper{margin-bottom:0!important}"
+          },
+          {
+            "offset": 449403,
+            "source": ".advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-image:url(../../static/media/step_down.03eaacfd.svg);margin-right:10px}"
+          },
+          {
+            "offset": 449610,
+            "source": ".advanced-camera-container .wrapper-container .step-right-icon{transform:rotate(-90deg)}"
+          },
+          {
+            "offset": 449698,
+            "source": ".advanced-camera-container .tooltip_parent{margin-left:10px}"
+          },
+          {
+            "offset": 450466,
+            "source": ".save-settings-container .left-side .tooltip_parent{margin-right:10px}"
+          },
+          {
+            "offset": 452467,
+            "source": ".device-preview-container .tooltip_parent{margin-right:25px}"
+          },
+          {
+            "offset": 452760,
+            "source": ".mode-name-s2{margin-left:auto}"
+          },
+          {
+            "offset": 452791,
+            "source": ".mode-name-s2 .tooltip_parent{height:20px;margin-right:0!important}"
+          },
+          {
+            "offset": 452858,
+            "source": ".mode-name-s2 .tooltip_parent .help{background-color:#0000;background-image:url(../../static/media/warning-icon.b0086fcc.svg)!important;height:20px;margin:0;width:20px}"
+          },
+          {
+            "offset": 453026,
+            "source": ".mode-name-s2 .tooltip_parent .tip{width:280px}"
+          }
+        ]
+      }
+    },
+    {
+      "product_id": 3596,
+      "source": ".ref/devices/3596/static/js/main.0e57873f.js",
+      "sha256": "d5c7ad36f9f5b145578d8849b5132535617f36d2fc740a246b643663fc370f2e",
+      "wrapper": {
+        "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+        "offset": 72841,
+        "end": 75114,
+        "sha256": "0e2c4e114615cf39b0cebb7fe74dfc114e201c47333520c94493f5d46e548cc6",
+        "source": "e=>{const E=e.checkBoxName,a=e.hasStepper,i=e.hasCheckbox,r=e.hasSwitch,l=e.hasReset,R=e.showPreview,N=void 0!==R&&R,d=e.showRefreshButton,c=void 0!==d&&d,u=e.isActiveSwitch,C=e.handleOnSwitch,D=e.noToggle,L=e.tooltipContent,P=e.infoContent,p=e.className,M=e.allowDecimal,m=e.stepValue,U=e.handleStepperValue,h=e.handleCheckbox,G=e.handleOnReset,g=e.checkBoxValue,H=e.stepperValue,f=e.disabledStepper,v=e.minStepper,B=e.maxStepper,F=e.maxLength,y=e.disableSwitch,V=void 0!==y&&y,Y=e.warningTooltip,b=(0,t.useDispatch)(),W=(0,o.useState)(!0),K=(0,_.A)(W,2),w=K[0],z=K[1],k=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),x=(0,t.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera});return(0,n.jsxs)(\"div\",{className:\"wrapper-container \".concat(null!==p&&void 0!==p?p:\"\"),children:[(0,n.jsxs)(\"div\",{className:\"header-wrapper\",children:[(0,n.jsxs)(\"div\",{className:\"wrapper-button\",onClick:()=>{D||z(!w)},children:[!D&&(0,n.jsx)(n.Fragment,{children:w?(0,n.jsx)(\"i\",{className:\"step-down-icon\"}):(0,n.jsx)(\"i\",{className:\"step-right-icon\"})}),(0,n.jsx)(\"div\",{className:\"function-name \".concat(V?\"disabled\":\"\"),children:(0,n.jsx)(O.A,{text:e.name})})]}),r&&(0,n.jsx)(T.A,{active:u,onClick:C,disable:V}),l&&(0,n.jsx)(\"div\",{role:\"button\",className:\"btn-reset\",style:{cursor:\"pointer\"},onClick:()=>{G&&G()}}),L&&(0,n.jsx)(I.A,{text:L}),P&&(0,n.jsx)(I.A,{text:P,isInfo:!0}),Y&&(0,n.jsx)(\"div\",{className:\"mode-name mode-name-s2\",children:(0,n.jsx)(I.A,{text:Y})}),c&&(0,n.jsx)(\"div\",{role:\"button\",onClick:()=>{x||((0,S.Ty)(!0)(b),(0,S.F4)(!0)(b))},className:\"btn-reset reset-setting invert-horizontal btn-reset-close\",style:{marginLeft:Y?\"10px\":\"auto\"}}),N&&(0,n.jsx)(\"i\",{role:\"button\",className:\"show-preview \".concat(k?\"icon-open-eye\":\"icon-close-eye\",\" \").concat(c?\"btn-show-preview-close\":\"\"),onClick:()=>{N&&(0,S.WD)(!k)(b)}}),a&&(0,n.jsx)(s,{minValue:v,maxValue:B,maxLength:F,value:H,stepValue:m,active:!f,extraClass:\"override-stepper\",setParentState:e=>{U&&U(e)},allowDecimals:null!==M&&void 0!==M&&M}),i&&(0,n.jsx)(A.A,{id:\"wrapperCheckBox\",onCheck:()=>{h&&h(!g)},active:g,name:E})]}),w&&(0,n.jsx)(\"div\",{className:\"content-wrapper\",children:e.children})]})}"
+      },
+      "tooltip": {
+        "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+        "offset": 12475,
+        "end": 13515,
+        "sha256": "7dcd2c8ca2cf5b4306645e31e6a969bd09ad9a69c4f9af161f070175453453a2",
+        "source": "e=>{const E=(0,o.useState)(!1),a=(0,t.A)(E,2),s=a[0],T=a[1],I=(0,o.useState)({left:\"0\",top:\"0\",width:\"0\",height:\"0\"}),O=(0,t.A)(I,2),A=O[0],S=O[1],l=(0,o.useRef)(null),R=e=>{const E=e.getBoundingClientRect(),a=e.parentNode.querySelector(\".tip\"),_=a.clientHeight,t=a.clientWidth;let o=\"0\",i=\"0\";return o=E.right+\"px\",i=E.bottom+\"px\",E.right+t>window.innerWidth&&(o=E.left-t+\"px\"),E.bottom+_>window.innerHeight&&(i=E.bottom-_+\"px\"),{left:o,top:i,width:t+\"px\",height:_+\"px\"}};(0,o.useEffect)(()=>{const e=l.current;S(R(e))},[]);return e.text?(0,r.jsxs)(\"div\",{className:\"tooltip_parent\",children:[(0,r.jsx)(\"div\",{className:e.isInfo?\"info-icon\":\"help\",onMouseEnter:e=>{S(R(e.target)),T(!0)},onMouseLeave:()=>{T(!1)},ref:l}),(0,r.jsx)(\"div\",{className:\"tip\",style:(0,_.A)({visibility:\"hidden\",opacity:0},e.style),children:(0,r.jsx)(i.A,{text:e.text})}),(0,n.createPortal)((0,r.jsx)(\"div\",{className:\"\".concat(s?\"drop-tips on\":\"drop-tips\"),style:(0,_.A)((0,_.A)({},A),e.style),children:s?(0,r.jsx)(i.A,{text:e.text}):\"\"}),document.body)]}):null}"
+      },
+      "processing_mount": {
+        "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+        "offset": 4564889,
+        "end": 4566285,
+        "sha256": "0bd923651e82fa6a237487ee81891cc65f470dccc1e79814f481a769008367d3",
+        "source": "()=>{const e=(0,m.useDispatch)(),E=mU().isDisabled,a=((0,m.useSelector)(e=>e.advancedWebcamReducer.ldc,m.shallowEqual),(0,m.useSelector)(e=>e.advancedWebcamReducer.lowLightCompensation,m.shallowEqual)),_=(0,m.useSelector)(e=>e.advancedWebcamReducer.dynamicNoiseReduction,m.shallowEqual);(0,m.useSelector)(e=>e.advancedWebcamReducer.resolution,m.shallowEqual);return(0,M_.jsxs)(\"div\",{className:\"camera-container processing-container scrollable \".concat(E?\"disabled\":\"\"),children:[(0,M_.jsx)(Lm.A,{noToggle:!0,name:Aa.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,HS.Ys)(!0)(e),(0,HS.bg)(!a)(e)},tooltipContent:Aa.jn6,hasSwitch:!0}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsxs)(Lm.A,{name:Aa.VMM,tooltipContent:Aa.xAV,children:[(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.XXG})}),(0,M_.jsx)(AS.A,{className:\"switch-custom\",active:_.state2D,onClick:()=>{(0,HS.Ys)(!0)(e),(0,HS.Xo)((0,D.A)((0,D.A)({},_),{},{state2D:!_.state2D}))(e)}})]}),(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,M_.jsx)(Oa.A,{text:Aa.rI2})}),(0,M_.jsx)(AS.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,HS.Ys)(!0)(e),(0,HS.Xo)((0,D.A)((0,D.A)({},_),{},{state3D:!_.state3D}))(e)}})]})]})]})}"
+      },
+      "groups": [
+        {
+          "group": {
+            "key": "3596:IMAGE:IMAGE_PRESETS",
+            "title": "IMAGE_PRESETS",
+            "controls": [
+              "3596:image-preset"
+            ],
+            "collapsible": true,
+            "divider": "none",
+            "tooltip": "IMAGE_PRESETS_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4567543,
+            "end": 4568128,
+            "sha256": "d870e8d41dc94b93fee6dc715df484b27b2f17c780f5967c0fc49daaea9839bc",
+            "source": "{name:Aa.JGr,tooltipContent:Aa.VEI,children:(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:WU.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(O===e.id?\"selected\":\"\"),onClick:()=>(e=>{if(e===O)return;const E=Z.DEFAULTPROFILE.image.find(E=>E.name===e),a=KU.find(E=>E.name===e),_=(0,D.A)((0,D.A)((0,D.A)((0,D.A)({},a),\"custom\"===e&&n),\"custom\"!==e&&{userSettings:(0,D.A)({},E.dataSet.userSettings)}),{},{name:e});(0,HS.z6)(_)(o),(0,HS.Ys)(!0)(o),SU((0,D.A)((0,D.A)({},_),{},{dataSet:_}))})(e.id),children:(0,M_.jsx)(Oa.A,{text:e.name})},e.id))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:BRIGHTNESS",
+            "title": "BRIGHTNESS",
+            "controls": [
+              "3596:brightness"
+            ],
+            "collapsible": true,
+            "divider": "normal",
+            "header_stepper": "3596:brightness"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4568193,
+            "end": 4568461,
+            "sha256": "fd20f3d691b6f903e33a390ad26b8edba1c58ad921f76635f5f83472c8a07c73",
+            "source": "{name:Aa.a1g,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.brightness,handleStepperValue:A,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(Um,{noTip:!0,min:0,max:255,value:i.brightness,step:1,active:!0,changeValue:e=>A(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:CONTRAST",
+            "title": "CONTRAST",
+            "controls": [
+              "3596:contrast"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:contrast"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4568560,
+            "end": 4568824,
+            "sha256": "3c4c7be23b90844cb3e149da36c61b825c7d5dd7708cdb9493664f16c2f25f53",
+            "source": "{name:Aa.DkT,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.contrast,handleStepperValue:S,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(Um,{noTip:!0,min:0,max:255,value:i.contrast,step:1,active:!0,changeValue:e=>S(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:SATURATION",
+            "title": "SATURATION",
+            "controls": [
+              "3596:saturation"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:saturation"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4568923,
+            "end": 4569191,
+            "sha256": "bd8d53a657767a33485c2c55bfc4139a91c4bbb0f726c047dc9c6742cc6db218",
+            "source": "{name:Aa.Bq1,stepValue:1,minStepper:0,maxStepper:255,maxLength:3,stepperValue:i.saturation,handleStepperValue:l,hasStepper:!0,noTooltip:!0,children:(0,M_.jsx)(Um,{noTip:!0,min:0,max:255,value:i.saturation,step:1,active:!0,changeValue:e=>l(e),minTag:\"0\",maxTag:\"255\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:WHITE_BALANCE",
+            "title": "WHITE_BALANCE",
+            "controls": [
+              "3596:white-balance",
+              "3596:auto-white-balance"
+            ],
+            "collapsible": true,
+            "divider": "transparent",
+            "header_stepper": "3596:white-balance",
+            "header_checkbox": "3596:auto-white-balance"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4570092,
+            "end": 4570893,
+            "sha256": "d1db0fefc5f65e73977f8caf385fb9e7950c51d956aa68c4cc64491b70f120d3",
+            "source": "{name:Aa.Z8r,checkBoxName:Aa.Q8g,stepValue:10,minStepper:Z.DeviceInfo.whiteBalance.min,maxStepper:Z.DeviceInfo.whiteBalance.max,maxLength:Z.DeviceInfo.whiteBalance&&null!=Z.DeviceInfo.whiteBalance.max?Z.DeviceInfo.whiteBalance.max.toString().length:4,stepperValue:i.whiteBalance.value,checkBoxValue:i.whiteBalance.isAuto,disabledStepper:i.whiteBalance.isAuto,handleStepperValue:d,handleCheckbox:()=>{const e=T.whiteBalance;c(\"whiteBalance\",(0,D.A)((0,D.A)({},e),{},{isAuto:!(null!==e&&void 0!==e&&e.isAuto)}),!0)},hasStepper:!0,hasCheckbox:!0,noTooltip:!0,children:(0,M_.jsx)(Um,{noTip:!0,min:Z.DeviceInfo.whiteBalance.min,max:Z.DeviceInfo.whiteBalance.max,value:i.whiteBalance.value,step:10,active:!i.whiteBalance.isAuto,changeValue:e=>d(e),minTag:Aa.Y7F,maxTag:Aa.ScM,extraClass:\"gradient_slider\"})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:ANTI_FLICKER",
+            "title": "ANTI_FLICKER",
+            "controls": [
+              "3596:anti-flicker"
+            ],
+            "collapsible": true
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4572765,
+            "end": 4573018,
+            "sha256": "cc4448b89c6c110111c5eb0f20f76d2d96e720866c773b1aa9e64497488716b9",
+            "source": "{name:Aa.qJr,noTooltip:!0,children:(0,M_.jsx)(\"div\",{className:\"common-container\",style:{marginTop:10},children:xU.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===R?\"selected\":\"\"),onClick:()=>v(e.value),children:e.name},e.name))})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:IMAGE:MIRROR_VIDEO",
+            "title": "MIRROR_VIDEO",
+            "controls": [
+              "3596:mirror"
+            ],
+            "collapsible": false,
+            "header_switch": "3596:mirror"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4574136,
+            "end": 4574322,
+            "sha256": "dc31891a0d7aa3cd5fa800dd8ae306884c4197f60b0a5bb8ed20da339bcc0cb4",
+            "source": "{name:Aa.S7W,isActiveSwitch:l,handleOnSwitch:()=>{(0,HS.Ys)(!0)(I),(0,HS.r8)(!l)(I),ko({category:Uo,eventCategory:Wo,action:ro,data:{enabled:!l}})},hasSwitch:!0,noTooltip:!0,noToggle:!0}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:PREVIEW_RESOLUTION_2",
+            "title": "PREVIEW_RESOLUTION_2",
+            "controls": [
+              "3596:resolution"
+            ],
+            "collapsible": true,
+            "warning": "FPS_WARNING_TIP",
+            "warning_any": [
+              "/camera/autoFraming/isEnabled",
+              "/camera/hdr/isEnabled"
+            ]
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4553789,
+            "end": 4554365,
+            "sha256": "3841b5435f79592067998fed18dd6fc463dcc28631becd166082dbf645938d01",
+            "source": "{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==P&&void 0!==P&&P.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,HS.ur)(!0)(I),(0,HS.Ys)(!0)(I),(0,HS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:ZOOM",
+            "title": "ZOOM",
+            "controls": [
+              "3596:zoom",
+              "3596:pan-tilt",
+              "3596:view-preset",
+              "3596:shortcut-key"
+            ],
+            "collapsible": true,
+            "tooltip": "ZOOM_TOOLTIP_CONTENT",
+            "header_stepper": "3596:zoom"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4544218,
+            "end": 4545194,
+            "sha256": "20d919c9c84cfa1538e20296c58dc2da948205d3356bc76bfdbf71283ab6e0ee",
+            "source": "{disabledStepper:P(),name:Aa.c23,tooltipContent:Aa.Kat,stepValue:A,minStepper:I,maxStepper:O,stepperValue:C.zoom,handleStepperValue:L,hasStepper:!0,allowDecimal:!0,roundUpDecimals:!0,noToggle:E,children:[(0,M_.jsx)(Um,{noTip:!0,noTag:!0,min:I,max:O,step:A,active:!P(),value:C.zoom,changeValue:e=>L(e)}),(0,M_.jsx)(Zm,{isDisabled:P(),maxPanTilt:r}),P()?(0,M_.jsx)(\"div\",{className:\"mode-description\",children:(0,M_.jsx)(Oa.A,{text:Aa.zjd})}):null,(0,M_.jsxs)(\"div\",{className:\"\".concat(P()?\"disabled\":\"\"),children:[(0,M_.jsx)(\"div\",{className:\"preset-name\",children:(0,Vn.JN)(Aa.QaP)}),(0,M_.jsx)(\"div\",{className:\"preset-container\",children:R.data.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"preset-item \".concat(e.mode===R.viewMode?\"selected\":\"\"),onClick:()=>{var E;(E=e.mode)!==R.viewMode&&((0,HS.Ys)(!0)(S),(0,HS.aH)(E)(S))},children:e.mode},\"\".concat(e.mode,\"_\").concat(E)))}),(0,M_.jsx)(\"div\",{className:\"shortcut-key-name\",children:(0,Vn.JN)(Aa.R95)}),(0,M_.jsx)(dU,{})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:AUTO_FOCUS",
+            "title": "AUTO_FOCUS",
+            "controls": [
+              "3596:autofocus",
+              "3596:focus"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_FOCUS_TOOLTIP_CONTENT_V2",
+            "header_switch": "3596:autofocus"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4452846,
+            "end": 4454953,
+            "sha256": "ac7db5b05d53cc138e0e336d3e2ca9ae763a5803fc17c66117297cc9c54663af",
+            "source": "{name:Aa.dgn,tooltipContent:Aa.WKf,hasSwitch:!0,isActiveSwitch:r.isEnabled,handleOnSwitch:()=>{(0,HS.Ys)(!0)(n),(0,HS.wp)(!r.isEnabled)(n)},children:(0,M_.jsxs)(\"div\",{className:\"auto-focus-container\",children:[!r.isEnabled&&(0,M_.jsxs)(\"div\",{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.EzE})}),(0,M_.jsx)(Um,{noTip:!0,noTag:!0,min:o,max:i,value:r.manualFocus,step:1,active:!0,changeValue:e=>(e=>{(0,HS.Ys)(!0)(n),(0,HS.Yt)(e)(n)})(e),minTag:\"\",maxTag:\"\",midTag:\"\",thumbTag:\"\"})]}),r.isEnabled&&(0,M_.jsxs)(M_.Fragment,{children:[E?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.gah})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Zn.Pv.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,a?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.gah})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Zn.qB.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.mode?\"selected\":\"\"),onClick:()=>s(e.value),children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,_?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.eWS})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Zn.Bb.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.tracking?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,HS.Ys)(!0)(n),void(0,HS.DP)(E)(n);var E},children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null,t?(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.Tf7})}),(0,M_.jsx)(\"div\",{className:\"container-focus\",children:Zn.SH.map((e,E)=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===r.lightingType?\"selected\":\"\"),onClick:()=>{return E=e.value,(0,HS.Ys)(!0)(n),void(0,HS.me)(E)(n);var E},children:(0,M_.jsx)(Oa.A,{text:e.name})},E))})]}):null]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:AUTO_EXPOSURE",
+            "title": "AUTO_EXPOSURE",
+            "controls": [
+              "3596:auto-exposure",
+              "3596:manual-exposure"
+            ],
+            "collapsible": true,
+            "tooltip": "AUTO_EXPOSURE_TOOLTIP_CONTENT",
+            "header_switch": "3596:auto-exposure"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4451497,
+            "end": 4452425,
+            "sha256": "c9c2ed8d8a9caa036ec1d6816aa3330af08bfdeb9233fbfd270432080f855bfd",
+            "source": "{name:Aa.aDz,tooltipContent:Aa.KSq,hasSwitch:!0,hasReset:!1,isActiveSwitch:o,handleOnReset:()=>{(0,HS.GB)()(_)},handleOnSwitch:()=>{(0,HS.Ys)(!0)(_),(0,HS.Xr)(!o)(_)},children:(0,M_.jsxs)(\"div\",{className:\"auto-exposure-container\",children:[!o&&(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(Um,{noTip:!0,min:Z.DeviceInfo.exposure.min,max:Z.DeviceInfo.exposure.max,value:n,active:!0,step:a,changeValue:e=>(e=>{e!==n&&((0,HS.Ys)(!0)(_),(0,HS.g)(e)(_))})(e),minTag:Z.DeviceInfo.exposure.min,maxTag:Z.DeviceInfo.exposure.max})}),o&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.cSt})}),(0,M_.jsx)(\"div\",{className:\"common-container\",children:Z.METERING.map(e=>(0,M_.jsx)(\"div\",{className:\"default-button \".concat(e.value===i?\"selected\":\"\"),onClick:()=>{var E;(E=e.value)!==i&&((0,HS.Ys)(!0)(_),(0,HS.Kl)(E)(_))},children:(0,M_.jsx)(Oa.A,{text:e.name})},i.value))})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:PROCESSING:LOW_LIGHT_COMPENSATION",
+            "title": "LOW_LIGHT_COMPENSATION",
+            "controls": [
+              "3596:lowLightCompensation"
+            ],
+            "collapsible": false,
+            "tooltip": "LOW_LIGHT_COMPENSATION_TOOLTIP",
+            "header_switch": "3596:lowLightCompensation"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4565385,
+            "end": 4565517,
+            "sha256": "6d851b1420460ad66a31592cb193c5f8b0d544baca835ea985727c01d703ba48",
+            "source": "{noToggle:!0,name:Aa.RAi,isActiveSwitch:a,handleOnSwitch:()=>{(0,HS.Ys)(!0)(e),(0,HS.bg)(!a)(e)},tooltipContent:Aa.jn6,hasSwitch:!0}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:PROCESSING:DYNAMIC_NOISE_REDUCTION",
+            "title": "DYNAMIC_NOISE_REDUCTION",
+            "controls": [
+              "3596:state2D",
+              "3596:state3D"
+            ],
+            "collapsible": true,
+            "tooltip": "DYNAMIC_NOISE_REDUCTION_TOOLTIP"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4565583,
+            "end": 4566280,
+            "sha256": "1dd56fe628922089676370849ad5d7ca2360d9cd1539e777e1ad691c5f22c664",
+            "source": "{name:Aa.VMM,tooltipContent:Aa.xAV,children:[(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",children:(0,M_.jsx)(Oa.A,{text:Aa.XXG})}),(0,M_.jsx)(AS.A,{className:\"switch-custom\",active:_.state2D,onClick:()=>{(0,HS.Ys)(!0)(e),(0,HS.Xo)((0,D.A)((0,D.A)({},_),{},{state2D:!_.state2D}))(e)}})]}),(0,M_.jsxs)(\"div\",{className:\"center-flex-box\",style:{marginBottom:10},children:[(0,M_.jsx)(\"div\",{className:\"mode-name\",style:{marginTop:0,marginBottom:0},children:(0,M_.jsx)(Oa.A,{text:Aa.rI2})}),(0,M_.jsx)(AS.A,{className:\"switch-custom\",active:_.state3D,onClick:()=>{(0,HS.Ys)(!0)(e),(0,HS.Xo)((0,D.A)((0,D.A)({},_),{},{state3D:!_.state3D}))(e)}})]})]}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:CAMO_PROMO",
+            "title": "AI_FEATURES",
+            "controls": [],
+            "collapsible": true,
+            "presentation": "camera-promo"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4547455,
+            "end": 4554373,
+            "sha256": "93c2292e591d26010bbc6ea05bb22ca25def0a3753f81779d25f1ee06c9797f1",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,L.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,m.useDispatch)(),O=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolution,m.shallowEqual),A=(0,m.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,m.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,m.useSelector)(e=>e.languageReducer.lang),R=(0,m.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,m.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,m.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,m.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,m.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,m.useSelector)(e=>e.advancedWebcamReducer.autoFraming,m.shallowEqual),P=(0,m.useSelector)(e=>e.advancedWebcamReducer.hdr,m.shallowEqual),p=(0,m.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),M=(0,m.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),U=(0,m.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),h=((0,m.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,m.useSelector)(e=>e.deviceReducer.serialNumber)),G=(0,L.useState)(\"\"),g=(0,Pe.A)(G,2),H=g[0],f=g[1],v=(0,L.useState)(0),B=(0,Pe.A)(v,2),F=B[0],y=B[1],V=[Aa.eXB,Aa.GRK,Aa.k$y,Aa.SCX,Aa.OvL,Aa.Q$X];(0,L.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,HS.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);y(_)}},[i,O]),(0,L.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,HS.Ag)(e)(I)})()},[l,p,M,U]),(0,L.useEffect)(()=>{Y()},[R]),(0,L.useEffect)(()=>{c&&(b(),(0,HS.Ty)(!1)(I))},[c]),(0,L.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,HS.su)((0,D.A)((0,D.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,L.useEffect)(()=>{A&&b()},[A]);const Y=async()=>{if(R&&R.length>0){var e;let E=F_.A.get(\"cameraHardwareId_\".concat(h)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},b=async()=>{const e=await K();(0,HS.Ag)(e)(I),await Y()};function W(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(h)){if(F_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=F_.A.get(\"cameraHardwareDeviceId_\".concat(h));if(!r&&n.length>0){for(const e of n)if(!W(e.deviceId)){r=e.deviceId;break}F_.A.set(\"cameraHardwareDeviceId_\".concat(h),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&F_.A.set(\"cameraHardwareDeviceId_\".concat(h),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:zr.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=pU||Zn.VJ;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,HS.yj)(!0)(I);(0,HS.Tl)(a)(I)}}else(0,HS.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),F_.A.set(\"cameraHardwareId_\".concat(h),R[e].value),(0,HS.ur)(!0)(I),(0,HS.Ti)(e)(I),(0,HS.HG)(R[e].value)(I),(0,HS.ey)({name:R[e].name,value:R[e].value})(I),(0,HS.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Aa.m96),(0,HS.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Aa.qmR),(0,HS.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Aa.wXh),(0,HS.M8)(\"VCam Camera\")(I))};return(0,M_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!p&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(Lm.A,{name:Aa.vad,children:[(0,M_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,M_.jsx)(\"span\",{className:\"mr5\",children:(0,M_.jsx)(Oa.A,{text:t?Aa.zpZ:Aa.cYg})}),(0,M_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:V.map(e=>(0,M_.jsx)(\"li\",{children:(0,M_.jsx)(Oa.A,{text:e})},e))})]}),(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,M_.jsx)(gS.A,{withArrowIcon:t,withIcon:!t,text:t?Aa._A9:Aa.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,M_.jsxs)(Lm.A,{name:Aa.Vug,tooltipContent:Aa.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(ye.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(gS.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,HS.oA)(e)(I)}})})})]}),!u&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsx)(Lm.A,{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==P&&void 0!==P&&P.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,HS.ur)(!0)(I),(0,HS.Ys)(!0)(I),(0,HS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})})]})]})}"
+          }
+        },
+        {
+          "group": {
+            "key": "3596:CAMERA:PREVIEW_SOURCE",
+            "title": "PREVIEW_SOURCE",
+            "controls": [],
+            "collapsible": true,
+            "tooltip": "PREVIEW_SOURCE_TOOLTIP_CONTENT",
+            "presentation": "preview-source"
+          },
+          "jsx": {
+            "path": ".ref/devices/3596/static/js/main.0e57873f.js",
+            "offset": 4547455,
+            "end": 4554373,
+            "sha256": "93c2292e591d26010bbc6ea05bb22ca25def0a3753f81779d25f1ee06c9797f1",
+            "source": "e=>{let E=e.checkUSBCapacity,a=void 0===E||E,_=e.supportCamoStudioActivation,t=void 0!==_&&_,o=e.isDisabled;const i=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolutionList),n=(0,L.useState)([]),r=(0,Pe.A)(n,2),s=r[0],T=r[1],I=(0,m.useDispatch)(),O=(0,m.useSelector)(e=>e.advancedWebcamReducer.resolution,m.shallowEqual),A=(0,m.useSelector)(e=>e.advancedWebcamReducer.cameraHardwareId),S=(0,m.useSelector)(e=>e.advancedWebcamReducer.currentPreviewCameraHardwareId),l=(0,m.useSelector)(e=>e.languageReducer.lang),R=(0,m.useSelector)(e=>e.advancedWebcamReducer.cameraDeviceList),N=(0,m.useSelector)(e=>e.advancedWebcamReducer.selectedCameraDevice),d=(0,m.useSelector)(e=>e.advancedWebcamReducer.isHigherGenCableRequired),c=(0,m.useSelector)(e=>e.advancedWebcamReducer.reconnectCamera),u=(0,m.useSelector)(e=>e.advancedWebcamReducer.isThirdPartySelected),C=(0,m.useSelector)(e=>e.advancedWebcamReducer.autoFraming,m.shallowEqual),P=(0,m.useSelector)(e=>e.advancedWebcamReducer.hdr,m.shallowEqual),p=(0,m.useSelector)(e=>e.advancedWebcamReducer.isCamoStudioInstalled),M=(0,m.useSelector)(e=>e.advancedWebcamReducer.isXSplitInstalled),U=(0,m.useSelector)(e=>e.advancedWebcamReducer.isNVIDIABroadcastInstalled),h=((0,m.useSelector)(e=>e.advancedWebcamReducer.selectedAppName),(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.refreshCamera}),(0,m.useSelector)(e=>{var E;return null===(E=e.advancedWebcamReducer)||void 0===E?void 0:E.isPreviewEnabled}),(0,m.useSelector)(e=>e.deviceReducer.serialNumber)),G=(0,L.useState)(\"\"),g=(0,Pe.A)(G,2),H=g[0],f=g[1],v=(0,L.useState)(0),B=(0,Pe.A)(v,2),F=B[0],y=B[1],V=[Aa.eXB,Aa.GRK,Aa.k$y,Aa.SCX,Aa.OvL,Aa.Q$X];(0,L.useEffect)(()=>{if(i&&i.length>0){T(i);let _=null===i||void 0===i?void 0:i.findIndex(e=>e.width===(null===O||void 0===O?void 0:O.width)&&e.height===(null===O||void 0===O?void 0:O.height)&&e.fps===(null===O||void 0===O?void 0:O.fps));var e,E,a;if(-1===_)_=0,(0,HS.$P)({width:null===(e=i[0])||void 0===e?void 0:e.width,height:null===(E=i[0])||void 0===E?void 0:E.height,fps:null===(a=i[0])||void 0===a?void 0:a.fps})(I);y(_)}},[i,O]),(0,L.useEffect)(()=>{(async()=>{const e=await K();e&&e.length>0&&e!==R&&(0,HS.Ag)(e)(I)})()},[l,p,M,U]),(0,L.useEffect)(()=>{Y()},[R]),(0,L.useEffect)(()=>{c&&(b(),(0,HS.Ty)(!1)(I))},[c]),(0,L.useEffect)(()=>{u&&null!==C&&void 0!==C&&C.isEnabled&&I((0,HS.su)((0,D.A)((0,D.A)({},C),{},{isEnabled:!1})))},[u,C,I]),(0,L.useEffect)(()=>{A&&b()},[A]);const Y=async()=>{if(R&&R.length>0){var e;let E=F_.A.get(\"cameraHardwareId_\".concat(h)),a=R.findIndex(e=>e.value===E);1===R.length?w(0):E&&R&&R.length>0&&w(a),null!==(e=R[a])&&void 0!==e&&e.name&&z(R[a].name)}},b=async()=>{const e=await K();(0,HS.Ag)(e)(I),await Y()};function W(e){for(let E=0,a=localStorage.length;E<a;E++){const a=localStorage.key(E);if(a.startsWith(\"cameraHardwareDeviceId_\")&&a!==\"cameraHardwareDeviceId_\".concat(h)){if(F_.A.get(a)===e.toString())return!0}}return!1}const K=async()=>{let e=[];if(navigator.mediaDevices){let _=await navigator.mediaDevices.enumerateDevices();console.log(\"devices\",_);const t=Number(Z.DeviceInfo.productId).toString(16),o=Number(Z.DeviceInfo.vendorId).toString(16);let n=_.filter(e=>\"videoinput\"===e.kind&&e.label.includes(o)&&e.label.includes(t)),r=F_.A.get(\"cameraHardwareDeviceId_\".concat(h));if(!r&&n.length>0){for(const e of n)if(!W(e.deviceId)){r=e.deviceId;break}F_.A.set(\"cameraHardwareDeviceId_\".concat(h),r)}if(n.length>1&&!A)n=S?n.filter(e=>e.deviceId===S):n.filter(e=>e.deviceId===r);else{A&&(n=n.filter(e=>e.deviceId===A));const e=n[0];if(n[0]&&n[0].deviceId&&F_.A.set(\"cameraHardwareDeviceId_\".concat(h),n[0].deviceId),!e)return}let s=_.filter(e=>\"videoinput\"===e.kind&&(e.label.includes(\"Camo\")||e.label.includes(\"NVIDIA Broadcast\")));1===n.length&&e.push({device:zr.onLang(l).productName,type:n[0].deviceId});for(const E of s)e.push({device:E.label,type:E.deviceId});console.log(\"available videoResolutions\",i);try{if(!i||0===i.length){const E=pU||Zn.VJ;if(a){let a=[],_=await navigator.mediaDevices.getUserMedia({video:{deviceId:e[0].type}}),t=_.getVideoTracks()[0].getCapabilities();if(_.getTracks().forEach(e=>e.stop()),t){const e=t.width.max,_=t.height.max,o=t.frameRate.max;for(const t of E)t.width<=e&&t.height<=_&&t.fps<=o?a.push(t):(0,HS.yj)(!0)(I);(0,HS.Tl)(a)(I)}}else(0,HS.Tl)(E)(I)}}catch(E){console.log(\"error\",E)}}return e.map(e=>({name:e.device,value:e.type}))},w=async e=>{void 0!==e&&null!==e&&R&&R.length>0&&e!=N&&(e<0&&(e=0),F_.A.set(\"cameraHardwareId_\".concat(h),R[e].value),(0,HS.ur)(!0)(I),(0,HS.Ti)(e)(I),(0,HS.HG)(R[e].value)(I),(0,HS.ey)({name:R[e].name,value:R[e].value})(I),(0,HS.tE)(e>0)(I),z(R[e].name))},z=e=>{e.includes(\"Camo\")?(f(Aa.m96),(0,HS.M8)(\"Camo\")(I)):e.includes(\"NVIDIA Broadcast\")?(f(Aa.qmR),(0,HS.M8)(\"NVIDIA Broadcast\")(I)):e.includes(\"VCam Camera\")&&(f(Aa.wXh),(0,HS.M8)(\"VCam Camera\")(I))};return(0,M_.jsxs)(\"div\",{className:\"device-preview-container\",children:[!p&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsxs)(Lm.A,{name:Aa.vad,children:[(0,M_.jsxs)(\"div\",{className:\"tutorial-description\",children:[(0,M_.jsx)(\"span\",{className:\"mr5\",children:(0,M_.jsx)(Oa.A,{text:t?Aa.zpZ:Aa.cYg})}),(0,M_.jsx)(\"ul\",{style:{marginTop:\"5px\"},children:V.map(e=>(0,M_.jsx)(\"li\",{children:(0,M_.jsx)(Oa.A,{text:e})},e))})]}),(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{style:{marginTop:\"-10px\"},children:(0,M_.jsx)(gS.A,{withArrowIcon:t,withIcon:!t,text:t?Aa._A9:Aa.jpU,onClick:()=>{t?(console.log(\"handleCamoLinkClicked\"),lE(\"HELP\")(I)):window.open(\"https://www.razer.com/software/camo\",\"_blank\",\"noopener,noreferrer\")}})})})]}),(0,M_.jsx)(\"div\",{className:\"camera-divider\"})]}),(0,M_.jsxs)(Lm.A,{name:Aa.Vug,tooltipContent:Aa.bMi,showPreview:!0,showRefreshButton:!0,children:[(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(ye.A,{name:\"quickEffDrop\",dataSet:R,value:N,selectOption:w})}),u&&(0,M_.jsx)(M_.Fragment,{children:(0,M_.jsx)(\"div\",{className:\"select-camera-container\",children:(0,M_.jsx)(gS.A,{withIcon:!0,text:H,onClick:()=>{let e=\"\";R[N].name.includes(\"Camo\")?e=\"Camo Studio\":R[N].name.includes(\"NVIDIA Broadcast\")?e=\"NVIDIA Broadcast\":R[N].name.includes(\"VCam Camera\")&&(e=\"XSplit VCam\"),(0,HS.oA)(e)(I)}})})})]}),!u&&(0,M_.jsxs)(M_.Fragment,{children:[(0,M_.jsx)(\"div\",{className:\"camera-divider\"}),(0,M_.jsx)(Lm.A,{name:Aa.nm2,warningTooltip:null!==C&&void 0!==C&&C.isEnabled||null!==P&&void 0!==P&&P.isEnabled?Aa.pKo:null,className:\"\".concat(o?\" disabled\":\"\"),children:(0,M_.jsxs)(\"div\",{style:{marginTop:\"10px\"},children:[(0,M_.jsx)(ye.A,{dataSet:s,value:F,selectOption:e=>{if(e===F)return;const E=i[e];(0,HS.ur)(!0)(I),(0,HS.Ys)(!0)(I),(0,HS.$P)({width:null===E||void 0===E?void 0:E.width,height:null===E||void 0===E?void 0:E.height,fps:null===E||void 0===E?void 0:E.fps})(I)}}),d&&(0,M_.jsx)(\"div\",{className:\"text-description warning-text\",children:(0,M_.jsx)(Oa.A,{text:Aa.VZD})})]})})]})]})}"
+          }
+        }
+      ],
+      "css": {
+        "path": ".ref/devices/3596/static/css/main.bcf8a150.css",
+        "sha256": "6f41bd2591562b2d5d8bbadcdad0048a05287278b483d39324959fb4d8f43e01",
+        "rules": [
+          {
+            "offset": 42116,
+            "source": ".drop-tips{background-color:#000;border:1px solid #5d5d5d;color:#ccc;display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:top .1s,left .1s,visibility .2s,opacity .3s linear;visibility:hidden;width:300px;will-change:top,left,visibility,opacity;z-index:200}"
+          },
+          {
+            "offset": 42448,
+            "source": ".drop-tips.on{height:auto!important;opacity:1;visibility:visible;white-space:pre-line;z-index:9999}"
+          },
+          {
+            "offset": 62810,
+            "source": ".obm-menu .tooltip_parent{display:inline-block}"
+          },
+          {
+            "offset": 62857,
+            "source": ".obm-menu .tooltip_parent .help{vertical-align:text-top}"
+          },
+          {
+            "offset": 62913,
+            "source": ".obm-menu .tooltip_parent .help:hover{background-color:#6c6c6c}"
+          },
+          {
+            "offset": 227861,
+            "source": ".power-saving-effect .content .tooltip_parent{position:relative}"
+          },
+          {
+            "offset": 227925,
+            "source": ".power-saving-effect .content .tooltip_parent .help{position:static!important}"
+          },
+          {
+            "offset": 228003,
+            "source": ".power-saving-effect .content .tooltip_parent:hover{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 228096,
+            "source": ".power-saving-effect .content .tooltip_parent .tip{left:-197px;white-space:normal;width:305px}"
+          },
+          {
+            "offset": 272597,
+            "source": ".tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 272665,
+            "source": ".tooltip_parent .tip{background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;font-size:14px;left:calc(100% - 20px);line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-line;width:210px;will-change:visibility,opacity;z-index:99}"
+          },
+          {
+            "offset": 273016,
+            "source": ".tooltip_parent .help{background-color:#6c6c6c;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);background-repeat:no-repeat;border-radius:7px;display:inline-block;height:14px;transition:background-color .3s;width:14px;will-change:background-color}"
+          },
+          {
+            "offset": 273289,
+            "source": ".tooltip_parent .help:hover{background-color:#ffffff4d;cursor:pointer}"
+          },
+          {
+            "offset": 273359,
+            "source": ".tooltip_parent .help:hover+.tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 273959,
+            "source": ".maptext .tooltip_parent{position:absolute;right:0;top:4px}"
+          },
+          {
+            "offset": 274018,
+            "source": ".maptext .tooltip_parent:hover .tip{opacity:1;visibility:visible;z-index:100}"
+          },
+          {
+            "offset": 274095,
+            "source": ".maptext .tooltip_parent .tip{left:-197px;white-space:normal;width:210px}"
+          },
+          {
+            "offset": 288594,
+            "source": ".map_controller .analog_sensitivity_text .tooltip_parent{float:right;position:relative;top:1px}"
+          },
+          {
+            "offset": 289632,
+            "source": ".with-tooltip .tooltip_parent{margin-top:2px}"
+          },
+          {
+            "offset": 434966,
+            "source": ".advanced-camera-container .camera-container .auto-exposure-container .shutter-speed-header,.advanced-camera-container .center-flex-box,.advanced-camera-container .tooltip_parent,.advanced-camera-container .wrapper-container .header-wrapper,.advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{align-items:center;display:flex}"
+          },
+          {
+            "offset": 435404,
+            "source": ".advanced-camera-container .default-margin-left,.advanced-camera-container .wrapper-container .header-wrapper .stepper,.advanced-camera-container .wrapper-container .header-wrapper .switch{margin-left:10px}"
+          },
+          {
+            "offset": 435610,
+            "source": ".advanced-camera-container .default-icon-style,.advanced-camera-container .wrapper-container .icon-close-eye,.advanced-camera-container .wrapper-container .icon-open-eye,.advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;font-style:normal;height:10px;min-height:10px;min-width:10px;position:relative;width:10px}"
+          },
+          {
+            "offset": 438729,
+            "source": ".advanced-camera-container .camera-container .camera-divider{border:1px solid #222;border-radius:2px;margin-bottom:20px;margin-top:20px;width:100%}"
+          },
+          {
+            "offset": 443958,
+            "source": ".advanced-camera-container .camera-container .mode-description{font:14px/17px Roboto;margin-top:10px}"
+          },
+          {
+            "offset": 447714,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name{font:14px/16px Roboto;text-transform:uppercase}"
+          },
+          {
+            "offset": 447838,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .function-name.disabled{opacity:30%}"
+          },
+          {
+            "offset": 447936,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .wrapper-button{cursor:pointer}"
+          },
+          {
+            "offset": 448029,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .check-item{margin-bottom:0;margin-left:10px;margin-top:3px}"
+          },
+          {
+            "offset": 448151,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset{align-items:center;background-image:url(../../static/media/icon_reset.f416d0b7.svg);background-position:50%;background-repeat:no-repeat;background-size:initial;display:flex;height:20px;justify-content:center;margin-left:10px;width:20px}"
+          },
+          {
+            "offset": 448460,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .btn-reset:hover{opacity:.7}"
+          },
+          {
+            "offset": 448550,
+            "source": ".advanced-camera-container .wrapper-container .header-wrapper .info-icon{background-image:url(../../static/media/info_outline.b491abc9.svg);background-position:50%;background-repeat:no-repeat;background-size:cover;height:24px;width:24px}"
+          },
+          {
+            "offset": 448787,
+            "source": ".advanced-camera-container .wrapper-container .show-preview{cursor:pointer;margin-left:auto}"
+          },
+          {
+            "offset": 448879,
+            "source": ".advanced-camera-container .wrapper-container .show-preview:hover{opacity:.7}"
+          },
+          {
+            "offset": 448956,
+            "source": ".advanced-camera-container .wrapper-container .icon-close-eye{background-image:url(../../static/media/icon_close_eye.af02ee38.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 449110,
+            "source": ".advanced-camera-container .wrapper-container .icon-open-eye{background-image:url(../../static/media/icon_open_eye.4957a8f7.svg);height:24px;width:24px}"
+          },
+          {
+            "offset": 449262,
+            "source": ".advanced-camera-container .wrapper-container .override-stepper{margin-bottom:0!important}"
+          },
+          {
+            "offset": 449352,
+            "source": ".advanced-camera-container .wrapper-container .step-down-icon,.advanced-camera-container .wrapper-container .step-right-icon{background-image:url(../../static/media/step_down.03eaacfd.svg);margin-right:10px}"
+          },
+          {
+            "offset": 449559,
+            "source": ".advanced-camera-container .wrapper-container .step-right-icon{transform:rotate(-90deg)}"
+          },
+          {
+            "offset": 449647,
+            "source": ".advanced-camera-container .tooltip_parent{margin-left:10px}"
+          },
+          {
+            "offset": 450415,
+            "source": ".save-settings-container .left-side .tooltip_parent{margin-right:10px}"
+          },
+          {
+            "offset": 452416,
+            "source": ".device-preview-container .tooltip_parent{margin-right:25px}"
+          },
+          {
+            "offset": 452709,
+            "source": ".mode-name-s2{margin-left:auto}"
+          },
+          {
+            "offset": 452740,
+            "source": ".mode-name-s2 .tooltip_parent{height:20px;margin-right:0!important}"
+          },
+          {
+            "offset": 452807,
+            "source": ".mode-name-s2 .tooltip_parent .help{background-color:#0000;background-image:url(../../static/media/warning-icon.b0086fcc.svg)!important;height:20px;margin:0;width:20px}"
+          },
+          {
+            "offset": 452975,
+            "source": ".mode-name-s2 .tooltip_parent .tip{width:280px}"
+          }
+        ]
+      }
+    }
+  ]
+}

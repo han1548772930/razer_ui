@@ -1,3 +1,5 @@
+> 2026-10-06 correction: [Current camera presentation audit](camera-presentation-current-audit.md) supersedes the processing mount, resolution-selector, disclosure and tooltip claims below. In particular, 3592 mounts a resolution selector on PROCESSING, and current advanced-camera preview layout retains the empty right-hand video surface; the earlier 360?202 placeholder description is historical.
+
 # 当前摄像头取景与放置块审计
 
 2026-10-03。用户要求按原代码补齐所有产品与界面的视觉、交互细节。本轮处理 Kiyo 系列在此前缺少的取景块（变焦、平移／倾斜、五个取景预设、预设快捷键）、分辨率行与水印放置盘。来源仅使用当前产品包 `.ref/devices/<ID>/`，未执行应用、测试、下载的 JavaScript 或 DLL。

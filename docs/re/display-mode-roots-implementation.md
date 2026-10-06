@@ -1,5 +1,7 @@
 # 产品侧 displayMode 根的本地实现
 
+> 本文主体记录 2026-10-04 的初次接入规则。后续已确认独立 Armory 根不能普遍等同于主导航映射页；当前逐产品独立根见 [2026-10-05 审计](armory-independent-roots-2026-10-05.md)、[2026-10-06 第一批](armory-audio-entrypoints-2026-10-06.md)与[第二批](armory-audio-next-roots-2026-10-06.md)。下文“音频/配件家族不打开”的旧范围已被这些具体产品实现部分替代，未逐产品核验的根仍不能据表中“已接入”宣称完整复刻。
+
 2026-10-04。归属表由 `tools/generate-display-mode-roots.cjs` 从
 [分支审计](display-mode-audit.md)（`docs/re/display-mode-audit.json`，静态扫描当前产品包）
 生成到 `src/features/display-mode-roots.json`；Rust 侧统一由

@@ -22,7 +22,7 @@
 | [/synapse/](https://apps.razer.com/synapse/) | not_found | 待追踪 | 0/0 |
 | [/synapse/alexa/](https://apps.razer.com/synapse/alexa/) | ok | 齐备 | 10/10 |
 | [/synapse/armory/](https://apps.razer.com/synapse/armory/) | ok | 齐备 | 32/32 |
-| [/synapse/chroma-studio/](https://apps.razer.com/synapse/chroma-studio/) | network_error | 待追踪 | 0/0 |
+| [/synapse/chroma-studio/](https://apps.razer.com/synapse/chroma-studio/) | ok | 齐备 | 73/73 |
 | [/synapse/dashboard/](https://apps.razer.com/synapse/dashboard/) | ok | 齐备 | 135/135 |
 | [/synapse/introduction-tour/](https://apps.razer.com/synapse/introduction-tour/) | ok | 齐备 | 27/27 |
 | [/synapse/macro/](https://apps.razer.com/synapse/macro/) | ok | 齐备 | 85/85 |

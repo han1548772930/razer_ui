@@ -6,6 +6,22 @@
       "name": "Razer Nommo Chroma",
       "source": ".ref/devices/1303/static/js/main.4de5d448.js",
       "sha256": "3cf034a1aee237de6460712389992df6169b1b9322117e5900a6dfe66645eff5",
+      "device_info": {
+        "module_id": 8193,
+        "offset": 3775731,
+        "end": 3776057,
+        "source": "{productId:1303,vendorId:5426,deviceName:\"RAZER NOMMO CHROMA\",masterGuideURL:\"http://dl.razer.com/master-guides/RazerSynapse3/NommoChroma-00001303-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/3596/~/razer-nommo-chroma-%7C-rz05-02460-support\",WAVE_DIRECTION:\"CWCCW\",category:\"AUDIO\",subCategory:\"SPEAKER\"}",
+        "fields": [
+          "productId",
+          "vendorId",
+          "deviceName",
+          "masterGuideURL",
+          "supportPage",
+          "WAVE_DIRECTION",
+          "category",
+          "subCategory"
+        ]
+      },
       "root_offset": 4573358,
       "root_condition": "\"armory\"===a",
       "root_source": "(0,aE.jsx)(jg,{getSerialNumber:this.state.serialNumber})",
@@ -136,7 +152,7 @@
           "module_sha256": "2feeee78108b3529415f9adb068a3268d6825f7036c764bda89896669966aa5e",
           "url": "https://apps.razer.com/synapse/products/1303/ui/static/media/prd-3x.230dc93d.avif",
           "local": ".ref/devices/1303/static/media/prd-3x.230dc93d.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1303_0/img_prods/prd-1x.png",
@@ -149,7 +165,7 @@
           "module_sha256": "7db6678475458c1d775455fd7694f29cb6b7f98d118c07ef464741d3eb705a17",
           "url": "https://apps.razer.com/synapse/products/1303/ui/static/media/prd-1x.d1143356.avif",
           "local": ".ref/devices/1303/static/media/prd-1x.d1143356.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1303_0/img_prods/prd-3x.png",
@@ -162,7 +178,7 @@
           "module_sha256": "2feeee78108b3529415f9adb068a3268d6825f7036c764bda89896669966aa5e",
           "url": "https://apps.razer.com/synapse/products/1303/ui/static/media/prd-3x.230dc93d.avif",
           "local": ".ref/devices/1303/static/media/prd-3x.230dc93d.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1303_0/img_prods/prd-1x.png",
@@ -175,7 +191,7 @@
           "module_sha256": "7db6678475458c1d775455fd7694f29cb6b7f98d118c07ef464741d3eb705a17",
           "url": "https://apps.razer.com/synapse/products/1303/ui/static/media/prd-1x.d1143356.avif",
           "local": ".ref/devices/1303/static/media/prd-1x.d1143356.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [
@@ -1583,6 +1599,22 @@
       "name": "Razer Nommo Pro",
       "source": ".ref/devices/1304/static/js/main.3b6d76c2.js",
       "sha256": "628994402b609ecdb144fab3cb196e133e20a5af1b8a8d1ec27aa0c97850a19f",
+      "device_info": {
+        "module_id": 8193,
+        "offset": 3772972,
+        "end": 3773248,
+        "source": "{productId:1304,vendorId:5426,deviceName:\"Razer Nommo Pro\",masterGuideURL:\"http://dl.razer.com/master-guides/RazerSynapse3/NommoPro-00001304-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/3638\",WAVE_DIRECTION:\"CWCCW\",category:\"AUDIO\",subCategory:\"SPEAKER\"}",
+        "fields": [
+          "productId",
+          "vendorId",
+          "deviceName",
+          "masterGuideURL",
+          "supportPage",
+          "WAVE_DIRECTION",
+          "category",
+          "subCategory"
+        ]
+      },
       "root_offset": 4589634,
       "root_condition": "\"armory\"===a",
       "root_source": "(0,oE.jsx)(Qf,{getSerialNumber:this.state.serialNumber})",
@@ -1713,7 +1745,7 @@
           "module_sha256": "f35efb52f6170d31ca04b0bfc2b64731a99ec2b93645c1445453d219e8de8aab",
           "url": "https://apps.razer.com/synapse/products/1304/ui/static/media/prd-3x.530bfa78.avif",
           "local": ".ref/devices/1304/static/media/prd-3x.530bfa78.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1304_0/img_prods/prd-1x.png",
@@ -1726,7 +1758,7 @@
           "module_sha256": "635206cdae8bf764f4b7015cb5584daf8e4da85d994d3b212224f5d29260003c",
           "url": "https://apps.razer.com/synapse/products/1304/ui/static/media/prd-1x.1049b2d0.avif",
           "local": ".ref/devices/1304/static/media/prd-1x.1049b2d0.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1304_0/img_prods/prd-3x.png",
@@ -1739,7 +1771,7 @@
           "module_sha256": "f35efb52f6170d31ca04b0bfc2b64731a99ec2b93645c1445453d219e8de8aab",
           "url": "https://apps.razer.com/synapse/products/1304/ui/static/media/prd-3x.530bfa78.avif",
           "local": ".ref/devices/1304/static/media/prd-3x.530bfa78.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1304_0/img_prods/prd-1x.png",
@@ -1752,7 +1784,7 @@
           "module_sha256": "635206cdae8bf764f4b7015cb5584daf8e4da85d994d3b212224f5d29260003c",
           "url": "https://apps.razer.com/synapse/products/1304/ui/static/media/prd-1x.1049b2d0.avif",
           "local": ".ref/devices/1304/static/media/prd-1x.1049b2d0.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [
@@ -3160,6 +3192,24 @@
       "name": "Razer Kraken Kitty Edition",
       "source": ".ref/devices/1313/static/js/main.c9234892.js",
       "sha256": "4360b6c0c6ee3819685ca8877b3ec23cecb0ab92597550f804f9ae709882ecea",
+      "device_info": {
+        "module_id": 2292,
+        "offset": 52526,
+        "end": 52838,
+        "source": "{productId:1313,productIdForChroma:3865,vendorId:5426,deviceName:S,masterGuideURL:\"http://dl.razer.com/master-guides/RazerSynapse3/KRAKENKITTYEDITION-00001313-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/3542\",virtualRouteDeviceName:S,isChromaDevice:!0,hideLightingIdle:!1,category:\"AUDIO\"}",
+        "fields": [
+          "productId",
+          "productIdForChroma",
+          "vendorId",
+          "deviceName",
+          "masterGuideURL",
+          "supportPage",
+          "virtualRouteDeviceName",
+          "isChromaDevice",
+          "hideLightingIdle",
+          "category"
+        ]
+      },
       "root_offset": 5452842,
       "root_condition": "\"armory\"===a",
       "root_source": "(0,xe.jsx)(IK,{})",
@@ -3302,7 +3352,7 @@
           "module_sha256": "ecc7b0e2a86c02e12a6efee3b4829fbf0ffb5589ba9bd28ed6a66ca27db9e1d9",
           "url": "https://apps.razer.com/synapse/products/1313/ui/static/media/prd-3x.30e8b41c.avif",
           "local": ".ref/devices/1313/static/media/prd-3x.30e8b41c.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1313_128/img_prods/prd-3x.png",
@@ -3315,7 +3365,7 @@
           "module_sha256": "6ced532457ce3b4b3a6699a93f4e83b695a7639d895c1a140c433a6676afe396",
           "url": "https://apps.razer.com/synapse/products/1313/ui/static/media/prd-3x.d478cac1.avif",
           "local": ".ref/devices/1313/static/media/prd-3x.d478cac1.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1313_0/img_prods/prd-1x.png",
@@ -3328,7 +3378,7 @@
           "module_sha256": "02dad35ebd31d3d1abd3078675cce6d20ae6860063c90f1f49f01ac907a879f3",
           "url": "https://apps.razer.com/synapse/products/1313/ui/static/media/prd-1x.c6028174.avif",
           "local": ".ref/devices/1313/static/media/prd-1x.c6028174.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./1313_128/img_prods/prd-1x.png",
@@ -3341,7 +3391,7 @@
           "module_sha256": "64ddbf9412b03a681a4337fc51fbab6c626a52992bd6bcadf6c377c104c683ea",
           "url": "https://apps.razer.com/synapse/products/1313/ui/static/media/prd-1x.226cf8db.avif",
           "local": ".ref/devices/1313/static/media/prd-1x.226cf8db.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [
@@ -4877,6 +4927,7 @@
       "name": "Razer Hanbo AIO 240MM ARGB",
       "source": ".ref/devices/3893/static/js/main.a7630c14.js",
       "sha256": "a6a12c73980d1524815dcde362c1c7d00e36c35708b0c41902ddd5e48497849e",
+      "device_info": null,
       "root_offset": 4609145,
       "root_condition": "\"armory\"===a",
       "root_source": "(0,b.jsx)(HH,{getSerialNumber:this.state.serialNumber})",
@@ -5138,7 +5189,7 @@
           "module_sha256": "41dfb381db3e19cc2c756f0903c33f699d132adb0cc1f652ea1e165a1db99f47",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-3x.e1b22559.avif",
           "local": ".ref/devices/3893/static/media/prd-3x.e1b22559.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_128/img_prods/prd-3x.png",
@@ -5151,7 +5202,7 @@
           "module_sha256": "628e97ba3340291df13eeea7487452a9763c6f861a5b2f0683455ddb3fc90f83",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-3x.a3f7d8f1.avif",
           "local": ".ref/devices/3893/static/media/prd-3x.a3f7d8f1.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_0/img_prods/prd-1x.png",
@@ -5164,7 +5215,7 @@
           "module_sha256": "6847ed3a86228d5735d9918611ca780323dcdfccf4b7aaab35d0152cabfb7571",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-1x.fa99c3c3.avif",
           "local": ".ref/devices/3893/static/media/prd-1x.fa99c3c3.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_0/img_prods/prd-3x.png",
@@ -5177,7 +5228,7 @@
           "module_sha256": "41dfb381db3e19cc2c756f0903c33f699d132adb0cc1f652ea1e165a1db99f47",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-3x.e1b22559.avif",
           "local": ".ref/devices/3893/static/media/prd-3x.e1b22559.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_128/img_prods/prd-1x.png",
@@ -5190,7 +5241,7 @@
           "module_sha256": "6112213d5917a9e01207b72d4268dbe6f48eed6aeef98ceb8980cf88f069fadc",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-1x.64ffdee6.avif",
           "local": ".ref/devices/3893/static/media/prd-1x.64ffdee6.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_128/img_prods/prd-3x.png",
@@ -5203,7 +5254,7 @@
           "module_sha256": "628e97ba3340291df13eeea7487452a9763c6f861a5b2f0683455ddb3fc90f83",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-3x.a3f7d8f1.avif",
           "local": ".ref/devices/3893/static/media/prd-3x.a3f7d8f1.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_0/img_prods/prd-1x.png",
@@ -5216,7 +5267,7 @@
           "module_sha256": "6847ed3a86228d5735d9918611ca780323dcdfccf4b7aaab35d0152cabfb7571",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-1x.fa99c3c3.avif",
           "local": ".ref/devices/3893/static/media/prd-1x.fa99c3c3.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3893_128/img_prods/prd-1x.png",
@@ -5229,7 +5280,7 @@
           "module_sha256": "6112213d5917a9e01207b72d4268dbe6f48eed6aeef98ceb8980cf88f069fadc",
           "url": "https://apps.razer.com/synapse/products/3893/ui/static/media/prd-1x.64ffdee6.avif",
           "local": ".ref/devices/3893/static/media/prd-1x.64ffdee6.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [
@@ -7090,6 +7141,7 @@
       "name": "Razer Head Cushion Chroma",
       "source": ".ref/devices/3894/static/js/main.be5b5e43.js",
       "sha256": "6f81f740ee009e53b728c513f51e77bc593b414111fdec79256406109702de4f",
+      "device_info": null,
       "root_offset": 4558239,
       "root_condition": "\"armory\"===a",
       "root_source": "(0,qE.jsx)($P,{getSerialNumber:this.state.serialNumber})",
@@ -7164,7 +7216,7 @@
           "module_sha256": "8ab664ee46f910d8f67a48fca45548b6c87ce6efda8bed34e26f97e5f3130cb9",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-3x.5c35b579.avif",
           "local": ".ref/devices/3894/static/media/prd-3x.5c35b579.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_255/img_prods/prd-3x.png",
@@ -7177,7 +7229,7 @@
           "module_sha256": "805160e16dd4e032aa67a188037ba4d583c193edd39bc4288f9cb0d64147a43a",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-3x.5c35b579.avif",
           "local": ".ref/devices/3894/static/media/prd-3x.5c35b579.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_0/img_prods/prd-1x.png",
@@ -7190,7 +7242,7 @@
           "module_sha256": "9397d11315fda72b5dce656ea521870fefeeda1576cde2d80c90c48605971c4f",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-1x.2fe43130.avif",
           "local": ".ref/devices/3894/static/media/prd-1x.2fe43130.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_0/img_prods/prd-3x.png",
@@ -7203,7 +7255,7 @@
           "module_sha256": "8ab664ee46f910d8f67a48fca45548b6c87ce6efda8bed34e26f97e5f3130cb9",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-3x.5c35b579.avif",
           "local": ".ref/devices/3894/static/media/prd-3x.5c35b579.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_255/img_prods/prd-1x.png",
@@ -7216,7 +7268,7 @@
           "module_sha256": "2dacf4361d75d781d0c007fc8f7408f4e09343c419904bba6d00125dd2213b84",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-1x.2fe43130.avif",
           "local": ".ref/devices/3894/static/media/prd-1x.2fe43130.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_255/img_prods/prd-3x.png",
@@ -7229,7 +7281,7 @@
           "module_sha256": "805160e16dd4e032aa67a188037ba4d583c193edd39bc4288f9cb0d64147a43a",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-3x.5c35b579.avif",
           "local": ".ref/devices/3894/static/media/prd-3x.5c35b579.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_0/img_prods/prd-1x.png",
@@ -7242,7 +7294,7 @@
           "module_sha256": "9397d11315fda72b5dce656ea521870fefeeda1576cde2d80c90c48605971c4f",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-1x.2fe43130.avif",
           "local": ".ref/devices/3894/static/media/prd-1x.2fe43130.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3894_255/img_prods/prd-1x.png",
@@ -7255,7 +7307,7 @@
           "module_sha256": "2dacf4361d75d781d0c007fc8f7408f4e09343c419904bba6d00125dd2213b84",
           "url": "https://apps.razer.com/synapse/products/3894/ui/static/media/prd-1x.2fe43130.avif",
           "local": ".ref/devices/3894/static/media/prd-1x.2fe43130.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [
@@ -8663,6 +8715,7 @@
       "name": "Razer Laptop Cooling Pad",
       "source": ".ref/devices/3907/static/js/main.49bf0db6.js",
       "sha256": "8215db30d086696f1110a63b21278ccd96cc69d0b810edce6003cc0181f706b7",
+      "device_info": null,
       "root_offset": 4882676,
       "root_condition": "\"armory\"===a&&t===this.props.serialNumber",
       "root_source": "(0,B.jsx)(TU,{getSerialNumber:this.state.serialNumber})",
@@ -9441,7 +9494,7 @@
           "module_sha256": "2af3291aa4cd0ad9b1ce6c0f42ad951ec6b05866b59b91b60e922a4d1238b02d",
           "url": "https://apps.razer.com/synapse/products/3907/ui/static/media/prd-1x.d1e9a95b.avif",
           "local": ".ref/devices/3907/static/media/prd-1x.d1e9a95b.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3907_0/img_prods/prd-3x.png",
@@ -9454,7 +9507,7 @@
           "module_sha256": "14e55809381b8a7030fa84f1c1c70ba967f3ec60770d5c83c3b7165cfd13c7c6",
           "url": "https://apps.razer.com/synapse/products/3907/ui/static/media/prd-3x.3e1ae619.avif",
           "local": ".ref/devices/3907/static/media/prd-3x.3e1ae619.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3907_0/img_prods/prd-1x.png",
@@ -9467,7 +9520,7 @@
           "module_sha256": "2af3291aa4cd0ad9b1ce6c0f42ad951ec6b05866b59b91b60e922a4d1238b02d",
           "url": "https://apps.razer.com/synapse/products/3907/ui/static/media/prd-1x.d1e9a95b.avif",
           "local": ".ref/devices/3907/static/media/prd-1x.d1e9a95b.avif",
-          "available": false
+          "available": true
         },
         {
           "request": "./3907_0/img_prods/prd-3x.png",
@@ -9480,7 +9533,7 @@
           "module_sha256": "14e55809381b8a7030fa84f1c1c70ba967f3ec60770d5c83c3b7165cfd13c7c6",
           "url": "https://apps.razer.com/synapse/products/3907/ui/static/media/prd-3x.3e1ae619.avif",
           "local": ".ref/devices/3907/static/media/prd-3x.3e1ae619.avif",
-          "available": false
+          "available": true
         }
       ],
       "css": [

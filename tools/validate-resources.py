@@ -1,4 +1,5 @@
 """Validate bundled resources against the local reference, without third-party modules."""
+import base64
 import hashlib
 import json
 import math
@@ -82,8 +83,14 @@ def webp_metadata(data):
         assert end <= len(data)
         payload = data[start:end]
         if tag == b"VP8X":
-            assert len(payload) == 10 and payload[0] & 2
+            assert len(payload) == 10
             dimensions = (u24(payload[4:7]) + 1, u24(payload[7:10]) + 1)
+        elif tag == b"VP8L":
+            assert len(payload) >= 5 and payload[0] == 0x2f
+            header = int.from_bytes(payload[1:5], "little")
+            decoded = ((header & 0x3fff) + 1, ((header >> 14) & 0x3fff) + 1)
+            assert dimensions is None or dimensions == decoded
+            dimensions = decoded
         elif tag == b"ANIM":
             assert len(payload) == 6
             loop = int.from_bytes(payload[4:6], "little")
@@ -96,7 +103,8 @@ def webp_metadata(data):
             assert delay > 0
             delays.append(delay)
         offset = end + (length & 1)
-    assert offset == len(data) and delays
+    assert offset == len(data) and dimensions
+    assert bool(delays) == (loop is not None)
     return dimensions, loop, delays
 
 
@@ -130,6 +138,96 @@ assert set(re.findall(r'include_bytes!\("([^"]+)"\)', embedded)) == expected
 assert len(expected) == len(entries), "Duplicate output keys"
 assert expected.isdisjoint({filename for _, filename in service_keys}), "Duplicate service asset registration"
 expected.update(filename for _, filename in service_keys)
+
+# OLED media has its own generated table so its preparer never races the shared
+# manifest. Validate the original AST receipt before trusting inline image data.
+def validate_oled_family(family, receipt_path):
+    oled_entries = json.loads((directory / f"audio-oled-{family}-assets.json").read_text(encoding="utf-8"))
+    oled_include = (directory / f"audio-oled-{family}-embedded.rs").read_text(encoding="utf-8")
+    resource_code = (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+    assert f'include!("../assets/synapse/audio-oled-{family}-embedded.rs")' in resource_code
+    assert resource_code.count(f'.chain(AUDIO_OLED_{family.upper()}_ASSETS)') == 2, family
+    family_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', oled_include)
+    assert len(family_keys) == len(oled_entries)
+    assert len({key for key, _ in family_keys}) == len(family_keys)
+    assert {(entry["output"].removeprefix("assets/"), Path(entry["output"]).name)
+            for entry in oled_entries} == set(family_keys)
+    oled_receipt = json.loads((ROOT / receipt_path).read_text(encoding="utf-8"))
+    oled_manifest_path = ROOT / ".ref/devices/1383/asset-manifest.json"
+    assert oled_receipt["manifest"]["path"] == oled_manifest_path.relative_to(ROOT).as_posix()
+    assert hashlib.sha256(oled_manifest_path.read_bytes()).hexdigest() == oled_receipt["manifest"]["sha256"]
+    oled_declared = {
+        name[name.index("static/"):]
+        for name in json.loads(oled_manifest_path.read_text(encoding="utf-8"))["files"].values()
+        if "static/" in name
+    }
+    oled_origins = {item["output"]: item for item in oled_receipt["assets"] + oled_receipt["icons"]}
+    assert len(oled_origins) == len(oled_entries)
+    oled_source_cache = {}
+    def verify_receipt(receipt):
+        assert receipt["path"].startswith(".ref/devices/1383/")
+        assert receipt["path"].removeprefix(".ref/devices/1383/") in oled_declared
+        if receipt["path"] not in oled_source_cache:
+            raw = (ROOT / receipt["path"]).read_bytes()
+            oled_source_cache[receipt["path"]] = (hashlib.sha256(raw).hexdigest(), raw.decode("utf-8").encode("utf-16-le"))
+        source_hash, utf16 = oled_source_cache[receipt["path"]]
+        assert source_hash == receipt["sha256"]
+        assert utf16[receipt["offset"] * 2:receipt["end"] * 2].decode("utf-16-le") == receipt["source"]
+
+    for entry in oled_entries:
+        source = ROOT / entry["source"]
+        target = ROOT / entry["output"]
+        asset = entry["output"].removeprefix("assets/")
+        assert entry["source"].startswith(".ref/devices/1383/")
+        assert entry["source"].removeprefix(".ref/devices/1383/") in oled_declared
+        assert (asset, target.name) in family_keys
+        assert hashlib.sha256(source.read_bytes()).hexdigest() == entry["source_sha256"], source
+        data = target.read_bytes()
+        assert hashlib.sha256(data).hexdigest() == entry["output_sha256"], target
+        origin = oled_origins[asset]
+        receipt = origin["receipt"]
+        verify_receipt(receipt)
+        if "loader" in origin:
+            verify_receipt(origin["loader"])
+        if "src" in origin:
+            if origin["src"].startswith("data:image/"):
+                assert origin["src"] in receipt["source"]
+                assert entry["source"] == receipt["path"]
+                inline = base64.b64decode(origin["src"].split(",", 1)[1], validate=True)
+                assert hashlib.sha256(inline).hexdigest() == entry["inline_sha256"]
+            else:
+                assert entry["source"] == ".ref/devices/1383/" + origin["src"]
+        else:
+            assert entry["source"] == receipt["path"]
+            assert data == origin["svg"].encode("utf-8")
+        if target.suffix == ".png":
+            assert data[:8] == b"\x89PNG\r\n\x1a\n"
+            assert struct.unpack(">II", data[16:24]) == (entry["width"], entry["height"])
+        elif target.suffix == ".webp":
+            dimensions, loop, delays = webp_metadata(data)
+            assert dimensions == (entry["width"], entry["height"])
+            if delays:
+                assert loop == entry["loop"]
+                if "frame_durations_ms" in entry:
+                    assert delays == entry["frame_durations_ms"]
+                assert sum(delays) == sum(entry["source_frame_durations_ms"])
+            else:
+                assert len(entry["source_frame_durations_ms"]) == 1
+        else:
+            assert target.suffix == ".svg" and ET.fromstring(data).tag == "{http://www.w3.org/2000/svg}svg"
+    assert expected.isdisjoint({filename for _, filename in family_keys}), "Duplicate OLED asset registration"
+    expected.update(filename for _, filename in family_keys)
+    return family_keys
+
+
+oled_keys = []
+for family, receipt_path in [
+    ("home", "docs/re/audio-oled-home-source.json"),
+    ("artwork", "docs/re/audio-oled-artwork-current-evidence.json"),
+    ("banner", "docs/re/audio-oled-banner-current-evidence.json"),
+    ("system", "docs/re/audio-oled-system-source.json"),
+]:
+    oled_keys.extend(validate_oled_family(family, receipt_path))
 image_map = json.loads((directory / "product-image-map.json").read_text(encoding="utf-8"))
 sources = {entry["output"]: entry for entry in entries}
 source_text = {}
@@ -312,6 +410,7 @@ for layout in layout_sources["layouts"]:
         assert bounds[2]>0 and bounds[3]>0
 print(f"Validated {len(entries)} source/output hashes, image formats and embedded keys; "
       f"{len(service_keys)} current service SVGs; "
+      f"{len(oled_keys)} OLED media assets; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
       f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")

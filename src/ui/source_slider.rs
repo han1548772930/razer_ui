@@ -24,15 +24,115 @@
 //! travels between the 8px insets.  Pointer dragging and focus stay with the
 //! gpui-kit base slider; this component only paints the source appearance.
 //!
-//! `.thumb-tag` (the value bubble `OTA` swaps with `.slider-tip` while the thumb
-//! is hovered or dragged) is only mounted when a caller passes `thumbTag`; no
-//! current page does, so it is not rendered here.
+//! The source also mounts an empty `.thumb-tag` unless a caller supplies its
+//! content. The local call sites use the ordinary value tip or `noTip` and do
+//! not supply that alternate bubble. Its empty DOM box is not drawn here.
+//!
+//! `source-slider-current-evidence.json` binds the range components and CSS to
+//! each current manifest. Container opacity and thumb background change over
+//! 300ms CSS ease; pointer disabling and the hover/active border are immediate.
 
+use gpui_kit::base::motion::{self, Easing, Interpolate, Transition};
 use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack};
 use gpui_kit::component::slider::SliderState;
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use std::time::Duration;
 
 use crate::ui::{surface, theme::SliderColors};
+
+#[derive(Default)]
+struct ThumbPointer {
+    hovered: bool,
+    pressed: bool,
+}
+
+// CSS interpolates the green/gray background channels, not their HSL hues.
+// Base's Hsla interpolation is intended for near-grayscale endpoints only.
+#[derive(Clone, PartialEq)]
+struct ThumbBackground(Rgba);
+impl Interpolate for ThumbBackground {
+    fn interpolate(&self, target: &Self, progress: f32) -> Self {
+        let mix = |a: f32, b: f32| a + (b - a) * progress;
+        Self(Rgba {
+            r: mix(self.0.r, target.0.r),
+            g: mix(self.0.g, target.0.g),
+            b: mix(self.0.b, target.0.b),
+            a: mix(self.0.a, target.0.a),
+        })
+    }
+}
+
+/// Current `.slider::-webkit-slider-thumb`: only background has a changing
+/// 300ms ease transition; the 2px green hover/active border changes immediately.
+/// Base retains drag/focus ownership. Geometry belongs to the calling slider.
+pub(crate) fn source_thumb(
+    state: &Entity<SliderState>,
+    enabled: bool,
+    window: &mut Window,
+    cx: &mut App,
+) -> SliderThumb {
+    let id = ElementId::from(("source-slider-thumb", state.entity_id()));
+    let pointer =
+        window.use_keyed_state((id.clone(), "pointer"), cx, |_, _| ThumbPointer::default());
+    let interaction = pointer.read(cx);
+    let hovered = enabled && interaction.hovered;
+    let pressed = enabled && interaction.pressed;
+    let target = if pressed {
+        SliderColors::thumb_active()
+    } else if hovered {
+        SliderColors::thumb_hover()
+    } else {
+        SliderColors::thumb()
+    };
+    let background = motion::transition(
+        (id, "background"),
+        ThumbBackground(target.into()),
+        Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+        window,
+        cx,
+    );
+    SliderThumb::new(state)
+        .disabled(!enabled)
+        .bg(background.0)
+        .when(hovered || pressed, |thumb| {
+            thumb.border_2().border_color(SliderColors::thumb_border())
+        })
+        .on_hover(window.listener_for(&pointer, |pointer, hovered, _, cx| {
+            if pointer.hovered != *hovered {
+                pointer.hovered = *hovered;
+                cx.notify();
+            }
+        }))
+        // Thumb's base handler stops bubbling to prevent track repositioning.
+        // Observe capture without consuming it or interfering with that handler.
+        .capture_any_mouse_down(window.listener_for(
+            &pointer,
+            move |pointer, event: &MouseDownEvent, _, cx| {
+                if enabled && event.button == MouseButton::Left && !pointer.pressed {
+                    pointer.pressed = true;
+                    cx.notify();
+                }
+            },
+        ))
+        .on_mouse_up(
+            MouseButton::Left,
+            window.listener_for(&pointer, |pointer, _, _, cx| {
+                if pointer.pressed {
+                    pointer.pressed = false;
+                    cx.notify();
+                }
+            }),
+        )
+        .on_mouse_up_out(
+            MouseButton::Left,
+            window.listener_for(&pointer, |pointer, _, _, cx| {
+                if pointer.pressed {
+                    pointer.pressed = false;
+                    cx.notify();
+                }
+            }),
+        )
+}
 
 #[derive(IntoElement)]
 pub(crate) struct SourceSlider {
@@ -66,9 +166,16 @@ impl SourceSlider {
     }
 }
 impl RenderOnce for SourceSlider {
-    fn render(self, _: &mut Window, _: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let progress = self.progress;
         let tip = self.tip;
+        let opacity = surface::fade_opacity(
+            ("source-slider-opacity", self.state.entity_id()),
+            if self.enabled { 1. } else { 0.3 },
+            300,
+            window,
+            cx,
+        );
         // The base slider root owns the a11y role and the release handling of
         // the drag; an inactive container is `.slider-container` without `.on`,
         // so it renders at 30% opacity and drops the pointer handlers that
@@ -78,7 +185,7 @@ impl RenderOnce for SourceSlider {
             .relative()
             .w_full()
             .h(surface::css(if tip.is_some() { 64. } else { 36. }))
-            .when(!self.enabled, |view| view.opacity(0.3));
+            .opacity(opacity);
         // `.track` (z-index 1), then `.left` (z-index 2) over it.
         container = container.child(
             div()
@@ -159,29 +266,12 @@ impl RenderOnce for SourceSlider {
                         .right(surface::css(8.))
                         .h_full()
                         .child(
-                            SliderThumb::new(&self.state)
-                                .disabled(!self.enabled)
+                            source_thumb(&self.state, self.enabled, window, cx)
                                 .absolute()
                                 .left(relative(progress))
                                 .ml(surface::css(-8.))
                                 .size(surface::css(16.))
-                                .rounded(surface::css(8.))
-                                .bg(SliderColors::thumb())
-                                .when(self.enabled, |thumb| {
-                                    thumb
-                                        .hover(|style| {
-                                            style
-                                                .bg(SliderColors::thumb_hover())
-                                                .border_2()
-                                                .border_color(SliderColors::thumb_border())
-                                        })
-                                        .active(|style| {
-                                            style
-                                                .bg(SliderColors::thumb_active())
-                                                .border_2()
-                                                .border_color(SliderColors::thumb_border())
-                                        })
-                                }),
+                                .rounded(surface::css(8.)),
                         ),
                 ),
         )

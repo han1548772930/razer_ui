@@ -1,0 +1,178 @@
+[
+  {
+    "id": "banner-1",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "2c4936a276a64e4b6e92c429a64d8a64458e8ace04e391707ec50fd6d4944dc1",
+    "output": "assets/synapse/audio-oled-banner-banner-1.png",
+    "output_sha256": "9cda05299f5c4d2552920cdacfd574055110992f42111d5fe04e4d5eadb2bcc5",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-2",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "1b22fb81f8a84e071f1f121bdf3f600b1a229bff8e89a22640d890fa94e05278",
+    "output": "assets/synapse/audio-oled-banner-banner-2.png",
+    "output_sha256": "df7a4f271ae42ddd611e94bb43c5a331381086f68f5f7e1440e18453d9e6ec9d",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-3",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "b35f357bca9fedeee5df6c01489ed1855e07c8750603657fa1c896ada1c8f1de",
+    "output": "assets/synapse/audio-oled-banner-banner-3.png",
+    "output_sha256": "59108bc2832b52199e97bb15fdb1533fedeadf986c8086e730dbf809abb5bb74",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-4",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "ebee34ede62620959defd693a38a7d40b9efd0f3ed0145a974e5df7520017ba0",
+    "output": "assets/synapse/audio-oled-banner-banner-4.png",
+    "output_sha256": "0b90a36baff824b23be0d21ab8af2ee1ee93fdd1974786c56930792b0d4fe59a",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-5",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "fc317ad0fd8e0f74912ae8d6fa4b3466c4033ef4fffeea23d6530b70281333b4",
+    "output": "assets/synapse/audio-oled-banner-banner-5.png",
+    "output_sha256": "034eaed05ef929b2a5ff4a63c5d1997e3a5d4c6f9a73bc8cab477e05d5b4fb92",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-6",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "e098f29bc6859bb00fa5b0ff6f3f2b078e211e44dc6385924d0b84c86762b5fe",
+    "output": "assets/synapse/audio-oled-banner-banner-6.png",
+    "output_sha256": "248b2f17a3b59b0be60db229d27cb2fe4e07b6e2103600dd14549c3953dcc3f8",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-7",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "b3de671882beaf8b691e273b3331732f62d62c10ab2718e3a56d232408260f74",
+    "output": "assets/synapse/audio-oled-banner-banner-7.png",
+    "output_sha256": "7379c04bf983c5722328a8432ec2a08b40963f15382d17f573e4e3741734b05d",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "banner-8",
+    "source": ".ref/devices/1383/static/js/main.a86f6801.js",
+    "source_sha256": "4afeb31d420a1e44c0ba889301f46424a46d7c8f7f67f1bd299c5656fdfd84cd",
+    "inline_sha256": "0bf13aac93a342ae3f65691a6134ff3f31e1dc619493f6a478701c23d94273bc",
+    "output": "assets/synapse/audio-oled-banner-banner-8.png",
+    "output_sha256": "b20f2a71f2fc5ba587113ba8ca1c1664d5e1fcc16ef67b28f619acd30239c32b",
+    "width": 232,
+    "height": 20,
+    "transform": "Source CSS grayscale(100%), source alpha retained"
+  },
+  {
+    "id": "restart",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-restart.svg",
+    "output_sha256": "5538bd2e3a005b35b67893520f764007392da4a6d2fef7a59aff109e341d307b",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "pause",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-pause.svg",
+    "output_sha256": "b4c30d547eb2e88d079446a5662142cce8ebb86cc779d746f5924595e00d352f",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "increase",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-increase.svg",
+    "output_sha256": "72046c18188cce1d6481b3f4252ecb909f6ffba0b2b745a6dac78948fbfcd812",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "decrease",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-decrease.svg",
+    "output_sha256": "f2f69a0efc9031200855ef2abfa9cf8aadaab68e03b3ce1b38eab1ccdcccbd3d",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "bold",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-bold.svg",
+    "output_sha256": "4178ea91491d557df8eaff481adfccd42e5242f9bbfe122d0aed36d25af32980",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "italic",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-italic.svg",
+    "output_sha256": "05593ad24ea5794e4faa0c74cb090592cc6d675590d20393bcfa34201bf261af",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "underline",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-underline.svg",
+    "output_sha256": "8ff04d69cecc290eece0c6d0f1dc1b449791db6085ee69f624808062e02391c5",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "left",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-left.svg",
+    "output_sha256": "279935ad8a29c214ea05c32124021145dad6549fe439efa3ed752a189f3270d3",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "right",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-right.svg",
+    "output_sha256": "4349febffec5f13c170c52701daebc4fd878f85296eca8766466325621bda8cf",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "up",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-up.svg",
+    "output_sha256": "d10b68b0cc947dc23bf148a30a7e44e2cae20814fa3c88dde2c8971bdeedea91",
+    "transform": "Literal React SVG tree serialization"
+  },
+  {
+    "id": "down",
+    "source": ".ref/devices/1383/static/js/6141.5d00192e.chunk.js",
+    "source_sha256": "de6d49fed2644791427dac537113bf6f66f29f9248fdc3dd7a4b10c350f3e969",
+    "output": "assets/synapse/audio-oled-banner-down.svg",
+    "output_sha256": "5a8b387b75cf23023bbe23d9bda7af31bdbbea177e13965ffdebd2aaf86bdd29",
+    "transform": "Literal React SVG tree serialization"
+  }
+]

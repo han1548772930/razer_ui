@@ -778,6 +778,12 @@ impl AetherStripColors {
 /// of the Windows-native right-click menu's system appearance.
 pub(crate) struct TrayColors;
 impl TrayColors {
+    pub(crate) fn selected_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
     pub(crate) fn surface() -> Hsla {
         rgb(0x222222).into()
     }

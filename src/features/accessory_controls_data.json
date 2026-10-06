@@ -22,24 +22,6 @@
         "key": "TAB_LIGHTING",
         "sections": [
           {
-            "title": "HYPERPOLLING_WIRELESS",
-            "controls": [
-              {
-                "kind": "action",
-                "key": "179:hyperpolling-pairing",
-                "label": "OPEN_PAIRING_UTILITY",
-                "renderer": "hyperpolling-pairing",
-                "path": "/runtime/indicatorLedStatus",
-                "source": {
-                  "path": ".ref/devices/179/static/js/main.4849f7ca.js",
-                  "offset": 4103119,
-                  "end": 4108441
-                }
-              }
-            ],
-            "description": "HYPERPOLLING_WIRELESS"
-          },
-          {
             "title": "BRIGHTNESS_HEADER",
             "controls": [
               {

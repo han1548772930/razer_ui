@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <g id="Charging-25_" data-name="Charging-25%" transform="translate(-510 62) rotate(-90)">
+    <path id="battery-full" d="M21,97.8v2.4h1.2v3.6H21v2.4H1.8V97.8H21M21,96H1.8A1.8,1.8,0,0,0,0,97.8v8.4A1.8,1.8,0,0,0,1.8,108H21a1.8,1.8,0,0,0,1.8-1.8v-.6h.3a.9.9,0,0,0,.9-.9V99.3a.9.9,0,0,0-.9-.9h-.3v-.6A1.8,1.8,0,0,0,21,96Zm-2.041,3.55H3.137v4.8H18.959Z" transform="translate(38 420)" fill="#fff"/>
+    <rect id="Rectangle_5546" data-name="Rectangle 5546" width="24" height="24" transform="translate(38 510)" fill="none"/>
+  </g>
+</svg>

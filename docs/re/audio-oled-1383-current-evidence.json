@@ -100,6 +100,47 @@
       "output": "assets/synapse/oled-screensaver-3.webp"
     }
   ],
+  "screensaver_assets": {
+    "manifest": {
+      "path": ".ref/devices/1383/asset-manifest.json",
+      "sha256": "907cb71cc714fad99364461824738821cfe57e188efefe1a732196754eaa1fcc"
+    },
+    "screensavers": [
+      {
+        "tile": 1,
+        "source": ".ref/devices/1383/static/media/1-random-sim-ths-v2-270-frames.80c28822.gif",
+        "source_url": "https://apps.razer.com/synapse/products/1383/ui/static/media/1-random-sim-ths-v2-270-frames.80c28822.gif",
+        "source_sha256": "ed4db0813056ae8f9e2a39760fe0242e4907a038bf6da6b6ac604b43f6e61dd5",
+        "shared_source": ".ref/devices/691/static/media/1-random-sim-ths-v2-270-frames.80c28822.gif",
+        "shared_source_sha256": "ed4db0813056ae8f9e2a39760fe0242e4907a038bf6da6b6ac604b43f6e61dd5",
+        "output": "assets/synapse/oled-screensaver-1.webp",
+        "output_sha256": "59ab5aad9ba68f4582c99db31583906ef528bb5abcd7f4c1c899d9311532daa3",
+        "comparison": "Current product GIF equals the prepared conversion source byte for byte; output is WebP."
+      },
+      {
+        "tile": 2,
+        "source": ".ref/devices/1383/static/media/2-random-sim-wordmark-300-frames.aa29e365.gif",
+        "source_url": "https://apps.razer.com/synapse/products/1383/ui/static/media/2-random-sim-wordmark-300-frames.aa29e365.gif",
+        "source_sha256": "739a0f3d0f42f213705d726a2a9c1589380052ce922abeaa4f16c9d738110412",
+        "shared_source": ".ref/devices/691/static/media/2-random-sim-wordmark-300-frames.aa29e365.gif",
+        "shared_source_sha256": "739a0f3d0f42f213705d726a2a9c1589380052ce922abeaa4f16c9d738110412",
+        "output": "assets/synapse/oled-screensaver-2.webp",
+        "output_sha256": "f6c0a7421b1b3a88188940a365107bab250dc140e1da3a84210e1cb5730cc17d",
+        "comparison": "Current product GIF equals the prepared conversion source byte for byte; output is WebP."
+      },
+      {
+        "tile": 3,
+        "source": ".ref/devices/1383/static/media/3-random-sim-sneki-body-300-frames.dbe0116d.gif",
+        "source_url": "https://apps.razer.com/synapse/products/1383/ui/static/media/3-random-sim-sneki-body-300-frames.dbe0116d.gif",
+        "source_sha256": "68cf8d81b140958f87af55c0670bbe1fc311ef93adbf8057b3d309fd61285773",
+        "shared_source": ".ref/devices/691/static/media/3-random-sim-sneki-body-300-frames.dbe0116d.gif",
+        "shared_source_sha256": "68cf8d81b140958f87af55c0670bbe1fc311ef93adbf8057b3d309fd61285773",
+        "output": "assets/synapse/oled-screensaver-3.webp",
+        "output_sha256": "ed480a0a72057ac7c4dbd32c9babd680a9c87ffebee480c54042f619db876d93",
+        "comparison": "Current product GIF equals the prepared conversion source byte for byte; output is WebP."
+      }
+    ]
+  },
   "css": {
     "pollingButton": "align-items:center;background-color:#222;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;display:flex;font-size:14px;height:27px;justify-content:center;text-transform:uppercase;width:72px",
     "widthAuto": "width:48px!important",
@@ -115,11 +156,11 @@
     "foot": "bottom:-2px;opacity:1;position:absolute;text-transform:uppercase;transition:visibility 0s,opacity .3s linear;visibility:visible;will-change:visibility,opacity"
   },
   "native": {
-    "src/features/audio_oled.rs": "930fcd356f1d2348962db77eb202f0159b85e89319843de325fb30b6e128cd61",
-    "src/features/audio_products.rs": "366cd428606a85f27af7627f6754c6a300f352ad412f2ac8bee33820ae59dc0f",
+    "src/features/audio_oled.rs": "9ccb4c59fd88d319f683ab5a198535e82d93fcd17bed3e187417edbb65d5ada9",
+    "src/features/audio_products.rs": "fe1e15609e45dca700943c3253de5c26c7990310d01784cd2c6f067776c3954e",
     "src/features/audio_products_data.json": "4a124991b22f66aa11607761bb4c6a63bd8471d73259a013ce23ee43555eb455",
     "tools/prepare-audio-products.cjs": "edf6cced30b70f18faa4a0cdb4a053750b0d661f6ad9987cd4a1880439777c5f",
-    "src/ui/source_slider.rs": "8c513f31972957f19a04045c8b9c4a5510410ad51952a4db3d5a912c0cace9af",
+    "src/ui/source_slider.rs": "250665c21822c37c9d485aa911cf11be1cb70d074f0d08da88f51faa1f9a6e9b",
     "src/ui/theme.rs": "28ce983206e37f3eb6c4034b46bc460bd5fe2b9aabf0cb85d45bde9110033d1f"
   },
   "contract": {
@@ -128,10 +169,10 @@
     "language": "`Bv` only stages the dropdown value; `APPLY` commits, and the button carries `.OLEDLanguage_disabled` (opacity .3) while staged equals committed.",
     "delay_dim": "`Ov`/`Uv` are `.polling-btn-set` rows of 48x27 `.customize-polling-rate-button.keyboard-btn-size` cells; dim adds the `#111` 300x30 `opacity:.5` backdrop while the reducer reports it disabled.",
     "screensaver": "`Kv` renders a two-column grid of 260x68 tiles: tile 0 is the text tile, tiles 1-3 are the current GIFs. `SET_OLED_SCREENSAVER` stores `value+1`, so tile ids equal stored values.",
-    "preview_asset": "The three 1383 GIF basenames are byte-identical to the prepared `synapse/oled-screensaver-{1,2,3}.webp` outputs recorded in the resource manifest.",
-    "slider_thumb": "The source thumb is `path.0086a00e.svg` (14x20); that asset is not in the local resource set, so the audited 691 sibling widget renders a 16px `#44d62c` circle instead.",
-    "local_substitution": "The `Home Screen Display` card (`Dv`) and its six editors need device `GET_OLED_DATA` state and artwork that the local resource set does not contain; this page renders the five audited widgets and leaves that card explicitly unimplemented.",
-    "remaining": "OLED home-screen card artwork/editors, device language download, animation upload and the device update flow remain service-bound; no runtime pixels were verified"
+    "preview_asset": "The three current 1383 manifest-declared GIFs equal the prepared conversion source GIFs byte for byte. Their WebP outputs are decoded conversions validated by the resource manifest.",
+    "slider_thumb": "The mounted `.slider` source thumb is a 16px circle with radius 8px. The 14x20 path SVG belongs to `.slider-more`, a different source element. No 691 implementation evidence is used.",
+    "home_screen": "The current 1383 reducer provides source-owned initial artwork and preview data. Seven cards and all six editable mode entries have local editors; see audio-oled-home-source.json, audio-oled-home-native.md and audio-oled-editors-2026-10-06.md.",
+    "remaining": "BLE/dongle service conditions, device language download, vendor animation encoding/upload and device transport remain incomplete. Local crop and profile Apply do not acknowledge a device transaction; no runtime pixels were verified"
   },
   "native_verification": "Static fingerprints and descriptor assertions only; the application, builds and tests were not run"
 }

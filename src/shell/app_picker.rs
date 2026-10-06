@@ -159,6 +159,7 @@ pub(super) struct PickerDevice {
     powered_off: bool,
     section_position: usize,
     launchable: bool,
+    open_without_installation: bool,
 }
 impl PickerDevice {
     pub(super) fn new(
@@ -177,6 +178,7 @@ impl PickerDevice {
             powered_off: false,
             section_position: usize::MAX,
             launchable: false,
+            open_without_installation: false,
         }
     }
     pub(super) fn localized_name(
@@ -207,8 +209,15 @@ impl PickerDevice {
         self.launchable = enabled;
         self
     }
+    pub(super) fn open_without_installation(mut self, enabled: bool) -> Self {
+        self.open_without_installation = enabled;
+        self
+    }
     fn visible(&self) -> bool {
-        self.ready && !self.mixer_failed && !self.powered_off && self.container_id != "philips-hue"
+        (self.ready || self.open_without_installation)
+            && !self.mixer_failed
+            && !self.powered_off
+            && self.container_id != "philips-hue"
     }
     fn label(&self) -> String {
         let locale = i18n::locale();
@@ -389,6 +398,7 @@ impl AppPickerCatalog {
             .copied()
             .filter(|module| {
                 self.bundled_modules.contains(module)
+                    || self.launchable_modules.contains(module)
                     || (installed.is_some_and(|keys| keys.contains(module.key()))
                         && (self.current_app != PickerApp::Synapse
                             || !self.uninstalling_modules.contains(module.key()))
@@ -412,7 +422,10 @@ impl AppPickerCatalog {
         if !ordered.is_empty() {
             visible = unique(ordered);
             for module in source {
-                if self.bundled_modules.contains(module) && !visible.contains(module) {
+                if (self.bundled_modules.contains(module)
+                    || self.launchable_modules.contains(module))
+                    && !visible.contains(module)
+                {
                     visible.push(*module);
                 }
             }
@@ -424,14 +437,15 @@ impl AppPickerCatalog {
             .into_iter()
             .filter(|app| {
                 *app != self.current_app
-                    && self
-                        .installed_modules
-                        .as_ref()
-                        .is_some_and(|keys| keys.contains(app.key()))
-                    && self
-                        .native_apps
-                        .as_ref()
-                        .is_some_and(|apps| apps.contains(app))
+                    && (self.launchable_apps.contains(app)
+                        || (self
+                            .installed_modules
+                            .as_ref()
+                            .is_some_and(|keys| keys.contains(app.key()))
+                            && self
+                                .native_apps
+                                .as_ref()
+                                .is_some_and(|apps| apps.contains(app))))
             })
             .collect()
     }
@@ -830,7 +844,7 @@ impl AppPicker {
             .font_weight(FontWeight::NORMAL)
             .text_size(css(16.))
             .child(div().px(css(15.)).children(groups))
-            .when(unknown && self.catalog.bundled_modules.is_empty(), |view| {
+            .when(unknown && empty, |view| {
                 view.child(
                     div()
                         .id("app-picker-unknown")
@@ -1328,12 +1342,17 @@ fn preview_catalog(scene: &str) -> AppPickerCatalog {
         .launchable_apps(PickerApp::ALL);
     match scene {
         "maintenance" => catalog.armory_maintenance(true).armory_exchange(true),
-        "recommended" => catalog.native_apps([]).installer_available(true),
+        "recommended" => catalog
+            .native_apps([])
+            .launchable_apps([])
+            .installer_available(true),
         "downloading" => catalog
             .native_apps([])
+            .launchable_apps([])
             .recommendation_phase(RecommendationPhase::Downloading),
         "installing" => catalog
             .native_apps([])
+            .launchable_apps([])
             .recommendation_phase(RecommendationPhase::Installing),
         "unavailable" => catalog.launchable_modules([]).launchable_apps([]),
         "filtered" => {
