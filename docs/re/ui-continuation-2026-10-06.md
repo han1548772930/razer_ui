@@ -301,3 +301,38 @@ cargo check --locked --all-targets 通过，保留三项既有警告。音频静
 
 
 3334/3337 两条混音总线已补入[数字编辑与步进](stream-mixer-number-native.md)：文字暂存、Blur/Enter/Escape 提交、源字符串加号语义、主开关与总线组合禁用、300ms 长按及本地草稿同步。原窗口级滚轮、完整行布局及边缘交互保持 partial；设备选择、通道增删、冲突确认及预设操作未因此计为完成。6 条 AST/4 次资源比较、cargo check 与静态数据校验通过，未运行应用、测试或 DLL。
+
+
+## 2026-10-06：混音确认/播放选择与独立复核 J–L
+
+3334/3337 已接入 [开启冲突确认与播放设备选择](stream-mixer-selection-native.md)：确认前不提交、取消/确认、本地选择保存、断开名称回填、主开关和过期菜单确认保护，以及原警告资源。运行列表/冲突状态与本地覆盖分开，未选择不把观察值写入快照。28 项当前 AST 收据、4 次产品资源比较、cargo check 和相关静态校验通过；真实 MW 发布者未接，不能计为 DLL 读取完成。完整布局、电平表、输入通道增删、预设/快捷键和窗口级滚轮继续待办；产品仍为 partial。
+
+用户要求的独立子任务已完成 515 Blackwidow Chroma 本批复核，新增 [报告 J–L](prior-ui-verification-2026-10-06.md)：Gaming Mode 缺少 Menu 禁用状态行；Snap Tap 成对编辑、新增/删除与校验主体未挂载；Keyboard Properties 右列与操作入口缺失。已核对正常挂载链、源码范围和本地实现，不把共享组件存在视为界面已完成。其中 J 的 Menu 只读状态行已按 515 和 KEY_APPLICATION 条件补入，checked 取 isWindowsKeyDisabled，没有新增写入口；K/L 的 Snap Tap 与系统属性入口继续进入后续修复队列。只读接口继续核实，DLL 写回仍后置。
+
+
+## 续接：515 Snap Tap / Keyboard Properties（2026-10-06）
+
+新增 `keyboard_snap_tap.rs`、强类型静态数据、`prepare-snap-tap.cjs`、3 SVG：本地 reducer/staged 分离、四组上限、KEY1/KEY2、重复/禁键、删除回滚、失焦/快照、一秒闪烁和三秒消息。快照仅通过 `_snapTapLocalV1` 认定本地修改，保留旧 profile 种子；AppShell 只转发当前可见设备释放事件。4 类观察只预留入口，没有真实发布者。详见 keyboard-515-snap-tap-native.md 的明确剩余能力和宿主生命周期限制。
+
+新增 `keyboard_properties.rs`、`prepare-keyboard-properties.cjs`、2 SVG，在 515 右列连接现有 `system::open(Properties::Keyboard)` 与失败通知；无 dirty/设备写回。详见 keyboard-515-properties-native.md。独立子任务扩充 L 可实施证据并回读本批实现，另完成 226 滚轮 M；下一批应依据 M 补三模式/禁用回退/等级/FreeSpin 锁定。
+
+已通过允许的 cargo check、格式化、52 份嵌入 JSON（0失败/4既有跳过）及当前源/资源静态校验。未运行应用、构建、测试、系统属性窗口、厂商JS或DLL。整个 goal 保持 active，331 产品 / 1419 主页面 partial、完整产品 0；不得重置工作区现有修改。
+
+## 226 滚轮批次续接（2026-10-06）
+
+[实现记录](mouse-226-scroll-native.md)与 `mouse-226-scroll-current-evidence.json` 记录本批三模式、禁用回退、两组等级与 FreeSpin 派生锁定。`ScrollWheelEditor` 只服务 226，Changed 原子保存完整草稿及 `_scrollWheelLocalFieldsV1`；观察不进 snapshot，等级 Change 预览 / Release 提交，模式服务请求 debounce 留待写回阶段。Help 路径已清理滚轮瞬态并停止隐藏 515 Snap Tap 的按键捕获。
+
+本批 cargo check、格式化、52 项 AST / 83 条 CSS 校验及 53 项嵌入 JSON 校验通过，未运行应用/测试/DLL；仅三项既有 dead-code 警告。独立子任务继续专门回读已有产品，报告 M 已核主体/字段归属，N/O 已明确下一批 226 Performance 缺口。真实滚轮观察发布者、整页布局、运行视觉与全部产品复刻继续未完成，完整产品仍为 0。
+
+## 226 DPI 数字框续接（2026-10-06）
+
+[整数框](mouse-226-dpi-number-native.md)已接 226 当前选中行，规范空值/99/上限的显示与本地保存，补 Enter/Escape、注册预览、键盘/300ms 步进、控件内滚轮和页面清理。当前源 4230、es/ls/Ms 与参数由新工具 `audit-mouse-226-dpi-number.cjs` 记录，16 项 AST、55 条 CSS、2 次资源比较通过；缺失的原箭头已从 manifest 指定 URL 补抓且与嵌入资源字节相同。
+
+共用 `mouse_dpi_number.rs` 不再硬编码 Y/Independent，Base 自动 mask 显式关闭；70 对应行为继续保持。Help 方法改名为 `dismiss_editors`，同时取消数值预览和滚轮瞬态。独立子任务已完成回读；发现的滚轮预览值限位及未注册吞事件两项已修复并确认。最终 cargo check/格式化/16 项源码收据检查通过；嵌入 JSON 仍为 53 项通过、0 失败、4 项既有跳过。226 阶段条件/逐行可见性与拖排、分段滑条、Polling Rate N/O、真实只读发布者和全项目目标保持未完成，不运行应用/构建/测试/DLL，不重置已有修改。
+## 226 DPI 阶段与分段滑条续接（2026-10-06）
+
+新增 `mouse_226_dpi.rs` / `mouse_226_dpi_data.json` 和 `prepare-mouse-226-dpi.cjs`，现 26 AST / 154 CSS / 9 资源；阶段行复用已独立适配 70/226 schema，包含 visible、两类回退、XY、拖排和 restore 代际。Grid 百分比位置与实际 DPI 模型分开，拖动只预览、释放提交；端点取整越界、原位松开、回传反算、层次及焦点问题均已按独立回读修正。详见 [本批记录](mouse-226-dpi-native.md)。
+
+用户新增要求多个子任务同时校验原代码，现有 verify_existing_ui 与新增 verify_dpi_slider_source / verify_polling_read_source 分别形成报告。轮询子任务补取 `.ref/middleware/226/` 89 个当前 manifest JS，全部仅下载/静态校验，未执行。`SET_ENABLE_STAGES=!isOTFSEnabled` 生产链已证；UI 已接独立 Option 观察门控及所有写入口检查，只清 DPI 预览，真实发布者尚未连接。Polling getter 为 HID 协议、mapping isOtfsActive ABI/owner 仍需后续核实，不能混用现有 Query 或执行写任务作查询。
+
+下一批继续 226 O 的 BLE/连接身份、轮询字段和限速说明，再推进产品其他区域与完整目标。所有未提交工作与 Cargo.lock 保留；全目标 active、完整产品 0，不运行应用/构建/测试/DLL。

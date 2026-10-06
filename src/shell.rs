@@ -2029,6 +2029,29 @@ impl Render for AppShell {
         v_flex()
             .key_context("AppShell")
             .track_focus(&self.host_tabs.focus)
+            // The source captures key releases at window scope, even after an
+            // invalid outside click moves focus. Route only to the visible device.
+            .capture_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
+                if let Location::Device(key) = &this.location {
+                    if let Some(device) = this
+                        .devices
+                        .iter()
+                        .find(|d| d.read(cx).identity(cx) == *key)
+                        .cloned()
+                    {
+                        device.update(cx, |device, cx| device.capture_snap_key_up(event, cx));
+                    }
+                }
+            }))
+            .capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
+                if let Location::Device(key) = &this.location {
+                    if this.devices.iter().any(|d| {
+                        d.read(cx).identity(cx) == *key && d.read(cx).captures_snap_keys(cx)
+                    }) {
+                        cx.stop_propagation();
+                    }
+                }
+            }))
             .on_action(cx.listener(Self::close_current_host_tab))
             .on_action(cx.listener(Self::reopen_host_tab))
             .on_action(cx.listener(Self::next_host_tab))

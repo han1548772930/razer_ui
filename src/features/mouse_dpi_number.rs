@@ -1,4 +1,4 @@
-//! Product 70 XT -> 4230: source stepper presentation and local preview semantics.
+//! Current 70 XT / 226 es -> 4230: integer stepping and local row previews.
 use super::*;
 use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
 use gpui_kit::prelude::FluentBuilder as _;
@@ -32,7 +32,10 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.page != "TAB_PERFORMANCE" || cx.has_active_drag() {
+        if self.page != "TAB_PERFORMANCE"
+            || self.dpi_dragged_row.is_some()
+            || !self.dpi_editing_enabled()
+        {
             return false;
         }
         let Some((stage_path, axis)) = path.rsplit_once('/') else {
@@ -45,7 +48,8 @@ impl MouseProductWorkspace {
         else {
             return false;
         };
-        if (axis == "Y" && !self.boolean(&format!("{stage_path}/Independent")))
+        if (axis == self.spec.dpi_axis(1)
+            && !self.boolean(&format!("{stage_path}/{}", self.spec.independent_key())))
             || (!self.boolean(self.spec.stage_enable_path())
                 && self.number(self.spec.active_path()) as usize != index + 1)
         {
@@ -85,7 +89,7 @@ impl MouseProductWorkspace {
         if !preview {
             self.write_number(path, value, window, cx);
         }
-        // EI keeps focused stepping in its local row until 4230.handleBlur.
+        // 70 EI / 226 ls keep focused stepping local until 4230.handleBlur.
         // Do not select a stage or persist a profile while registered is true.
         self.syncing = true;
         if refresh_text {
@@ -258,16 +262,32 @@ impl RenderOnce for DpiNumber {
                 } else {
                     StepAction::Decrement
                 };
-                let _ = wheel_owner.update(cx, |owner, cx| {
-                    if owner
+                let handled = wheel_owner.update(cx, |owner, cx| {
+                    if !owner
                         .dpi_numbers
                         .get(&wheel_path)
                         .is_some_and(|state| state.registered)
                     {
-                        owner.step_dpi_number(&wheel_path, action, window, cx);
+                        // Tab focus alone never registers the source wheel listener.
+                        return false;
                     }
+                    // 4230 wheel guards props.value (the row preview), not
+                    // newly typed text; keyboard/button stepping is separate.
+                    let Some(slider) = owner.sliders.get(&wheel_path) else {
+                        return false;
+                    };
+                    let value = slider.read(cx).value().start();
+                    if (action == StepAction::Increment && value >= owner.spec.max_dpi as f32)
+                        || (action == StepAction::Decrement && value <= owner.spec.min_dpi as f32)
+                    {
+                        return true;
+                    }
+                    owner.step_dpi_number(&wheel_path, action, window, cx);
+                    true
                 });
-                cx.stop_propagation();
+                if handled.unwrap_or(false) {
+                    cx.stop_propagation();
+                }
             })
             .child(
                 NumberInput::new(&self.input)

@@ -1,0 +1,2981 @@
+{
+  "method": "Static Acorn/CSS only; UTF-16 half-open ranges",
+  "manifest": {
+    "path": ".ref/devices/226/asset-manifest.json",
+    "sha256": "d3112f2e93e99a6b12a514307f53918e944fee599c3ea92ae3cd0e2f9b11a5e2"
+  },
+  "receipts": [
+    {
+      "symbol": "zs",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157662,
+      "end": 165209,
+      "source": "class zs extends m.Component{constructor(e){var t;super(e),t=this,this.state={hyperPollingRateData:Gs,maxPollingRateHz:null,pollingRateLimitSource:null},this.isPollingRateBleSupported=()=>{var e,t;return null===(e=null===(t=z.DeviceInfo)||void 0===t?void 0:t.supportBluetoothPollingRate)||void 0===e||e},this.isPollingRateBleMode=()=>this.props.isBle&&this.isPollingRateBleSupported(),this.getPollingRateMode=()=>this.isPollingRateBleMode()?\"ble\":this.props.isDongle||this.props.isBle?\"wireless\":\"wired\",this.getPollingRateStateKey=()=>{const e=this.getPollingRateMode();return\"ble\"===e?\"pollingRateBle\":\"wireless\"===e?\"pollingRateWireless\":\"pollingRate\"},this.getSelectedPollingRate=()=>this.props[this.getPollingRateStateKey()],this.getSetPollingRateAction=()=>{const e=this.getPollingRateMode();return\"ble\"===e?this.props.setPollingRateBle:\"wireless\"===e?this.props.setPollingRateWireless:this.props.setPollingRate},this.getPollingRateData=()=>{const e=this.getPollingRateMode();return\"ble\"===e&&Ws?Ws:\"wireless\"===e&&Fs?Fs:Gs},this.getDualLinkDeviceList=()=>{try{const e=JSON.parse(localStorage.getItem(\"duallink-devices\")||\"{}\");return Object.values(e||{})}catch(e){return console.error(\"Failed to parse duallink-devices\",e),[]}},this.getDualLinkPollingRateLimitHz=()=>{var e;const t=Number(null===(e=z.DeviceInfo)||void 0===e?void 0:e.dualLinkPollingRateLimitHz);return Number.isFinite(t)&&t>0?t:null},this.isCurrentDevice=e=>{var t,s;const i=[null===(t=z.DeviceInfo)||void 0===t?void 0:t.productId,null===(s=z.DeviceInfo)||void 0===s?void 0:s.dongleId].filter(e=>void 0!==e&&null!==e),a=[null===e||void 0===e?void 0:e.productId,null===e||void 0===e?void 0:e.dongleId].filter(e=>void 0!==e&&null!==e);return i.some(e=>a.some(t=>String(e)===String(t)))},this.getCurrentDualLinkInfo=function(){return(arguments.length>0&&void 0!==arguments[0]?arguments[0]:t.getDualLinkDeviceList()).find(e=>{var s;const i=null!==(s=null===e||void 0===e?void 0:e.slave)&&void 0!==s?s:e,a=null===e||void 0===e?void 0:e.master;return t.isCurrentDevice(i)||t.isCurrentDevice(a)})},this.applyPollingRateLimit=(e,t)=>{const s=Fs||Gs;this.props.pollingRateWireless>e&&this.props.setPollingRateWireless(e),this.setState({hyperPollingRateData:s,maxPollingRateHz:e,pollingRateLimitSource:t})},this.applyMultiDeviceDockPollingCap=()=>{this.applyPollingRateLimit(1e3,$s)},this.applyDualLinkPollingCap=e=>{this.applyPollingRateLimit(e,Ys)},this.clearPollingRateLimit=()=>{null==this.state.maxPollingRateHz&&null==this.state.pollingRateLimitSource||this.setState({maxPollingRateHz:null,pollingRateLimitSource:null})},this.isPollingRateDisabledByLimit=e=>{const{maxPollingRateHz:t}=this.state;return null!=t&&Number(e)>t},this.handleDuallinkDevicesChange=()=>{const e=localStorage.getItem(\"duallink-devices\")||\"{}\";e!==this.lastDuallinkSnapshot&&(this.lastDuallinkSnapshot=e,this.checkAndUpdateHyperPollingRateList())},this.checkIfPairedWithHyperPollingDevice=function(){var e,s;let i=arguments.length>0&&void 0!==arguments[0]?arguments[0]:t.getDualLinkDeviceList();const a=t.getCurrentDualLinkInfo(i),n={isDuallink:!1,connectedToHyperPollingMasterDevice:!1};if(!a)return n;n.isDuallink=!0;const o=[T.zrS,T.WgN],r=!0===(null===(e=a.master)||void 0===e?void 0:e.supports8KHzPollingRate);return n.connectedToHyperPollingMasterDevice=o.includes(null===(s=a.master)||void 0===s?void 0:s.productId)||r,n},this.checkAndUpdateHyperPollingRateList=async()=>{var e;const t=this.getDualLinkDeviceList(),s=this.getCurrentDualLinkInfo(t),{isDuallink:i,connectedToHyperPollingMasterDevice:a}=this.checkIfPairedWithHyperPollingDevice(t);let n=!1;!0===(null===s||void 0===s||null===(e=s.master)||void 0===e?void 0:e.supports8KHzPollingRate)&&({shouldCapTo1K:n}=Ls(s,t,this.props.isDongle));const o=\"KEYBOARD\"===z.DeviceInfo.category,r=i&&a;if(n)return void this.applyMultiDeviceDockPollingCap();const l=this.getDualLinkPollingRateLimitHz();if(this.props.isDongle&&i&&!a&&null!=l)this.applyDualLinkPollingCap(l);else{if(this.clearPollingRateLimit(),o&&r)return this.setState({hyperPollingRateData:Zs}),void console.log(\"*** KB supports HyperPolling through DualLink\",this.state.hyperPollingRateData);if(ks&&(this.props.isDongle&&!i&&Hs||r&&this.props.isDongle)){await this.checkFor8KSupport()?this.setState({hyperPollingRateData:Bs}):this.setState({hyperPollingRateData:Zs})}}},this.checkFor8KSupport=async()=>{const e=await x.A.getWindowStorageItem(E.R9.DEVICE_RUNTIME_DATA).then(e=>{var t;const s=null!==(t=JSON.parse(e))&&void 0!==t?t:[];for(const i of s){const e=JSON.parse(i.value);if(z.DeviceInfo.productId===e.productId&&e.firmwareInfo)return e.firmwareInfo.currentFWVersion}});if(e){return!(0,N.U5)(ks,e)}return!1},this.onClickPollingRateButton=e=>{this.isPollingRateDisabledByLimit(e)||(\"KEYBOARD\"===z.DeviceInfo.category&&(0,Vs.rE)({rate:e}),\"GAMEPAD\"===z.DeviceInfo.category&&(0,Us.kr)({rate:e}),this.getSetPollingRateAction()(e))},this.checkActivePollingRateValue=e=>this.getSelectedPollingRate()===+e,this.lastDuallinkSnapshot=\"\"}componentDidMount(){this.setState({hyperPollingRateData:this.getPollingRateData()}),this.lastDuallinkSnapshot=localStorage.getItem(\"duallink-devices\")||\"{}\",this.checkAndUpdateHyperPollingRateList(),window.addEventListener(\"focus\",this.handleDuallinkDevicesChange),this.multiDeviceDockPollingInterval=setInterval(this.handleDuallinkDevicesChange,1500)}componentWillUnmount(){window.removeEventListener(\"focus\",this.handleDuallinkDevicesChange),clearInterval(this.multiDeviceDockPollingInterval)}componentDidUpdate(e){const{isDongle:t,isBle:s}=this.props;e.isDongle===t&&e.isBle===s||(this.setState({hyperPollingRateData:this.getPollingRateData()}),this.checkAndUpdateHyperPollingRateList())}render(){let e=this.state.hyperPollingRateData;this.props.supportColor&&(e=e.map(e=>({...e,color:T.v9s[parseInt(e.content)]})));const{category:t}=this.props,s=this.getSelectedPollingRate(),i=this.isPollingRateBleMode(),a=null!=this.state.maxPollingRateHz,n=this.state.pollingRateLimitSource===$s,o=\"KEYBOARD\"===z.DeviceInfo.category?O.Ngj:O.H_3,r=n?o:O.kcN;return(0,w.jsxs)(tt.A,{title:this.props.isDongle||this.props.isBle?O.FGZ:O.lGq,tips:this.props.supportButtonCombination?O.$Sb:this.props.isDongle||this.props.isBle?O.iiK:O.orU,children:[(0,w.jsx)(\"div\",{className:\"h1-body\",children:(0,w.jsx)(W.A,{text:\"GAMEPAD\"!==z.DeviceInfo.category?O.rJp:O.PDD})}),(0,w.jsx)(\"div\",{className:\"polling-btn-set\",children:(e||[]).map((s,i)=>(0,w.jsx)(Ps,{onClickPollingRateButton:this.onClickPollingRateButton,value:s,active:this.checkActivePollingRateValue(s.content)||1===e.length,disabled:this.isPollingRateDisabledByLimit(s.content),category:null!==t&&void 0!==t?t:\"\",configWidth:this.props.configWidth},i))}),i?(0,w.jsxs)(\"div\",{className:\"polling-ble-info\",children:[(0,w.jsx)(\"span\",{className:\"polling-ble-info-icon\",\"aria-hidden\":\"true\"}),(0,w.jsx)(W.A,{text:O.TIu})]}):null,a?(0,w.jsxs)(\"div\",{className:\"polling-dock-limit-info\",children:[(0,w.jsx)(\"span\",{className:\"polling-dock-limit-info-icon\",\"aria-hidden\":\"true\"}),(0,w.jsx)(W.A,{text:r})]}):null,(0,w.jsx)(\"div\",{className:\"polling-warn\",children:!a&&s>1e3?(0,w.jsxs)(\"div\",{children:[this.props.isDongle||this.props.isBle?(0,w.jsx)(W.A,{text:O.KOq}):(0,w.jsx)(W.A,{text:O.Vjf}),(0,w.jsxs)(Pt.A,{className:\"polling-learn-more\",href:\"https://www.razer.com/technology/razer-hyperpolling#best-practices-tips\",children:[(0,w.jsx)(W.A,{text:O.HkB}),(0,w.jsx)(\"div\",{className:\"external-link-icon\"})]})]}):\"\"}),this.props.supportInGamePollingRate?(0,w.jsx)(Ts,{devicePollingRate:e,category:t}):null]})}}"
+    },
+    {
+      "symbol": "Xs",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 165218,
+      "end": 165578,
+      "source": "(0,S.connect)(e=>({isDongle:e.deviceReducer.isDongle,isBle:e.deviceReducer.isBle,pollingRate:e.pollingRate.pollingRate,pollingRateWireless:e.pollingRate.pollingRateWireless,pollingRateBle:e.pollingRate.pollingRateBle,selectedProfile:e.profileReducer.profiles.find(t=>{let{guid:s}=t;return e.profileReducer.selectedProfileGuid===s})}),e=>(0,v.zH)({...r},e))(zs)"
+    },
+    {
+      "symbol": "Ps",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 155472,
+      "end": 155946,
+      "source": "e=>{let{active:t,value:s,category:i,onClickPollingRateButton:a,configWidth:n,disabled:o=!1}=e;return(0,w.jsxs)(\"div\",{className:`${\"KEYBOARD\"===i?\"customize-polling-rate-button keyboard-btn-size\":\"customize-polling-rate-button\"}  ${t?\"active\":\"\"} ${n?\"configWidth\":\"\"} ${o?\"disabled\":\"\"}`,onClick:()=>{t||o||a(parseInt(s.content))},children:[s.color&&(0,w.jsx)(\"span\",{style:{backgroundColor:s.color},className:\"customize-polling-rate-button-color\"}),parseInt(s.content)]})}"
+    },
+    {
+      "symbol": "wi",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 183668,
+      "end": 183979,
+      "source": "class wi extends m.Component{render(){const e=!this.props.isBle||!0===z.DeviceInfo.supportBluetoothPollingRate;return(0,w.jsxs)(Qe.A,{children:[(0,w.jsx)(et.A,{direction:\"left\",children:(0,w.jsx)(ys,{})}),(0,w.jsxs)(et.A,{direction:\"right\",children:[e&&(0,w.jsx)(Xs,{}),(0,w.jsx)(yi,{}),(0,w.jsx)(ei,{})]})]})}}"
+    },
+    {
+      "symbol": "tt",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 116376,
+      "end": 116383,
+      "source": "s(6299)"
+    },
+    {
+      "symbol": "Pt",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 131105,
+      "end": 131112,
+      "source": "s(7006)"
+    },
+    {
+      "symbol": "W",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 67687,
+      "end": 67693,
+      "source": "s(264)"
+    },
+    {
+      "symbol": "O",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 6628,
+      "end": 6635,
+      "source": "s(4693)"
+    },
+    {
+      "symbol": "T",
+      "module": 4125,
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 6657,
+      "end": 6664,
+      "source": "s(9937)"
+    },
+    {
+      "symbol": "module:6299",
+      "module": 6299,
+      "path": ".ref/devices/226/static/js/2306.8464ad14.chunk.js",
+      "sha256": "c4b6f4ed7d4bdef9bd9e27ef34712290dd24c1ad2723a08aaafba334d5642200",
+      "offset": 18034,
+      "end": 21784,
+      "source": "(e,t,i)=>{i.d(t,{A:()=>v});var s=i(1594),o=i.n(s),n=i(9040),a=i(527),r=i(264),l=i(4693),c=i(8691),d=i(1867),h=i(1057),p=i(2722);class u extends s.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.props.toggleSwitch()},this.onHover=()=>{this.setState({showTip:!0},()=>{const e=document.querySelector(\".main-container > #body-wrapper\"),t=this.tipDiv.current;if(!t||!e)return;const i=t.getBoundingClientRect(),s=e.getBoundingClientRect();if((null===i||void 0===i?void 0:i.right)>=s.right&&t.classList.add(\"custom-tip\"),i.bottom>s.bottom){const e=t.previousElementSibling;if(!e)return;const i=e.getBoundingClientRect(),o=8;t.style.position=\"fixed\",t.style.right=\"auto\",t.style.left=`${i.right+o}px`,t.style.top=`${i.top}px`;const n=t.getBoundingClientRect();if(n.right>s.right&&(t.style.left=i.left-o-n.width+\"px\"),!this.props.ignoreBottomOverflow){const e=t.getBoundingClientRect();if(e.bottom>s.bottom){const i=e.bottom-s.bottom+10;t.style.top=parseFloat(t.style.top)-i+\"px\"}}}})},this.onLeave=()=>{this.setState({showTip:!1})};const{active:t}=this.props;this.state={active:t,showTip:!1,showFWUpdateTip:!1,tooltipX:0,tooltipY:0},this.tipDiv=o().createRef(),this._tipX=0,this._tipY=0}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){var e;const{id:t,title:i,tips:s,centerTips:o,children:n,hasSwitch:u=!1,disableSwitchTips:v,extraClass:m,customStyle:g,extraTitle:y,besideTitle:f,increaseZIndex:x,supportsShortcut:w,disable:b,renderShortcut:D,keyPressed:S,hasTutorialButton:M,currentFWVersion:T,hasFWUpdate:C=!1,fwUpdateComponent:E,ignoreBottomOverflow:j=!1,allowHtml:N}=this.props,{toggleSwitch:A}=this,{active:k}=this.state,R=(null===(e=h.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},P=(0,d.ju)(E,R,T)&&C;var L=`widget ${m||\"\"} ${x?\"increase-zindex\":\"\"} ${P?\"disabled\":\"\"}`,W=void 0!==s?(0,p.jsxs)(p.Fragment,{children:[(0,p.jsx)(\"div\",{className:\"help\",role:\"button\",\"aria-label\":(0,c.JN)(s),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,p.jsx)(\"div\",{className:\"tip\",ref:this.tipDiv,children:\"string\"!==typeof s?s:(0,p.jsx)(r.A,{text:s})}),M?(0,p.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,B=u?(0,p.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,p.jsx)(a.A,{disable:this.props.disable,active:k,onClick:A,className:S||\"\"}),v&&b?(0,p.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,p.jsx)(r.A,{text:v})}):null]}):null,U=\"\"!==i?(0,p.jsxs)(\"div\",{className:\"titleRow\",children:[(0,p.jsxs)(\"div\",{className:\"title\",children:[(0,p.jsx)(r.A,{text:i,allowHtml:N}),B,f]}),(0,p.jsx)(\"div\",{children:y}),w?D:null]}):null;return(0,p.jsxs)(\"div\",{className:\"widget-container\",children:[(0,p.jsxs)(\"div\",{className:L,id:t,style:g,children:[U,n,W]}),o&&(L.includes(\"disabled\")||!1===k)&&(0,p.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,p.jsx)(r.A,{text:o})}),P&&(0,p.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const t=e.clientX,i=e.clientY+25;this._tipX=t,this._tipY=i,this.setState({showFWUpdateTip:!0,tooltipX:t,tooltipY:i})},onMouseMove:e=>{const t=e.clientX,i=e.clientY+25;this._tipX===t&&this._tipY===i||(this._tipX=t,this._tipY=i,this.setState({tooltipX:t,tooltipY:i}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,p.jsx)(r.A,{text:l.AG3})}),P&&this.state.showFWUpdateTip&&(0,p.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,p.jsx)(r.A,{text:l.ssg})})]})}}u.defaultProps={allowHtml:!1};const v=(0,n.connect)(e=>{var t;return{currentFWVersion:null===(t=e.deviceReducer)||void 0===t?void 0:t.currentFWVersion}})(u)}"
+    },
+    {
+      "symbol": "module:7006",
+      "module": 7006,
+      "path": ".ref/devices/226/static/js/2103.55083c25.chunk.js",
+      "sha256": "80732fbf8d3be7e530095833b0b8d07309fb0c047b31794701cd3e4a57f7e2c7",
+      "offset": 8714,
+      "end": 8997,
+      "source": "(e,t,o)=>{o.d(t,{A:()=>r});o(1594);var n=o(7226),i=o(2722);const s=e=>{let{children:t,href:o,onClick:n,...s}=e;return(0,i.jsx)(\"a\",{...s,href:null,onClick:e=>{o&&(e.preventDefault(),a(o)),n(e)},children:t})},a=e=>{n.A.openExternalWindow(e)};s.defaultProps={onClick:()=>{}};const r=s}"
+    },
+    {
+      "symbol": "module:264",
+      "module": 264,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 7720,
+      "end": 9442,
+      "source": "(e,t,n)=>{\"use strict\";n.d(t,{A:()=>E});n(1594);var i=n(9040),o=n(8691),a=n(2722);const r=(e,t)=>t&&e&&0!==e.length?e.charAt(0).toUpperCase()+e.slice(1):e,s=(e,t)=>{if(e&&\"object\"===typeof e&&Object.prototype.hasOwnProperty.call(e,\"_key\")){const n=e._key;return\"string\"===typeof n&&n.length>0?(0,o.JN)(n,{_lang:t}):\"\"}return e},_=e=>{let{text:t,data:n,lang:i,clickableData:_,onClick:E,underlineData:c,capitalizeFirst:l,allowHtml:p,onMouseEnter:T,onMouseLeave:I}=e;\"string\"!==typeof t&&(t=\"\");const A=((e,t)=>{const n={};for(const i of Object.keys(e||{}))n[i]=s(e[i],t);return n})(n,i);if(c){let e=(0,o.JN)(t,{...A,_lang:i});e=r(e,l);const n=Object.keys(A).reduce((e,t)=>{const n=A[t],i=\"string\"===typeof n?n:String(null!==n&&void 0!==n?n:\"\");if(i.length>0&&e.includes(i)){const n=e.split(i),o=[];c&&o.push(\"translator-underline\"),_&&o.push(\"translator-clickable\");const r=o.join(\" \"),s=e=>(0,a.jsx)(\"span\",{className:r,onClick:_?()=>E&&E(i,t):void 0,onMouseEnter:T,onMouseLeave:I,role:_?\"button\":void 0,tabIndex:_?0:void 0,style:{opacity:!1===_?.3:1},children:i},`${t}-${e}`),l=[n[0]];for(let e=1;e<n.length;e++)l.push(s(e),n[e]);return l}return e},e);return(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(\"style\",{children:\"\\n  .translator-clickable:hover {\\n    color: #44D62C;\\n  }\\n  .translator-underline {\\n    text-decoration: underline;\\n  }\\n\"}),n]})}let d=(0,o.JN)(t,{...A,_lang:i});return d=r(d,l),p&&\"string\"===typeof d?(0,a.jsx)(\"span\",{dangerouslySetInnerHTML:{__html:d}}):(0,a.jsx)(a.Fragment,{children:d})};_.defaultProps={data:{},clickableData:!1,onClick:null,underlineData:!1,capitalizeFirst:!1,allowHtml:!1,onMouseEnter:null,onMouseLeave:null};const E=(0,i.connect)(e=>({lang:e.languageReducer.lang}),{})(_)}"
+    },
+    {
+      "symbol": "translator:JN",
+      "module": 8691,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 467782,
+      "end": 468214,
+      "source": "function(e){var t;let n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{},i=n._lang;if(null===_)return\"\";i?delete n._lang:i=l(),_[i]||(i=o.Nm);let a=null!==(t=_[i][e])&&void 0!==t?t:_[o.Nm][e];if(a){let e;for(const[t,i]of Object.entries(n))e=new RegExp(`{{${t}}}`,\"g\"),a=a.replace(e,i)}else console.debug(\"[getTextItem][%s]\",e);const r=a||e;return n.a&&n.aEnd&&\"string\"===typeof r&&!r.includes(\"<a\")?`${n.a}${r}${n.aEnd}`:r}"
+    },
+    {
+      "symbol": "label:FGZ",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272263,
+      "end": 272284,
+      "source": "\"POLLING_RATE_HEADER\""
+    },
+    {
+      "symbol": "label:lGq",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272288,
+      "end": 272315,
+      "source": "\"WIRED_POLLING_RATE_HEADER\""
+    },
+    {
+      "symbol": "label:$Sb",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272663,
+      "end": 272714,
+      "source": "\"POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP\""
+    },
+    {
+      "symbol": "label:iiK",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272599,
+      "end": 272624,
+      "source": "\"POLLING_RATE_V2_TOOLTIP\""
+    },
+    {
+      "symbol": "label:orU",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272628,
+      "end": 272659,
+      "source": "\"WIRED_POLLING_RATE_V2_TOOLTIP\""
+    },
+    {
+      "symbol": "label:rJp",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272319,
+      "end": 272338,
+      "source": "\"POLLING_RATE_DESC\""
+    },
+    {
+      "symbol": "label:PDD",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272342,
+      "end": 272367,
+      "source": "\"WIRED_POLLING_RATE_DESC\""
+    },
+    {
+      "symbol": "label:TIu",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272427,
+      "end": 272456,
+      "source": "\"POLLING_RATE_BLUETOOTH_INFO\""
+    },
+    {
+      "symbol": "label:Ngj",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272510,
+      "end": 272559,
+      "source": "\"POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD\""
+    },
+    {
+      "symbol": "label:H_3",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272460,
+      "end": 272506,
+      "source": "\"POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE\""
+    },
+    {
+      "symbol": "label:kcN",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272563,
+      "end": 272595,
+      "source": "\"POLLING_RATE_DUAL_LINK_LIMITED\""
+    },
+    {
+      "symbol": "label:KOq",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272371,
+      "end": 272390,
+      "source": "\"POLLING_RATE_WARN\""
+    },
+    {
+      "symbol": "label:Vjf",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272394,
+      "end": 272423,
+      "source": "\"POLLING_RATE_WARN_NOBATTERY\""
+    },
+    {
+      "symbol": "label:HkB",
+      "module": 4693,
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 270279,
+      "end": 270291,
+      "source": "\"LEARN_MORE\""
+    }
+  ],
+  "labels": {
+    "FGZ": "POLLING_RATE_HEADER",
+    "lGq": "WIRED_POLLING_RATE_HEADER",
+    "$Sb": "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP",
+    "iiK": "POLLING_RATE_V2_TOOLTIP",
+    "orU": "WIRED_POLLING_RATE_V2_TOOLTIP",
+    "rJp": "POLLING_RATE_DESC",
+    "PDD": "WIRED_POLLING_RATE_DESC",
+    "TIu": "POLLING_RATE_BLUETOOTH_INFO",
+    "Ngj": "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD",
+    "H_3": "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE",
+    "kcN": "POLLING_RATE_DUAL_LINK_LIMITED",
+    "KOq": "POLLING_RATE_WARN",
+    "Vjf": "POLLING_RATE_WARN_NOBATTERY",
+    "HkB": "LEARN_MORE"
+  },
+  "locales": [
+    {
+      "locale": "de",
+      "path": ".ref/devices/226/static/js/trans-de.28aa691e.chunk.js",
+      "sha256": "b6832b4b4384ad29f65b48061a14067dd44fded99a6ce6cee943e5b8cc2acc78",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "ABTASTRATE",
+          "offset": 145347,
+          "end": 145359
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "KABELGEBUNDENE ABTASTRATE",
+          "offset": 371428,
+          "end": 371455
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Frequenz anpassen, in welcher das Gerät den PC kontaktiert. Höhere Frequenzen erhöhen die Reaktionsgeschwindigkeit und verringern die Eingabe-Latenz, erfordern aber mehr Energie und verkürzen die Laufzeit des Akkus (falls vorhanden).\n \nDie Liste verfügbarer Abtastraten variiert je nach Verbindungstyp und Betriebssystem.\n \nTastenkürzel zur Änderung der Abtastrate: Halte das Mausrads gedrückt und drücke die Power-Taste, um verschiedene Abtastraten durchzugehen.",
+          "offset": 146430,
+          "end": 146899
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Frequenz anpassen, in welcher das Gerät den PC kontaktiert. Frequenz anpassen, in welcher das Gerät den PC kontaktiert. Höhere Frequenzen erhöhen die Reaktionsgeschwindigkeit und verringern die Eingabe-Latenz, verbrauchen aber mehr Energie und verkürzen die Laufzeit des Akkus (falls vorhanden).\n \nDie Liste verfügbarer Frequenzen hängt von Verbindungstyp und Betriebssystem ab.",
+          "offset": 145800,
+          "end": 146182
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Frequenz anpassen, in welcher das Gerät den PC kontaktiert. Höhere Frequenzen erhöhen die Gesamtreaktionsfähigkeit und verringern die Eingabeverzögerung.\n \nDie Liste verfügbarer Frequenzen hängt von Verbindungstyp und Betriebssystem ab.",
+          "offset": 146186,
+          "end": 146426
+        },
+        "POLLING_RATE_DESC": {
+          "value": "Die Frequenz (Hz) der Datenaktualisierungen pro Sekunde.",
+          "offset": 145363,
+          "end": 145421
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "Die Frequenz (Hz) der Datenaktualisierungen pro Sekunde.",
+          "offset": 371460,
+          "end": 371518
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 145652,
+          "end": 145731
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "Die maximale Polling Rate wurde aufgrund von Einschränkungen beim aktuellen Verbindungstyp verringert.",
+          "offset": 407351,
+          "end": 407455
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Höhere Abtastraten verkürzen die Akku-Laufzeit und erhöhen die CPU-Last, was sich auf die Framerates auswirken kann.",
+          "offset": 145425,
+          "end": 145543
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Höhere Abtastraten führen zu einer stärkeren CPU-Auslastung, was die Bildrate beeinträchtigen kann.",
+          "offset": 145547,
+          "end": 145648
+        },
+        "LEARN_MORE": {
+          "value": "Mehr erfahren",
+          "offset": 136474,
+          "end": 136489
+        }
+      }
+    },
+    {
+      "locale": "en",
+      "path": ".ref/devices/226/static/js/trans-en.9144bc13.chunk.js",
+      "sha256": "7dfeadd04d951194e9148c4ec77378e9fee47a686f43fb160a07a979bacb8e30",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "POLLING RATE",
+          "offset": 153246,
+          "end": 153260
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "WIRED POLLING RATE",
+          "offset": 153264,
+          "end": 153284
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Adjust the frequency at which the device reports back to the PC. Higher frequencies increase overall responsiveness and reduce input latency, but require more power and shorten battery life (if applicable).\n \nThe list of available polling rates varies depending on the connection type and operating system.\n \nChange Polling Rate Hotkey: While holding the scroll-click, press the power button to cycle through different polling rates.",
+          "offset": 154711,
+          "end": 155150
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Adjust the frequency at which the device will report back to the PC. Higher frequencies increase overall responsiveness and reduce input latency, but consume more energy and reduce battery life (if applicable).\n \nThe list of available frequencies depend on  the connection type and operating system.",
+          "offset": 154163,
+          "end": 154466
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Adjust the frequency at which the device will report back to the PC. Higher frequencies increase overall responsiveness and reduce input latency.\n \nThe list of available frequencies depend on the connection type and operating system.",
+          "offset": 154470,
+          "end": 154707
+        },
+        "POLLING_RATE_DESC": {
+          "value": "The frequency (Hz) of data updates in a second.",
+          "offset": 153288,
+          "end": 153337
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "The frequency(Hz) of data updates in a second.",
+          "offset": 153341,
+          "end": 153389
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 153595,
+          "end": 153674
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": {
+          "value": "Polling rate limited to 1,000 Hz — your Razer Mouse Dock Pro is paired to both your mouse and keyboard. Unpair the mouse to restore up to 8,000 Hz.",
+          "offset": 153834,
+          "end": 153983
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": {
+          "value": "Polling rate limited to 1,000 Hz — your Razer Mouse Dock Pro is paired to both your mouse and keyboard. Unpair the keyboard to restore up to 8,000 Hz.",
+          "offset": 153678,
+          "end": 153830
+        },
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "The maximum polling rate has been reduced because of limitations in the current connection type.",
+          "offset": 153987,
+          "end": 154085
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Higher polling rates will result in reduced battery life and higher CPU usage which may impact frame rates.",
+          "offset": 153393,
+          "end": 153502
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Higher polling rates will result in higher CPU usage, which may impact frame rates.",
+          "offset": 153506,
+          "end": 153591
+        },
+        "LEARN_MORE": {
+          "value": "Learn More",
+          "offset": 137583,
+          "end": 137595
+        }
+      }
+    },
+    {
+      "locale": "es",
+      "path": ".ref/devices/226/static/js/trans-es.dacbf6ac.chunk.js",
+      "sha256": "2932e6906b61a36ee30f0166fc274e0ede6982be7f97e8fa89ad403f49997124",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "TASA DE SONDEO",
+          "offset": 145689,
+          "end": 145705
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "TASA DE SONDEO CON CABLE",
+          "offset": 383538,
+          "end": 383564
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Ajusta la frecuencia a la que el dispositivo informa al PC. Una frecuencia más alta aumenta la capacidad de respuesta general y reduce la latencia de entrada, pero requiere más energía y disminuye la duración de la batería (si corresponde).\n \nLa lista de tasas de sondeo disponibles varía en función del tipo de conexión y del sistema operativo.\n \nCambiar la tecla de acceso directo de la tasa de sondeo: mientras mantienes pulsado el clic de la rueda, pulsa el botón de encendido para ir cambiando entre las diferentes tasas de sondeo.",
+          "offset": 146793,
+          "end": 147335
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajusta la frecuencia en la que el dispositivo informará al PC. Las frecuencias más altas aumentan la capacidad de respuesta general y reducen la latencia de entrada, pero consumen más energía y disminuyen la duración de la batería (si corresponde).\n \nLa lista de frecuencias disponibles depende del tipo de conexión y del sistema operativo.",
+          "offset": 146180,
+          "end": 146524
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajusta la frecuencia en la que el dispositivo informará al PC. Las frecuencias más altas aumentan la capacidad de respuesta general y reducen la latencia de entrada.\n \nLa lista de frecuencias disponibles depende del tipo de conexión y del sistema operativo.",
+          "offset": 146528,
+          "end": 146789
+        },
+        "POLLING_RATE_DESC": {
+          "value": "La frecuencia (Hz) de datos se actualiza en un segundo.",
+          "offset": 145709,
+          "end": 145766
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "La frecuencia (Hz) de datos se actualiza en un segundo.",
+          "offset": 383569,
+          "end": 383626
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 146030,
+          "end": 146109
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "La tasa de sondeo máxima se ha reducido debido a las limitaciones del tipo de conexión actual.",
+          "offset": 419992,
+          "end": 420088
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Una mayor frecuencia de sondeo reducirá la duración de la batería y aumentará el uso de la CPU, lo que puede afectar a la velocidad de imagen.",
+          "offset": 145770,
+          "end": 145914
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Tasas de sondeo más altas provocarán un mayor uso de la CPU, lo que puede afectar las tasas de fotogramas.",
+          "offset": 145918,
+          "end": 146026
+        },
+        "LEARN_MORE": {
+          "value": "Más información",
+          "offset": 136706,
+          "end": 136723
+        }
+      }
+    },
+    {
+      "locale": "fr",
+      "path": ".ref/devices/226/static/js/trans-fr.3a5af129.chunk.js",
+      "sha256": "6b9309f0dbfada9ad5ad7a1060e6a49bb3028d312e6549a3b98eb7f40b741971",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "FRÉQUENCE POLLING",
+          "offset": 145945,
+          "end": 145964
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "POLLING RATE FILAIRE",
+          "offset": 389534,
+          "end": 389556
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Ajustez la fréquence à laquelle l’appareil communique avec le PC. Des fréquences plus élevées améliorent la réactivité globale et réduisent la latence des entrées, mais elles nécessitent davantage d’énergie et peuvent réduire l’autonomie de la batterie (le cas échéant).\n \nLa liste des polling rates disponibles varie selon le type de connexion et le système d’exploitation.\n \nRaccourci pour modifier le polling rate : Tout en maintenant le clic de défilement enfoncé, appuyez sur le bouton d’alimentation pour faire défiler les différents polling rates.",
+          "offset": 147154,
+          "end": 147714
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajustez la fréquence à laquelle l’appareil envoie des informations au PC. Des fréquences plus élevées augmentent la réactivité globale et réduisent la latence d’entrée, mais consomment plus d’énergie et réduisent l’autonomie de la batterie (le cas échéant).\n \nLa liste des fréquences disponibles dépend du type de connexion et du système d’exploitation.",
+          "offset": 146521,
+          "end": 146878
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajustez la fréquence à laquelle l’appareil envoie des informations au PC. Des fréquences plus élevées améliorent la réactivité globale et réduisent la latence d’entrée.\n \nLa liste des fréquences disponibles dépend du type de connexion et du système d’exploitation.",
+          "offset": 146882,
+          "end": 147150
+        },
+        "POLLING_RATE_DESC": {
+          "value": "La fréquence (Hz) de mises à jour de données en une seconde.",
+          "offset": 145968,
+          "end": 146030
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "La fréquence (Hz) de mises à jour de données en une seconde.",
+          "offset": 389561,
+          "end": 389623
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 146359,
+          "end": 146438
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "Le polling rate maximum a été réduit en raison de limitations dans le type de connexion actuel.",
+          "offset": 427459,
+          "end": 427556
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Des polling rates plus élevés réduisent l'autonomie de la batterie et augmentent l'utilisation du processeur, ce qui peut avoir un impact sur le nombre d'images par seconde.",
+          "offset": 146034,
+          "end": 146209
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Des taux d’interrogation plus élevés entraînent une utilisation plus importante du processeur, ce qui peut affecter les fréquences d’images.",
+          "offset": 146213,
+          "end": 146355
+        },
+        "LEARN_MORE": {
+          "value": "En savoir plus",
+          "offset": 136689,
+          "end": 136705
+        }
+      }
+    },
+    {
+      "locale": "ja",
+      "path": ".ref/devices/226/static/js/trans-ja.5b7768e2.chunk.js",
+      "sha256": "743fad9341f903da4877505aa01c43cabd9239e24c98b317fd9032d5833c8845",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "ポーリングレート",
+          "offset": 140291,
+          "end": 140301
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "有線ポーリングレート",
+          "offset": 264269,
+          "end": 264281
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "デバイスが PC に応答する頻度を調整します。周波数が高いほど全体的な応答性が向上し、入力レイテンシーが少なくなりますが、消費電力が大きくなり、バッテリー持続時間が短くなります（該当する場合）。\n\n利用可能なポーリングレートのリストは、接続方法の種類や OS によって異なります。\n\nポーリングレート変更ホットキー: スクロールクリックを押しながら、電源ボタンを押してポーリングレートを切り替えることができます。",
+          "offset": 140826,
+          "end": 141038
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "デバイスが PC に応答する周波数を調整します。 周波数が高いほど全体的な応答性が向上し、入力レイテンシーが少なくなりますが、消費電力が大きくなり、バッテリー持続時間が短くなります（該当する場合）。\n \n利用可能な周波数のリストは、接続方法の種類や OS によって異なります。",
+          "offset": 140573,
+          "end": 140715
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "デバイスが PC に応答する頻度を調整します。高い周波数により全体的な応答性が向上し、入力遅延が軽減されます。\n \n利用可能な周波数の一覧は、接続タイプとオペレーティングシステムによって異なります。",
+          "offset": 140719,
+          "end": 140822
+        },
+        "POLLING_RATE_DESC": {
+          "value": "秒単位のデータアップデートの頻度 (Hz)。",
+          "offset": 140305,
+          "end": 140329
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "秒単位のデータアップデートの頻度 (Hz)。",
+          "offset": 264286,
+          "end": 264310
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 140461,
+          "end": 140540
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "現在の接続タイプに制限があるため、最大ポーリングレートが低下しました。",
+          "offset": 285332,
+          "end": 285369
+        },
+        "POLLING_RATE_WARN": {
+          "value": "ポーリングレートが高くなると、バッテリーの持続時間が短くなり、CPU の使用率が高くなるため、フレームレートに影響を与える可能性があります。",
+          "offset": 140333,
+          "end": 140405
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "ポーリングレートが高いほどCPU使用率が上昇し、フレームレートに影響を与える場合があります。",
+          "offset": 140409,
+          "end": 140457
+        },
+        "LEARN_MORE": {
+          "value": "詳細情報",
+          "offset": 135417,
+          "end": 135423
+        }
+      }
+    },
+    {
+      "locale": "kr",
+      "path": ".ref/devices/226/static/js/trans-kr.7b6c615b.chunk.js",
+      "sha256": "4b753e9a3e2c2ac2a4adc79b5fe711230131fb509a520f00351f365cc77e60b9",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "폴링레이트",
+          "offset": 139876,
+          "end": 139883
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "유선 폴링레이트",
+          "offset": 259132,
+          "end": 259142
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "기기가 PC에 보고하는 빈도를 조정합니다. 더 높은 빈도는 전반적인 반응성을 높이고 입력 지연 시간을 줄이지만, 더 많은 전력을 소모하고 배터리 수명을 단축시킵니다(해당되는 경우).\n \n이용 가능한 폴링레이트 목록은 연결 유형과 운영 체제에 따라 다릅니다.\n \n폴링레이트 변경 핫키: 스크롤 클릭을 누른 상태에서 전원 버튼을 눌러 다양한 폴링레이트를 순환합니다.",
+          "offset": 140382,
+          "end": 140590
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "장치가 PC에 보고하는 빈도를 조정합니다. 높은 주파수일수록 전반적인 응답성이 향상되고 입력 지연이 줄어들지만 더 많은 전력과 배터리를 소모합니다(해당하는 경우).\n \n사용 가능한 주파수 목록은 연결 유형과 운영 체제에 따라 다릅니다.",
+          "offset": 140134,
+          "end": 140269
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "기기가 PC에 보고하는 빈도를 조정합니다. 더 높은 주파수는 전반적인 반응성을 높이고 입력 지연을 줄여줍니다.\n \n사용 가능한 주파수 목록은 연결 유형과 운영 체제에 따라 다릅니다.",
+          "offset": 140273,
+          "end": 140378
+        },
+        "POLLING_RATE_DESC": {
+          "value": "데이터 업데이트 빈도(Hz)는 1초 입니다",
+          "offset": 139887,
+          "end": 139912
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "데이터 업데이트 빈도(Hz)는 1초 입니다.",
+          "offset": 259147,
+          "end": 259173
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 140022,
+          "end": 140101
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "현재 연결 유형의 제한 때문에 최대 폴링 레이트가 감소했습니다.",
+          "offset": 280852,
+          "end": 280889
+        },
+        "POLLING_RATE_WARN": {
+          "value": "폴링레이트가 높을수록 CPU 사용량이 증가하여 프레임 속도에 영향을 줄 수 있습니다.",
+          "offset": 139916,
+          "end": 139965
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "폴링 속도가 높을수록 CPU 사용량이 증가하여 프레임 속도에 영향을 줄 수 있습니다.",
+          "offset": 139969,
+          "end": 140018
+        },
+        "LEARN_MORE": {
+          "value": "더 보기",
+          "offset": 135305,
+          "end": 135311
+        }
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "path": ".ref/devices/226/static/js/trans-pt-BR.dff72514.chunk.js",
+      "sha256": "28cdf4adabdee1d9a2961c244ec428d084605b5536ef871b532927e83e4602b8",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "TAXA DE POLLING",
+          "offset": 145594,
+          "end": 145611
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "TAXA DE POLLING COM FIO",
+          "offset": 376094,
+          "end": 376119
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Ajusta a frequência com que o dispositivo envia informações ao computador. Frequências mais altas aumentam a capacidade geral de resposta e reduzem a latência de entrada, mas consomem mais energia e reduzem a duração da bateria (se aplicável).\n \nA lista de taxas de polling disponíveis depende do tipo de conexão e do sistema operacional.\n \nTecla de atalho da taxa de polling: Enquanto mantém pressionado o botão de rolagem, pressione o botão liga/desliga para alternar entre diferentes taxas de polling.",
+          "offset": 146705,
+          "end": 147215
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajusta a frequência com que o dispositivo enviará informações ao computador. Frequências mais altas aumentam a capacidade geral de resposta e reduzem a latência de entrada, mas consomem mais energia e encurtam a duração da bateria (se aplicável).\n \nA lista de frequências disponíveis depende do tipo de conexão e do sistema operacional.",
+          "offset": 146093,
+          "end": 146433
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Ajusta a frequência com que o dispositivo envia informações ao computador. Frequências mais altas aumentam a capacidade de resposta geral e reduzem a latência de entrada.\n \nA lista de frequências disponíveis depende do tipo de conexão e do sistema operacional.",
+          "offset": 146437,
+          "end": 146701
+        },
+        "POLLING_RATE_DESC": {
+          "value": "A frequência (Hz) das atualizações dos dados em um segundo.",
+          "offset": 145615,
+          "end": 145676
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "A frequência (Hz) das atualizações dos dados em um segundo.",
+          "offset": 376124,
+          "end": 376185
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 145930,
+          "end": 146009
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "A taxa de polling máxima foi reduzida devido a limitações no tipo de conexão atual.",
+          "offset": 412495,
+          "end": 412580
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Taxas de polling mais altas resultarão em uma redução na duração da bateria e em um maior uso da CPU, o que pode afetar as taxas de quadros.",
+          "offset": 145680,
+          "end": 145822
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Taxas de polling mais altas resultarão em maior uso da CPU, o que pode afetar as taxas de quadros.",
+          "offset": 145826,
+          "end": 145926
+        },
+        "LEARN_MORE": {
+          "value": "Saiba mais",
+          "offset": 136549,
+          "end": 136561
+        }
+      }
+    },
+    {
+      "locale": "ru",
+      "path": ".ref/devices/226/static/js/trans-ru.06cf9a70.chunk.js",
+      "sha256": "7c4a8a726491392ba7f21dad1a13e9d4223be038e7724b0ed3fe7da3114311cc",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "ЧАСТОТА ОПРОСА",
+          "offset": 145434,
+          "end": 145450
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "ЧАСТОТА ОПРОСА ПО ПРОВОДНОЙ СВЯЗИ",
+          "offset": 382922,
+          "end": 382957
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "Регулировка частоты передачи состояния устройства на компьютер. Более высокая частота повышает общую отзывчивость и сокращает задержку ввода, но требует большего количества энергии и сокращает время работы от аккумулятора (если применимо).\n \nПеречень доступных частот опроса зависит от типа подключения и операционной системы.\n \nГорячая клавиша для изменения частоты опроса: Для переключения частоты опроса нажимайте кнопку питания, удерживая колесо прокрутки в нажатом состоянии.",
+          "offset": 146477,
+          "end": 146963
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "Регулировка частоты передачи состояния устройства на компьютер. Более высокая частота повышает общую отзывчивость и снижает входную задержку, однако увеличивает энергопотребление, сокращая время работы от аккумулятора (если применимо).\n \nПеречень доступных частот зависит от типа подключения и операционной системы.",
+          "offset": 145929,
+          "end": 146248
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "Регулировка частоты передачи состояния устройства на компьютер. Более высокая частота повышает общую отзывчивость и снижает задержку ввода.\n \nСписок доступных частот зависит от типа подключения и операционной системы.",
+          "offset": 146252,
+          "end": 146473
+        },
+        "POLLING_RATE_DESC": {
+          "value": "Частота (Гц) обновления данных в секунду.",
+          "offset": 145454,
+          "end": 145497
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "Частота (Гц) обновления данных в секунду.",
+          "offset": 382962,
+          "end": 383005
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 145777,
+          "end": 145856
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "Максимальная частотой опроса была снижена из-за ограничений текущего типа подключения.",
+          "offset": 419555,
+          "end": 419643
+        },
+        "POLLING_RATE_WARN": {
+          "value": "Более высокая частота опроса приведет к сокращению времени работы от аккумулятора и увеличению нагрузки на процессор, что может повлиять на частоту кадров.",
+          "offset": 145501,
+          "end": 145658
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "Более высокая частота опроса приводит к увеличению загрузки процессора, что может повлиять на частоту кадров.",
+          "offset": 145662,
+          "end": 145773
+        },
+        "LEARN_MORE": {
+          "value": "Подробнее",
+          "offset": 136859,
+          "end": 136870
+        }
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "path": ".ref/devices/226/static/js/trans-zh-CN.b0561f8f.chunk.js",
+      "sha256": "c40865a4e1e1dd4a4f349afd57a2e3d3e02faaaa3eb6866290c06dc4ae1a55b0",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "轮询率",
+          "offset": 139733,
+          "end": 139738
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "有线轮询率",
+          "offset": 233817,
+          "end": 233824
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "调整设备向电脑回送报告的频率。较高的频率可以提高整体响应速度并减少输入延迟，但会消耗更多电量并缩短电池续航时间（若适用）。\n\n所列的可用轮询率取决于连接类型和操作系统。\n\n更改轮询率热键：按住滚轮点击键的同时按下电源键，即可循环切换不同的轮询率。",
+          "offset": 140098,
+          "end": 140227
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "调整设备向电脑回送报告的频率。 如果频率更高，则整体响应速度更高、输入延迟更低，但同时，消耗的能量更多、电池续航时间更短（如果适用）。\n \n可用的频率取决于连接类型和操作系统。",
+          "offset": 139935,
+          "end": 140027
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "调整设备向电脑回送报告的频率。更高的频率可提高整体响应速度并减少输入延迟。\n \n可用频率列表取决于连接类型和操作系统。",
+          "offset": 140031,
+          "end": 140094
+        },
+        "POLLING_RATE_DESC": {
+          "value": "数据在一秒内的更新频率 (Hz)。",
+          "offset": 139742,
+          "end": 139761
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "数据在一秒内的更新频率 (Hz)。",
+          "offset": 233829,
+          "end": 233848
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 139831,
+          "end": 139910
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "由于当前连接类型的限制，最大轮询率已经降低。",
+          "offset": 250398,
+          "end": 250422
+        },
+        "POLLING_RATE_WARN": {
+          "value": "轮询率越高，CPU 占用率越高，因此可能会影响帧率。",
+          "offset": 139765,
+          "end": 139793
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "更高的轮询率会导致更高的CPU使用率，从而可能影响帧率。",
+          "offset": 139797,
+          "end": 139827
+        },
+        "LEARN_MORE": {
+          "value": "了解详情",
+          "offset": 136156,
+          "end": 136162
+        }
+      }
+    },
+    {
+      "locale": "zh-TW",
+      "path": ".ref/devices/226/static/js/trans-zh-TW.eded375f.chunk.js",
+      "sha256": "4b81f5fbfa90e29b3decf096a831d664d68a3a122aef6e8d0ab23fa50df1ebb7",
+      "values": {
+        "POLLING_RATE_HEADER": {
+          "value": "輪循率",
+          "offset": 138157,
+          "end": 138162
+        },
+        "WIRED_POLLING_RATE_HEADER": {
+          "value": "有線輪詢率",
+          "offset": 229242,
+          "end": 229249
+        },
+        "POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP": {
+          "value": "調整裝置回報給 PC 的頻率。較高的頻率可提高整體反應速度並減少輸入延遲，但需要較多電量，並縮短電池的續航力（若使用電池）。\n\n所列出的可用輪詢率將取決於連接類型和作業系統。\n\n變更輪詢率快速鍵：按下滾輪鍵的同時按下電源鍵即可循環切換不同輪詢率。",
+          "offset": 138530,
+          "end": 138659
+        },
+        "POLLING_RATE_V2_TOOLTIP": {
+          "value": "調整裝置回報給電腦的頻率。較高的頻率可提高整體反應速度並減少輸入延遲，但會消耗較多電量，並減少電池的續航力（若使用電池）。\n \n可使用的頻率視連接類型和作業系統而異。",
+          "offset": 138372,
+          "end": 138459
+        },
+        "WIRED_POLLING_RATE_V2_TOOLTIP": {
+          "value": "調整裝置回報給電腦的頻率。更高的頻率可提升整體反應速度並減少輸入延遲。\n \n可用的頻率清單將根據連線類型與作業系統而定",
+          "offset": 138463,
+          "end": 138526
+        },
+        "POLLING_RATE_DESC": {
+          "value": "每秒的資料更新頻率 (Hz)。",
+          "offset": 138166,
+          "end": 138183
+        },
+        "WIRED_POLLING_RATE_DESC": {
+          "value": "每秒的資料更新頻率 (Hz)。",
+          "offset": 229254,
+          "end": 229271
+        },
+        "POLLING_RATE_BLUETOOTH_INFO": {
+          "value": "Bluetooth mode may show unusual polling rates due to how data is transmitted.",
+          "offset": 138270,
+          "end": 138349
+        },
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_KEYBOARD": null,
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": {
+          "value": "由於目前連線類型的限制，最大輪詢率已經降低。",
+          "offset": 245883,
+          "end": 245907
+        },
+        "POLLING_RATE_WARN": {
+          "value": "使用更高的輪詢率會導致消耗更多電量，同時使用更高的 CPU 使用率，可能會影響畫格率。",
+          "offset": 138187,
+          "end": 138232
+        },
+        "POLLING_RATE_WARN_NOBATTERY": {
+          "value": "更高的輪詢率會導致更高的CPU使用率，從而可能影響幀率。",
+          "offset": 138236,
+          "end": 138266
+        },
+        "LEARN_MORE": {
+          "value": "了解更多",
+          "offset": 134598,
+          "end": 134604
+        }
+      }
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/devices/226/static/css/main.c2099849.css",
+      "sha256": "68bc9ccdc21fe548330106b3a27beb5049be06f55939e5950677b220f52703df",
+      "rules": [
+        {
+          "offset": 3227,
+          "selector": "body,html",
+          "conditions": [],
+          "declarations": "background-color:#222;color:#ccc;font-family:Roboto,sans-serif;font-size:16px;height:100%;margin:0;max-width:1920px;min-height:720px;overflow:hidden;-webkit-user-select:none;user-select:none;width:100%",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#222",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "1920px",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "720px",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "-webkit-user-select",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "user-select",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 3439,
+          "selector": "div",
+          "conditions": [],
+          "declarations": "box-sizing:border-box",
+          "properties": [
+            {
+              "property": "box-sizing",
+              "value": "border-box",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 10038,
+          "selector": ".img-text .multipairing.hyperpolling",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon-multidevicepairing2.af8657a6.svg)",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon-multidevicepairing2.af8657a6.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68893,
+          "selector": ".body-widgets",
+          "conditions": [],
+          "declarations": "flex-direction:row;flex-wrap:wrap;justify-content:center;margin:auto;max-width:1240px",
+          "properties": [
+            {
+              "property": "flex-direction",
+              "value": "row",
+              "important": false
+            },
+            {
+              "property": "flex-wrap",
+              "value": "wrap",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "1240px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68993,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [],
+          "declarations": "left:auto;right:14px;word-break:break-word",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "word-break",
+              "value": "break-word",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69101,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [
+            "@media(max-width:1279px)"
+          ],
+          "declarations": "left:auto;right:14px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69163,
+          "selector": ".body-widgets .widget-col.col-left .widget.mic-enhancements .tip,.body-widgets .widget-col.col-left .widget.microphone .tip,.body-widgets .widget-col.col-left .widget.volume .tip",
+          "conditions": [],
+          "declarations": "white-space:pre-line",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "pre-line",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69363,
+          "selector": ".widget-col",
+          "conditions": [],
+          "declarations": "flex-direction:column;height:fit-content;width:600px",
+          "properties": [
+            {
+              "property": "flex-direction",
+              "value": "column",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "fit-content",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "600px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69476,
+          "selector": ".body-widgets .widget",
+          "conditions": [],
+          "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px auto",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "30px 40px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "height .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "height",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69705,
+          "selector": ".body-widgets .widget.global-shortcut",
+          "conditions": [],
+          "declarations": "padding:20px 10px 30px",
+          "properties": [
+            {
+              "property": "padding",
+              "value": "20px 10px 30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69766,
+          "selector": ".body-widgets .widget.global-shortcut .body-text,.body-widgets .widget.global-shortcut .shortcut",
+          "conditions": [],
+          "declarations": "margin-bottom:20px;padding:0 10px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69897,
+          "selector": ".body-widgets .widget>.info",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69956,
+          "selector": ".body-widgets .widget>.info.active",
+          "conditions": [],
+          "declarations": "opacity:1;pointer-events:auto",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70021,
+          "selector": ".body-widgets .widget>.mic-container",
+          "conditions": [],
+          "declarations": "position:relative",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70076,
+          "selector": ".body-widgets .widget>.mic-container .tip-disabled",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;left:25%;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;top:40%;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "25%",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "40%",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70392,
+          "selector": ".body-widgets .widget>.mic-container:hover>.tip-disabled",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:1000",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "1000",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70491,
+          "selector": ".body-widgets .widget .shortcut>.shortcut-tip",
+          "conditions": [],
+          "declarations": "transition:opacity .2s;will-change:opacity",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70580,
+          "selector": ".body-widgets .widget .shortcut:hover>.shortcut-tip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:100",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70673,
+          "selector": ".body-widgets .widget .ble-edit-tip,.body-widgets .widget .shortcut-tip",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:39px;text-align:left;text-transform:none;top:67px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:max-content;will-change:visibility,opacity;z-index:99",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "39px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "67px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "pre-wrap",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "max-content",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "99",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71095,
+          "selector": ".body-widgets .widget .hyperpolling-span-hover:hover",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71245,
+          "selector": ".body-widgets .widget>div:not(.widget-covering):not(.panel-light--chroma)",
+          "conditions": [],
+          "declarations": "transition:opacity .2s",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71342,
+          "selector": ".body-widgets .widget.actuation-widget>div",
+          "conditions": [],
+          "declarations": "will-change:auto!important",
+          "properties": [
+            {
+              "property": "will-change",
+              "value": "auto",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 71412,
+          "selector": ".body-widgets .widget.tip-break-spaces .tip",
+          "conditions": [],
+          "declarations": "white-space:break-spaces",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "break-spaces",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71481,
+          "selector": ".body-widgets .widget.disabled>div",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 72627,
+          "selector": ".widget-container",
+          "conditions": [],
+          "declarations": "display:flex;position:relative",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 72676,
+          "selector": ".widget-container:hover .widget-body-tooltip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 72750,
+          "selector": ".widget-container .widget.volume .tip",
+          "conditions": [],
+          "declarations": "left:100%;right:auto;transform:translateX(-8%)",
+          "properties": [
+            {
+              "property": "left",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateX(-8%)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73200,
+          "selector": ".widget .titleRow",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:space-between",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "space-between",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73261,
+          "selector": ".widget .titleRow .title",
+          "conditions": [],
+          "declarations": "color:#44d62c;display:flex;font-family:RazerF5,sans-serif;font-size:16px;margin-bottom:20px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73403,
+          "selector": ".widget .titleRow .shortcuts",
+          "conditions": [],
+          "declarations": "align-items:center;display:flex;height:27px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73476,
+          "selector": ".widget .titleRow .shortcuts .shortcutButton",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#292929;border:1px solid #5d5d5d;border-radius:3px;display:flex;height:100%;justify-content:center;margin:0 10px;width:47px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#292929",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "47px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 74246,
+          "selector": ".widget .tips",
+          "conditions": [],
+          "declarations": "align-self:stretch;color:#999;flex:none;flex-grow:0;font-family:Roboto;font-size:14px;font-style:normal;font-weight:400;line-height:17px;order:3",
+          "properties": [
+            {
+              "property": "align-self",
+              "value": "stretch",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#999",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "flex-grow",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "font-style",
+              "value": "normal",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "order",
+              "value": "3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 74441,
+          "selector": ".widget .exclamation",
+          "conditions": [],
+          "declarations": "padding-left:20px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 74480,
+          "selector": ".widget .exclamation:before",
+          "conditions": [],
+          "declarations": "background-color:#5d5d5d;background-image:url(../../static/media/tooltip_exclamationmark.cc8fb226.svg);content:\"\";display:inline-block;left:40px;margin-right:6px;top:30px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#5d5d5d",
+              "important": false
+            },
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/tooltip_exclamationmark.cc8fb226.svg)",
+              "important": false
+            },
+            {
+              "property": "content",
+              "value": "\"\"",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "40px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "6px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 74679,
+          "selector": ".widget .exclamation:before,.widget .help",
+          "conditions": [],
+          "declarations": "background-repeat:no-repeat;border-radius:7px;height:14px;position:absolute;width:14px",
+          "properties": [
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "7px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 74808,
+          "selector": ".widget .help",
+          "conditions": [],
+          "declarations": "background-color:#4a4a4a;background-image:url(../../static/media/tooltip_questionmark.96138d2f.svg);right:10px;top:10px;transition:background-color .3s;will-change:background-color",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#4a4a4a",
+              "important": false
+            },
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/tooltip_questionmark.96138d2f.svg)",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "background-color .3s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "background-color",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 75003,
+          "selector": ".widget .help:hover",
+          "conditions": [],
+          "declarations": "background-color:#ffffff4d",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#ffffff4d",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 75786,
+          "selector": ".mode-switcher .warning-alert .content,.widget .tip",
+          "conditions": [],
+          "declarations": "white-space:pre-wrap",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "pre-wrap",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 75859,
+          "selector": ".widget .tip",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:18px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:14px;text-align:left;text-transform:none;top:34px;transition:visibility 0s,opacity .3s linear;visibility:hidden;width:max-content;will-change:visibility,opacity;z-index:99",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "18px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "34px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "max-content",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "99",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 76201,
+          "selector": ".widget .tip.custom-tip",
+          "conditions": [],
+          "declarations": "left:auto;right:14px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 76246,
+          "selector": ".widget .help:hover+.tip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:100",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 76312,
+          "selector": ".widget .help:hover+.tip.mt-tip",
+          "conditions": [],
+          "declarations": "background-color:#0000;border:none;padding:0",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 78027,
+          "selector": ".h1-body",
+          "conditions": [],
+          "declarations": "color:#ccc;margin-bottom:10px",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 78221,
+          "selector": ".widget-col",
+          "conditions": [
+            "@media(max-width:1279px)"
+          ],
+          "declarations": "margin:0 30px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0 30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 239064,
+          "selector": ".polling-rate",
+          "conditions": [],
+          "declarations": "padding-top:10px;position:relative;z-index:1",
+          "properties": [
+            {
+              "property": "padding-top",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "1",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 239123,
+          "selector": ".polling-rate .dropdown-area",
+          "conditions": [],
+          "declarations": "margin-left:0;width:100px",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 334990,
+          "selector": ".widget .help.indicator-led:hover .tip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:100",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 335070,
+          "selector": ".widget .help.indicator-led:before",
+          "conditions": [],
+          "declarations": "background-color:#0000;bottom:-5px;content:\"\";height:10px;left:5px;position:absolute;width:50px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "bottom",
+              "value": "-5px",
+              "important": false
+            },
+            {
+              "property": "content",
+              "value": "\"\"",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "50px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 335201,
+          "selector": ".widget .help.indicator-led .tip",
+          "conditions": [],
+          "declarations": "left:36%;top:19px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "36%",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "19px",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/226/static/css/8355.f94d4299.chunk.css",
+      "sha256": "ec3c1904f52ffa472fbcaca33ec514681ce2ea2d329279205c0c36ade329c53a",
+      "rules": [
+        {
+          "offset": 16123,
+          "selector": ".body-widgets .widget.dynamic-sensitivity-container",
+          "conditions": [],
+          "declarations": "margin-left:10px;max-width:1200px;padding:40px",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "1200px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "40px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 16222,
+          "selector": ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 16327,
+          "selector": ".body-widgets .widget.dynamic-sensitivity-container .titleRow",
+          "conditions": [],
+          "declarations": "display:inline-block",
+          "properties": [
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 16410,
+          "selector": ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer",
+          "conditions": [],
+          "declarations": "margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "-2px",
+              "important": false
+            },
+            {
+              "property": "vertical-align",
+              "value": "middle",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "26px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 24768,
+          "selector": ".polling-btn-set",
+          "conditions": [],
+          "declarations": "display:flex;flex-wrap:wrap;gap:10px 10px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "flex-wrap",
+              "value": "wrap",
+              "important": false
+            },
+            {
+              "property": "gap",
+              "value": "10px 10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25109,
+          "selector": ".customize-polling-rate-button",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#222;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;display:flex;font-size:14px;height:27px;justify-content:center;text-transform:uppercase;width:72px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#222",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "72px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25334,
+          "selector": ".customize-polling-rate-button.configWidth",
+          "conditions": [],
+          "declarations": "min-width:90px",
+          "properties": [
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25392,
+          "selector": ".customize-polling-rate-button-color",
+          "conditions": [],
+          "declarations": "border-radius:50%;height:6px;margin-right:4px;width:6px",
+          "properties": [
+            {
+              "property": "border-radius",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "6px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "4px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "6px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25485,
+          "selector": ".customize-polling-rate-button.active,.customize-polling-rate-button:hover",
+          "conditions": [],
+          "declarations": "border-color:#44d62c",
+          "properties": [
+            {
+              "property": "border-color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25581,
+          "selector": ".customize-polling-rate-button.disabled",
+          "conditions": [],
+          "declarations": "cursor:default;opacity:.4;pointer-events:none",
+          "properties": [
+            {
+              "property": "cursor",
+              "value": "default",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".4",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25738,
+          "selector": ".polling-warn",
+          "conditions": [],
+          "declarations": "margin-top:10px;opacity:.7",
+          "properties": [
+            {
+              "property": "margin-top",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".7",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25779,
+          "selector": ".polling-dock-limit-info",
+          "conditions": [],
+          "declarations": "align-items:flex-start;color:#999;display:flex;font-size:14px;line-height:17px;margin-top:15px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "flex-start",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#999",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "15px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25899,
+          "selector": ".polling-dock-limit-info-icon",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/info-icon.769264c1.svg);background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;flex:0 0 auto;height:20px;margin-right:5px;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/info-icon.769264c1.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26144,
+          "selector": ".polling-ble-info",
+          "conditions": [],
+          "declarations": "align-items:flex-start;color:#999;display:flex;font-size:14px;font-weight:400;line-height:17px;margin-top:15px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "flex-start",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#999",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "15px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26273,
+          "selector": ".polling-ble-info-icon",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_info_solid.a4297bf0.svg);background-position:50%;background-repeat:no-repeat;background-size:20px 20px;display:inline-block;flex:0 0 auto;height:20px;margin-right:5px;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_info_solid.a4297bf0.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "20px 20px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26519,
+          "selector": ".ingame-polling-rate",
+          "conditions": [],
+          "declarations": "margin-top:20px",
+          "properties": [
+            {
+              "property": "margin-top",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26556,
+          "selector": ".ingame-polling-rate .title",
+          "conditions": [],
+          "declarations": "font-family:RazerF5;font-size:14px;margin-top:20px",
+          "properties": [
+            {
+              "property": "font-family",
+              "value": "RazerF5",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26635,
+          "selector": ".ingame-polling-rate .content",
+          "conditions": [],
+          "declarations": "margin:12px 0",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "12px 0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26679,
+          "selector": ".polling-learn-more",
+          "conditions": [],
+          "declarations": "align-items:center;cursor:pointer;display:inline-flex;padding-left:5px;text-decoration:underline",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "text-decoration",
+              "value": "underline",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26796,
+          "selector": ".polling-learn-more img",
+          "conditions": [],
+          "declarations": "height:16px;margin-left:2px;width:16px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "2px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "16px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26859,
+          "selector": ".external-link-icon",
+          "conditions": [],
+          "declarations": "background:url(../../static/media/icon_external_link.48227e72.svg);background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-flex;height:16px;margin-left:5px;vertical-align:top;width:16px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "url(../../static/media/icon_external_link.48227e72.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "vertical-align",
+              "value": "top",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "16px",
+              "important": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

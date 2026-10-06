@@ -222,3 +222,10 @@
 !/tools/prepare-gamepad-2636-dialog.cjs
 !/tools/prepare-control-pod-audio.cjs
 !/tools/audit-stream-mixer-number.cjs
+!/tools/prepare-stream-mixer.cjs
+!/tools/prepare-snap-tap.cjs
+!/tools/prepare-keyboard-properties.cjs
+!/tools/prepare-mouse-226-scroll.cjs
+!/tools/audit-mouse-226-dpi-number.cjs
+!/tools/prepare-mouse-226-dpi.cjs
+!/tools/review-mouse-226-dpi-slider-source.cjs

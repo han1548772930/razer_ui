@@ -24,6 +24,11 @@ const CHROMA_STUDIO_COLOR_ASSETS: &[(&str, &[u8])] =
 const KITSUNE_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/kitsune-embedded.rs");
 const GAMEPAD_DIALOG_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/gamepad-2636-embedded.rs");
+const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/stream-mixer-embedded.rs");
+const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/snap-tap-embedded.rs");
+const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/keyboard-properties-embedded.rs");
 const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/host-chroma-studio-favicon.svg",
     include_bytes!("../assets/synapse/host-chroma-studio-favicon.svg"),
@@ -47,6 +52,9 @@ impl AssetSource for SynapseAssets {
             .chain(CHROMA_STUDIO_COLOR_ASSETS)
             .chain(KITSUNE_ASSETS)
             .chain(GAMEPAD_DIALOG_ASSETS)
+            .chain(STREAM_MIXER_ASSETS)
+            .chain(SNAP_TAP_ASSETS)
+            .chain(KEYBOARD_PROPERTIES_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .find(|(key, _)| *key == path)
@@ -71,6 +79,9 @@ impl AssetSource for SynapseAssets {
                 .chain(CHROMA_STUDIO_COLOR_ASSETS)
                 .chain(KITSUNE_ASSETS)
                 .chain(GAMEPAD_DIALOG_ASSETS)
+                .chain(STREAM_MIXER_ASSETS)
+                .chain(SNAP_TAP_ASSETS)
+                .chain(KEYBOARD_PROPERTIES_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))

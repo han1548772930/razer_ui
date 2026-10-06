@@ -29,9 +29,12 @@ mod nommo_effects;
 mod oled;
 #[path = "audio_oled_home.rs"]
 mod oled_home;
+#[path = "stream_mixer.rs"]
+mod stream_mixer;
 #[path = "stream_mixer_number.rs"]
 mod stream_mixer_number;
 pub(crate) use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
+pub(crate) use stream_mixer::StreamMixerObservation;
 
 #[derive(Deserialize)]
 struct AudioOption {
@@ -183,6 +186,7 @@ pub(crate) struct AudioProductWorkspace {
     draft: Value,
     sliders: BTreeMap<String, Entity<SliderState>>,
     mixer_numbers: BTreeMap<String, Entity<stream_mixer_number::MixerNumber>>,
+    mixer: Option<stream_mixer::MixerState>,
     selects: BTreeMap<String, Entity<SelectState<Vec<Choice>>>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
@@ -210,6 +214,7 @@ impl AudioProductWorkspace {
             draft: spec.draft.clone(),
             sliders: BTreeMap::new(),
             mixer_numbers: BTreeMap::new(),
+            mixer: stream_mixer::MixerState::new(pid, window, cx),
             selects: BTreeMap::new(),
             subscriptions: Vec::new(),
             syncing: false,
@@ -227,6 +232,7 @@ impl AudioProductWorkspace {
         this.initialize_nommo_draft();
         this.initialize_oled_home(window);
         this.subscribe_nommo_effects(window, cx);
+        this.subscribe_mixer(window, cx);
         for control in spec
             .pages
             .iter()
@@ -314,7 +320,9 @@ impl AudioProductWorkspace {
         }
     }
     pub(crate) fn snapshot(&self) -> Value {
-        self.draft.clone()
+        let mut snapshot = self.draft.clone();
+        self.mixer_snapshot(&mut snapshot);
+        snapshot
     }
     pub(crate) fn restore(
         &mut self,
@@ -322,6 +330,7 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.restore_mixer(saved, window, cx);
         let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
         self.pod_audio_editor = None;
         self.pod_audio_subscription = None;
@@ -410,6 +419,7 @@ impl AudioProductWorkspace {
     }
     pub(crate) fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            self.dismiss_mixer_warning(window, cx);
             self.pod_audio_editor = None;
             self.pod_audio_subscription = None;
             if self.page == "TAB_OLED" || page == "TAB_OLED" {
@@ -685,6 +695,7 @@ impl AudioProductWorkspace {
     }
     fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.syncing = true;
+        self.sync_mixer(window, cx);
         self.sync_mixer_numbers(window, cx);
         for (path, state) in &self.sliders {
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
@@ -749,6 +760,12 @@ impl AudioProductWorkspace {
                 )
                 .disabled(!enabled)
                 .on_click(cx.listener(move |this, value, window, cx| {
+                    if this.mixer.is_some()
+                        && path == "/device/streamMixerSettings/isStreamMixerEnabled"
+                    {
+                        this.request_mixer_enable(*value, window, cx);
+                        return;
+                    }
                     this.edit(&path, json!(value), window, cx)
                 }))
                 .into_any_element(),
@@ -907,6 +924,10 @@ impl AudioProductWorkspace {
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
+                if let Some(panel) = self.mixer_section(section, cx) {
+                    sections.push(panel);
+                    continue;
+                }
                 if matches!(self.spec.product_id, 1303 | 1304) && key == "TAB_LIGHTING" {
                     if section.title == "EFFECTS" {
                         sections.push(self.render_nommo_effects(window, cx));
@@ -935,6 +956,12 @@ impl AudioProductWorkspace {
                     );
                 }
                 panel = panel.children(section.controls.iter().map(|c| self.render_control(c, cx)));
+                if self.mixer.is_some()
+                    && key == "STREAM_MIXER_HEADER"
+                    && section.title == "PLAYBACK_MIX"
+                {
+                    panel = panel.child(self.mixer_playback_selector(cx));
+                }
                 if let Some(key) = &section.equalizer {
                     panel = panel.child(self.render_equalizer(key, cx));
                 }
@@ -977,6 +1004,7 @@ impl Render for AudioProductWorkspace {
         super::product_surface::body()
             .child(self.page_body(&self.page, window, cx))
             .children(self.oled_home_dialog())
+            .children(self.mixer_dialog(window, cx))
             .into_any_element()
     }
 }

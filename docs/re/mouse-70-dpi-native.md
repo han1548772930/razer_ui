@@ -8,7 +8,7 @@
 
 `zI → uI/cI → EI → XT` 是当前 Performance 的实际挂载链，未传 useTwoWayTab。数字控件是模块 4230。设备配置声明 minDPI=100、maxDPI=16000、dpiStep=1，没有单独的 dpiStepInBox 或网格滑块开关。
 
-本地原始配置使用大写 X/Y/Independent/Active；界面源码的阶段适配对象使用小写 x/y/independent/visible。两者不能直接混写。实现只作用于已核对的产品 70，未推广到其他鼠标。
+本地原始配置使用大写 X/Y/Independent/Active；界面源码的阶段适配对象使用小写 x/y/independent/visible。两者不能直接混写。阶段行实现仍只作用于产品 70；后续已按 [226 的独立证据](mouse-226-dpi-number-native.md)复用整数框，字段通过 spec 适配，不将 70 全页结论推广到其他鼠标。
 
 ## 已接入的本地行为
 
@@ -33,3 +33,5 @@
 - 真实设备读取和服务观察链尚不能由 profile/default 或静态封装证明成功；DLL 写回继续后置。
 
 独立回读结果见 [验证报告](prior-ui-verification-2026-10-06.md)。格式化、cargo check 和静态校验只证明各自覆盖范围，不证明窗口行为或整产品验收。
+
+2026-10-06 数字框共用补充：显式使用 MaskPattern::None，防止 Base NumberInput 自动数字 mask 抢先改写源整数文法；typed Change 通知外层边界显示。TAB/Help 清理同时取消 repeat 并恢复已提交数值；字段适配后 70 的 Y/Independent 检查保持原路径。滚轮按 slider 行预览值拦截到达上下限的方向，尚未点击注册时不吞页面滚动；键盘/按钮仍沿原分支。未运行测试或窗口。

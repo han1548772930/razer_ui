@@ -895,3 +895,99 @@ impl NavigationColors {
         rgb(0x3cbf27).into()
     }
 }
+
+/// Current 3334/3337 `.warning-alert` and `.backdrop`; independent of host theme.
+pub(crate) struct StreamMixerColors;
+impl StreamMixerColors {
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn button_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x00000080).into()
+    }
+}
+
+/// Current 515 `.key-record-item`, `.snap-tap-*` and warning dialog palette.
+pub(crate) struct SnapTapColors;
+impl SnapTapColors {
+    pub(crate) fn border() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn muted() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn success() -> Hsla {
+        rgb(0x00ff00).into()
+    }
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn tooltip_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x00000080).into()
+    }
+}
+
+/// 226 current `.swtm-*` controls and pointer tooltip.
+pub(crate) struct ScrollWheelColors;
+impl ScrollWheelColors {
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn muted() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn pills() -> Hsla {
+        rgba(0x00000066).into()
+    }
+    pub(crate) fn pill_text() -> Hsla {
+        rgba(0xffffffb3).into()
+    }
+    pub(crate) fn selected_text() -> Hsla {
+        rgba(0x000000e6).into()
+    }
+    pub(crate) fn tooltip() -> Hsla {
+        rgb(0x000000).into()
+    }
+}
+pub(crate) struct DpiColors;
+impl DpiColors {
+    pub(crate) fn tick() -> Hsla {
+        rgb(0x204c19).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+}

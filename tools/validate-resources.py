@@ -302,6 +302,60 @@ for row in gamepad_dialog["assets"]:
         expected.add(output.name)
 assert resource_source.count(".chain(GAMEPAD_DIALOG_ASSETS)") == 2
 
+mixer = json.loads((ROOT / "docs/re/stream-mixer-current-evidence.json").read_text(encoding="utf-8"))
+mixer_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', (directory / "stream-mixer-embedded.rs").read_text(encoding="utf-8"))
+assert len(mixer_keys) == len(set(mixer_keys)) == 2
+assert [p["product_id"] for p in mixer["products"]] == [3334, 3337]
+for product in mixer["products"]:
+    manifest_path = product["manifest"]["path"]
+    manifest_bytes = (ROOT / manifest_path).read_bytes()
+    assert hashlib.sha256(manifest_bytes).hexdigest() == product["manifest"]["sha256"]
+    declared = {str(Path(manifest_path).parent / value).replace("\\", "/")
+                for value in json.loads(manifest_bytes)["files"].values()}
+    for row in product["assets"]:
+        assert row["source"].startswith(f'.ref/devices/{product["product_id"]}/')
+        assert row["source"] in declared
+        source = (ROOT / row["source"]).read_bytes()
+        output = ROOT / row["output"]
+        assert hashlib.sha256(source).hexdigest() == row["sha256"]
+        assert output.read_bytes() == source
+        assert ET.fromstring(source).tag.endswith("svg")
+        assert (row["output"].removeprefix("assets/"), output.name) in mixer_keys
+for key, filename in mixer_keys:
+    assert filename not in expected
+    expected.add(filename)
+assert resource_source.count(".chain(STREAM_MIXER_ASSETS)") == 2
+
+snap = json.loads((ROOT / "docs/re/snap-tap-current-evidence.json").read_text(encoding="utf-8"))
+snap_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', (directory / "snap-tap-embedded.rs").read_text(encoding="utf-8"))
+for row in snap["assets"]:
+    assert row["source"].startswith(".ref/devices/515/")
+    source = (ROOT / row["source"]).read_bytes()
+    output = ROOT / row["output"]
+    assert hashlib.sha256(source).hexdigest() == row["sha256"]
+    assert output.read_bytes() == source
+    assert ET.fromstring(source).tag.endswith("svg")
+    assert (row["output"].removeprefix("assets/"), output.name) in snap_keys
+for key, filename in snap_keys:
+    assert filename not in expected
+    expected.add(filename)
+assert resource_source.count(".chain(SNAP_TAP_ASSETS)") == 2
+
+properties = json.loads((ROOT / "docs/re/keyboard-properties-current-evidence.json").read_text(encoding="utf-8"))
+properties_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', (directory / "keyboard-properties-embedded.rs").read_text(encoding="utf-8"))
+for row in properties["assets"]:
+    assert row["source"].startswith(".ref/devices/515/")
+    source = (ROOT / row["source"]).read_bytes()
+    output = ROOT / row["output"]
+    assert hashlib.sha256(source).hexdigest() == row["sha256"]
+    assert output.read_bytes() == source
+    assert ET.fromstring(source).tag.endswith("svg")
+    assert (row["output"].removeprefix("assets/"), output.name) in properties_keys
+for key, filename in properties_keys:
+    assert filename not in expected
+    expected.add(filename)
+assert resource_source.count(".chain(KEYBOARD_PROPERTIES_ASSETS)") == 2
+
 runtime_evidence = json.loads((ROOT / "docs/re/audio-oled-runtime-current-evidence.json").read_text(encoding="utf-8"))
 for icon in runtime_evidence["icons"]:
     receipt = icon["receipt"]
@@ -503,6 +557,8 @@ print(f"Validated {len(entries)} source/output hashes, image formats and embedde
       f"{len(root_keys)} independent-root SVGs / {len(runtime_evidence['icons'])} OLED runtime icons; "
       f"{len(kitsune_keys)} Kitsune SVGs; "
       f"{len(gamepad_keys)} gamepad dialog SVGs; "
+      f"{len(mixer_keys)} Stream Mixer SVGs; "
+      f"{len(snap_keys)} Snap Tap SVGs; {len(properties_keys)} Keyboard Properties SVGs; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
       f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")

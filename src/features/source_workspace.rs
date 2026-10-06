@@ -64,6 +64,67 @@ impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(crate) fn observe_dpi_editing_enabled(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_dpi_editing_enabled(enabled, window, cx)
+            });
+        }
+    }
+    pub(crate) fn observe_scroll_wheel(
+        &mut self,
+        observation: super::ScrollWheelObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_scroll_wheel(observation, window, cx)
+            });
+        }
+    }
+    pub(crate) fn captures_snap_keys(&self, cx: &App) -> bool {
+        self.current_page()
+            .is_some_and(|page| page.role() != ProductPageRole::Help)
+            && matches!(&self.body, FamilyBody::Keyboard(body) if body.read(cx).captures_snap_keys())
+    }
+    pub(crate) fn capture_snap_key_up(&mut self, event: &KeyUpEvent, cx: &mut Context<Self>) {
+        if !self.captures_snap_keys(cx) {
+            return;
+        }
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.capture_snap_key_up(event, cx));
+        }
+    }
+    pub(crate) fn observe_snap_tap(
+        &mut self,
+        observation: super::SnapTapObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_snap_tap(observation, window, cx)
+            });
+        }
+    }
+    pub(crate) fn observe_stream_mixer(
+        &mut self,
+        observation: super::StreamMixerObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_stream_mixer(observation, window, cx)
+            });
+        }
+    }
     /// Reserved for the current host's observed validDevices stream, never preview data.
     #[expect(
         dead_code,
@@ -1018,6 +1079,15 @@ impl SourceProductWorkspace {
             return;
         };
         if page.role() == ProductPageRole::Help {
+            match &self.body {
+                FamilyBody::Mouse(body) => {
+                    body.update(cx, |body, cx| body.dismiss_editors(window, cx))
+                }
+                FamilyBody::Keyboard(body) => {
+                    body.update(cx, |body, cx| body.leave_snap_tap(window, cx))
+                }
+                _ => {}
+            }
             self.help.update(cx, |help, cx| {
                 help.set_device(&self.device, cx);
                 help.set_page(page.offset(), cx);

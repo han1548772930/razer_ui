@@ -1,4 +1,4 @@
-//! Product 70 cI/EI/XT: current source receipts in mouse-70-dpi-current-evidence.json.
+//! Current 70 cI/EI/XT and 226 Ms/ls/es, with independently verified schemas.
 use super::*;
 use gpui_kit::{base::Button as BaseButton, prelude::FluentBuilder as _};
 
@@ -19,15 +19,22 @@ impl Palette {
     fn pressed() -> Hsla {
         rgb(0x1e1e1e).into()
     }
+    fn dragged() -> Hsla {
+        rgba(0x44d62c33).into()
+    }
+    fn drag_overlay() -> Hsla {
+        rgba(0x44c62d33).into()
+    }
 }
 
 #[derive(Clone)]
 struct StageDrag {
     owner: EntityId,
     from: usize,
-    ordinal: usize,
+    ordinal: Option<usize>,
     stages: Value,
     active: usize,
+    generation: u64,
 }
 impl Render for StageDrag {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
@@ -42,35 +49,83 @@ impl Render for StageDrag {
             .text_size(surface::css(14.))
             .font_weight(FontWeight::BOLD)
             .text_color(Palette::dark())
-            .child(format!("{} {}", t("MOVE_STAGE"), self.ordinal))
+            .child(
+                div()
+                    .relative()
+                    .size(surface::css(30.))
+                    .ml(surface::css(20.))
+                    .mr(surface::css(10.))
+                    .rounded_full()
+                    .bg(Palette::ordinal())
+                    .text_color(Palette::text())
+                    .children(self.ordinal.map(|ordinal| {
+                        div()
+                            .size_full()
+                            .child(
+                                img(SharedString::from(format!("synapse/stage-{ordinal}.svg")))
+                                    .absolute()
+                                    .top(surface::css(3.))
+                                    .left(surface::css(10.5))
+                                    .w(surface::css(9.))
+                                    .h(surface::css(7.)),
+                            )
+                            .child(
+                                div()
+                                    .absolute()
+                                    .top(surface::css(10.))
+                                    .left(surface::css(11.5))
+                                    .child(ordinal.to_string()),
+                            )
+                    })),
+            )
+            .child(format!(
+                "{} {}",
+                t("MOVE_STAGE"),
+                self.ordinal
+                    .map_or_else(String::new, |ordinal| ordinal.to_string())
+            ))
     }
 }
 
 impl MouseProductWorkspace {
     fn dpi_row_visible(&self, index: usize) -> bool {
         self.draft
-            .pointer(&format!("{}/{index}/Active", self.spec.stages_path()))
+            .pointer(&format!(
+                "{}/{index}/{}",
+                self.spec.stages_path(),
+                self.spec.visible_key()
+            ))
             .and_then(Value::as_bool)
             == Some(true)
     }
     fn dpi_select_row(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.spec.product_id != 70 || !self.dpi_row_visible(index) {
+        if !self.dpi_editing_enabled() {
+            return;
+        }
+        if !matches!(self.spec.product_id, 70 | 226)
+            || !self.dpi_row_visible(index)
+            || (!self.boolean(self.spec.stage_enable_path())
+                && self.number(self.spec.active_path()) as usize != index + 1)
+        {
             return;
         }
         self.write(self.spec.active_path(), json!(index + 1), cx);
     }
     fn dpi_toggle_xy(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.dpi_editing_enabled() {
+            return;
+        }
         let base = format!("{}/{index}", self.spec.stages_path());
         if self.draft.pointer(&base).is_none() {
             return;
         }
-        let independent = !self.boolean(&format!("{base}/Independent"));
-        let x = self.number(&format!("{base}/X"));
-        let y_path = format!("{base}/Y");
+        let independent = !self.boolean(&format!("{base}/{}", self.spec.independent_key()));
+        let x = self.number(&format!("{base}/{}", self.spec.dpi_axis(0)));
+        let y_path = format!("{base}/{}", self.spec.dpi_axis(1));
         let y = self.number(&y_path);
         set_pointer(
             &mut self.draft,
-            &format!("{base}/Independent"),
+            &format!("{base}/{}", self.spec.independent_key()),
             json!(independent),
         );
         // cI.toggleY -> II/$xU only changes independent. The separate TI/Tme
@@ -92,7 +147,10 @@ impl MouseProductWorkspace {
         cx.emit(MouseProductChanged);
         cx.notify();
     }
-    fn dpi_toggle_visibility(&mut self, index: usize, cx: &mut Context<Self>) {
+    fn dpi_toggle_visibility(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.dpi_editing_enabled() {
+            return;
+        }
         if !self.boolean(self.spec.stage_enable_path()) {
             return;
         }
@@ -104,34 +162,36 @@ impl MouseProductWorkspace {
             return;
         }
         let mut stages = stages.clone();
-        let visible = stages[index]["Active"] == true;
+        let visible_key = self.spec.visible_key();
+        let visible = stages[index][visible_key] == true;
         if visible
             && stages
                 .iter()
-                .filter(|stage| stage["Active"] == true)
+                .filter(|stage| stage[visible_key] == true)
                 .count()
                 <= 2
         {
             return;
         }
-        stages[index]["Active"] = (!visible).into();
+        stages[index][visible_key] = (!visible).into();
         let active = self.number(self.spec.active_path()) as usize;
         if visible && active == index + 1 {
             let next = stages
                 .iter()
                 .enumerate()
-                .find(|(slot, stage)| *slot > index && stage["Active"] == true)
+                .find(|(slot, stage)| *slot > index && stage[visible_key] == true)
                 .or_else(|| {
                     stages
                         .iter()
                         .enumerate()
-                        .find(|(_, stage)| stage["Active"] == true)
+                        .find(|(_, stage)| stage[visible_key] == true)
                 });
             if let Some((next, _)) = next {
                 set_pointer(&mut self.draft, self.spec.active_path(), json!(next + 1));
             }
         }
         self.write(path, Value::Array(stages), cx);
+        self.dismiss_editors(window, cx);
     }
     fn dpi_drop_row(
         &mut self,
@@ -141,6 +201,8 @@ impl MouseProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if drag.owner != cx.entity_id()
+            || !self.dpi_editing_enabled()
+            || drag.generation != self.draft_generation
             || !self.boolean(self.spec.stage_enable_path())
             || self.draft.pointer(self.spec.stages_path()) != Some(&drag.stages)
             || self.number(self.spec.active_path()) as usize != drag.active
@@ -171,11 +233,12 @@ impl MouseProductWorkspace {
         } else {
             selected
         };
-        if stages[active]["Active"] != true {
+        let visible_key = self.spec.visible_key();
+        if stages[active][visible_key] != true {
             active = stages
                 .iter()
                 .enumerate()
-                .find(|(index, stage)| *index > active && stage["Active"] == true)
+                .find(|(index, stage)| *index > active && stage[visible_key] == true)
                 .map_or(0, |(index, _)| index);
         }
         set_pointer(
@@ -197,10 +260,11 @@ impl MouseProductWorkspace {
             }
         }
         self.syncing = false;
+        self.dismiss_editors(window, cx);
         cx.emit(MouseProductChanged);
         cx.notify();
     }
-    pub(super) fn dpi_rows_70(&self, cx: &Context<Self>) -> AnyElement {
+    pub(super) fn dpi_rows(&self, cx: &Context<Self>) -> AnyElement {
         let stages = self
             .draft
             .pointer(self.spec.stages_path())
@@ -210,21 +274,28 @@ impl MouseProductWorkspace {
         };
         let enabled = self.boolean(self.spec.stage_enable_path());
         let selected = (self.number(self.spec.active_path()) as usize).saturating_sub(1);
-        let dragging = cx.has_active_drag();
+        let dragging = self.dpi_dragged_row.is_some();
         let owner = cx.entity_id();
-        let mut rows = div().flex().flex_col();
+        let product_id = self.spec.product_id;
+        let editing_enabled = self.dpi_editing_enabled();
+        let mut rows = div()
+            .flex()
+            .flex_col()
+            .opacity(if editing_enabled { 1. } else { 0.3 })
+            .when(product_id == 226, |rows| rows.mx(surface::css(-20.)));
         let mut ordinal = 0;
         for (index, stage) in stages.iter().enumerate() {
+            let drag_owner = cx.entity().downgrade();
             if !enabled && index != selected {
                 continue;
             }
-            let visible = stage["Active"] == true;
+            let visible = stage[self.spec.visible_key()] == true;
             if visible {
                 ordinal += 1;
             }
             let current = selected == index;
-            let independent = stage["Independent"] == true;
-            let group = SharedString::from(format!("dpi-70-row-{index}"));
+            let independent = stage[self.spec.independent_key()] == true;
+            let group = SharedString::from(format!("dpi-{product_id}-row-{index}"));
             let mut controls = div().flex().flex_col();
             for axis in 0..if independent { 2 } else { 1 } {
                 let path = format!(
@@ -246,22 +317,31 @@ impl MouseProductWorkspace {
                                 group: group.clone(),
                                 input: input.clone(),
                                 owner: cx.entity().downgrade(),
-                                disabled: dragging,
+                                disabled: dragging || !editing_enabled,
                                 min: self.spec.min_dpi,
                                 max: self.spec.max_dpi,
                                 typed: self.dpi_numbers.get(&path).is_some_and(|state| state.typed),
                             })
-                            .child(
+                            .child(if let Some(grid) = self.dpi_grids.get(&path) {
+                                super::dpi_grid::Grid::new(
+                                    grid,
+                                    !dragging && visible && editing_enabled,
+                                    independent.then_some(if axis == 0 { "X" } else { "Y" }),
+                                )
+                                .into_any_element()
+                            } else {
                                 Slider::new(slider)
                                     .disabled(dragging || !visible)
                                     .w(surface::css(250.))
                                     .h(surface::css(20.))
-                                    .ml(surface::css(10.)),
-                            ),
+                                    .ml(surface::css(10.))
+                                    .into_any_element()
+                            }),
                     );
                 }
             }
-            let badge = BaseButton::new(("dpi-70-ordinal", index))
+            let badge = BaseButton::new((ElementId::from(group.clone()), "ordinal"))
+                .disabled(!editing_enabled)
                 .accessibility_label(format!("{} {}", t("STAGE"), ordinal))
                 .relative()
                 .size(surface::css(30.))
@@ -302,13 +382,14 @@ impl MouseProductWorkspace {
             } else {
                 "synapse/sensitivity-xy.svg"
             };
-            let xy_group = SharedString::from(format!("dpi-70-xy-{index}"));
+            let xy_group = SharedString::from(format!("dpi-{product_id}-xy-{index}"));
             let xy_label = t(if independent {
                 "DISABLE_XY"
             } else {
                 "ENABLE_XY"
             });
-            let xy = BaseButton::new(("dpi-70-xy", index))
+            let xy = BaseButton::new((ElementId::from(group.clone()), "xy"))
+                .disabled(!editing_enabled)
                 .accessibility_label(xy_label.clone())
                 .group(xy_group.clone())
                 .relative()
@@ -342,6 +423,7 @@ impl MouseProductWorkspace {
             let row = div()
                 .id(group.clone())
                 .group(group.clone())
+                .relative()
                 .flex()
                 .items_center()
                 .h(surface::css(if independent { 114. } else { 68. }))
@@ -353,6 +435,11 @@ impl MouseProductWorkspace {
                 .rounded(surface::css(3.))
                 .hover(|style| style.bg(Palette::ordinal()))
                 .active(|style| style.bg(Palette::pressed()))
+                .when(self.dpi_dragged_row == Some(index), |row| {
+                    row.bg(Palette::dragged())
+                        .hover(|style| style.bg(Palette::dragged()))
+                        .active(|style| style.bg(Palette::dragged()))
+                })
                 .child(
                     div()
                         .flex()
@@ -368,24 +455,31 @@ impl MouseProductWorkspace {
                             .hidden()
                             .group_hover(group.clone(), |style| style.flex())
                             .child(
-                                gpui_kit::component::switch::Switch::new(("dpi-70-visible", index))
-                                    .checked(visible)
-                                    .disabled(
-                                        visible
+                                gpui_kit::component::switch::Switch::new((
+                                    ElementId::from(group.clone()),
+                                    "visible",
+                                ))
+                                .checked(visible)
+                                .disabled(
+                                    !editing_enabled
+                                        || visible
                                             && stages
                                                 .iter()
-                                                .filter(|s| s["Active"] == true)
+                                                .filter(|s| s[self.spec.visible_key()] == true)
                                                 .count()
                                                 <= 2,
-                                    )
-                                    .ml(surface::css(15.))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.dpi_toggle_visibility(index, cx)
-                                    })),
+                                )
+                                .ml(surface::css(15.))
+                                .on_click(cx.listener(
+                                    move |this, _, window, cx| {
+                                        this.dpi_toggle_visibility(index, window, cx)
+                                    },
+                                )),
                             ),
                     )
                     .child(
-                        BaseButton::new(("dpi-70-drag", index))
+                        BaseButton::new((ElementId::from(group.clone()), "drag"))
+                            .disabled(!editing_enabled)
                             .hidden()
                             .group_hover(group.clone(), |style| style.flex())
                             .when(!visible, |view| view.opacity(0.3))
@@ -399,16 +493,47 @@ impl MouseProductWorkspace {
                                 StageDrag {
                                     owner: cx.entity_id(),
                                     from: index,
-                                    ordinal,
+                                    ordinal: if product_id == 226 {
+                                        // ls's drag caption reads capital Active,
+                                        // not the visible field used by normal rows.
+                                        (stage["Active"] == true).then(|| {
+                                            stages[..=index]
+                                                .iter()
+                                                .filter(|stage| stage["Active"] == true)
+                                                .count()
+                                        })
+                                    } else {
+                                        Some(ordinal)
+                                    },
                                     stages: Value::Array(stages.clone()),
                                     active: selected + 1,
+                                    generation: self.draft_generation,
                                 },
-                                |drag, _, _, cx| cx.new(|_| drag.clone()),
+                                move |drag, _, _, cx| {
+                                    let _ = drag_owner.update(cx, |owner, cx| {
+                                        owner.dpi_dragged_row = Some(drag.from);
+                                        cx.notify();
+                                    });
+                                    let release_owner = drag_owner.clone();
+                                    cx.new(|cx| {
+                                        cx.on_release(move |_, cx| {
+                                            let _ = release_owner.update(cx, |owner, cx| {
+                                                owner.dpi_dragged_row = None;
+                                                cx.notify();
+                                            });
+                                        })
+                                        .detach();
+                                        drag.clone()
+                                    })
+                                },
                             ),
                     )
                 })
+                .when(self.dpi_dragged_row == Some(index), |row| {
+                    row.child(div().absolute().size_full().bg(Palette::drag_overlay()))
+                })
                 .drag_over::<StageDrag>(move |style, drag, _, _| {
-                    if drag.owner != owner || drag.from == index || !enabled {
+                    if drag.owner != owner || drag.from == index || !enabled || !editing_enabled {
                         return style;
                     }
                     let style = if drag.from > index {
@@ -423,35 +548,71 @@ impl MouseProductWorkspace {
                 }));
             rows = rows.child(row);
         }
-        surface::panel(t("SENSITIVITY_HEADER"), cx)
-            .child(self.toggle(self.spec.stage_enable_path(), t("SENSITIVITY_STAGES"), cx))
-            .child(
+        surface::panel_with_control(
+            t("SENSITIVITY_HEADER"),
+            surface::help_control("dpi-stages-help", t("SENSITIVITY_TOOLTIP")),
+            cx,
+        )
+        .when(product_id == 226, |panel| {
+            panel.child(
                 div()
-                    .relative()
-                    .h(surface::css(20.))
-                    .child(
-                        div()
-                            .absolute()
-                            .left(surface::css(50.))
-                            .bottom_0()
-                            .child("DPI"),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .left(surface::css(110.))
-                            .bottom_0()
-                            .child(self.spec.min_dpi.to_string()),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .left(surface::css(375.))
-                            .bottom_0()
-                            .child(self.spec.max_dpi.to_string()),
-                    ),
+                    .text_size(surface::css(14.))
+                    .text_color(Palette::text())
+                    .child(t("SENSITIVITY_DESC")),
             )
-            .child(rows)
-            .into_any_element()
+        })
+        .child(
+            div()
+                .mt(surface::css(25.))
+                .h(surface::css(27.))
+                .flex()
+                .items_center()
+                .text_size(surface::css(14.))
+                .child(t("SENSITIVITY_STAGES"))
+                .child(
+                    div().ml(surface::css(10.)).mt(surface::css(-1.)).child(
+                        surface::SynapseSwitch::new("dpi-stages-enabled")
+                            .disabled(!editing_enabled)
+                            .accessibility_label(t("SENSITIVITY_STAGES"))
+                            .checked(enabled)
+                            .on_change(cx.listener(|this, value, window, cx| {
+                                if !this.dpi_editing_enabled() {
+                                    return;
+                                }
+                                this.write(this.spec.stage_enable_path(), json!(*value), cx);
+                                this.dismiss_editors(window, cx);
+                            })),
+                    ),
+                ),
+        )
+        .child(
+            div()
+                .relative()
+                .h(surface::css(20.))
+                .opacity(if editing_enabled { 1. } else { 0.3 })
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(50.))
+                        .bottom_0()
+                        .child("DPI"),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(110.))
+                        .bottom_0()
+                        .child(self.spec.min_dpi.to_string()),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(375.))
+                        .bottom_0()
+                        .child(self.spec.max_dpi.to_string()),
+                ),
+        )
+        .child(rows)
+        .into_any_element()
     }
 }

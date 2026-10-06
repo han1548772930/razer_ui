@@ -1,0 +1,1537 @@
+{
+  "method": "Static AST, CSS and asset comparison only",
+  "products": [
+    {
+      "product_id": 3334,
+      "manifest": {
+        "path": ".ref/devices/3334/asset-manifest.json",
+        "sha256": "38edccb6f994a227ffbc78864deb60055328643a0a3bd690316a8a43fe7cc10c"
+      },
+      "receipts": [
+        {
+          "symbol": "Wn",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 4027897,
+          "end": 4028382,
+          "source": "Wn={levelMeter:[],waitingForLevelMeter:!1,inputChannels:[],exterInputChannels:[],isStreamMixerEnabled:!1,streamMixerEnablePendingMwAck:!1,isStreamMixMonitor:!0,streamMixVolume:{isEnabled:!1,value:0},playbackMixVolume:{isEnabled:!1,value:0},playbackMixDevice:\"\",shortcutMapping:{},playbackDevices:[],recordDevices:[],isDeviceReady:!0,activeStreamMixerStatus:!1,presets:[Vn],selectedPresetGuid:Vn.guid,microphoneMonitorValue:0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+        },
+        {
+          "symbol": "Yn",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 4028389,
+          "end": 4040234,
+          "source": "Yn=function(e,E){var a,_;if(\"undefined\"===typeof e)return Wn;const t=null!==(a=(null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.subCategory)||(null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.category))&&void 0!==a?a:null;switch(null===(_=bn[t])||void 0===_||_.call(bn,E,e),E.type){case $.TIX:{let a=(0,v.A)({},E.payload);if(a.presets&&a.selectedPresetGuid){const e=a.presets.find(e=>e.guid===a.selectedPresetGuid);e&&e.shortcutMapping&&(a.shortcutMapping=e.shortcutMapping)}if(a.inputChannels&&e.inputChannels.length>0){if(e.inputChannels.some(e=>\"number\"===typeof e.order)){const E=new Map;e.inputChannels.forEach(e=>{\"number\"===typeof e.order&&E.set(e.name,e.order)}),a.inputChannels=a.inputChannels.map(e=>(0,v.A)((0,v.A)({},e),{},{order:E.has(e.name)?E.get(e.name):9999})),a.inputChannels.sort((e,E)=>{var a,_;return(null!==(a=e.order)&&void 0!==a?a:9999)-(null!==(_=E.order)&&void 0!==_?_:9999)})}}return(0,v.A)((0,v.A)((0,v.A)({},e),a),{},{streamMixerEnablePendingMwAck:!1})}case $.WkU:{var i;let a=(0,v.A)((0,v.A)({},e),{},{isStreamMixerEnabled:E.payload,streamMixerEnablePendingMwAck:!0,activeStreamMixerStatus:!1,levelMeter:E.payload?e.levelMeter:[],waitingForLevelMeter:Boolean(E.payload)}),_=new pe(\"ON_SET_STREAM_MIXER_ENABLE\",void 0,{isStreamMixerEnabled:E.payload});null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_SET_STREAM_MIXER_ENABLE\",timerTick:void 0,payload:{isStreamMixerEnabled:E.payload}});return a=de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),a}case $.e3i:{var o;let E=(0,v.A)({},e),a=new pe(\"ON_OPEN_WINDOW_PROPERTIES\",void 0);null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_OPEN_WINDOW_PROPERTIES\",timerTick:void 0});return E=de(E,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload}),E}case $.W4E:{var n;const a={streamMixVolume:(0,v.A)((0,v.A)({},E.payload),{},{isToggle:e.streamMixVolume.isEnabled!==E.payload.isEnabled})};let _=(0,v.A)((0,v.A)({},e),a);const t=new pe(\"ON_SET_STREAM_MIX_VOLUME\",void 0,(0,v.A)({},a));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_STREAM_MIX_VOLUME\",timerTick:void 0,payload:a});return de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload})}case $.$yb:{var r;const a={playbackMixVolume:(0,v.A)((0,v.A)({},E.payload),{},{isToggle:e.playbackMixVolume.isEnabled!==E.payload.isEnabled})};let _=(0,v.A)((0,v.A)({},e),a),t=new pe(\"ON_SET_PLAYBACK_MIX_VOLUME\",void 0,(0,v.A)({},a));null===(r=window.mwBroadcastChannel)||void 0===r||r.postMessage({type:\"ON_SET_PLAYBACK_MIX_VOLUME\",timerTick:void 0,payload:a});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.z4S:{var s;let a=[...e.inputChannels];const _={action:\"add\",modifyInputChannel:E.payload};if(a.findIndex(e=>e.name===E.payload.name)>=0)a=a.map(e=>(e.name===E.payload.name&&(e=(0,v.A)((0,v.A)({},e),E.payload),\"configurable\"===E.payload.inputChannelType&&(_.modifyInputChannel=e)),e));else{const e=(0,v.A)({},E.payload);a=[...a,e],\"configurable\"===E.payload.inputChannelType&&(_.modifyInputChannel=e)}let t=(0,v.A)((0,v.A)({},e),{},{inputChannels:a}),i=new pe($.kNn,void 0,{inputChannels:a});null===(s=window.mwBroadcastChannel)||void 0===s||s.postMessage({type:$.kNn,timerTick:void 0,payload:_});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.AiW:{var T;const a=E.payload,_=a.name,t=a.type,i=a.value;let o=[...e.inputChannels],n=i;o=o.map(e=>(e.name===_&&(\"isLinked\"!==t&&(n=(0,v.A)((0,v.A)({},n),{},{isToggle:e[t].isEnabled!==i.isEnabled})),e=(0,v.A)((0,v.A)({},e),{},{[t]:i})),e));let r={action:\"edit\",modifyInputChannel:{name:_,[t]:n}},s=(0,v.A)((0,v.A)({},e),{},{inputChannels:o}),I=new pe($.kNn,void 0,{inputChannels:o});null===(T=window.mwBroadcastChannel)||void 0===T||T.postMessage({type:$.kNn,timerTick:void 0,payload:r});return s=de(s,{timertick:I.stateMachineEvent.timerTick,actionType:I.stateMachineEvent.type,payload:I.stateMachineEvent.payload}),s}case $.xIQ:{var I;let a=[...e.inputChannels];a=a.map(e=>(e.name===E.payload.name&&(e.isVisible=!1),e));const _={action:\"remove\",modifyInputChannel:E.payload};let t=(0,v.A)((0,v.A)({},e),{},{inputChannels:a});const i=new pe($.kNn,void 0,{inputChannels:a});null===(I=window.mwBroadcastChannel)||void 0===I||I.postMessage({type:$.kNn,timerTick:void 0,payload:_});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.wzR:{var O;const a=E.payload,_=a.fromIndex,t=a.toIndex,i=[...e.inputChannels],o=i.filter(e=>e.isVisible),n=i.filter(e=>!e.isVisible);if(_<0||_>=o.length||t<0||t>o.length)return e;const r=o.splice(_,1),s=(0,Ue.A)(r,1)[0];o.splice(t,0,s);const T=[...o,...n].map((e,E)=>(0,v.A)((0,v.A)({},e),{},{order:E})),I={action:\"reorder\",inputChannels:T};let A=(0,v.A)((0,v.A)({},e),{},{inputChannels:T});const S=new pe($.kNn,void 0,{inputChannels:T});null===(O=window.mwBroadcastChannel)||void 0===O||O.postMessage({type:$.kNn,timerTick:void 0,payload:I});return A=de(A,{timertick:S.stateMachineEvent.timerTick,actionType:S.stateMachineEvent.type,payload:S.stateMachineEvent.payload}),A}case $.hyz:{var A;const a=E.payload.device,_={action:\"edit\",modifyInputChannel:{name:a.name,inputChannelType:a.inputChannelType,exterInputDevice:a.exterInputDevice}},t=e.inputChannels.map(e=>(e.name===a.name&&(e=(0,v.A)((0,v.A)({},e),a)),e));let i=(0,v.A)((0,v.A)({},e),{},{inputChannels:t}),o=new pe($.kNn,void 0,{exterInputDevice:a.exterInputDevice});null===(A=window.mwBroadcastChannel)||void 0===A||A.postMessage({type:$.kNn,timerTick:void 0,payload:_});return i=de(i,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),i}case $.ieW:{var S;const E={isStreamMixMonitor:!e.isStreamMixMonitor};let a=(0,v.A)((0,v.A)({},e),E);const _=new pe(\"ON_SET_STREAM_MIX_MONITOR\",void 0,(0,v.A)({},E));null===(S=window.mwBroadcastChannel)||void 0===S||S.postMessage({type:\"ON_SET_STREAM_MIX_MONITOR\",timerTick:void 0,payload:E});return de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload})}case $.FOJ:{var l;const a=E.payload.index;if(a<0)return console.error(\"CHANGE_PLAYBACK_MIX_DEVICE get error, action.payload\",E.payload),e;const _=e.playbackDevices[a];if(!_)return console.error(\"CHANGE_PLAYBACK_MIX_DEVICE get error, playbackDevices\",e.playbackDevices),e;const t={changePlayBackMixDevice:_.name};let i=(0,v.A)((0,v.A)({},e),{},{playbackMixDevice:_.name});const o=new pe($.cIo,void 0,(0,v.A)({},t));null===(l=window.mwBroadcastChannel)||void 0===l||l.postMessage({type:$.cIo,timerTick:void 0,payload:t});return de(i,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload})}case $.uD1:return(0,v.A)((0,v.A)({},e),{},{levelMeter:E.payload});case $.SJd:return(0,v.A)((0,v.A)({},e),{},{isDeviceReady:E.payload});case $.QsH:return(0,v.A)((0,v.A)({},e),{},{activeStreamMixerStatus:E.payload});case $.Ce$:case $.yn7:case $.NkZ:return(0,v.A)((0,v.A)({},e),E.payload);case $.Rax:return(0,v.A)((0,v.A)({},e),{},{playbackMixDevice:E.payload});case $.JKI:{var R;let a=E.payload.playbackDevices;return a=null===(R=a)||void 0===R?void 0:R.map(e=>({name:e})),(0,v.A)((0,v.A)({},e),{},{playbackDevices:a})}case $.Zsq:{var N;let a=E.payload.recordDevices;return a=null===(N=a)||void 0===N?void 0:N.map(e=>({name:e})),(0,v.A)((0,v.A)({},e),{},{recordDevices:a})}case $.VbO:{var d;let a=function(e,E){let a=e.presets.map(a=>a.guid===e.selectedPresetGuid?(0,v.A)((0,v.A)({},a),{},{mapping:E.payload}):(0,v.A)({},a));return(0,v.A)((0,v.A)({},e),{},{presets:a})}(e,E);const _=new pe($.rsj,void 0,{newShortcutMapping:E.payload,changePresetGUID:a.selectedPresetGuid});null===(d=window.mwBroadcastChannel)||void 0===d||d.postMessage({type:$.rsj,timerTick:void 0,payload:{newShortcutMapping:E.payload,changePresetGUID:a.selectedPresetGuid}});return a=de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),a}case $.t59:{var c;const a=e.presets.find(e=>e.guid===E.payload);let _=(0,v.A)((0,v.A)({},e),{},{selectedPresetGuid:E.payload,shortcutMapping:(null===a||void 0===a?void 0:a.shortcutMapping)||{}});const t=new pe($.hxD,void 0,{newActivePresetGUID:E.payload});null===(c=window.mwBroadcastChannel)||void 0===c||c.postMessage({type:$.hxD,timerTick:void 0,payload:{selectedPresetGuid:E.payload}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.r8G:{var u;const a=[...e.presets,E.payload];p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:E.payload.guid,shortcutMapping:{}});const t=new pe($.vYn,void 0,{newPreset:E.payload});null===(u=window.mwBroadcastChannel)||void 0===u||u.postMessage({type:$.vYn,timerTick:void 0,payload:{newPreset:E.payload}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.J6C:{var C;const a=[...e.presets,E.payload];p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:E.payload.guid,shortcutMapping:{}});const t=new pe($.d2Q,void 0,{newPreset:E.payload,sourcePresetGuid:E.payload.guid});null===(C=window.mwBroadcastChannel)||void 0===C||C.postMessage({type:$.d2Q,timerTick:void 0,payload:{newPreset:E.payload,selectedPresetGuid:_.selectedPresetGuid}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.wv5:{var D;let a=e.presets.map(a=>a.guid===e.selectedPresetGuid?(0,v.A)((0,v.A)({},a),{},{name:E.payload}):(0,v.A)({},a));p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a});const t=new pe($.WI6,void 0,{newName:E.payload,renamePresetGUID:_.selectedPresetGuid});null===(D=window.mwBroadcastChannel)||void 0===D||D.postMessage({type:$.WI6,timerTick:void 0,payload:{newName:E.payload,selectedPresetGuid:_.selectedPresetGuid}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.xAH:{var L;const a=e.presets.filter(e=>e.guid!==E.payload);p_(a);const _=a[0]?a[0].guid:\"\";let t=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:_,shortcutMapping:a[0]?a[0].shortcutMapping:{}});const i=new pe($.BGI,void 0,{deletedGUID:E.payload,newSelectedPresetGUID:t.selectedPresetGuid});null===(L=window.mwBroadcastChannel)||void 0===L||L.postMessage({type:$.BGI,timerTick:void 0,payload:{deletedPresetId:E.payload,selectedPresetGuid:t.selectedPresetGuid}});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.R3K:{var P;let a=(0,v.A)((0,v.A)({},e),{},{shortcutMapping:{}});const _=new pe($.FL$,void 0,{presetGuid:E.payload.guid});null===(P=window.mwBroadcastChannel)||void 0===P||P.postMessage({type:$.FL$,timerTick:void 0,payload:{selectedPresetGuid:E.payload.guid}});const t={timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload};return a=de(e,t),a}case $.Z7F:{var p;const a={microphoneMonitorValue:E.payload};let _=(0,v.A)((0,v.A)({},e),a);const t=new pe($.Z7F,void 0,(0,v.A)({},a));null===(p=window.mwBroadcastChannel)||void 0===p||p.postMessage({type:$.Z7F,timerTick:void 0,payload:a});return de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload})}default:return e}}"
+        },
+        {
+          "symbol": "Jm",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 4473407,
+          "end": 4473463,
+          "source": "Jm=e=>E=>{void 0!==e&&E({type:$.FOJ,payload:{index:e}})}"
+        },
+        {
+          "symbol": "yU",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 4502941,
+          "end": 4514367,
+          "source": "yU=(0,h.connect)(e=>({lang:e.languageReducer.lang,activeStreamMixerStatus:e.streamMixerReducer.activeStreamMixerStatus,playbackDevices:e.streamMixerReducer.playbackDevices,recordDevices:e.streamMixerReducer.recordDevices,presets:e.streamMixerReducer.presets,selectedPresetGuid:e.streamMixerReducer.selectedPresetGuid,levelMeter:e.streamMixerReducer.levelMeter,inputChannels:e.streamMixerReducer.inputChannels,isStreamMixerEnabled:e.streamMixerReducer.isStreamMixerEnabled,streamMixVolume:e.streamMixerReducer.streamMixVolume,playbackMixVolume:e.streamMixerReducer.playbackMixVolume,playbackMixDevice:e.streamMixerReducer.playbackMixDevice,isStreamMixMonitor:e.streamMixerReducer.isStreamMixMonitor,shortcutMapping:e.streamMixerReducer.shortcutMapping}),e=>(0,G.zH)((0,v.A)((0,v.A)({},P),_),e))(e=>{const E=e.setStreamMixerEnable,a=e.setStreamMixMonitor,_=e.openWindowProperties,t=e.setStreamMixVolume,i=e.setPlaybackMixVolume,o=e.addInputChannel,n=e.changeInputChannel,r=e.deleteInputChannel,s=e.recordDevices,T=e.playbackDevices,I=e.changePlaybackMixDevice,O=e.lang,A=e.activeStreamMixerStatus,S=e.addStreamMixerPreset,l=e.changeStreamMixerPresetShortcutMapping,R=e.selectedStreamMixerPreset,N=e.duplicateStreamMixerPreset,d=e.renameStreamMixerPreset,c=e.resetStreamMixerPreset,u=e.deleteStreamMixerPreset,C=e.isStreamMixerEnabled,D=e.streamMixVolume,L=e.playbackMixVolume,P=e.playbackMixDevice,M=e.isStreamMixMonitor,m=e.shortcutMapping,U=e.inputChannels,h=(0,p.useMemo)(()=>U.filter(e=>e.inputChannelType===HU).filter(e=>!FU.includes(e.name)),[U]),G=(0,p.useMemo)(()=>U.filter(e=>e.inputChannelType===fU),[U]),g=(0,p.useState)(!1),H=(0,Ue.A)(g,2),f=H[0],B=H[1],F=(0,ge.jsxs)(\"div\",{className:\"listening-ear-preview\",children:[(0,ge.jsx)(\"div\",{className:\"title\",children:ar.onLang(O).productName}),(0,ge.jsx)(\"div\",{onClick:a,className:\"link-mode \".concat(M?\"listening-ear-icon\":\"listening-ear-icon-disabled\"),children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:M?Ge.IiZ:Ge.J6P})})})]}),y=()=>(0,ge.jsx)(\"div\",{className:\"style-icon warning-icon\",children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:Ge.YHN})})}),b=(0,p.useMemo)(()=>h.filter(e=>e.isVisible),[h]),V=(0,p.useMemo)(()=>h.filter(e=>!e.isVisible),[h]),W=(0,p.useMemo)(()=>G.filter(e=>e.isVisible),[G]),Y=(0,p.useMemo)(()=>{const e=[];if(s.length-W.length>0)for(let E=W.length;E<s.length&&E<=3;E++){const a=G.find(e=>e.name===\"Aux\".concat(E+1));a&&e.push(a)}return e},[s,W,G]),w=(0,p.useMemo)(()=>s.filter(e=>!W.some(E=>E.exterInputDevice===e.name)),[s,W]),z=e=>{const E=(0,v.A)((0,v.A)({},e),{},{isVisible:!0});o(E)},K=e=>{const E=(()=>{const e=G.filter(e=>e.isVisible);for(let E=1;E<=3;E++){let a=\"Aux\".concat(E);if(-1===e.findIndex(e=>e.name===a))return a}})(),a={name:E,exterInputDevice:e.name,inputChannelType:fU};z(a)},k=(0,p.useState)(\"\"),x=(0,Ue.A)(k,2),X=x[0],j=x[1],Z=(0,p.useState)(!1),q=(0,Ue.A)(Z,2),Q=q[0],$=q[1],ee=(0,p.useState)(!1),Ee=(0,Ue.A)(ee,2),ae=Ee[0],_e=Ee[1],te=(0,p.useState)(!1),ie=(0,Ue.A)(te,2),oe=ie[0],ne=ie[1],re=e.presets,se=e.selectedPresetGuid;let Te=re.find(e=>{let E=e.guid;return se===E});const Ie=re.findIndex(e=>{let E=e.guid;return se===E}),Oe=[m],Ae=e=>{e=e.trim(),$(!1);let E=(0,ke.$B)(re,e);e&&e.replace(/\\s/g,\"\").length&&E&&d(e)},Se=e=>{re[e].guid!==se&&R(re[e].guid)},le=()=>{var E=[];return 1===e.presets.length&&(E=[Ge.SJi]),E},Re=E=>{if(void 0!==se||E===Ge.gjU)switch(E){case Ge.gjU:{const E=tr(),a=E?\"\".concat(E,\"-Default\"):\"Default\";(e=>{let E={name:e,guid:(0,ke.gZ)()};S(E)})((0,ke.AM)(e.presets,a));break}case Ge.sG0:setTimeout(()=>{ne(!0)},100);break;case Ge.mjN:(()=>{let e={name:(0,ke.d9)(re,Te.name),guid:(0,ke.gZ)()};N(e)})();break;case Ge.Pie:j(Te.name),$(!0);break;case Ge.SJi:setTimeout(()=>{_e(!0)},100)}},Ne=async e=>{_e(!1),e&&u(se)};return(0,ge.jsxs)(ge.Fragment,{children:[(0,ge.jsxs)(\"div\",{className:\"stream-mixer-container\",children:[(0,ge.jsxs)(\"div\",{className:\"stream-mixer-preset-container\",children:[(0,ge.jsx)(\"div\",{className:\"wrapper-dropdown\",children:(0,ge.jsxs)(\"div\",{className:\"stream-mixer-preset-list\",children:[(0,ge.jsx)(\"div\",{className:\"stream-mixer-preset-header\",children:(0,ge.jsx)(\"div\",{className:\"stream-mixer-preset-title\",children:(0,ge.jsx)(he.A,{text:Ge.QaP})})}),(0,ge.jsxs)(\"div\",{role:\"region\",\"aria-label\":\"profile bar\",className:\"box-preset mt10 profile-bar flex\",children:[(0,ge.jsx)(\"div\",{className:\"rename-rect\",children:Q?(0,ge.jsx)(tI,{name:\"profile\",maxLength:32,value:X,active:Q,sendToParent:Ae}):(0,ge.jsx)(ze,{notLocalize:!0,allowOneItem:!0,dataSet:re,name:\"caliDvDrop\",selectOption:Se,value:Ie})}),(0,ge.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,ge.jsx)(KT,{menu:aI,toggleClass:\"dots3 hover-border\",menuClass:\"profile-act\",menuClick:Re,disabledItems:le(),elementId:\"streamMixerPreset\"}),(0,ge.jsx)(wI,{show:oe,resetProfile:()=>{c(Te)},resetKeyMapping:()=>{},isShowResetKeybinds:!0,onClose:()=>{ne(!1)}}),(0,ge.jsx)(JT,{active:ae,confirmDel:Ne,title:Ge.rlv,deleteMsg:Ge.Gfw})]})]})]})}),(0,ge.jsxs)(\"div\",{className:\"wrapper-shortcut\",children:[(0,ge.jsx)(\"div\",{className:\"h2-title ml10\",children:(0,ge.jsx)(\"span\",{children:(0,ge.jsx)(he.A,{text:Ge.JWp})})}),(0,ge.jsx)(\"div\",{className:\"box-shortcut mt10 ml10\",children:(0,ge.jsx)(gU,{shortcut:m,assignment:null===m||void 0===m?void 0:m.assignment,assignmentValue:null===m||void 0===m?void 0:m.assignmentValue,subContent:null===m||void 0===m?void 0:m.subContent,mappingList:Oe,updateMappingToButton:e=>{l(e)}},null===m||void 0===m?void 0:m.guid)})]})]}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers\",children:(0,ge.jsxs)(\"div\",{className:\"widgets justify-audio-input\",children:[(0,ge.jsx)(gS,{title:Ge.Js1,hasSwitch:!0,toggleSwitch:()=>C?E(!C):void(A?B(!0):E(!C)),active:C,extraClass:\"equal-h-widgets \".concat(C?\"\":\"stream-mixer-disable-background-color\"),children:(0,ge.jsx)(\"div\",{className:C?\"\":\"widget-opacity\",children:(0,ge.jsx)(he.A,{text:Ge.G$0})})}),(0,ge.jsx)(gS,{tips:Ge.SyK,title:Ge.wmL,extraClass:C?\"\":\"disabled\",children:(0,ge.jsxs)(\"div\",{className:\"open-windows-sound-mixer-options\",children:[(0,ge.jsx)(\"div\",{className:\"window-icon\"}),(0,ge.jsx)(\"div\",{className:\"open-windows-sound-mixer-options-link\",onClick:_,children:(0,ge.jsx)(he.A,{text:Ge.rMn})})]})})]})})}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers  \".concat(C?\"\":\"disabled\"),children:(0,ge.jsxs)(\"div\",{children:[(0,ge.jsx)(\"div\",{className:\"group-header\",children:(0,ge.jsx)(\"div\",{className:\"title \".concat(C?\"\":\"disabled\"),children:(0,ge.jsx)(he.A,{text:Ge.Z2r})})}),(0,ge.jsxs)(\"div\",{className:\"widgets justify-audio-input widgets-max-width\",children:[(0,ge.jsxs)(gS,{tips:Ge.Gfk,title:Ge.C_0,active:C,supportsShortcut:!0,renderShortcut:F,children:[(0,ge.jsx)(OU,{meterName:\"DeviceId_StreamMix\",levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{isShowLink:!1,isShowPlaybackMix:!1,isShowHeadphone:!1,useStreamMicrophoneIcon:!0,microphoneValue:D,microphoneChangeValueAction:t,isDisable:!C})]}),(0,ge.jsxs)(gS,{tips:Ge.XAc,title:Ge.$N7,active:!1,supportsShortcut:!0,renderShortcut:(()=>{let e=!0;const E=[...T];let _=E.findIndex(e=>e.name===P);return-1===_&&(e=!1,E.push({name:P,disabled:!0}),_=E.length-1),(0,ge.jsxs)(\"div\",{className:\"listening-ear-preview\",children:[e?null:y(),(0,ge.jsx)(ze,{allowOneItem:!0,dataSet:E,name:\"deviceList\",selectOption:I,value:_,disable:!1}),(0,ge.jsx)(\"div\",{onClick:a,className:\"link-mode \".concat(M?\"listening-ear-icon-disabled\":\"listening-ear-icon\"),children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:M?Ge.J6P:Ge.IiZ})})})]})})(),customStyle:{zIndex:1},children:[(0,ge.jsx)(OU,{meterName:\"DeviceId_PlaybackMix\",levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{isShowLink:!1,isShowMicrophone:!1,useStreamMicrophoneIcon:!0,headphoneValue:L,headphoneChangeValueAction:i,isDisable:!C})]})]})]})})}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers \".concat(C?\"\":\"disabled\"),children:(0,ge.jsxs)(\"div\",{children:[(0,ge.jsx)(\"div\",{className:\"group-header\",children:(0,ge.jsx)(\"div\",{className:\"title \".concat(C?\"\":\"disabled\"),children:(0,ge.jsx)(he.A,{text:Ge.ueX})})}),(0,ge.jsxs)(\"div\",{className:\"widgets widgets-max-width justify-audio-input\",children:[b.map(E=>(0,ge.jsxs)(CU,{title:E.name,deleteFunc:()=>r(E),children:[(0,ge.jsx)(OU,{meterName:BU(E.name),levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{useStreamMicrophoneIcon:!0,isLinked:E.isLinked,setIsLinked:e=>n(E.name,\"isLinked\",e),microphoneValue:E.streamMixerInputVolume,microphoneChangeValueAction:e=>n(E.name,\"streamMixerInputVolume\",e),headphoneValue:E.playbackMixInputVolume,headphoneChangeValueAction:e=>n(E.name,\"playbackMixInputVolume\",e),isDisable:!C})]},E.name)),W.map((E,a)=>{let _=!0;const t=[...s];let i=t.findIndex(e=>e.name===E.exterInputDevice);return-1===i&&(_=!1,t.push({name:E.exterInputDevice,disabled:!0}),i=t.length-1),(0,ge.jsx)(\"div\",{style:{position:\"relative\",zIndex:W.length-a},children:(0,ge.jsxs)(CU,{title:\"\".concat(E.name),deleteFunc:()=>r(E),advanceAction:(0,ge.jsxs)(\"div\",{className:\"playback-device-container\",children:[_?null:y(),(0,ge.jsx)(ze,{allowOneItem:!0,dataSet:t,name:\"deviceList\",selectOption:a=>{var _;a!==i&&e.changeExternalInputDevice((0,v.A)((0,v.A)({},E),{},{exterInputDevice:(null===(_=t[a])||void 0===_?void 0:_.name)||\"\"}))},value:i})]}),children:[(0,ge.jsx)(OU,{meterName:BU(E.name),levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{useStreamMicrophoneIcon:!0,isLinked:E.isLinked,setIsLinked:e=>n(E.name,\"isLinked\",e),microphoneValue:E.streamMixerInputVolume,microphoneChangeValueAction:e=>n(E.name,\"streamMixerInputVolume\",e),headphoneValue:E.playbackMixInputVolume,headphoneChangeValueAction:e=>n(E.name,\"playbackMixInputVolume\",e),isDisable:!C})]},E.name)},E.name)}),(0!==V.length||0!==Y.length)&&(0,ge.jsxs)(gS,{tips:Ge.qup,title:Ge.aB7,active:!1,children:[(0,ge.jsxs)(\"div\",{className:\"route-app-container\",children:[(0,ge.jsx)(\"div\",{className:\"route-app-message\",children:(0,ge.jsx)(bS,{href:null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.routeGuideLink,children:(0,ge.jsx)(he.A,{text:Ge.Pkc})})}),(0,ge.jsx)(\"div\",{className:\"external-link-icon\"})]}),V.length>0&&(0,ge.jsx)(\"div\",{className:\"categories-container\",children:V.map(e=>(0,ge.jsx)(\"div\",{className:\"category-btn\",onClick:()=>z(e),children:\"\".concat(e.name)},e.name))}),V.length>0&&Y.length>0&&w.lenth>0&&(0,ge.jsx)(\"div\",{className:\"divider\"}),Y.length>0&&w.length>0&&(0,ge.jsx)(\"div\",{className:\"categories-container\",children:w.map(e=>(0,ge.jsx)(xm,{className:\"category-btn\",text:\"+ \".concat(e.name),tipText:e.name,onClick:()=>K(e)},e.name))})]})]})]})})})]}),f&&!C?(0,ge.jsx)(\"div\",{className:\"customize\",children:(0,ge.jsx)(\"div\",{className:\"backdrop show\",children:(0,ge.jsxs)(\"div\",{className:\"warning-alert\",style:{height:\"164px\",width:\"620px\"},children:[(0,ge.jsxs)(\"div\",{className:\"title\",children:[(0,ge.jsx)(\"div\",{className:\"icon\"}),(0,ge.jsx)(he.A,{text:Ge.Ec2})]}),(0,ge.jsx)(\"div\",{className:\"body\",style:{whiteSpace:\"pre-line\"},children:(0,ge.jsx)(he.A,{text:Ge.nlF})}),(0,ge.jsx)(\"br\",{}),(0,ge.jsxs)(\"div\",{className:\"action\",children:[(0,ge.jsx)(\"div\",{className:\"secondary-button\",onClick:()=>B(!1),children:(0,ge.jsx)(he.A,{text:Ge.bOp})}),(0,ge.jsx)(\"div\",{className:\"enable-button\",onClick:()=>{E(!0),B(!1)},children:(0,ge.jsx)(he.A,{text:Ge.iRy})})]})]})})}):null]})})"
+        },
+        {
+          "symbol": "label:Ec2",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 126376,
+          "end": 126399,
+          "source": "\"STREAM_MIXER_DETECTED\""
+        },
+        {
+          "symbol": "label:nlF",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 126403,
+          "end": 126434,
+          "source": "\"STREAM_MIXER_DETECTED_WARNING\""
+        },
+        {
+          "symbol": "label:bOp",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 125422,
+          "end": 125430,
+          "source": "\"CANCEL\""
+        },
+        {
+          "symbol": "label:iRy",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 123855,
+          "end": 123863,
+          "source": "\"ENABLE\""
+        },
+        {
+          "symbol": "label:YHN",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 126350,
+          "end": 126372,
+          "source": "\"DEVICE_NOT_FOUND_TIP\""
+        },
+        {
+          "symbol": "label:Js1",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 126018,
+          "end": 126039,
+          "source": "\"STREAM_MIXER_HEADER\""
+        },
+        {
+          "symbol": "label:G$0",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 126043,
+          "end": 126069,
+          "source": "\"STREAM_MIXER_INFORMATION\""
+        },
+        {
+          "symbol": "action:QsH",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 61584,
+          "end": 61621,
+          "source": "\"MW_UPDATE_ACTIVE_STREAM_MIXER_TO_UI\""
+        },
+        {
+          "symbol": "action:JKI",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 61663,
+          "end": 61694,
+          "source": "\"MW_SET_PLAYBACK_DEVICES_TO_UI\""
+        },
+        {
+          "symbol": "action:Rax",
+          "path": ".ref/devices/3334/static/js/main.496bb585.js",
+          "sha256": "320597b62d8538c929ca38bbf594297f7151582c0ac61b3224ba86faa0d7eeca",
+          "offset": 61625,
+          "end": 61659,
+          "source": "\"MW_SET_PLAYBACK_MIX_DEVICE_TO_UI\""
+        }
+      ],
+      "labels": {
+        "Ec2": "STREAM_MIXER_DETECTED",
+        "nlF": "STREAM_MIXER_DETECTED_WARNING",
+        "bOp": "CANCEL",
+        "iRy": "ENABLE",
+        "YHN": "DEVICE_NOT_FOUND_TIP",
+        "Js1": "STREAM_MIXER_HEADER",
+        "G$0": "STREAM_MIXER_INFORMATION"
+      },
+      "actions": {
+        "QsH": "MW_UPDATE_ACTIVE_STREAM_MIXER_TO_UI",
+        "JKI": "MW_SET_PLAYBACK_DEVICES_TO_UI",
+        "Rax": "MW_SET_PLAYBACK_MIX_DEVICE_TO_UI"
+      },
+      "css": [
+        {
+          "path": ".ref/devices/3334/static/css/main.24a0913d.css",
+          "sha256": "b517361ef6c609ce7e88b76eac96123e0de9a585926c21220d66da0fd589f2ac",
+          "rules": [
+            {
+              "offset": 12537,
+              "selector": ".backdrop",
+              "conditions": [],
+              "declarations": "background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#00000080",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "150%",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "visibility 0s,opacity .1s linear",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "hidden",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "will-change",
+                  "value": "visibility,opacity",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12731,
+              "selector": ".backdrop,.backdrop.glow",
+              "conditions": [],
+              "declarations": "background-position:bottom;background-repeat:no-repeat",
+              "properties": [
+                {
+                  "property": "background-position",
+                  "value": "bottom",
+                  "important": false
+                },
+                {
+                  "property": "background-repeat",
+                  "value": "no-repeat",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12811,
+              "selector": ".backdrop.glow",
+              "conditions": [],
+              "declarations": "background-image:url(../../static/media/background_glow.43f70cb2.svg)",
+              "properties": [
+                {
+                  "property": "background-image",
+                  "value": "url(../../static/media/background_glow.43f70cb2.svg)",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12896,
+              "selector": ".backdrop.show",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;z-index:106",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "106",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12952,
+              "selector": ".backdrop.show .choose-a-mat",
+              "conditions": [],
+              "declarations": "top:100px",
+              "properties": [
+                {
+                  "property": "top",
+                  "value": "100px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 157603,
+              "selector": ".remove-alert,.warning-alert",
+              "conditions": [],
+              "declarations": "background-color:#111;border:1px solid #fd8611;border-radius:5px;color:#ccc;font-size:14px;left:50%;line-height:17px;padding:20px 30px;position:fixed;top:50%;transform:translateX(-50%) translateY(-100%);width:400px",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #fd8611",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "20px 30px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "fixed",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "transform",
+                  "value": "translateX(-50%) translateY(-100%)",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "400px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 157847,
+              "selector": ".remove-alert .title,.warning-alert .title",
+              "conditions": [],
+              "declarations": "align-items:center;color:#fd8611;display:flex;font-family:Roboto;font-size:16px;justify-content:center;line-height:16.8px;margin-bottom:20px;text-align:center;text-transform:uppercase",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fd8611",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "16px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "16.8px",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158074,
+              "selector": ".remove-alert .title .icon,.warning-alert .title .icon",
+              "conditions": [],
+              "declarations": "background-image:url(../../static/media/warning.ad3f47f8.svg);background-position:50%;background-repeat:no-repeat;height:25px;margin-right:10px;width:25px",
+              "properties": [
+                {
+                  "property": "background-image",
+                  "value": "url(../../static/media/warning.ad3f47f8.svg)",
+                  "important": false
+                },
+                {
+                  "property": "background-position",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "background-repeat",
+                  "value": "no-repeat",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "25px",
+                  "important": false
+                },
+                {
+                  "property": "margin-right",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "25px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158284,
+              "selector": ".remove-alert .body,.warning-alert .body",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;line-height:16.8px;text-align:center",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "16.8px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158407,
+              "selector": ".remove-alert .action,.warning-alert .action",
+              "conditions": [],
+              "declarations": "display:flex;gap:20px;justify-content:center",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158497,
+              "selector": ".remove-alert .action .ok-button,.remove-alert .action .secondary-button,.warning-alert .action .ok-button,.warning-alert .action .secondary-button",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#707070;border-radius:3px;color:#ccc;cursor:pointer;display:flex;font-size:12px;height:27px;justify-content:center;text-transform:uppercase;-webkit-user-select:none;user-select:none;width:90px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#707070",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158874,
+              "selector": ".remove-alert .action .enable-button,.warning-alert .action .enable-button",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#44d62c;border-radius:3px;color:#212121;cursor:pointer;display:flex;font-size:12px;height:27px;justify-content:center;text-transform:uppercase;-webkit-user-select:none;user-select:none;width:90px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#44d62c",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#212121",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 184379,
+              "selector": ".backdrop",
+              "conditions": [],
+              "declarations": "height:100%!important",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": true
+                }
+              ]
+            },
+            {
+              "offset": 446298,
+              "selector": ".style-icon",
+              "conditions": [],
+              "declarations": "display:flex;height:20px;justify-content:center;margin-top:5px;position:relative;width:27px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "margin-top",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "27px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446402,
+              "selector": ".style-icon .tip",
+              "conditions": [],
+              "declarations": "width:200px",
+              "properties": [
+                {
+                  "property": "width",
+                  "value": "200px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446431,
+              "selector": ".style-icon:hover .tip",
+              "conditions": [],
+              "declarations": "left:0;opacity:1;right:auto;top:28px;visibility:visible;z-index:100",
+              "properties": [
+                {
+                  "property": "left",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "right",
+                  "value": "auto",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "100",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446522,
+              "selector": ".style-icon.warning-icon",
+              "conditions": [],
+              "declarations": "background:url(../../static/media/warning-icon.b0086fcc.svg) no-repeat;margin-right:-10px",
+              "properties": [
+                {
+                  "property": "background",
+                  "value": "url(../../static/media/warning-icon.b0086fcc.svg) no-repeat",
+                  "important": false
+                },
+                {
+                  "property": "margin-right",
+                  "value": "-10px",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "source": ".ref/devices/3334/static/media/warning.ad3f47f8.svg",
+          "output": "assets/synapse/stream-mixer-warning.svg",
+          "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f"
+        },
+        {
+          "source": ".ref/devices/3334/static/media/warning-icon.b0086fcc.svg",
+          "output": "assets/synapse/stream-mixer-warning-icon.svg",
+          "sha256": "88d4c198a7a2cf0dd22802c3a240d1210410129e338071ace1e1e9f9d98837aa"
+        }
+      ]
+    },
+    {
+      "product_id": 3337,
+      "manifest": {
+        "path": ".ref/devices/3337/asset-manifest.json",
+        "sha256": "40c53ee5f5b950a7666d88bedb92759312736a5e457af342f68bb54289c5a311"
+      },
+      "receipts": [
+        {
+          "symbol": "Wn",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 4027857,
+          "end": 4028342,
+          "source": "Wn={levelMeter:[],waitingForLevelMeter:!1,inputChannels:[],exterInputChannels:[],isStreamMixerEnabled:!1,streamMixerEnablePendingMwAck:!1,isStreamMixMonitor:!0,streamMixVolume:{isEnabled:!1,value:0},playbackMixVolume:{isEnabled:!1,value:0},playbackMixDevice:\"\",shortcutMapping:{},playbackDevices:[],recordDevices:[],isDeviceReady:!0,activeStreamMixerStatus:!1,presets:[Vn],selectedPresetGuid:Vn.guid,microphoneMonitorValue:0,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+        },
+        {
+          "symbol": "Yn",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 4028349,
+          "end": 4040194,
+          "source": "Yn=function(e,E){var a,_;if(\"undefined\"===typeof e)return Wn;const t=null!==(a=(null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.subCategory)||(null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.category))&&void 0!==a?a:null;switch(null===(_=bn[t])||void 0===_||_.call(bn,E,e),E.type){case $.TIX:{let a=(0,v.A)({},E.payload);if(a.presets&&a.selectedPresetGuid){const e=a.presets.find(e=>e.guid===a.selectedPresetGuid);e&&e.shortcutMapping&&(a.shortcutMapping=e.shortcutMapping)}if(a.inputChannels&&e.inputChannels.length>0){if(e.inputChannels.some(e=>\"number\"===typeof e.order)){const E=new Map;e.inputChannels.forEach(e=>{\"number\"===typeof e.order&&E.set(e.name,e.order)}),a.inputChannels=a.inputChannels.map(e=>(0,v.A)((0,v.A)({},e),{},{order:E.has(e.name)?E.get(e.name):9999})),a.inputChannels.sort((e,E)=>{var a,_;return(null!==(a=e.order)&&void 0!==a?a:9999)-(null!==(_=E.order)&&void 0!==_?_:9999)})}}return(0,v.A)((0,v.A)((0,v.A)({},e),a),{},{streamMixerEnablePendingMwAck:!1})}case $.WkU:{var i;let a=(0,v.A)((0,v.A)({},e),{},{isStreamMixerEnabled:E.payload,streamMixerEnablePendingMwAck:!0,activeStreamMixerStatus:!1,levelMeter:E.payload?e.levelMeter:[],waitingForLevelMeter:Boolean(E.payload)}),_=new pe(\"ON_SET_STREAM_MIXER_ENABLE\",void 0,{isStreamMixerEnabled:E.payload});null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_SET_STREAM_MIXER_ENABLE\",timerTick:void 0,payload:{isStreamMixerEnabled:E.payload}});return a=de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),a}case $.e3i:{var o;let E=(0,v.A)({},e),a=new pe(\"ON_OPEN_WINDOW_PROPERTIES\",void 0);null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_OPEN_WINDOW_PROPERTIES\",timerTick:void 0});return E=de(E,{timertick:a.stateMachineEvent.timerTick,actionType:a.stateMachineEvent.type,payload:a.stateMachineEvent.payload}),E}case $.W4E:{var n;const a={streamMixVolume:(0,v.A)((0,v.A)({},E.payload),{},{isToggle:e.streamMixVolume.isEnabled!==E.payload.isEnabled})};let _=(0,v.A)((0,v.A)({},e),a);const t=new pe(\"ON_SET_STREAM_MIX_VOLUME\",void 0,(0,v.A)({},a));null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_STREAM_MIX_VOLUME\",timerTick:void 0,payload:a});return de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload})}case $.$yb:{var r;const a={playbackMixVolume:(0,v.A)((0,v.A)({},E.payload),{},{isToggle:e.playbackMixVolume.isEnabled!==E.payload.isEnabled})};let _=(0,v.A)((0,v.A)({},e),a),t=new pe(\"ON_SET_PLAYBACK_MIX_VOLUME\",void 0,(0,v.A)({},a));null===(r=window.mwBroadcastChannel)||void 0===r||r.postMessage({type:\"ON_SET_PLAYBACK_MIX_VOLUME\",timerTick:void 0,payload:a});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.z4S:{var s;let a=[...e.inputChannels];const _={action:\"add\",modifyInputChannel:E.payload};if(a.findIndex(e=>e.name===E.payload.name)>=0)a=a.map(e=>(e.name===E.payload.name&&(e=(0,v.A)((0,v.A)({},e),E.payload),\"configurable\"===E.payload.inputChannelType&&(_.modifyInputChannel=e)),e));else{const e=(0,v.A)({},E.payload);a=[...a,e],\"configurable\"===E.payload.inputChannelType&&(_.modifyInputChannel=e)}let t=(0,v.A)((0,v.A)({},e),{},{inputChannels:a}),i=new pe($.kNn,void 0,{inputChannels:a});null===(s=window.mwBroadcastChannel)||void 0===s||s.postMessage({type:$.kNn,timerTick:void 0,payload:_});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.AiW:{var T;const a=E.payload,_=a.name,t=a.type,i=a.value;let o=[...e.inputChannels],n=i;o=o.map(e=>(e.name===_&&(\"isLinked\"!==t&&(n=(0,v.A)((0,v.A)({},n),{},{isToggle:e[t].isEnabled!==i.isEnabled})),e=(0,v.A)((0,v.A)({},e),{},{[t]:i})),e));let r={action:\"edit\",modifyInputChannel:{name:_,[t]:n}},s=(0,v.A)((0,v.A)({},e),{},{inputChannels:o}),I=new pe($.kNn,void 0,{inputChannels:o});null===(T=window.mwBroadcastChannel)||void 0===T||T.postMessage({type:$.kNn,timerTick:void 0,payload:r});return s=de(s,{timertick:I.stateMachineEvent.timerTick,actionType:I.stateMachineEvent.type,payload:I.stateMachineEvent.payload}),s}case $.xIQ:{var I;let a=[...e.inputChannels];a=a.map(e=>(e.name===E.payload.name&&(e.isVisible=!1),e));const _={action:\"remove\",modifyInputChannel:E.payload};let t=(0,v.A)((0,v.A)({},e),{},{inputChannels:a});const i=new pe($.kNn,void 0,{inputChannels:a});null===(I=window.mwBroadcastChannel)||void 0===I||I.postMessage({type:$.kNn,timerTick:void 0,payload:_});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.wzR:{var O;const a=E.payload,_=a.fromIndex,t=a.toIndex,i=[...e.inputChannels],o=i.filter(e=>e.isVisible),n=i.filter(e=>!e.isVisible);if(_<0||_>=o.length||t<0||t>o.length)return e;const r=o.splice(_,1),s=(0,Ue.A)(r,1)[0];o.splice(t,0,s);const T=[...o,...n].map((e,E)=>(0,v.A)((0,v.A)({},e),{},{order:E})),I={action:\"reorder\",inputChannels:T};let A=(0,v.A)((0,v.A)({},e),{},{inputChannels:T});const S=new pe($.kNn,void 0,{inputChannels:T});null===(O=window.mwBroadcastChannel)||void 0===O||O.postMessage({type:$.kNn,timerTick:void 0,payload:I});return A=de(A,{timertick:S.stateMachineEvent.timerTick,actionType:S.stateMachineEvent.type,payload:S.stateMachineEvent.payload}),A}case $.hyz:{var A;const a=E.payload.device,_={action:\"edit\",modifyInputChannel:{name:a.name,inputChannelType:a.inputChannelType,exterInputDevice:a.exterInputDevice}},t=e.inputChannels.map(e=>(e.name===a.name&&(e=(0,v.A)((0,v.A)({},e),a)),e));let i=(0,v.A)((0,v.A)({},e),{},{inputChannels:t}),o=new pe($.kNn,void 0,{exterInputDevice:a.exterInputDevice});null===(A=window.mwBroadcastChannel)||void 0===A||A.postMessage({type:$.kNn,timerTick:void 0,payload:_});return i=de(i,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),i}case $.ieW:{var S;const E={isStreamMixMonitor:!e.isStreamMixMonitor};let a=(0,v.A)((0,v.A)({},e),E);const _=new pe(\"ON_SET_STREAM_MIX_MONITOR\",void 0,(0,v.A)({},E));null===(S=window.mwBroadcastChannel)||void 0===S||S.postMessage({type:\"ON_SET_STREAM_MIX_MONITOR\",timerTick:void 0,payload:E});return de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload})}case $.FOJ:{var l;const a=E.payload.index;if(a<0)return console.error(\"CHANGE_PLAYBACK_MIX_DEVICE get error, action.payload\",E.payload),e;const _=e.playbackDevices[a];if(!_)return console.error(\"CHANGE_PLAYBACK_MIX_DEVICE get error, playbackDevices\",e.playbackDevices),e;const t={changePlayBackMixDevice:_.name};let i=(0,v.A)((0,v.A)({},e),{},{playbackMixDevice:_.name});const o=new pe($.cIo,void 0,(0,v.A)({},t));null===(l=window.mwBroadcastChannel)||void 0===l||l.postMessage({type:$.cIo,timerTick:void 0,payload:t});return de(i,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload})}case $.uD1:return(0,v.A)((0,v.A)({},e),{},{levelMeter:E.payload});case $.SJd:return(0,v.A)((0,v.A)({},e),{},{isDeviceReady:E.payload});case $.QsH:return(0,v.A)((0,v.A)({},e),{},{activeStreamMixerStatus:E.payload});case $.Ce$:case $.yn7:case $.NkZ:return(0,v.A)((0,v.A)({},e),E.payload);case $.Rax:return(0,v.A)((0,v.A)({},e),{},{playbackMixDevice:E.payload});case $.JKI:{var R;let a=E.payload.playbackDevices;return a=null===(R=a)||void 0===R?void 0:R.map(e=>({name:e})),(0,v.A)((0,v.A)({},e),{},{playbackDevices:a})}case $.Zsq:{var N;let a=E.payload.recordDevices;return a=null===(N=a)||void 0===N?void 0:N.map(e=>({name:e})),(0,v.A)((0,v.A)({},e),{},{recordDevices:a})}case $.VbO:{var d;let a=function(e,E){let a=e.presets.map(a=>a.guid===e.selectedPresetGuid?(0,v.A)((0,v.A)({},a),{},{mapping:E.payload}):(0,v.A)({},a));return(0,v.A)((0,v.A)({},e),{},{presets:a})}(e,E);const _=new pe($.rsj,void 0,{newShortcutMapping:E.payload,changePresetGUID:a.selectedPresetGuid});null===(d=window.mwBroadcastChannel)||void 0===d||d.postMessage({type:$.rsj,timerTick:void 0,payload:{newShortcutMapping:E.payload,changePresetGUID:a.selectedPresetGuid}});return a=de(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),a}case $.t59:{var c;const a=e.presets.find(e=>e.guid===E.payload);let _=(0,v.A)((0,v.A)({},e),{},{selectedPresetGuid:E.payload,shortcutMapping:(null===a||void 0===a?void 0:a.shortcutMapping)||{}});const t=new pe($.hxD,void 0,{newActivePresetGUID:E.payload});null===(c=window.mwBroadcastChannel)||void 0===c||c.postMessage({type:$.hxD,timerTick:void 0,payload:{selectedPresetGuid:E.payload}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.r8G:{var u;const a=[...e.presets,E.payload];p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:E.payload.guid,shortcutMapping:{}});const t=new pe($.vYn,void 0,{newPreset:E.payload});null===(u=window.mwBroadcastChannel)||void 0===u||u.postMessage({type:$.vYn,timerTick:void 0,payload:{newPreset:E.payload}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.J6C:{var C;const a=[...e.presets,E.payload];p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:E.payload.guid,shortcutMapping:{}});const t=new pe($.d2Q,void 0,{newPreset:E.payload,sourcePresetGuid:E.payload.guid});null===(C=window.mwBroadcastChannel)||void 0===C||C.postMessage({type:$.d2Q,timerTick:void 0,payload:{newPreset:E.payload,selectedPresetGuid:_.selectedPresetGuid}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.wv5:{var D;let a=e.presets.map(a=>a.guid===e.selectedPresetGuid?(0,v.A)((0,v.A)({},a),{},{name:E.payload}):(0,v.A)({},a));p_(a);let _=(0,v.A)((0,v.A)({},e),{},{presets:a});const t=new pe($.WI6,void 0,{newName:E.payload,renamePresetGUID:_.selectedPresetGuid});null===(D=window.mwBroadcastChannel)||void 0===D||D.postMessage({type:$.WI6,timerTick:void 0,payload:{newName:E.payload,selectedPresetGuid:_.selectedPresetGuid}});return _=de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),_}case $.xAH:{var L;const a=e.presets.filter(e=>e.guid!==E.payload);p_(a);const _=a[0]?a[0].guid:\"\";let t=(0,v.A)((0,v.A)({},e),{},{presets:a,selectedPresetGuid:_,shortcutMapping:a[0]?a[0].shortcutMapping:{}});const i=new pe($.BGI,void 0,{deletedGUID:E.payload,newSelectedPresetGUID:t.selectedPresetGuid});null===(L=window.mwBroadcastChannel)||void 0===L||L.postMessage({type:$.BGI,timerTick:void 0,payload:{deletedPresetId:E.payload,selectedPresetGuid:t.selectedPresetGuid}});return t=de(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case $.R3K:{var P;let a=(0,v.A)((0,v.A)({},e),{},{shortcutMapping:{}});const _=new pe($.FL$,void 0,{presetGuid:E.payload.guid});null===(P=window.mwBroadcastChannel)||void 0===P||P.postMessage({type:$.FL$,timerTick:void 0,payload:{selectedPresetGuid:E.payload.guid}});const t={timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload};return a=de(e,t),a}case $.Z7F:{var p;const a={microphoneMonitorValue:E.payload};let _=(0,v.A)((0,v.A)({},e),a);const t=new pe($.Z7F,void 0,(0,v.A)({},a));null===(p=window.mwBroadcastChannel)||void 0===p||p.postMessage({type:$.Z7F,timerTick:void 0,payload:a});return de(_,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload})}default:return e}}"
+        },
+        {
+          "symbol": "Jm",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 4473367,
+          "end": 4473423,
+          "source": "Jm=e=>E=>{void 0!==e&&E({type:$.FOJ,payload:{index:e}})}"
+        },
+        {
+          "symbol": "yU",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 4502901,
+          "end": 4514327,
+          "source": "yU=(0,h.connect)(e=>({lang:e.languageReducer.lang,activeStreamMixerStatus:e.streamMixerReducer.activeStreamMixerStatus,playbackDevices:e.streamMixerReducer.playbackDevices,recordDevices:e.streamMixerReducer.recordDevices,presets:e.streamMixerReducer.presets,selectedPresetGuid:e.streamMixerReducer.selectedPresetGuid,levelMeter:e.streamMixerReducer.levelMeter,inputChannels:e.streamMixerReducer.inputChannels,isStreamMixerEnabled:e.streamMixerReducer.isStreamMixerEnabled,streamMixVolume:e.streamMixerReducer.streamMixVolume,playbackMixVolume:e.streamMixerReducer.playbackMixVolume,playbackMixDevice:e.streamMixerReducer.playbackMixDevice,isStreamMixMonitor:e.streamMixerReducer.isStreamMixMonitor,shortcutMapping:e.streamMixerReducer.shortcutMapping}),e=>(0,G.zH)((0,v.A)((0,v.A)({},P),_),e))(e=>{const E=e.setStreamMixerEnable,a=e.setStreamMixMonitor,_=e.openWindowProperties,t=e.setStreamMixVolume,i=e.setPlaybackMixVolume,o=e.addInputChannel,n=e.changeInputChannel,r=e.deleteInputChannel,s=e.recordDevices,T=e.playbackDevices,I=e.changePlaybackMixDevice,O=e.lang,A=e.activeStreamMixerStatus,S=e.addStreamMixerPreset,l=e.changeStreamMixerPresetShortcutMapping,R=e.selectedStreamMixerPreset,N=e.duplicateStreamMixerPreset,d=e.renameStreamMixerPreset,c=e.resetStreamMixerPreset,u=e.deleteStreamMixerPreset,C=e.isStreamMixerEnabled,D=e.streamMixVolume,L=e.playbackMixVolume,P=e.playbackMixDevice,M=e.isStreamMixMonitor,m=e.shortcutMapping,U=e.inputChannels,h=(0,p.useMemo)(()=>U.filter(e=>e.inputChannelType===HU).filter(e=>!FU.includes(e.name)),[U]),G=(0,p.useMemo)(()=>U.filter(e=>e.inputChannelType===fU),[U]),g=(0,p.useState)(!1),H=(0,Ue.A)(g,2),f=H[0],B=H[1],F=(0,ge.jsxs)(\"div\",{className:\"listening-ear-preview\",children:[(0,ge.jsx)(\"div\",{className:\"title\",children:ar.onLang(O).productName}),(0,ge.jsx)(\"div\",{onClick:a,className:\"link-mode \".concat(M?\"listening-ear-icon\":\"listening-ear-icon-disabled\"),children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:M?Ge.IiZ:Ge.J6P})})})]}),y=()=>(0,ge.jsx)(\"div\",{className:\"style-icon warning-icon\",children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:Ge.YHN})})}),b=(0,p.useMemo)(()=>h.filter(e=>e.isVisible),[h]),V=(0,p.useMemo)(()=>h.filter(e=>!e.isVisible),[h]),W=(0,p.useMemo)(()=>G.filter(e=>e.isVisible),[G]),Y=(0,p.useMemo)(()=>{const e=[];if(s.length-W.length>0)for(let E=W.length;E<s.length&&E<=3;E++){const a=G.find(e=>e.name===\"Aux\".concat(E+1));a&&e.push(a)}return e},[s,W,G]),w=(0,p.useMemo)(()=>s.filter(e=>!W.some(E=>E.exterInputDevice===e.name)),[s,W]),z=e=>{const E=(0,v.A)((0,v.A)({},e),{},{isVisible:!0});o(E)},K=e=>{const E=(()=>{const e=G.filter(e=>e.isVisible);for(let E=1;E<=3;E++){let a=\"Aux\".concat(E);if(-1===e.findIndex(e=>e.name===a))return a}})(),a={name:E,exterInputDevice:e.name,inputChannelType:fU};z(a)},k=(0,p.useState)(\"\"),x=(0,Ue.A)(k,2),X=x[0],j=x[1],Z=(0,p.useState)(!1),q=(0,Ue.A)(Z,2),Q=q[0],$=q[1],ee=(0,p.useState)(!1),Ee=(0,Ue.A)(ee,2),ae=Ee[0],_e=Ee[1],te=(0,p.useState)(!1),ie=(0,Ue.A)(te,2),oe=ie[0],ne=ie[1],re=e.presets,se=e.selectedPresetGuid;let Te=re.find(e=>{let E=e.guid;return se===E});const Ie=re.findIndex(e=>{let E=e.guid;return se===E}),Oe=[m],Ae=e=>{e=e.trim(),$(!1);let E=(0,ke.$B)(re,e);e&&e.replace(/\\s/g,\"\").length&&E&&d(e)},Se=e=>{re[e].guid!==se&&R(re[e].guid)},le=()=>{var E=[];return 1===e.presets.length&&(E=[Ge.SJi]),E},Re=E=>{if(void 0!==se||E===Ge.gjU)switch(E){case Ge.gjU:{const E=tr(),a=E?\"\".concat(E,\"-Default\"):\"Default\";(e=>{let E={name:e,guid:(0,ke.gZ)()};S(E)})((0,ke.AM)(e.presets,a));break}case Ge.sG0:setTimeout(()=>{ne(!0)},100);break;case Ge.mjN:(()=>{let e={name:(0,ke.d9)(re,Te.name),guid:(0,ke.gZ)()};N(e)})();break;case Ge.Pie:j(Te.name),$(!0);break;case Ge.SJi:setTimeout(()=>{_e(!0)},100)}},Ne=async e=>{_e(!1),e&&u(se)};return(0,ge.jsxs)(ge.Fragment,{children:[(0,ge.jsxs)(\"div\",{className:\"stream-mixer-container\",children:[(0,ge.jsxs)(\"div\",{className:\"stream-mixer-preset-container\",children:[(0,ge.jsx)(\"div\",{className:\"wrapper-dropdown\",children:(0,ge.jsxs)(\"div\",{className:\"stream-mixer-preset-list\",children:[(0,ge.jsx)(\"div\",{className:\"stream-mixer-preset-header\",children:(0,ge.jsx)(\"div\",{className:\"stream-mixer-preset-title\",children:(0,ge.jsx)(he.A,{text:Ge.QaP})})}),(0,ge.jsxs)(\"div\",{role:\"region\",\"aria-label\":\"profile bar\",className:\"box-preset mt10 profile-bar flex\",children:[(0,ge.jsx)(\"div\",{className:\"rename-rect\",children:Q?(0,ge.jsx)(tI,{name:\"profile\",maxLength:32,value:X,active:Q,sendToParent:Ae}):(0,ge.jsx)(ze,{notLocalize:!0,allowOneItem:!0,dataSet:re,name:\"caliDvDrop\",selectOption:Se,value:Ie})}),(0,ge.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,ge.jsx)(KT,{menu:aI,toggleClass:\"dots3 hover-border\",menuClass:\"profile-act\",menuClick:Re,disabledItems:le(),elementId:\"streamMixerPreset\"}),(0,ge.jsx)(wI,{show:oe,resetProfile:()=>{c(Te)},resetKeyMapping:()=>{},isShowResetKeybinds:!0,onClose:()=>{ne(!1)}}),(0,ge.jsx)(JT,{active:ae,confirmDel:Ne,title:Ge.rlv,deleteMsg:Ge.Gfw})]})]})]})}),(0,ge.jsxs)(\"div\",{className:\"wrapper-shortcut\",children:[(0,ge.jsx)(\"div\",{className:\"h2-title ml10\",children:(0,ge.jsx)(\"span\",{children:(0,ge.jsx)(he.A,{text:Ge.JWp})})}),(0,ge.jsx)(\"div\",{className:\"box-shortcut mt10 ml10\",children:(0,ge.jsx)(gU,{shortcut:m,assignment:null===m||void 0===m?void 0:m.assignment,assignmentValue:null===m||void 0===m?void 0:m.assignmentValue,subContent:null===m||void 0===m?void 0:m.subContent,mappingList:Oe,updateMappingToButton:e=>{l(e)}},null===m||void 0===m?void 0:m.guid)})]})]}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers\",children:(0,ge.jsxs)(\"div\",{className:\"widgets justify-audio-input\",children:[(0,ge.jsx)(gS,{title:Ge.Js1,hasSwitch:!0,toggleSwitch:()=>C?E(!C):void(A?B(!0):E(!C)),active:C,extraClass:\"equal-h-widgets \".concat(C?\"\":\"stream-mixer-disable-background-color\"),children:(0,ge.jsx)(\"div\",{className:C?\"\":\"widget-opacity\",children:(0,ge.jsx)(he.A,{text:Ge.G$0})})}),(0,ge.jsx)(gS,{tips:Ge.SyK,title:Ge.wmL,extraClass:C?\"\":\"disabled\",children:(0,ge.jsxs)(\"div\",{className:\"open-windows-sound-mixer-options\",children:[(0,ge.jsx)(\"div\",{className:\"window-icon\"}),(0,ge.jsx)(\"div\",{className:\"open-windows-sound-mixer-options-link\",onClick:_,children:(0,ge.jsx)(he.A,{text:Ge.rMn})})]})})]})})}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers  \".concat(C?\"\":\"disabled\"),children:(0,ge.jsxs)(\"div\",{children:[(0,ge.jsx)(\"div\",{className:\"group-header\",children:(0,ge.jsx)(\"div\",{className:\"title \".concat(C?\"\":\"disabled\"),children:(0,ge.jsx)(he.A,{text:Ge.Z2r})})}),(0,ge.jsxs)(\"div\",{className:\"widgets justify-audio-input widgets-max-width\",children:[(0,ge.jsxs)(gS,{tips:Ge.Gfk,title:Ge.C_0,active:C,supportsShortcut:!0,renderShortcut:F,children:[(0,ge.jsx)(OU,{meterName:\"DeviceId_StreamMix\",levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{isShowLink:!1,isShowPlaybackMix:!1,isShowHeadphone:!1,useStreamMicrophoneIcon:!0,microphoneValue:D,microphoneChangeValueAction:t,isDisable:!C})]}),(0,ge.jsxs)(gS,{tips:Ge.XAc,title:Ge.$N7,active:!1,supportsShortcut:!0,renderShortcut:(()=>{let e=!0;const E=[...T];let _=E.findIndex(e=>e.name===P);return-1===_&&(e=!1,E.push({name:P,disabled:!0}),_=E.length-1),(0,ge.jsxs)(\"div\",{className:\"listening-ear-preview\",children:[e?null:y(),(0,ge.jsx)(ze,{allowOneItem:!0,dataSet:E,name:\"deviceList\",selectOption:I,value:_,disable:!1}),(0,ge.jsx)(\"div\",{onClick:a,className:\"link-mode \".concat(M?\"listening-ear-icon-disabled\":\"listening-ear-icon\"),children:(0,ge.jsx)(\"div\",{className:\"tip\",children:(0,ge.jsx)(he.A,{text:M?Ge.J6P:Ge.IiZ})})})]})})(),customStyle:{zIndex:1},children:[(0,ge.jsx)(OU,{meterName:\"DeviceId_PlaybackMix\",levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{isShowLink:!1,isShowMicrophone:!1,useStreamMicrophoneIcon:!0,headphoneValue:L,headphoneChangeValueAction:i,isDisable:!C})]})]})]})})}),(0,ge.jsx)(\"div\",{className:\"group\",children:(0,ge.jsx)(\"div\",{className:\"widget-containers \".concat(C?\"\":\"disabled\"),children:(0,ge.jsxs)(\"div\",{children:[(0,ge.jsx)(\"div\",{className:\"group-header\",children:(0,ge.jsx)(\"div\",{className:\"title \".concat(C?\"\":\"disabled\"),children:(0,ge.jsx)(he.A,{text:Ge.ueX})})}),(0,ge.jsxs)(\"div\",{className:\"widgets widgets-max-width justify-audio-input\",children:[b.map(E=>(0,ge.jsxs)(CU,{title:E.name,deleteFunc:()=>r(E),children:[(0,ge.jsx)(OU,{meterName:BU(E.name),levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{useStreamMicrophoneIcon:!0,isLinked:E.isLinked,setIsLinked:e=>n(E.name,\"isLinked\",e),microphoneValue:E.streamMixerInputVolume,microphoneChangeValueAction:e=>n(E.name,\"streamMixerInputVolume\",e),headphoneValue:E.playbackMixInputVolume,headphoneChangeValueAction:e=>n(E.name,\"playbackMixInputVolume\",e),isDisable:!C})]},E.name)),W.map((E,a)=>{let _=!0;const t=[...s];let i=t.findIndex(e=>e.name===E.exterInputDevice);return-1===i&&(_=!1,t.push({name:E.exterInputDevice,disabled:!0}),i=t.length-1),(0,ge.jsx)(\"div\",{style:{position:\"relative\",zIndex:W.length-a},children:(0,ge.jsxs)(CU,{title:\"\".concat(E.name),deleteFunc:()=>r(E),advanceAction:(0,ge.jsxs)(\"div\",{className:\"playback-device-container\",children:[_?null:y(),(0,ge.jsx)(ze,{allowOneItem:!0,dataSet:t,name:\"deviceList\",selectOption:a=>{var _;a!==i&&e.changeExternalInputDevice((0,v.A)((0,v.A)({},E),{},{exterInputDevice:(null===(_=t[a])||void 0===_?void 0:_.name)||\"\"}))},value:i})]}),children:[(0,ge.jsx)(OU,{meterName:BU(E.name),levelMeter:e.levelMeter}),(0,ge.jsx)(uU,{useStreamMicrophoneIcon:!0,isLinked:E.isLinked,setIsLinked:e=>n(E.name,\"isLinked\",e),microphoneValue:E.streamMixerInputVolume,microphoneChangeValueAction:e=>n(E.name,\"streamMixerInputVolume\",e),headphoneValue:E.playbackMixInputVolume,headphoneChangeValueAction:e=>n(E.name,\"playbackMixInputVolume\",e),isDisable:!C})]},E.name)},E.name)}),(0!==V.length||0!==Y.length)&&(0,ge.jsxs)(gS,{tips:Ge.qup,title:Ge.aB7,active:!1,children:[(0,ge.jsxs)(\"div\",{className:\"route-app-container\",children:[(0,ge.jsx)(\"div\",{className:\"route-app-message\",children:(0,ge.jsx)(bS,{href:null===J.DeviceInfo||void 0===J.DeviceInfo?void 0:J.DeviceInfo.routeGuideLink,children:(0,ge.jsx)(he.A,{text:Ge.Pkc})})}),(0,ge.jsx)(\"div\",{className:\"external-link-icon\"})]}),V.length>0&&(0,ge.jsx)(\"div\",{className:\"categories-container\",children:V.map(e=>(0,ge.jsx)(\"div\",{className:\"category-btn\",onClick:()=>z(e),children:\"\".concat(e.name)},e.name))}),V.length>0&&Y.length>0&&w.lenth>0&&(0,ge.jsx)(\"div\",{className:\"divider\"}),Y.length>0&&w.length>0&&(0,ge.jsx)(\"div\",{className:\"categories-container\",children:w.map(e=>(0,ge.jsx)(xm,{className:\"category-btn\",text:\"+ \".concat(e.name),tipText:e.name,onClick:()=>K(e)},e.name))})]})]})]})})})]}),f&&!C?(0,ge.jsx)(\"div\",{className:\"customize\",children:(0,ge.jsx)(\"div\",{className:\"backdrop show\",children:(0,ge.jsxs)(\"div\",{className:\"warning-alert\",style:{height:\"164px\",width:\"620px\"},children:[(0,ge.jsxs)(\"div\",{className:\"title\",children:[(0,ge.jsx)(\"div\",{className:\"icon\"}),(0,ge.jsx)(he.A,{text:Ge.Ec2})]}),(0,ge.jsx)(\"div\",{className:\"body\",style:{whiteSpace:\"pre-line\"},children:(0,ge.jsx)(he.A,{text:Ge.nlF})}),(0,ge.jsx)(\"br\",{}),(0,ge.jsxs)(\"div\",{className:\"action\",children:[(0,ge.jsx)(\"div\",{className:\"secondary-button\",onClick:()=>B(!1),children:(0,ge.jsx)(he.A,{text:Ge.bOp})}),(0,ge.jsx)(\"div\",{className:\"enable-button\",onClick:()=>{E(!0),B(!1)},children:(0,ge.jsx)(he.A,{text:Ge.iRy})})]})]})})}):null]})})"
+        },
+        {
+          "symbol": "label:Ec2",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 126376,
+          "end": 126399,
+          "source": "\"STREAM_MIXER_DETECTED\""
+        },
+        {
+          "symbol": "label:nlF",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 126403,
+          "end": 126434,
+          "source": "\"STREAM_MIXER_DETECTED_WARNING\""
+        },
+        {
+          "symbol": "label:bOp",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 125422,
+          "end": 125430,
+          "source": "\"CANCEL\""
+        },
+        {
+          "symbol": "label:iRy",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 123855,
+          "end": 123863,
+          "source": "\"ENABLE\""
+        },
+        {
+          "symbol": "label:YHN",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 126350,
+          "end": 126372,
+          "source": "\"DEVICE_NOT_FOUND_TIP\""
+        },
+        {
+          "symbol": "label:Js1",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 126018,
+          "end": 126039,
+          "source": "\"STREAM_MIXER_HEADER\""
+        },
+        {
+          "symbol": "label:G$0",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 126043,
+          "end": 126069,
+          "source": "\"STREAM_MIXER_INFORMATION\""
+        },
+        {
+          "symbol": "action:QsH",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 61584,
+          "end": 61621,
+          "source": "\"MW_UPDATE_ACTIVE_STREAM_MIXER_TO_UI\""
+        },
+        {
+          "symbol": "action:JKI",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 61663,
+          "end": 61694,
+          "source": "\"MW_SET_PLAYBACK_DEVICES_TO_UI\""
+        },
+        {
+          "symbol": "action:Rax",
+          "path": ".ref/devices/3337/static/js/main.a048e901.js",
+          "sha256": "835ff3af59d774b85c02bfe97fae62e45ec0921218884fcc6f38224c4103b0b3",
+          "offset": 61625,
+          "end": 61659,
+          "source": "\"MW_SET_PLAYBACK_MIX_DEVICE_TO_UI\""
+        }
+      ],
+      "labels": {
+        "Ec2": "STREAM_MIXER_DETECTED",
+        "nlF": "STREAM_MIXER_DETECTED_WARNING",
+        "bOp": "CANCEL",
+        "iRy": "ENABLE",
+        "YHN": "DEVICE_NOT_FOUND_TIP",
+        "Js1": "STREAM_MIXER_HEADER",
+        "G$0": "STREAM_MIXER_INFORMATION"
+      },
+      "actions": {
+        "QsH": "MW_UPDATE_ACTIVE_STREAM_MIXER_TO_UI",
+        "JKI": "MW_SET_PLAYBACK_DEVICES_TO_UI",
+        "Rax": "MW_SET_PLAYBACK_MIX_DEVICE_TO_UI"
+      },
+      "css": [
+        {
+          "path": ".ref/devices/3337/static/css/main.24a0913d.css",
+          "sha256": "b517361ef6c609ce7e88b76eac96123e0de9a585926c21220d66da0fd589f2ac",
+          "rules": [
+            {
+              "offset": 12537,
+              "selector": ".backdrop",
+              "conditions": [],
+              "declarations": "background-color:#00000080;height:150%;left:0;opacity:0;position:absolute;top:0;transition:visibility 0s,opacity .1s linear;visibility:hidden;width:100%;will-change:visibility,opacity",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#00000080",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "150%",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "visibility 0s,opacity .1s linear",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "hidden",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "will-change",
+                  "value": "visibility,opacity",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12731,
+              "selector": ".backdrop,.backdrop.glow",
+              "conditions": [],
+              "declarations": "background-position:bottom;background-repeat:no-repeat",
+              "properties": [
+                {
+                  "property": "background-position",
+                  "value": "bottom",
+                  "important": false
+                },
+                {
+                  "property": "background-repeat",
+                  "value": "no-repeat",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12811,
+              "selector": ".backdrop.glow",
+              "conditions": [],
+              "declarations": "background-image:url(../../static/media/background_glow.43f70cb2.svg)",
+              "properties": [
+                {
+                  "property": "background-image",
+                  "value": "url(../../static/media/background_glow.43f70cb2.svg)",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12896,
+              "selector": ".backdrop.show",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;z-index:106",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "106",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 12952,
+              "selector": ".backdrop.show .choose-a-mat",
+              "conditions": [],
+              "declarations": "top:100px",
+              "properties": [
+                {
+                  "property": "top",
+                  "value": "100px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 157603,
+              "selector": ".remove-alert,.warning-alert",
+              "conditions": [],
+              "declarations": "background-color:#111;border:1px solid #fd8611;border-radius:5px;color:#ccc;font-size:14px;left:50%;line-height:17px;padding:20px 30px;position:fixed;top:50%;transform:translateX(-50%) translateY(-100%);width:400px",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #fd8611",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "20px 30px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "fixed",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "transform",
+                  "value": "translateX(-50%) translateY(-100%)",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "400px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 157847,
+              "selector": ".remove-alert .title,.warning-alert .title",
+              "conditions": [],
+              "declarations": "align-items:center;color:#fd8611;display:flex;font-family:Roboto;font-size:16px;justify-content:center;line-height:16.8px;margin-bottom:20px;text-align:center;text-transform:uppercase",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fd8611",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "16px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "16.8px",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158074,
+              "selector": ".remove-alert .title .icon,.warning-alert .title .icon",
+              "conditions": [],
+              "declarations": "background-image:url(../../static/media/warning.ad3f47f8.svg);background-position:50%;background-repeat:no-repeat;height:25px;margin-right:10px;width:25px",
+              "properties": [
+                {
+                  "property": "background-image",
+                  "value": "url(../../static/media/warning.ad3f47f8.svg)",
+                  "important": false
+                },
+                {
+                  "property": "background-position",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "background-repeat",
+                  "value": "no-repeat",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "25px",
+                  "important": false
+                },
+                {
+                  "property": "margin-right",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "25px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158284,
+              "selector": ".remove-alert .body,.warning-alert .body",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;line-height:16.8px;text-align:center",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "16.8px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158407,
+              "selector": ".remove-alert .action,.warning-alert .action",
+              "conditions": [],
+              "declarations": "display:flex;gap:20px;justify-content:center",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158497,
+              "selector": ".remove-alert .action .ok-button,.remove-alert .action .secondary-button,.warning-alert .action .ok-button,.warning-alert .action .secondary-button",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#707070;border-radius:3px;color:#ccc;cursor:pointer;display:flex;font-size:12px;height:27px;justify-content:center;text-transform:uppercase;-webkit-user-select:none;user-select:none;width:90px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#707070",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 158874,
+              "selector": ".remove-alert .action .enable-button,.warning-alert .action .enable-button",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#44d62c;border-radius:3px;color:#212121;cursor:pointer;display:flex;font-size:12px;height:27px;justify-content:center;text-transform:uppercase;-webkit-user-select:none;user-select:none;width:90px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#44d62c",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#212121",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 184379,
+              "selector": ".backdrop",
+              "conditions": [],
+              "declarations": "height:100%!important",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": true
+                }
+              ]
+            },
+            {
+              "offset": 446298,
+              "selector": ".style-icon",
+              "conditions": [],
+              "declarations": "display:flex;height:20px;justify-content:center;margin-top:5px;position:relative;width:27px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "margin-top",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "27px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446402,
+              "selector": ".style-icon .tip",
+              "conditions": [],
+              "declarations": "width:200px",
+              "properties": [
+                {
+                  "property": "width",
+                  "value": "200px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446431,
+              "selector": ".style-icon:hover .tip",
+              "conditions": [],
+              "declarations": "left:0;opacity:1;right:auto;top:28px;visibility:visible;z-index:100",
+              "properties": [
+                {
+                  "property": "left",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "right",
+                  "value": "auto",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "100",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 446522,
+              "selector": ".style-icon.warning-icon",
+              "conditions": [],
+              "declarations": "background:url(../../static/media/warning-icon.b0086fcc.svg) no-repeat;margin-right:-10px",
+              "properties": [
+                {
+                  "property": "background",
+                  "value": "url(../../static/media/warning-icon.b0086fcc.svg) no-repeat",
+                  "important": false
+                },
+                {
+                  "property": "margin-right",
+                  "value": "-10px",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "source": ".ref/devices/3337/static/media/warning.ad3f47f8.svg",
+          "output": "assets/synapse/stream-mixer-warning.svg",
+          "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f"
+        },
+        {
+          "source": ".ref/devices/3337/static/media/warning-icon.b0086fcc.svg",
+          "output": "assets/synapse/stream-mixer-warning-icon.svg",
+          "sha256": "88d4c198a7a2cf0dd22802c3a240d1210410129e338071ace1e1e9f9d98837aa"
+        }
+      ]
+    }
+  ]
+}

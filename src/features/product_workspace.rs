@@ -82,6 +82,68 @@ impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    #[allow(dead_code)]
+    pub(crate) fn observe_dpi_editing_enabled(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_dpi_editing_enabled(enabled, window, cx)
+            });
+        }
+    }
+    #[allow(dead_code)]
+    pub(crate) fn observe_scroll_wheel(
+        &mut self,
+        observation: super::ScrollWheelObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_scroll_wheel(observation, window, cx)
+            });
+        }
+    }
+    pub(crate) fn captures_snap_keys(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).captures_snap_keys(cx))
+    }
+    pub(crate) fn capture_snap_key_up(&mut self, event: &KeyUpEvent, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.capture_snap_key_up(event, cx));
+        }
+    }
+    /// Dedicated current Snap Tap observations; never a synthetic input/read reply.
+    #[allow(dead_code)]
+    pub(crate) fn observe_snap_tap(
+        &mut self,
+        observation: super::SnapTapObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_snap_tap(observation, window, cx)
+            });
+        }
+    }
+    /// Dedicated Stream Mixer MW observations; never substitute generic audio enumeration.
+    #[allow(dead_code)]
+    pub(crate) fn observe_stream_mixer(
+        &mut self,
+        observation: super::StreamMixerObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_stream_mixer(observation, window, cx)
+            });
+        }
+    }
     /// Adapter boundary for real 1383 runtime observations. Profile data never
     /// supplies BLE/dongle status or a synthetic download reply.
     #[allow(dead_code)]

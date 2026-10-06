@@ -111,7 +111,9 @@ CSS 最终级联已核对，不能只采用首段 stepper 规则：
 - 初值/observe 用 as_f64 再取整数，可消费 normalized 生成的50.0等 JSON 数值；不会因为 as_i64 失败显示成0。父 edit→sync→snapshot→capture 的既有本地保存链保留，未新增设备写接口。
 - `stream-mixer-number-current-evidence.json` 六条 AST 收据的 hash/UTF-16 切片重新逐项匹配，四项源/共享 SVG 逐字节相等，两个 CSS hash 相符。审计脚本只解析当前源码、扫描CSS和比较资源，没有导入或执行供应商模块。该收据不代表窗口像素验收。
 
-首轮发现一项刷新风险已发主线程：InputEvent::Change 改 typed/max_len 后未显式 cx.notify；typed 又在父 render 中被捕获用于 spinner limit，输入子实体刷新不能作为父闭包即时更新的保证。需要在此分支通知 MixerNumber 重绘，避免原 numeric100 的禁用增量闭包残留到新键入文本。此项修复回读前不宣称首轮完全通过。
+首轮发现的刷新风险已修复并再次回读：InputEvent::Change 改 typed/max_len 后现已显式 cx.notify，避免 spinner limit 闭包残留旧状态。同时显式设置 MaskPattern::None；基础库 mask_pattern 会设 mask_pattern_set=true，NumberInput 的 ensure_number_mask 因而直接返回，不会擅自改变源字符串规则。
+
+已核实鼠标去重回调顺序：gpui-pre 0.3.8 的 div click_listeners 按注册顺序 push、按同序执行；装饰器通过 StatefulInteractiveElement::on_click 先注册鼠标标记，BaseButton render 随后才追加 NumberInput 的 on_step。因此鼠标 click 先设 suppress_click 再被 take 消费，键盘 Step 不会被正常前一次鼠标 click 留下标记误吞。Base NumberInput 后置 `.disabled(disabled)` 会覆盖装饰器的 limit 禁用状态；现有 mousedown limit guard 加鼠标 click 去重阻止边界额外步进，但不能据此声称边界按钮的全部指针/无障碍禁用语义与源CSS完全等价。
 
 布局仍是既有通用总线行中嵌入专用数字框，不等同完整 uU 行；窗口级滚轮、焦点选择与实际鼠标/键盘运行验收仍 partial。禁用时 blur 放弃未提交文本是本地保护规则，不能据此推称逐事件重现源CSS禁用行为。
 
@@ -471,3 +473,418 @@ Ee（5681）的边界：
 已回读 2636 previous_deadzones：进入 THUMBSTICKS 时缓存两侧当前值；仅该产品非 sensitivity 的至少 7 编辑更新缓存，低值警告读取缓存；Continue 不修改缓存，Cancel 恢复警告快照。原 I 中 7→3→Continue→5→关闭应恢复 7 的确定性差异已静态修复。没有把此状态逻辑推广到其他手柄；该批次当时尚未接入零死区文案、完整 modal、Recalibrate、展开说明；这些内容已在本轮完成主体实现和静态复核，最新状态及剩余差异以本报告 I 节为准。
 
 Kitsune 已新增三块面板的 help_control 接入，不再把三个提示入口一概记为缺失。helper 以 viewport 近似源 O_ 的 body-wrapper 定位边界，精确边界及真实窗口行为仍为 partial。
+
+## J–L. 515 Blackwidow Chroma Customize：本轮新增独立复核
+
+本轮只复核产品 **515** 的普通 Customize 挂载及下列三项，不把结论推广至其他键盘。重新读取当前 `.ref/devices/515/static/js/main.f60ca5aa.js`，实算 SHA-256 为 `4a9db2072b3d64035e36d468fcc006b1930ebbf8c0bc620e4869a2e970c432e8`；本节源范围均为 UTF-16 半开区间。既有 `keyboard-product-pages.json` 只用于定位；NA、DA、Br、ql、Ql、Vl、Zl、MA 等相关切片均与当前主包重新比较，未用旧符号名称替代当前读取。未运行应用、构建、测试、供应商 JS 或 DLL。
+
+**已核实的共同挂载链：**当前导航 `[7531850,7532180)` 挂 `IO`；`IO=TO` 的 `[7377587,7378050)` 挂 `_O`，其 connect 包装 rO。rO 在 `[7374470,7375560)` 的普通内容容器挂 eO；eO `[7348396,7349069)` 包装 $l。$l 的 `[7347880,7348970)` 在 `displayMode !== "macro"` 时直接渲染左列 DA（Gaming Mode）和 Jl（Snap Tap），右列 mA（Keyboard Properties）。三个挂载均没有传 isSystem、deviceType、supportsShortcut 等额外 prop；不能从共享组件支持这些参数推定本根也传了它们。
+
+本地 `src/features/source_workspace.rs:375` 命中 keyboard_products::source_product(515)，`:384` 创建 KeyboardProductWorkspace，`:400` 保留 FamilyBody::Keyboard；`:1144` 渲染该实体。`use_supplement_for()` 对 Keyboard 仅允许 OLED，515 Customize 不会被通用 supplement 替代。`keyboard_products.rs:1313` 的 TAB_CUSTOMIZE 分支调用 customize，`:1297` 起在映射面板后仅追加 gaming_mode。其他 DeviceWorkspace 的 `customize_page.rs:566` 虽调用 `snap_tap_panel`，它不在上述 515 的实体渲染链，不能据此认定本产品已有 Snap Tap。
+
+### J. P2：515 Gaming Mode 缺少 Menu 禁用状态行
+
+- 当前 NA 完整类 `[7276079,7280720)` 在 render 从实际 buttonList 查找 `inputID === "KEY_APPLICATION"`；找到且 `!isSystem` 时挂 `id:"menuKey", disabled:true, active:isWindowsKeyDisabled`。对应条件与状态行可见 `[7278330,7280393)`。DA 的 `[7280729,7281265)` 明确从 gameMode reducer 取 isWindowsKeyDisabled，不是另一个 Menu 字段。
+- 515 的当前默认组及 layout 1（UnitedStates）解析到模块 21368；layout resolver `[1149574,1150109)` 对 UnitedStates 和 default 返回 R。当前默认按钮表 `[1395671,1396150)` 包含 KEY_APPLICATION；本地 515 keys 也包含同一 Menu 键。结论限这些已证按钮存在的状态，不声称没有 Menu 的布局也应强制显示。
+- 当前入口引入 `ye=a(54693)`（`[6862693,6862860)`）；该模块导出 `HWD → ko`，`ko="DISABLE_MENU_KEY"`，映射见 `[5825410,5825630)`、`[5839580,5840055)`。本地 `keyboard_products.rs:779` 的 gaming_mode 没有 Menu 行，`:836` 之后只给 716 增加了独立 Copilot 条件。
+- 影响：515 显示 Windows 禁用状态，却省略同时受 Gaming Mode 管理的 Menu 状态。修复应按实际 KEY_APPLICATION 和 isSystem 条件添加只读行，checked 取同一 isWindowsKeyDisabled；不应新增可编辑的 Menu 开关，也不应把 716 Copilot 条件直接扩张为全产品条件。
+
+窄范围未发现新的普通开关状态差异：本地 set_mode 修改 state、enableInGame、isWindowsKeyDisabled，保留其余字段；主开关关闭后保留 in-game 选择，Alt-Tab/Alt-F4 在关闭时禁用，与该根未传 gameModeButton 的 NA 分支一致。这里只确认这些本地编辑路径；未把任意外部注入的矛盾 state/字段、实时游戏观察或真实禁键效果计为通过。`write()`（`:263`）→ KeyboardProductChanged → source_workspace `:395` snapshot/capture（`:692`）更新活动 profile 的本地 source_settings，没有设备写回。
+
+### K. P2：515 Snap Tap 主体与成对按键编辑操作未挂载
+
+- 当前 Jl `[7342211,7343191)` 读取 snapTapReducer.isEnabled/keyList，并无产品能力隐藏判断；主开关在 adjustmentModeRunning 时请求调整提示，否则切换 enabled。`br → Br` 已回读 `[7160835,7164980)`：未传 hasFWUpdate 时也不产生固件门控，子内容仍渲染。故本项不是只有共享组件存在的候选。
+- 实际 ql `[7335991,7341740)` 保留临时列表 U、正在编辑的 pair id、KEY1/KEY2/READY 状态和提示状态。点击现有任一键槽可编辑；“+”在四组或正在录制时禁用，新增带唯一当前 id 的空组，进入第一键捕获。第一键有效后进入第二键；第二键有效才向 reducer 提交列表并退出捕获。成功消息约 3 秒后回到介绍。未完成编辑点击外部/失焦有独立清理规则，不能直接用逐键立即覆盖已保存值代替。
+- Vl `[7334403,7335163)` 为每组成对键槽显示本布局键名，支持两槽独立选择；**id=1 的第一组不提供删除按钮**，其他组才调用 q(id)。删除过滤对应组后按顺序重编号。禁止键与重复检查在 `[7335163,7335783)`：KEY_APPLICATION、KEY_LEFT_GUI、KEY_FN、DKM_F6、DKM_D2 禁止；已出现在其他槽中的键同样触发 warning。方向键排除只针对 KEYPAD + DIRECTIONAL；515 是 KEYBOARD，不应复制该额外限制。
+- 当前 reducer 初态 `[6906790,6906910)` 为 isEnabled=false、A/D 第一组、mode=LAST_INPUT、pressedKeys 空数组。它与本地静态 profile.snapTap 默认 isEnabled=true 不是同一 owner。当前本地还没有该面板，所以不把此数据差异算作“已显示错误初值”的另一个缺陷；实施时应先决定真实观察、profile 和本地草稿的状态边界，不能直接用目录默认值宣称读取成功。
+- 本地 `keyboard_products.rs:1297` 的 Customize 尾部没有 Snap Tap，整个文件无 snapTap 读写或保留编辑状态。已有另一个 DeviceWorkspace 的 snap_tap_panel 不在 515 挂载链，不能覆盖这里的新增、编辑、删除、校验和本地保存缺口。
+- 建议先按该根接入开关、pair 编辑/删除/四组上限、重复及禁止键提示和编辑生命周期，再将提交结果纳入现有本地 snapshot/capture。inputredirect、全局输入暂停/恢复、pressedKeys 状态观察及 reducer 广播属于需要独立确认的服务边界；不得用假键事件、假生效或虚构硬件成功补齐。单凭 UI 增删已接入也不能把整个 ql 或真实 Snap Tap 判为完成。
+
+排除一项容易误报的缺失：Jl 虽创建 Ql 的 FN + L SHIFT 快捷键提示，当前父根没有传 supportsShortcut，Br 仅在该 prop 为真时渲染 renderShortcut。因此当前证据不能要求 515 默认显示这条快捷键提示。
+
+### L. P2：515 Keyboard Properties 右列及操作入口缺失
+
+- 当前 `mA=MA`，MA 完整类 `[7281943,7282758)` 在 deviceType 不是 analog 时显示 KEYBOARD_PROPERTIES_HEADER、KEYBOARD_PROPERTIES_TOOLTIP、Windows 图标和 OPEN_KEYBOARD_PROPERTIES 操作。普通父根 `(mA,{})` 没有传 analog；Game Controller 属性行因此不属于本次缺项。
+- 源点击明确调用 `Fa.A.OpenKeyboardProperties()`；包装器 `[1775390,1775650)` 在 Electron 下发送 `{action:"OpenKeyboardProperties"}`，否则只在同名 window 函数存在时调用。语言键 SwD→Jo、MxL→$o、Tpt→ti 及 literal 已回读 `[5826454,5828010)`、`[5839580,5840055)`。Windows 版本图标的 LA `[7281266,7281943)` 会查询 getWindowVersion，带缓存；不应把默认 "11" 当作本机已读取版本。
+- 本地 515 Customize 没有该右列、文案、图标或命令，`keyboard_products.rs:1297` 只构造单列 gaming_mode。不能将“厂商 DLL 写回后置”解释成删除一个本应保留的系统设置入口。
+- 建议补齐该右列和命令意图，核实并复用本机系统设置调用边界及失败处理；实际打开外部窗口未在本轮执行，也没有验收。此次只确认 UI 与 wrapper 契约；当前宿主 main.js 的分派名称存在不等于底层已完成调用审计，不自行编造 DLL ABI。
+
+本轮增加三项可定位缺口，仍为 **515 单个产品的局部静态复核**；没有完成键盘映射编辑器、Lighting、所有布局、像素/焦点或设备读写验收。331 产品、1419 主页面的 partial 口径及完整产品 0 不变。
+
+### J 窄项修复独立回读
+
+已回读主线程新增的 `keyboard_products.rs` Menu 行：仅 product_id=515 且 spec.keys 存在 KEY_APPLICATION 才渲染；文案 DISABLE_MENU_KEY，checked 直接读取 gamingMode.isWindowsKeyDisabled，disabled=true，无点击/变更回调。当前 515 根没有传 isSystem，因此该分支符合本节已证范围。J 的状态行缺失已静态修复；K、L 仍未修，其他产品、其他未核按钮布局、像素和真实禁键行为不随此修复获得验收。
+
+## 3334/3337 冲突确认与播放设备选择：新增实现独立窄回读
+
+已静态读取 `stream_mixer.rs`、`audio_products.rs` 接入及 SourceProductWorkspace capture/restore 链，并逐项对比 `stream-mixer-current-evidence.json` 与两产品当前主包。28 条 AST/语言键/action 收据的 SHA 与 UTF-16 原文全部匹配；两份当前 CSS 的 SHA 和共 34 条规则原文匹配；两种 SVG 在两个产品中的源文件均与本地文件逐字节一致。未运行应用、测试、cargo 或 DLL。
+
+- **冲突确认边界：**request_mixer_enable 只在当前 STREAM_MIXER_HEADER 且具备 mixer state 时工作；已有 warning 时忽略重复请求。开启且 active_mixer=Some(true) 只建立 warning 和焦点状态，不更新 ENABLE 或 emit 草稿变更；Cancel 只 dismiss，Enable 才 edit(ENABLE,true)。原 yU 的 `f && !C`、取消 B(false) 及确认 E(true)/B(false) 对应关系成立。Base Dialog 的 Escape/Enter/backdrop 路径均被显式禁用，没有新增默认提交；当前源仅提供两按钮。
+- **禁用与过期选择：**选择回调重新检查当前页、主开关、无 warning、最新观察列表仍包含该名称；过期/禁用回调只 sync 选择器，不写草稿。缺失的当前名称追加 disabled 项，不自动改选其他设备；未知 devices 与已观察但找不到名称分别显示“未读取”和离线状态。源 Jm/Yn 原本以索引读取最新 playbackDevices；本地使用名称校验，未将已断开的旧行当成有效提交。
+- **本地与观察分离：**devices、active_mixer、observed_device 保留在 MixerState，观察更新仅 sync/notify，不发 AudioProductChanged；未显式本地选择时 snapshot 移除 playbackMixDevice。首次显式选择把 local_selection 设 true，即使名称恰等于 draft 默认、edit 因值相等提前返回，也另行 emit AudioProductChanged，使 snapshot 新增的本地覆盖进入父层 capture。这条边界已确认，不会因为字符串相等而丢失用户明确选择。
+- **生命周期与恢复：**restore 在合并草稿前 dismiss warning，根据保存内容是否有 string playbackMixDevice 恢复 local_selection；合并后 sync_mixer。切页 dismiss warning，迟到的确认/选择再检查 PAGE；不存在跨页确认直接启用的入口。saved=None 时恢复默认草稿并取消本地覆盖，已有真实观察仍用于展示。SelectState 0.7.1 的程序 set_items/set_selected_value 不发 Confirm，因此 sync 不能把观察回流误当用户本地操作。
+- **尺寸和原资源：**620×164 面板、20/30 padding、25px 标题图标、20×17 离线 SVG、90×27 按钮、20px 间隔及100ms透明度已对照当前 CSS。源 top:50%/translateY(-100%) 与本地 viewport 中 bottom:50% 的竖向定位含义一致；Base Dialog 的实际 anchored host 为 viewport 原点。没有把这些静态尺寸认定为真实窗口像素通过。
+- **图标间距修后回读及保留差异：**主线程已给离线图标容器补 margin-top:5px、margin-right:-10px，并去掉外层 gap_2、改为 items_start；已回读确认，两个边距缺失不再计为未修。当前仍在通用音频列中追加选择器，未还原完整 yU 两总线区域，Select/Tooltip 的原外观与位置也未完成。Base Dialog 的全窗口焦点/遮罩范围与原 DOM containing block 的实际运行关系未验收。MW 发布者未接入，未知状态下的本地编辑不是设备读取或启用成功；运行、查询、预设/通道及 DLL 写回均不在此次通过范围。
+
+本次未发现上述已接入确认/选择路径的确定性本地状态阻断问题，只确认其静态控制流和保存对象边界；原 B 的其余缺项继续保留。
+
+## M. P2：226 Basilisk V4 Pro 滚轮模式、等级与锁定条件缺失
+
+本轮专查 **226 的普通 Customize 滚轮区域**，不扩大至其他 Basilisk 产品，也不把 ADVANCED 动态灵敏度或本项目通用 TAB_SCROLLING 视为同一个界面。仅静态读取当前源、用维护中的 `tools/extract-device-decl.cjs` 解析声明及核对本地状态链；未运行应用、构建、测试、厂商 JS、DLL 或 cargo。
+
+| 当前文件 | 本次实算 SHA-256 |
+| --- | --- |
+| `.ref/devices/226/static/js/main.08f95762.js` | `ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e` |
+| `.ref/devices/226/static/js/8355.3d5e573e.chunk.js` | `b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8` |
+| `.ref/devices/226/static/js/3485.794fe922.chunk.js` | `42871b0390959f81d70f761f0429137a8311097d4551c5f7b5d3124bd45e6ebd` |
+| `.ref/devices/226/static/css/3485.3a185bc1.chunk.css` | `7e17ff497704138c45fe9bb9a8ac781d095825742f9cdf6cb4402d89169c1293` |
+
+以下位置均为 UTF-16。旧 mouse-page-source 清单仅用于找到 8355 的导航，实际跨模块根、子组件和行为均重新读取；该清单里 Customize 的 components 为空不代表当前源没有内容。
+
+### 已核实的实际挂载和本地接入
+
+8355 在导航 `275354` 附近挂 `qe.A`，`[116202,116550)` 的 import 指向模块 42。模块 42 在当前 3485 开头导出 `A → Ks`，`Ks=us`（`99775`）；us `[99485,99775)` 挂 ps，ps `[97707,99484)` 包装 Es。Es `[72814,97698)` 的普通内容在 `[97052,97520)` 挂 es，es `[71722,72279)` 包装 qt。qt `[63881,71713)` 的 `[71496,71713)` 明确在 `displayMode !== "macro"` 时左列挂 **fe**，右列挂另一系统属性组件。因此本次 fe 是该产品普通界面可达内容，不是只从 scrollWheel 字段或共享导出猜测。
+
+本地 `source_workspace.rs:364` 命中 MouseProductWorkspace 并订阅 MouseProductChanged（`:370`）；Mouse 的 use_supplement_for 返回 false，`:1143` 渲染该实体。`mouse_products.rs:1231` 起的 render 把 TAB_CUSTOMIZE 交给 customize，`:1216` 起只在 draft 存在 scrollWheel 时加两个通用 Checkbox：smartReelEnabled、accelerationEnabled。226 当前已满足该条件，所以两个开关已显示且可写；本轮不是把整个滚轮区误记为完全没有内容。
+
+### 源界面操作与具体缺项
+
+当前 fe `[18387,20812)` 从 scrollWheelReducer 取 scrollMode、disabledModes、两个 enabled 和两个 level；`De=Se`，Se `[16931,18137)` 是两个功能共用的标题/开关/说明/等级主体。模式定义 `[18211,18387)` 为 Tactile、FreeSpin、MicroTactile，顺序固定。
+
+| 项目 | 当前可达源规则 | 当前本地差异 |
+| --- | --- | --- |
+| 三种滚轮模式 | 三段模式控件反映局部选择 t；被 disabledModes 排除的模式不能点击；有效点击先更新局部 t，再请求 setScrollMode | 没有模式控件，也没有 scrollMode 编辑入口 |
+| 禁用模式 | 三项复选框最多选两项；已经禁用的项始终可解除。禁用当前局部模式时，按 Tactile→FreeSpin→MicroTactile 顺序选首个仍可用项并请求模式变化，然后提交 disabledModes | 没有 disabledModes 列表、两项上限或当前模式回退；不能用只有两种布尔功能开关代替 |
+| Scroll Acceleration 等级 | Se 的滑条 min=0、max=4、step=1，Low/Medium/High 标签，noTip=true；只有 enabled 且未被强制锁定才可改 | 本地只提供 accelerationEnabled；没有 accelerationLevel retained 控件或写入口 |
+| Smart Reel 等级 | 同一 0–4 滑条，配两段独立说明，写 smartReelLevel | 本地只提供 smartReelEnabled；没有等级、两段说明或相应写入口 |
+| FreeSpin 被禁用 | fe 以 `disabledModes.includes("FreeSpin")` 同时 forceDisabled 两个功能；Se 的显示 active=`enabled && !forceDisabled`，开关回调也检查 forceDisabled，滑条禁用；悬停锁定开关或滑条显示 ENABLE_FREE_SPIN_TO_USE_FEATURE | 当前通用 toggle 没有 disabled 参数，checked 直接读原布尔字段，不消费 disabledModes；恢复包含 FreeSpin 的禁用状态后仍可修改这两个功能 |
+
+最后一项有可确定的本地恢复路径：`mouse_products.rs:188` 的 restore 接受并保留已有 profile.scrollWheel 对象；其中 `disabledModes:["FreeSpin"]`、smartReelEnabled=true 或 accelerationEnabled=true 是源允许保留的状态。当前 `toggle()`（`:594`）会显示原布尔 true 并允许 on_click→write；源 Se 在同样数据下显示关闭并拒绝点击。此处不声称用户已能通过当前本地 UI 创建 disabledModes——该创建入口本身尚缺；缺陷范围是已经保存/导入并恢复的合法对象。修复不能通过把原 enabled 永久改成 false 代替显示派生，因为源解除 FreeSpin 禁用后应重新显示保留的 enabled 状态。
+
+已核对文案导出所在模块，未仅凭重名符号：3485 模块 42 的 `K=s(4693)`；当前 main 的 `b_8:()=>qs` 位于 `265091`，qs 是 SMART_REEL。主包别处存在另一个 b_8 导出，不可混用。其他标题、禁用提示和 Low/Medium/High 均从同一 4693 对应 export/literal 解析。当前 CSS `[16282,18900)` 还给出 36px 三段模式区、选中/禁用状态、分组间隔、锁定开关及滑条透明度、跟随指针的提示；现有两个普通 Checkbox 不覆盖该视觉和交互结构。
+
+### 保存、状态观察与实施边界
+
+当前两个本地开关的编辑链已存在：toggle→`write()`（`:230`）→MouseProductChanged→source_workspace snapshot/capture→活动 profile.source_settings。snapshot 克隆整份 draft，保留未编辑的 scrollMode、disabledModes 和两个 level；restore 也恢复这些字段，故问题不是它们都被本地保存过程删除，而是缺少界面编辑和相应条件。用户本机保存继续经 `shell.rs:1389` 的 save_profiles→PreparedSave→store::write_workspace（`:1439`），有写入失败处理；本轮未做文件往返运行验证，也未把该链当作设备写回。
+
+主包 `[206640,209990)` 的当前 reducer区分 UI 请求和观察：Jgj 发 ON_SCROLL_MODE_V2 时没有立即改 reducer.scrollMode，coV 才更新该字段；功能开关/等级和 disabledModes 有各自请求与回填 action。8355 `[268200,268960)` 的 loadScrollWheelSettings 先合并当前 DEFAULTPROFILE.scrollWheel，再分别派发模式、禁用项、开关和等级到 reducer。因此不能把 reducer 临时初态 Tactile 或本地 profile 默认 FreeSpin 直接描述为真实设备已经读到的模式。
+
+fe 的模式请求使用 module 6079 的 300ms debounce 包装；已静态读取当前 `1102.dc9e537e.chunk.js` 的 `[9760,10712)`，文件 SHA-256 `d41f3163bca18c0ee1f8bd2cd4233ff9d71c9e7adf505a2e971b5f5a6ca0897d`。该包装在 fe 函数体内创建，当前 fe 没有保留或卸载取消；这里只记录其实际构造和延迟，不推定跨重渲染总能合并为最后一次请求。新增本地界面需要明确局部预览、草稿保存和未来设备回填的 owner；不能因 DLL 写回后置而省略 UI，也不能把局部选择标成硬件已经切换。
+
+建议按此 226 专属根补齐模式/禁用项/两组等级和说明，先完成本地受控状态、有效性、回退和恢复链，再独立接入已经证实的只读观察。当前两个 Checkbox 的普通本地保存可保留；FreeSpin 锁定需同时覆盖显示、指针和写入口。其余产品、226 映射编辑器、ADVANCED、完整布局、键盘焦点和真实设备行为未在本轮验收，M 仍是一个产品的一块局部复核。
+
+## L 实施前续证：515 Keyboard Properties 参数、布局与现有系统入口
+
+本轮仅补充 L，不重复 Snap Tap，也未修改实现。重新读取 515 当前主包（SHA 与 J–L 表一致）及 `.ref/devices/515/static/css/main.f65da71b.css`，CSS SHA-256 为 `d8038bcd55d84e4f57b6c09057fe78e5c4a2495def92e0e259b2b72f861746e4`。以下位置仍为 UTF-16；CSS 通过维护中的 `tools/css-source.cjs` 静态解析，保留媒体条件。
+
+### 挂载条件、具体参数与事件
+
+- `[7348070,7348440)` 的普通 Customize 分支挂 `vr(direction:"right") → mA({})`；fr/vr 在 `[7160533,7160835)` 分别生成 `.body-widgets.flex` 和 `.widget-col.col-right`。mA=MA，MA `[7281943,7282758)` 没有产品/配置文件/设备在线、Gaming Mode 或 Snap Tap 的可用性检查；唯一相关分支是传入的 deviceType 是否为 `"analog"`。515 此处没有传 deviceType，故标题/帮助/操作分别是 **KEYBOARD_PROPERTIES_HEADER、KEYBOARD_PROPERTIES_TOOLTIP、OPEN_KEYBOARD_PROPERTIES**，不显示 Game Controller 行。
+- MA 给通用 br 只传 title、tips、children，没有 hasSwitch、disable、hasFWUpdate 或 supportsShortcut。br/Br 不会为这个调用附加主开关、固件禁用或快捷键区；帮助入口来自 tips，并非需要新增的独立设置开关。
+- 子图标为 `pA({})`，pA=LA `[7281266,7281943)`；没有传 windowBigIcon。LA 初始 osVersion="11"，挂载后从模块级 CA 缓存读取，或调用 getWindowVersion 并填缓存；仅结果严格等于字符串 "11" 时附加 windows-11 类，其他结果显示通用 windows 类。该初始占位不能标成已查询到本机 Windows 11。
+- 点击文字只调用无参数 `Fa.A.OpenKeyboardProperties()`，当前包装器 `[1775390,1775650)` 在 Electron 下发送 `{action:"OpenKeyboardProperties"}`，没有 serialNumber、profile、page 或 payload；非 Electron 下仅在同名 window 函数存在时调用。MA 不 await 结果，不更新组件/配置数据，也不发 Save/Apply、设备状态或成功提示。因此新增本地入口不应把点击记成 profile dirty 或“设备保存成功”。
+- 当前导出绑定已重读：SwD→Jo（`5827506`）、MxL→$o（`5826504`）、Tpt→ti（`5827649`），literal 位于 `[5839930,5840110)`。本地 10 份 locale 已有这三个键；无需硬编码中文或增造同义键。英文本地值为 KEYBOARD PROPERTIES、Launch the Windows Keyboard Properties window.、Open Windows Keyboard Properties。
+
+### 可直接采用的当前布局证据
+
+| 部位 | 当前 CSS / 参数 |
+| --- | --- |
+| 右列与面板 | `.body-widgets` 最大宽1240并换行（69207）；列宽600（69677），仅 viewport <=1279 时列两侧 margin30（78896，带媒体条件）；`.body-widgets .widget`（69817）min/max-width600、padding30px 40px、margin10px auto、radius5、背景#111 |
+| 标题与帮助 | titleRow/标题（73630、73691）为 RazerF5 16px、绿色、uppercase、底部20px；help 在 top/right10（75290），正文提示从 KEYBOARD_PROPERTIES_TOOLTIP 渲染。当前 Br 使用 portal/fixed 边界定位，本地 help_control 的近似定位仍需单独核验 |
+| 图文行 | `.img-text.flex` 水平、align-items:center（77076）；Windows 图标44×44、min/max-width44、背景居中且不重复（9010），图标右侧20px（8906）；515 不选 window-big-icon |
+| 操作文字 | `.img-text .external`（10400）14px，最终 line-height44px（同规则较早17px被覆盖），灰色、下划线、capitalize；hover绿色（10532），active opacity=.7（10684） |
+
+本地 `surface::page_columns/page_column/panel` 已有600px列、1279px换行规则、面板内边距和标题结构，可在现有两列组织中复用；不要在旧映射面板内部再堆一个属性按钮。源 MA 本身没有额外 ExternalLink 子图标；现有通用 system_button 的 outline 外观和额外图标不能直接当作源样式通过。使用 Base Button 保留键盘/焦点语义并提供上述外观即可；不能因为源是 div 就放弃本地语义控件。
+
+### 原 Windows 图标资源已补足只读验证
+
+515 本地 `.ref/devices/515/static/media/` 缺少这两个通用 SVG。本轮按其当前 asset-manifest 的精确 URL 只读下载到内存，均返回 HTTP 200；没有写入文件，也未执行下载内容：
+
+- `https://apps.razer.com/synapse/products/515/ui/static/media/common-windows-11.d477cadb.svg`：350字节，SHA-256 `aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba`，与现有 `assets/synapse/windows-11.svg` **逐字节相等**，可复用。
+- `https://apps.razer.com/synapse/products/515/ui/static/media/windows_logo.8fb1e7e2.svg`：622字节，SHA-256 `d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3`，与当前 `.ref/devices/182/static/media/windows_logo.8fb1e7e2.svg` **逐字节相等**，可从该已验证当前文件准备本地 legacy 图标。这里不是仅按相同文件名推断等价。
+
+### 当前宿主契约与本地已有能力
+
+- 当前宿主 `.ref/host-4.0.827/electron/main.js` SHA-256 `0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e`：OpenKeyboardProperties 在通用系统动作分派组（`[51866,53500)`），最终 `return io.callDLL(n,i)`（53421）。`io` 是 FFISysUtils。
+- `.ref/host-4.0.827/electron/modules/sysutil/win/index.js` SHA-256 `f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a`：声明 `OpenKeyboardProperties:["void",[]]`（`[1235,2207)`），DLL 注册名 sysUtilsNative（196）；callDLL（4441起）无该动作特判，最终交给 ffi.callDLLMain。这确认源是**零参数、无返回值的系统窗口命令**；未加载 DLL，不能据此声称已查明 native 内部具体启动程序或执行成功。
+- 系统版本走独立非 DLL 路径：产品包装器 `[1792037,1792260)` 发 getWindowVersion，宿主 main `43169` 直接调用 go()；`electron/lib/common.js` SHA-256 `b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce`，`[4882,5430)` 根据 os.release 缓存版本，其中 Windows 10.0/build>=22000 为 "11"，否则 "10"，也处理旧版 Windows。不要把打开属性窗口误写成读取版本的前置条件。
+- 本地 `backend/system.rs:24` 已有 is_windows_11()，只读 CurrentBuildNumber>=22000；读取失败返回 false。可在保留的界面状态中读取一次选择相应图标，不必在 render 内重复查询。它的布尔 fallback 不是完整版本或已成功读取状态；本轮没有执行该查询。
+- 本地 `backend/system.rs:177` 的 open(Properties::Keyboard) 已通过 `control.exe` + `main.cpl`、`,@1` 参数启动系统属性；`device_pages.rs:18` 的 system_button 包含失败 notification。另一个 DeviceWorkspace 的 `customize_page.rs:570` 已使用这个后端，但515实际走 KeyboardProductWorkspace，未经过该调用点。因此应复用现有命令/错误处理边界，补当前产品的独立面板和语义按钮；无须为此另加厂商 DLL ABI。该本机命令是本地既有实现，不是从上述 native DLL 源中提取出的命令行，实际窗口行为仍未运行验证。
+
+L 的实现缺口仍是515当前产品未挂右列及操作入口。可实施材料现已包括精确参数、原图标、可见条件、文案、布局、系统动作和现有失败路径；这不等于代码已接入或已通过运行/视觉验收。点击该入口应只打开系统属性，不修改本地草稿，不产生虚构的设备写回或读取成功状态。
+
+## K 最新实施独立回读：515 Snap Tap 本地编辑主体已接入
+
+本节更新原 K 的当前状态，保留前面的缺项和实施建议作为历史依据。已读取新增 `src/features/keyboard_snap_tap.rs`、数据文件、`keyboard_products.rs` 及 `shell.rs` → `product_workspace.rs` → `source_workspace.rs` 的实际转发链。`snap-tap-current-evidence.json` 的 **34 项 AST 收据**均按当前源文件 SHA-256 和 UTF-16 切片重新比较；**113 条 CSS 收据**与维护工具静态解析结果逐项相等，记录的 keyframes 切片也相等；**3 个 SVG**源文件、输出文件和记录 hash 相符。此过程没有执行应用、构建、测试、供应商 JavaScript 或 DLL。
+
+### 已回读的可见控件和状态逻辑
+
+- 仅产品515初始化 Snap Tap retained State，普通 Customize 的左列现在实际调用 `snap_panel`，不再依赖另一套 DeviceWorkspace 的未挂载控件。主开关、成对键槽、非首组删除、四组上限的添加按钮、重复/禁止键提示、成功消息和调整模式提示均已进入该产品的渲染路径。没有强制展示515调用方未传入的 FN + L SHIFT 快捷键提示。
+- State 初态使用当前 `ha` 的 `isEnabled=false` 与 A/D、id=1、mode=LAST_INPUT，未拿静态 profile 内另一个 snapTap 对象的 true 作为真实读数。Pair 的附加字段被保留；运行时 pressedKeys 未混入持久化 Configuration。第一组隐藏删除按钮；新增/删除/切换仍明确是本地操作。
+- `accept` 在 KEY1 有效时只改 staged 并转 KEY2；KEY2 有效后才提交完整列表，回 READY 并显示约3秒 Success。禁止键及跨槽重复检查会保留修改前的 staged，不把拒绝的键写入列表；Pause 后的 NumLock 抑制也存在。未发现把 KEY1 立即覆盖已提交列表或允许重复键落入配置的确定性错误。
+- `remove` 在修改 editing/message 前计算 warning 回退条件，保留源 q 回调读取旧值的顺序；普通删除过滤并重编号。`blur` 清除不完整及 warning 所在组，只有一组且过滤为空时回退 config。关闭开关时 warning 删除/回退路径存在，普通录入状态则随关闭暂停；这与 ql 的 V 分支相符，不应一概改成关闭立即清空录入。
+- `snapshot` 以 config 为基线，只有 KEY2 才复制当前组 staged.key1，并过滤不完整组，符合 ql beforeunload 的投影规则。KEY1 更新后发本地 change 并不等于逐键提前提交：发出的保存对象正是这一投影。`restore` 保留顶层 `_snapTapLocalV1`，重建 State 并清除录入、成功定时器及提示；产品内部页面切换先执行 `leave_snap_tap`。未发现恢复时丢弃该局部标记或将旧 profile 的录入继续写到新 profile 的路径。
+- 窗口失活观察调用上述 blur 清理；外部点击用实测 pair/add 边界判断，不完整组仍留 warning。新增 AppShell 根捕获只转发到当前 `Location::Device`，再由当前 Customize、enabled、非 READY、无调整提示的条件限制；`snap_key_up` 在处理前 stop_propagation，避免根和面板把同一 keyup 录入两次。这样无效外部点击移走键槽焦点后仍有输入入口。事件实际传播、首帧测量和键盘焦点尚未运行验证。
+- 键槽采用外部最小64×44、2px边框，对应源 content-box 的最小60×40；源只有 min-width，没有应强制的 max-width。成对间距10、删除按钮额外左距20和20px原图、64×44添加按钮、提示色及1秒闪烁均有静态对应。调整提示当前为400px宽、25px图标、20/30px内距，并以底部落在 viewport 中线对应源 translateY(-100%)。这些局部对应不代表完整页面像素、文本折行或弹层行为已经验收。
+
+### 仍保留的范围限制
+
+- 原生 keyup 适配只覆盖无歧义子集，包括字母、部分导航键、空格/退格/Tab/Escape/Menu 及 F1–F24。数字、标点、Enter、左右修饰键、小键盘和部分专用键仍未完整录入；未知事件被丢弃，没有用 keyCode=0 冒充有效按键。当前 GPUI Windows 输入将部分原始位置区分折叠，不能靠猜测补全。本轮指出原局限提示范围偏窄后，主线程已改成“本地草稿，尚未写入设备。部分按键的精确录入尚待接入。”，已独立回读；文案更准确并不代表其余按键适配已经完成。
+- `SnapTapObservation` 具有 Configuration、Layout、AdjustmentMode、InputRedirect 的分离入口；InputRedirect 核对类型、奇数 release flag、scancode/outputFlag，并仅在 razerKey 时使用专用键 fallback。当前没有真实 middleware 发布者连接，尚不能宣称完整录入、实时布局/调整状态或设备配置读取成功。Configuration 观察不会静默覆盖显式本地草稿；本地发布仅写 `_snapTapLocalV1` 并走既有 profile snapshot/capture，没有 DLL 写回或设备保存成功。
+- 产品内部 TAB 和 profile restore 清理已回读；宿主 `navigate` 只关闭 profile 弹层，未调用 `leave_snap_tap`，因此从该设备切到 Dashboard 再回来可以保留未完成录入。根捕获限制确保隐藏时不会继续消费键。此项只记录本地行为；本轮未证明当前宿主标签切换会卸载源 ql，因此不将保留状态直接列成源不一致缺陷，也不将其记为已经验收的卸载清理。
+
+原 K 的“面板与增删编辑主体完全缺失”已经静态修复；当前结论仍为 **partial**，完整按键身份、真实只读发布者、服务捕获暂停/恢复、窗口及像素验证仍未完成。不得把本地编辑器主体存在等同于设备 Snap Tap 已接通。
+
+## L 最新实施独立回读：515 Keyboard Properties 右列与系统操作已接入
+
+已读取新增 `src/features/keyboard_properties.rs`、产品初始化与实际 Customize 两列组合；`keyboard-properties-current-evidence.json` 的 **12 项 AST 收据、66 条 CSS 收据及2个SVG**均与当前文件重新匹配。本节更新前面 L 的实施前结论，未执行系统属性命令或读取本机版本来验证。
+
+- 515初始化时保留图标选择，使用既有 `is_windows_11` 的只读判断；失败回退 legacy，不在每次 render 查询。普通 Customize 的右列已实际挂 `keyboard_properties`，标题、帮助和动作均使用已验证 locale 键；没有误加 analog 的 Game Controller 行或 windowBigIcon。
+- 44×44原Windows图标、20px间距、44px高文字行、下划线、灰色/绿色hover和active透明度均有实现。两个输出SVG与515当前原资源逐字节相等，不再只是引用其他产品的同名文件作为依据。通用面板与help_control的完整定位、文字排版仍保留原局部验证限制。
+- 语义按钮只调用现有 `system::open(Properties::Keyboard)`，失败进入 notification；没有调用 `write`、发 KeyboardProductChanged 或改变 profile/snapshot，也没有宣称设备读取、写入或保存成功。该本机命令与源零参数 OpenKeyboardProperties 的用途一致；厂商 DLL 仍未加载，本地 control.exe 实际窗口效果未运行验证。
+
+原 L 的右列及操作入口缺失已静态修复。本结论只覆盖这一面板的挂载、资源及动作边界，不把515整页、帮助边界或系统窗口运行结果标为完成。
+
+## N–O. 226 Performance：当前 DPI 与 Polling Rate 独立复核
+
+本轮仅检查 **226 Basilisk V4 Pro 的普通 Performance 页**，不扩大至其他鼠标，不修改主线程正在实现的滚轮区域，也不运行应用、构建、测试或 DLL。已重新读取当前主包及8355（完整 SHA-256 见 M 的当前源表），并把 `mouse-page-source.json` 中226 Performance 的24项组件收据逐一与当前文件 SHA-256、UTF-16切片比较，全部相符。下述结论只来自实际读取的 DPI / Polling Rate 分支；这24项中同时出现的 Sensitivity Matcher 等组件不因此自动通过行为审查。
+
+另读取当前 `.ref/devices/226/static/js/8901.207fa138.chunk.js`，SHA-256 为 `bc4636e381f90c81d757a7d2143bf2f6b534d72a690122e4610131296d7fbf5f`，静态解析出数字框模块4230的 `[5290,11084)`。以下源范围均为 UTF-16半开区间。相关 CSS 只静态解析：main.c2099849.css 的 SHA 为 `68bc9ccdc21fe548330106b3a27beb5049be06f55939e5950677b220f52703df`，8355.f94d4299.chunk.css 为 `ec3c1904f52ffa472fbcaca33ec514681ce2ea2d329279205c0c36ade329c53a`。
+
+### 已证实的具体挂载与条件
+
+8355 `[275451,275518)` 的导航实际挂 `Ri({isBle:this.props.isBle})`；Ri=wi `[183668,183990)`。左列直接挂 ys/Ms，ys `[154857,155307)` 从 dpiStages reducer取得 active、enable、stages、enableStages；Ms `[149688,154848)` → cs/ls `[143618,148820)` → ts/es `[139629,143485)`。该调用没有 useTwoWayTab、noHeader，不能从共享方法推定本页应新增两种模式标签或阶段数量下拉。
+
+右列的 Xs/zs 只有 `!isBle || DeviceInfo.supportBluetoothPollingRate === true` 才挂载；226当前CONFIG模块1057 `[54515,68130)` 明确 `supportBluetoothPollingRate=false`。因此本产品BLE模式下整个 Polling Rate 面板应隐藏。该模块还声明 minDPI=100、maxDPI=50000、dpiStep=1、supportXYDPI=true、isSensitivitySliderWithGrid=true、dualLinkPollingRateLimitHz=1000。8355的 `z=s(1057)` 与 `O=s(4693)` 均已重新读取，未把其他模块重名符号当作参数来源。
+
+本地仍由 `source_workspace.rs` 的 MouseProductWorkspace 分支挂载，Mouse不走 supplement；`mouse_products.rs::render` 的 TAB_PERFORMANCE调用 performance。226没有命中只对70启用的 dpi_rows_70 / dpi_number 分支。以下缺项不能由70专用实现已经存在来抵消。
+
+### N. P2：226 DPI 阶段操作、分段滑条和数值归一化未匹配当前根
+
+| 当前已证行为 | 本地偏差及具体影响 |
+| --- | --- |
+| stages开启时，Ms把完整 stages交给ls，每组都有可编辑X/Y数值、阶段序号、visible开关和拖动；关闭时只交当前active组，且one-stage的开关/拖动由CSS隐藏 | performance只显示所有序号按钮和当前一组滑条；阶段主开关关闭后仍显示并允许点击全部序号。默认active=2时关闭阶段，再点5，本地仍把active改成5；源关闭态没有这个切换入口，保留当前组可编辑 |
+| es按visible重新计算可见序号；visible=false的行不接受序号选择，滑条禁用而数字框仍可编辑；只剩两个visible时禁止再关闭一个 | 本地全部按钮只按数组slot+1生成，不消费visible，没有逐行开关或“两组下限”。恢复合法的visible=false组后仍可通过其按钮选中并启用滑条；不能只降低透明度来修复 |
+| Ms.setEnableStage关闭当前组后，先选后方第一个visible，否则首个visible；ls.onDrop根据原顺序移动整组并调整active，Ms.updateStages还修复选中隐藏组的情况 | 本地没有开关、拖排及对应active调整入口。snapshot虽然保留这些字段，仍不等于这些操作已经实现；不应把visible开关当作直接删除数组元素 |
+| 226的Qt=true，es确实选用Wt/Ft `[133558,139374)` 的分段DPI滑条；CONFIG没有SENSITIVITY_RANGE_VALUES，因此使用Ft内默认分段 | 本地add_range/SliderState直接把100–50000线性映射。源100/500/1500/10000/15000/50000分别位于0/15/30/45/70/100%；例如800在源约19.5%处，本地约1.4%处，低DPI操作区间明显不同。只让min/max/step相同不能算匹配；源刻度、分段映射和thumb提示均有实际挂载 |
+| es传4230整数模式、六位、min100/max50000/step1；空串或单独负号可暂存，blur统一parse/clamp并回填规范文本，Enter/Escape触发blur | 本地非70输入没有同等约束。空文本失焦时parse失败直接返回，保留空框和旧草稿；输入99后失焦会把草稿写100，但当前InputState未回填，仍可能显示99。原因是write_number对非70跳过同path控制项同步，之后只同步SliderState。需同时归一化数据与当前文本 |
+| 4230数字框有上下步进、按住每300ms重复、注册后的滚轮及箭头操作 | 本地226只挂普通Input；这些源操作不由已存在但只用于70的数字编辑器覆盖。应按226现用4230与参数单独确认复用，不直接宣布所有鼠标共用实现通过 |
+
+以上阶段条件来自当前Ms/es，未从70借用。源 `.stage.one-stage:hover .icon-draggable,.stage.one-stage:hover .switch` 在main CSS的242803处明确display:none；`.stage.off`的淡化规则在243953处。Ms里虽然有changestageNumIndex方法，实际render没有挂阶段数量下拉，本轮**不将数量下拉列为缺项**。同样，关闭stages不是把整页DPI输入禁用：源仍允许编辑当前组。
+
+窄项一致：本地226的100–50000、step1、支持独立Y参数与当前CONFIG相符；write_number在independent=false时写X会同步Y；toggle关闭independent又调用write_number把Y恢复为X。该XY同步已存在，不报告为缺失。源修改其他visible行会选中该行、修改不可见行保留当前active；本地当前只显示选中行，未来补多行时还必须移植这一条件，而不能只复制现有write_number的70判断。
+
+源还区分`dpiStages.enable`与`enableStages`，后者是来自reducer的整块交互门控。当前226本地没有这条观察；本轮没有穷尽会将enableStages置false的真实发布者，故把它记为待接只读状态条件，不声称已观察到设备处于锁定状态。
+
+### O. P2：226 Polling Rate 未接连接条件、目标字段及限速说明
+
+实际组件zs `[157662,165209)`、connect包装Xs `[165218,165578)` 读取isDongle/isBle及三个独立rate字段。当前 `mouse_products.rs::polling` 固定取 `rates["POLLING_RATE"]` 和 `spec.polling_path()`；226此路径总是`/pollingRate`。MouseProductWorkspace构造只收product_id，restore也没有连接状态参数；SourceProductWorkspace中的`device.use_ble`仅传给Controls等其他分支，没有传给Mouse。这不是字段存不下，而是实际渲染和写入口没有消费它们。
+
+- **BLE整块隐藏缺失：**226的wi门控已证实；本地performance无条件追加polling。因此不能因为生成数据里存在POLLING_RATE_BLUETOOTH数组，就为226新增BLE频率按钮。那个数组在此正常根被外层条件挡住。
+- **Dongle与有线写入目标不分：**source `getPollingRateStateKey/getSetPollingRateAction` 在dongle模式选pollingRateWireless，否则有线选pollingRate。本地无论状态都更新`/pollingRate`。比如已恢复pollingRate=1000、pollingRateWireless=4000的dongle配置，源选中4000，本地选中1000，点击还会修改有线字段。两种模式允许的基础六档刚好相同，并不能证明owner也相同。
+- **有线标题与提示缺失：**普通Xs未传特殊props；zs在有线模式用WIRED_POLLING_RATE_HEADER / WIRED_POLLING_RATE_V2_TOOLTIP，无线用POLLING_RATE_HEADER / POLLING_RATE_V2_TOOLTIP，并总有POLLING_RATE_DESC。本地固定普通标题，没有上述帮助和正文。当前模块4693的lGq、orU、FGZ、iiK、rJp及其literal已按绑定重新解析。
+- **大于1000Hz的说明缺失：**未处于限速时，source按当前模式rate>1000显示POLLING_RATE_WARN（无线）或POLLING_RATE_WARN_NOBATTERY（有线），附LEARN_MORE链接 `https://www.razer.com/technology/razer-hyperpolling#best-practices-tips`。本地可选择2000/4000/8000，却没有相应说明。source并不因此禁用所有高频选项，修复应显示说明而非无条件禁止高频。
+- **DualLink条件限速未表达：**zs根据当前产品226/227与duallink-devices中master/slave匹配；isDongle且当前链未连到高频master时，使用CONFIG的1000上限。对于supports8KHzPollingRate的多设备dock，Ls `[157017,157399)` 另要求isDongle且同master至少两项，才降至1000。达到上限后保留完整按钮集，>1000的按钮在呈现和onClick两处禁用，并显示相应DUAL_LINK_LIMITED或MULTI_DEVICE_DOCK_LIMITED_MOUSE说明；本地没有这些状态、条件或写入口保护。本轮只确认条件代码，不声称本机已有此dock或已经读取到这些状态。
+
+源applyPollingRateLimit在既存wireless值过高时还发setPollingRateWireless降档请求；这是与设备写回有关的后续整合边界。当前可先实现真实观察驱动的禁用/说明及明确的本地草稿约束，不应在只读接口工作中执行设备自动降档，也不能把显示限速当作设备已降档成功。连接身份需从已证来源传入，不能把“数据尚未读取”默认为已确认wired或dongle。
+
+已排除的误报：226当前CONFIG没有POLLING_RATE_8K_FW_VERSION，故zs中`ks && ...`固件门控不在此产品生效；基础有线与无线数组均确实含8000，不能凭共享HYPER_POLLING_RATE只有4000而删去8000。普通Xs没有传supportInGamePollingRate，虽然共享Ts与inGamePollingRate reducer存在，**不能据此要求226本页展示in-game区**。本地六个有线档位125/500/1000/2000/4000/8000本身与源一致，未发现基础有线选项数字错误。
+
+### 草稿、读取和复用边界
+
+当前默认profile含五个400/800/1600/3200/6400阶段、active2、enable=true及三个rate字段；source主包的reducer临时初态另有enable=false、不同阶段值及wired125。8355 `[270790,271959)` 的实际配置加载会分开派发dpiStages、pollingRate和pollingRateWireless观察。故本轮不把静态profile与reducer初态不同另报成“读到错误硬件默认”；它们属于不同owner。
+
+本地write/write_number→MouseProductChanged→SourceProductWorkspace.capture仍更新活动profile.source_settings，snapshot克隆完整draft，restore保留已有顶层值；上述界面缺项不意味着所有未显示字段被删除。写回当前InputState的缺陷则会使屏幕文本与这份本地保存对象不一致，应优先修复。没有进行实际文件往返或设备读取验证。
+
+复用70的行、数字框或本机系统按钮可以减少实现工作，但需对照这里的226小写schema、visible条件、分段滑条及连接门控分别适配。N/O是两个具体区域的未完成项，不代表226整页已经审完；Sensitivity Matcher、Mouse Properties、全页布局、辅助功能、真实只读发布者和窗口行为仍不在本轮通过范围。当前locales已具备这里多数标签；MULTI_DEVICE_DOCK_LIMITED_MOUSE只有en.json包含，其余九种语言缺项，实施时需要沿当前源资源及既有fallback处理，不能捏造翻译或设备能力。
+
+## M 最新实施独立回读：226 三模式滚轮编辑器
+
+已读取新增 `src/features/mouse_226_scroll.rs`、MouseProductWorkspace接入、`tools/prepare-mouse-226-scroll.cjs` 和生成数据；将 `mouse-226-scroll-current-evidence.json` 的 **52项源码收据**逐一与当前文件SHA-256、UTF-16切片比较，**83条CSS收据**与维护中的静态解析结果比较，全部相符。另只读查看当前使用的gpui-base SliderState与现有SourceSlider/check_item实现，以确认事件和样式实际含义；没有运行应用、构建、测试、DLL或供应商JavaScript。本节更新原M的缺项状态，不覆盖N/O的Performance问题。
+
+### 已实现且静态一致的部分
+
+- 编辑器仅在product_id=226创建，实际Customize追加该实体；旧的两个通用Checkbox通过`scroll_editor.is_none()`条件避开226，没有形成两套控制同一字段的入口。三个模式及顺序与当前ge一致：Tactile、FreeSpin、MicroTactile；对应选择、禁用勾选、说明和两组0–4等级滑条均已挂载。
+- `select_mode`拒绝选择disabledModes中的项；`toggle_disabled`允许移除已禁项，只在少于两项时新增。禁用当前模式时按ge顺序寻找首个未禁模式，先写本地scrollMode再写disabledModes，匹配fe的即时回退顺序。第三个未禁勾选项有disabled呈现且写入口再次检查两项上限，不能通过回调继续禁用全部三种模式。
+- FreeSpin被禁用时，`active(feature)`派生为false，开关显示关闭、滑条不可操作；两个原enabled字段及level没有被重写。解除FreeSpin禁用后会恢复保留的enabled状态。主开关写入口同样检查locked，符合Se的`enabled && !forceDisabled`与点击保护；原M“合法恢复状态仍可修改锁定功能”的问题已修复。
+- 两层disabled透明度已经按实际树检查：外层swtm-slider-wrapper为0.4/200ms，内层SourceSlider为0.3/300ms，稳态合成0.12。因为本地标签是SourceSlider的兄弟节点，另给标签0.3，使它们也合成0.12；不是额外叠了第三层。源锁定switch是同一元素opacity0.3，SynapseSwitch也只有这一层。check_item保留自身9px底距，外层8px gap与当前CSS共存，不应误删其中任意一项。
+- SliderEvent::Change只记录previewing并更新显示，未edit/emit Changed；只有存在预览的Release把0–4整数写进draft并发布。已读gpui-base 0.7.1：拖动/点击轨道发Change，真实交互释放发Release；程序`set_value`只notify，不发Change。故restore、观察同步和失活复位不会冒充一次本地等级编辑。SourceSlider保留无tip的36px高度和轨道/滑块；窗口拖动、触摸和像素结果没有运行验收。
+- 锁定开关及slider外包装有悬停跟随指针的ENABLE_FREE_SPIN_TO_USE_FEATURE提示，采用源16/12px偏移、320px最大宽和当前颜色。该tooltip与全页help_control的真实边界/层叠未作窗口验证，不据此宣布完整视觉完成。
+
+### 本轮发现并修复的草稿字段归属问题
+
+初稿的snapshot只保存完整draft，restore则把已有scrollWheel对象的六项字段全部认作显式本地覆盖。但SourceProductWorkspace.restore_active首次就会把补齐默认值的snapshot写入profile.source_settings。因此即使用户未编辑，切换profile再回来也会将所有默认值标成local，后续真实观察无法再显示。这是可由本地状态链确定的恢复缺陷，不是设备暂未连接造成。
+
+主线程已加入根级 **`_scrollWheelLocalFieldsV1`**，本子任务已独立回读修正：新建/无保存值恢复写空数组，Changed同时保存draft和显式字段集，snapshot保留该标记；restore优先按标记恢复字段归属，只有没有标记的旧数据按原有字段作兼容处理。即使用户明确选择了与默认相同的值，Changed也会保存该字段标记，不再因数值相同被parent.write的去重丢掉。自动补的默认值因此不会在再次恢复时升级成用户覆盖；上述问题已静态修复。
+
+纯观察只写observed并notify，不发Changed；`snapshot`只返回draft，未编辑的运行时字段不会进入本地profile。显式编辑仅将对应字段加入local_fields，其他字段仍可显示新观察。restore清空旧profile的observed，要求新profile重新取得真实观察，不能以旧profile的读数填充。产品/源工作区已有ScrollWheelObservation转发入口，但真实publisher仍未连接，不能把入口存在描述为DLL读取已成功。
+
+### 切页与剩余范围
+
+普通产品TAB切换会调用`scroll_editor.deactivate`；restore、窗口失活、功能关闭或FreeSpin禁用也清掉previewing/tooltip并同步已提交等级，未把未释放预览写入snapshot。已确认一处接入边界：SourceProductWorkspace.select_body_page遇到Help role会在MouseProductWorkspace.set_page之前return，因而Help切换没有走这条deactivate链。此处应记为未覆盖的瞬态清理路径；本轮没有运行复现残留tooltip/预览，不把普通TAB已清理扩大成所有页面切换已通过。
+
+三模式、禁用回退、两组等级、保留enabled、释放提交和本地字段标记的主体已静态补齐；原M不再记作主体完全未实现。当前仍为partial：真实只读观察/发布者、窗口输入与完整视觉验收未完成，设备写回仍后置。源fe的300ms模式请求debounce属于后续服务请求，本地即时选择保留为明确草稿，不报告虚构硬件切换或保存成功。
+
+### M/K 补丁续核：Help清理及滚轮观察范围
+
+已窄范围重新读取SourceProductWorkspace、MouseProductWorkspace、keyboard_snap_tap与mouse_226_scroll的最新补丁；本子任务没有运行cargo、应用、测试或DLL。主线程另报告最新cargo check通过，这不是本子任务执行的检查。以下结论覆盖前述Help清理缺口及观察处理，不重做或扩大整个产品验收。
+
+- `select_body_page`现在于Help分支return之前，分别调用Mouse的`dismiss_scroll_editor`和Keyboard的`leave_snap_tap`。鼠标路径清掉预览与tooltip并回同步已提交等级，未发Changed；键盘路径按已有本地snapshot策略结束录入、清消息/提示/定时器。普通导航与页面历史都先更新父层page，再进同一个select_body_page，所以两种到Help的路径均覆盖。前述“Help早退未清理”已静态修复，不继续记为未修缺项。
+- `SourceProductWorkspace::captures_snap_keys`明确要求当前页面存在且不是Help，再询问键盘录入状态；keyup入口也先使用同一门控。即使retained键盘子实体仍记着原Customize页，父层Help状态不会继续接受Snap Tap按键。未发现该补丁只挡keydown却漏掉keyup的问题。
+- 滚轮`observe`不再对每条未覆盖观察统一调用deactivate：Mode观察不触碰等级预览；等级观察只同步对应slider；enabled/disabledModes观察只有令某功能不可用时才取消该功能的预览并回同步等级。因此Smart Reel状态变化不会无条件清掉仍可用的Acceleration预览。FreeSpin解除锁定会清除锁定tooltip；local_fields覆盖的观察仍不改局部显示或草稿。
+- 等级观察本身不清previewing，是同步当前值而非取消整次拖动；当前模块130的componentDidUpdate只在调用者设置cancelMouseUpOnValueChange时才取消，而226 Se未传此prop。已再次把该模块收据与当前2306文件比较。未发现最新处理新增确定性差异。整个观察入口仍不调用edit/Changed，纯runtime值仍不进入snapshot。
+
+当前M的两个已提出接入问题——字段归属恢复和Help瞬态清理——均已静态修复；真实publisher、运行与视觉限制仍保留，不把补丁回读等同于完整设备通过。
+
+### 下一独立小批次建议：226 DPI整数输入的提交归一化
+
+优先修N中“输入文本与保存值不一致”的窄项。它已有226实际es→4230证据，不依赖连接观察、分段轨道或完整阶段列表，可以独立评审和静态验证。范围限226的`/dpiStages/stages/{slot}/x|y`：
+
+1. 接受源允许的临时空串/单独负号及不超过六位数字，拒绝小数和任意字符；提交时按min100/max50000/step1归一化。
+2. Blur统一把规范值写回当前InputState、SliderState与本地draft，即使最终数值与原值相同，也必须规范文本。静态追查的代表输入为空串、`-`、`99`、`60000`、`00100`。
+3. Enter和Escape按4230触发blur；这里Escape会提交规范值，不能擅自变成撤销。保持非独立Y时X同步Y和既有本地snapshot链；切profile不得把旧输入内容提交到新profile。
+
+现有70数字框可作为结构参考，但其step_dpi_number仍硬编码大写`Y/Independent`，不应只把product_id条件扩成70或226就宣称可复用。此批先收敛提交/文本一致性；阶段多行、visible/拖排、226分段滑条、stepper完整操作和Polling Rate各保留为后续独立项，N/O仍为partial。验证继续采用当前源码/参数解析与实际事件链回读；不运行被禁止的测试或应用。
+
+## N 数值编辑器实施独立回读：226 整数提交及共享步进
+
+本轮读取`mouse_products.rs`、`mouse_dpi_number.rs`、Help接入、`audit-mouse-226-dpi-number.cjs`及生成收据；另读取Cargo.lock实际使用的gpui-base 0.7.1、gpui-pre 0.3.8相关事件实现。未运行应用、构建、测试、cargo或DLL。下面是源与实际事件链的静态结论，不是窗口操作录像或全页验收。
+
+### 当前源证据与已确认修复
+
+最初的4230收据由通用模块查找器取自MapKeyboard chunk，不能只因模块编号相同就作为Performance实际加载证据。本子任务提出后，主线程将工具限定到当前`8901.207fa138.chunk.js`，4230函数范围为UTF-16 `[5295,11084)`（先前`[5290,11084)`包含属性键）。新增主包普通default根`[547879,548029)`收据，明确lazy加载8901、8355并进入4125。最新 **16项AST收据、55条CSS收据、2个SVG资源**均已独立按源SHA-256、UTF-16切片、静态CSS解析及资源字节比较，全部相符。继续使用当前8355的Ri→wi→ys/Ms→cs/ls→ts/es挂载链，不以MapKeyboard副本代替本页来源。
+
+- 数值编辑器只扩展到70和226的DPI路径；226实际range已挂载DpiNumber。新增226使用本身的`x/y/independent`及100–50000、step1，没有再硬编码70的`Y/Independent`。70仍由原dpi_rows_70挂载，沿用自己的schema、边界、步长及可见行选择逻辑；没有将226当前仅显示一行的保护错误加给70全部行。
+- 输入验证接受不超过六位数字、可选前导负号以及临时空串/单独负号；拒绝小数及其他字符。`mask_pattern(None)`确实令底层`mask_pattern_set=true`，所以NumberInput.render的`ensure_number_mask()`不会另套默认数字mask。`InputState::set_value`内部明确关闭emit_events，程序规范回填不会发Change而把typed再次设为true。
+- Blur先parse、按步长向上归整并clamp，再结束注册/重复步进，写本地draft，并**无条件回填当前InputState**及SliderState。因此最终值与既存slider相同也不会保留非法或带前导零文本。Enter由InputEvent订阅blur；普通Escape经底层action传播后由DpiNumber的keydown blur，二者均提交规范值。这里不把Escape写成取消。
+
+| 静态追查输入/动作 | 当前226结果 |
+| --- | --- |
+| 输入空串或`-`后Blur | 规范为100，当前文本、slider及本地draft一致 |
+| 输入`99`后Blur | 规范为100；不再只保存100而留下99文本 |
+| 输入`60000`后Blur | 规范为50000 |
+| 既存值100，输入`00100`后Blur | 即使数值未变，文本仍回填100 |
+| 输入`800`后Up，当前行值因此改变 | 按源JS字符串加法先得8001；随后状态成为数值，再Up得8002 |
+| 点击注册后按箭头或键盘步进 | 仅更新当前数字框/slider预览；Blur才进入write_number与本地snapshot链 |
+| 未注册的箭头步进 | 即时进入本地write_number；仍不调用DLL |
+
+`typed`不仅描述是否编辑过，还用于复现4230中字符串与数字的区别：如果计算后行值不变，源componentDidUpdate不会无条件规范字符串，本地也保留typed到Blur。非独立Y时最终X提交仍同步Y；注册预览本身没有提前选择其他阶段或写profile。226暂时只显示当前行，step入口明确拒绝已退出当前行的旧回调；这只是现有一行实现的边界保护，不算完成多行编辑。
+
+### 步进事件、清理及本轮新发现
+
+已静态核对鼠标按钮重复事件：装饰器通过trait on_click先注册抑制标记，Base.NumberInput的语义on_click随后追加；gpui-pre依插入顺序执行同一元素click listeners。故按下已步进后，释放click会消费suppress_click，不会再加一步。自定义on_step替换NumberInput默认apply_number_step，键盘上下键走同一源步进函数。按住每300ms重复，释放、移出、结束编辑或离开窗口活动态终止。边界仍有UI呈现与窗口命中区域未运行验收，不能仅以clamp宣布交互像素完全一致。
+
+普通切页、Help早退分支均已接`dismiss_editors`：丢弃重复Task/registered/typed，并把未提交数字预览恢复成draft；restore同样先换新profile draft、重置编辑态，再将新profile的整数同步给保留的Input/Slider实体。清理本身不发Changed。对有效profile字段，即使稍后处理旧Blur事件，处理器也是读取已经更新的InputState，未发现把旧文本直接携带到新profile的路径。未进行窗口事件时序或实际文件往返验证。
+
+本子任务另外确认wheel分支存在两个窄项差异，已反馈主线程：
+
+1. **滚轮限位owner不对。**源4230.sliderOnMouseWheel先以props.value（当前行预览）判断方向边界，才调用volumeUp/Down。旧本地只检查焦点和注册，直接从文本步进。当前行50000、输入1000未Blur时向上滚，源不步进，旧本地会变10001；当前行100、输入800后向下滚，源不步进，旧本地会变799。主线程已补wheel专用SliderState边界判断，本子任务已读取该补丁；不应把此保护加到键盘/箭头上，因为源区分这些入口。
+2. **未注册仍吞页面滚动。**通过Tab聚焦但未点击注册时，源没有window mousewheel监听；旧本地虽然不步进，仍在闭包外无条件stop_propagation。应让未注册分支直接返回，不消费页面滚动。后续修复回读结论见本节续记。
+
+仍保留一个已知范围差异：源在点击注册后监听window mousewheel，本地监听DpiNumber命中范围内的scroll事件。焦点保持在输入框而指针移到框外时，源仍能响应，本地尚无同等全窗口入口。因此本轮可把N中的整数规范提交和已挂载的按钮/键盘步进标记为已静态补齐，**滚轮完整覆盖仍为partial**。N中多行阶段、visible/拖排、关闭阶段后的布局与226分段滑条，以及O中连接条件/频率字段/说明均继续未完成；不能把这次数字框补丁扩大成226 Performance全页通过。所有提交仍是本地草稿，未发生设备读写或设备保存成功验证。
+
+续记：已回读最新wheel补丁。闭包现在返回handled：未注册、owner不可用或slider缺失时不消费事件；注册后的方向边界返回true，消费滚动但不步进；其余才调用step。外层仅在handled=true时stop_propagation。因此上面两项本轮新发现均已静态修复，Tab焦点未注册时的页面滚动不再被该分支吞掉；框外全窗口滚轮仍保留为未实现范围。报告`git diff --check`通过，仅有Git的LF/CRLF转换提示；本子任务未运行cargo，主线程的编译检查另行记录。
+
+## N 阶段行实施前续核：226 与70复用边界
+
+2026-10-06续核。当前226普通Ri→wi→ys/Ms→ls→es挂载链仍成立，es、ls、Ms、ys四项收据已再次按当前8355指纹及UTF-16切片比较一致。本轮读取工作树`mouse_dpi_rows.rs`及共享数字编辑器，聚焦阶段行schema、隐藏/选中、XY回退及拖排；分段滑条的完整算法/CSS由另一个获授权子任务继续独立核验。此节是主线程实施前的约束，不表示新阶段行实现已经通过。
+
+额外静态解析当前8355动作：Ss `[149247,149317)`、vs `[149318,149388)`、Cs `[149389,149426)`、Es `[149427,149470)`、Ds `[149542,149612)`、_s `[149613,149650)`；主包初态Pe `[184107,184421)`、reducer ve `[184673,186587)`。vs发Tme并携带stages/activeStage，ve确实更新两者；Cs发$xU，ve只更新指定行independent，保留active。因此下表的XY例外不仅依据render中的方法名，而有实际动作与reducer支撑。
+
+| 复用点 | 当前226已证行为与应保留的边界 |
+| --- | --- |
+| schema | 70本地保存使用`DPIStages/Stages/DPIStage`、`X/Y/Independent/Active`；226使用`dpiStages/stages`、`x/y/independent/visible`。行visible与整个配置active是不同含义，不应全局把Active简单改成active。现有spec已提供axis/independent等路径，但行visible读取、drag及XY方法仍须逐处适配。 |
+| 全局阶段开关 | `dpiStages.enable=false`只把实际active那一行交给ls，不禁止该行数字/XY编辑。开关、drag因one-stage规则隐藏；单行显示的可见序号重新从1计数，写目标仍是原active槽位。不能保留五个选择按钮，也不能用显示序号1覆盖实际active。 |
+| 隐藏行 | visible=false仍留在数组及界面中，序号文字/颜色三角不显示，数字框和XY可操作，slider禁用。关闭最后两条可见行之一被禁用；重新启用隐藏行不改变active。减透明度不能代替禁用slider的事件保护。 |
+| 数值编辑后的选择 | Ms.changeDpiValueX/Y提交时只对visible行将active设slot+1；隐藏行编辑保留旧active。注册的数字步进或slider拖动预览在ls内更新，直到最终提交前不走该active选择。226先前为单行编辑器加的“拒绝非current行”临时条件，多行接入后必须移除；阶段总开关关闭时仅current可编辑的保护仍应保留。 |
+| XY开关的特殊选择 | 启用独立XY只翻independent；关闭时若x==y也只改independent。只有关闭且x!=y才另发vs，把y=x且active=slot+1，即使该行visible=false也选中。不能套用普通数字提交的“隐藏行不选中”规则。70本地当前dpi_toggle_xy的条件结构与此相同，适配字段即可保留，不能无条件重置Y或选中。 |
+| 隐藏当前行的回退 | Ms.setEnableStage先找被隐藏槽位后方第一条visible；没有则找全数组第一条visible。隐藏非current行不改active。70本地visibility回退结构与之相同。 |
+| 拖排及选中重映射 | ls以拖动开始时完整数组移动整组，隐藏行也参与。拖动选中行则active跟到新位置；其他行穿过active时按方向±1。例A/B/C/D/E、active=C3，B移到D之后得到A/C/D/B/E，active=2；选中行移到首位则active=1。70本地remove/insert及选中重映射可以保留，必须同步新槽位对应的输入/slider和编辑态。 |
+| 拖排后的隐藏active修复 | Ms.updateStages使用与visibility操作**不同**的回退：只找active之后的visible，找不到直接设active=1，即使第1槽也隐藏。70本地drop当前正是find后方/map_or(0)，不能合并成统一“首个visible”助手。此状态可由隐藏行的XY回退选中产生，不能只按理想初态排除。 |
+| count及多余入口 | Ms传给updateDPIStage的第三参数不被实际Ds接受；Ds只写stages/activeStage，不能据此新增count更新。正常根没挂阶段数量下拉、useTwoWayTab或noHeader，本轮不新增这些入口。 |
+
+另有两项源细节需明确记录，不能仅凭70本地形状判断：
+
+- 当前ls.onDragStart生成拖拽影子序号时读的是大写`e.Active`，而当前226的profile/reducer及ls行数据只有`visible`。因此此处源生成的序号文本为空；普通行es则正确用visible计数。复用70本地的正常ordinal影子或把该处直接换成visible，都不是当前源码原样行为。可单列为源本身的遗留差异，但不能给这种改动补造“源已证”的理由。影子的250×50、绿色底、移动位置及普通行drag-over上/下边框仍有明确CSS；不能因影子编号异常省略正常拖排。
+- 226的`enableStages`是单独观察门控。Ms将disabled仅包住阶段body，主开关单独传disable，标题/说明保持；componentDidUpdate另外给`.stage input.slider`设disabled。70 cI将disabled给整个panel，两者禁用树不同。它不能与用户可编辑的dpiStages.enable合并，也不能把尚未接入的真实观察当作已读取设备锁定状态。
+
+为避免错误复用，已将Ft的几个实际挂载点转交专门子任务：Qt/rs均读取226 `isSensitivitySliderWithGrid=true`；stage容器左右各-20px，large宽300px!important覆盖普通stage宽250px；Ft的Change经ls保持拖动预览、window mouseup再提交；分段位置到DPI用Math.round，数字框仍用ceil；四方向键被阻止。默认stage CSS隐藏slider-tip，独立XY时重开并由指针/按下状态切换X/Y标记，不能复用普通常驻数值tip。本节不重复宣布分段轨道完整通过。
+
+当前原N/O的剩余实现状态仍以最近一次实施回读为准。下一步仅回读主线程新阶段行实现，继续只改本报告，不运行应用、构建、测试、供应商JS或DLL。
+
+### N 阶段行新实现第一轮回读
+
+已读取本次工作树`mouse_dpi_rows.rs`、`mouse_products.rs`、共享数字编辑器，以及`mouse_226_dpi.rs`的owner/preview/commit接入（完整轨道算法和CSS另有独立子任务审查）。`mouse-226-dpi-current-evidence.json`的 **24项AST、154条CSS、9个资源**已逐项与当前文件指纹/UTF-16切片、静态CSS解析和资源字节比较，全部一致。没有运行应用、测试、构建或DLL；下面明确区分主体通过与尚在修正的接入点。
+
+- `performance`现在让70/226都走实际dpi_rows；226不再回到旧“所有序号按钮加一行”的通用界面。`visible_key()`基于当前profile schema选择70的Active或226的visible，axis/independent同样按本产品路径读取。新grid仅为226 DPI路径建立，70继续原slider；未把其他产品视为这轮已验。
+- 阶段开关关闭后只保留实际active槽位，计数在过滤后进行，所以可见单行的展示序号为1，编辑路径仍保留原slot。visibility及drag入口只在阶段开启时挂载；XY和数字框仍在。隐藏行保留数组位置，badge内容为空、整体淡化，slider禁用但数字/XY可操作；可见两条下限在呈现与写入口都有检查。开启隐藏行不改变active。
+- 关闭当前可见行时的后方/首个visible回退、普通数字提交只选中visible行、XY关闭且x!=y时同步Y并允许选中隐藏行、x==y只改independent，都与前述Ms及动作/reducer一致。共享stepper已去掉226“非当前行一律拒绝”的临时条件；仍保留阶段关闭只允许实际current和关闭Y时拒绝Y的保护。
+- 拖排保留完整行对象、移动隐藏行、按移动方向重映射active。若重映射后的active隐藏，继续用“后方visible，否则slot1”，没有误用visibility操作的首个visible回退；count未被附带重写。完成后同步各新槽位Input/Slider并清除数字预览，grid也从新draft重置；不会把百分比position保存成DPI。
+- 新分段轨道的position属于GridState自己的实体，MouseProductWorkspace.sliders仍表示实际DPI。Grid Preview只同步实际DPI模型和当前Input并notify，不emit MouseProductChanged；Commit才走write_number→选中/XY联动→SourceProductWorkspace.capture。外部数字步进或restore的set_value只令Grid观察并同步位置，不另造Commit。隐藏、未显示、Y已关闭或阶段拖排时收到旧grid事件会reset而不写草稿。
+- snapshot继续只克隆本地draft；restore、Help、普通切页及阶段主开关变化会reset grid pending/pressed并清数字注册。未释放预览因此不进入profile.source_settings。阶段拖动的禁用标记已由独立`dpi_dragging`代替全局has_active_drag，并由StageDrag预览实体的release清理；不再将slider自身GPUI拖动误认为阶段拖排。
+
+本轮已反馈两项收尾差异，后续补丁结论另续记：其一，拖动源行缺当前`.stage.drag-active`的绿色背景/覆盖层，拖拽影子省略了源即使序号为空也创建的圆badge；其二，drop旧回调只凭相同owner/stages/active不能区分同一workspace的两次restore，新profile恰好有相同阶段数组时可通过旧拖动检查。后者属于静态状态隔离缺口，没有运行复现，不以此声称用户数据已被改写。建议对reset/restore增加代际检查，确保旧drag只对发起时的profile状态有效。
+
+原N的多行、visibility/两条下限、单行布局、XY及drop重映射主体已静态补齐。真实enableStages只读观察、完整窗口输入/视觉、O中的轮询连接条件和频率说明仍未通过；完整滑条结论以对应独立审查为准，不能把24项源码收据相符直接等同于整个Performance验收完成。
+
+### N 收尾补丁终核：拖动隔离、视觉与OTFS编辑门控
+
+已读取主线程最新补丁。取证工具新增当前Pe/ve后，**26项AST、154条CSS、9个资源**再次逐项通过源指纹、UTF-16切片、CSS解析和资源字节比较。另独立比对当前226 MW的`main.660230dedaa05e8b00fc.js`和`7846.b84800eaaf18ff1145e5.js`，SHA与`mouse-226-polling-source-review.md`一致；直接读取READY的`SET_ENABLE_STAGES = !isOTFSEnabled`及OTFS切换后true/false发布片段。此处只复核两个具体MW文件及这条来源链，不声称重新审核了全部89个MW文件或运行了OTFS task。
+
+**前轮两个收尾缺口已静态修复。**`draft_generation`每次restore递增，StageDrag携带发起时generation，drop在原owner/数组/active检查外再核generation。同一workspace切到数值完全相同的新profile，也不会接受旧代际拖动的写入。`dpi_dragged_row: Option<usize>`同时标识实际源行和阶段拖动状态，并由预览实体release清空；slider自身的GPUI拖动不会把所有数字框当作阶段拖排禁用。
+
+源行已加relative定位、`#44d62c33`背景以及最后一个child的`#44c62d33`覆盖层；hover/active亦固定相同拖动底色，未再被普通灰色hover覆盖。拖拽影子增加30px圆badge；226真实源编号为空时保留圆形而不捏造序号。上述确认覆盖元素及样式结构，层叠、指针命中与像素仍没有窗口运行验收。
+
+新增`ProductWorkspace → SourceProductWorkspace → MouseProductWorkspace::observe_dpi_editing_enabled(bool)`只接收明确的观察值。Mouse仅对226保存`dpi_editing_observed: Option<bool>`，不写draft或发MouseProductChanged；None按照Pe的UI初态true呈现，代码明确不是成功查询。该运行时状态不随profile保存，不由dpiStages.enable推导；snapshot仍只克隆draft。70的`dpi_editing_enabled()`恒true，且忽略此226观察，不会被新增OTFS门控错误锁住。真实事件生产者尚未调用此入口，不能描述为DLL查询/订阅已经成功。
+
+| 核验入口 | 锁定观察为false时的最新处理 |
+| --- | --- |
+| 数字输入与Blur/Enter | 呈现disabled；晚到的Blur在parse/write前检查门控并回同步已提交值，不把旧文本保存；Enter触发Blur后走同一保护。 |
+| 上下步进/按住重复/已注册滚轮 | step入口同时检查页面、阶段拖动和编辑门控；观察到false时清注册/typed/repeat，预览回draft。 |
+| Grid Preview/Commit | 呈现禁用；owner回调另检查门控，不通过即reset；晚到Commit不能写本地snapshot。 |
+| 阶段选择、XY、visibility | 按钮disabled，同时各具体写入口先检查门控；既有隐藏选择及XY特殊回退规则保持。 |
+| 拖排/主开关 | drag按钮、drop目标提示及主开关禁用；drop和主开关回调另核门控，旧拖动还需通过generation。 |
+
+226的面板标题、帮助和说明不跟随该状态变淡；仅阶段header与rows分别应用0.3，等价于源包住二者的disabled body。主开关独立禁用；用户配置的“阶段关闭只显示当前行”仍是另一个条件。没有把锁状态当作用户关闭阶段，也没有修改count、值或visible字段来模拟锁定。
+
+本轮曾发现并反馈观察清理范围过大：初稿`observe_dpi_editing_enabled(false)`复用dismiss_editors，会顺带`scroll_editor.deactivate`，取消Customize中的无关滚轮等级预览。最新已分出`dismiss_dpi_editors`；OTFS观察及锁下数字Blur仅调用此方法，普通切页/Help仍走`dismiss_editors`清理对应页面瞬态。已回读确认DPI锁观察不会再触碰scroll_editor，也不发本地Changed；该缺口不再记为未修。
+
+在本批已审字段、阶段操作、快照隔离、门控与上述补丁范围内，未发现新的确定代码差异。N阶段主体及观察入口已静态补齐，仍保留真实生产者接线、框外数字滚轮、完整窗口输入/视觉及对应滑条独立审查的限制；O轮询区域仍是单独未完成项。报告diff检查通过（仅LF/CRLF提示），本子任务没有运行cargo、应用、构建、测试或DLL；主线程的编译结果另行记录。
+
+## O 轮询UI实施前续核：字段归属、观察与本地保存
+
+本轮重新读取当前226普通wi/Xs/zs及当前工作树轮询渲染、Mouse/SourceProductWorkspace的capture/restore、ProductWorkspace转发和Shell本地保存链。zs `[157662,165209)`、Xs `[165218,165578)`、wi `[183668,183979)`三项收据已按当前8355指纹与UTF-16切片重新比较一致。原O中BLE隐藏、wired/wireless目标字段、连接标题/帮助、高频说明、DualLink/dock限制缺项在本轮实施前仍存在：现有polling固定`POLLING_RATE`、`spec.polling_path()`及普通标题，226始终写`/pollingRate`；DPI批次没有替代这些功能。
+
+当前源补充位置：Ps `[155469,155946)`是实际频率按钮，选中或disabled时不调用上层；有线bs `[155425,155468)`、无线Is `[155340,155382)`、BLE Os `[155383,155424)`是三个不同动作。配置加载的`pollingRate`/`pollingRateWireless`分支分别派发观察动作，不能因菜单档位相同合并存储owner。以下为独立回读确认的接入要求，尚不表示主线程新轮询实现已通过。
+
+### 未知连接的本地编辑回退
+
+主线程拟保留本地编辑能力，本子任务已核实该选择有当前源初态依据：主包deviceReducer初态的`isBle:false`、`isDongle:false`分别在UTF-16 145119、145128，zs.getPollingRateMode因此选择wired。可在连接观察仍为None时使用有线配置作为明确的本地编辑回退，并说明连接状态尚未读取；不能把None直接改写成一次Wired观察。已知Dongle后显示无线字段，已知BLE按wi隐藏整个面板。
+
+主包Polling reducer初态Ce的wired为125（175029处），而产品默认profile的wired为1000；这是启动临时reducer与已加载profile的不同owner。本地已经有profile草稿时应保留其值，不能为模仿启动临时态而重置为125。未知连接说明属于本地实现的真实性边界，不是原包已经读取设备状态的证据；本轮仍不调用DLL/服务来生成观察。
+
+### 独立字段、显式编辑与保存
+
+| 核验场景 | 实施时应保留的行为 |
+| --- | --- |
+| wired/dongle切换 | 只切选中字段、按钮数据与标题，不能把pollingRate复制到pollingRateWireless或反向复制；两个字段的显式本地覆盖分别记录。 |
+| 已知BLE | 面板隐藏；保留已有wired/wireless/ble草稿字段，不能借隐藏动作删值或强制重置。当前226仍不新增BLE频率编辑入口。 |
+| 首次restore后未编辑 | SourceProductWorkspace.restore_active会立即将补齐默认值的Mouse.snapshot写回活动profile.source_settings。仅凭保存对象中“有pollingRate字段”不能判断它是用户覆盖，必须保留独立本地字段标记，避免重现M的默认值升级为local问题。 |
+| 点击当前已选中按钮 | Ps的active分支直接no-op，保持此行为，不为“记录意图”增加原源没有的重复选择动作。 |
+| 显示观察4000，draft仍为默认1000，再点1000 | 1000在显示上未选中，这是有效本地编辑。即使draft数字本来也是1000，也应标记该字段为local并发布Changed；不能被parent.write的数值相同去重吞掉。 |
+| 纯rate/connection/topology观察 | 只改变运行态显示/限制，不写draft、字段标记、Device.source_settings或dirty；后续其他UI编辑的capture也不能顺带把这些观察保存。 |
+| 旧文件迁移 | 无字段标记的已有值需明确按旧本地草稿处理；新建/默认补齐必须写空标记。不能用观察到的数值是否等于默认值倒推它曾被用户编辑。 |
+| 实际限速观察到来 | 禁用超限按钮并显示对应原因；不得直接把观察8000伪装成已经降到1000。源applyPollingRateLimit调用setPollingRateWireless的自动降档是后置写腿，本地草稿约束与设备当前观察必须区分。 |
+
+已查`source_controls_data.json`、`keyboard_oled_data.json`、`accessory_controls_data.json`三份参与device_fields的实际数据，均无226条目，因此现有226的capture_device_settings不会抽走polling字段；这两项当前归活动`profile.source_settings`。运行连接或DualLink拓扑不应借`source_device_settings`混入本地配置。
+
+Shell保存由点击时捕获的WorkspaceFile调用store::write_workspace，成功后mark_saved捕获的Device快照，状态文字已明确“已保存到本机 · 尚未发送到设备”；保存期间的新编辑继续dirty。新轮询字段/标记应沿这条既有本地链保存，不新增设备成功提示，不在mark_saved时反向更新运行观察。以上只静态读取保存实现，没有实际写文件往返验证。
+
+### restore、页面切换与观察生命周期
+
+- 切profile或Discard会调用Mouse.restore，新profile的两个本地值及local标记应随它恢复。rate观察属于当前profile，旧观察应清空，并通过profile/generation等身份拒绝迟到的旧profile观察；仅清一次Map不足以阻止晚到消息重新填旧值。
+- 连接及DualLink拓扑属于设备/连接生命周期。普通profile切换不应把它们从profile草稿恢复或清成“已知wired”；设备身份/连接生命周期变化时则必须能失效旧观察。不能将“没有收到dongle=true”当作已成功读取wired。
+- 普通TAB及Help通过同一父层路由切换；新轮询的help/tooltip若保留实体需覆盖Help早退清理。页面切换不应丢失本地字段标记，也不应把旧连接/频率初态重新保存。源focus/1500ms周期刷新DualLink snapshot的生命周期另有依据，静态本地状态不能替代真实publisher。
+- rate/connection/topology观察只应处理轮询自身呈现及瞬态；不要复用全局dismiss_editors而取消仍有效的DPI拖动或Customize滚轮预览。编辑禁用条件、链接点击与轮询选择需分别处理，不能把高频说明出现误当成所有高频选项禁用。
+
+当前SourceProductWorkspace→Mouse只已有DPI/滚轮观察转发，尚无轮询连接、独立rate和DualLink的typed接入。新的接线应保留来源/作用域有效性，并使旧按钮回调在连接或profile切换后不能按旧owner写入新字段。具体新实现由主线程继续，完成后本子任务再回读。此节不扩大为O已完成，也不重复将其他子任务的MW全量解析当作本子任务运行验证。

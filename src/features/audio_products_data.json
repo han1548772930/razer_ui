@@ -41344,7 +41344,8 @@
           "playbackMixVolume": {
             "isEnabled": false,
             "value": 0
-          }
+          },
+          "playbackMixDevice": ""
         }
       }
     },
@@ -41506,7 +41507,8 @@
           "playbackMixVolume": {
             "isEnabled": false,
             "value": 0
-          }
+          },
+          "playbackMixDevice": ""
         }
       }
     },

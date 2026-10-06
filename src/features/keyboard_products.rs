@@ -18,8 +18,13 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod actuation;
 #[path = "keyboard_calibration.rs"]
 mod calibration;
+#[path = "keyboard_properties.rs"]
+mod properties;
+#[path = "keyboard_snap_tap.rs"]
+mod snap_tap;
 pub(super) use calibration::is_factory_profile;
 pub(crate) use calibration::open_preview as open_calibration_preview;
+pub(crate) use snap_tap::SnapTapObservation;
 
 #[derive(Deserialize)]
 pub(crate) struct KeyboardProductSpec {
@@ -104,6 +109,9 @@ pub(crate) struct KeyboardProductWorkspace {
     /// Explicit development workspace only; live calibration never fabricates events.
     calibration_preview: bool,
     calibration_modal: Option<Entity<calibration::CalibrationModal>>,
+    snap_tap: Option<snap_tap::State>,
+    /// Retained OS icon choice; failed queries fall back to the legacy icon.
+    properties_icon: Option<&'static str>,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -130,6 +138,14 @@ impl KeyboardProductWorkspace {
             factory_default_profile,
             calibration_preview: false,
             calibration_modal: None,
+            snap_tap: None,
+            properties_icon: (pid == 515).then(|| {
+                if crate::backend::system::is_windows_11() {
+                    "synapse/keyboard-properties-win11.svg"
+                } else {
+                    "synapse/keyboard-properties-legacy.svg"
+                }
+            }),
         };
         if this.draft.pointer("/brightness/value").is_some() {
             this.add_slider("/brightness/value", 0., 100., 1., window, cx);
@@ -160,10 +176,12 @@ impl KeyboardProductWorkspace {
             );
         }
         this.init_actuation(window, cx);
+        this.init_snap_tap(window, cx);
         this
     }
     pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            self.leave_snap_tap(window, cx);
             self.dismiss_calibration(window, cx);
             if let Some(state) = &mut self.actuation {
                 state.selected.clear();
@@ -190,7 +208,9 @@ impl KeyboardProductWorkspace {
         cx.notify();
     }
     pub(crate) fn snapshot(&self) -> Value {
-        self.draft.clone()
+        let mut snapshot = self.draft.clone();
+        self.snap_snapshot(&mut snapshot);
+        snapshot
     }
     pub(crate) fn restore(
         &mut self,
@@ -211,6 +231,7 @@ impl KeyboardProductWorkspace {
         }
         self.selected_key = None;
         self.hovered_key = None;
+        self.restore_snap_tap(window, cx);
         if let Some(state) = &mut self.actuation {
             state.selected.clear();
         }
@@ -824,6 +845,27 @@ impl KeyboardProductWorkspace {
                     .disabled(true),
             )
             .children(
+                // Current 515 $l mounts DA without isSystem. NA shows Menu
+                // only when KEY_APPLICATION exists, mirroring the same
+                // isWindowsKeyDisabled prop; it is never independently editable.
+                (self.spec.product_id == 515
+                    && self
+                        .spec
+                        .keys
+                        .iter()
+                        .any(|key| key["inputID"] == "KEY_APPLICATION"))
+                .then(|| {
+                    Checkbox::new("keyboard-game-mode-menu")
+                        .label(t("DISABLE_MENU_KEY"))
+                        .checked(
+                            self.draft["gamingMode"]["isWindowsKeyDisabled"]
+                                .as_bool()
+                                .unwrap_or(false),
+                        )
+                        .disabled(true)
+                }),
+            )
+            .children(
                 // Current 716 Gaming Mode: T is derived from the button list;
                 // the read-only Copilot row mirrors isWindowsKeyDisabled.
                 // Other products require their own mounted-source audit.
@@ -1295,9 +1337,19 @@ impl KeyboardProductWorkspace {
             }
         }
         let mut page = v_flex().gap_5().child(panel);
-        if self.spec.controls["gaming_mode"].as_bool().unwrap_or(false) {
-            page = page
-                .child(surface::page_columns().child(surface::page_column(self.gaming_mode(cx))));
+        let gaming_mode = self.spec.controls["gaming_mode"].as_bool().unwrap_or(false);
+        if gaming_mode || self.properties_icon.is_some() {
+            page = page.child(
+                surface::page_columns()
+                    .when(gaming_mode, |columns| {
+                        columns.child(surface::page_column(
+                            v_flex()
+                                .child(self.gaming_mode(cx))
+                                .children(self.snap_panel(cx)),
+                        ))
+                    })
+                    .children(self.keyboard_properties(cx).map(surface::page_column)),
+            );
         }
         page.into_any_element()
     }
@@ -1327,5 +1379,6 @@ impl Render for KeyboardProductWorkspace {
             .text_color(cx.theme().foreground)
             .child(super::product_surface::body().child(content))
             .children(self.calibration_modal.clone())
+            .children(self.snap_overlay(window, cx))
     }
 }

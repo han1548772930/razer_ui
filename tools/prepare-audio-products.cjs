@@ -183,7 +183,7 @@ for(const p of evidence){
    const selector=connected.callee?.arguments?.[0];
    if(selector?.type!=='ArrowFunctionExpression'||selector.body.type!=='ObjectExpression')throw Error('Unexpected Stream Mixer selector');
    const initial=literal(acorn.parseExpressionAt(current,state.offset,{ecmaVersion:'latest'}));
-   const fields=['isStreamMixerEnabled','isStreamMixMonitor','streamMixVolume','playbackMixVolume'];
+   const fields=['isStreamMixerEnabled','isStreamMixMonitor','streamMixVolume','playbackMixVolume','playbackMixDevice'];
    for(const field of fields){
     const value=selector.body.properties.find(prop=>key(prop.key)===field)?.value;
     if(value?.type!=='MemberExpression'||key(value.property)!==field||value.object?.type!=='MemberExpression'||key(value.object.property)!=='streamMixerReducer'||value.object.object?.name!==selector.params[0]?.name||initial[field]===undefined)throw Error(`Unexpected Stream Mixer field source: ${field}`);

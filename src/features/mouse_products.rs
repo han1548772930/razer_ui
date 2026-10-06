@@ -6,7 +6,7 @@ use gpui_kit::component::{
     button::Button,
     checkbox::Checkbox,
     h_flex,
-    input::{Input, InputEvent, InputState},
+    input::{Input, InputEvent, InputState, MaskPattern},
     slider::{Slider, SliderEvent, SliderState},
     v_flex,
 };
@@ -17,10 +17,15 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 use crate::i18n::t;
 use crate::ui::surface;
+#[path = "mouse_226_dpi.rs"]
+mod dpi_grid;
 #[path = "mouse_dpi_number.rs"]
 mod dpi_number;
 #[path = "mouse_dpi_rows.rs"]
 mod dpi_rows;
+#[path = "mouse_226_scroll.rs"]
+mod scroll_wheel;
+pub(crate) use scroll_wheel::ScrollWheelObservation;
 
 #[derive(Deserialize)]
 pub(crate) struct MouseProductSpec {
@@ -101,6 +106,16 @@ impl MouseProductSpec {
             "independent"
         }
     }
+    fn has_dpi_number(&self, path: &str) -> bool {
+        matches!(self.product_id, 70 | 226) && path.starts_with(self.stages_path())
+    }
+    fn visible_key(&self) -> &'static str {
+        if self.profile.get("DPIStages").is_some() {
+            "Active"
+        } else {
+            "visible"
+        }
+    }
     fn polling_path(&self) -> &'static str {
         if self.profile.get("PollingRate").is_some() {
             "/PollingRate"
@@ -138,12 +153,17 @@ pub(crate) struct MouseProductWorkspace {
     sliders: BTreeMap<String, Entity<SliderState>>,
     inputs: BTreeMap<String, Entity<InputState>>,
     dpi_numbers: BTreeMap<String, dpi_number::EditState>,
+    dpi_grids: BTreeMap<String, Entity<dpi_grid::GridState>>,
+    dpi_dragged_row: Option<usize>,
+    draft_generation: u64,
+    dpi_editing_observed: Option<bool>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
     scroll: ScrollHandle,
     mapping_input: Option<String>,
     hypershift: bool,
     group_ix: usize,
+    scroll_editor: Option<Entity<scroll_wheel::ScrollWheelEditor>>,
 }
 
 impl EventEmitter<MouseProductChanged> for MouseProductWorkspace {}
@@ -158,22 +178,41 @@ impl MouseProductWorkspace {
             sliders: BTreeMap::new(),
             inputs: BTreeMap::new(),
             dpi_numbers: BTreeMap::new(),
+            dpi_grids: BTreeMap::new(),
+            dpi_dragged_row: None,
+            draft_generation: 0,
+            dpi_editing_observed: None,
             subscriptions: Vec::new(),
             syncing: false,
             scroll: ScrollHandle::new(),
             mapping_input: None,
             hypershift: false,
             group_ix: 0,
+            scroll_editor: None,
         };
         this.prepare_controls(window, cx);
+        if product_id == 226 {
+            let editor = cx.new(|cx| scroll_wheel::ScrollWheelEditor::new(window, cx));
+            this.subscriptions.push(cx.subscribe(
+                &editor,
+                |this, editor, _: &scroll_wheel::Changed, cx| {
+                    let value = editor.read(cx).snapshot();
+                    let fields = editor.read(cx).local_fields();
+                    this.draft["scrollWheel"] = value;
+                    this.draft[scroll_wheel::LOCAL_FIELDS] = fields;
+                    cx.emit(MouseProductChanged);
+                    cx.notify();
+                },
+            ));
+            this.scroll_editor = Some(editor);
+            this.draft[scroll_wheel::LOCAL_FIELDS] = json!([]);
+        }
         this
     }
 
-    pub(crate) fn set_page(&mut self, key: &str, _window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
-            for state in self.dpi_numbers.values_mut() {
-                *state = dpi_number::EditState::default();
-            }
+            self.dismiss_editors(window, cx);
             self.page = key.into();
             self.mapping_input = None;
             self.scroll.set_offset(point(px(0.), px(0.)));
@@ -184,6 +223,35 @@ impl MouseProductWorkspace {
     pub(crate) fn snapshot(&self) -> Value {
         self.draft.clone()
     }
+    pub(crate) fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(editor) = &self.scroll_editor {
+            editor.update(cx, |editor, cx| editor.deactivate(window, cx));
+        }
+        self.dismiss_dpi_editors(window, cx);
+    }
+    fn dismiss_dpi_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        for state in self.dpi_numbers.values_mut() {
+            *state = dpi_number::EditState::default();
+        }
+        // The source unmounts the row's local numeric preview on leaving the page.
+        // These retained controls must return to the committed draft as well.
+        self.syncing = true;
+        for path in self.dpi_numbers.keys() {
+            if let Some(value) = self.draft.pointer(path).and_then(Value::as_i64) {
+                if let Some(input) = self.inputs.get(path) {
+                    input.update(cx, |input, cx| {
+                        input.set_value(value.to_string(), window, cx)
+                    });
+                }
+                if let Some(slider) = self.sliders.get(path) {
+                    slider.update(cx, |slider, cx| slider.set_value(value as f32, window, cx));
+                }
+            }
+        }
+        self.syncing = false;
+        self.reset_dpi_grids(window, cx);
+        cx.notify();
+    }
 
     pub(crate) fn restore(
         &mut self,
@@ -191,6 +259,7 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = self.spec.profile.clone();
         if let (Some(target), Some(saved)) =
             (self.draft.as_object_mut(), value.and_then(Value::as_object))
@@ -202,6 +271,18 @@ impl MouseProductWorkspace {
             );
         }
         self.mapping_input = None;
+        if let Some(editor) = &self.scroll_editor {
+            editor.update(cx, |editor, cx| {
+                editor.restore(
+                    value.and_then(|value| value.get("scrollWheel")),
+                    value.and_then(|value| value.get(scroll_wheel::LOCAL_FIELDS)),
+                    window,
+                    cx,
+                )
+            });
+            self.draft["scrollWheel"] = editor.read(cx).snapshot();
+            self.draft[scroll_wheel::LOCAL_FIELDS] = editor.read(cx).local_fields();
+        }
         for state in self.dpi_numbers.values_mut() {
             *state = dpi_number::EditState::default();
         }
@@ -224,7 +305,86 @@ impl MouseProductWorkspace {
             }
         }
         self.syncing = false;
+        self.reset_dpi_grids(window, cx);
         cx.notify();
+    }
+
+    fn reset_dpi_grids(&self, window: &mut Window, cx: &mut Context<Self>) {
+        for (path, grid) in &self.dpi_grids {
+            grid.update(cx, |grid, cx| grid.reset(self.number(path), window, cx));
+        }
+    }
+    fn dpi_editing_enabled(&self) -> bool {
+        // Current 226 Pe.enableStages starts true; None is a source UI default,
+        // not a successful OTFS query. Runtime observations never enter draft.
+        self.spec.product_id != 226 || self.dpi_editing_observed.unwrap_or(true)
+    }
+    pub(crate) fn observe_dpi_editing_enabled(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.spec.product_id != 226 {
+            return;
+        }
+        self.dpi_editing_observed = Some(enabled);
+        if !enabled {
+            self.dismiss_dpi_editors(window, cx);
+        }
+        cx.notify();
+    }
+
+    fn edit_dpi_grid(
+        &mut self,
+        path: &str,
+        event: &dpi_grid::Edited,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((stage, axis)) = path.rsplit_once('/') else {
+            return;
+        };
+        let slot = stage
+            .rsplit('/')
+            .next()
+            .and_then(|slot| slot.parse::<usize>().ok());
+        let visible = self.boolean(&format!("{stage}/{}", self.spec.visible_key()));
+        let shown = self.boolean(self.spec.stage_enable_path())
+            || slot.is_some_and(|slot| self.number(self.spec.active_path()) as usize == slot + 1);
+        let axis_enabled = axis == self.spec.dpi_axis(0)
+            || self.boolean(&format!("{stage}/{}", self.spec.independent_key()));
+        if self.page != "TAB_PERFORMANCE"
+            || !self.dpi_editing_enabled()
+            || !visible
+            || !shown
+            || !axis_enabled
+            || self.dpi_dragged_row.is_some()
+        {
+            if let Some(grid) = self.dpi_grids.get(path) {
+                grid.update(cx, |grid, cx| grid.reset(self.number(path), window, cx));
+            }
+            return;
+        }
+        let value = match event {
+            dpi_grid::Edited::Preview(value) | dpi_grid::Edited::Commit(value) => *value,
+        };
+        self.finish_dpi_number(path);
+        self.syncing = true;
+        if let Some(slider) = self.sliders.get(path) {
+            slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
+        }
+        if let Some(input) = self.inputs.get(path) {
+            input.update(cx, |input, cx| {
+                input.set_value((value as u32).to_string(), window, cx)
+            });
+        }
+        self.syncing = false;
+        if matches!(event, dpi_grid::Edited::Commit(_)) {
+            self.write_number(path, value, window, cx);
+        } else {
+            cx.notify();
+        }
     }
 
     fn write(&mut self, path: &str, value: Value, cx: &mut Context<Self>) {
@@ -234,6 +394,17 @@ impl MouseProductWorkspace {
         set_pointer(&mut self.draft, path, value);
         cx.emit(MouseProductChanged);
         cx.notify();
+    }
+
+    pub(crate) fn observe_scroll_wheel(
+        &mut self,
+        observation: ScrollWheelObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(editor) = &self.scroll_editor {
+            editor.update(cx, |editor, cx| editor.observe(observation, window, cx));
+        }
     }
 
     fn write_number(
@@ -273,17 +444,18 @@ impl MouseProductWorkspace {
                 }
             }
         }
-        // Current 70 cI activates a visible row when its X/Y value changes;
+        // Current 70 cI / 226 Ms activate a visible row when its X/Y value changes;
         // editing an excluded row preserves the selected stage.
-        if self.spec.product_id == 70 {
+        if matches!(self.spec.product_id, 70 | 226) {
             if let Some(rest) = path.strip_prefix(&format!("{}/", self.spec.stages_path())) {
                 if let Some((slot, axis)) = rest.split_once('/') {
-                    if matches!(axis, "X" | "Y") {
+                    if axis == self.spec.dpi_axis(0) || axis == self.spec.dpi_axis(1) {
                         if let Ok(slot) = slot.parse::<usize>() {
-                            if self
-                                .draft
-                                .pointer(&format!("{}/{slot}/Active", self.spec.stages_path()))
-                                == Some(&Value::Bool(true))
+                            if self.draft.pointer(&format!(
+                                "{}/{slot}/{}",
+                                self.spec.stages_path(),
+                                self.spec.visible_key()
+                            )) == Some(&Value::Bool(true))
                             {
                                 set_pointer(
                                     &mut self.draft,
@@ -368,15 +540,15 @@ impl MouseProductWorkspace {
                 }
             },
         ));
-        let dpi_70 = self.spec.product_id == 70 && path.starts_with(self.spec.stages_path());
-        if dpi_70 {
+        let dpi_number = self.spec.has_dpi_number(&path);
+        if dpi_number {
             self.dpi_numbers
                 .insert(path.clone(), dpi_number::EditState::default());
         }
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx).default_value((value as i64).to_string());
-            if dpi_70 {
-                input.validate(|text, _| {
+            if dpi_number {
+                input.mask_pattern(MaskPattern::None).validate(|text, _| {
                     let digits = text.strip_prefix('-').unwrap_or(text);
                     digits.len() <= 6 && digits.bytes().all(|byte| byte.is_ascii_digit())
                 })
@@ -389,12 +561,13 @@ impl MouseProductWorkspace {
             &input,
             window,
             move |this, input, event, window, cx| {
-                if dpi_70 && !this.syncing && matches!(event, InputEvent::Change) {
+                if dpi_number && !this.syncing && matches!(event, InputEvent::Change) {
                     if let Some(state) = this.dpi_numbers.get_mut(&changed_path) {
                         state.typed = true;
                     }
+                    cx.notify();
                 }
-                if dpi_70 && matches!(event, InputEvent::PressEnter { .. }) {
+                if dpi_number && matches!(event, InputEvent::PressEnter { .. }) {
                     window.blur(cx);
                     return;
                 }
@@ -403,19 +576,23 @@ impl MouseProductWorkspace {
                 {
                     return;
                 }
+                if dpi_number && !this.dpi_editing_enabled() {
+                    this.dismiss_dpi_editors(window, cx);
+                    return;
+                }
                 let value = match input.read(cx).value().parse::<f32>() {
                     Ok(value) => value,
-                    Err(_) if dpi_70 => 0.,
+                    Err(_) if dpi_number => 0.,
                     Err(_) => return,
                 };
                 let value = ((value / step).ceil() * step).clamp(min, max);
-                if dpi_70 {
+                if dpi_number {
                     this.finish_dpi_number(&changed_path);
                 }
                 this.write_number(&changed_path, value, window, cx);
                 // 4230.handleBlur always replaces the draft with parseInput's
                 // normalized text, including when the slider already equals it.
-                if dpi_70 {
+                if dpi_number {
                     this.syncing = true;
                     input.update(cx, |input, cx| {
                         input.set_value((value as i64).to_string(), window, cx)
@@ -430,7 +607,20 @@ impl MouseProductWorkspace {
             },
         ));
         self.sliders.insert(path.clone(), slider);
-        self.inputs.insert(path, input);
+        self.inputs.insert(path.clone(), input);
+        if self.spec.product_id == 226 && self.spec.has_dpi_number(&path) {
+            let model = &self.sliders[&path];
+            let grid = cx.new(|cx| dpi_grid::GridState::new(model, window, cx));
+            let changed_path = path.clone();
+            self.subscriptions.push(cx.subscribe_in(
+                &grid,
+                window,
+                move |this, _, event, window, cx| {
+                    this.edit_dpi_grid(&changed_path, event, window, cx);
+                },
+            ));
+            self.dpi_grids.insert(path, grid);
+        }
     }
 
     fn prepare_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -558,11 +748,38 @@ impl MouseProductWorkspace {
         }
     }
 
-    fn range(&self, path: &str, label: &str, suffix: &str, enabled: bool, cx: &App) -> AnyElement {
+    fn range(
+        &self,
+        path: &str,
+        label: &str,
+        suffix: &str,
+        enabled: bool,
+        cx: &Context<Self>,
+    ) -> AnyElement {
         let Some(slider) = self.sliders.get(path) else {
             return div().into_any_element();
         };
+        let group = SharedString::from(format!("mouse-range-{path}"));
+        let input = if self.spec.product_id == 226 && self.spec.has_dpi_number(path) {
+            dpi_number::DpiNumber {
+                path: path.to_owned(),
+                group: group.clone(),
+                input: self.inputs[path].clone(),
+                owner: cx.entity().downgrade(),
+                disabled: !enabled,
+                min: self.spec.min_dpi,
+                max: self.spec.max_dpi,
+                typed: self.dpi_numbers.get(path).is_some_and(|state| state.typed),
+            }
+            .into_any_element()
+        } else {
+            Input::new(&self.inputs[path])
+                .w_20()
+                .disabled(!enabled)
+                .into_any_element()
+        };
         v_flex()
+            .group(group)
             .gap_3()
             .w_full()
             // 182 `.widget .content{margin-bottom:15px}`
@@ -572,12 +789,7 @@ impl MouseProductWorkspace {
                     .justify_between()
                     .gap_4()
                     .child(label.to_owned())
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .child(Input::new(&self.inputs[path]).w_20().disabled(!enabled))
-                            .child(suffix.to_owned()),
-                    ),
+                    .child(h_flex().gap_2().child(input).child(suffix.to_owned())),
             )
             .child(Slider::new(slider).disabled(!enabled))
             .child(
@@ -620,13 +832,13 @@ impl MouseProductWorkspace {
     }
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
-        if self.spec.product_id == 70 {
+        if matches!(self.spec.product_id, 70 | 226) {
             let mut right = v_flex().gap_5().child(self.polling(cx));
             if self.spec.performance_power {
                 right = right.child(self.power(cx));
             }
             return surface::page_columns()
-                .child(surface::page_column(self.dpi_rows_70(cx)))
+                .child(surface::page_column(self.dpi_rows(cx)))
                 .child(surface::page_column(right))
                 .into_any_element();
         }
@@ -1212,7 +1424,7 @@ impl MouseProductWorkspace {
                 })));
             }
         }
-        if self.draft.get("scrollWheel").is_some() {
+        if self.scroll_editor.is_none() && self.draft.get("scrollWheel").is_some() {
             panel = panel
                 .child(self.toggle("/scrollWheel/smartReelEnabled", t("SMART_REEL"), cx))
                 .child(self.toggle(
@@ -1221,8 +1433,13 @@ impl MouseProductWorkspace {
                     cx,
                 ));
         }
-        surface::page_columns()
-            .child(surface::page_column(panel))
+        v_flex()
+            .child(surface::page_columns().child(surface::page_column(panel)))
+            .children(
+                self.scroll_editor.as_ref().map(|editor| {
+                    surface::page_columns().child(surface::page_column(editor.clone()))
+                }),
+            )
             .into_any_element()
     }
 }
