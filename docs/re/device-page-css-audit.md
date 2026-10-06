@@ -213,3 +213,127 @@ key 的核对未完成，本轮不动它们，已在缺口清单登记。
 1. 从产品包 CSS 抽出该页类名的**原始声明**（工具已能按选择器精确取规则）；
 2. 在本地找到对应渲染代码，逐声明比对；不一致就改本地，或把源码分支记录成「未实现 + 触发条件」；
 3. 把结论写进本目录的 JSON + Markdown，工具 `--check` 保证不回退。
+
+## 2026-10-06 组件帮助提示：`.tip body-widget-tip-portal` 与 `positionTip`
+
+外壳（3858 的 `KrA`、3880 的 `_TA`，其余产品同构）把帮助提示渲染成
+**挂到 `document.body` 的 portal**：
+
+```jsx
+<div className="help" ref={this.helpRef} role="button" aria-label={text}
+     onMouseOver={this.onHover} onMouseLeave={this.onLeave}/>
+{this.state.showTip && createPortal(
+  <div className="tip body-widget-tip-portal" ref={this.tipDiv}>{text}</div>, document.body)}
+```
+
+`.tip{…opacity:0;position:absolute;right:14px;top:34px;transition:visibility 0s,opacity .3s linear;
+visibility:hidden;white-space:pre-wrap;max-width:300px;padding:8px 10px;line-height:18px}`
+之上，`.body-widget-tip-portal{opacity:1;position:fixed;right:auto;visibility:visible;z-index:10001}`
+覆盖了淡入与定位——所以提示是**立即出现**（React 挂载/卸载），由 JS 的 `positionTip()`
+给出坐标：
+
+| 步骤 | 源码 | 本地 `shell_tip_position` |
+|---|---|---|
+| 默认锚点 | `widget.right - 14 - tipWidth`、`widget.top + 34` | 换算到 `.help` 控件：`help.right - 4 - tipWidth`、`help.top + 24`（控件在 `right:10px;top:10px`） |
+| 右溢出 | `container.right - 14 - tipWidth` | `viewport.width - 14 - tipWidth` |
+| 左溢出 | `container.left + 14` | `14`（本地不测量容器左边） |
+| 下溢出 | 翻到图标右侧：`help.right + 8`、`help.top` | 同 |
+| 仍右溢出 | `help.left - 8 - tipWidth` | 同 |
+| 仍下溢出 | `o -= s.bottom - n.bottom + 10` | `viewport.height - tipHeight - 10` |
+
+`container` 在源码里是 `.main-container > #body-wrapper`；本地 Rust 层没有测量该元素，因此用
+窗口视口代替（右/下边界一致，左边界取 0，顶边源算法不使用），这条近似与既有的 179
+`receiver_help_control` 路径相同，已写进证据的 `approximation` 字段。本轮把
+`SourceTooltipKind::WidgetTip` 从「300ms 淡入 + priority 200 + 只做静态锚点」改为与
+`ReceiverWidgetPortal` 相同的 portal 语义（0ms 挂载、`z-index:10001`、上述溢出回退），
+因为两者在源码里本来就是同一个 `.widget .help + .tip` portal。
+
+`tools/audit-widget-tip-position.cjs --check` 逐条断言两个外壳里的 `positionTip` 片段、本地
+`shell_tip_position` 的常量与两个 kind 的路由，并统计覆盖广度：**331 个当前设备包中 299 个
+（271 个在 main bundle、28 个在懒加载 chunk）都挂载这个 portal**，逐包清单见
+[widget-tip-position-current-evidence.json](widget-tip-position-current-evidence.json)。
+
+## 2026-10-06 外壳的三个条件块：谁真的用到
+
+读完 `_TA`/`KrA` 的 `render()` 后可以确认，外壳还渲染三个由 prop 驱动的条件块
+（全部在 `.widget` 之外、`.widget-container` 之内或标题行内）：
+
+| prop | 渲染 | CSS | 当前源里真正传值的产品 |
+|---|---|---|---|
+| `centerTips` | `{centerTips && (class 含 "disabled" \|\| false===active) && <p class="widget-body-tooltip">}` | `.widget-container{display:flex;position:relative}`、`.widget-container:hover .widget-body-tooltip{opacity:1;visibility:visible}`、`.widget-body-tooltip{…#000/1px #5d5d5d/#ccc 14px/16px、left:50%、top:50%、transform:translate(-50%,-50%)、opacity 0→1 .3s linear}` | 207（电池优化组件：`centerTips:R?Ve.tI6:""`）、717 |
+| `disableSwitchTips` | `{r && R && <p class="widget-switch-tooltip">}`（开关被 `disable` 时显示） | `.widget-switch{forced-color-adjust:none;position:relative}`、`.widget-switch:hover .widget-switch-tooltip{opacity:1;visibility:visible}`、`.widget-switch-tooltip{…#000/1px/#ccc 14px/16px、left:10px、top:calc(100% + 2px)、opacity 0→1 .3s}` | 580（灵敏度组件） |
+| `hasFWUpdate` + `fwUpdateComponent` | 由 `q7O.ju(fwUpdateComponent, DeviceInfo.featureMinFw, currentFWVersion) && hasFWUpdate` 得到 `G`；`G` 给 `.widget` 追加 `disabled` 并渲染 `<div class="warning-fw-update">` | `.warning-fw-update{#111/1px #fd8611/圆角 3/57px 高/300px 宽、left:50%、top:50%、transform:translate(-50%,-50%)}`、`.warning-fw-update-tip{#000/1px #5d5d5d/#ccc 14px/16px、max-width:300px、position:fixed、z-index:100}` | 1398/1401/1404/2638/2641/2644/4124（耳机，`fwUpdateComponent:"AudioPrompts"`） |
+
+本地的面板层还没有这三个可选参数，而且**上述产品目前都没有本地页面**，所以本轮只把事实登记在
+这里（连同各自的 CSS 与触发条件），等这些家族接入页面时再实现，避免先写出没有入口的假 UI；
+`warning-fw-update` 还需要本地目前没有的固件版本数据（`DeviceInfo.featureMinFw`、组件的
+`currentFWVersion`）。
+
+## 2026-10-06 `.widget .help` 帮助控件（新增第 7 节断言）
+
+当前源（`.ref/devices/100/static/css/main.dd229426.css`，331 个设备包同规则）：
+
+```css
+.widget .exclamation:before,.widget .help{background-repeat:no-repeat;border-radius:7px;height:14px;position:absolute;width:14px}
+.widget .help{background-color:#4a4a4a;background-image:url(…/tooltip_questionmark.96138d2f.svg);right:10px;top:10px;transition:background-color .3s;will-change:background-color}
+.widget .help:hover{background-color:#ffffff4d}
+.widget .help:hover+.tip{opacity:1;visibility:visible;z-index:100}
+.body-widget-tip-portal,.widget .tip{background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:18px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:14px;text-align:left;text-transform:none;top:3…}
+.body-widget-tip-portal{opacity:1;position:fixed;right:auto;visibility:visible;z-index:10001}
+```
+
+`tools/audit-device-page-css.cjs` 现在逐条断言上面这些声明、共享实现 `surface::help_control`
+的存在，以及 `src/features/keyboard_controls.rs`（Snap Tap 帮助）与 `src/features/device_pages.rs`
+（非对称中止说明）都改用该共享控件（不再自绘 `help-default.svg` 按钮 + Kit tooltip）。
+`docs/re/device-page-css-audit.json` 新增 `widget_help` 收据（源码声明 + 本地指纹），`--check` 通过。
+
+说明：源把 `.help` 绝对定位在 widget 的 `right:10px;top:10px`，本地沿用各 widget 的标题行右端
+（`surface::panel_with_control` 的控件位）承载同一个 14px 控件，尺寸、配色、图标与 `.tip` 皮肤均与源
+一致；这一放置差异已在此登记，未当作等价处理。
+
+## 2026-10-06 效果参数的方向/屏幕标签改用已核对文案键
+
+`src/features/device_pages.rs` 的效果方向与屏幕按钮此前用字面量中文标签。按
+`locales/zh-CN.json` 的**唯一值命中**核对（并用 `locales/en.json` 复核语义）：
+
+| 本地字面量 | 唯一命中文案键 | en 值 |
+| --- | --- | --- |
+| 顺时针 | `CLOCKWISE` | Clockwise |
+| 逆时针 | `COUNTER_CLOCKWISE` | Counter-Clockwise |
+| 顶部 | `TOP` | Top |
+| 底部 | `BOTTOM` | Bottom |
+
+这四处改为 `crate::i18n::t(...)`；其余（整个屏幕 / 左侧 / 右侧 / 向左 / 向右 / 向外 / 向内）
+在本地文案表里没有唯一命中的键，**保留原字面量**并在代码里注明，未按近似键替换。
+文案键存在性由 `tools/audit-locale-keys.py --check` 覆盖。
+
+## 2026-10-06 灯效 widget 的帮助控件（源有条件文案）
+
+源 100 `main.1734869e.js`：灯效 widget 不是自定义外框，而是共享组件 `cs`：
+
+```jsx
+<div className={this.props.nanoLeafEnabled ? "" : "disabled"} style={{flex:"initial"}}>
+  <cs title={t ? Rt.t69 : Rt.tQN} tips={t ? Rt.uTU : i ? Rt.px6 : Rt.Zsw}
+      extraClass={this.props.extraClass}>
+    {this.renderEffect()}{this.renderChromaAppMessage()}
+  </cs>
+</div>
+```
+
+用 `tools/webpack-source.cjs` 的**模块作用域**解析（不是文本猜测）得到导出映射与文案键：
+
+| 导出 | 文案键 | zh-CN |
+| --- | --- | --- |
+| `Rt.t69` | `CUSTOMIZE_SENSA` | 自定义 Sensa HD 触觉反馈功能 |
+| `Rt.tQN` | `EFFECTS` | 效果 |
+| `Rt.uTU` | `SENSA_HD_TOOLTIP` | 自定义您的设备如何响应不同类型的触发器。 |
+| `Rt.px6` | `EFFECTS_BLE_TOOLTIP` | 从预设列表中选用一种效果来自定义设备的灯光效果。使用蓝牙连接时可用的效果有限。 |
+| `Rt.Zsw` | `EFFECTS_TOOLTIP` | 从预设列表中自定义设备的灯光效果，并将其同步到支持所选灯光效果的其他 Razer Chroma 雷蛇幻彩设备。 |
+
+因此该 widget 的帮助文案是**有条件**的：Sensa HD 设备用 `SENSA_HD_TOOLTIP`，蓝牙连接用
+`EFFECTS_BLE_TOOLTIP`，其余用 `EFFECTS_TOOLTIP`。本地 `src/features/device_pages.rs` 现在按
+`.widget .help` + `.widget .tip`（`surface::help_control("lighting-effects-help", …)`）接入，
+并按 `self.device().use_ble` 在 `EFFECTS_BLE_TOOLTIP`／`EFFECTS_TOOLTIP` 之间切换；Sensa HD 分支
+没有对应的本地设备标志，代码注释已写明未建模，未臆造该标志。
+`tools/audit-device-page-css.cjs` 新增第 8 节断言（`title`/`tips` 结构、四个键的存在、本地接线）
+与 `lighting_widget` 收据。

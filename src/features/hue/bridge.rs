@@ -15,6 +15,7 @@ impl HueWorkspace {
                 } else {
                     this.bridge.bridge_enabled = false;
                     this.bridge.is_loading = false;
+                    this.sync_tutorial_visibility();
                     this.last_command = Some("ON_SET_BRIDGE_ENABLE: false".into());
                 }
                 cx.notify();
@@ -48,6 +49,7 @@ impl HueWorkspace {
                         .on_click(cx.listener(|this, _, _, cx| {
                             if this.preview {
                                 this.bridge.is_loading = true;
+                                this.sync_tutorial_visibility();
                                 this.last_command = Some("ON_REFRESH_BRIDGE".into());
                                 cx.notify();
                             }
@@ -211,6 +213,7 @@ impl HueWorkspace {
                         if enable {
                             this.bridge.bridge_enabled = true;
                             this.bridge.is_loading = true;
+                            this.sync_tutorial_visibility();
                             this.last_command = Some("ON_SET_BRIDGE_ENABLE: true".into());
                         } else {
                             // Source sends a command and waits for MW_SET_IS_PAIRED.

@@ -33,3 +33,92 @@
 - CSS normal 行高、原生字体 fallback、浏览器和 GPUI 栅格化/换行；任务禁止运行，因此未做截图一致性声明。
 
 当前只证明收据列出的组件与修复；未宣称整页或所有已有页面一致。最终 cargo check 由父线程统一执行。
+
+## 2026-10-06 命令拨盘帮助改用源门户
+
+源 691 chunk `6375.a5fed9ed.chunk.js`：
+
+```jsx
+<div className="command-dial">
+  <i id={c.JW} className="help" onMouseEnter={P} onMouseLeave={P}/>
+  <Un.A position="bottom-right" className="command-dial-tooltip" isMounted={I} target={c.JW}>
+    …<m.A text={c.blb}/><br/><br/><ul style={{paddingLeft:"20px"}}><li>…</li>…</ul>…
+  </Un.A>
+</div>
+```
+
+CSS（`6375.333aa5fc.chunk.css`）：`.command-dial .help{background-color:#4a4a4a;border-radius:50%;
+height:14px;margin:0;position:absolute;right:10px;top:10px;width:14px}`、
+`.command-dial-tooltip{line-height:17px;white-space:pre-wrap}`。
+
+本地改动：`src/features/keyboard_controls.rs` 的拨盘帮助不再用 Kit 的富内容 tooltip，而是
+`dial_help_hovered` 开关（对应源 `isMounted`）+ 共享
+`source_hover_tip_element(.., SourceTipPlacement::BottomRight, 富内容)`：14px 圆点、`#4a4a4a`
+→ hover `#ffffff4d`、`right:10px;top:10px`、富内容沿用 `COMMAND_DIAL_USAGE_1..4` 与 20px 缩进项目符号、
+行高按源覆盖为 17px。`node tools/audit-keyboard-691-current.cjs` 新增 `dial_help` 收据（CSS 声明、
+源码标记、本地契约与「旧的 `dial-help-content` 不得回归」）。
+
+## 2026-10-06 拨盘 `icon-add` 的 `tooltip` 属性徽标
+
+源 691 chunk `6375.a5fed9ed.chunk.js` 的拨盘头部：
+
+```jsx
+<i className={"icon-add".concat(K() ? "disabled" : "")} onClick={v} tooltip={getTextItem(c.BYV)}/>
+```
+
+即浏览器原生式的 `tooltip` 属性，由伪元素呈现。当前源全局规则（691 `static/css/5171.1330bdc6.chunk.css`）：
+
+```css
+[tooltip]:before{background-color:#000;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;
+  content:attr(tooltip);display:block;font-size:14px;height:auto;line-height:16px;opacity:0;
+  padding:8px 10px;pointer-events:none;position:absolute;right:0;text-align:left;
+  top:calc(100% + 5px);transition:visibility 0s,opacity .3s linear;visibility:hidden;
+  white-space:nowrap;width:auto;z-index:100}
+[tooltip]:hover:before{opacity:1;visibility:visible}
+```
+
+新增共享实现 `src/ui/attribute_tip.rs`：贴目标下沿 5px、右缘对齐、不换行、`#000`/`1px #5d5d5d`/`#ccc`/14px/16px/`8px 10px`、
+悬停即时挂载 + 300ms 线性淡入；只实现**没有更具体覆盖**时的全局形态（`.indicator--item`、`.nav-tabs .batt`、
+`.device--badge` 等有覆盖的页面仍用各自 kind）。本地拨盘 `dial-add` 现以 `dial_add_hovered` 驱动该徽标
+（文案沿用同一控件的 `ADD_NEW_MODE`）。`node tools/audit-keyboard-691-current.cjs` 的 `attribute_tooltip`
+收据断言上表声明、`[tooltip]:hover:before`、源 `icon-add`/`tooltip:` 标记与本地契约。
+
+## 2026-10-06 删除触发器：源有条件提示 + `[tooltip]` 徽标
+
+源 691 拨盘（`6375.a5fed9ed.chunk.js`）：
+
+```jsx
+<div className="icon-delete" onClick={t => { t.stopPropagation(); O(!R); }}
+     tooltip={R ? void 0 : (0, s.getTextItem)(vn.DELETE)}>
+  <Ln.A active={R} confirmDel={…}/>
+</div>
+```
+
+`R` 就是确认展开态：确认中源**不渲染**提示；提示本身是全局 `[tooltip]:before` 属性徽标（同上节 CSS）。
+
+本地 `src/features/keyboard_controls.rs` 的删除触发器改用
+`attribute_tip_group(tip_id, label, "dial-confirm-trigger")`，显隐条件写成 `!reset && !open`
+（`open` 即 `Popover::trigger_with` 的展开态，对应源 `R`），因此确认展开时提示消失、且 reset 触发器
+不套用这条只属于 `icon-delete` 的规则。
+
+**登记差异**：触发闭包只提供 `&mut Window` 与 `&App`，无法建立 hover 状态，也无法使用
+`motion::transition`，所以该徽标用 `group_hover` 驱动 `opacity 0→1`（皮肤、锚点、不换行、显隐条件
+与源一致），源 CSS 的 `transition:opacity .3s linear` 淡入在这一处不可达；`dial_icon_button`
+（`dial-add` 已在上一节按源接入挂载式徽标、`dial-expand`）与 reset 触发器仍使用 Kit 提示，
+等各自的源标记核实后再改。`tools/audit-keyboard-691-current.cjs` 的 `attribute_tooltip` 收据
+已包含 `tooltip:R?void0:(0,s.getTextItem)(vn.DELETE)` 与本地三条接线断言。
+
+## 2026-10-06 修复：拨盘添加按钮上叠了两层提示
+
+上一节把 `dial-add` 接到共享 `[tooltip]` 徽标时，`dial_icon_button` 内部仍然无条件挂着
+Kit `Tooltip::new(label)`，于是同一控件同时存在源徽标与 Kit 提示。本轮给
+`dial_icon_button` 增加 `kit_tooltip: bool`：
+
+- `dial-add` 传 `false`（源 `tooltip={getTextItem(c.BYV)}` 已由 `attribute_tip` 承担）；
+- `dial-expand`（"旋转方向的按键分配"）传 `true`：它的源标记在 691 `6375.*` 与 653
+  `main.7b71cce5.js` 里都没有对应的 `tooltip=` 属性（653 的属性提示只出现在
+  app-explorer/refresh/keymap-bar 等宿主控件上），因此未改造，等标记核实后再改。
+
+`tools/audit-keyboard-691-current.cjs` 的 `attribute_tooltip` 收据新增该开关与两个调用点
+的断言（`kit_tooltip: bool`、`let button = if kit_tooltip {`、`ADD_NEW_MODE` 之后为 `false,`、
+"旋转方向的按键分配" 之后为 `true,`），证据 JSON 已重新生成。

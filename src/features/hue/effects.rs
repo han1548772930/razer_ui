@@ -1,5 +1,49 @@
 use super::super::lighting_color::LightingColorPicker;
 use super::*;
+use std::path::PathBuf;
+
+/// 源 `PA` 用 `k.A.get(u_)` / `k.A.set(u_, false)` 记住高级灯效教程点是否已被关闭
+/// （`u_ = "isShowTutorialHue"`，写入值就是 `JSON.stringify(false)`，读回 `false` 才永久隐藏；
+/// 没有写过时是 `undefined`，按可见处理）。本地沿用同一键名，存到应用本地数据目录，
+/// 跨启动行为一致；这只涉及本地 UI 状态，不涉及设备或宿主服务。
+const TUTORIAL_STORAGE_KEY: &str = "isShowTutorialHue";
+
+fn tutorial_storage_path() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("razer_ui")
+        .join(format!("{TUTORIAL_STORAGE_KEY}.json"))
+}
+
+pub(super) fn load_tutorial_visibility() -> bool {
+    match std::fs::read_to_string(tutorial_storage_path()) {
+        Ok(value) => serde_json::from_str::<bool>(&value).unwrap_or(true),
+        Err(_) => true,
+    }
+}
+
+fn save_tutorial_visibility(visible: bool) {
+    let path = tutorial_storage_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(
+        path,
+        serde_json::to_string(&visible).unwrap_or_else(|_| "true".into()),
+    );
+}
+
+impl HueWorkspace {
+    /// 源 `PA` 的 `useEffect(…, [isLoading])`（挂载时也执行一次）：
+    /// `false === stored ? 隐藏 : (!isLoading ? 显示 : 隐藏)`。教程点挂在
+    /// `HUE_TUTORIAL_INCLUDED` 容器里，也就是已配对的高级灯效标签页，所以本地同时看
+    /// `is_paired`。`is_loading` 每次变化都要重算（源里就是这个依赖）。
+    pub(super) fn sync_tutorial_visibility(&mut self) {
+        self.tutorial_visible =
+            self.bridge.is_paired && !self.bridge.is_loading && load_tutorial_visibility();
+    }
+}
 use gpui_kit::base::{NumberInput, StepAction};
 
 impl HueWorkspace {
@@ -254,7 +298,10 @@ impl HueWorkspace {
                             .accessibility_label(i18n::t("ADVANCED_EFFECT_DETAILS"))
                             .child(img("synapse/hue-indicator_animated.svg").size_full())
                             .on_click(cx.listener(|this, _, _, cx| {
+                                // 源里点击处理器 `T()` 同时 `setVisible(!1)` 与
+                                // `k.A.set(u_, !1)`，即关闭并持久化。
                                 this.tutorial_visible = false;
+                                save_tutorial_visibility(false);
                                 cx.notify();
                             })),
                     )

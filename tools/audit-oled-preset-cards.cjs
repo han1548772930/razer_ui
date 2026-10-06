@@ -76,6 +76,27 @@ for (const token of ['OLED_REQUIRE_SYNAPSE_RUNNING_TOOLTIP',
   '.on_hover(window.listener_for(&hover']) {
   if (!native[1].text.includes(token)) throw Error(`Missing native home contract: ${token}`);
 }
+// 两个提示都按源实现：BLE 关闭编辑用 `[turn-off-ble-tooltip]:before`（本地既有
+// `SourceTooltipKind::OledBleDisabled`），requires-Synapse 图标用即时挂载的
+// `.tooltip-razer.bottom-right`（源 `xA isMounted position:"bottom-right" target`）。
+for (const token of ['SourceTooltipKind::OledBleDisabled',
+  'source_hover_tip_element(', 'SourceTipPlacement::BottomRight',
+  'window.listener_for(', '&require_synapse_hover',
+  'oled-require-synapse-tip-']) {
+  if (!native[1].text.includes(token)) throw Error(`Missing native tooltip contract: ${token}`);
+}
+if (native[1].text.includes('tooltip::Tooltip::new('))
+  throw Error('Kit tooltip still mounted on the OLED home cards');
+const oledCss = fs.readFileSync(cssFile, 'utf8');
+for (const token of ['[turn-off-ble-tooltip]:before{background-color:#000;border:1px solid #5d5d5d',
+  'left:20px', 'position:absolute', 'top:185px', 'transition:visibility 0s,opacity .3s linear']) {
+  if (!oledCss.includes(token)) throw Error(`Missing source tooltip CSS: ${token}`);
+}
+const oledJs = fs.readFileSync(bindings[0].path, 'utf8');
+for (const token of ['"turn-off-ble-tooltip"', 'position:"bottom-right"',
+  'target:"require-synapse-icon-"']) {
+  if (!oledJs.includes(token)) throw Error(`Missing source tooltip markup: ${token}`);
+}
 const report = {product_id: 691, bindings, localization,
   css: {path: cssFile, sha256: hash(css), rules}, assets,
   native: native.map(({path, text}) => ({path, sha256: hash(text)})),
@@ -84,8 +105,11 @@ const report = {product_id: 691, bindings, localization,
     '232x64 content, source border cascade, 10% disabled preview and centred 1.1 hover scale',
     'Hover toolbar moves enabled switch, replace and custom-only reset into each card',
     'Last-enabled invariant, isolated drafts and real native import/crop/Apply are retained',
-    'Home card body hover also updates its title; source requires-Synapse and BLE card tooltip text'],
-  limitations: ['Tooltip content is verified; the shared native tooltip timing/placement is not source portal parity.',
+    'Home card body hover also updates its title; source requires-Synapse and BLE card tooltip text',
+    'BLE-disabled edit tooltip uses the source `[turn-off-ble-tooltip]:before` 20px/185px card anchor and 300ms linear fade; the requires-Synapse icon mounts its `.tooltip-razer.bottom-right` tip instantly'],
+  tooltips: {ble_disabled: 'SourceTooltipKind::OledBleDisabled ([turn-off-ble-tooltip]:before, left:20px top:185px, opacity .3s linear)',
+    require_synapse: 'source_hover_tip_element(SourceTipPlacement::BottomRight) on the `require-synapse-icon-{id}` wrapper (source `xA isMounted`, no delay)'},
+  limitations: ['Tooltip content and mechanism are verified; runtime hover pixels and engine font metrics remain unmeasured.',
     'Animation transfer estimates need processed size; original imported byte counts are not substituted.',
     'Emote/Banner/System editors, actual service loading/language downloads and device writes remain unavailable.',
     'No application or tests ran; runtime image pixels, hover and focus behavior remain unmeasured.']};

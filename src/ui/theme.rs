@@ -72,11 +72,53 @@ impl DockPairingColors {
     pub(crate) fn warning() -> Hsla {
         rgb(0xfd8611).into()
     }
+    /// `.HyperPollingWirelessMouseDock_dongleWarningText` /
+    /// `_bothDevicesPollingCappedText`: 12px `#999` on the pairing page.
+    pub(crate) fn warning_text() -> Hsla {
+        rgb(0x999999).into()
+    }
+    /// `.Duallink_bothDevicesConnectedWarningText`: 14px/17px `#ccc` inside the
+    /// pairing utility dialog, which is lighter than the page warnings.
+    pub(crate) fn dialog_warning_text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
     pub(crate) fn border() -> Hsla {
         rgb(0x5d5d5d).into()
     }
     pub(crate) fn backdrop() -> Hsla {
         rgba(0x000000b3).into()
+    }
+}
+
+/// Current `OTA` slider declarations (`.slider-container`, `.slider`,
+/// `.slider-tip`) shared by the accessory, audio and OLED pages.
+pub(crate) struct SliderColors;
+impl SliderColors {
+    /// `.slider-container{opacity:.3}` inverts with `.on{opacity:1}`.
+    pub(crate) fn track() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
+    /// `.slider-container .left` and `.slider::-webkit-slider-thumb`.
+    pub(crate) fn fill() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn thumb() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    /// `.on .slider::-webkit-slider-thumb:hover{background:#5d5d5d}`.
+    pub(crate) fn thumb_hover() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    /// `.on .slider::-webkit-slider-thumb:active{background:#383838}`.
+    pub(crate) fn thumb_active() -> Hsla {
+        rgb(0x383838).into()
+    }
+    pub(crate) fn thumb_border() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    /// `.slider-tip{color:#212121}`.
+    pub(crate) fn tip_text() -> Hsla {
+        rgb(0x212121).into()
     }
 }
 

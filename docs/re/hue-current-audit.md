@@ -59,3 +59,123 @@ node tools/extract-hue.cjs --check
 python -X utf8 tools/validate-hue.py
 python -X utf8 tools/audit-native-product-coverage.py
 ```
+
+## 2026-10-06 亮度滑条改用共享 `SourceSlider`
+
+当前 769 的两个亮度控件都是共享 `OT`（`main.ad1113f8.js`）：
+
+```jsx
+<OT min={0} max={100} step={1} value={…} active={…} changeValue={…}
+    minTag={w.KFn} maxTag={w.zrT} extraClass={active ? "" : sA}/>
+```
+
+`KFn`/`zrT` 依 769 的语言导出表就是 `OFF`/`BRIGHT`（证据里已有 `"minTag": "OFF"`）；没有传
+`noTip`，所以数值显示在 `.slider-tip` 里；`active` 对应 `.slider-container.on`（否则整块 `.3`
+透明度且 `pointer-events:none`）。CSS 仍是共享滑块那一套：
+`.slider-container{height:64px;opacity:.3;pointer-events:none;position:relative}`、
+`.slider-container.on{opacity:1;pointer-events:auto}`、
+`.slider{background:#0000;border-radius:3px;bottom:25px;height:6px;width:100%;z-index:3}`、
+`.slider::-webkit-slider-thumb{background:#44d62c;border-radius:8px;height:16px;width:16px}`、
+`.slider-container.on .slider::-webkit-slider-thumb:hover{background:#5d5d5d;border:2px solid #44d62c}`、
+`.slider-tip{background-color:#44d62c;border-radius:3px;bottom:42px;color:#212121;font-size:12px;
+line-height:14px;padding:4px 8px;width:max-content}`，以及
+`.slider-container .foot{bottom:-2px;opacity:1;position:absolute;text-transform:uppercase;…}` +
+`.foot.min{left:0}` / `.foot.max{right:0}`（`.foot` 不声明颜色与字号，由父级继承）。
+
+本地改动（`src/features/hue/brightness.rs`）：`brightness_slider` 不再用 GPUI Kit 的
+`Slider` 加自绘数值行与 OFF/BRIGHT 行，而是 `SourceSlider::new(slider, value/100)`
+`.tip(Some("{value:.0}"))` `.enabled(enabled)`（值进 `.slider-tip`、容器 64px、`.track`/`.left`
+与滑柄 hover/active 配色都按源），并在容器下沿 `-2px` 增加 `.foot` 两端标签
+（`OFF`/`BRIGHT`，`text-transform:uppercase`，禁用时随容器一起降到 `.3`）。
+`tools/validate-hue.py` 新增这些 CSS、`OT` 参数（含两处 `minTag:w.KFn`/`maxTag:w.zrT`）与本地
+标记断言。
+
+仍未完成：Hue 网络发现与服务往返、实际灯具输出、Chroma 安装/启动/同步、高级灯效教程提示的
+持久化、扫描与配对动画，以及其它控件（步进器/提示框）的原样式细节。
+
+## 2026-10-06 高级灯效教程点的跨启动持久化
+
+源（769 `main.ad1113f8.js` 的 `PA` 组件）：
+
+```jsx
+const T = () => { visibleRef.current && rootRef.current && (setVisible(false), k.A.set(u_, false)) };
+useEffect(() => { (!1 === k.A.get(u_) ? setVisible(false) : isLoading || setVisible(true)); … }, [isLoading]);
+```
+
+- 存储键 `u_ = "isShowTutorialHue"`；`k.A` 是 localStorage 包装：`set(k,v)` 用
+  `localStorage.setItem(k, JSON.stringify(v))`，`get(k)` 在第二个参数缺省时 `JSON.parse`
+  读回，没写过是 `undefined`。
+- 所以可见性是「没写过或写过 `true` → 可见；写过 `false` → 永久隐藏」，并且 `isLoading` 为真时
+  隐藏；点击指示点即写入 `false` 并隐藏。指示点本体是 36×36 的
+  `indicator_animated.e9e90a63.svg`（已提取为 `assets/synapse/hue-indicator_animated.svg`），
+  悬挂在高级灯效标签页的 `HUE_TUTORIAL_INCLUDED` 容器里。
+
+本地改动：`src/features/hue/effects.rs` 增加同一键名的持久化
+（`TUTORIAL_STORAGE_KEY = "isShowTutorialHue"`、存到应用本地数据目录、
+`load_tutorial_visibility` / `save_tutorial_visibility`）与
+`sync_tutorial_visibility()`（`is_paired && !is_loading && 存储值不为 false`），
+并在 `is_loading` 每次变化处调用（`bridge.rs` 的开关关闭、刷新、启用三处与 `preview.rs` 的状态
+切换），点击指示点时写入 `false`。原先的注释说“服务不提供持久化，所以本地不做”——源码里它其实是
+localStorage，已按源改正。`tools/validate-hue.py` 新增源片段（`u_="isShowTutorialHue"`、
+`!1===k.A.get(u_)?o(!1):e||o(!0)`、`k.A.set(u_,!1)`、localStorage 包装）与本地标记断言。
+
+仍未完成：Hue 网络发现与服务往返、实际灯具输出、Chroma 安装/启动/同步、扫描与配对动画，
+以及步进器/提示框等控件的原样式细节。
+
+## 2026-10-06 配对中的进度动画（“扫描和配对动画”里真正缺的那一半）
+
+源 `Bi(e)` 的状态分派与两个组件的差别（769 `main.ad1113f8.js`）：
+
+- `case I_ /* SCANNING */`、`case S_ /* SCANNING_IP */` → `hi()`：只有
+  `TEXT_CASE_SCANNING_CONTENT` 与 `.Home_btnGroup` 里的取消按钮（`TEXT_CASE_SCANNING`，
+  点击派发 `SCAN_CANCEL`）。**没有进度条。**
+- `case C_ /* PAIRING */` → `fi()`：`TEXT_CASE_PAIRING_CONTENT` 加
+  `<div className={Home_progressWrapper}><div className={Home_progress}><div className={Home_child}/></div>
+  <div className={Home_close} onClick={() => Mi(e, PAIR_CANCEL)}/></div>`。
+
+CSS：`.Home_progressWrapper{align-items:center;display:flex;height:20px;justify-content:center;
+margin:10px auto 0;position:relative;width:300px}`、
+`.Home_progress{background-color:#44d62c4d;border-radius:2.5px;height:5px;overflow:hidden;
+position:relative;width:100%}`、
+`.Home_child{animation:Home_move__oy9kP 2s linear infinite;background-color:#44d62c;
+border-radius:2.5px;height:5px;position:absolute;width:80px}`，关键帧
+`@keyframes Home_move__oy9kP{0%{left:-80px}to{left:100%}}`（80px 绿条在 300px 轨道上 2s 线性循环，
+`-80/300 = -0.2667`）；`.Home_close{background-image:url(icon_close_enclosed_1.svg);height:20px;
+left:100%;margin-left:10px;position:absolute;width:20px}` + `:hover` 换成 `_hover` 图标。
+
+本轮本地改动（`src/features/hue/onboarding.rs`）：配对分支的 80px 绿条原来静止在轨道左端
+（注释写“预览帧，不能暗示网桥回应”），现在按源做 2s 线性无限滑动
+`left = phase*1.2667 - 0.2667`（`reduce_motion` 时停在 `-0.2667`），轨道补 `relative` 以便绝对定位
+裁剪；300×20 容器、5px `#44d62c4d` 轨道、20×20 的 `left:100% + margin-left:10px` 关闭图标与
+hover 图标都保持不变（原本已按源）。`tools/validate-hue.py` 新增上述 CSS/关键帧、`fi()` 的
+JSX 片段（`Di`/`ci`/`ui`/`Li` 与 `Mi(e,A_)`）以及本地动画标记断言。
+
+仍未完成：Hue 网络发现与服务往返、实际灯具输出、Chroma 安装/启动/同步，以及步进器/提示框等
+控件的原样式细节。
+
+## 2026-10-06 扫描的 13 秒超时
+
+源里两个「开始扫描」按钮（`INIT` 页的 `TEXT_CASE_SCAN`、扫描失败页的
+`TEXT_CASE_SCAN_AGAIN`）都做同样两件事：
+
+```js
+onClick: () => { Mi(e, SCANNING); mi = setTimeout(() => Ui(e), 13e3) }
+const Mi = (e, status, ip) => e({type: h_, payload: {status, ip}});
+let mi = null;  const Ui = e => { Mi(e, SCAN_FAILED) };
+```
+
+- `hi()`（`SCANNING`）的卸载清理是 `(0,y.useEffect)(() => () => { mi && (clearTimeout(mi), mi = null) }, [])`，
+  所以取消扫描（`SCAN_CANCEL`）离开该状态时计时器被清掉；13 秒到点则推进到 `SCAN_FAILED`
+  （这是源自身的界面超时，不是伪造网桥回应）。
+- 手动 IP 搜索 `Mi(e, SCANNING_IP, a)` **不**启动这个计时器。
+
+本轮本地改动：`HueWorkspace` 新增 `scan_task: Option<Task<()>>`，`arm_scan_timeout()`
+用 `cx.background_executor().timer(Duration::from_secs(13))` 在到点后（仅当仍处于
+`Integration::Scanning`）写入 `ScanFailed` 与对应的 `last_command`，并清空任务；
+`set_integration` 在 `next != Integration::Scanning` 时清掉任务（对应 `hi()` 的卸载清理），
+两个「开始扫描」按钮的点击里各调用一次 `arm_scan_timeout(cx)`，手动 IP 搜索不调用。
+`tools/validate-hue.py` 新增源片段（两处 `mi=setTimeout(()=>Ui(e),13e3)`、`Ui`/`Mi` 定义、
+卸载清理、`Mi(e,S_,a)` 不带计时器）与本地标记断言。
+
+仍未完成：Hue 网络发现与服务往返、实际灯具输出、Chroma 安装/启动/同步，以及步进器/提示框等
+控件的原样式细节。

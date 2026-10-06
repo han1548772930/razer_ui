@@ -5532,12 +5532,25 @@
     }
   ],
   "local": {
-    "src/features/source_controls.rs": "5bf3886ebb77ed31f6b5184de6234f44dc40cf16ad8f405d98545a21470a6865",
+    "src/features/source_controls.rs": "703264ec72e946ba22a2f1d1c9dd4dc0b622a31610a64f321c09e34acc14d6e0",
     "src/features/source_controls/oled_page.rs": "9c07489c1e364e69980132b6ee26c5258793d32c2b6dd3b54d093faaca1d5932",
-    "src/features/source_controls/oled_home_cards.rs": "eed24e0fcee873bdad1c425710e161cda496e6c474520980e93c53fe8936fc7e",
+    "src/features/source_controls/oled_home_cards.rs": "f873b487cd2ceba3bd3577ee301e53ea3c55e2d69d247c93dc4be49cc88b14c5",
     "src/features/source_controls/oled_presets.rs": "527c0396e9b68d22c752abe08063148cb149b7ad92a6dbf4eeb50e40f8920615",
     "src/features/keyboard_products.rs": "d8ed714d6605793c1471afac36a190a57c06f566309e4e81df0b8aece5f2704b",
     "src/features/source_workspace/profile_bar.rs": "12ba981788fbe66c291a9f921196db3988700a19ca7c02f001e4c4c0c419f544"
+  },
+  "dial_help": {
+    "css": ".ref/devices/691/static/css/6375.333aa5fc.chunk.css",
+    "declaration": "background-color:#4a4a4a;background-image:url(/synapse/products/691/ui/static/media/tooltip_questionmark.96138d2f.svg);border-radius:50%;height:14px;margin:0;position:absolute;right:10px;top:10px;width:14px",
+    "tooltip": "line-height:17px;white-space:pre-wrap",
+    "native": "dial_help_hovered + source_hover_tip_element(SourceTipPlacement::BottomRight), 14px #4a4a4a/#ffffff4d control"
+  },
+  "attribute_tooltip": {
+    "css": ".ref/devices/691/static/css/5171.1330bdc6.chunk.css",
+    "declaration": "background-color:#000;border:1px solid #5d5d5d;box-sizing:border-box;color:#ccc;content:attr(tooltip);display:block;font-size:14px;height:auto;line-height:16px;opacity:0;padding:8px 10px;pointer-events:none;position:absolute;right:0;text-align:left;top:calc(100% + 5px);transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:nowrap;width:auto;will-change:visibility,opacity;z-index:100",
+    "delete_condition": "source tooltip=R?void0:DELETE, local !reset && !open + attribute_tip_group (group_hover opacity; the source 300ms linear fade is not reachable from the &App-only trigger closure)",
+    "icon_switch": "dial_icon_button(kit_tooltip) — dial-add false (attribute badge), dial-expand true (source mark unlocated)",
+    "native": "src/ui/attribute_tip.rs attribute_tip/attribute_tip_group + dial_add_hovered on the 691 dial add button"
   },
   "profile_contract": "Ca disables isEnableProfileBar for OLED/Power/Help; Kt uses it only for loader disable. Profile bar remains mounted and enableSwitchProfile controls dropdown independently.",
   "corrected": [
@@ -5552,7 +5565,7 @@
     "Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference",
     "Power low-battery warning, indicator and low-power information widgets are still absent",
     "BLE/download/service-derived flags and source system-slide Apply semantics incomplete",
-    "Card title hover and source requires-Synapse/BLE tooltip text restored; tooltip portal timing/placement and runtime pixels remain unverified",
+    "Card title hover restored; OLED card, command-dial and port help tooltips now use the source portal mechanisms (`.tooltip-razer` instant mount, `[turn-off-ble-tooltip]:before`), runtime pixels remain unverified",
     "Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified",
     "Customize/Lighting/Help content and other keyboard-specific widgets remain partial"
   ],

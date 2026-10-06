@@ -16793,12 +16793,13 @@
           "isEnabled": false
         },
         "oledBrightness": 50,
+        "oledLanguage": 0,
         "timeToHomeScreen": 5,
         "oledDimDisplay": {
           "enabled": true,
           "value": 1
         },
-        "oledLanguage": 0
+        "oledScreensaver": 0
       }
     },
     "pages": [
@@ -17095,26 +17096,51 @@
         "sections": [
           {
             "title": "OLED_BRIGHTNESS_TITLE",
+            "tips": "OLED_BRIGHTNESS_TIPS",
             "description": "OLED_BRIGHTNESS_DESC",
             "controls": [
               {
                 "path": "/device/oledBrightness",
                 "label": "OLED_BRIGHTNESS_TITLE",
                 "kind": "slider",
-                "min": 20,
+                "min": 30,
                 "max": 100,
                 "step": 1
               }
             ]
           },
           {
+            "title": "OLED_LANGUAGE_TITLE",
+            "tips": "OLED_LANGUAGE_TIPS",
+            "description": "OLED_LANGUAGE_DESC",
+            "controls": [
+              {
+                "path": "/device/oledLanguage",
+                "label": "OLED_LANGUAGE_SELECT_LABEL",
+                "kind": "select",
+                "apply_label": "APPLY",
+                "options": [
+                  {
+                    "label": "English",
+                    "value": 0
+                  },
+                  {
+                    "label": "中文 (简体)",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "title": "OLED_TIME_TO_HOME_SCREEN_TITLE",
+            "tips": "OLED_TIME_TO_HOME_SCREEN_TIPS",
             "description": "OLED_TIME_TO_HOME_SCREEN_DESC",
             "controls": [
               {
                 "path": "/device/timeToHomeScreen",
                 "label": "OLED_TIME_TO_HOME_SCREEN_TITLE",
-                "kind": "select",
+                "kind": "options",
                 "options": [
                   {
                     "label": "5",
@@ -17138,12 +17164,13 @@
           },
           {
             "title": "OLED_DIM_DISPLAY_TITLE",
+            "tips": "OLED_DIM_DISPLAY_TIPS",
             "description": "OLED_DIM_DISPLAY_DESC",
             "controls": [
               {
                 "path": "/device/oledDimDisplay/value",
                 "label": "OLED_DIM_DISPLAY_TITLE",
-                "kind": "select",
+                "kind": "options",
                 "enabled_by": "/device/oledDimDisplay/enabled",
                 "options": [
                   {
@@ -17167,21 +17194,33 @@
             ]
           },
           {
-            "title": "OLED_LANGUAGE_TITLE",
-            "description": "OLED_LANGUAGE_TIPS",
+            "title": "OLED_SCREEN_SAVER_TITLE",
+            "tips": "OLED_SCREEN_SAVER_TIPS",
+            "description": "OLED_SCREEN_SAVER_DESC",
             "controls": [
               {
-                "path": "/device/oledLanguage",
-                "label": "OLED_LANGUAGE_SELECT_LABEL",
-                "kind": "select",
+                "path": "/device/oledScreensaver",
+                "label": "OLED_SCREEN_SAVER_TITLE",
+                "kind": "image_options",
                 "options": [
                   {
-                    "label": "English",
+                    "label": "OLED_SCREEN_SAVER_OPTION_NO_SCREEN_SAVER",
                     "value": 0
                   },
                   {
-                    "label": "中文 (简体)",
-                    "value": 1
+                    "label": "1",
+                    "value": 1,
+                    "image": "synapse/oled-screensaver-1.webp"
+                  },
+                  {
+                    "label": "2",
+                    "value": 2,
+                    "image": "synapse/oled-screensaver-2.webp"
+                  },
+                  {
+                    "label": "3",
+                    "value": 3,
+                    "image": "synapse/oled-screensaver-3.webp"
                   }
                 ]
               }

@@ -112,6 +112,41 @@ function packagedIcons() {
   return { used: [...new Set(used)].sort(), missing };
 }
 
+// `hideBattValue` 是产品工作区里写死的 prop（例如 1330 的
+// `.ref/devices/1330/static/js/main.f0797abf.js`：`hideBattValue:!0`），不是设备数据。
+// 这里按当前包重算 `!0` 的产品集合，并与 `src/ui/battery.rs` 的 `HIDE_BATTERY_VALUE` 表
+// 逐项比对；同时核对隐藏分支的本地标记。
+function hideBatteryValue() {
+  const devices = path.join(root, '.ref/devices');
+  const products = [];
+  for (const name of fs.readdirSync(devices).sort((a, b) => Number(a) - Number(b))) {
+    const jsDir = path.join(devices, name, 'static', 'js');
+    if (!fs.existsSync(jsDir)) continue;
+    let hides = false;
+    for (const file of fs.readdirSync(jsDir)) {
+      if (!file.endsWith('.js')) continue;
+      const text = fs.readFileSync(path.join(jsDir, file), 'utf8');
+      if (/hideBattValue:!0/.test(text)) {
+        hides = true;
+        break;
+      }
+    }
+    if (hides) products.push(Number(name));
+  }
+  const rust = read(RUST);
+  const table = /const HIDE_BATTERY_VALUE: &\[u32\] = &\[([^\]]*)\]/.exec(rust.replace(/\r\n/g, '\n'));
+  if (!table) throw new Error('HIDE_BATTERY_VALUE table not found in battery.rs');
+  const declared = table[1]
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(Number);
+  return { products, declared, rust_markers: [
+    '.mr(surface::css(17.))',
+    'hideBattValue',
+  ].filter(marker => rust.includes(marker)) };
+}
+
 function translations(keys) {
   const zh = JSON.parse(read('locales/zh-CN.json'));
   const en = JSON.parse(read('locales/en.json'));
@@ -171,6 +206,18 @@ for (const [name, value] of Object.entries(strings)) {
   if (value.zh === null) problems.push(`语言包缺少 ${name} (${value.key})`);
 }
 if (packaged.missing.length) problems.push(`打包缺失: ${packaged.missing.join(', ')}`);
+// `hideBattValue:!0` 的产品表必须与当前包一致，隐藏分支必须按 `.hideBattValue{margin-right:17px}`
+// 与「不渲染百分比、不挂载提示」实现。
+const hidden = hideBatteryValue();
+if (hidden.products.join(',') !== hidden.declared.join(','))
+  problems.push(`HIDE_BATTERY_VALUE 表与当前源不一致：源 ${hidden.products.join(',')} / 本地 ${hidden.declared.join(',')}`);
+for (const marker of ['.mr(surface::css(17.))', 'hideBattValue'])
+  if (!hidden.rust_markers.includes(marker)) problems.push(`battery.rs 缺少隐藏分支标记 ${marker}`);
+if (!/\.hideBattValue\{margin-right:17px\}/.test(read(CSS_BUNDLE)))
+  problems.push('.hideBattValue{margin-right:17px} 不在当前 CSS 里');
+if (hidden.declared.some((id, ix) => hidden.products[ix] !== id))
+  problems.push('HIDE_BATTERY_VALUE 必须按升序列出当前源里的产品');
+if (/source_tooltip\.rs/.test('')) problems.push('unreachable');
 // Rust 表里必须逐条出现原版类名。
 for (const cls of ['batt batt-off', 'batt charging', 'batt charging100', 'batt batt-warning', 'batt batt-disconnected']) {
   if (!rust.includes(`"${cls}"`)) problems.push(`battery.rs 缺少类名 ${cls}`);
@@ -215,6 +262,12 @@ const report = {
       .filter(rel => fs.existsSync(path.join(root, rel))),
   },
   rust_table: { source: RUST, sha256: sha256(fs.readFileSync(path.join(root, RUST))) },
+  hide_battery_value: {
+    rule: '产品工作区传 hideBattValue:!0 → 不渲染百分比 span、不挂载 tooltip，并加 .hideBattValue{margin-right:17px}',
+    products_in_source: hidden.products,
+    rust_table: hidden.declared,
+    rust_markers: hidden.rust_markers,
+  },
   mounted_header_audit: 'docs/re/device-tabs-audit.json',
   limitations: ['Icon/string table verification only; current parent layout and mounted tooltip are checked by audit-device-tabs.cjs.',
     'No rendered pixel or hardware behavior validation.'],

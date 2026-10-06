@@ -379,19 +379,15 @@ impl DeviceWorkspace {
                                         this.edit(w, cx, |s| s.tracking.asymmetric = *value)
                                     })),
                             )
-                            .child(
-                                Button::new("asymmetric-help")
-                                    .ghost()
-                                    .border_0()
-                                    .p_0()
-                                    .size(surface::css(16.))
-                                    .accessibility_label("非对称中止说明")
-                                    .tooltip(crate::i18n::t_or(
-                                        "SMARTTRACKINGTOOLTIP1",
-                                        "分别调整抬升和着陆距离。",
-                                    ))
-                                    .child(img("synapse/help-default.svg").size_full()),
-                            ),
+                            // 源 `.widget .help` + `.widget .tip`（14px 圆点、`right:10px;top:10px`、
+                            // `#4a4a4a` → hover `#ffffff4d`），本地用共享 `surface::help_control`。
+                            .child(surface::help_control(
+                                "asymmetric-help",
+                                crate::i18n::t_or(
+                                    "SMARTTRACKINGTOOLTIP1",
+                                    "分别调整抬升和着陆距离。",
+                                ),
+                            )),
                     )
                     .when(!tracking.asymmetric, |this| {
                         this.child(
@@ -612,6 +608,19 @@ impl DeviceWorkspace {
                                     })),
                             ),
                     )
+                    // 源 100 `main.1734869e.js`（模块 4693）的灯效 widget 是共享组件 `cs`：
+                    // `title={t ? CUSTOMIZE_SENSA : EFFECTS}`、
+                    // `tips={t ? SENSA_HD_TOOLTIP : i ? EFFECTS_BLE_TOOLTIP : EFFECTS_TOOLTIP}`
+                    // （`t` = Sensa HD 设备，`i` = 蓝牙连接）。本地用同一个 `.widget .help`
+                    // 帮助控件；Sensa HD 分支没有对应的本地设备标志，故只实现蓝牙/常规两支。
+                    .child(surface::help_control(
+                        "lighting-effects-help",
+                        if self.device().use_ble {
+                            crate::i18n::t("EFFECTS_BLE_TOOLTIP")
+                        } else {
+                            crate::i18n::t("EFFECTS_TOOLTIP")
+                        },
+                    ))
                     .when(!lighting.advanced, |this| {
                         this.child(div().mt(surface::css(20.)).mb(surface::css(20.))
                             .text_size(surface::css(14.)).line_height(surface::css(17.))
@@ -867,24 +876,31 @@ impl DeviceWorkspace {
                                     .children({
                                         let choices = match effect {
                                             Effect::Tidal => {
-                                                [(1, "向外", "out"), (0, "向内", "in")]
+                                                [(1, "向外".to_owned(), "out"), (0, "向内".to_owned(), "in")]
                                             }
                                             Effect::Wheel => {
-                                                [(1, "顺时针", "cw"), (2, "逆时针", "ccw")]
+                                                [
+                                                    (1, crate::i18n::t("CLOCKWISE"), "cw"),
+                                                    (2, crate::i18n::t("COUNTER_CLOCKWISE"), "ccw"),
+                                                ]
                                             }
                                             Effect::Wave if crate::product::audited_mouse_mat(self.pid())
                                                 .and_then(|product| product.wave_direction())
                                                 == Some(crate::product::MouseMatWaveDirection::ClockwiseCounterclockwise) => {
-                                                [(11, "顺时针", "cw"), (12, "逆时针", "ccw")]
+                                                [
+                                                    (11, crate::i18n::t("CLOCKWISE"), "cw"),
+                                                    (12, crate::i18n::t("COUNTER_CLOCKWISE"), "ccw"),
+                                                ]
                                             }
-                                            _ => [(1, "向左", "left"), (2, "向右", "right")],
+                                            // 源的“左/右”标签没有在本地文案表里唯一命中的键，保留原字面量。
+                                            _ => [(1, "向左".to_owned(), "left"), (2, "向右".to_owned(), "right")],
                                         };
                                         choices.into_iter().map(|(direction, label, asset)| {
                                             let selected = params.direction == direction;
                                             Button::new(SharedString::from(format!(
                                                 "effect-direction-{direction}"
                                             )))
-                                            .accessibility_label(label)
+                                            .accessibility_label(label.clone())
                                             .tooltip(label)
                                             .selected(selected)
                                             .w(surface::css(40.))
@@ -931,19 +947,21 @@ impl DeviceWorkspace {
                             .mt(surface::css(30.))
                             .gap(surface::css(6.))
                             .children(
+                                // `顶部`/`底部` 在本地文案表里唯一命中 TOP/BOTTOM，改用键；
+                                // 其余三项没有唯一命中的源键，保留原字面量。
                                 [
-                                    ("full", "整个屏幕"),
-                                    ("left", "左侧"),
-                                    ("top", "顶部"),
-                                    ("right", "右侧"),
-                                    ("bottom", "底部"),
+                                    ("full", "整个屏幕".to_owned()),
+                                    ("left", "左侧".to_owned()),
+                                    ("top", crate::i18n::t("TOP")),
+                                    ("right", "右侧".to_owned()),
+                                    ("bottom", crate::i18n::t("BOTTOM")),
                                 ]
                                 .into_iter()
                                 .map(|(screen, label)| {
                                     Button::new(SharedString::from(format!(
                                         "effect-screen-{screen}"
                                     )))
-                                    .accessibility_label(label)
+                                    .accessibility_label(label.clone())
                                     .tooltip(label)
                                     .selected(params.screen == screen)
                                     .w(surface::css(24.))

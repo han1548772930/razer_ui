@@ -458,6 +458,18 @@ impl SourceProductWorkspace {
         let help = cx.new(|cx| super::source_help::SourceHelp::new(device.clone(), cx));
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));
+        if let Some(dock) = &dock_pairing {
+            // 源配对文案里的设备名在命中应用设备列表时可点，点击切到该设备工作区。
+            subscriptions.push(cx.subscribe(
+                dock,
+                |_, _, event: &super::dock_pairing::DeviceLinkRequested, cx| {
+                    cx.emit(WorkspaceEvent::OpenDevice {
+                        product_id: event.product_id,
+                        edition_id: event.edition_id,
+                    });
+                },
+            ));
+        }
         let accessory = AccessoryPage::new(&device, window, cx, &mut subscriptions);
         let mut this = Self {
             saved: device.clone(),
@@ -757,6 +769,13 @@ impl SourceProductWorkspace {
     }
     fn current_page(&self) -> Option<&'static ProductPage> {
         product::registered(self.device.product_id)?.page(self.page?)
+    }
+
+    /// 把应用设备列表转给 164/241 配对页（源 `Es` 的比对列表）。
+    pub(crate) fn set_known_devices(&mut self, devices: Vec<(u32, u32)>, cx: &mut Context<Self>) {
+        if let Some(dock) = &self.dock_pairing {
+            dock.update(cx, |dock, cx| dock.set_known_devices(devices, cx));
+        }
     }
     pub(crate) fn set_page_key(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         let Some(product) = product::registered(self.device.product_id) else {

@@ -198,9 +198,139 @@ the user's no-run restriction.
 - **`uiRestraint` 设备约束**：当前源把 `monitor.uiRestraint` 的 truthy 条目直接作为
   `disabledReason`，传给 `THX Cinema`、`HDR`、`Color Profile`、`PIP`、`Adaptive Sync`、
   `Gaming`、`Color` 与刷新率计数器。`accessory_system_products.rs` 现在保留源字段名并在
-  所有对应 `change` 路径、开关、按钮、滑条和 PIP 选择器上拒绝本地草稿写入；字符串原因
-  会显示在对应控件下方，缺少服务字段时保持可编辑预览，不伪造设备限制。仍未接入的是
-  真实宿主/设备服务对 `uiRestraint` 的填充、系统色彩配置文件枚举，以及显示器产品图。
+  所有对应 `change` 路径、开关、按钮、滑条和 PIP 选择器上拒绝本地草稿写入，缺少服务
+  字段时保持可编辑预览，不伪造设备限制。仍未接入的是真实宿主/设备服务对 `uiRestraint`
+  的填充、系统色彩配置文件枚举，以及显示器产品图。
+- **原因行 `zrA`/`iTA`（2026-10-06 重做）**：原因段落是每个组件体（`wrA`/`tTA` 之后）
+  **第一条**子元素，源码里就是 `children:[<zrA text={disabledReason}/>, <div className=
+  {featureDisabled}>…]`；本地此前把它渲染在控件**下方**，且缺 disc。现在
+  `exclamation_line(text, margin_bottom, cx)` 按源码标记绘制 `p.exclamationText[ mb20]`：
+  `p.exclamationText span{width:14px;height:17px;margin-right:5px}` 的行内盒，`:before` 是
+  `#5d5d5d` 的 14px 圆点加 `tooltip_exclamationmark.cc8fb226.svg`（本地资源
+  `synapse/accessory-exclamation.svg`），文字 14px/17px、颜色继承；`className` 默认
+  `exclamationText mb20`（`.mb20{margin-bottom:20px}`），色域警告 `xrA` 覆盖成不带 `mb20`
+  的 `exclamationText`，因此传 `0.`。`restriction_line(feature, cx)` 用它渲染
+  `/uiRestraint/<feature>` 的原因，并按源码次序放回八个组件的首个子元素：Gaming（`RTA`/
+  游戏模式页，原本完全缺失）、Color（`wAA`，原本完全缺失）、THX Cinema、HDR、Color
+  Profile、PIP/second display、Adaptive Sync、FPS 计数器。3858 与 3880 的 `zrA`/`iTA`
+  用点数量（6 / 9）、默认类名、首个子的位置、色域覆盖类名与 `GM` 预设枚举都已写进
+  `tools/prepare-accessory-system-products.py` 的断言；同一次重建还补上了此前从
+  `initial` 漏掉的 `uiRestraint`（源 reducer 种子里的空对象，见该工具的注释），因此
+  `accessory_system_products_data.json` 与重建结果逐字节一致。
+- **组件体 `.widgetContent` 的 20px 列间距（2026-10-06 接入）**：源把组件体包在
+  `.widgetContent{display:flex;flex-direction:column;gap:20px}` 里，组件标题自己的
+  `margin-bottom:20px`（`.widget .titleRow .title`）负责标题到第一条子元素的距离。
+  `tools/audit-monitor-widget-layout.cjs` 逐包枚举了全部 `.widgetContent` 出现点：**只有
+  3858/3880 两个显示器包用到它**（3893/3900/3907/3921、1383、164/241 均为 0 处），共 9 组：
+
+  | 产品 | 标题符号（键） | 顶层子元素 | 本地 |
+  |---|---|---|---|
+  | 3858/3880 | `U$D`（SCARLETT_GAME_MODE_HEADER） | 6：预设组、亮度、对比度、超频、gamma、色域控件 | `surface::widget_content` |
+  | 3858/3880 | `Lyf`（COLOR_TEMPERATURE_HEADER） | 2：预设组、`.slide-off` 自定义组 | `surface::widget_content` |
+  | 3858/3880 | `JXS`（PIP_HEADER） | 1（内层 `div` 再分三块） | 间距不适用，未改 |
+  | 3858/3880 | `mGs`（SCARLETT_FREE_SYNC_HEADER） | 1 | 间距不适用，未改 |
+  | 3880 | `$T1`（REFRESH_RATE_HEADER） | 2（说明段 + 透明 Fragment：胶囊、链接段） | `surface::widget_content` |
+
+  本地新增 `surface::widget_content(children)`（`v_flex().gap(css(20.)).children(…)`），
+  只在源确实是 `.widgetContent` 的组件体里收集子元素：Game Mode 现在是「预设组 + 四行
+  `STA` + 整个 `xrA` 色域控件」五个子元素各占一格（此前 `xrA` 的标题行/按钮组/警告被摊平成
+  三个同级子元素，且没有任何间距），色彩温度页是「预设组 + `.slide-off` 组」两个子元素
+  （`.slide-off` 是普通块容器，内部三行 `STA` 保持紧贴）。`panel`/`panel_with_control`
+  本身不加 gap，因为不是每个组件体都是 `.widgetContent`（例如 `nSA` 的组件体是
+  `div.mb20.flex`，THX/HDR/Color Profile 是单个 `div`），标题的 `mb(20px)` 保持不动。
+  收据见 [monitor-widget-layout-current-evidence.json](monitor-widget-layout-current-evidence.json)，
+  机检 `node tools/audit-monitor-widget-layout.cjs --check`。
+### 2026-10-06 3880 显示页的刷新率组件（`jSA`）落地
+
+3858 的 `TAB_DISPLAY` 右列第二块是 `NSA`（`title:Y0s`＝HDR），3880 同一位置换成 `jSA`
+（`title:$T1`＝REFRESH_RATE_HEADER），而两列的 FPS 计数器（`nSA`/`HSA`）都在（见下面 2026-10-06
+的显示页结构一节）；此前本地给这一块渲染的是自写的占位面板
+（`surface::note("等待显示器提供支持的刷新率。")`，文案不是源文，已删除）。源的结构是：
+
+```jsx
+<tTA title={$T1} tips={ZYW}>                      // 没有开关，也没有 customStyle
+  <iTA text={disabledReason}/>                    // 组件体第一条：zrA 限制说明
+  <div className={"widgetContent " + (disabledReason ? "featureDisabled" : "")}>
+    <p><Text text={M7n}/></p>
+    {disabledReason ? null : <>
+      <xSA activeId={selected} options={rates} onOptionClick={click}/>
+      <p><Text text={XSA(Muv, {displaySettings: <span onClick={() => msSettings("display")}
+         style={{textDecoration:"underline", cursor:"pointer"}}>{W_M}</span>})}/></p>
+    </></div>
+</tTA>
+```
+
+- **按键位解析的文案**（`H6O=a(4693)`，即显示页所在的 locale 模块）：`$T1` =
+  `REFRESH_RATE_HEADER`、`ZYW` = `PERFORMANCE_MODE_SCREEN_REFRESH_RATE_TOOLTIP`、`M7n` =
+  `PERFORMANCE_LAPTOP_SCREEN_GUIDE`、`Muv` = `ADJUST_REFRESH_RATE_DIALOG`（含
+  `{{displaySettings}}` 占位符）、`W_M` = `WINDOW_DISPLAY_SETTINGS`；五个键在本地 10 个
+  `locales/*.json` 里都已存在，因此不需要新增译文。
+- **胶囊是 `PillsSelectBox` 组件**（`.PillsSelectBox_pillsContainer__E5ZcB` +
+  `.PillsSelectBox_pillButton__-CgIZ` + `.PillsSelectBox_active__kObeU`）：容器
+  `background-color:#111;border:1px solid #5d5d5d;border-radius:18px;display:flex;gap:5px;
+  height:36px;padding:5px;width:fit-content`，`:hover{border-color:#44d62c}`；胶囊
+  `background-color:#0000;border:0;border-radius:13px;color:#ccc;font-size:14px;height:26px;
+  line-height:16px;padding:5px 10px;text-align:center`，`.active` 时
+  `background-color:#44d62c;color:#111`，**没有 hover/active 规则**（本地相应地不给
+  胶囊加 hover 态）。选项文本是 `"<n> Hz"`，来自 `supportedRefreshRate`（源先用
+  `useState` 的 60/120/144/165 兜底，收到 MW 事件后替换成升序列表），选中项来自
+  `selectedRefreshRate`；点击先乐观 `setSelected(id)` 再 dispatch
+  `changeMonitorRefreshRate(value)`——本地同样立刻更新运行时观测值，服务动作留在边界外。
+- **版本差异**：`.widgetContent` 的 React 子元素是「说明段 + 透明 Fragment」，Fragment 不
+  产生 DOM 节点，所以实际是三层元素各占 20px；本地用上一轮加的
+  `surface::widget_content([说明段, 胶囊, 链接段])` 渲染，并用
+  `.opacity(0.3)`（对应 `.featureDisabled{opacity:.3;pointer-events:none}`）与点击守卫表达
+  禁用态。
+- **`displaySettings` 链接的动作链**：源 `RiA.A.msSettings("display")` → Electron 宿主动作
+  `msSettings`（`payload:{actionArgs:"display"}`）→ 宿主 `sysutil/win` 原生模块
+  `msSettings:["void",["string"]]`。该模块是 DLL、静态不可读；应用内可读的同族写法是
+  Dashboard 动作表的 `case"PowerUserMenu":return"cmd /c start ms-settings:"`，因此本地
+  `backend::system::open_display_settings()` 用同一种 `cmd /c start ms-settings:display`
+  打开源参数指定的 `display` 页（页面名来自源，方案来自应用自身的同类动作）。
+- 机检：`tools/audit-monitor-widget-layout.cjs` 通过 `H6O=a(4693)` 定位 locale 模块、逐个
+  断言 5 个符号→键的映射、检查这些键在 10 个语言包里都存在、逐条比对 4 条胶囊 CSS 声明、
+  确认 `msSettings("display")` 与本地全部标记，并断言那段自写占位文案不再出现。
+
+### 2026-10-06 显示页的两列结构与标题行开关
+
+`TAB_DISPLAY` 的源码结构是 `.body-widgets.flex`（`flex-direction:row;flex-wrap:wrap;
+justify-content:center;margin:auto;max-width:1240px`）里两个 `.widget-col`（`flex-direction:column;
+height:fit-content;width:600px`），每个组件本身是 `.body-widgets .widget`（`min/max-width:600px;
+margin:10px auto;padding:30px 40px`）。两个产品的列内顺序不同：
+
+| | 左列 | 右列 |
+|---|---|---|
+| 3858 | `lSA` 来源、`eSA` PIP | `RSA` 自适应同步、`NSA` HDR、`nSA` FPS 计数器 |
+| 3880 | `WSA` 来源、`mSA` PIP | `KSA` 自适应同步、`jSA` 刷新率、`HSA` FPS 计数器 |
+
+本地此前把 5 个组件串在一个 `v_flex` 单列里，且 3880 的刷新率组件排在 FPS 计数器之后；本轮改成
+同样的两列 600px 结构并按上表排序（`.child(input_source).child(pip)` 与
+`.child(free_sync).child(third).child(fps_counter)`，`third` 为 3858 的 `hdr_widget` / 3880 的
+`refresh_rate_widget`）。
+
+`wrA`/`tTA` 外壳把开关渲染在 `.titleRow > .title` 里（`display:flex` 的标题文本之后），
+**只有 `hasSwitch` 为真才有 `.widget-switch` 节点**：
+
+```jsx
+H = s ? <div className="widget-switch"><Switch disable={this.props.disable} active={U} …/></div> : null
+v = <div className="titleRow"><div className="title"><Text/>{H}{A}</div><div>{O}</div></div>
+```
+
+显示页各组件自己的声明因此各不相同：`JXS`（PIP）`hasSwitch:!a`（有禁用原因时**不渲染**开关，
+`active:isEnabled`）、`mGs`（自适应同步）`hasSwitch:!e.disabledReason` 且
+`active:!disabledReason&&isEnabled`、`jXh`（FPS 计数器）`hasSwitch:!0`、`Y0s`（HDR）
+`hasSwitch:!e.disabledReason`、`Q$9`（来源）`hasSwitch:!1`；3880 的 `lAx`（THX）同样是
+`hasSwitch:!e.disabledReason`。本轮新增
+`surface::panel_with_title_switch_opt`（`None` 时走不带开关的 `panel_with_control`，即
+`hasSwitch:false` 的等价物），PIP / 自适应同步 / FPS 计数器 / HDR / THX 五个组件改用它，删掉了
+此前身体里的 `self.toggle(...)` 行（原版没有那种带文字标签的复选框行），并补上自适应同步组件体
+里缺失的 `FREE_SYNC_MSG`（`.widgetContent > div[.featureDisabled]`，只有正文文字
+`opacity:.3`）。FPS 计数器里此前还有一条 `restriction_line("refreshRate")`，但 `nSA`/`HSA` 根本
+不读 `uiRestraint`，禁用原因属于 `$T1` 刷新率组件，本轮删除。
+
+`node tools/audit-monitor-widget-layout.cjs --check` 现在同时校验：两页的列组成字符串、五个
+组件的 `hasSwitch` 声明、本地 `panel_with_title_switch_opt` 与五个开关标记、`FREE_SYNC_MSG`、
+两列的本地顺序标记，以及被替换掉的 `self.toggle(...)` 行不再出现。
 
 ## 2026-10-04 游戏模式页（`RTA`）按源码重做
 
@@ -242,14 +372,26 @@ the user's no-run restriction.
   该文件在 3858 抓取里缺失（只抓了 js/css），但 Macro/Profiles 应用里有字节相同的副本，
   已作为 `synapse/accessory-exclamation.svg` 纳入资源清单（`tools/prepare-resources.py`
   记录来源与哈希，`validate-resources.py` 现校验 1085 条哈希）。
-- **仍未接入/偏差**：`.slider-container` 的轨道视觉（`height:64px;opacity:.3` 禁用态、
-  `.track{background:#44d62c4d;height:6px;border-radius:3px}`、
-  `.left{background:#44d62c}`、`.slider::-webkit-slider-thumb{16px 圆点 #44d62c}`、
-  悬停 `#5d5d5d`+`2px #44d62c` 边框、按下 `#383838`、`.slider-tip` 绿底气泡、
-  `.thumb-tag`）本地仍由 gpui_kit 的 `Slider` 承载，只有 `#44d62c` 的条/柄颜色来自
-  `main.rs` 的主题令牌；`featureDisabled` 的 `opacity:.3;pointer-events:none`
-  本地按行做 `opacity(0.3)`；界面文字默认色由应用层决定，本地用主题前景色。
-  显示器色彩页（`xAA`）仍用旧的行渲染，下一轮按同一 `STA` 结构替换。
+- **`.slider-container` 滑条外观（2026-10-06 接入）**：源 `OTA` 的声明
+  （`.slider-container{height:64px;opacity:.3;pointer-events:none}`、`.on{opacity:1;pointer-events:auto}`、
+  `.no-tip{height:36px}`、`.slider{bottom:25px;height:6px;width:100%}`、
+  `.slider::-webkit-slider-thumb{background:#44d62c;border-radius:8px;height:16px;width:16px}`、
+  `.on …:hover{background:#5d5d5d;border:2px solid #44d62c}`、`.on …:active{background:#383838;border:2px solid #44d62c}`、
+  `.left,.right{background:#44d62c;border-radius:3px;bottom:25px;height:6px}`、
+  `.track{background:#44d62c4d;border-radius:3px;bottom:25px;height:6px}`、
+  `.slider-tip{background-color:#44d62c;border-radius:3px;bottom:42px;line-height:14px;padding:4px 8px}` +
+  `.slider-tip,.thumb-tag{color:#212121;font-size:12px;position:absolute}`）
+  现在由共享的 `src/ui/source_slider.rs`（`SourceSlider`）绘制，颜色集中在 `theme::SliderColors`；
+  指针拖动与焦点仍由 gpui-kit 的 base slider 承担，`featureDisabled` 保持行级 `opacity(0.3)`
+  并禁用交互。填充宽度按源 `updateValue()` 的 `calc(8px + p*(100% - 16px))`（两端 8px 缩进），
+  数值气泡按 `p*(W-16) - tipW/2 + 8` 居中于拇指中心；`STA` 传 `noTip`，所以它的容器是 36px 且
+  不渲染气泡。1383 OLED 亮度行同一轮改用该共享层。收据见
+  [source-slider-current-evidence.json](source-slider-current-evidence.json)，机检
+  `node tools/audit-source-slider.cjs --check`（7 份样式表 × 12 条声明 + 本地指纹）。
+- **仍未接入**：风扇转速行（`range()`）对应的源控件结构尚未核对，暂不按 `OTA` 改造；
+  `.thumb-tag` 与 `.slider-tip` 的悬停互换只在源传 `thumbTag` 时挂载（当前无页面使用）；
+  界面文字默认色由应用层决定，本地用主题前景色；显示器色彩页（`xAA`）仍用旧的行渲染，
+  下一轮按同一 `STA` 结构替换；`uiRestraint` 真实填充与显示器产品图见上。
 
 ## 2026-10-04 输入源按钮与确认浮层（`SSA` + `OSA`）
 

@@ -1,6 +1,7 @@
 """Validate ARGB source receipts and resources. Does not run the application."""
 import hashlib
 import json
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -74,3 +75,125 @@ for side in ('left', 'right'):
     for number in range(1, 10):
         assert f'assets/synapse/wired-argb-3871-detecting-led-{side}{number}.svg' in outputs
 print(f'Validated 2 current ARGB pages, 20 locale dictionaries, source receipts and {len(manifest)} resources; application not executed.')
+
+# 图标提示：源 3871 的 `#icon-detection-wrapper` / `#icon-refreshing-wrapper` 用
+# `onMouseEnter`/`onMouseLeave` 直接翻转 `isMounted`（`Gu` 组件没有展示延迟：挂载后只用一个
+# 0ms 定时器加 `.show`，由 `.tooltip-razer>.main{transition:opacity .1s linear}` 完成 100ms
+# 淡入），位置 `bottom-left`（贴下沿、右缘对齐）。本地改用共享的
+# `crate::ui::hover_tip::source_hover_tip`，因此这里同时钉住源与本地的写法。
+for record in evidence['products']:
+    compact = re.sub(
+        r'\s+', '', (ROOT / record['source_files'][0]['path']).read_text(encoding='utf8'))
+    css_path = record['css'] if isinstance(record['css'], str) else record['css']['path']
+    css_text = (ROOT / css_path).read_text(encoding='utf8')
+    assert '.tooltip-razer>.main{bottom:100%' in css_text, record['product_id']
+    assert 'transition:opacity .1s linear' in css_text, record['product_id']
+    if record['product_id'] == 3871:
+        for fragment in (
+            'id:"icon-detection-wrapper",className:"icon-detection-wrapper",'
+            'onMouseEnter:()=>this.toggleTooltipDetection(!0)',
+            'onMouseLeave:()=>this.toggleTooltipDetection(!1)',
+            'isMounted:this.state.toggleTooltipDetection,position:"bottom-left",'
+            'target:"icon-detection-wrapper"',
+            'id:"icon-refreshing-wrapper",className:"icon-refreshing-wrapper",'
+            'onMouseEnter:()=>this.toggleTooltipRefresh(!0)',
+            'isMounted:this.state.toggleTooltipRefresh,position:"bottom-left",'
+            'target:"icon-refreshing-wrapper"',
+            'e._timeout=setTimeout(()=>{e._isMounted&&e.setState({showClassName:"show"})})',
+            'zA="bottom-right",kA="bottom-left",xA="bottom-left-edge"',
+            'E===kA?{x:o.left+320-o.width,y:o.top',
+        ):
+            assert fragment in compact, fragment
+    else:
+        # 778 是主板布局，源里没有这两个图标与其提示。
+        assert 'icon-detection-wrapper' not in compact, record['product_id']
+shared = (ROOT / 'src/ui/hover_tip.rs').read_text(encoding='utf8')
+for marker in (
+    'pub(crate) enum SourceTipPlacement {',
+    'BottomLeft,',
+    'BottomRight,',
+    'Bottom,',
+    'Top,',
+    'pub(crate) fn source_hover_tip(',
+    '.w(surface::css(300.))',
+    'tip.justify_end().right_0()',
+    'tip.justify_start().left_0()',
+    'tip.top_full().mt(surface::css(5.))',
+    'tip.bottom_full().mb(surface::css(5.))',
+    'Animation::new(Duration::from_millis(100))',
+    'TooltipColors::border()',
+):
+    assert marker in shared, marker
+native = (ROOT / 'src/features/wired_argb.rs').read_text(encoding='utf8')
+for marker in (
+    'enum WiredIcon {',
+    'hovered_icon: Option<WiredIcon>,',
+    '.id("icon-detection-wrapper")',
+    '.id("icon-refreshing-wrapper")',
+    'this.hovered_icon = hovered.then_some(WiredIcon::Detection);',
+    'this.hovered_icon = hovered.then_some(WiredIcon::Refresh);',
+    'SourceTipPlacement::BottomLeft',
+    'source_hover_tip(',
+    '.when(!self.spec.mainboard()',
+):
+    assert marker in native, marker
+assert '.tooltip(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))' not in native
+assert '.tooltip(self.spec.text("GLITTER_MESSAGE_REFRESH_ICON"))' not in native
+print('Validated the shared `.tooltip-razer` hover tips and the 3871 icon wrappers '
+      '(778 has no such icons in source).')
+
+# LED 数量提示：源两个产品都是 `Gu position:"bottom-right"`，内容由
+# `getTextItem(<labels>.vml, {ledCount: '<span style="color:#44d62c">N</span>'})` 生成
+# （只有数字是主题绿）。本地改用共享提示并保留该分段上色。
+for record in evidence['products']:
+    compact = re.sub(
+        r'\s+', '', (ROOT / record['source_files'][0]['path']).read_text(encoding='utf8'))
+    for fragment in (
+        ',{position:"bottom-right",children:',
+        'dangerouslySetInnerHTML:{__html:',
+        'ledCount:\'<spanstyle="color:#44d62c">\'',
+    ):
+        assert fragment in compact, (record['product_id'], fragment)
+port = (ROOT / 'src/features/wired_argb/port.rs').read_text(encoding='utf8')
+for marker in (
+    'hovered_info: bool,',
+    'hovered_info: false,',
+    '.id("argb-detection-info-wrapper")',
+    'this.hovered_info = *hovered;',
+    'source_hover_tip_element(',
+    'SourceTipPlacement::BottomRight',
+    'template.split_once("{{ledCount}}")',
+    'div().text_color(cx.theme().primary).child(count)',
+):
+    assert marker in port, marker
+assert '.tooltip(text)' not in port
+print('Validated the `.tooltip-razer.bottom-right` LED-count tooltip (source split colouring '
+      'and native hover mounting).')
+
+# 端口帮助控件：源把 `.help`/`.tip` 放在 `.port-container.widget` 里
+# （`.widget .help{…14px;position:absolute;right:10px;top:10px}`），本地改用共享的
+# `surface::help_control`；产品自己的 `tooltip_questionmark` 与共享图标字节相同。
+for record in evidence['products']:
+    compact = re.sub(
+        r'\s+', '', (ROOT / record['source_files'][0]['path']).read_text(encoding='utf8'))
+    for fragment in (
+        'className:"port-containerwidget",children:[',
+        'jsx)("div",{className:"help"})',
+        'jsx)("div",{className:"tip",children:',
+    ):
+        assert fragment in compact, (record['product_id'], fragment)
+port = (ROOT / 'src/features/wired_argb/port.rs').read_text(encoding='utf8')
+for marker in ('surface::help_control(', '.absolute()', '.right(surface::css(10.))',
+               '.top(surface::css(10.))'):
+    assert marker in port, marker
+assert '.tooltip(self.spec.text("GLITTER_TIP_HELP_PORT_MESSAGE"))' not in port
+manifest = load('assets/synapse/wired-argb-manifest.json')
+entries = manifest if isinstance(manifest, list) else manifest.get('entries', [])
+icons = {entry['output']: entry['output_sha256'] for entry in entries
+         if 'tooltip_questionmark' in entry.get('output', '')}
+assert len(icons) == 2, icons
+shared_icon = hashlib.sha256(
+    (ROOT / 'assets/synapse/automation-tooltip_questionmark.svg').read_bytes()).hexdigest()
+assert set(icons.values()) == {shared_icon}, icons
+print('Validated the port `.widget .help` control against the source markup, the shared '
+      '`surface::help_control` tip and byte-identical question-mark artwork.')

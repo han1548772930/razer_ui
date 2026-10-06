@@ -20,17 +20,25 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod demo;
 #[path = "audio_nommo.rs"]
 mod nommo;
+#[path = "audio_oled.rs"]
+mod oled;
 
 #[derive(Deserialize)]
 struct AudioOption {
     label: String,
     value: Value,
+    /// 原版 OLED 屏保选项自带预览图（1383 `Kv`、691 屏保），值本身仍是数字。
+    #[serde(default)]
+    image: Option<String>,
 }
 #[derive(Deserialize)]
 struct AudioControl {
     path: String,
     label: String,
     kind: String,
+    /// 原版“选择后按 APPLY 才提交”的行（1383 `Bv` 的 OLED 语言）：按钮文案键。
+    #[serde(default)]
+    apply_label: Option<String>,
     #[serde(default)]
     min: f32,
     #[serde(default)]
@@ -56,6 +64,9 @@ struct AudioSection {
     title: String,
     #[serde(default)]
     suffix: String,
+    /// `.widget` 右上角帮助按钮的提示文案键（原版 `tips`）。
+    #[serde(default)]
+    tips: Option<String>,
     #[serde(default)]
     description: Option<String>,
     controls: Vec<AudioControl>,
@@ -155,6 +166,8 @@ pub(crate) struct AudioProductWorkspace {
     selects: BTreeMap<String, Entity<SelectState<Vec<Choice>>>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
+    /// 仅暂存、等待 APPLY 提交的选择值（原版 `Bv` 的 `useState`）。
+    staged: BTreeMap<String, Value>,
     selected_region: usize,
     nommo_brightness_dragging: bool,
     demo: Option<Entity<demo::AudioDemo>>,
@@ -172,6 +185,7 @@ impl AudioProductWorkspace {
             selects: BTreeMap::new(),
             subscriptions: Vec::new(),
             syncing: false,
+            staged: BTreeMap::new(),
             selected_region: 0,
             nommo_brightness_dragging: false,
             demo: demo::AudioDemo::for_product(pid, cx),
@@ -218,7 +232,14 @@ impl AudioProductWorkspace {
                                 })
                                 .map(|o| o.value.clone())
                             {
-                                this.edit(&path, value, window, cx);
+                                // 原版 `Bv` 只把选择写进本地 state，按 APPLY 才提交；
+                                // 其他 select 行选中即写（原版 `ut.A` 的 selectOption）。
+                                if this.control(&path).is_some_and(|c| c.apply_label.is_some()) {
+                                    this.staged.insert(path.clone(), value);
+                                    cx.notify();
+                                } else {
+                                    this.edit(&path, value, window, cx);
+                                }
                             }
                         }
                     },
@@ -266,6 +287,7 @@ impl AudioProductWorkspace {
     ) {
         self.draft = self.spec.draft.clone();
         self.selected_region = 0;
+        self.staged.clear();
         self.nommo_brightness_dragging = false;
         self.initialize_equalizers();
         if let Some(saved) = saved.filter(|v| v.is_object()) {
@@ -285,7 +307,10 @@ impl AudioProductWorkspace {
                         *target = normalized(value as f32, control.min, control.max, control.step);
                     }
                 }
-            } else if control.kind == "select" {
+            } else if matches!(
+                control.kind.as_str(),
+                "select" | "options" | "image_options"
+            ) {
                 let valid = self
                     .draft
                     .pointer(&control.path)
@@ -351,6 +376,13 @@ impl AudioProductWorkspace {
                 .enabled_by
                 .as_ref()
                 .is_none_or(|p| self.draft.pointer(p).and_then(Value::as_bool) == Some(true))
+    }
+    /// 暂存值优先，否则当前值：原版选择框显示的是已提交值，未按 APPLY 前不被改写。
+    fn selection_value(&self, control: &AudioControl) -> Option<Value> {
+        self.staged
+            .get(&control.path)
+            .cloned()
+            .or_else(|| self.draft.pointer(&control.path).cloned())
     }
     fn add_slider(
         &mut self,
@@ -757,6 +789,11 @@ impl AudioProductWorkspace {
     }
 
     fn page_body(&self, key: &str, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        // 1383 的 TAB_OLED 由自己的 OLED 根（`xx`）渲染：两列 `.widget-col` 与
+        // 屏保网格都不是通用音频控件的形态，见 audio_oled.rs。
+        if self.spec.product_id == 1383 && key == "TAB_OLED" {
+            return self.kraken_oled_page(cx);
+        }
         let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();
         if let Some(page) = page {

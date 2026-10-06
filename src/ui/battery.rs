@@ -164,6 +164,16 @@ fn bucket_badge(level: i32, paused: bool) -> (&'static str, &'static str, String
     (class, icon, percent_tip(level), false)
 }
 
+/// 当前源里把 `hideBattValue` 传成 `!0` 的产品（例如
+/// `.ref/devices/1330/static/js/main.f0797abf.js` 的产品工作区
+/// `hideBattValue:!0`）。原版这是**产品代码里写死的 prop**，不是设备数据，
+/// 所以这里按产品 id 列表；`tools/audit-battery-indicator.cjs` 会从当前包重算这张表。
+/// 这些产品的顶栏只显示电量图标：不渲染百分比 `<span>`、不挂载悬停提示，
+/// 并按 `.hideBattValue{margin-right:17px}` 加右边距。
+const HIDE_BATTERY_VALUE: &[u32] = &[
+    115, 131, 1330, 1342, 1370, 1372, 1374, 1443, 1453, 2636, 2647, 2676, 4115, 4133, 4144,
+];
+
 /// 设备页顶栏右侧的电量块。设备没有 `powerStatus` 时返回 `None`
 /// （原版此时 `batteryState === undefined`，整块不渲染）。
 pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
@@ -188,6 +198,45 @@ pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
         "-".to_string()
     };
     let tip = badge.tip.clone();
+    // `badge.icon` 是 `&'static str`；闭包要交给 `SourceTooltip::trigger`（要求 `'static`），
+    // 所以按值捕获而不是借用 `badge`。
+    let icon_name = badge.icon;
+    let icon = move || {
+        // `.nav-tabs .batt{background-position:50%;background-repeat:no-repeat;
+        //  background-size:20px;height:26px;margin:0 5px;width:26px}`
+        div()
+            .w(surface::css(26.))
+            .h(surface::css(26.))
+            .mx(surface::css(5.))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                img(SharedString::from(icon_name))
+                    .w(surface::css(20.))
+                    .h(surface::css(20.)),
+            )
+    };
+    // 原版 `className={"battery " + (hideBattValue ? "hideBattValue" : "")}`、
+    // `{!hideBattValue && !o && <span>{level} %</span>}`、
+    // `{!hideBattValue && <Tooltip …/>}` 与 `.hideBattValue{margin-right:17px}`。
+    let hide_value = HIDE_BATTERY_VALUE.contains(&device.product_id);
+    if hide_value {
+        return Some(
+            h_flex()
+                .id(SharedString::from(format!(
+                    "device-battery:{} hideBattValue",
+                    badge.class
+                )))
+                .role(Role::Image)
+                .h(surface::css(46.))
+                .items_center()
+                .justify_center()
+                .mr(surface::css(17.))
+                .child(icon())
+                .into_any_element(),
+        );
+    }
     Some(
         SourceTooltip::new("battery-level-tips", tip, 300.)
             .kind(SourceTooltipKind::Battery)
@@ -207,21 +256,7 @@ pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
                     .text_size(surface::css(14.))
                     .text_color(color)
                     .child(text)
-                    .child(
-                        // `.nav-tabs .batt{background-size:20px;height:26px;margin:0 5px;width:26px}`
-                        div()
-                            .w(surface::css(26.))
-                            .h(surface::css(26.))
-                            .mx(surface::css(5.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child(
-                                img(SharedString::from(badge.icon))
-                                    .w(surface::css(20.))
-                                    .h(surface::css(20.)),
-                            ),
-                    )
+                    .child(icon())
                     .into_any_element()
             })
             .into_any_element(),

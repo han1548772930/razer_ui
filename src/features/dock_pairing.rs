@@ -39,6 +39,16 @@ impl Spec {
     fn dual(&self) -> bool {
         self.config["canPairTwoDevices"].as_bool() == Some(true)
     }
+    /// 当前源 `DeviceInfo` 的布尔开关（`showBothDevicesConnectedWarning` 等）。
+    fn flag(&self, name: &str) -> bool {
+        self.config[name].as_bool() == Some(true)
+    }
+    /// 当前源每个产品包自己写死的语言键（例如配对工具说明：164 是
+    /// `ENABLE_LAUNCH_PAIRING_UTILITY_INFO`，241 源码里是拼写错误的
+    /// `ENABLE_LAUNCH_PARING_UTILITY_INFO`）。键从产品配置读取，不用通用包顶替。
+    fn config_key(&'static self, name: &str) -> Option<&'static str> {
+        self.config[name].as_str()
+    }
     fn text(&self, key: &str) -> String {
         self.translations
             .get(&i18n::locale())
@@ -62,6 +72,8 @@ pub(crate) struct DockPairing {
     name: String,
     state: PairingState,
     multi_pairing: bool,
+    /// 应用当前已登记的设备（`product_id`, `edition_id`），对应源 `Es` 的比对列表。
+    known_devices: Vec<(u32, u32)>,
     dongle: bool,
     original_dongle: bool,
     preview: bool,
@@ -70,6 +82,15 @@ pub(crate) struct DockPairing {
 }
 struct PreviewDialogRequested;
 impl EventEmitter<PreviewDialogRequested> for DockPairing {}
+
+/// 配对文案里的设备名被点击。源用 `Es(peer, devices)` 命中应用设备列表时把名字渲染成
+/// `.deviceNameLink`（`cursor:pointer;text-decoration:underline`，hover `#44d62c`），
+/// 点击 `z(e)` 切到该设备。
+pub(crate) struct DeviceLinkRequested {
+    pub(crate) product_id: u32,
+    pub(crate) edition_id: u32,
+}
+impl EventEmitter<DeviceLinkRequested> for DockPairing {}
 impl DockPairing {
     pub(crate) fn new(device: &Device) -> Self {
         Self {
@@ -82,6 +103,7 @@ impl DockPairing {
                 .to_owned(),
             state: PairingState::default(),
             multi_pairing: false,
+            known_devices: Vec::new(),
             dongle: false,
             original_dongle: false,
             preview: false,
@@ -89,6 +111,14 @@ impl DockPairing {
             modal: None,
         }
     }
+    /// 刷新应用设备列表（数量或成员变化才通知）。
+    pub(crate) fn set_known_devices(&mut self, devices: Vec<(u32, u32)>, cx: &mut Context<Self>) {
+        if self.known_devices != devices {
+            self.known_devices = devices;
+            cx.notify();
+        }
+    }
+
     pub(crate) fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(modal) = self.modal.take() {
             modal.update(cx, |modal, cx| modal.close(window, cx));
@@ -136,6 +166,10 @@ impl DockPairing {
             "MULTI__DUALINK_PROPERTIES_TOOLTIP"
         };
         let paired = self.state.peers();
+        // `W = DeviceInfo.showBothDevicesConnectedWarning && we(pairedInfo)`：鼠标与
+        // 键盘同时在底座上时，源把轮询率说明整行 `V = !W && …` 去掉，改为显示上面那条提示。
+        let both_devices_capped =
+            dual && self.spec.flag("showBothDevicesConnectedWarning") && paired.len() == 2;
         let mut content = h_flex()
             .items_start()
             .gap(surface::css(if dual && !paired.is_empty() {
@@ -175,24 +209,72 @@ impl DockPairing {
                         .min_w_0()
                         .gap(surface::css(4.))
                         .children(paired.iter().map(|peer| {
-                            div()
-                                .text_size(surface::css(14.))
-                                .child(if dual && paired.len() > 1 {
-                                    format!("{}: {}", self.spec.text(peer.lane.key()), peer.name)
-                                } else if dual {
-                                    self.spec
-                                        .text("SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION")
-                                        .replace("{{deviceName}}", &peer.name)
-                                } else {
-                                    peer.name.clone()
-                                })
+                            // 源 `Es(e, devices)`：只有设备名能在应用设备列表里按
+                            // `productId`+`editionId` 命中时才是链接。
+                            let linked = self.known_devices.iter().any(|(pid, edition)| {
+                                *pid == peer.product_id && *edition == peer.edition
+                            });
+                            let name = SharedString::from(peer.name.clone());
+                            let link = |name: SharedString, product_id: u32, edition_id: u32| {
+                                div()
+                                    .id(SharedString::from(format!(
+                                        "dock-device-link-{product_id}-{edition_id}"
+                                    )))
+                                    .cursor_pointer()
+                                    .underline()
+                                    // `.deviceNameLink{cursor:pointer;text-decoration:underline}` +
+                                    // `.hyperpolling-span-hover:hover{color:#44d62c}`。
+                                    .hover(|style| style.text_color(rgb(0x44d62c)))
+                                    .on_click(cx.listener(move |_, _, _, cx| {
+                                        cx.emit(DeviceLinkRequested {
+                                            product_id,
+                                            edition_id,
+                                        });
+                                    }))
+                                    .child(name)
+                            };
+                            let text = if dual && paired.len() > 1 {
+                                // `<lane>: <name>`，名字可能是链接。
+                                let prefix = format!("{}: ", self.spec.text(peer.lane.key()));
+                                h_flex()
+                                    .child(SharedString::from(prefix))
+                                    .when(linked, |row| {
+                                        row.child(link(name.clone(), peer.product_id, peer.edition))
+                                    })
+                                    .when(!linked, |row| row.child(name.clone()))
+                                    .into_any_element()
+                            } else if dual {
+                                // `SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION` 里的
+                                // `{{deviceName}}` 替换成纯文本或链接。
+                                let sentence =
+                                    self.spec.text("SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION");
+                                let (prefix, suffix) = sentence
+                                    .split_once("{{deviceName}}")
+                                    .map(|(prefix, suffix)| (prefix.to_owned(), suffix.to_owned()))
+                                    .unwrap_or((sentence, String::new()));
+                                h_flex()
+                                    .child(SharedString::from(prefix))
+                                    .when(linked, |row| {
+                                        row.child(link(name.clone(), peer.product_id, peer.edition))
+                                    })
+                                    .when(!linked, |row| row.child(name.clone()))
+                                    .child(SharedString::from(suffix))
+                                    .into_any_element()
+                            } else if linked {
+                                link(name.clone(), peer.product_id, peer.edition).into_any_element()
+                            } else {
+                                div().child(name.clone()).into_any_element()
+                            };
+                            div().text_size(surface::css(14.)).child(text)
                         }))
-                        .when(!dual, |view| {
+                        .when(!both_devices_capped, |view| {
+                            // `.pairedContent{font-size:12px;padding-top:10px}` +
+                            // `.pollingRateInfo{color:#999;margin-top:10px}`。
                             view.child(
                                 div()
                                     .mt(surface::css(10.))
                                     .text_size(surface::css(12.))
-                                    .text_color(cx.theme().muted_foreground)
+                                    .text_color(Colors::warning_text())
                                     .child(
                                         self.spec.text(
                                             "CONFIGURE_POLLING_RATE_DEVICE_DISCONNECTED_TEXT",
@@ -227,17 +309,22 @@ impl DockPairing {
         .child(content)
         .when(self.multi_pairing && !self.dongle, |v| {
             v.child(surface::note(
-                self.spec.text("ENABLE_LAUNCH_PAIRING_UTILITY_INFO"),
+                self.spec.text(
+                    self.spec
+                        .config_key("launchUtilityInfoKey")
+                        .unwrap_or("ENABLE_LAUNCH_PAIRING_UTILITY_INFO"),
+                ),
                 cx,
             ))
         })
-        .when(dual && paired.len() == 2, |v| {
+        // `DeviceInfo.showBothDevicesConnectedWarning && we(pairedInfo)`：只有
+        // 鼠标与键盘都在底座上时才提示轮询率下降。
+        .when(both_devices_capped, |v| {
             v.child(warning(
                 self.spec,
                 "MOUSE_DOCK_PRO_DUAL_DEVICE_POLLING_RATE_WARNING",
                 &self.name,
                 12.,
-                cx,
             ))
         })
         .when(self.original_dongle, |v| {
@@ -246,7 +333,6 @@ impl DockPairing {
                 "MOUSE_DOCK_ORIGINAL_DONGLE_WARNING",
                 &self.name,
                 12.,
-                cx,
             ))
         })
         .when_some(self.alert.clone(), |v, alert| {
@@ -421,22 +507,44 @@ impl RenderOnce for SourceCommand {
             }))
     }
 }
-fn warning(spec: &Spec, key: &str, name: &str, size: f32, cx: &App) -> Div {
+/// `.HyperPollingWirelessMouseDock_dongleWarning` 与 `_bothDevicesPollingCapped`
+/// 共用同一条形态：20px 信息图标 + `gap:10px` + `margin-top:20px`，正文 12px `#999`。
+fn warning(spec: &Spec, key: &str, name: &str, size: f32) -> Div {
     h_flex()
         .items_start()
         .gap(surface::css(10.))
         .mt(surface::css(20.))
-        .child(
-            img(spec.asset("icon_info_solid"))
-                .size(surface::css(20.))
-                .flex_shrink_0(),
-        )
+        .child(warning_icon(spec))
         .child(
             div()
                 .text_size(surface::css(size))
-                .text_color(cx.theme().muted_foreground)
+                .text_color(Colors::warning_text())
                 .child(spec.text(key).replace("{{deviceName}}", name)),
         )
+}
+/// `.Duallink_bothDevicesConnectedWarning`：配对工具弹层里的同形提示，但它用的是
+/// `margin:50px auto 0;max-width:520px`、20px 图标与 14px/17px `#ccc` 正文。
+fn dialog_warning(spec: &Spec, key: &str, name: &str) -> Div {
+    h_flex()
+        .items_start()
+        .gap(surface::css(10.))
+        .mt(surface::css(50.))
+        .mx_auto()
+        .max_w(surface::css(520.))
+        .child(warning_icon(spec))
+        .child(
+            div()
+                .text_size(surface::css(14.))
+                .line_height(surface::css(17.))
+                .text_color(Colors::dialog_warning_text())
+                .child(spec.text(key).replace("{{deviceName}}", name)),
+        )
+}
+fn warning_icon(spec: &Spec) -> AnyElement {
+    img(spec.asset("icon_info_solid"))
+        .size(surface::css(20.))
+        .flex_shrink_0()
+        .into_any_element()
 }
 
 #[derive(IntoElement)]

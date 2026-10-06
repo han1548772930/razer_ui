@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "scanner_sha256": "639f30601c78f17f9d35c23c8dc8c5c54abc0b5f8feb013d0dd8a30c7b0fac2b",
+  "scanner_sha256": "d6ddc7f94df328c318322577d147d48b7fc55b30e12eec73113143a869e3f69d",
   "state_machine": {
     "source": ".ref/devices/104/static/js/main.9b94769e.js",
     "offset": 4275658,
@@ -206,7 +206,48 @@
   },
   "rust_table": {
     "source": "src/ui/battery.rs",
-    "sha256": "d526c17a89c654312cc97914a4a00279a24fa75ac3fb19cef9daeb6183a49e73"
+    "sha256": "94eab7282da976fb0d64608d68ba77a2c72efe96f9c09a7f6193efb639a9fcc1"
+  },
+  "hide_battery_value": {
+    "rule": "产品工作区传 hideBattValue:!0 → 不渲染百分比 span、不挂载 tooltip，并加 .hideBattValue{margin-right:17px}",
+    "products_in_source": [
+      115,
+      131,
+      1330,
+      1342,
+      1370,
+      1372,
+      1374,
+      1443,
+      1453,
+      2636,
+      2647,
+      2676,
+      4115,
+      4133,
+      4144
+    ],
+    "rust_table": [
+      115,
+      131,
+      1330,
+      1342,
+      1370,
+      1372,
+      1374,
+      1443,
+      1453,
+      2636,
+      2647,
+      2676,
+      4115,
+      4133,
+      4144
+    ],
+    "rust_markers": [
+      ".mr(surface::css(17.))",
+      "hideBattValue"
+    ]
   },
   "mounted_header_audit": "docs/re/device-tabs-audit.json",
   "limitations": [

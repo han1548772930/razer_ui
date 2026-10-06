@@ -33,11 +33,21 @@ overlay prop in their no-power branches. The local page therefore keeps these
 cards in normal flow instead of inventing an overlay mount. Product and port
 observations remain service-owned and are not serialized.
 
-The remaining fidelity boundary is path-level hover color interpolation: the
-source changes `detect-b` to `#44d62c` (and active-ring hover to `#96ef89`) over
-the shared 300ms transition, while the GPUI image asset preserves the audited
-SVG artwork and timing but does not execute the embedded CSS selector. No
-hardware or service result is inferred by this local motion layer.
+The path-level recoloring is now implemented as well. `.icon-detection:hover
+.detect-b{fill:#44d62c}`, `:active` `#39a029`, `.icon-detection--active:hover
+.detect-a{stroke:#96ef89}` and the refreshing/power/warning/close-glitter
+recolors each target one element, so `prepare-wireless-argb.py` splits that
+element into a `currentColor` layer and the native page supplies the audited
+colors on the icon wrapper. The shared
+`transition:all .3s` selector list names the icon roots (and the `:hover` state
+of the refreshing/warning paths), not the recolored glyph, so those recolors are
+intermediate-free: the earlier local 300ms hover opacity fade was an
+approximation and is gone. `@keyframes zoomout/zoomoutc/zoomoutf/zoomin` are now
+played layer by layer — scale .8->1 for 50ms on the glyph, .4->2 with a fading
+`#44d62c` square and .2->1.4 with a fading `#666` square for 700ms, and
+opacity 0->1 with scale 1.8->1 for 100ms on the enabled glyph — using
+`Easing::EaseOut` for the source's `ease-out`. No hardware or service result is
+inferred by this local motion layer; the verification remains static.
 
 Validation is static only: `cargo check --locked --all-targets` and source/hash
 audits. The application, downloaded JavaScript, DLLs and installers were not

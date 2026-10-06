@@ -110,8 +110,13 @@ impl RenderOnce for SourceTooltip {
                 Transition::new(Duration::from_millis(
                     if matches!(
                         self.kind,
-                        SourceTooltipKind::ProfilesNav | SourceTooltipKind::ReceiverWidgetPortal
+                        SourceTooltipKind::ProfilesNav
+                            | SourceTooltipKind::ReceiverWidgetPortal
+                            | SourceTooltipKind::WidgetTip
                     ) {
+                        // `.body-widget-tip-portal{opacity:1;visibility:visible;
+                        //  z-index:10001}` 覆盖 `.tip` 的 `opacity:0` 与 300ms
+                        // 过渡，React 直接挂载/卸载这个 portal。
                         0
                     } else if matches!(
                         self.kind,
@@ -171,7 +176,11 @@ impl RenderOnce for SourceTooltip {
                     opacity,
                 })
                 .with_priority(
-                    if kind == SourceTooltipKind::ReceiverWidgetPortal {
+                    // `.body-widget-tip-portal{z-index:10001}`。
+                    if matches!(
+                        kind,
+                        SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal
+                    ) {
                         10001
                     } else {
                         200
@@ -442,15 +451,16 @@ impl Element for TipOverlay {
                         window.rem_size() * (30. / 16.),
                     )
             }
-            SourceTooltipKind::WidgetTip => {
-                widget_tip_position(trigger, layout.source_size.width, window.rem_size())
+            // 两者都是 `.widget .help + .tip` 的 `createPortal` 提示，位置算法
+            // 同属外壳 `positionTip`。
+            SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal => {
+                shell_tip_position(
+                    trigger,
+                    layout.source_size,
+                    window.viewport_size(),
+                    window.rem_size(),
+                )
             }
-            SourceTooltipKind::ReceiverWidgetPortal => receiver_widget_tip_position(
-                trigger,
-                layout.source_size,
-                window.viewport_size(),
-                window.rem_size(),
-            ),
             SourceTooltipKind::OledBleDisabled => {
                 let unit = window.rem_size() / 16.;
                 trigger.origin + point(unit * 20., unit * 185.)
@@ -503,9 +513,18 @@ impl Element for TipOverlay {
     }
 }
 
-/// 179/7693 positionTip: the body wrapper spans the product viewport width and
-/// ends at its bottom. Its top is not used by the source's fallback algorithm.
-fn receiver_widget_tip_position(
+/// 组件外壳 `KrA`(3858)/`_TA`(3880) 的 `positionTip`：`.widget .help + .tip`
+/// 以 `createPortal` 挂到 `document.body`，位置先取
+/// `widget.right - 14 - tipWidth` / `widget.top + 34`，再按
+/// `.main-container > #body-wrapper` 的矩形做溢出回退——右溢出贴
+/// `container.right - 14`、左溢出贴 `container.left + 14`、下溢出去帮助图标右侧
+/// （`help.right + 8`、`help.top`）、再右溢出翻到图标左侧
+/// （`help.left - 8 - tipWidth`）、仍溢出则上移到 `container.bottom - 10`。
+/// 每个产品包的外壳都走同一段代码，因此所有 `.widget .help` 提示都适用。
+///
+/// 本地用视口代替 `#body-wrapper`（下界与右界一致，左界取 0），与 179 的既有
+/// `receiver_help_control` 路径保持同一近似；容器顶边源算法不使用。
+fn shell_tip_position(
     trigger: Bounds<Pixels>,
     tip: Size<Pixels>,
     viewport: Size<Pixels>,

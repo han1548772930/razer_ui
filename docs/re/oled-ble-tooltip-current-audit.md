@@ -25,3 +25,13 @@ on the card content only, so the tooltip keeps the source's full contrast.
 
 This is a static source alignment. Application execution and rendered tooltip
 pixel/focus verification remain prohibited by the workspace requirements.
+
+## 2026-10-06 编辑控件也接入同一机制
+
+源里 `turn-off-ble-tooltip` 是**卡片级**属性（`w ? {"turn-off-ble-tooltip": Q} : {}`，`Q = getTextItem(v.XVF)`），
+编辑按钮本身就活在这张卡片里，所以本地把编辑按钮的提示也从 Kit `tooltip::Tooltip::new(...)` 换成
+`SourceTooltipKind::OledBleDisabled`（`oled-edit-tooltip-{name}`，触发器仍是那个编辑按钮），
+`oled-require-synapse-tip` 之外不再有 Kit 提示：`tools/audit-oled-preset-cards.cjs` 现在断言
+`oled_home_cards.rs` 里不存在 `tooltip::Tooltip::new(`，并按源 CSS/JSX 断言
+`[turn-off-ble-tooltip]:before{…left:20px…top:185px…transition:visibility 0s,opacity .3s linear}`
+与 `"turn-off-ble-tooltip"` 字面量。

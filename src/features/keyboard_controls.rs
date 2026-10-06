@@ -6,6 +6,7 @@ use super::{
     settings::{DialMode, canonical_snap_key},
     workspace::{Continue, DeviceWorkspace},
 };
+use crate::ui::hover_tip::{SourceTipPlacement, source_hover_tip_element};
 use crate::{
     i18n,
     nav::Tab,
@@ -665,19 +666,19 @@ impl DeviceWorkspace {
                             this.edit(window, cx, |settings| settings.keyboard.snap_tap = *value);
                         })),
                 )
-                .child(
-                    surface::asset_button(
-                        "snap-tap-help",
-                        "synapse/help-default.svg",
-                        "Snap Tap 使用说明",
-                        cx,
-                    )
-                    .tooltip(i18n::t(if has_copilot {
+                // 源所有 `.widget` 的帮助入口都是 `.widget .help` + `.widget .tip`
+                // （`.widget .help{background-color:#4a4a4a;border-radius:50%;height:14px;
+                //  position:absolute;right:10px;top:10px;width:14px}`、
+                //  `.widget .help:hover+.tip{opacity:1;visibility:visible;z-index:100}`），
+                // 本地统一用共享的 `surface::help_control`。
+                .child(surface::help_control(
+                    "snap-tap-help",
+                    i18n::t(if has_copilot {
                         "SNAP_TAP_TOOLTIP_COPILOT"
                     } else {
                         "SNAP_TAP_TOOLTIP_MENU"
-                    })),
-                ),
+                    }),
+                )),
             cx,
         )
         .id("snap-tap-panel")
@@ -879,8 +880,24 @@ impl DeviceWorkspace {
                         },
                         "synapse/dial-add-hover.svg",
                         i18n::t("ADD_NEW_MODE"),
+                        // 源 `icon-add` 的提示是 `[tooltip]:before` 属性徽标，由下面的
+                        // `dial_add_hovered` 分支挂载，这里不再叠 Kit 提示。
+                        false,
                     )
+                    .relative()
                     .disabled(at_limit)
+                    .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                        this.dial_add_hovered = *hovered;
+                        cx.notify();
+                    }))
+                    .when(self.dial_add_hovered, |button| {
+                        // 源 `<i className="icon-add" onClick={v} tooltip={getTextItem(c.BYV)}/>`：
+                        // 提示由全局 `[tooltip]:before` 伪元素呈现（无延迟，300ms 线性淡入）。
+                        button.child(crate::ui::attribute_tip::attribute_tip(
+                            "dial-add-tip",
+                            i18n::t("ADD_NEW_MODE"),
+                        ))
+                    })
                     .on_click(cx.listener(|this, _, window, cx| {
                         let mut uid = None;
                         this.edit(window, cx, |settings| uid = settings.keyboard.add_dial());
@@ -893,50 +910,59 @@ impl DeviceWorkspace {
             cx,
         )
         .relative()
+        // 源 691 chunk `6375.*`：`<i className="help" onMouseEnter={P} onMouseLeave={P}/>` +
+        // `<Un.A position="bottom-right" className="command-dial-tooltip" isMounted={I}
+        //  target={c.JW}>…富文本…</Un.A>`；CSS
+        // `.command-dial .help{background-color:#4a4a4a;border-radius:50%;height:14px;margin:0;
+        //  position:absolute;right:10px;top:10px;width:14px}`、
+        // `.command-dial-tooltip{line-height:17px;white-space:pre-wrap}`。提示是共享
+        // `.tooltip-razer.bottom-right`，即时挂载。
         .child(
-            dial_icon_button(
-                "dial-help",
-                "synapse/help-default.svg",
-                "synapse/help-hover.svg",
-                i18n::t("COMMAND_DIAL"),
-            )
-            .absolute()
-            .top(surface::css(10.))
-            .right(surface::css(10.))
-            .size(surface::css(14.))
-            .tooltip(|window, cx| {
-                Tooltip::element(|_, _| {
-                    v_flex()
-                        .id("dial-help-content")
-                        .test_support()
-                        .w(surface::css(278.))
-                        .gap(surface::css(17.))
-                        .child(i18n::t("COMMAND_DIAL_USAGE_1"))
-                        .child(
-                            v_flex().pl(surface::css(20.)).children(
-                                ["COMMAND_DIAL_USAGE_2", "COMMAND_DIAL_USAGE_3"]
-                                    .into_iter()
-                                    .map(|key| {
-                                        h_flex()
-                                            .items_start()
-                                            .gap(surface::css(5.))
-                                            .child("•")
-                                            .child(div().flex_1().child(i18n::t(key)))
-                                    }),
-                            ),
-                        )
-                        .child(i18n::t("COMMAND_DIAL_USAGE_4"))
+            div()
+                .id("dial-help")
+                .absolute()
+                .top(surface::css(10.))
+                .right(surface::css(10.))
+                .size(surface::css(14.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded_full()
+                .bg(if self.dial_help_hovered {
+                    rgba(0xffffff4d)
+                } else {
+                    rgba(0x4a4a4aff)
                 })
-                .m_0()
-                .px(surface::css(10.))
-                .py(surface::css(8.))
-                .bg(cx.theme().title_bar)
-                .rounded_none()
-                .shadow_none()
-                .text_size(surface::css(14.))
-                .line_height(surface::css(17.))
-                .build(window, cx)
-            }),
+                .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                    this.dial_help_hovered = *hovered;
+                    cx.notify();
+                }))
+                .child(img("synapse/automation-tooltip_questionmark.svg").size(surface::css(14.)))
+                .when(self.dial_help_hovered, |help| {
+                    help.child(source_hover_tip_element(
+                        "dial-help-tip",
+                        SourceTipPlacement::BottomRight,
+                        v_flex()
+                            .test_support()
+                            .gap(surface::css(17.))
+                            .line_height(surface::css(17.))
+                            .child(i18n::t("COMMAND_DIAL_USAGE_1"))
+                            .child(
+                                v_flex().pl(surface::css(20.)).children(
+                                    ["COMMAND_DIAL_USAGE_2", "COMMAND_DIAL_USAGE_3"]
+                                        .into_iter()
+                                        .map(|key| {
+                                            h_flex()
+                                                .items_start()
+                                                .gap(surface::css(5.))
+                                                .child("•")
+                                                .child(div().flex_1().child(i18n::t(key)))
+                                        }),
+                                ),
+                            )
+                            .child(i18n::t("COMMAND_DIAL_USAGE_4")),
+                    ))
+                }),
         )
         .child(crate::i18n::t("SUB_CONTENT_COMMAND_DIAL"))
         .children(
@@ -1073,7 +1099,10 @@ impl DeviceWorkspace {
                                 SharedString::from(format!("dial-expand-{uid}")),
                                 "synapse/dial-more.svg",
                                 "synapse/dial-more-hover.svg",
+                                // 该图标的源标记尚未定位（691/653 的拨盘 chunk 里没有对应的
+                                // `tooltip=` 属性），仍保留 Kit 提示，未按属性徽标改造。
                                 "旋转方向的按键分配",
+                                true,
                             )
                             .on_click(cx.listener({
                                 let uid = uid.clone();
@@ -1238,26 +1267,37 @@ impl DeviceWorkspace {
             .when(!reset, |popup| popup.self_end())
             .open(self.keyboard_controls.dial_confirmation.as_ref() == Some(&confirmation))
             .track_focus(&focus)
-            .trigger_with(move |_, _, _| {
+            .trigger_with(move |open, _window, _cx| {
                 let label = i18n::t(if reset {
                     "RESET_COMMAND_DIAL"
                 } else {
                     "REMOVE"
                 });
-                let tooltip = label.clone();
                 let (asset, hover) = if reset {
                     ("synapse/dial-reset.svg", "synapse/dial-reset-hover.svg")
                 } else {
                     ("synapse/dial-delete.svg", "synapse/dial-delete-hover.svg")
                 };
+                // 源 `icon-delete`：`tooltip:R?void0:(0,s.getTextItem)(vn.DELETE)` —— `R` 就是
+                // 确认过程本身，确认展开时源不再渲染提示。提示本身是全局 `[tooltip]:before`
+                // 属性徽标（`src/ui/attribute_tip.rs`）。触发闭包只拿到 `&App`，建不了 hover
+                // 状态，因此用 `attribute_tip_static` + `group_hover` 常挂（源的
+                // `transition:opacity .3s linear` 淡入在此不可达，已在审计登记）。
+                let tip_id = format!("{id}-tooltip");
                 BaseButton::new(SharedString::from(id))
-                    .accessibility_label(label)
-                    .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+                    .accessibility_label(label.clone())
                     .group("dial-confirm-trigger")
                     .relative()
                     .size(surface::css(20.))
                     .p_0()
                     .rounded_none()
+                    .when(!reset && !open, |button| {
+                        button.child(crate::ui::attribute_tip::attribute_tip_group(
+                            tip_id,
+                            label.clone(),
+                            "dial-confirm-trigger",
+                        ))
+                    })
                     .child(img(asset).size_full())
                     .child(
                         img(hover)
@@ -1300,31 +1340,38 @@ impl DeviceWorkspace {
     }
 }
 
+/// `kit_tooltip: false` 表示调用方已按源接入共享 `[tooltip]` 属性徽标
+/// （`crate::ui::attribute_tip`），这里不再叠一层 Kit 提示；源的 `icon-add`
+/// 用 `tooltip={getTextItem(c.BYV)}`，属于该情形。
 fn dial_icon_button(
     id: impl Into<ElementId>,
     asset: &'static str,
     hover: &'static str,
     label: impl Into<SharedString>,
+    kit_tooltip: bool,
 ) -> BaseButton {
     let label = label.into();
-    BaseButton::new(id)
+    let button = BaseButton::new(id)
         .accessibility_label(label.clone())
-        .tooltip(move |window, cx| Tooltip::new(label.clone()).build(window, cx))
         .group("dial-icon")
         .relative()
         .size(surface::css(20.))
         .flex_shrink_0()
         .p_0()
-        .rounded_none()
-        .child(img(asset).size_full())
-        .child(
-            img(hover)
-                .absolute()
-                .inset_0()
-                .size_full()
-                .opacity(0.)
-                .group_hover("dial-icon", |style| style.opacity(1.)),
-        )
+        .rounded_none();
+    let button = if kit_tooltip {
+        button.tooltip(move |window, cx| Tooltip::new(label.clone()).build(window, cx))
+    } else {
+        button
+    };
+    button.child(img(asset).size_full()).child(
+        img(hover)
+            .absolute()
+            .inset_0()
+            .size_full()
+            .opacity(0.)
+            .group_hover("dial-icon", |style| style.opacity(1.)),
+    )
 }
 
 fn dial_confirmation_content(

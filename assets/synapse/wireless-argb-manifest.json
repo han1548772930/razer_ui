@@ -268,5 +268,241 @@
     "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
     "output_sha256": "71571b303cfac5c6bcc2f653ce644b31fea849acdf84c996d3ebfd0b097155fb",
     "embedded_sha256": "71571b303cfac5c6bcc2f653ce644b31fea849acdf84c996d3ebfd0b097155fb"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-auto_off-glyph.svg",
+    "output_sha256": "cc1041d79dabb1f0daa60cbe1b47737cc3dd0bb6a0ed55d462fded6f9bb497ae",
+    "keyframes": [
+      "@keyframes zoomout{0%{transform:scale(.8);transform-origin:center}40%{fill:#ccc}to{fill:#ccc;transform:scale(1);transform-origin:center}}"
+    ],
+    "animation_ms": 50,
+    "scale_from": 0.8,
+    "scale_to": 1.0,
+    "idle": "#ccc",
+    "hover": "#44d62c",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-auto_off-green.svg",
+    "output_sha256": "31409089115ab99cab47fcb6ceacaeca48107ec4a40dd8638afee0815df70f7b",
+    "keyframes": [
+      "@keyframes zoomoutc{0%{fill:#44d62c;transform:scale(.4);transform-origin:center}to{fill:#0000;transform:scale(2);transform-origin:center}}"
+    ],
+    "cycle_ms": 700,
+    "scale_from": 0.4,
+    "scale_to": 2.0
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-auto_off-gray.svg",
+    "output_sha256": "4b106933e4b51ae3eb2d7fe048c2c827ef79c009f5e11ee79ad4f731eebf3b79",
+    "keyframes": [
+      "@keyframes zoomoutf{0%{fill:#666;transform:scale(.2);transform-origin:center}to{fill:#0000;transform:scale(1.4);transform-origin:center}}"
+    ],
+    "cycle_ms": 700,
+    "scale_from": 0.2,
+    "scale_to": 1.4
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-auto_on-glyph.svg",
+    "output_sha256": "181d5763a9ace8c2ef54cba86602540e3e348277b25778166bc8f578e570e0eb",
+    "keyframes": [
+      "@keyframes zoomin{0%{opacity:0;transform:scale(1.8);transform-origin:center}to{opacity:1;transform:scale(1);transform-origin:center}}"
+    ],
+    "animation_ms": 100,
+    "scale_from": 1.8,
+    "scale_to": 1.0,
+    "opacity_from": 0.0
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-auto_on-ring.svg",
+    "output_sha256": "998c73ddb9f6bcac8824ea1e1b0f190c1560474226a9906028db3bda938c697c",
+    "idle": "#44d62c",
+    "hover": "#96ef89",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-refresh-hover.svg",
+    "output_sha256": "141769f9885e1f51aef92722fe55af46982d16ca5d397615350b95ee77325072",
+    "idle": "#ccc",
+    "hover": "#44d62c",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-remove-hover.svg",
+    "output_sha256": "fbc8611e3fc4ed3c484c6368794625f6b12c0245143dc6fcd9268250fc49bed5",
+    "idle": "#ccc",
+    "hover": "#c8323c",
+    "pressed": null
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-warning-hover.svg",
+    "output_sha256": "e29e999b4cfe0946143e3698f663d6e8b221fadae41cf6fbde978657f8e535e9",
+    "idle": "#fd8611",
+    "hover": "#feab59",
+    "pressed": "#b15e0c"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-power-hover.svg",
+    "output_sha256": "04d6590d1bd363de5dd64056b19d8d5335f7932af1190ad453a41c3ab9c2f18d",
+    "idle": "#44d62c",
+    "hover": "#7de36c"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-power_off-hover.svg",
+    "output_sha256": "a5982f35c0686fb957355db57e366c49b68853072cd0e84dcc164e96faf3f8c7",
+    "idle": "#c8323c",
+    "hover": "#d97077"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-power-base.svg",
+    "output_sha256": "882fcdb6ef331cd26ad52c3f4ebabd0be50fc4d8a23efff94a8bdba74bc916a7",
+    "glyph": "#111"
+  },
+  {
+    "source": ".ref/devices/3884/static/js/main.607cfa0c.js",
+    "source_sha256": "9ff76aa48a7d661fb7102f670da0e80609ffef8add5d77f42b0092f9e0962e2e",
+    "output": "assets/synapse/wireless-argb-3884-power_off-base.svg",
+    "output_sha256": "c52cba762503c0ec8a8131e37f0760adb85612a5c0e454c7c5ea1e9ea1f90f35",
+    "glyph": "#111"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-auto_off-glyph.svg",
+    "output_sha256": "cc1041d79dabb1f0daa60cbe1b47737cc3dd0bb6a0ed55d462fded6f9bb497ae",
+    "keyframes": [
+      "@keyframes zoomout{0%{-webkit-transform:scale(.8);transform:scale(.8);-webkit-transform-origin:center;transform-origin:center}40%{fill:#ccc}to{fill:#ccc;-webkit-transform:scale(1);transform:scale(1);-webkit-transform-origin:center;transform-origin:center}}"
+    ],
+    "animation_ms": 50,
+    "scale_from": 0.8,
+    "scale_to": 1.0,
+    "idle": "#ccc",
+    "hover": "#44d62c",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-auto_off-green.svg",
+    "output_sha256": "31409089115ab99cab47fcb6ceacaeca48107ec4a40dd8638afee0815df70f7b",
+    "keyframes": [
+      "@keyframes zoomoutc{0%{fill:#44d62c;-webkit-transform:scale(.4);transform:scale(.4);-webkit-transform-origin:center;transform-origin:center}to{fill:transparent;-webkit-transform:scale(2);transform:scale(2);-webkit-transform-origin:center;transform-origin:center}}"
+    ],
+    "cycle_ms": 700,
+    "scale_from": 0.4,
+    "scale_to": 2.0
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-auto_off-gray.svg",
+    "output_sha256": "4b106933e4b51ae3eb2d7fe048c2c827ef79c009f5e11ee79ad4f731eebf3b79",
+    "keyframes": [
+      "@keyframes zoomoutf{0%{fill:#666;-webkit-transform:scale(.2);transform:scale(.2);-webkit-transform-origin:center;transform-origin:center}to{fill:transparent;-webkit-transform:scale(1.4);transform:scale(1.4);-webkit-transform-origin:center;transform-origin:center}}"
+    ],
+    "cycle_ms": 700,
+    "scale_from": 0.2,
+    "scale_to": 1.4
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-auto_on-glyph.svg",
+    "output_sha256": "181d5763a9ace8c2ef54cba86602540e3e348277b25778166bc8f578e570e0eb",
+    "keyframes": [
+      "@keyframes zoomin{0%{opacity:0;-webkit-transform:scale(1.8);transform:scale(1.8);-webkit-transform-origin:center;transform-origin:center}to{opacity:1;-webkit-transform:scale(1);transform:scale(1);-webkit-transform-origin:center;transform-origin:center}}"
+    ],
+    "animation_ms": 100,
+    "scale_from": 1.8,
+    "scale_to": 1.0,
+    "opacity_from": 0.0
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-auto_on-ring.svg",
+    "output_sha256": "998c73ddb9f6bcac8824ea1e1b0f190c1560474226a9906028db3bda938c697c",
+    "idle": "#44d62c",
+    "hover": "#96ef89",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-refresh-hover.svg",
+    "output_sha256": "141769f9885e1f51aef92722fe55af46982d16ca5d397615350b95ee77325072",
+    "idle": "#ccc",
+    "hover": "#44d62c",
+    "pressed": "#39a029"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-remove-hover.svg",
+    "output_sha256": "fbc8611e3fc4ed3c484c6368794625f6b12c0245143dc6fcd9268250fc49bed5",
+    "idle": "#ccc",
+    "hover": "#c8323c",
+    "pressed": null
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-warning-hover.svg",
+    "output_sha256": "e29e999b4cfe0946143e3698f663d6e8b221fadae41cf6fbde978657f8e535e9",
+    "idle": "#fd8611",
+    "hover": "#feab59",
+    "pressed": "#b15e0c"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-power-hover.svg",
+    "output_sha256": "04d6590d1bd363de5dd64056b19d8d5335f7932af1190ad453a41c3ab9c2f18d",
+    "idle": "#44d62c",
+    "hover": "#7de36c"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-power_off-hover.svg",
+    "output_sha256": "a5982f35c0686fb957355db57e366c49b68853072cd0e84dcc164e96faf3f8c7",
+    "idle": "#c8323c",
+    "hover": "#d97077"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-power-base.svg",
+    "output_sha256": "6844a1a2812121f0801780528331a228c879c9c1b60ec11e23e50a267935602d",
+    "glyph": "#111"
+  },
+  {
+    "source": ".ref/devices/3886/static/js/main.44393ea2.js",
+    "source_sha256": "f4ff6beb1bef55fafcabc4b177d2dfe4009b05d5166b3e8eef7cb5ee275c6763",
+    "output": "assets/synapse/wireless-argb-3886-power_off-base.svg",
+    "output_sha256": "121937499b7019811dcf5d3372ddb09c4c6254cee0ab4133b61a7d7236f1f411",
+    "glyph": "#111"
   }
 ]

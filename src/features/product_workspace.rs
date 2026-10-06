@@ -97,6 +97,13 @@ impl ProductWorkspace {
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
+                    WorkspaceEvent::OpenDevice {
+                        product_id,
+                        edition_id,
+                    } => WorkspaceEvent::OpenDevice {
+                        product_id: *product_id,
+                        edition_id: *edition_id,
+                    },
                 });
                 cx.notify();
             });
@@ -115,6 +122,13 @@ impl ProductWorkspace {
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
+                    WorkspaceEvent::OpenDevice {
+                        product_id,
+                        edition_id,
+                    } => WorkspaceEvent::OpenDevice {
+                        product_id: *product_id,
+                        edition_id: *edition_id,
+                    },
                 });
                 cx.notify();
             });
@@ -124,6 +138,17 @@ impl ProductWorkspace {
             }
         }
     }
+    /// 把应用设备列表下发给子工作区（164/241 配对页的设备名链接比对用）。
+    pub(crate) fn set_known_devices(&mut self, devices: Vec<(u32, u32)>, cx: &mut Context<Self>) {
+        match &self.body {
+            Body::Source(workspace) => {
+                workspace.update(cx, |workspace, cx| workspace.set_known_devices(devices, cx))
+            }
+            // 只有 164/241 走 source 工作区并挂配对页。
+            _ => {}
+        }
+    }
+
     pub(crate) fn device<'a>(&'a self, cx: &'a App) -> &'a Device {
         match &self.body {
             Body::Existing(e) => e.read(cx).device(),

@@ -716,6 +716,7 @@ impl AppShell {
             |this, entity, event, window, cx| match event {
                 WorkspaceEvent::Changed => {
                     this.sync_gamer_room(cx);
+                    this.sync_known_devices(cx);
                     cx.notify();
                 }
                 WorkspaceEvent::ShareProfile => {
@@ -745,6 +746,20 @@ impl AppShell {
                     // navigation action and does not claim native install
                     // state.
                     this.open_chroma_window(cx);
+                }
+                WorkspaceEvent::OpenDevice {
+                    product_id,
+                    edition_id,
+                } => {
+                    // 源 `z(e)`：切到该 `productId`+`editionId` 的设备工作区。
+                    let key = this.devices.iter().find_map(|workspace| {
+                        let device = workspace.read(cx).device(cx);
+                        (device.product_id == *product_id && device.edition_id == *edition_id)
+                            .then(|| workspace.read(cx).identity(cx))
+                    });
+                    if let Some(key) = key {
+                        this.navigate(Location::Device(key), window, cx);
+                    }
                 }
                 WorkspaceEvent::IntroDismissed => {
                     this.tracking_intro_seen = true;
@@ -783,8 +798,26 @@ impl AppShell {
         self.chroma_page
             .update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
         self.sync_gamer_room(cx);
+        self.sync_known_devices(cx);
         self.sync_app_picker(window, cx);
     }
+    /// 164/241 配对页的设备名链接需要应用当前设备列表（`productId`+`editionId`）。
+    fn sync_known_devices(&self, cx: &mut Context<Self>) {
+        let list: Vec<(u32, u32)> = self
+            .devices
+            .iter()
+            .map(|workspace| {
+                let device = workspace.read(cx).device(cx);
+                (device.product_id, device.edition_id)
+            })
+            .collect();
+        for workspace in &self.devices {
+            workspace.update(cx, |workspace, cx| {
+                workspace.set_known_devices(list.clone(), cx)
+            });
+        }
+    }
+
     fn sync_gamer_room(&self, cx: &mut Context<Self>) {
         let devices = self
             .devices

@@ -32,3 +32,23 @@ The native page now mirrors the source's three remaining UI contracts without cl
 - The source's 15-second input-error idle watchdog is represented in the explicit failure preview. It closes that preview modal after 15 seconds; live calibration remains disabled because `initCalibration` and the input redirect transport are not available in this reconstruction.
 
 No application, downloaded script, DLL, or build artifact was executed.
+
+## 2026-10-06 动画与关闭时序复核（清单里那条“仍有缺口”已过期）
+
+按当前源逐条核对，本文第 22 行列的四项里只有传输相关仍缺：
+
+- 载入条：`9908.fadb8afb.chunk.css` 的 `.KeyboardSwitchCalibrationModal_calibratingBody__+MhrA{background:#44d62c4d;
+  border-radius:999px;height:5px;overflow:hidden;position:relative;width:100%}` +
+  `.calibratingLoading__n2vx6{animation:KeyboardSwitchCalibrationModal_loading__xndeV 2s ease-in-out infinite;
+  background:linear-gradient(90deg,#44d62c,#44d62c,#44d62c);border-radius:999px;height:100%;
+  position:absolute;width:25%}`，关键帧 `0%{left:-25%}to{left:100%}`；本地是
+  `.h(5px).rounded_full().overflow_hidden()` 的 25% 宽绿条 + `Animation::new(2s).repeat()`
+  配合 `ease_in_out`，`left = phase*1.25 - 0.25`。
+- 光标：`.caret__kBVRX{animation:KeyboardSwitchCalibrationModal_blink__gzKcV 1.1s steps(1) infinite;
+  display:inline-block;font-weight:800}`，关键帧 `0%,50%,to{opacity:1}25%,75%{opacity:0}`；本地是
+  `font_weight(EXTRA_BOLD)` 的 `|` 加 1100ms 循环、按 `(phase*4).floor()%2` 取亮/灭。
+- 错误后 15 秒关闭、`showNotificationBannerCalibration` 跨启动持久化与 `isFactoryDefaultProfile`
+  禁用分支见本文 2026-10-04 小节与 `src/features/keyboard_calibration.rs`。
+
+仍缺：`initCalibration → calibrateBottom → verifyBottom → calibrateTop → verifyTop`、
+`stopCalibration`、真实按键捕获与前台窗口监视（本地入口保持禁用并说明不可用）。

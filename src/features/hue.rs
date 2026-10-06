@@ -10,7 +10,7 @@ use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     select::{SelectEvent, SelectState},
-    slider::{Slider, SliderEvent, SliderState},
+    slider::{SliderEvent, SliderState},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -218,10 +218,13 @@ pub(crate) struct HueWorkspace {
     // isChromaEnabled / installation status are global service state, outside
     // the device quickEffects profile. Preview values stay in this entity.
     advanced: bool,
-    /// The current source mounts a one-shot advanced-effects tutorial dot when
-    /// the quick-effects widget becomes usable. It is local UI state; the
-    /// service does not provide (and this app must not invent) a persistence
-    /// response for it.
+    /// 源里 `mi = setTimeout(() => Ui(e), 13e3)` 的 13 秒扫描超时；只有从 INIT 的
+    /// `TEXT_CASE_SCAN` 与扫描失败页的 `TEXT_CASE_SCAN_AGAIN` 两个按钮进入 `SCANNING`
+    /// 时才启动，离开 `SCANNING`（`hi()` 的卸载清理）时清掉；`SCANNING_IP` 不启动。
+    scan_task: Option<Task<()>>,
+    /// 源 `PA` 在高级灯效标签页挂载一次性的教程指示点，可见性由
+    /// `!isLoading && false !== localStorage["isShowTutorialHue"]` 决定，点击后把它写成
+    /// `false`（见 `effects.rs` 的同一键名持久化）。这里只保存当前可见状态。
     tutorial_visible: bool,
     chroma_installed: Option<bool>,
     chroma_profiles: Entity<SelectState<Vec<Choice>>>,
@@ -282,10 +285,13 @@ impl HueWorkspace {
             colors,
             color_boost,
             advanced: false,
+            scan_task: None,
             tutorial_visible: false,
             chroma_installed: None,
             chroma_profiles,
         };
+        // 源 `PA` 的挂载 effect 同样按存储值与 `isLoading` 决定初始可见性。
+        this.sync_tutorial_visibility();
         for octet in 0..4 {
             this.subscriptions.push(cx.subscribe_in(
                 &this.ip[octet],
@@ -421,6 +427,11 @@ impl HueWorkspace {
         } else {
             String::new()
         };
+        // 源 `hi()`（SCANNING）的 `useEffect(() => () => { mi && (clearTimeout(mi), mi = null) }, [])`：
+        // 离开扫描中状态就清掉 13 秒超时。
+        if next != Integration::Scanning {
+            self.scan_task = None;
+        }
         self.integration = next;
         self.last_command = Some(format!(
             "ON_SET_INTEGRATION_STATUS: {}{ip}",

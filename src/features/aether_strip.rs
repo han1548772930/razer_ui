@@ -12,7 +12,6 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::time::Duration;
 use std::{collections::BTreeMap, sync::OnceLock};
 
 mod device;
@@ -73,6 +72,9 @@ pub(crate) struct AetherStrip {
     /// matching the source effect's clearTimeout path.
     identify_ready: bool,
     identify_task: Option<Task<()>>,
+    /// 轮播滚动句柄：源码 `H()` 在挂载与切换时把
+    /// `scrollLeft` 设为 `carousel.scrollWidth / 5 * index`。
+    carousel_scroll: ScrollHandle,
     subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<AetherStripChanged> for AetherStrip {}
@@ -120,6 +122,7 @@ impl AetherStrip {
             modal: None,
             identify_ready: false,
             identify_task: None,
+            carousel_scroll: ScrollHandle::default(),
             subscriptions: vec![],
         };
         for id in 0..4u32 {

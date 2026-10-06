@@ -96,6 +96,7 @@ impl HueWorkspace {
             self.bridge.bridge_enabled = !["offline", "busy"].contains(&id);
             self.bridge.is_control = id != "busy";
             self.bridge.is_loading = id == "loading";
+            self.sync_tutorial_visibility();
             self.brightness.is_enabled = id != "brightness_off";
             self.brightness.value = 75;
             self.brightness.is_global_brightness = Some(id != "per_light");
@@ -141,7 +142,7 @@ impl HueWorkspace {
         // The source tutorial is mounted after the paired Home page receives
         // its first non-loading bridge state. Preview samples stand in for
         // that service transition without claiming a real bridge response.
-        self.tutorial_visible = self.bridge.is_paired && !self.bridge.is_loading;
+        self.sync_tutorial_visibility();
         let choices = self
             .bridge
             .groups

@@ -13,6 +13,10 @@ pub(super) struct DockDialog {
     pub(super) preview: bool,
     pub(super) alert: Option<String>,
     pub(super) last_request: Option<(String, serde_json::Value)>,
+    /// 源 `deviceReducer.isDualLinkWarning`：配对 713 设备时被置位。
+    duallink_warning: bool,
+    /// 源 `deviceReducer.continuePairing`：设备页把上一位换成它，工具据此绑定。
+    continue_pairing: bool,
 }
 pub(super) struct DockDialogClosed;
 impl EventEmitter<DockDialogClosed> for DockDialog {}
@@ -40,6 +44,8 @@ impl DockDialog {
             preview,
             alert: (!preview).then(|| "暂时无法读取配对信息。".into()),
             last_request: None,
+            duallink_warning: false,
+            continue_pairing: false,
         });
         modal.read(cx).focus.clone().focus(window, cx);
         modal
@@ -115,13 +121,46 @@ impl DockDialog {
         let Some(peer) = self.state.selected(lane).cloned() else {
             return;
         };
-        // Dongle 713 needs the source's additional continuation dialog. Keep
-        // this gate explicit until that feature is implemented; never bypass it.
-        if self.spec.dual() && peer.dongle_id == Some(713) {
-            self.alert = Some("此设备需要额外的配对确认，暂未接入。".into());
-            cx.notify();
-            return;
+        if let Some(peer) = self.begin_bind(peer, lane, cx) {
+            self.bind(peer, lane, cx);
         }
+    }
+    /// 241/914 的 `bindDevice`：`d.DeviceInfo` 侧的配对入口在
+    /// `P.dongleId !== 713` 时直接 `DUALLINK_BIND_DEVICE`，等于 713 时只
+    /// `SET_DUALLINK_WARNING(true)`，先把绑定挂起。
+    ///
+    /// 当前源把这个握手拆在三个地方：配对工具的 `bindDevice` 置位 `isDualLinkWarning`；
+    /// 设备页（`Ps`）的 effect 把它换成 `SET_CONTINUE_PAIRING(true)`；配对工具自己的
+    /// effect 再在 `continuePairing` 为真时用 `mode:1` 绑定那个 `dongleId === 713` 的
+    /// 扫描结果并清零。本地没有跨窗口总线，配对页与工具在同一进程里，所以按同样的顺序
+    /// 走完这三步，未捕获到 713 设备时保持挂起而不是伪造绑定。
+    fn begin_bind(&mut self, peer: Peer, lane: Lane, cx: &mut Context<Self>) -> Option<Peer> {
+        if !(self.spec.dual() && peer.dongle_id == Some(713)) {
+            return Some(peer);
+        }
+        self.duallink_warning = true;
+        // 设备页的转换 effect。
+        if self.duallink_warning {
+            self.duallink_warning = false;
+            self.continue_pairing = true;
+        }
+        // 配对工具的 `continuePairing` effect：只绑定扫描结果里 dongleId 为 713 的那台。
+        let pending = self
+            .state
+            .channel(lane)
+            .candidates
+            .iter()
+            .find(|candidate| candidate.dongle_id == Some(713))
+            .cloned();
+        self.continue_pairing = false;
+        if pending.is_none() {
+            self.alert = None;
+            cx.notify();
+            return None;
+        }
+        pending
+    }
+    fn bind(&mut self, peer: Peer, lane: Lane, cx: &mut Context<Self>) {
         let payload = serde_json::json!({"mode":1,"device":{"productId":peer.product_id,"dongleId":peer.dongle_id,"category":peer.lane.key(),"editionId":peer.edition,"layoutId":peer.layout,"productName":{"en":peer.name}}});
         if self.request("DUALLINK_BIND_DEVICE", payload, cx) {
             self.state.channel_mut(lane).status = Status::Pairing;
@@ -581,15 +620,17 @@ impl DockDialog {
                 .when(dual, |v| v.child(self.channel(Lane::Keyboard, cx)))
                 .child(self.channel(Lane::Mouse, cx)),
         );
-        if dual && self.state.peers().len() == 2 {
-            body = body.child(div().max_w(surface::css(520.)).mt(surface::css(30.)).child(
-                warning(
-                    self.spec,
-                    "MOUSE_DOCK_BOTH_DEVICES_PAIRING_UTILITY_WARNING",
-                    &self.name,
-                    14.,
-                    cx,
-                ),
+        // `showBothDevicesConnectedWarning: U` where
+        // `U = !(!canPairTwoDevices || !showBothDevicesConnectedWarning) && we(bindInfo)`,
+        // and `we` requires both a KEYBOARD and a MOUSE entry.
+        let both_lanes = [Lane::Keyboard, Lane::Mouse]
+            .iter()
+            .all(|lane| self.state.peers().iter().any(|peer| peer.lane == *lane));
+        if dual && self.spec.flag("showBothDevicesConnectedWarning") && both_lanes {
+            body = body.child(dialog_warning(
+                self.spec,
+                "MOUSE_DOCK_BOTH_DEVICES_PAIRING_UTILITY_WARNING",
+                &self.name,
             ));
         }
         let statuses = if dual {

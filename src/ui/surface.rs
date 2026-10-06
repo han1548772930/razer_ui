@@ -860,6 +860,17 @@ pub(crate) fn panel_with_control(
                 .child(control),
         )
 }
+/// `.widgetContent{display:flex;flex-direction:column;gap:20px}`: the widget
+/// body's own column gap.
+///
+/// `panel`/`panel_with_control` append their children without a gap, because not
+/// every widget body is a `.widgetContent` (some are a single `div`, some are a
+/// plain block whose children carry only their own margins). A widget whose
+/// current source body really is `.widgetContent` collects its children here so
+/// the 20px gap appears exactly where the stylesheet declares it.
+pub(crate) fn widget_content(children: impl IntoIterator<Item = AnyElement>) -> Div {
+    v_flex().gap(css(20.)).children(children)
+}
 /// `_TA`/`wrA` 的 `hasSwitch:true`：原版把 `.widget-switch` 放进
 /// `.titleRow > .title`（`display:flex`）里、紧跟标题文本，帮助按钮仍固定在
 /// 组件右上角，所以标题行需要两个不同位置的控件。
@@ -898,6 +909,21 @@ pub(crate) fn panel_with_title_switch(
                 )
                 .child(corner_control),
         )
+}
+
+/// `hasSwitch: !disabledReason`：有禁用原因时原版**根本不渲染** `.widget-switch`
+/// （不是渲染成灰色开关），所以这种组件传入 `None` 时走不带开关的
+/// [`panel_with_control`]，标题行结构其余部分完全一致。
+pub(crate) fn panel_with_title_switch_opt(
+    title: impl Into<SharedString>,
+    title_control: Option<AnyElement>,
+    corner_control: impl IntoElement,
+    cx: &App,
+) -> Div {
+    match title_control {
+        Some(title_control) => panel_with_title_switch(title, title_control, corner_control, cx),
+        None => panel_with_control(title, corner_control, cx),
+    }
 }
 
 /// `.widget .help`：14px 圆形帮助控件。依据当前源码的

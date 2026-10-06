@@ -27,6 +27,12 @@ pub enum WorkspaceEvent {
     /// This does not assert external Chroma installation or service state.
     OpenChroma,
     PairingRequested(crate::model::Device),
+    /// 164/241 配对页：源 `Es(peer, devices)` 命中应用设备列表时，配对文案里的设备名
+    /// 渲染成 `.deviceNameLink` 可点链接，点击切到该设备的工作区（`z(e)`）。
+    OpenDevice {
+        product_id: u32,
+        edition_id: u32,
+    },
 }
 pub(super) struct MappingDraft {
     pub(super) input: String,
@@ -86,6 +92,11 @@ pub struct DeviceWorkspace {
     pub(super) intro_seen: bool,
     pub(super) dial_highlight: Option<String>,
     pub(super) hovered_input: Option<String>,
+    /// 源 691 命令拨盘帮助：`<i className="help" onMouseEnter/onMouseLeave/>` 直接翻转
+    /// `isMounted`，没有展示延迟，因此只需一个本地开关。
+    pub(super) dial_help_hovered: bool,
+    /// 源 691 拨盘的 `icon-add` 用 `tooltip={getTextItem(c.BYV)}`（`[tooltip]:before` 伪元素）。
+    pub(super) dial_add_hovered: bool,
     profile_name: Entity<InputState>,
     profile_rename: Option<String>,
     profile_menu: Entity<gpui_kit::component::list::ListState<profile::ProfileCommands>>,
@@ -281,6 +292,8 @@ impl DeviceWorkspace {
             intro_seen,
             dial_highlight: None,
             hovered_input: None,
+            dial_help_hovered: false,
+            dial_add_hovered: false,
             profile_name,
             profile_rename: None,
             profile_menu,

@@ -47,6 +47,7 @@ pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
         preview: true,
         alert: None,
         modal: None,
+        known_devices: Vec::new(),
     });
     let preview = cx.new(|cx| {
         let observed = cx.observe(&dialog, |_, _, cx| cx.notify());

@@ -154,6 +154,27 @@ pub(crate) fn open_character_map() -> anyhow::Result<()> {
     #[cfg(not(target_os = "windows"))]
     anyhow::bail!("Character Map is only available on Windows")
 }
+/// 3858/3880 刷新率组件里 `displaySettings` 链接的动作。
+///
+/// 源调用 `RiA.A.msSettings("display")`：Electron 下走宿主动作 `msSettings`
+/// （`payload:{actionArgs:"display"}`），宿主把它转给 `sysutil/win` 原生模块
+/// （`msSettings:["void",["string"]]`）。该模块的实现是 DLL，静态不可读；应用内可读
+/// 的同族写法是 Dashboard 动作表里的
+/// `case"PowerUserMenu":return"cmd /c start ms-settings:"`，因此这里用同样的
+/// `cmd /c start ms-settings:<页面>` 打开源参数指定的 `display` 页。
+pub(crate) fn open_display_settings() -> anyhow::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "ms-settings:display"])
+            .spawn()?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        anyhow::bail!("display settings are only available on Windows")
+    }
+}
 pub(crate) fn open(properties: Properties) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {

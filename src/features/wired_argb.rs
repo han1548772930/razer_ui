@@ -1,7 +1,14 @@
 //! Current 778/3871 ARGB layout pages. Port observations live only in this
 //! session; saved drafts cannot create connected hardware or detection results.
 use super::Choice;
-use crate::{i18n, model::Device, ui::surface};
+use crate::{
+    i18n,
+    model::Device,
+    ui::{
+        hover_tip::{SourceTipPlacement, source_hover_tip, source_hover_tip_element},
+        surface,
+    },
+};
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::*;
@@ -132,6 +139,14 @@ struct Draft {
     auto_detection: Option<bool>,
 }
 pub(crate) struct WiredArgbChanged;
+/// 源 3871 的两个 `isMounted` 提示各由自己的状态位控制
+/// （`toggleTooltipDetection` / `toggleTooltipRefresh`）。
+#[derive(Clone, Copy, PartialEq)]
+enum WiredIcon {
+    Detection,
+    Refresh,
+}
+
 pub(crate) struct WiredArgbWorkspace {
     spec: &'static Spec,
     edition: u32,
@@ -144,6 +159,8 @@ pub(crate) struct WiredArgbWorkspace {
     preview: bool,
     limit_dismissed: bool,
     last_request: Option<String>,
+    /// 源里检测/刷新图标的提示由鼠标进入/离开直接切换挂载，没有任何展示延迟。
+    hovered_icon: Option<WiredIcon>,
     subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<WiredArgbChanged> for WiredArgbWorkspace {}
@@ -164,6 +181,7 @@ impl WiredArgbWorkspace {
             preview: false,
             limit_dismissed: false,
             last_request: None,
+            hovered_icon: None,
             subscriptions: vec![],
         }
     }
@@ -260,35 +278,120 @@ impl WiredArgbWorkspace {
             active: auto_enabled,
             generation: self.auto_animation,
         };
-        v_flex().relative().items_center().flex_shrink_0().mt(surface::css(10.)).h(surface::css(275.))
-            .w(surface::css(if self.spec.mainboard() { 600. } else { 150. }))
-            .child(img(self.spec.asset(&art)).object_fit(ObjectFit::Contain)
-                .w(surface::css(if self.spec.mainboard() { 600. } else { 130. }))
-                .h(surface::css(if self.spec.mainboard() { 275. } else { 270. })))
-            .when(!self.spec.mainboard(), |v| v.child(h_flex().absolute().bottom(surface::css(60.)).left_0().w_full().justify_center().gap(surface::css(12.))
-                .child(button::Button::new("argb-auto-detection")
-                    .child(auto_icon).ghost().p_0().size(surface::css(20.))
+        // 源 3871 的 `#icon-detection-wrapper` / `#icon-refreshing-wrapper`：`onMouseEnter`
+        // 直接 `toggleTooltipDetection(!0)` / `toggleTooltipRefresh(!0)`，提示即时挂载，
+        // 位置 `.tooltip-razer.bottom-left`（贴下沿、右缘对齐），100ms 淡入。
+        let detection = div()
+            .id("icon-detection-wrapper")
+            .relative()
+            .child(
+                button::Button::new("argb-auto-detection")
+                    .child(auto_icon)
+                    .ghost()
+                    .p_0()
+                    .size(surface::css(20.))
                     .accessibility_label(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))
                     .disabled(!enabled)
-                    .tooltip(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         if this.preview && this.status != Status::NoPower {
-                            let enabled = !this.draft.auto_detection.or(this.auto_detection).unwrap_or(false);
+                            let enabled = !this
+                                .draft
+                                .auto_detection
+                                .or(this.auto_detection)
+                                .unwrap_or(false);
                             this.draft.auto_detection = Some(enabled);
                             this.auto_animation = this.auto_animation.wrapping_add(1);
-                            this.last_request = Some(format!("ON_SET_AUTO_DETECTION_ENABLE: {{isAutoDetectionEnable:{enabled}}}"));
-                            cx.emit(WiredArgbChanged); cx.notify();
+                            this.last_request = Some(format!(
+                                "ON_SET_AUTO_DETECTION_ENABLE: {{isAutoDetectionEnable:{enabled}}}"
+                            ));
+                            cx.emit(WiredArgbChanged);
+                            cx.notify();
                         }
-                    })))
-                .child(button::Button::new("argb-refresh").child(img(self.spec.asset("refresh")).size(surface::css(20.))).ghost().p_0().size(surface::css(20.))
+                    })),
+            )
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.hovered_icon = hovered.then_some(WiredIcon::Detection);
+                cx.notify();
+            }))
+            .when(self.hovered_icon == Some(WiredIcon::Detection), |row| {
+                row.child(source_hover_tip(
+                    "argb-auto-tip",
+                    self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"),
+                    SourceTipPlacement::BottomLeft,
+                ))
+            });
+        let refresh = div()
+            .id("icon-refreshing-wrapper")
+            .relative()
+            .child(
+                button::Button::new("argb-refresh")
+                    .child(img(self.spec.asset("refresh")).size(surface::css(20.)))
+                    .ghost()
+                    .p_0()
+                    .size(surface::css(20.))
                     .accessibility_label(self.spec.text("GLITTER_MESSAGE_REFRESH_ICON"))
-                    .disabled(!enabled).tooltip(self.spec.text("GLITTER_MESSAGE_REFRESH_ICON"))
+                    .disabled(!enabled)
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.last_request = Some("ON_REFRESH_PORTS".into());
                         // Only the explicit preview controls can supply completion.
-                        this.status = Status::Refreshing; cx.notify();
-                    })))
-                .child(img(self.spec.asset("warning")).size(surface::css(20.)).opacity(if show_warning { 1. } else { 0. }))))
+                        this.status = Status::Refreshing;
+                        cx.notify();
+                    })),
+            )
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.hovered_icon = hovered.then_some(WiredIcon::Refresh);
+                cx.notify();
+            }))
+            .when(self.hovered_icon == Some(WiredIcon::Refresh), |row| {
+                row.child(source_hover_tip(
+                    "argb-refresh-tip",
+                    self.spec.text("GLITTER_MESSAGE_REFRESH_ICON"),
+                    SourceTipPlacement::BottomLeft,
+                ))
+            });
+        v_flex()
+            .relative()
+            .items_center()
+            .flex_shrink_0()
+            .mt(surface::css(10.))
+            .h(surface::css(275.))
+            .w(surface::css(if self.spec.mainboard() {
+                600.
+            } else {
+                150.
+            }))
+            .child(
+                img(self.spec.asset(&art))
+                    .object_fit(ObjectFit::Contain)
+                    .w(surface::css(if self.spec.mainboard() {
+                        600.
+                    } else {
+                        130.
+                    }))
+                    .h(surface::css(if self.spec.mainboard() {
+                        275.
+                    } else {
+                        270.
+                    })),
+            )
+            .when(!self.spec.mainboard(), |v| {
+                v.child(
+                    h_flex()
+                        .absolute()
+                        .bottom(surface::css(60.))
+                        .left_0()
+                        .w_full()
+                        .justify_center()
+                        .gap(surface::css(12.))
+                        .child(detection)
+                        .child(refresh)
+                        .child(
+                            img(self.spec.asset("warning"))
+                                .size(surface::css(20.))
+                                .opacity(if show_warning { 1. } else { 0. }),
+                        ),
+                )
+            })
             .into_any_element()
     }
     fn warning(&self, status: Status, cx: &Context<Self>) -> AnyElement {

@@ -57,3 +57,19 @@ rustfmt --edition 2024 --check src/features/source_controls/oled_presets.rs src/
 
 No application, build, test, vendor JavaScript, installer or DLL was run.
 The parent task performs the permitted consolidated Cargo type check.
+
+## 2026-10-06 requires-Synapse 图标提示改为即时挂载
+
+源 OLED chunk 里该图标是
+
+```jsx
+<z id={`require-synapse-icon-${t}`} onMouseEnter={() => !w && F(!0)} onMouseLeave={() => !w && F(!1)}/>
+<x.A position="bottom-right" className={W} isMounted={V}
+     target={`require-synapse-icon-${t}`}>{getTextItem(v.vs6)}</x.A>
+```
+
+即共享 `Gu` 家族的 `isMounted` + `target` 即时挂载提示，位置 `bottom-right`（贴目标下沿、左缘对齐）。
+本地改用 `crate::ui::hover_tip::source_hover_tip_element(.., SourceTipPlacement::BottomRight)`，
+悬停状态由 `window.use_keyed_state` + `window.listener_for` 维护（和卡片 body 的 hover 同一写法），
+不再使用 Kit tooltip 构造器。`node tools/audit-oled-preset-cards.cjs` 的 `tooltips` 收据与
+`native tooltip contract` 断言把两端钉住。

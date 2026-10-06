@@ -2,12 +2,12 @@
   "schema_version": 1,
   "verification": "Static receipts and descriptor validation only; no application, build or tests executed",
   "parser_sha256": "db2fb31dbe67c1f430e7f92a701397782a00486d3730f1c418091bf67745edc9",
-  "generator_sha256": "2fbc0ec84571bf2c742d83a518e249e40317329ef02413c64c57606d08056aea",
-  "rust_sha256": "b1774e7a3123ef0479515a93488ad9a43bbf4ae2b93cf0efd18a3bc826494ac8",
-  "data_sha256": "e7a2019fa5857d376dded4475c60ed2be58ab920ead3009ab181b68fc1d2b25e",
+  "generator_sha256": "edf6cced30b70f18faa4a0cdb4a053750b0d661f6ad9987cd4a1880439777c5f",
+  "rust_sha256": "366cd428606a85f27af7627f6754c6a300f352ad412f2ac8bee33820ae59dc0f",
+  "data_sha256": "4a124991b22f66aa11607761bb4c6a63bd8471d73259a013ce23ee43555eb455",
   "products": 76,
   "source_files": 2829,
-  "controls": 1755,
+  "controls": 1756,
   "equalizers": 77,
   "empty_pages": [
     {

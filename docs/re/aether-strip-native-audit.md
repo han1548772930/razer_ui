@@ -52,3 +52,178 @@
 本次没有窗口截图、像素测量、真实键盘/鼠标操作或硬件联调，不能把静态检查写成视觉验收。真实 IoT 列表更新、发现、设备命名/移除/接管/电源/识别和写 LED 命令的 transport 仍未接入。预览中的跨卡片选择是本地样例切换，未模拟远端确认。
 
 仍需在允许运行 UI 后检查或进一步修正的已知细节：轮播原版 `scroll-behavior:smooth` 的居中滚动与电源打开后 500ms Identify 使能延迟；IoT 卡/编号 tooltip 的原触发时序；离线提示在滚动 viewport 底部 50 的定位；帮助 tooltip 的溢出边界目前采用窗口 viewport，源 Fd 使用 `.main-container > #body-wrapper`。这些不计为逐像素完成项。Lighting 内容和 HELP 内容继续由既有正式工作区负责，本模块没有声称重新审计它们全部内部控件。
+
+## 2026-10-06 设备轮播的盒模型与居中（`.carousel--item` / `.device`）
+
+当前源（784 `main.3094caa4.js` + `main.03a1d509.css`，表达式同样出现在 780–784、790、791
+七个 IOT 包）：
+
+- 容器：`<div class="widget-prod dot-bg carousel--widget"><div class="carousel" ref><div class="carousel--outer">
+  <div class={"carousel--inner " + (1===devices.length ? "center" : "")} ref>…卡片…</div>
+  <div class="carousel--indicator">…</div>…</div><div class="dim-corner"/></div>`；
+  `.carousel--inner{align-items:flex-end;display:flex;margin:0 auto;overflow:hidden;padding:0 496px;
+  scroll-behavior:smooth}`、`.carousel--inner.center{overflow:visible;padding:initial;width:fit-content}`。
+- 居中算法：`const H=()=>{r.current&&(r.current.scrollLeft=s.current.scrollWidth/5*O)}`，`O` 是选中下标，
+  `useEffect(()=>{H()},[O])`（切换与挂载时都执行）；`496 = 2×248`，`/5 ≈ 一屏五张卡片`，
+  所以每换一项滚动约一张卡片宽度，选中卡片落在中间。
+- 卡片盒模型：`.carousel--item{align-items:center;display:flex;flex:none;flex-direction:column;
+  height:212px;justify-content:center;padding:0 30px;position:relative;width:248px}`；
+  `.carousel--item .device{opacity:.5}`、`.device.active{opacity:1;padding-top:28px}`、
+  `.device:not(.active){margin-top:75px}`；`.device--img{width:154.8px;padding-bottom:12px}`、
+  `.device.active .device--img{width:237px;transform:translateY(3px)}`、
+  `.device.linked .device--img{width:204px}`、`.device.active .device--name{font-size:14px}`。
+
+本轮本地改动（`src/features/aether_strip/device.rs`）：卡片拆成
+`.carousel--item`（248×212、`flex:none`、`justify_center`、`padding:0 30px`）与其内部的
+`.device`（未选中 `opacity:.5` + `margin-top:75px`，选中 `padding-top:28px`）两层，图片宽度仍是
+源里的 237 / 154.8，动作按钮的绝对定位仍相对卡片（源里 `.device--badge` 也是相对
+`.carousel--item{position:relative}`）。此前本地是单层卡片、`justify_end`、`padding:0 5px`。
+
+机检：`tools/validate-aether-strip.py` 新增 `.carousel--item`/`.device*` 的六条 CSS 声明、
+七个包里的居中表达式与本地两层结构标记。
+
+2026-10-06 补上容器与居中（同一轮续做）：`device.rs` 的多设备分支现在渲染
+`padding:0 496px` + `overflow_scroll()` + `scrollbar_width(px(0.))`（源码是 `overflow:hidden`，
+没有滚动条）+ `track_scroll(&self.carousel_scroll)`，并在构建时按源码 `H()` 设置
+`self.carousel_scroll.set_offset(point(bounds.width / 5. * index, 0))`（`AetherStrip` 新增
+`carousel_scroll: ScrollHandle` 字段，挂载/切换都会重算，`<0.5px` 内不重复设置，避免渲染循环）；
+单设备分支保持 `.carousel--inner.center` 的形态（居中、无内边距、不滚动），不再使用会画出滚动条的
+`scrollable_both()`。`scroll-behavior:smooth` 没有在源码里声明时长（由 UA 决定），因此本地按审计到的
+同一偏移量直接定位，**不自造缓动或时长**；这一点写在 `tools/validate-aether-strip.py` 的注释里。
+
+## 2026-10-06 编号指示器与卡片徽标的 tooltip 契约
+
+当前源（784 `main.03a1d509.css` + `main.3094caa4.js`）：
+
+- 容器：`<div class="carousel--indicator">{indicator}</div>`，其中
+  `.indicator--container{align-items:center;display:flex;justify-content:center;margin-top:10px;
+  position:relative;z-index:1}`、`.indicator--list{background:#111;border:1px solid #ccc;
+  border-radius:40px;display:flex;margin-right:10px;padding:5px}`、
+  `.indicator--item{border-radius:30px;color:#ccc;display:flex;flex:none;font-size:14px;height:26px;
+  justify-content:center;margin-right:10px;position:relative;width:26px}`（`:last-child` 去右边距），
+  选中/悬停 `#44d62c`+`#111`，`busy`/`offline` 文字 `#fd8611`，选中且 busy/offline 或悬停时底色
+  `#fd8611`+`#111`。编号项来自 `for(t…) push(<div class={"indicator--item"+offline/busy/active}
+  onClick={()=>setIndex(t)} tooltip={device.title}>{t+1}</div>)`。
+- 指示器 tooltip：全局 `[tooltip]:before{background-color:#000;border:1px solid #5d5d5d;color:#ccc;
+  content:attr(tooltip);font-size:14px;line-height:16px;opacity:0;padding:8px 10px;pointer-events:none;
+  position:absolute;right:0;text-align:left;top:calc(100% + 5px);transition:visibility 0s,opacity .3s
+  linear;visibility:hidden;white-space:nowrap;width:auto;z-index:100}` 之上，编号项再覆盖成
+  `.indicator--item[tooltip]:before{right:auto;top:calc(100% + 10px);width:fit-content}`（左对齐、
+  下方 10px、宽度自适应且不换行）。
+- 卡片徽标（`.device--badge`，`position:absolute` 相对 `.carousel--item`）在轮播里另有覆盖：
+  `.device--badge[tooltip]:before{display:none;left:50%;width:fit-content;z-index:3}`
+  ——**默认不显示**；只有选中卡片上 `.anchor--left`/`.anchor--right`/`.anchor--middle` 各自
+  `:hover` 时才 `display:block`，其定位分别是 `left:50%`、`right:0`（沿用全局）、
+  `left:50% + translateX(-50%) + width:200px + white-space:break-spaces`。JSX 里
+  `device--cta-enable anchor--middle`（接管）、`device--cta-power … anchor--left`（电源）、
+  `device--cta-find anchor--left`（Identify）、`device--cta-del anchor--right`（移除）与
+  `device--badge-offline anchor--right` 都带 `tooltip`。
+- 多设备时指示器右侧还有连接按钮：`{supportsLinked && <div class="button--cta button--cta-link"
+  role="button" onClick={()=>setLinked(true)} tooltip={…a0H}/>}`，CSS
+  `.indicator--container .button--cta{background-position:50%;background-repeat:no-repeat;
+  background-size:18px 18px;height:18px;position:relative;width:18px}` + `:before{left:0;
+  max-width:300px;white-space:pre-line!important;width:max-content}`，图标按状态在
+  `link-btn.fed18bb7.svg`/`link-hovered-btn.0fde7f57.svg`/`unlink-btn.db633bad.svg`/
+  `unlink-hovered-btn.67ac688d.svg` 间切换；`.indicator.linked` 还有一整套
+  `button--cta-show-active/locked/busy` 文本按钮形态。
+
+本轮本地改动：编号项装进 `.indicator--list` 药丸（`bg(Colors::background())`＝`#111`、
+`1px cx.theme().foreground`＝`#ccc`、`rounded(40px)`、`padding:5px`、`margin-right:10px`），
+外层 `justify_center` + `margin-top:10px` 对应 `.indicator--container`，编号项仍是 26×26、
+`rounded(30px)`、选中/悬停/警告配色与源码一致（此前本地把编号项裸放在 10px `gap` 的行里，
+没有 `.indicator--list` 这层）。
+
+2026-10-06 卡片徽标的 `[tooltip]` 已按源实现：`source_tip.rs` 新增 `TipAnchor`
+（`Left`＝`left:50%`→提示框左边缘落在触发元素中线、`Right`＝`right:0`→右边缘贴右边缘、
+`Center`＝`left:50%+translateX(-50%)`）与 `Kind::Badge{anchor,gap}`，皮肤按全局
+`[tooltip]:before`（`font-size:14px`、`line-height:16px`、`padding:8px 10px`、`#000`/`1px #5d5d5d`/
+`#ccc`、`white-space:nowrap`、`width:auto`、`.3s linear`），`.anchor--middle` 用 200px 宽 +
+`break-spaces` 对应的换行、`gap = 5px`；新的 `SourceTipItem` 取代原来的 `card_action`，四个徽标按
+源分别传 `anchor--left`（电源、Identify）、`anchor--right`（移除）、`anchor--middle`（接管），
+并且只有选中卡片才渲染这些徽标、提示框才可能显示（对应
+`.device--badge[tooltip]:before{display:none}` + `.device.active …:hover:before{display:block}`）。
+原来这里用的是 Kit tooltip 与 `Kind::Icon` 的 `trigger.origin + (2, 34)`（该偏移在源码里没有依据）。
+
+2026-10-06 同一轮续做：编号项的 `[tooltip]` 也按源接上。`TipAnchor` 增加 `Start`
+（`right:auto`、没有 `left` —— 提示框左边缘贴住触发元素左边缘，源码里
+`.indicator--item[tooltip]:before{right:auto;top:calc(100% + 10px);width:fit-content}` 就是这一条），
+原来的 `left:50%` 改名 `Half` 以免与「左对齐」混淆；新增通用挂载 `SourceTipWrap`（可包住任意触发
+元素，复用同一个 `TipLayer`），编号项不再用 Kit tooltip，改为 `SourceTipWrap::new(id, device 名称,
+TipAnchor::Start, 10px, item)` —— 与徽标共用全局 `[tooltip]` 皮肤（`14px/16px`、`padding:8px 10px`、
+`#000`/`1px #5d5d5d`/`#ccc`、`nowrap`、`.3s linear`）。
+
+**仍未实现（已登记，不伪造）**：`.button--cta-link` 连接按钮（含
+`link/link-hovered/unlink/unlink-hovered` 四个图标状态与 `.indicator--container .button--cta:before`
+的 `left:0;max-width:300px;white-space:pre-line`）与 `.indicator.linked` 的
+`button--cta-show-active/locked/busy` 组；另外 `source_tip.rs` 里的 `TipCommand`
+（`Kind::Icon`/`Kind::Help`）当前仍没有任何调用点（`hasSwitch`/`tips` 在 784 的 Aether 页区段里
+都不出现，本地页面也没有帮助图标），其中 `Kind::Icon` 的 `+2/+34` 偏移无源码依据——下一轮确认
+该页确实没有 `.help`/`.tip` 后删除这段死代码，或按源接上。
+
+## 2026-10-06 卡片徽标的可见性矩阵
+
+源码 JSX 对每张卡片**无条件**渲染这四个徽标（`hasPowerButton` 才渲染电源徽标），可见性完全由
+CSS 决定，基础规则是 `.device--badge{…position:absolute;visibility:hidden}`：
+
+| 徽标 | 默认 | 选中卡片 | 选中+离线 | 选中+忙碌 | 忙碌（非选中） | 位置 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `device--cta-power` | 隐藏 | **可见** | 隐藏 | 可见 | 隐藏 | 选中 `left:6%;bottom:54%` |
+| `device--cta-find` | 隐藏 | **可见** | 隐藏 | 可见 | 隐藏 | 选中 `left:6%;bottom:37%` |
+| `device--cta-del` | 隐藏 | 仅 `:hover` | 可见 | 可见 | — | 选中 `right:10%;top:22%` |
+| `device--cta-enable` | 隐藏 | — | — | **可见**（白色变体） | **可见** | 居中 `left:50%`、`top:calc(50% - 10px)`（选中 `-8px`）、`translate(-50%,-50%)`、42×27 |
+| `device--badge-offline` | 隐藏 | 隐藏（`right:10%;top:34%`） | **可见** | 隐藏 | 隐藏 | 非选中 `right:25%;top:40%` |
+
+对应规则原文：`.device.active .device--cta-power{…visibility:visible}`、
+`.device.active .device--cta-find{…visibility:visible}`、`.device.active:hover .device--cta-del{visibility:visible}`、
+`.device.active.offline .device--cta-del{visibility:visible}`、
+`.device.active.offline .device--cta-find,.device--cta-power{visibility:hidden}`、
+`.device.active.linked .device--cta-find,.device--cta-power{visibility:hidden}`、
+`.device.active.busy .device--cta-del,.device--cta-find,.device--cta-power{visibility:visible}`、
+`.device.busy .device--cta-enable{…visibility:visible;width:42px;height:27px;top:calc(50% - 10px)}`（选中
+`.device.active.busy .device--cta-enable{background-image:busy-btn-white;border-color:#fff;top:calc(50% - 8px)}`
+且 `:hover{background-color:#707070}`）、`.device.offline .device--badge-offline{visibility:visible}`、
+`.device.busy .device--badge-offline{visibility:hidden}`、
+`.device.active.offline .device--badge-offline{height:24px;visibility:visible;width:24px}`。
+
+本轮本地改动（`src/features/aether_strip/device.rs`）：这四类徽标不再只挂在选中卡片上，而是按上表
+在每张卡片上按状态渲染——`power_find = selected && (busy || !offline)`、
+`remove = selected && (offline || busy)`、`offline && !busy` 才画离线徽标；移除徽标默认
+`invisible()` 并用卡片 `.group(id)` + `group_hover` 在悬停时 `visible()`（源码的
+`.device.active:hover`）；忙碌徽标改用 `busy-btn`/`busy-btn-white` 两种皮肤、`top:84.5`/`82.5`
+（`calc(50% ± …)` 减去 27px 高度的一半）、非选中卡片用 `#707070` 的 30.2% 透明边框；离线徽标非选中
+卡片位置改成 `right:62;top:84.8`（`right:25%;top:40%`）。这些徽标都是绝对定位，所以本地用「按可见性
+决定是否渲染」代替 `visibility`，效果一致且不会让隐藏按钮仍可命中。
+
+**数据缺口（已登记）**：`.device.linked .device--badge{visibility:hidden}` 与
+`.device.active.linked …{visibility:hidden}` 需要每台设备的 `isLinked`，本地 `Observation` 里还没有
+这个字段；`hasPowerButton` 同理，所以电源徽标本地目前总是渲染（仅用 `power_on` 是否为 `Some` 决定
+可用性）。
+
+## 2026-10-06 链接形态与图标提示框：两条「缺口」的收口
+
+**链接/解除链接按钮与 `.indicator.linked` 在当前 784 页面不可达**（所以本地不实现它是忠实，
+不是缺 UI）。源事实：
+
+- 指示器组件 `El` 的 props 是 `{devices, isLinked, setLinkedDevice, selectedIndex, supportsLinked,
+  devicesData}`；未链接形态渲染 `.indicator--list`，只有 `supportsLinked` 为真时才追加
+  `.button--cta.button--cta-link`（点击切到链接形态），链接形态才渲染
+  `.indicator--wrapper`（`button--cta-show-active` 用 `DEVICES_LINKED_STATUS` 的
+  `{{number1}}/{{number2}}`、`button--cta-unlink` 的提示框是 `DEVICES_ARE_LINKED`、
+  `button--cta-show-locked` 用 `DEVICES_LOCKED_STATUS`、`button--cta-show-busy` 用
+  `DEVICES_OFFLINE_STATUS`）。
+- 轮播组件 `Gl=e=>{let E=e.devicesData,a=e.changeLinked,t=e.selectedDeviceIndex,_=e.supportsLinked,
+  i=e.hasPowerButton,o=void 0===i||i,n=e.iotProps;…}`，而两个调用点都只传
+  `devicesData`/`changeLinked`/`selectedDeviceIndex` —— `supportsLinked` 恒为 `undefined`、
+  `hasPowerButton` 恒为默认 `true`；`isLinked` 是 `Gl` 内部 `useState(!1)`，只被那个不可达的
+  链接按钮置真。设备卡片 `<ol>` 也没有 `isLinked` 属性（只有 `m.length>1&&R` 的合成卡片才传
+  `isLinked:!0`，同样不可达）。
+- 因此本轮**不**实现这些形态；本地已有的 `LIGHTING_DEVICE_TAKE_CONTROL_DESC`（`We.gxE`）正好也是
+  `button--cta-show-locked` 的提示框 key。`{{number1}}/{{number2}}` 这类文案在本地
+  `locales/*.json` 里已存在（`DEVICES_LINKED_STATUS` 等），将来若某个产品真的传
+  `supportsLinked`，可以直接接入。
+
+**图标提示框不再用无依据的偏移**：`TipCommand::icon`（页面里的 Identify 每个灯段按钮与刷新按钮）
+原先把提示框放在 `trigger.origin + (2, 34)`，源码里没有这样的常量。当前源里这类图标与徽标同属
+`[tooltip]` 伪元素，且**没有** identify/refresh 的专用覆盖规则，所以走全局
+`[tooltip]:before{…right:0;text-align:left;top:calc(100% + 5px);white-space:nowrap;width:auto;
+`z-index:100}`；本地改为 `Kind::Badge{anchor: TipAnchor::Right, gap: 5}`（与该皮肤同一套测量）。

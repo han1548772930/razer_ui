@@ -31,12 +31,37 @@ for product in source['products']:
             'refeshRateCounter', 'secondDisplay')}
         if pid == 3880:
             spec['initial']['thxCinema'] = state['thxCinema']
+        # `uiRestraint` is part of that seed as an empty object: the source's own
+        # "no restriction observed" state, which the UI keeps until the device
+        # service fills in a reason.
+        spec['initial']['uiRestraint'] = copy.deepcopy(state['uiRestraint'])
+        assert spec['initial']['uiRestraint'] == {}
         spec['pages'] = ['TAB_GAMING', 'TAB_COLOR', 'TAB_DISPLAY']
         spec['presets'] = config['GAMING_PRESET']
         spec['enums'] = {o['name']: o['value'] for o in product['scalarObjects']
                          if o['name'] in ('Bi', 'GM', 'QB', 'Ss', 'e3', 'zH')}
         assert spec['enums']['zH']['CUSTOM'] == 5
         assert 'useExtendedGammaSlider:!%s' % (0 if pid == 3880 else 1) in main
+        # `zrA` (3858) / `iTA` (3880) is the reason paragraph every monitor
+        # widget mounts; its default class is `exclamationText mb20`, which the
+        # gamut warning overrides to `exclamationText`.
+        jsx, loc = ('t6O', 'r6O') if pid == 3858 else ('U6O', 'H6O')
+        warn, enums = ('zrA', 'haA') if pid == 3858 else ('iTA', '$aA')
+        assert 'e=>{let E=e.text,a=e.className,_=void 0===a?"exclamationText mb20":a;' in main
+        assert main.count('jsx)(%s,{' % warn) == (6 if pid == 3858 else 9)
+        for snippet in ('children:[(0,%s.jsx)(%s,{text:this.props.disabledReason}),' % (jsx, warn),
+                        'children:[(0,%s.jsx)(%s,{text:e.disabledReason}),' % (jsx, warn),
+                        'children:[(0,%s.jsx)(%s,{text:a}),' % (jsx, warn),
+                        'jsx)(%s,{className:"exclamationText",text:' % warn):
+            assert snippet in main, snippet
+        # The Color tab's temperature widget: the preset group, then the
+        # `.slide-off` group that only carries `.slide-on` for the CUSTOM preset.
+        assert 'title:%s.Lyf,tips:%s.iQK,hasSwitch:!1' % (loc, loc) in main
+        assert 'className:this.props.disabledReason?"featureDisabled":""' in main
+        assert ('selectedPreset===%s.GM.CUSTOM?"".concat(this.displayClasses," slide-on"):this.displayClasses'
+                % enums) in main
+        assert spec['enums']['GM'] == {'NORMAL': 5, 'LOWBLUELIGHT': 12, 'WARM': 4,
+                                       'COOL': 8, 'SRGB': 1, 'CUSTOM': 11}
     elif pid == 3900:
         profile = config['DEFAULTPROFILE']
         spec['initial'] = {k: copy.deepcopy(profile[k]) for k in ('ports', 'portsConfig')}

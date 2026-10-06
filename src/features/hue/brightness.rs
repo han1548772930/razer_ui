@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::source_slider::SourceSlider;
 
 impl HueWorkspace {
     pub(super) fn brightness_card(&self, cx: &Context<Self>) -> AnyElement {
@@ -190,21 +191,40 @@ impl HueWorkspace {
         self.sync_brightness(window, cx);
     }
 }
+/// 源 `OT`（`.slider-container`）的亮度滑条。当前 769 的两个亮度滑条都是
+/// `<OT min={0} max={100} step={1} value={…} active={…} minTag={w.KFn} maxTag={w.zrT}/>`
+/// （`KFn`/`zrT` 按 769 的导出表就是 `OFF`/`BRIGHT`），没有 `noTip`，所以值显示在
+/// `.slider-tip` 里；`active` 对应 `.slider-container.on`（否则 `.3` 透明度 +
+/// `pointer-events:none`）。绘制交给共享 `SourceSlider`（同一 `.slider-container`、
+/// `.track`、`.left`、`.slider-tip` 与滑柄 hover/active 配色），这里只补源容器下沿的
+/// `.foot`：`.slider-container .foot{bottom:-2px;opacity:1;position:absolute;
+/// text-transform:uppercase;…}` + `.foot.min{left:0}` + `.foot.max{right:0}`。
+/// 原版 `.foot` 不声明颜色与字号，由父级继承，所以这里用主题前景色。
 fn brightness_slider(slider: &Entity<SliderState>, enabled: bool, cx: &App) -> AnyElement {
-    v_flex()
-        .gap(surface::css(5.))
-        .child(div().text_center().child(format!(
-            "{}",
-            slider.read(cx).value().start().round() as i32
-        )))
-        .child(Slider::new(slider).disabled(!enabled))
+    let value = slider.read(cx).value().start().round().clamp(0., 100.);
+    let progress = (value / 100.).clamp(0., 1.);
+    div()
+        .relative()
+        .w_full()
         .child(
-            h_flex()
+            SourceSlider::new(slider, progress)
+                .tip(Some(format!("{value:.0}")))
+                .enabled(enabled),
+        )
+        .child(
+            div()
+                .absolute()
+                .bottom(surface::css(-2.))
+                .w_full()
+                .flex()
                 .justify_between()
-                .text_size(surface::css(12.))
-                .text_color(cx.theme().muted_foreground)
-                .child(i18n::t("OFF"))
-                .child(i18n::t("BRIGHT")),
+                .text_size(surface::css(14.))
+                .text_color(cx.theme().foreground)
+                // `.slider-container .foot{text-transform:uppercase}`；容器未 `.on`
+                // 时整块是 `.3`，而 `.foot` 在这里是同级节点，所以单独降透明度。
+                .when(!enabled, |row| row.opacity(0.3))
+                .child(i18n::t("OFF").to_uppercase())
+                .child(i18n::t("BRIGHT").to_uppercase()),
         )
         .into_any_element()
 }

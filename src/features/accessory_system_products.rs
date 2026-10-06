@@ -4,7 +4,7 @@ use crate::{
     backend::system,
     features::Choice,
     i18n::{t, t_or},
-    ui::surface,
+    ui::{source_slider::SourceSlider, surface},
 };
 use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
@@ -113,6 +113,10 @@ pub(crate) struct AccessorySystemProductWorkspace {
     /// profile snapshot; the source receives them through MW update events.
     color_profiles: Vec<String>,
     selected_color_profile: String,
+    /// `jSA` 的 `supportedRefreshRate`/`selectedRefreshRate`：同样是运行时观测，
+    /// 源用 `useState(60)` 与 `[{60,120,144,165} Hz]` 作初值，收到 MW 事件后替换。
+    supported_refresh_rates: Vec<i64>,
+    selected_refresh_rate: i64,
     /// `SSA` primary-input-source prompt: the source waiting for confirmation.
     /// The source's `shouldAskAgainValue` starts true, so the first change asks.
     pending_input_source: Option<i64>,
@@ -337,6 +341,8 @@ impl AccessorySystemProductWorkspace {
             color_profile,
             color_profiles: Vec::new(),
             selected_color_profile: String::new(),
+            supported_refresh_rates: Vec::new(),
+            selected_refresh_rate: 60,
             pending_input_source: None,
             ask_again: true,
             corex_graph: corex_fan::GraphInteraction::new(cx),
@@ -460,8 +466,9 @@ impl AccessorySystemProductWorkspace {
 
     /// Attach a monitor-service observation without treating it as profile
     /// data. The current source reducer receives a flat payload with
-    /// `colorProfiles: string[]` and `selectedColorProfile: string`; unknown
-    /// shapes are ignored so a stale cache cannot manufacture options.
+    /// `colorProfiles: string[]`, `selectedColorProfile: string`,
+    /// `supportedRefreshRate: number[]` and `selectedRefreshRate: number`;
+    /// unknown shapes are ignored so a stale cache cannot manufacture options.
     pub(crate) fn set_monitor_runtime(
         &mut self,
         runtime: Option<&Value>,
@@ -491,6 +498,25 @@ impl AccessorySystemProductWorkspace {
             .to_owned();
         self.color_profiles = profiles;
         self.selected_color_profile = selected;
+        // `jSA` 的 `supportedRefreshRate`（升序后 `text:"<n> Hz"`）与
+        // `selectedRefreshRate`。
+        self.supported_refresh_rates = runtime
+            .get("supportedRefreshRate")
+            .and_then(Value::as_array)
+            .map(|values| {
+                let mut rates = values
+                    .iter()
+                    .filter_map(Value::as_i64)
+                    .filter(|rate| *rate > 0)
+                    .collect::<Vec<_>>();
+                rates.sort_unstable();
+                rates.dedup();
+                rates
+            })
+            .unwrap_or_default();
+        if let Some(rate) = runtime.get("selectedRefreshRate").and_then(Value::as_i64) {
+            self.selected_refresh_rate = rate;
+        }
         let items = if self.color_profiles.is_empty() {
             vec![Choice::new("", "")]
         } else {
@@ -523,7 +549,8 @@ impl AccessorySystemProductWorkspace {
                     // service boundary; it is intentionally excluded from
                     // local profile snapshots.
                     this.selected_color_profile = value.to_owned();
-                    state.set_selected_value(value, window, cx);
+                    let value = value.clone();
+                    state.update(cx, |state, cx| state.set_selected_value(&value, window, cx));
                     cx.notify();
                 }
             },
@@ -842,6 +869,17 @@ impl AccessorySystemProductWorkspace {
             .and_then(Value::as_i64)
             .unwrap_or_default()
     }
+    /// `OTA.getPercent()` for a slider row, taken from the same draft value the
+    /// row's numeric field edits.
+    fn slider_progress(&self, path: &str) -> f32 {
+        let Some((min, max, _)) = self.ranges.get(path).copied() else {
+            return 0.;
+        };
+        if (max - min).abs() < f32::EPSILON {
+            return 0.;
+        }
+        ((self.number(path) as f32 - min) / (max - min)).clamp(0., 1.)
+    }
     fn string(&self, path: &str) -> &str {
         self.draft
             .pointer(path)
@@ -872,17 +910,57 @@ impl AccessorySystemProductWorkspace {
             .filter(|reason| !reason.is_empty())
     }
 
-    fn restriction_note(&self, feature: &str) -> AnyElement {
-        let Some(reason) = self.restriction_reason(feature) else {
-            return div().into_any_element();
-        };
-        div()
-            .font_family("Roboto")
-            .text_size(surface::css(14.))
-            .line_height(surface::css(17.))
-            .text_color(rgb(0x999999))
-            .child(reason.to_owned())
+    /// `zrA` (3858) / `iTA` (3880): `p.exclamationText[ mb20]` carrying a
+    /// `<span>` disc and the reason text.
+    ///
+    /// ```css
+    /// p.exclamationText span{display:inline-block;height:17px;margin-right:5px;
+    ///   position:relative;vertical-align:middle;width:14px}
+    /// p.exclamationText span:before{background-color:#5d5d5d;
+    ///   background-image:url(../../static/media/tooltip_exclamationmark.cc8fb226.svg);
+    ///   background-repeat:no-repeat;border-radius:50%;content:"";height:14px;position:absolute;width:14px}
+    /// .mb20{margin-bottom:20px}
+    /// ```
+    ///
+    /// The default `className` is `exclamationText mb20`; the gamut warning
+    /// (`xrA`) overrides it to `exclamationText`, so it passes `0.` here. The
+    /// paragraph's color is not declared, so it inherits the widget's.
+    fn exclamation_line(&self, text: &str, margin_bottom: f32, cx: &Context<Self>) -> AnyElement {
+        h_flex()
+            .items_center()
+            .text_color(cx.theme().foreground)
+            .when(margin_bottom > 0., |line| {
+                line.mb(surface::css(margin_bottom))
+            })
+            .child(
+                // `.exclamationText span:before`: a 14px `#5d5d5d` disc
+                // carrying the shared exclamation glyph.
+                div()
+                    .w(surface::css(14.))
+                    .h(surface::css(14.))
+                    .mr(surface::css(5.))
+                    .rounded_full()
+                    .bg(rgb(0x5d5d5d))
+                    .flex_shrink_0()
+                    .child(img("synapse/accessory-exclamation.svg").size(surface::css(14.))),
+            )
+            .child(
+                div()
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .child(text.to_owned()),
+            )
             .into_any_element()
+    }
+
+    /// The `zrA` reason line: every monitor widget renders it as the first child
+    /// of its body, above the content block that carries `.featureDisabled`.
+    fn restriction_line(&self, feature: &str, cx: &Context<Self>) -> AnyElement {
+        match self.restriction_reason(feature) {
+            Some(reason) => self.exclamation_line(reason, 20., cx),
+            None => div().into_any_element(),
+        }
     }
 
     /// The dropdown mirrors the requested secondary source, which is local
@@ -1594,19 +1672,141 @@ impl AccessorySystemProductWorkspace {
             .child(header);
         if let Some(slider) = self.sliders.get(path) {
             row = row.child(
-                div()
-                    .h(surface::css(40.))
-                    .flex()
-                    .items_center()
-                    // `.slider-container{height:64px}` keeps the track 25px above
-                    // the tags; the retained slider owns its own track metrics.
-                    .child(Slider::new(slider).disabled(!enabled)),
+                // `STA` mounts `OTA` with `noTip`, so `.slider-container.no-tip`
+                // is 36px tall and the retained base slider only carries the
+                // drag/focus behaviour.
+                SourceSlider::new(slider, self.slider_progress(path)).enabled(enabled),
             );
         }
         if let Some((min, mid, max, boost)) = tags {
             row = row.child(surface::slider_tags(min, Some(mid), max, boost));
         }
         row.into_any_element()
+    }
+
+    /// `jSA`（3880 显示页右列第三块）：`tTA` 外壳（`title:REFRESH_RATE_HEADER`、
+    /// `tips:PERFORMANCE_MODE_SCREEN_REFRESH_RATE_TOOLTIP`，没有开关），组件体是
+    /// `[iTA(zrA), div.widgetContent[.featureDisabled]]`。`.widgetContent` 的渲染子元素
+    /// 是说明段、`.PillsSelectBox` 刷新率胶囊与含 `{{displaySettings}}` 的第二段（源把
+    /// 后两者裹在透明 Fragment 里，Fragment 不产生 DOM 节点，因此三段同样各占 20px）。
+    fn refresh_rate_widget(&self, cx: &Context<Self>) -> AnyElement {
+        let enabled = !self.restricted("refreshRate");
+        let rates = if self.supported_refresh_rates.is_empty() {
+            // 源的 `useState([{text:"60 Hz",id:60,value:60},120,144,165])` 初值，
+            // 收到 `supportedRefreshRate` 后由 effect 覆盖。
+            vec![60, 120, 144, 165]
+        } else {
+            self.supported_refresh_rates.clone()
+        };
+        let paragraph = |text: String| {
+            div()
+                .font_family("Roboto")
+                .text_size(surface::css(14.))
+                .line_height(surface::css(17.))
+                .child(text)
+                .into_any_element()
+        };
+        let selected = self.selected_refresh_rate;
+        // `.PillsSelectBox_pillsContainer__E5ZcB{background-color:#111;border:1px solid
+        //  #5d5d5d;border-radius:18px;display:flex;gap:5px;height:36px;padding:5px;
+        //  width:fit-content}` + `:hover{border-color:#44d62c}`。`width:fit-content`
+        // 用外层 `h_flex` 的行布局实现（行内子元素按内容宽）。
+        let pills = h_flex().child(
+            h_flex()
+                .items_center()
+                .gap(surface::css(5.))
+                .h(surface::css(36.))
+                .p(surface::css(5.))
+                .bg(rgb(0x111111))
+                .border_1()
+                .border_color(rgb(0x5d5d5d))
+                .rounded(surface::css(18.))
+                .group("accessory-refresh-pills")
+                .group_hover("accessory-refresh-pills", |style| {
+                    style.border_color(rgb(0x44d62c))
+                })
+                .children(rates.into_iter().map(|rate| {
+                    let active = rate == selected;
+                    // `.PillsSelectBox_pillButton__-CgIZ{background-color:#0000;
+                    //  border:0;border-radius:13px;color:#ccc;cursor:pointer;font-size:14px;
+                    //  height:26px;line-height:16px;padding:5px 10px;text-align:center}`，
+                    //  `.PillsSelectBox_active__kObeU{background-color:#44d62c;color:#111}`；
+                    //  源没有给胶囊写 `:hover`/`:active`。
+                    div()
+                        .id(SharedString::from(format!("accessory-refresh-rate-{rate}")))
+                        .h(surface::css(26.))
+                        .px(surface::css(10.))
+                        .py(surface::css(5.))
+                        .rounded(surface::css(13.))
+                        .font_family("Roboto")
+                        .text_size(surface::css(14.))
+                        .line_height(surface::css(16.))
+                        .text_center()
+                        .text_color(if active { rgb(0x111111) } else { rgb(0xcccccc) })
+                        .bg(if active {
+                            rgb(0x44d62c)
+                        } else {
+                            rgba(0x00000000)
+                        })
+                        .when(enabled, |pill| pill.cursor_pointer())
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if enabled {
+                                // 源的 `onOptionClick` 先 `setSelected(id)`（乐观更新），
+                                // 再 dispatch `changeMonitorRefreshRate(value)`；本地与色彩
+                                // 配置文件一样保留运行时观测值，服务动作留在边界外。
+                                this.selected_refresh_rate = rate;
+                                cx.notify();
+                            }
+                        }))
+                        .child(SharedString::from(format!("{rate} Hz")))
+                })),
+        );
+        // `ADJUST_REFRESH_RATE_DIALOG` 的 `{{displaySettings}}`（源用 `XSA` 插值）换成
+        // `WINDOW_DISPLAY_SETTINGS` 下划线链接，点击走宿主动作 `msSettings("display")`。
+        let dialog = t("ADJUST_REFRESH_RATE_DIALOG");
+        let mut parts = dialog.split("{{displaySettings}}");
+        let before = parts.next().unwrap_or_default().to_owned();
+        let after = parts.next().unwrap_or_default().to_owned();
+        let dialog = h_flex()
+            .flex_wrap()
+            .font_family("Roboto")
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .child(before)
+            .child(
+                div()
+                    .id("accessory-display-settings")
+                    .underline()
+                    .cursor_pointer()
+                    .on_click(cx.listener(|_, _, _, _| {
+                        if let Err(error) = system::open_display_settings() {
+                            eprintln!("open display settings failed: {error}");
+                        }
+                    }))
+                    .child(t("WINDOW_DISPLAY_SETTINGS")),
+            )
+            .child(after)
+            .into_any_element();
+        surface::panel_with_control(
+            t("REFRESH_RATE_HEADER"),
+            self.help_control(
+                "accessory-refresh-rate-help",
+                t("PERFORMANCE_MODE_SCREEN_REFRESH_RATE_TOOLTIP"),
+                cx,
+            ),
+            cx,
+        )
+        .child(self.restriction_line("refreshRate", cx))
+        // `.widgetContent[.featureDisabled]`：`opacity:.3;pointer-events:none`。
+        .child(
+            surface::widget_content([
+                paragraph(t("PERFORMANCE_LAPTOP_SCREEN_GUIDE")),
+                pills.into_any_element(),
+                dialog,
+            ])
+            .opacity(if enabled { 1. } else { 0.3 }),
+        )
+        .into_any_element()
     }
 
     /// `RTA`: the monitor Game Mode widget. `wrA` gives it
@@ -1636,74 +1836,86 @@ impl AccessorySystemProductWorkspace {
             cx,
         )
         // `customStyle:{marginBottom:"30px"}`.
-        .mb(surface::css(30.))
-        .child(
-            h_flex().flex_wrap().gap(surface::css(10.)).children(
-                [
-                    (0, "SCARLETT_DEFAULT"),
-                    (1, "FPS"),
-                    (3, "MMO"),
-                    (2, "RACING"),
-                    (4, "STREAMING"),
-                    (5, "SCARLETT_CUSTOM"),
-                ]
-                .map(|(id, label)| {
-                    source_button(
-                        SharedString::from(format!("accessory-gaming-preset-{id}")),
-                        t(label),
-                        selected == id,
-                    )
-                    .disabled(gaming_restricted)
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.change("/gaming/selectedPreset", json!(id), window, cx);
-                    }))
-                }),
-            ),
-        )
-        .child(self.slider_row(
-            "/gaming/customData/brightness",
-            "SCREEN_BRIGHTNESS_HEADER",
-            Some("SCREEN_BRIGHTNESS_TOOLTIP"),
-            None,
-            true,
-            true,
-            cx,
-        ))
-        .child(self.slider_row(
-            "/gaming/customData/contrast",
-            "CONTRAST_HEADER",
-            Some("CONTRAST_TOOLTIP"),
-            None,
-            true,
-            !gamut_locked,
-            cx,
-        ))
-        .child(self.slider_row(
-            "/gaming/customData/overdrive",
-            "OVERDRIVE_HEADER",
-            Some("OVERDRIVE_TOOLTIP"),
-            Some((
-                overdrive_tags.0.as_str(),
-                overdrive_tags.1.as_str(),
-                overdrive_tags.2.as_str(),
+        .mb(surface::css(30.));
+        // `RTA` renders `zrA` as the first child of its body, above the
+        // `.widgetContent` block that carries `.featureDisabled`. That block's
+        // children are the preset group, the four `STA` rows and — only on 3880,
+        // whose root is mounted with `showGamut` — the whole `xrA` gamut control.
+        let mut content: Vec<AnyElement> = vec![
+            h_flex()
+                .flex_wrap()
+                .gap(surface::css(10.))
+                .children(
+                    [
+                        (0, "SCARLETT_DEFAULT"),
+                        (1, "FPS"),
+                        (3, "MMO"),
+                        (2, "RACING"),
+                        (4, "STREAMING"),
+                        (5, "SCARLETT_CUSTOM"),
+                    ]
+                    .map(|(id, label)| {
+                        source_button(
+                            SharedString::from(format!("accessory-gaming-preset-{id}")),
+                            t(label),
+                            selected == id,
+                        )
+                        .disabled(gaming_restricted)
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                this.change("/gaming/selectedPreset", json!(id), window, cx);
+                            },
+                        ))
+                    }),
+                )
+                .into_any_element(),
+            self.slider_row(
+                "/gaming/customData/brightness",
+                "SCREEN_BRIGHTNESS_HEADER",
+                Some("SCREEN_BRIGHTNESS_TOOLTIP"),
                 None,
-            )),
-            false,
-            true,
-            cx,
-        ));
-        panel = panel.child(self.slider_row(
-            "/gaming/customData/gamma",
-            "GAMMA_HEADER",
-            Some("GAMMA_TOOLTIP"),
-            Some(gaming_gamma_tags(self.spec.product_id)),
-            false,
-            !gamut_locked,
-            cx,
-        ));
+                true,
+                true,
+                cx,
+            ),
+            self.slider_row(
+                "/gaming/customData/contrast",
+                "CONTRAST_HEADER",
+                Some("CONTRAST_TOOLTIP"),
+                None,
+                true,
+                !gamut_locked,
+                cx,
+            ),
+            self.slider_row(
+                "/gaming/customData/overdrive",
+                "OVERDRIVE_HEADER",
+                Some("OVERDRIVE_TOOLTIP"),
+                Some((
+                    overdrive_tags.0.as_str(),
+                    overdrive_tags.1.as_str(),
+                    overdrive_tags.2.as_str(),
+                    None,
+                )),
+                false,
+                true,
+                cx,
+            ),
+            self.slider_row(
+                "/gaming/customData/gamma",
+                "GAMMA_HEADER",
+                Some("GAMMA_TOOLTIP"),
+                Some(gaming_gamma_tags(self.spec.product_id)),
+                false,
+                !gamut_locked,
+                cx,
+            ),
+        ];
         if self.spec.product_id == 3880 {
             let gamut = self.gaming_value("gamut").as_i64().unwrap_or(0);
-            panel = panel
+            // `xrA` is one `.widgetContent` child: `.slider_header.mb10`, the
+            // `.btn_group.mb10` of `krA` presets and the `zrA` warning.
+            let mut gamut_control = v_flex()
                 .child(
                     h_flex()
                         .mb(surface::css(10.))
@@ -1723,52 +1935,42 @@ impl AccessorySystemProductWorkspace {
                 )
                 // `krA`: NATIVE, REC 709 and DCI-P3 as `.btn_group` buttons.
                 // `B4` is NATIVE 0, DCI_P3 1, REC_709 2.
-                .child(h_flex().flex_wrap().gap(surface::css(10.)).children(
-                    [(0, "NATIVE"), (2, "REC 709"), (1, "DCI-P3")].map(|(id, label)| {
-                        source_button(
-                            SharedString::from(format!("accessory-color-gamut-{id}")),
-                            label.into(),
-                            gamut == id,
-                        )
-                        .disabled(gaming_restricted)
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.change("/gaming/customData/gamut", json!(id), window, cx);
-                            },
-                        ))
-                    }),
-                ));
-            // `zrA` renders the warning only while the gamut is not Native.
-            if gamut != 0 {
-                panel = panel.child(
+                .child(
                     h_flex()
-                        .items_center()
-                        .text_color(cx.theme().foreground)
-                        .child(
-                            // `.exclamationText span:before`: a 14px `#5d5d5d`
-                            // disc carrying the shared exclamation glyph.
-                            div()
-                                .w(surface::css(14.))
-                                .h(surface::css(14.))
-                                .mr(surface::css(5.))
-                                .rounded_full()
-                                .bg(rgb(0x5d5d5d))
-                                .flex_shrink_0()
-                                .child(
-                                    img("synapse/accessory-exclamation.svg")
-                                        .size(surface::css(14.)),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .font_family("Roboto")
-                                .text_size(surface::css(14.))
-                                .line_height(surface::css(17.))
-                                .child(t("COLOR_GAMUT_WARNING")),
-                        ),
+                        .mb(surface::css(10.))
+                        .flex_wrap()
+                        .gap(surface::css(10.))
+                        .children([(0, "NATIVE"), (2, "REC 709"), (1, "DCI-P3")].map(
+                            |(id, label)| {
+                                source_button(
+                                    SharedString::from(format!("accessory-color-gamut-{id}")),
+                                    label.into(),
+                                    gamut == id,
+                                )
+                                .disabled(gaming_restricted)
+                                .on_click(cx.listener(
+                                    move |this, _, window, cx| {
+                                        this.change(
+                                            "/gaming/customData/gamut",
+                                            json!(id),
+                                            window,
+                                            cx,
+                                        );
+                                    },
+                                ))
+                            },
+                        )),
                 );
+            // `xrA` passes `className:"exclamationText"`, i.e. without `.mb20`.
+            if gamut != 0 {
+                gamut_control =
+                    gamut_control.child(self.exclamation_line(&t("COLOR_GAMUT_WARNING"), 0., cx));
             }
+            content.push(gamut_control.into_any_element());
         }
+        panel = panel
+            .child(self.restriction_line("gaming", cx))
+            .child(surface::widget_content(content));
         panel.into_any_element()
     }
 
@@ -1782,42 +1984,60 @@ impl AccessorySystemProductWorkspace {
     fn color_temperature_widget(&self, cx: &Context<Self>) -> AnyElement {
         let selected = self.number("/color/selectedPreset");
         let color_restricted = self.restricted("color");
-        let mut panel =
-            surface::panel_with_control(
-                t("COLOR_TEMPERATURE_HEADER"),
-                self.help_control(
-                    "accessory-color-temperature-help",
-                    t("COLOR_PROFILE_TOOLTIP"),
-                    cx,
-                ),
+        let panel = surface::panel_with_control(
+            t("COLOR_TEMPERATURE_HEADER"),
+            self.help_control(
+                "accessory-color-temperature-help",
+                t("COLOR_PROFILE_TOOLTIP"),
                 cx,
-            )
-            .child(h_flex().flex_wrap().gap(surface::css(10.)).children(
-                COLOR_PRESETS.map(|(id, label)| {
-                    source_button(
-                        SharedString::from(format!("accessory-color-preset-{id}")),
-                        t(label),
-                        selected == id,
-                    )
-                    .disabled(color_restricted)
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.change("/color/selectedPreset", json!(id), window, cx);
+            ),
+            cx,
+        )
+        // `wAA` renders `zrA` first, then the `.featureDisabled` block whose
+        // `.widgetContent` holds the preset group and the `.slide-off` custom
+        // group; those two are its only children, and the three RGB rows stay
+        // flush inside `.slide-off` (a block container without a gap).
+        .child(self.restriction_line("color", cx))
+        .child(surface::widget_content({
+            let mut content: Vec<AnyElement> = vec![
+                h_flex()
+                    .flex_wrap()
+                    .gap(surface::css(10.))
+                    .children(COLOR_PRESETS.map(|(id, label)| {
+                        source_button(
+                            SharedString::from(format!("accessory-color-preset-{id}")),
+                            t(label),
+                            selected == id,
+                        )
+                        .disabled(color_restricted)
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                this.change("/color/selectedPreset", json!(id), window, cx);
+                            },
+                        ))
                     }))
-                }),
-            ));
-        if selected == 11 {
-            for (color, label) in [("red", "RED"), ("green", "GREEN"), ("blue", "BLUE")] {
-                panel = panel.child(self.slider_row(
-                    &format!("/color/customData/{color}"),
-                    label,
-                    None,
-                    None,
-                    true,
-                    true,
-                    cx,
-                ));
+                    .into_any_element(),
+            ];
+            if selected == 11 {
+                let mut custom = v_flex();
+                for (color, label) in [("red", "RED"), ("green", "GREEN"), ("blue", "BLUE")] {
+                    custom = custom.child(self.slider_row(
+                        &format!("/color/customData/{color}"),
+                        label,
+                        None,
+                        None,
+                        true,
+                        // `STA` passes no `disabled`; the source's
+                        // `.featureDisabled` wrapper is what dims and blocks the
+                        // whole custom group.
+                        !color_restricted,
+                        cx,
+                    ));
+                }
+                content.push(custom.into_any_element());
             }
-        }
+            content
+        }));
         panel.into_any_element()
     }
 
@@ -1828,18 +2048,22 @@ impl AccessorySystemProductWorkspace {
     fn thx_cinema_widget(&self, cx: &Context<Self>) -> AnyElement {
         let enabled = self.checked("/thxCinema/isEnabled");
         let disabled = self.restricted("thxCinema");
-        surface::panel_with_title_switch(
+        surface::panel_with_title_switch_opt(
             t("THX_CINEMA_HEADER"),
-            surface::SynapseSwitch::new("accessory-thx-cinema")
-                .accessibility_label(t("THX_CINEMA_HEADER"))
-                .checked(enabled)
-                .disabled(disabled)
-                .on_change(cx.listener(|this, next: &bool, window, cx| {
-                    this.change("/thxCinema/isEnabled", json!(*next), window, cx);
-                })),
+            // `hasSwitch:!disabledReason`：有禁用原因时原版不渲染开关。
+            (!disabled).then(|| {
+                surface::SynapseSwitch::new("accessory-thx-cinema")
+                    .accessibility_label(t("THX_CINEMA_HEADER"))
+                    .checked(enabled)
+                    .on_change(cx.listener(|this, next: &bool, window, cx| {
+                        this.change("/thxCinema/isEnabled", json!(*next), window, cx);
+                    }))
+                    .into_any_element()
+            }),
             self.help_control("accessory-thx-cinema-help", t("THX_CINEMA_TOOLTIP"), cx),
             cx,
         )
+        .child(self.restriction_line("thxCinema", cx))
         .child(
             div()
                 .font_family("Roboto")
@@ -1848,7 +2072,6 @@ impl AccessorySystemProductWorkspace {
                 .when(disabled, |view| view.opacity(0.3))
                 .child(t("THX_CINEMA_DESC")),
         )
-        .child(self.restriction_note("thxCinema"))
         .into_any_element()
     }
 
@@ -1858,22 +2081,23 @@ impl AccessorySystemProductWorkspace {
     fn hdr_widget(&self, cx: &Context<Self>) -> AnyElement {
         let enabled = self.checked("/hdr/isEnabled");
         let disabled = self.restricted("hdr");
-        surface::panel_with_title_switch(
+        surface::panel_with_title_switch_opt(
             t("HDR_HEADER"),
-            surface::SynapseSwitch::new("accessory-hdr")
-                .accessibility_label(t("HDR_HEADER"))
-                .checked(enabled)
-                .disabled(disabled)
-                .on_change(cx.listener(|this, next: &bool, window, cx| {
-                    this.change("/hdr/isEnabled", json!(*next), window, cx);
-                })),
-            self.help_control(
-                "accessory-hdr-help",
-                t(hdr_tooltip_key(system::is_windows_11())),
-                cx,
-            ),
+            // `hasSwitch:!disabledReason`、`active:!disabledReason && isHdrEnabled`。
+            (!disabled).then(|| {
+                surface::SynapseSwitch::new("accessory-hdr")
+                    .accessibility_label(t("HDR_HEADER"))
+                    .checked(enabled)
+                    .on_change(cx.listener(|this, next: &bool, window, cx| {
+                        this.change("/hdr/isEnabled", json!(*next), window, cx);
+                    }))
+                    .into_any_element()
+            }),
+            // `tips: windows11 ? HDR_TOOLTIP_WINDOWS_11 : HDR_TOOLTIP`。
+            self.help_control("accessory-hdr-help", self.hdr_tip(), cx),
             cx,
         )
+        .child(self.restriction_line("hdr", cx))
         .child(
             div()
                 .font_family("Roboto")
@@ -1882,7 +2106,6 @@ impl AccessorySystemProductWorkspace {
                 .when(disabled, |view| view.opacity(0.3))
                 .child(t("HDR_MSG")),
         )
-        .child(self.restriction_note("hdr"))
         .into_any_element()
     }
 
@@ -1906,8 +2129,8 @@ impl AccessorySystemProductWorkspace {
             ),
             cx,
         )
+        .child(self.restriction_line("colorProfiles", cx))
         .child(select)
-        .child(self.restriction_note("colorProfiles"))
         .child(
             // `.img-text .external{color:#ccc;font-size:14px;line-height:44px;
             //  text-decoration:underline;text-transform:capitalize}` 与
@@ -2126,18 +2349,96 @@ impl AccessorySystemProductWorkspace {
 
     fn monitor_display(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let second_display_restricted = self.restricted("secondDisplay");
-        let enabled = self.checked("/secondDisplay/isEnabled") && !second_display_restricted;
+        let pip_enabled = self.checked("/secondDisplay/isEnabled");
         let asking = self.pending_input_source.is_some();
-        let pip = surface::panel_with_control(
+        // `Q$9`（SCARLETT_INPUT_SOURCE_HEADER）：`hasSwitch:!1`，组件体是
+        // `SSA` 的来源按钮组与确认弹层（`.widgetZIndex`）。
+        let input_source = surface::panel_with_control(
+            t("SCARLETT_INPUT_SOURCE_HEADER"),
+            self.help_control(
+                "accessory-input-source-help",
+                t("SCARLETT_INPUT_SOURCE_TOOLTIP"),
+                cx,
+            ),
+            cx,
+        )
+        .relative()
+        .child(self.input_source_group(cx))
+        .child(self.input_source_alert(asking, window, cx));
+        // `JXS`（PIP_HEADER）：`hasSwitch:!disabledReason`、`active:isEnabled`。
+        let pip = surface::panel_with_title_switch_opt(
             t("PIP_HEADER"),
+            (!second_display_restricted).then(|| {
+                surface::SynapseSwitch::new("accessory-pip")
+                    .accessibility_label(t("PIP_HEADER"))
+                    .checked(pip_enabled)
+                    .on_change(cx.listener(|this, next: &bool, window, cx| {
+                        this.change("/secondDisplay/isEnabled", json!(*next), window, cx);
+                    }))
+                    .into_any_element()
+            }),
             self.help_control("accessory-pip-help", t("PIP_TOOLTIP"), cx),
             cx,
         )
-        .child(self.toggle("/secondDisplay/isEnabled", t("PIP_HEADER"), true, cx))
-        .child(self.pip_display(enabled, cx))
-        .child(self.restriction_note("secondDisplay"));
-        let mut view = v_flex()
-            .gap_5()
+        .child(self.restriction_line("secondDisplay", cx))
+        .child(self.pip_display(pip_enabled && !second_display_restricted, cx));
+        // `mGs`（FREE_SYNC_HEADER）：`hasSwitch:!disabledReason`、
+        // `active:!disabledReason && isEnabled`；组件体是 `zrA` 加
+        // `.widgetContent > div[.featureDisabled]` 里的 `FREE_SYNC_MSG`。
+        let adaptive_restricted = self.restricted("adaptiveSync");
+        let adaptive_enabled = self.checked("/adaptiveSync/isEnabled");
+        let free_sync = surface::panel_with_title_switch_opt(
+            t("FREE_SYNC_HEADER"),
+            (!adaptive_restricted).then(|| {
+                surface::SynapseSwitch::new("accessory-free-sync")
+                    .accessibility_label(t("FREE_SYNC_HEADER"))
+                    .checked(adaptive_enabled)
+                    .on_change(cx.listener(|this, next: &bool, window, cx| {
+                        this.change("/adaptiveSync/isEnabled", json!(*next), window, cx);
+                    }))
+                    .into_any_element()
+            }),
+            self.help_control("accessory-free-sync-help", t("FREE_SYNC_TOOLTIP"), cx),
+            cx,
+        )
+        .child(self.restriction_line("adaptiveSync", cx))
+        // `.widgetContent > div[.featureDisabled]`：只有正文文字变暗。
+        .child(surface::widget_content([div()
+            .font_family("Roboto")
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .when(adaptive_restricted, |text| text.opacity(0.3))
+            .child(t("FREE_SYNC_MSG"))
+            .into_any_element()]));
+        // `jXh`（FPS_COUNTER_HEADER）：`hasSwitch:!0`、`active:isEnabled`；
+        // 组件体只有 2x2 屏幕角落网格（原版这里没有 `zrA`，禁用原因属于
+        // `$T1` 刷新率组件）。
+        let fps_enabled = self.checked("/refeshRateCounter/isEnabled");
+        let fps_counter = surface::panel_with_title_switch(
+            t("FPS_COUNTER_HEADER"),
+            surface::SynapseSwitch::new("accessory-fps-counter")
+                .accessibility_label(t("FPS_COUNTER_HEADER"))
+                .checked(fps_enabled)
+                .on_change(cx.listener(|this, next: &bool, window, cx| {
+                    this.change("/refeshRateCounter/isEnabled", json!(*next), window, cx);
+                })),
+            self.help_control("accessory-fps-counter-help", t("FPS_COUNTER_TOOLTIP"), cx),
+            cx,
+        )
+        .child(self.corner_grid("/refeshRateCounter/position", fps_enabled, cx));
+        // `.body-widgets{flex-direction:row;flex-wrap:wrap;justify-content:center;
+        //  margin:auto;max-width:1240px}` + `.widget-col{width:600px}`：两列，左列
+        // 是来源与 PIP，右列是自适应同步、（3858 的 HDR / 3880 的刷新率）、
+        // FPS 计数器。
+        let third = if self.spec.product_id == 3858 {
+            self.hdr_widget(cx)
+        } else {
+            self.refresh_rate_widget(cx)
+        };
+        h_flex()
+            .flex_wrap()
+            .justify_center()
+            .items_start()
             // `OSA` listens on the document for a mousedown outside the alert and
             // cancels; a click inside the alert stops propagation before this.
             .on_mouse_down(
@@ -2149,65 +2450,19 @@ impl AccessorySystemProductWorkspace {
                 }),
             )
             .child(
-                surface::panel_with_control(
-                    t("SCARLETT_INPUT_SOURCE_HEADER"),
-                    self.help_control(
-                        "accessory-input-source-help",
-                        t("SCARLETT_INPUT_SOURCE_TOOLTIP"),
-                        cx,
-                    ),
-                    cx,
-                )
-                .relative()
-                .child(self.input_source_group(cx))
-                .child(self.input_source_alert(asking, window, cx)),
-            )
-            .child(pip)
-            .child(
-                surface::panel_with_control(
-                    t("FREE_SYNC_HEADER"),
-                    self.help_control("accessory-free-sync-help", t("FREE_SYNC_TOOLTIP"), cx),
-                    cx,
-                )
-                .child(self.toggle("/adaptiveSync/isEnabled", t("FREE_SYNC_HEADER"), true, cx))
-                .child(self.restriction_note("adaptiveSync")),
+                v_flex()
+                    .w(surface::css(600.))
+                    .child(input_source)
+                    .child(pip),
             )
             .child(
-                surface::panel_with_control(
-                    t("FPS_COUNTER_HEADER"),
-                    self.help_control("accessory-fps-counter-help", t("FPS_COUNTER_TOOLTIP"), cx),
-                    cx,
-                )
-                .child(self.toggle(
-                    "/refeshRateCounter/isEnabled",
-                    t("FPS_COUNTER_HEADER"),
-                    true,
-                    cx,
-                ))
-                .child(self.corner_grid(
-                    "/refeshRateCounter/position",
-                    self.checked("/refeshRateCounter/isEnabled"),
-                    cx,
-                ))
-                .child(self.restriction_note("refreshRate")),
-            );
-        if self.spec.product_id == 3858 {
-            let hdr_tip = self.hdr_tip();
-            view = view.child(
-                surface::panel_with_control(
-                    "HDR",
-                    self.help_control("accessory-hdr-help", hdr_tip, cx),
-                    cx,
-                )
-                .child(self.toggle("/hdr/isEnabled", "HDR".into(), true, cx)),
-            );
-        } else {
-            view = view.child(
-                surface::panel(t_or("REFRESH_RATE", "REFRESH RATE"), cx)
-                    .child(surface::note("等待显示器提供支持的刷新率。", cx)),
-            );
-        }
-        view.into_any_element()
+                v_flex()
+                    .w(surface::css(600.))
+                    .child(free_sync)
+                    .child(third)
+                    .child(fps_counter),
+            )
+            .into_any_element()
     }
 
     fn units(&self, cx: &Context<Self>) -> AnyElement {

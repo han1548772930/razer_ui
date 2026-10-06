@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Duration;
 
 // Pi applies JavaScript parseInt, not IPv4 validation. Preserve prefix parsing,
 // removal of leading zeros and the source's upper clamp (including its signed
@@ -27,6 +28,26 @@ pub(super) fn normalize_octet(value: &str) -> String {
         .to_string()
 }
 impl HueWorkspace {
+    /// 源里两个「开始扫描」按钮都做 `Mi(e, SCANNING)` 后立刻
+    /// `mi = setTimeout(() => Ui(e), 13e3)`，而 `Ui = e => Mi(e, SCAN_FAILED)`：
+    /// 13 秒没有任何结果就把状态推进到 `SCAN_FAILED`（这是源自身的界面超时，
+    /// 不是伪造网桥回应）。`SCANNING_IP` 的手动搜索不启动它。
+    fn arm_scan_timeout(&mut self, cx: &mut Context<Self>) {
+        self.scan_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_secs(13))
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.integration == Integration::Scanning {
+                    this.integration = Integration::ScanFailed;
+                    this.last_command = Some("ON_SET_INTEGRATION_STATUS: SCAN_FAILED".into());
+                }
+                this.scan_task = None;
+                cx.notify();
+            });
+        }));
+    }
+
     pub(super) fn onboarding(&self, cx: &Context<Self>) -> AnyElement {
         let mut body = v_flex()
             .items_center()
@@ -60,7 +81,8 @@ impl HueWorkspace {
                         .child(
                             command("hue-scan", "TEXT_CASE_SCAN", true, unavailable, cx).on_click(
                                 cx.listener(|this, _, window, cx| {
-                                    this.set_integration(Integration::Scanning, window, cx)
+                                    this.set_integration(Integration::Scanning, window, cx);
+                                    this.arm_scan_timeout(cx);
                                 }),
                             ),
                         ),
@@ -109,7 +131,8 @@ impl HueWorkspace {
                                 )
                                 .on_click(cx.listener(
                                     |this, _, window, cx| {
-                                        this.set_integration(Integration::Scanning, window, cx)
+                                        this.set_integration(Integration::Scanning, window, cx);
+                                        this.arm_scan_timeout(cx);
                                     },
                                 )),
                             ),
@@ -161,22 +184,40 @@ impl HueWorkspace {
                         .mt(surface::css(10.))
                         .flex()
                         .items_center()
-                        .child(
+                        .child({
+                            // `.Home_progress{background-color:#44d62c4d;border-radius:2.5px;
+                            //  height:5px;overflow:hidden;position:relative;width:100%}` 与
+                            // `.Home_child{animation:Home_move__oy9kP 2s linear infinite;
+                            //  background-color:#44d62c;border-radius:2.5px;height:5px;
+                            //  position:absolute;width:80px}`，关键帧
+                            // `0%{left:-80px}to{left:100%}`：80px 的绿条在 300px 轨道上
+                            // 以 2s 线性无限滑动（`-80/300 = -0.2667`）。
+                            let bar = div()
+                                .absolute()
+                                .top_0()
+                                .bottom_0()
+                                .w(surface::css(80.))
+                                .rounded(surface::css(2.5))
+                                .bg(cx.theme().primary);
+                            let bar = if cx.reduce_motion() {
+                                bar.left(relative(-0.2667)).into_any_element()
+                            } else {
+                                bar.with_animation(
+                                    "hue-pairing-progress",
+                                    Animation::new(Duration::from_secs(2)).repeat(),
+                                    |bar, phase| bar.left(relative(phase * 1.2667 - 0.2667)),
+                                )
+                                .into_any_element()
+                            };
                             div()
+                                .relative()
                                 .w_full()
                                 .h(surface::css(5.))
                                 .rounded(surface::css(2.5))
                                 .bg(cx.theme().primary.opacity(0.3))
                                 .overflow_hidden()
-                                // Preview frame only. An elapsed timer cannot imply a bridge response.
-                                .child(
-                                    div()
-                                        .w(surface::css(80.))
-                                        .h_full()
-                                        .rounded(surface::css(2.5))
-                                        .bg(cx.theme().primary),
-                                ),
-                        )
+                                .child(bar)
+                        })
                         .child(
                             gpui_kit::base::Button::new("hue-cancel-pair")
                                 .absolute()

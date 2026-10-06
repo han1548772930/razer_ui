@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "2fbc0ec84571bf2c742d83a518e249e40317329ef02413c64c57606d08056aea",
+  "generator_sha256": "edf6cced30b70f18faa4a0cdb4a053750b0d661f6ad9987cd4a1880439777c5f",
   "products": [
     {
       "product_id": 1303,
@@ -1207,8 +1207,8 @@
         },
         {
           "key": "TAB_OLED",
-          "sections": 4,
-          "controls": 4,
+          "sections": 5,
+          "controls": 5,
           "equalizers": 0
         },
         {
@@ -1245,7 +1245,7 @@
           "field": "hapticIntensity",
           "reason": "Mounted control range requires further binding resolution"
         },
-        "OLED home-screen artwork/editors, screensaver previews and device update flow remain incomplete"
+        "OLED home-screen artwork/editors and the device update flow remain incomplete"
       ]
     },
     {

@@ -27,6 +27,9 @@ pub(super) struct PortEditor {
     stepper_click_pending: bool,
     chroma_installed: Option<bool>,
     last_command: Option<String>,
+    /// 源 `Gu position:"bottom-right"` 的 LED 数量提示由该元素自己的悬停切换挂载
+    /// （`.tooltip-razer` 容器覆盖目标并自己监听鼠标），因此只需一个本地开关。
+    hovered_info: bool,
     _subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<PortChanged> for PortEditor {}
@@ -89,6 +92,7 @@ impl PortEditor {
             stepper_click_pending: false,
             chroma_installed: preview.then_some(false),
             last_command: None,
+            hovered_info: false,
             _subscriptions: subscriptions,
         };
         this.sync(window, cx);
@@ -290,20 +294,44 @@ impl PortEditor {
         self.sync(window, cx);
         self.changed(cx);
     }
-    fn detection(&self, cx: &App) -> AnyElement {
-        let text = self
-            .spec
-            .text("GLITTER_DETECTED_LED_COUNT")
-            .replace("{{ledCount}}", &self.fact.detected_leds.to_string());
-        button::Button::new(("argb-detection-info", self.fact.id))
-            .child(img(self.spec.asset("detected")).size(surface::css(20.)))
-            .ghost()
-            .p_0()
-            .size(surface::css(20.))
-            .accessibility_label(text.clone())
-            .xsmall()
-            .tooltip(text)
-            .text_color(cx.theme().primary)
+    /// 源 3871/778：`Gu position:"bottom-right"`，内容由
+    /// `getTextItem(bO.vml, {ledCount: '<span style="color:#44d62c">N</span>'})` 生成——只有数字
+    /// 是主题绿，其余是提示文本；提示容器自己覆盖目标并监听悬停，所以这里只需一个本地开关。
+    fn detection(&self, cx: &Context<Self>) -> AnyElement {
+        let template = self.spec.text("GLITTER_DETECTED_LED_COUNT");
+        let count = self.fact.detected_leds.to_string();
+        let (prefix, suffix) = match template.split_once("{{ledCount}}") {
+            Some((prefix, suffix)) => (prefix.to_owned(), suffix.to_owned()),
+            None => (template.clone(), String::new()),
+        };
+        let text = template.replace("{{ledCount}}", &count);
+        div()
+            .id("argb-detection-info-wrapper")
+            .relative()
+            .child(
+                button::Button::new(("argb-detection-info", self.fact.id))
+                    .child(img(self.spec.asset("detected")).size(surface::css(20.)))
+                    .ghost()
+                    .p_0()
+                    .size(surface::css(20.))
+                    .accessibility_label(text)
+                    .xsmall()
+                    .text_color(cx.theme().primary),
+            )
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.hovered_info = *hovered;
+                cx.notify();
+            }))
+            .when(self.hovered_info, |row| {
+                row.child(source_hover_tip_element(
+                    "argb-detected-led-tip",
+                    SourceTipPlacement::BottomRight,
+                    h_flex()
+                        .child(prefix)
+                        .child(div().text_color(cx.theme().primary).child(count))
+                        .child(suffix),
+                ))
+            })
             .into_any_element()
     }
     fn led_stepper(&self, id: u64, value: u32, cx: &Context<Self>) -> AnyElement {
@@ -655,22 +683,21 @@ impl Render for PortEditor {
                 }
             }))
             .child(title)
+            // 源把 `.help`/`.tip` 直接放在 `.port-container.widget` 里
+            // （`<div className="help"/><div className="tip">{getTextItem(OT.gt9)}</div>`），
+            // `.widget .help{background-color:#4a4a4a;border-radius:50%;height:14px;
+            // position:absolute;right:10px;top:10px;width:14px}`。共享的
+            // `surface::help_control` 正是该控件与 `.widget .tip`；产品自己的
+            // `tooltip_questionmark` 与共享图标字节相同（sha256 efe8667…）。
             .child(
-                button::Button::new(("argb-port-help", self.fact.id))
+                div()
                     .absolute()
                     .top(surface::css(10.))
                     .right(surface::css(10.))
-                    .child(img(self.spec.asset("tooltip_questionmark")).size(surface::css(14.)))
-                    .p_0()
-                    .size(surface::css(14.))
-                    .rounded(cx.theme().font_size * (7. / 16.))
-                    .custom(
-                        button::ButtonCustomVariant::new(cx)
-                            .color(Colors::help())
-                            .hover(Colors::help_hover()),
-                    )
-                    .accessibility_label(self.spec.text("GLITTER_TIP_HELP_PORT_MESSAGE"))
-                    .tooltip(self.spec.text("GLITTER_TIP_HELP_PORT_MESSAGE")),
+                    .child(surface::help_control(
+                        ("argb-port-help", self.fact.id),
+                        self.spec.text("GLITTER_TIP_HELP_PORT_MESSAGE"),
+                    )),
             )
             .child(
                 h_flex()

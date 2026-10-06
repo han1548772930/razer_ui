@@ -130,12 +130,100 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   assert(read(files[1]).includes('surface::page_column') && read(files[1]).includes('surface::css(530.)'), 'OLED local columns/screensaver width drift');
   assert(!read(files[3]).includes('fn render_home_mode_branch'), 'Legacy invented preview branch returned');
   assert(read(files[5]).includes('691 => !matches!(key, "OLED" | "TAB_POWER" | "HELP")'), '691 profile sync state drift');
+  // 命令拨盘帮助：源 `<i className="help" …/>` + `<Un.A position="bottom-right"
+  // isMounted target className="command-dial-tooltip">…富文本…</Un.A>`，CSS
+  // `.command-dial .help{background-color:#4a4a4a;border-radius:50%;height:14px;margin:0;
+  //  position:absolute;right:10px;top:10px;width:14px}` 与 `.command-dial-tooltip{line-height:17px;white-space:pre-wrap}`。
+  const dialCssFile = '.ref/devices/691/static/css/6375.333aa5fc.chunk.css';
+  const dialCss = read(dialCssFile);
+  const dialHelpDecl = (() => {
+    const i = dialCss.indexOf('.command-dial .help{');
+    return i < 0 ? null : dialCss.slice(i + '.command-dial .help{'.length, dialCss.indexOf('}', i));
+  })();
+  assert(dialHelpDecl, 'Current source no longer declares .command-dial .help');
+  for (const token of ['background-color:#4a4a4a', 'border-radius:50%', 'height:14px',
+    'position:absolute', 'right:10px', 'top:10px', 'width:14px']) {
+    assert(dialHelpDecl.includes(token), 'Command dial help CSS drift: ' + token);
+  }
+  const dialTipDecl = (() => {
+    const i = dialCss.indexOf('.command-dial-tooltip{');
+    return i < 0 ? null : dialCss.slice(i + '.command-dial-tooltip{'.length, dialCss.indexOf('}', i));
+  })();
+  assert(dialTipDecl && dialTipDecl.includes('line-height:17px'), 'Command dial tooltip CSS drift');
+  const dialSource = read('.ref/devices/691/static/js/6375.a5fed9ed.chunk.js');
+  for (const token of ['className:"help"', 'position:"bottom-right"', 'className:"command-dial-tooltip"',
+    'isMounted:']) {
+    assert(dialSource.includes(token), 'Command dial help markup drift: ' + token);
+  }
+  const keyboardControls = read('src/features/keyboard_controls.rs');
+  for (const token of ['dial_help_hovered', '.id("dial-help")', 'source_hover_tip_element(',
+    'SourceTipPlacement::BottomRight', 'rgba(0xffffff4d)', 'rgba(0x4a4a4aff)']) {
+    assert(keyboardControls.includes(token), 'Missing native command-dial help contract: ' + token);
+  }
+  assert(!keyboardControls.includes('dial-help-content'), 'Legacy Kit rich tooltip returned');
+  const dialHelp = {css: dialCssFile, declaration: dialHelpDecl, tooltip: dialTipDecl,
+    native: 'dial_help_hovered + source_hover_tip_element(SourceTipPlacement::BottomRight), 14px #4a4a4a/#ffffff4d control'};
+  // 拨盘 `icon-add` 的 `tooltip` 属性 → 全局 `[tooltip]:before` 伪元素（691 chunk CSS）。
+  const tipCssFile = '.ref/devices/691/static/css/5171.1330bdc6.chunk.css';
+  const tipCss = read(tipCssFile);
+  // 该文件里 `.nav-tabs .batt[tooltip]:before{…}` 等更具体规则也含同一子串，
+  // 因此用基础规则的声明本身定位。
+  const tipAt = tipCss.indexOf('[tooltip]:before{background-color:#000;');
+  assert(tipAt >= 0, 'Current source no longer declares the global [tooltip]:before rule');
+  const tipDecl = tipCss.slice(tipAt + '[tooltip]:before{'.length, tipCss.indexOf('}', tipAt));
+  for (const token of ['background-color:#000', 'border:1px solid #5d5d5d', 'color:#ccc',
+    'content:attr(tooltip)', 'font-size:14px', 'line-height:16px', 'opacity:0', 'padding:8px 10px',
+    'pointer-events:none', 'position:absolute', 'right:0', 'top:calc(100% + 5px)',
+    'transition:visibility 0s,opacity .3s linear', 'white-space:nowrap']) {
+    assert(tipDecl.includes(token), 'Global tooltip attribute CSS drift: ' + token);
+  }
+  assert(tipCss.includes('[tooltip]:hover:before{opacity:1;visibility:visible}'),
+    'Global tooltip attribute hover rule drift');
+  for (const token of ['className:"icon-add"', 'tooltip:', 'getTextItem']) {
+    assert(dialSource.includes(token), 'Dial add button markup drift: ' + token);
+  }
+  const attributeTip = read('src/ui/attribute_tip.rs');
+  for (const token of ['pub(crate) fn attribute_tip(', '.right_0()', '.top_full()', '.mt(surface::css(5.))',
+    '.px(surface::css(10.))', '.py(surface::css(8.))', 'TooltipColors::border()', 'TooltipColors::background()',
+    'TooltipColors::foreground()', '.whitespace_nowrap()', 'Animation::new(Duration::from_millis(300))']) {
+    assert(attributeTip.includes(token), 'Missing native attribute tooltip contract: ' + token);
+  }
+  for (const token of ['dial_add_hovered', 'attribute_tip::attribute_tip(', '"ADD_NEW_MODE"', '"dial-add-tip"']) {
+    assert(keyboardControls.includes(token), 'Dial add tooltip not wired: ' + token);
+  }
+  // 源 `icon-delete` 的提示是**有条件**的：`tooltip:R?void0:(0,s.getTextItem)(vn.DELETE)`
+  // —— `R`（确认展开）为真时不渲染提示。本地 delete 触发器用 `attribute_tip_group`
+  // 复刻同一皮肤与显隐条件（`!reset && !open`）；reset 触发器没有对应的源标记，仍留 Kit 提示。
+  const dialCompact = dialSource.replaceAll(/\s+/g, '');
+  assert(dialCompact.includes('tooltip:R?void0:(0,s.getTextItem)(vn.DELETE)'),
+    'Delete conditional tooltip markup drift');
+  for (const token of ['attribute_tip_group(', '!reset && !open', '"dial-confirm-trigger"']) {
+    assert(keyboardControls.includes(token), 'Delete tooltip condition not wired: ' + token);
+  }
+  const attributeTipSrc = read('src/ui/attribute_tip.rs');
+  for (const token of ['pub(crate) fn attribute_tip_group(', '.group_hover(group, |style| style.opacity(1.))',
+    '.opacity(0.)']) {
+    assert(attributeTipSrc.includes(token), 'Missing grouped attribute tooltip contract: ' + token);
+  }
+  // `dial_icon_button` 必须能二选一：源里带 `tooltip` 属性的图标用共享徽标，不能让 Kit
+  // 提示叠在同一控件上（`dial-add`），源标记未定位的图标（`dial-expand`）继续用 Kit。
+  assert(keyboardControls.includes('kit_tooltip: bool'), 'dial_icon_button lost the tooltip switch');
+  assert(keyboardControls.includes('let button = if kit_tooltip {'),
+    'dial_icon_button no longer branches on kit_tooltip');
+  assert(keyboardControls.split('ADD_NEW_MODE')[1].includes('false,'),
+    'dial-add must not attach a Kit tooltip next to the attribute badge');
+  assert(keyboardControls.split('旋转方向的按键分配')[1].includes('true,'),
+    'dial-expand must keep its Kit tooltip until its source mark is located');
+  const attributeTooltip = {css: tipCssFile, declaration: tipDecl,
+    delete_condition: 'source tooltip=R?void0:DELETE, local !reset && !open + attribute_tip_group (group_hover opacity; the source 300ms linear fade is not reachable from the &App-only trigger closure)',
+    icon_switch: 'dial_icon_button(kit_tooltip) — dial-add false (attribute badge), dial-expand true (source mark unlocated)',
+    native: 'src/ui/attribute_tip.rs attribute_tip/attribute_tip_group + dial_add_hovered on the 691 dial add button'};
   const evidence={schema_version:1,date:'2026-10-05',product_id:691,
     method:'Current manifest ownership, Acorn AST and CSS parsing only; no app, build, test or vendor code execution.',
-    boot:mainReceipt(boot),css_loader:mainReceipt(cssLoader),bindings,styles,local,
+    boot:mainReceipt(boot),css_loader:mainReceipt(cssLoader),bindings,styles,local,dial_help:dialHelp,attribute_tooltip:attributeTooltip,
     profile_contract:'Ca disables isEnableProfileBar for OLED/Power/Help; Kt uses it only for loader disable. Profile bar remains mounted and enableSwitchProfile controls dropdown independently.',
     corrected:['Lazy base body Roboto16/#ccc/#222 and padding10/20/20','OLED 1220/600 home and fixed600 setting columns','Seven home card shells in source order; existing animation/image/crop/import/media editors preserved','Removed invented530x120 placeholders and fake Emote/Banner dialogs','OLED title switch, corner tips, language Apply staging, numeric buttons, screen-saver dimensions','691 existing Power dim/sleep title switches and raw48x27 numeric choices'],
-    limitations:['Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference','Power low-battery warning, indicator and low-power information widgets are still absent','BLE/download/service-derived flags and source system-slide Apply semantics incomplete','Card title hover and source requires-Synapse/BLE tooltip text restored; tooltip portal timing/placement and runtime pixels remain unverified','Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified','Customize/Lighting/Help content and other keyboard-specific widgets remain partial'],
+    limitations:['Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference','Power low-battery warning, indicator and low-power information widgets are still absent','BLE/download/service-derived flags and source system-slide Apply semantics incomplete','Card title hover restored; OLED card, command-dial and port help tooltips now use the source portal mechanisms (`.tooltip-razer` instant mount, `[turn-off-ble-tooltip]:before`), runtime pixels remain unverified','Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified','Customize/Lighting/Help content and other keyboard-specific widgets remain partial'],
     removed_fake_editors:{emote:'Old callback mounted only a service-unavailable note, no editor entity or fields.',banner:'Old callback mounted only a transfer-unavailable note; Top/Bottom buttons had no handlers.',preserved:['PresetEditor','CropDraft','OledMediaEditor','Import/crop/Apply callbacks']}};
   const target='docs/re/keyboard-691-current-evidence.json',output=JSON.stringify(evidence,null,2)+'\n';
   if(process.argv.includes('--check'))assert(read(target)===output,'Stale 691 audit receipt');

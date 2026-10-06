@@ -12,7 +12,8 @@
       "category": "ACCESSORY",
       "claimInterface": 0,
       "isSpecialAccessory": true,
-      "isMultiPairingSupported": true
+      "isMultiPairingSupported": true,
+      "launchUtilityInfoKey": "ENABLE_LAUNCH_PAIRING_UTILITY_INFO"
     },
     "labels": {
       "UVv": "PAIRING_UTILITY",
@@ -539,7 +540,8 @@
       "pairingDescription": "MOUSE_DOCK_DUALINK_PROPERTIES_TOOLTIP",
       "claimInterface": 3,
       "latestVersionInfo": [],
-      "UseSVGForProductImage": true
+      "UseSVGForProductImage": true,
+      "launchUtilityInfoKey": "ENABLE_LAUNCH_PARING_UTILITY_INFO"
     },
     "labels": {
       "CfR": "HYPER_SPEED_MULTI_DEVICE_PAIRING_UTILITY",
@@ -681,7 +683,8 @@
         "UNPAIRING_COMPLETE": "Die Kopplung deines Geräts wurde aufgehoben.",
         "UNPAIRING_FAILED": "Entkopplung fehlgeschlagen",
         "UNPAIR_CONFIRM_TEXT": "Dieses Gerät wird von diesem HyperSpeed-Adapter entfernt.",
-        "VIEW_COMPATIBLE_DEVICES": "Kompatible Geräte anzeigen"
+        "VIEW_COMPATIBLE_DEVICES": "Kompatible Geräte anzeigen",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Wenn du den Kopplungsassistenten öffnest, achte bitte darauf, dass dein Gerät nicht mit einem anderen Adapter oder Dock gekoppelt und per 2,4 GHz verbunden ist."
       },
       "en": {
         "ADD": "Add",
@@ -725,7 +728,8 @@
         "UNPAIRING_COMPLETE": "Your device has been unpaired",
         "UNPAIRING_FAILED": "Unpairing Failed",
         "UNPAIR_CONFIRM_TEXT": "Device will be removed from this HyperSpeed dongle.",
-        "VIEW_COMPATIBLE_DEVICES": "View Compatible Devices"
+        "VIEW_COMPATIBLE_DEVICES": "View Compatible Devices",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "To launch the pairing utility, ensure the device is not paired to another dongle or dock, and is connected in 2.4GHz mode."
       },
       "es": {
         "ADD": "Añadir",
@@ -769,7 +773,8 @@
         "UNPAIRING_COMPLETE": "Se ha desincronizado tu dispositivo.",
         "UNPAIRING_FAILED": "No se ha podido desincronizar",
         "UNPAIR_CONFIRM_TEXT": "Se quitará el dispositivo de este dongle de HyperSpeed",
-        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatibles"
+        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatibles",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para iniciar la herramienta de sincronización, asegúrate de que el dispositivo no esté sincronizado con otro dongle ni base y de que esté conectado en modo 2,4 GHz."
       },
       "fr": {
         "ADD": "Ajouter",
@@ -813,7 +818,8 @@
         "UNPAIRING_COMPLETE": "Votre périphérique a été désynchronisé.",
         "UNPAIRING_FAILED": "Échec de la désynchronisation",
         "UNPAIR_CONFIRM_TEXT": "L’appareil sera supprimé de ce dongle HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Voir les appareils compatibles"
+        "VIEW_COMPATIBLE_DEVICES": "Voir les appareils compatibles",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Pour lancer l’utilitaire de synchronisation, veuillez vous assurer que l’appareil n’est pas synchronisé à un autre dongle ou à une autre station, et qu’il est connecté en mode 2,4 GHz."
       },
       "ja": {
         "ADD": "追加",
@@ -857,7 +863,8 @@
         "UNPAIRING_COMPLETE": "デバイスのペアリングが解除されました。",
         "UNPAIRING_FAILED": "ペアリング解除の失敗",
         "UNPAIR_CONFIRM_TEXT": "デバイスはこの HyperSpeed ドングルから削除されます。",
-        "VIEW_COMPATIBLE_DEVICES": "対応デバイスを表示"
+        "VIEW_COMPATIBLE_DEVICES": "対応デバイスを表示",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "ペアリングユーティリティを起動するには、デバイスが他のドングルやドックとペアリングされていないこと、および 2.4GHz モードで接続されていることを確認してください。"
       },
       "kr": {
         "ADD": "추가",
@@ -901,7 +908,8 @@
         "UNPAIRING_COMPLETE": "기기의 페어링이 해제되었습니다.",
         "UNPAIRING_FAILED": "페이링 해제 실패",
         "UNPAIR_CONFIRM_TEXT": "기기가 이 HyperSpeed 동글에서 지워집니다.",
-        "VIEW_COMPATIBLE_DEVICES": "호환 가능한 기기 보기"
+        "VIEW_COMPATIBLE_DEVICES": "호환 가능한 기기 보기",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "페어링 유틸리티를 실행하려면 기기가 다른 동글 또는 도크에 페어링되어 있지 않은지, 2.4GHz 모드로 연결되어 있는지 확인합니다."
       },
       "pt-BR": {
         "ADD": "Adicionar",
@@ -945,7 +953,8 @@
         "UNPAIRING_COMPLETE": "Seu dispositivo foi desemparelhado.",
         "UNPAIRING_FAILED": "Falha ao desemparelhar",
         "UNPAIR_CONFIRM_TEXT": "O dispositivo será removido deste dongle HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatíveis"
+        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatíveis",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para abrir o utilitário de emparelhamento, assegure-se de que o dispositivo não está emparelhado a outro dongle ou base e que está conectado no modo 2,4 GHz."
       },
       "ru": {
         "ADD": "Добавить",
@@ -989,7 +998,8 @@
         "UNPAIRING_COMPLETE": "Сопряжение устройства отменено.",
         "UNPAIRING_FAILED": "Сбой отмены сопряжения",
         "UNPAIR_CONFIRM_TEXT": "Устройство будет удалено из памяти этого донгла HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Просмотреть список совместимых устройства"
+        "VIEW_COMPATIBLE_DEVICES": "Просмотреть список совместимых устройства",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Чтобы запустить средство сопряжения, убедитесь, что устройство не сопряжено с другим донглом или зарядной станцией и находится в режиме 2,4 ГГц."
       },
       "zh-CN": {
         "ADD": "添加",
@@ -1033,7 +1043,8 @@
         "UNPAIRING_COMPLETE": "您的设备已经解除绑定",
         "UNPAIRING_FAILED": "取消配对失败",
         "UNPAIR_CONFIRM_TEXT": "设备将从此 HyperSpeed 接收器上移除。",
-        "VIEW_COMPATIBLE_DEVICES": "查看兼容设备"
+        "VIEW_COMPATIBLE_DEVICES": "查看兼容设备",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "要启动配对实用程序，请确保设备未与其他接收器或扩展坞配对，并且以 2.4GHz 模式连接。"
       },
       "zh-TW": {
         "ADD": "新增",
@@ -1077,7 +1088,8 @@
         "UNPAIRING_COMPLETE": "您的裝置已經解除綁定",
         "UNPAIRING_FAILED": "取消配對失敗",
         "UNPAIR_CONFIRM_TEXT": "將會從此 HyperSpeed 傳輸器移除裝置。",
-        "VIEW_COMPATIBLE_DEVICES": "檢視相容裝置"
+        "VIEW_COMPATIBLE_DEVICES": "檢視相容裝置",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "如果要啟動配對公用程式，請確保裝置並未與其他傳輸器或裝置配對，且是以 2.4GHz 模式連接。"
       }
     }
   }

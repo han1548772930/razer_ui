@@ -55,3 +55,54 @@ press-and-hold repetition. GPUI Kit supplies the equivalent motion primitives (`
 state classes and SVG-path choreography to those primitives; it is not an API
 absence. The effects remain open rather than being approximated with an
 unverified timer or fabricated hardware result.
+
+## 2026-10-06 检测/刷新图标的提示改为源即时挂载（3871）
+
+源 3871（`.ref/devices/3871/static/js/main.7e64d4d0.js`）与 3884 用的是同一个 `Gu` 组件：
+
+```jsx
+<div id="icon-detection-wrapper" className="icon-detection-wrapper"
+     onMouseEnter={() => this.toggleTooltipDetection(true)}
+     onMouseLeave={() => this.toggleTooltipDetection(false)} …/>
+<Gu isMounted={this.state.toggleTooltipDetection} position="bottom-left"
+    target="icon-detection-wrapper">{getTextItem(bO.iyT)}</Gu>
+```
+
+`showTooltip` 立刻挂载、随后只用 0ms 定时器加 `.show`，由
+`.tooltip-razer>.main{transition:opacity .1s linear}` 完成 100ms 淡入——**没有展示延迟**；
+`Uu(target,"bottom-left")` 给出 `{x: target.left+320-target.width, y: target.top}`，配内层
+`justify-content:flex-end;right:0` 与 `top:100%;margin-top:5px`，即右缘对齐、下方 5px。
+778（ASRock B550 主板布局）在当前源里**没有**这两个图标与提示，本地也只在
+`!self.spec.mainboard()` 时渲染它们。
+
+本地改动（`src/features/wired_argb.rs`）：两个图标各包在带源 id 的 `div`（`#icon-detection-wrapper`
+/ `#icon-refreshing-wrapper`）里，`.on_hover` 直接翻转 `hovered_icon`（对应
+`toggleTooltipDetection`/`toggleTooltipRefresh`），悬停时挂共享的
+`crate::ui::hover_tip::source_hover_tip(.., SourceTipPlacement::BottomLeft)`；两个按钮不再使用
+Kit 的 `Button::tooltip`（该 API 只有 Top/Bottom/Left/Right 且带自己的展示延迟）。共享模块的
+`.tooltip-razer` 几何、皮肤与 100ms 淡入在 `src/ui/hover_tip.rs` 顶部按当前源 CSS 逐条记录。
+
+`python tools/validate-wired-argb.py` 现在同时断言源（3871 的包装元素与 `isMounted` 提示、
+`zA/kA/xA` 位置常量、`E===kA?{x:o.left+320-o.width…}`、`.tooltip-razer` 的 CSS）、共享模块与
+本地实现，并确认 778 源码里没有这两个图标。
+
+## 2026-10-06 LED 数量提示（`bottom-right`）
+
+3871/778 的端口检测结果同样是 `Gu position:"bottom-right"`，内容由
+`getTextItem(bO.vml, {ledCount: '<span style="color:#44d62c">N</span>'})`（778 是 `FO.vml`）生成，
+只有数字是主题绿。本地改动（`src/features/wired_argb/port.rs`）：`PortEditor` 新增
+`hovered_info: bool`，检测按钮包进 `div().id("argb-detection-info-wrapper").relative()`，
+`.on_hover` 翻转该开关并按端口即时挂载共享的
+`source_hover_tip_element(.., SourceTipPlacement::BottomRight, …)`（前缀 + 绿色数字 + 后缀），
+不再使用 Kit 的 `Button::tooltip`。`python tools/validate-wired-argb.py` 同时断言源片段与本地标记。
+
+## 2026-10-06 端口帮助控件（`.widget .help` + `.tip`）
+
+3871/778 的端口卡片同样是 `.port-container.widget` + `<div className="help"/>` +
+`<div className="tip">`。本地原本已经按源画了 14px 圆形、`right:10px/top:10px` 的
+`.help`（产品自己的 `tooltip_questionmark` 资源），但提示走的是 Kit 的 `Button::tooltip` ✗。
+本轮改为 `surface::help_control`（`.widget .tip`、`SourceTooltipKind::WidgetTip`），并核实产品资源
+`wired-argb-778-tooltip_questionmark.svg` 与 `wired-argb-3871-tooltip_questionmark.svg` 和共享的
+`automation-tooltip_questionmark.svg` **字节相同**（sha256 `efe8667…`），所以换成共享控件不会改变图标。
+`python tools/validate-wired-argb.py` 现在同时断言源标记、本地 `help_control` + 绝对定位，以及三份
+图标哈希一致。

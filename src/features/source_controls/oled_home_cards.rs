@@ -1,5 +1,6 @@
 //! Current OLED `di -> Q -> G`: all seven cards, source order and hover actions.
 use super::*;
+use crate::ui::hover_tip::{SourceTipPlacement, source_hover_tip_element};
 use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 
 impl SourceControls {
@@ -44,6 +45,19 @@ impl SourceControls {
                         |_, _| false,
                     );
                     let hovered = !disabled && !ble_disabled && *hover.read(cx);
+                    // 源 OLED chunk：`require-synapse-icon-{id}` 上 `onMouseEnter`/`onMouseLeave`
+                    // 直接翻转 `isMounted`，配 `xA position:"bottom-right" target="require-synapse-icon-{id}"`
+                    // —— 即时挂载的 `.tooltip-razer.bottom-right` 提示。
+                    let require_synapse_hover = window.use_keyed_state(
+                        (
+                            ElementId::from(format!("oled-require-synapse-hover-{name}")),
+                            "hover",
+                        ),
+                        cx,
+                        |_, _| false,
+                    );
+                    let require_synapse_hovered =
+                        matches!(mode, 5 | 6) && !ble_disabled && *require_synapse_hover.read(cx);
                     let preview = match mode {
                         0 | 1 => {
                             let kind = if mode == 0 {
@@ -113,19 +127,26 @@ impl SourceControls {
                                 _ => {}
                             },
                         ));
-                        overlay = overlay.child(
-                            div()
-                                .id(SharedString::from(format!("oled-edit-tooltip-{name}")))
-                                .when(self.is_ble, |tip| {
-                                    tip.tooltip(|window, cx| {
-                                        tooltip::Tooltip::new(t(
-                                            "OLED_DISABLE_EDIT_BLE_MODE_TOOLTIP",
-                                        ))
-                                        .build(window, cx)
-                                    })
-                                })
-                                .child(edit),
-                        );
+                        // 源 691/1383 的 OLED chunk：BLE 打开时卡片带
+                        // `turn-off-ble-tooltip` 属性，CSS
+                        // `[turn-off-ble-tooltip]:before{background:#000;border:1px solid #5d5d5d;
+                        //  color:#ccc;font-size:14px;left:20px;line-height:16px;padding:8px 10px;
+                        //  position:absolute;top:185px;transition:visibility 0s,opacity .3s linear}`
+                        // 即卡片相对的 20px/185px 提示，300ms 线性淡入；本地已有该 kind。
+                        let trigger = edit.into_any_element();
+                        let edit = if self.is_ble {
+                            SourceTooltip::new(
+                                format!("oled-edit-tooltip-{name}"),
+                                t("OLED_DISABLE_EDIT_BLE_MODE_TOOLTIP"),
+                                300.,
+                            )
+                            .kind(SourceTooltipKind::OledBleDisabled)
+                            .trigger(move |_, _, _| trigger)
+                            .into_any_element()
+                        } else {
+                            trigger
+                        };
+                        overlay = overlay.child(edit);
                     }
                     overlay = overlay.child(
                         card_action(
@@ -169,12 +190,20 @@ impl SourceControls {
                                             )))
                                             .size(surface::css(15.))
                                             .when(!ble_disabled, |icon| {
-                                                icon.tooltip(|window, cx| {
-                                                    tooltip::Tooltip::new(t(
-                                                        "OLED_REQUIRE_SYNAPSE_RUNNING_TOOLTIP",
-                                                    ))
-                                                    .build(window, cx)
-                                                })
+                                                icon.on_hover(window.listener_for(
+                                                    &require_synapse_hover,
+                                                    |state, hovered, _, cx| {
+                                                        *state = *hovered;
+                                                        cx.notify();
+                                                    },
+                                                ))
+                                            })
+                                            .when(require_synapse_hovered, |icon| {
+                                                icon.child(source_hover_tip_element(
+                                                    format!("oled-require-synapse-tip-{name}"),
+                                                    SourceTipPlacement::BottomRight,
+                                                    t("OLED_REQUIRE_SYNAPSE_RUNNING_TOOLTIP"),
+                                                ))
                                             })
                                             .child(
                                                 img("synapse/oled-691-requires-synapse.svg")

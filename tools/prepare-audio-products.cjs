@@ -325,24 +325,65 @@ for(const p of evidence){
    }
   }
   if(pg.key==='TAB_HOME'&&source.includes('loupedeckState'))sections.push({title:'LOUPEDECK',description:'LOUPEDECK_PROFILE_INSTRUCTION',controls:[{path:'/profile/name',label:'LAUNCH_LOUPEDECK',kind:'unavailable'}]});
-  if(pg.key==='TAB_OLED'){
-   for(const [field,title,description] of [['oledBrightness','OLED_BRIGHTNESS_TITLE','OLED_BRIGHTNESS_DESC'],['timeToHomeScreen','OLED_TIME_TO_HOME_SCREEN_TITLE','OLED_TIME_TO_HOME_SCREEN_DESC'],['oledDimDisplay','OLED_DIM_DISPLAY_TITLE','OLED_DIM_DISPLAY_DESC'],['oledLanguage','OLED_LANGUAGE_TITLE','OLED_LANGUAGE_TIPS']]){
-    const component=pg.components.find(c=>c.source.includes(field+'Reducer')||c.source.includes('oledTimeToHomeScreenReducer')&&field==='timeToHomeScreen');
-    const initial=states.find(s=>s.value[field]!==undefined)?.value[field];
-    if(!component||initial===undefined)continue;
-    draft.device[field]=structuredClone(initial);const base='/device/'+field,controls=[];
-    if(field==='oledBrightness'){
-     const min=Number(/min:[\w$]+=(\d+)/.exec(component.source)?.[1]),max=Number(/max:[\w$]+=(\d+)/.exec(component.source)?.[1]);
-     if(number(min)&&number(max))controls.push({path:base,label:title,kind:'slider',min,max,step:1});
-    }else if(field==='oledDimDisplay'&&Array.isArray(configs.OLED_DIM_DISPLAY_VALUES)){
-     controls.push({path:base+'/value',label:title,kind:'select',enabled_by:base+'/enabled',options:configs.OLED_DIM_DISPLAY_VALUES.map(value=>({label:String(value),value}))});
-    }else{
-     const values=configs[field==='oledLanguage'?'OLED_LANGUAGE_VALUES':'OLED_TIME_TO_HOME_SCREEN_VALUES'];
-     if(Array.isArray(values))controls.push({path:base,label:field==='oledLanguage'?'OLED_LANGUAGE_SELECT_LABEL':title,kind:'select',options:values.map(v=>({label:v.label??v.name,value:v.value}))});
-    }
-    if(controls.length)sections.push({title,description,controls});
+  if(pg.key==='TAB_OLED'&&p.product_id===1383){
+   // 1383 Razer Kraken V4 Pro: the root `xx` of 6141.5d00192e.chunk.js
+   // (661198-662123) mounts five widgets in two `.widget-col` columns. The order
+   // below is the root's verified mount order — `col-left` holds brightness and
+   // language, `col-right` holds time to home screen, dim display and the screen
+   // timeout options. Control kinds follow the mounted widget, not the reducer
+   // field type: the delay, dim and screensaver rows are button sets / preview
+   // tiles, not `<select>`s.
+   const descriptions={OLED_BRIGHTNESS_TITLE:'OLED_BRIGHTNESS_DESC',OLED_LANGUAGE_TITLE:'OLED_LANGUAGE_DESC',OLED_TIME_TO_HOME_SCREEN_TITLE:'OLED_TIME_TO_HOME_SCREEN_DESC',OLED_DIM_DISPLAY_TITLE:'OLED_DIM_DISPLAY_DESC',OLED_SCREEN_SAVER_TITLE:'OLED_SCREEN_SAVER_DESC'};
+   const fields={OLED_BRIGHTNESS_TITLE:'oledBrightness',OLED_LANGUAGE_TITLE:'oledLanguage',OLED_TIME_TO_HOME_SCREEN_TITLE:'timeToHomeScreen',OLED_DIM_DISPLAY_TITLE:'oledDimDisplay',OLED_SCREEN_SAVER_TITLE:'oledScreensaver'};
+   const root=pg.components.find(c=>(c.jsx??[]).some(j=>(j.props??{}).title==='OLED_NOT_SUPPORTED_WIRED_WARNING_TITLE'));
+   const panels=new Map();
+   for(const c of pg.components)for(const j of c.jsx??[]){
+    const title=j.props?.title;
+    if(title&&descriptions[title]&&!panels.has(title))panels.set(title,{tips:j.props?.tips,source:c.source,path:c.path});
    }
-   gaps.push('OLED home-screen artwork/editors, screensaver previews and device update flow remain incomplete');
+   const brightnessRange=root?/min:(\d+),minTag:(\d+)/.exec(root.source):null;
+   const manifest=JSON.parse(read('assets/synapse/manifest.json')).entries;
+   for(const title of Object.keys(descriptions)){
+    const panel=panels.get(title);
+    if(!panel){gaps.push('1383 TAB_OLED widget is missing from the current chunk receipts: '+title);continue;}
+    const field=fields[title],initial=states.find(s=>s.value[field]!==undefined)?.value[field];
+    if(initial===undefined){gaps.push('1383 TAB_OLED reducer initial is missing: '+field);continue;}
+    draft.device[field]=structuredClone(initial);const base='/device/'+field,controls=[];
+    if(title==='OLED_BRIGHTNESS_TITLE'){
+     const min=Number(brightnessRange?.[1]??/min:[\w$]+=(\d+)/.exec(panel.source)?.[1]);
+     const max=Number(/max:[\w$]+=(\d+)/.exec(panel.source)?.[1]);
+     if(number(min)&&number(max))controls.push({path:base,label:title,kind:'slider',min,max,step:1});
+    }else if(title==='OLED_LANGUAGE_TITLE'){
+     const values=configs.OLED_LANGUAGE_VALUES;
+     if(Array.isArray(values))controls.push({path:base,label:'OLED_LANGUAGE_SELECT_LABEL',kind:'select',apply_label:'APPLY',options:values.map(v=>({label:v.label??v.name,value:v.value}))});
+    }else if(title==='OLED_SCREEN_SAVER_TITLE'){
+     // `Kv`: option 0 is the text tile, then one tile per current GIF; the
+     // reducer stores the tile id (`value+1`), so tile ids and images line up.
+     // The tile slice only names the module symbols (`src:Fv`); resolve each to
+     // its `s.p+"static/media/…"` definition in the same chunk and never execute it.
+     const chunk=read(panel.path);
+     const gifs=[...new Set([...panel.source.matchAll(/\bsrc:([\w$]+)/g)].map(m=>{
+      const symbol=m[1].replace(/[$]/g,'\\$');
+      return new RegExp('(?:^|[,;{])'+symbol+'=s\\.p\\+"(static\\/media\\/[^"]+)"').exec(chunk)?.[1];
+     }).filter(Boolean))];
+     if(gifs.length!==3||!gifs.every((gif,index)=>gif.includes('-random-sim-')&&Number(/(\d+)-random-sim/.exec(gif)?.[1])===index+1))gaps.push('1383 OLED screensaver GIF symbols did not resolve to the three current previews in order: '+JSON.stringify(gifs));
+     const options=[{label:'OLED_SCREEN_SAVER_OPTION_NO_SCREEN_SAVER',value:0}];
+     for(const [index,gif] of gifs.entries()){
+      const hit=manifest.find(e=>typeof e.source==='string'&&e.source.endsWith('/'+gif));
+      const option={label:String(index+1),value:index+1};
+      if(hit)option.image=hit.output.replace(/^assets\//,'');
+      else gaps.push('1383 OLED screensaver preview has no prepared local asset: '+gif);
+      options.push(option);
+     }
+     if(gifs.length!==3)gaps.push('1383 OLED screensaver expects three current GIF tiles, found '+gifs.length);
+     controls.push({path:base,label:title,kind:'image_options',options});
+    }else{
+     const values=configs[title==='OLED_DIM_DISPLAY_TITLE'?'OLED_DIM_DISPLAY_VALUES':'OLED_TIME_TO_HOME_SCREEN_VALUES'];
+     if(Array.isArray(values))controls.push({path:base+(title==='OLED_DIM_DISPLAY_TITLE'?'/value':''),label:title,kind:'options',...(title==='OLED_DIM_DISPLAY_TITLE'?{enabled_by:base+'/enabled'}:{}),options:values.map(v=>({label:v.label??String(v),value:v.value??v}))});
+    }
+    if(controls.length)sections.push({title,tips:panel.tips,description:descriptions[title],controls});
+   }
+   gaps.push('OLED home-screen artwork/editors and the device update flow remain incomplete');
   }
   if(pg.key==='TAB_ENHANCEMENT'&&source.includes('noiseCancellationReducer')&&!sections.some(s=>s.title==='ACTIVE_NOISE_CANCELLATION')){
    const text=read(p.source),match=/noiseCancellationReducer:function\(\)\{let [\w$]+=arguments\.length>0&&void 0!==arguments\[0\]\?arguments\[0\]:([\w$]+)/.exec(text);
@@ -395,7 +436,7 @@ for(const p of evidence){
   control.label=aliases[control.label]??control.label;for(const o of control.options??[])o.label=aliases[o.label]??o.label;
   const parts=control.path.split('/').slice(1);let owner=draft;for(const part of parts.slice(0,-1))owner=owner[part];const key=parts.at(-1),original=owner[key];
   if(control.kind==='slider'&&number(original)){owner[key]=Math.max(control.min,Math.min(control.max,original));}
-  if(control.kind==='select'&&!control.options.some(o=>o.value===original)&&control.options.length)owner[key]=control.options[0].value;
+  if(['select','options','image_options'].includes(control.kind)&&!control.options.some(o=>o.value===original)&&control.options.length)owner[key]=control.options[0].value;
   if(owner[key]!==original)normalizations.push({path:control.path,source_default:original,initial_draft:owner[key],reason:'Source reducer sentinel lies outside its mounted control range/options; no device response is available'});
  }}
  products.push({product_id:p.product_id,name:p.name,draft,pages,equalizers});
