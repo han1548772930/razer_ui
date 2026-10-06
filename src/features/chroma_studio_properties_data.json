@@ -351,9 +351,13 @@
     }
   },
   "shared": {
+    "checkbox": 9741,
     "color": 1698,
     "color_dropdown": 16,
     "gradient": 3690,
+    "dropdown_selector": 99,
+    "dropdown": 1592,
+    "gradient_css": 3968,
     "playback": 5805,
     "slider_stepper": 768,
     "number_input": 2245,

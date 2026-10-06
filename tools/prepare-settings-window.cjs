@@ -31,7 +31,7 @@ const rootText = source.snippet(8821, rootNode);
 const nav = ['GD6', 'n6W', 'iRj'].map(name => source.literal(4693, source.exported(4693, name)));
 requireFact(JSON.stringify(nav) === '["TEXT_SOFTWARE","TEXT_SYSTRAY_SETTING","TEXT_GENERAL_SETTING"]', 'Settings navigation changed');
 requireFact(rootText.includes('n=t[0].name') && rootText.includes('isShowProfileMigrationIcon:!1'), 'Settings initial root changed');
-for (const [id, names] of [[8821,['de','ns']], [9302,['ie','ee','$']], [9762,['x','fe','de','ye']], [3414,['u','be','Se']]])
+for (const [id, names] of [[8821,['de','ns']], [9302,['ie','ee','$']], [9762,['x','fe','ge','ve','de','ye']], [6584,['u','h']], [3414,['u','be','Se']]])
   for (const name of names) binding(id, name);
 const appFiles = source.files.map(file => ({path:file, sha256:hash(read(file))}));
 for (const {path:file} of appFiles) requireFact(!read(file).includes('settingsScrollToSection'), `New legacy section listener: ${file}`);

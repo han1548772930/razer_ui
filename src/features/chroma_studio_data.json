@@ -64,7 +64,8 @@
       "paint_params": {
         "screen": "full",
         "blur": 5
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "audio",
@@ -95,7 +96,8 @@
         "boost": 1,
         "autoBoost": false,
         "decay": 1
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "breathing",
@@ -116,7 +118,12 @@
         "playbackStart": "random",
         "playbackEnd": "never",
         "cycles": -1
-      }
+      },
+      "duration_values": [
+        28000,
+        14000,
+        6000
+      ]
     },
     {
       "name": "chroma-generate",
@@ -133,7 +140,8 @@
         "currentConfig": {},
         "effectConfigList": [],
         "currentConfigId": -1
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "fire",
@@ -143,7 +151,8 @@
       "paint_params": {
         "color": 16711680,
         "color2": 16744448
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "reactive",
@@ -163,7 +172,12 @@
         "playbackStart": "onPress",
         "playbackEnd": "after",
         "cycles": 1
-      }
+      },
+      "duration_values": [
+        2000,
+        1500,
+        500
+      ]
     },
     {
       "name": "ripple",
@@ -214,7 +228,8 @@
         "playbackStart": "onPress",
         "playbackEnd": "after",
         "cycles": 1
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "spectrum",
@@ -269,7 +284,12 @@
         ],
         "colorStopsCustom": false,
         "duration": 37740
-      }
+      },
+      "duration_values": [
+        75480,
+        37740,
+        18870
+      ]
     },
     {
       "name": "starlight",
@@ -316,7 +336,12 @@
         "randomColor": false,
         "density": 1,
         "duration": 1700
-      }
+      },
+      "duration_values": [
+        3000,
+        1700,
+        500
+      ]
     },
     {
       "name": "static",
@@ -325,7 +350,8 @@
       "params": {},
       "paint_params": {
         "color": 65280
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "tidal",
@@ -350,7 +376,8 @@
         "playbackStart": "random",
         "playbackEnd": "never",
         "cycles": -1
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "wave",
@@ -407,7 +434,8 @@
         "playbackStart": "random",
         "playbackEnd": "never",
         "cycles": -1
-      }
+      },
+      "duration_values": []
     },
     {
       "name": "wheel",
@@ -456,9 +484,601 @@
         "playbackStart": "random",
         "playbackEnd": "never",
         "cycles": -1
-      }
+      },
+      "duration_values": []
     }
   ],
+  "gradients": {
+    "spectrum": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          },
+          {
+            "stop": 0.18,
+            "rgb": [
+              255,
+              16,
+              16
+            ]
+          },
+          {
+            "stop": 0.28,
+            "rgb": [
+              255,
+              128,
+              0
+            ]
+          },
+          {
+            "stop": 0.35,
+            "rgb": [
+              239,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              223,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.49,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.52,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.64,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 0.77,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.16,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 0.32,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.48,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 0.64,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.8,
+            "rgb": [
+              0,
+              20,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.27,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.39,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.61,
+            "rgb": [
+              0,
+              120,
+              255
+            ]
+          },
+          {
+            "stop": 0.73,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          },
+          {
+            "stop": 0.25,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 0.75,
+            "rgb": [
+              24,
+              88,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              24,
+              255
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              239,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 10,
+      "min_stops": 2
+    },
+    "audio": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.51,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.26,
+            "rgb": [
+              255,
+              243,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              54,
+              255,
+              72
+            ]
+          },
+          {
+            "stop": 0.55,
+            "rgb": [
+              98,
+              241,
+              255
+            ]
+          },
+          {
+            "stop": 0.68,
+            "rgb": [
+              0,
+              12,
+              255
+            ]
+          },
+          {
+            "stop": 0.81,
+            "rgb": [
+              128,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 0.51,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 7,
+      "min_stops": 1
+    },
+    "default": {
+      "presets": [
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.26,
+            "rgb": [
+              255,
+              243,
+              0
+            ]
+          },
+          {
+            "stop": 0.42,
+            "rgb": [
+              54,
+              255,
+              72
+            ]
+          },
+          {
+            "stop": 0.55,
+            "rgb": [
+              98,
+              241,
+              255
+            ]
+          },
+          {
+            "stop": 0.68,
+            "rgb": [
+              0,
+              12,
+              255
+            ]
+          },
+          {
+            "stop": 0.81,
+            "rgb": [
+              128,
+              0,
+              255
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.25,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.75,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 0.5,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              255,
+              0,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          }
+        ],
+        [
+          {
+            "stop": 0,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          },
+          {
+            "stop": 1,
+            "rgb": [
+              0,
+              255,
+              0
+            ]
+          }
+        ]
+      ],
+      "max_stops": 7,
+      "min_stops": 1
+    }
+  },
+  "playback": {
+    "start": [
+      "random",
+      "onPress",
+      "onSelectedKeys"
+    ],
+    "end": [
+      "never",
+      "after",
+      "toggle"
+    ],
+    "min": 1,
+    "max": 100,
+    "labels": {
+      "random": "AT_RANDOM_TIMES",
+      "onPress": "ON_ANY_KEY_PRESSED",
+      "onSelectedKeys": "ON_SELECTED_KEYS_PRESSED",
+      "never": "TEXT_NEVER",
+      "after": "TEXT_AFTER",
+      "noPlayBack": "AUTO_PLAY"
+    }
+  },
+  "empty_color": 1677721600,
   "tools": [
     "select",
     "pen",

@@ -267,6 +267,41 @@ assert Path(favicon_key).name not in expected
 expected.add(Path(favicon_key).name)
 root_keys.append((favicon_key, Path(favicon_key).name))
 
+# Product 4115 has its own current dynamic SVG context, not an application root.
+kitsune = json.loads((ROOT / "docs/re/kitsune-current-evidence.json").read_text(encoding="utf-8"))
+kitsune_include = (directory / "kitsune-embedded.rs").read_text(encoding="utf-8")
+kitsune_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', kitsune_include)
+assert len(kitsune_keys) == len(kitsune["assets"]) == 2
+assert len(set(kitsune_keys)) == 2
+for row in kitsune["assets"]:
+    assert row["source"].startswith(".ref/devices/4115/")
+    source = (ROOT / row["source"]).read_bytes()
+    output = ROOT / row["output"]
+    assert hashlib.sha256(source).hexdigest() == row["sha256"]
+    assert output.read_bytes() == source
+    assert ET.fromstring(source).tag.endswith("svg")
+    assert (row["output"].removeprefix("assets/"), output.name) in kitsune_keys
+    assert output.name not in expected
+    expected.add(output.name)
+resource_source = (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+assert resource_source.count(".chain(KITSUNE_ASSETS)") == 2
+
+gamepad_dialog = json.loads((ROOT / "docs/re/gamepad-2636-dialog-current-evidence.json").read_text(encoding="utf-8"))
+gamepad_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', (directory / "gamepad-2636-embedded.rs").read_text(encoding="utf-8"))
+assert len(gamepad_keys) == len(set(gamepad_keys)) == 2
+for row in gamepad_dialog["assets"]:
+    output = ROOT / row["output"]
+    data = output.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == row["sha256"]
+    assert ET.fromstring(data).tag.endswith("svg")
+    if "module" not in row:
+        assert data == (ROOT / row["source"]).read_bytes()
+    if output.name.startswith("gamepad-2636-"):
+        assert (row["output"].removeprefix("assets/"), output.name) in gamepad_keys
+        assert output.name not in expected
+        expected.add(output.name)
+assert resource_source.count(".chain(GAMEPAD_DIALOG_ASSETS)") == 2
+
 runtime_evidence = json.loads((ROOT / "docs/re/audio-oled-runtime-current-evidence.json").read_text(encoding="utf-8"))
 for icon in runtime_evidence["icons"]:
     receipt = icon["receipt"]
@@ -466,6 +501,8 @@ print(f"Validated {len(entries)} source/output hashes, image formats and embedde
       f"{len(service_keys)} current service SVGs; "
       f"{len(oled_keys)} OLED media assets; "
       f"{len(root_keys)} independent-root SVGs / {len(runtime_evidence['icons'])} OLED runtime icons; "
+      f"{len(kitsune_keys)} Kitsune SVGs; "
+      f"{len(gamepad_keys)} gamepad dialog SVGs; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
       f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")

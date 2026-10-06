@@ -549,10 +549,14 @@ impl crate::shell::AppShell {
             }) => {
                 self.tray_click = None;
                 self.tray_ignore_release = true;
-                if let Some(tray) = &mut self.tray {
-                    tray.cancel_blur(cx);
-                    if let Err(error) = tray.show_popup(false, cx) {
-                        self.status = error.to_string();
+                match self.settings.read(cx).tray_double_click() {
+                    crate::preferences::TrayDoubleClickAction::ShowMenu => {
+                        if let Some(tray) = &mut self.tray {
+                            tray.cancel_blur(cx);
+                            if let Err(error) = tray.show_popup(false, cx) {
+                                self.status = error.to_string();
+                            }
+                        }
                     }
                 }
             }

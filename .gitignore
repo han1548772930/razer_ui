@@ -28,6 +28,8 @@
 !/tools/generate-product-registry.cjs
 !/tools/extract-mouse-products.cjs
 !/tools/extract-mouse-page-evidence.cjs
+!/tools/audit-mouse-70-dpi.cjs
+!/tools/prepare-kitsune.cjs
 !/tools/extract-keyboard-products.cjs
 !/tools/extract-source-product-configs.cjs
 !/tools/extract-source-product-pages.cjs
@@ -217,3 +219,6 @@
 !/tools/prepare-chroma-studio-color.cjs
 !/tools/prepare-chroma-studio-layers.cjs
 !/tools/validate-chroma-studio-layers.py
+!/tools/prepare-gamepad-2636-dialog.cjs
+!/tools/prepare-control-pod-audio.cjs
+!/tools/audit-stream-mixer-number.cjs

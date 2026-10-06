@@ -16,6 +16,14 @@ pub(crate) struct DashboardPreferences {
 /// These are saved independently of device/profile and Settings form drafts.
 pub(crate) type CustomColorSlots = [Option<[u8; 3]>; 16];
 
+/// Current Settings 9762's action available without the host app catalogue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub(crate) enum TrayDoubleClickAction {
+    #[serde(rename = "showMenu")]
+    ShowMenu,
+}
+
 #[derive(Default)]
 pub(crate) struct CustomColors {
     colors: CustomColorSlots,
@@ -79,6 +87,8 @@ pub(crate) const RECOMMENDATION_CATEGORIES: &[(&str, &str)] = &[
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct AppPreferences {
+    /// None represents an older workspace: current source defaults to showMenu.
+    pub(crate) systray_double_click: Option<TrayDoubleClickAction>,
     pub(crate) language: String,
     pub(crate) notifications: bool,
     pub(crate) recommendations: bool,
@@ -95,6 +105,7 @@ pub(crate) struct AppPreferences {
 impl Default for AppPreferences {
     fn default() -> Self {
         Self {
+            systray_double_click: None,
             language: "zh-CN".into(),
             notifications: true,
             recommendations: true,

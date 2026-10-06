@@ -714,6 +714,11 @@ impl SourceControls {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.disabled(control) {
+            self.listening = None;
+            cx.notify();
+            return;
+        }
         let mut ids: Vec<String> = Vec::new();
         for (pressed, id) in [
             (event.keystroke.modifiers.control, "KEY_LEFT_CTRL"),
@@ -1127,10 +1132,15 @@ impl SourceControls {
             .into_any_element()
     }
     /// `.display-name.keyboard_listen`: the preset shortcut capture field.
-    fn render_shortcut_key(&self, control: &ControlSpec, cx: &mut Context<Self>) -> AnyElement {
+    fn render_shortcut_key(
+        &self,
+        control: &ControlSpec,
+        disabled: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         use crate::ui::theme::CameraProductColors as Colors;
         let key = control.key.clone();
-        let listening = self.listening.as_deref() == Some(control.key.as_str());
+        let listening = !disabled && self.listening.as_deref() == Some(control.key.as_str());
         let captured = self
             .value(control)
             .and_then(Value::as_array)
@@ -1157,13 +1167,21 @@ impl SourceControls {
             .text_size(surface::css(14.))
             .line_height(surface::css(17.))
             .text_color(Colors::text())
-            .cursor_pointer()
+            .when(!disabled, |field| field.cursor_pointer())
             // `.display-name.keyboard-listen:hover/.active` turns the border
             // green; the listening state keeps it there.
-            .hover(|field| field.border_color(cx.theme().primary))
+            .when(!disabled, |field| {
+                field.hover(|field| field.border_color(cx.theme().primary))
+            })
             .on_click(cx.listener({
                 let listen_key = key.clone();
                 move |this, _, window, cx| {
+                    if this
+                        .control(&listen_key)
+                        .is_none_or(|control| this.disabled(control))
+                    {
+                        return;
+                    }
                     this.listening = Some(listen_key.clone());
                     this.focus.focus(window, cx);
                     cx.notify();
@@ -1204,6 +1222,12 @@ impl SourceControls {
                         .text_color(Colors::text())
                         .child("×")
                         .on_click(cx.listener(move |this, _, window, cx| {
+                            if this
+                                .control(&clear_key)
+                                .is_none_or(|control| this.disabled(control))
+                            {
+                                return;
+                            }
                             let path = this
                                 .control(&clear_key)
                                 .map(|control| control.path.clone())
@@ -1215,6 +1239,7 @@ impl SourceControls {
                 .relative();
         }
         v_flex()
+            .when(disabled, |field| field.opacity(0.3))
             .gap_2()
             .child(
                 div()
@@ -1389,7 +1414,7 @@ impl SourceControls {
                     .when(disabled, |view| view.opacity(0.3))
                     .into_any_element()
             }
-            "keys" => self.render_shortcut_key(control, cx),
+            "keys" => self.render_shortcut_key(control, disabled, cx),
             "image_options" => {
                 use crate::ui::theme::OledColors;
                 h_flex()

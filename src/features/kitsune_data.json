@@ -1,0 +1,46 @@
+{
+  "labels": {
+    "SYq": "SOCD_SETTINGS",
+    "eyU": "DPAD_SOCD_SETTINGS",
+    "IlY": "DPAD_SOCD_TOOLTIP",
+    "asZ": "DPAD_SOCD_SETTINGS_DESC",
+    "gJm": "NEUTRAL_SOCD",
+    "s1g": "NEUTRAL_SOCD_DESC",
+    "kM3": "FIRST_INPUT_SOCD",
+    "Obv": "FIRST_INPUT_SOCD_DESC",
+    "USp": "LAST_INPUT_SOCD",
+    "eJd": "LAST_INPUT_SOCD_DESC",
+    "CKV": "ABSOLUTE_UP_SOCD",
+    "oDm": "ABSOLUTE_UP_SOCD_DESC",
+    "wAK": "NO_SOCD",
+    "Qeq": "NO_SOCD_DESC",
+    "iYC": "MODE_SWITCHER",
+    "Jrg": "MODE_SWITCHER_HELP_TOOLTIP",
+    "e4Q": "MODE_SWITCHER_SAFE",
+    "kto": "MODE_SWITCHER_SAFE_DESC",
+    "q_4": "MODE_SWITCHER_STANDARD",
+    "WYV": "MODE_SWITCHER_STANDARD_DESC",
+    "lGq": "WIRED_POLLING_RATE_HEADER",
+    "orU": "WIRED_POLLING_RATE_V2_TOOLTIP",
+    "PDD": "WIRED_POLLING_RATE_DESC"
+  },
+  "geometry": {
+    "cvsH": 340,
+    "cvsW": 310,
+    "dotRadius": 2.5,
+    "circleRadius": 5.5,
+    "xLeft": 3,
+    "xRight": 307,
+    "yStart": 16,
+    "lineLength": 53,
+    "dotColor": "#5d5d5d",
+    "activeColor": "#44d62c",
+    "hyperColor": "#fd8611",
+    "dotGap": 50,
+    "xCenter": 155.5
+  },
+  "assets": {
+    "device": "synapse/kitsune-device.svg",
+    "socd": "synapse/kitsune-socd.svg"
+  }
+}

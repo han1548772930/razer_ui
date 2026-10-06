@@ -385,6 +385,15 @@
       "source": "class C extends i.Component{constructor(){super(...arguments),this.resetTutorials=()=>{S.A.set(\"isShowChromaStudioTutorial\",!0)}}render(){const t=N.Nu.replace(\"lang\",this.props.lang);return(0,l.jsx)(\"div\",{className:\"help-component\",style:{width:\"100%\",marginTop:\"10px\"},children:(0,l.jsxs)(a,{children:[(0,l.jsx)(b,{direction:\"left\",children:(0,l.jsx)(m,{title:(0,g.JN)(j.YHZ,{_lang:this.props.lang}),children:(0,l.jsx)(\"div\",{className:\"support-link\",children:(0,l.jsx)(\"a\",{target:\"_blank\",rel:\"noopener noreferrer\",href:t,children:(0,l.jsx)(y.A,{text:j.Gss})})})})}),(0,l.jsx)(b,{direction:\"right\",children:(0,l.jsxs)(m,{title:(0,g.JN)(j.bEM,{_lang:this.props.lang}),children:[(0,l.jsx)(\"div\",{className:\"support-link\",children:(0,l.jsx)(y.A,{text:j.RKG})}),(0,l.jsx)(\"button\",{className:\"btn reset-btn\",onClick:this.resetTutorials,children:(0,l.jsx)(y.A,{text:j.Uty})})]})})]})})}}"
     },
     {
+      "module": 126,
+      "symbol": "n",
+      "path": ".ref/applications/synapse/chroma-studio/static/js/EditorCanvas.c3ee330f.chunk.js",
+      "sha256": "32bc4dd6a0e0de1ef7a185fb4f4754d195ed3fdd8504f8e49294fd0e1da42999",
+      "offset": 604,
+      "end": 809,
+      "source": "function n(e){let t;switch(e){case\"random\":t=i.TGn;break;case\"onPress\":t=i.iUI;break;case\"onSelectedKeys\":t=i.EF;break;case\"never\":t=i.$aD;break;case\"after\":t=i.PCw;break;case\"noPlayBack\":t=i.LDM}return t}"
+    },
+    {
       "module": 6257,
       "symbol": "R",
       "path": ".ref/applications/synapse/chroma-studio/static/js/main.6b22e9cc.js",

@@ -7,6 +7,11 @@
 - [实施路线](re/ui-readonly-first-roadmap.md)：UI 编辑与 DLL 读取先完成，DLL 写回后置。
 - [剩余工作](re/remaining-ui-work.md)、[实现差距](re/03-implementation-gap.md)、[完成口径](re/21-ui-completion-status.md)。
 - [覆盖统计](re/native-product-coverage.md)：331 个产品、1419 个主导航页部分接入，完整验收产品为 0。
+- [此前界面与产品独立复核](re/prior-ui-verification-2026-10-06.md)：按当前源重新检查，区分确认缺陷、未覆盖和排除的误报。
+- [4115 Kitsune](re/kitsune-native.md)：当前设备预览、模式/SOCD 原根布局与剩余条件。
+- [产品 70 DPI 编辑器](re/mouse-70-dpi-native.md)：多行编辑、数字预览/提交与剩余交互、外观差异。
+- [2636 低死区弹窗](re/gamepad-2636-dialog-native.md)：零/低警告、回退、校准导航与展开说明。
+- [1382 音频映射](re/control-pod-audio-native.md)：Playback 临时编辑、只读枚举、本地 Save/Cancel 与剩余 EQ/父映射根。
 - [续接记录](re/ui-continuation-2026-10-06.md)、[文档清理记录](re/documentation-cleanup-2026-10-06.md)。
 
 ## 当前证据
@@ -19,7 +24,7 @@
 ## 页面与近期实现
 
 - [逐页证据](screens/README.md)：保留独有结构和行为记录，旧快照不得当作当前实现依据。
-- [Studio 根](re/chroma-studio-native-root.md)、[属性](re/chroma-studio-properties.md)、[颜色编辑器](re/chroma-studio-color-native.md)、[图层](re/chroma-studio-layers-native.md)。
+- [Studio 根](re/chroma-studio-native-root.md)、[属性](re/chroma-studio-properties.md)、[颜色编辑器](re/chroma-studio-color-native.md)、[图层](re/chroma-studio-layers-native.md)、[Breathing/Fire](re/chroma-studio-breathing-fire-native.md)。
 - [独立 Settings](re/settings-window-implementation.md)、[OLED 编辑器](re/audio-oled-editors-2026-10-06.md)、[托盘与账户](re/tray-account-continuation-2026-10-06.md)。
 
 仓库根 AGENTS.md 的来源与验证限制优先适用。重定向链接不代表历史符号、ABI 或行为已经重新审计。

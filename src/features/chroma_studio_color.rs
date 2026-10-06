@@ -57,6 +57,8 @@ struct StudioCustomColors {
 impl Global for StudioCustomColors {}
 
 pub(super) struct StudioColor {
+    width: f32,
+    dropdown: bool,
     value: Option<u32>,
     committed: Option<u32>,
     base: Option<[u8; 3]>,
@@ -206,6 +208,8 @@ impl StudioColor {
             }),
         );
         let mut this = Self {
+            width: WIDTH,
+            dropdown: false,
             value: None,
             committed: None,
             base: None,
@@ -214,8 +218,8 @@ impl StudioColor {
             brightness_level: 100.,
             brightness_pointer: false,
             fields,
-            focus: cx.focus_handle(),
-            brightness_focus: cx.focus_handle(),
+            focus: cx.focus_handle().tab_stop(true),
+            brightness_focus: cx.focus_handle().tab_stop(true),
             bounds: Rc::new(Cell::new(Bounds::default())),
             focused_field: None,
             dirty: false,
@@ -229,6 +233,18 @@ impl StudioColor {
 
     pub(super) fn value(&self) -> Option<u32> {
         self.value
+    }
+
+    pub(super) fn new_dropdown(
+        value: Option<u32>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut this = Self::new(value, window, cx);
+        this.width = 208.;
+        this.dropdown = true;
+        this.set_value(value, window, cx);
+        this
     }
 
     /// Owner synchronization never emits a Changed event or retains an old draft.
@@ -282,7 +298,7 @@ impl StudioColor {
             brightness = (v / THRESHOLD * 100.).round();
         }
         self.base = Some(base);
-        self.marker = Some(((h * WIDTH).floor(), HEIGHT - (s * HEIGHT).floor()));
+        self.marker = Some(((h * self.width).floor(), HEIGHT - (s * HEIGHT).floor()));
         self.brightness_level = brightness;
         self.brightness
             .update(cx, |state, cx| state.set_value(brightness, window, cx));
@@ -371,14 +387,14 @@ impl StudioColor {
             return;
         }
         let bounds = self.bounds.get();
-        let x = (f32::from(position.x - bounds.left()) / f32::from(bounds.size.width) * WIDTH)
-            .clamp(0., WIDTH - 1.);
+        let x = (f32::from(position.x - bounds.left()) / f32::from(bounds.size.width) * self.width)
+            .clamp(0., self.width - 1.);
         let y = (f32::from(position.y - bounds.top()) / f32::from(bounds.size.height) * HEIGHT)
             .clamp(0., HEIGHT - 1.);
         self.marker = Some((x, y));
         // Canvas getImageData samples a pixel center in the RGB hue/white field.
         self.base = Some(from_hsv(
-            (x.floor() + 0.5) / WIDTH,
+            (x.floor() + 0.5) / self.width,
             1. - (y.floor() + 0.5) / HEIGHT,
             1.,
         ));
@@ -388,10 +404,8 @@ impl StudioColor {
     fn commit(&mut self, cx: &mut Context<Self>) {
         if self.enabled && self.dirty {
             self.dirty = false;
-            if self.committed != self.value {
-                self.committed = self.value;
-                cx.emit(StudioColorEvent::Changed(self.value));
-            }
+            self.committed = self.value;
+            cx.emit(StudioColorEvent::Changed(self.value));
         }
         cx.notify();
     }
@@ -403,7 +417,7 @@ impl StudioColor {
         let mut plane = div()
             .id("studio-color-plane")
             .relative()
-            .w(surface::css(WIDTH))
+            .w(surface::css(self.width))
             .h(surface::css(HEIGHT))
             .overflow_hidden()
             .child(
@@ -627,7 +641,7 @@ impl StudioColor {
     }
 }
 
-fn checkered() -> impl IntoElement {
+pub(super) fn checkered() -> impl IntoElement {
     // The source SVG tile is 8x8; repeat instead of stretching a single square.
     canvas(
         |_, _, _| (),
@@ -667,7 +681,12 @@ impl Render for StudioColor {
                 div()
                     .flex()
                     .flex_col()
-                    .w(surface::css(if index == 0 { 77. } else { 46. }))
+                    .w(surface::css(match (self.dropdown, index) {
+                        (true, 0) => 65.,
+                        (true, _) => 40.,
+                        (false, 0) => 77.,
+                        (false, _) => 46.,
+                    }))
                     .when(index < 3, |view| view.mr(surface::css(5.)))
                     .child(
                         div()
@@ -751,113 +770,117 @@ impl Render for StudioColor {
                 )
             }))
             .collect();
-        let mut presets =
-            div()
-                .grid()
-                .grid_cols(8)
-                .m(surface::css(-5.))
-                .children(colors.into_iter().map(|(id, color, custom_id)| {
-                    let swatch = Button::new(id)
-                        .accessibility_label(
-                            color
-                                .map(|v| format!("#{v:06X}"))
-                                .unwrap_or_else(|| "No color".into()),
-                        )
-                        .disabled(!self.enabled)
-                        .size(surface::css(20.))
-                        .rounded(surface::css(3.))
-                        .overflow_hidden()
-                        .border_1()
-                        .border_color(Palette::swatch_border())
-                        .when_some(color, |view, color| view.bg(rgb(color)))
-                        .when(color.is_none(), |view| view.child(checkered()))
-                        .when(self.enabled, |view| {
-                            view.hover(|style| {
-                                style.border_color(Palette::black()).shadow(vec![BoxShadow {
-                                    inset: false,
-                                    color: Colors::white(),
-                                    offset: point(px(0.), px(0.)),
-                                    blur_radius: px(0.),
-                                    spread_radius: px(2.),
-                                }])
-                            })
+        let mut presets = div()
+            .grid()
+            .grid_cols(8)
+            .mx(surface::css(-5.))
+            .my(surface::css(if self.dropdown { -3.5 } else { -5. }))
+            .children(colors.into_iter().map(|(id, color, custom_id)| {
+                let swatch = Button::new(id)
+                    .accessibility_label(
+                        color
+                            .map(|v| format!("#{v:06X}"))
+                            .unwrap_or_else(|| "No color".into()),
+                    )
+                    .disabled(!self.enabled)
+                    .size(surface::css(20.))
+                    .rounded(surface::css(3.))
+                    .overflow_hidden()
+                    .border_1()
+                    .border_color(Palette::swatch_border())
+                    .when_some(color, |view, color| view.bg(rgb(color)))
+                    .when(color.is_none(), |view| view.child(checkered()))
+                    .when(self.enabled, |view| {
+                        view.hover(|style| {
+                            style.border_color(Palette::black()).shadow(vec![BoxShadow {
+                                inset: false,
+                                color: Colors::white(),
+                                offset: point(px(0.), px(0.)),
+                                blur_radius: px(0.),
+                                spread_radius: px(2.),
+                            }])
                         })
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            if !this.enabled {
-                                return;
-                            }
-                            this.receive_color(color, window, cx);
-                            this.write_fields(None, window, cx);
-                            this.dirty = true;
-                            this.commit(cx);
-                        }));
-                    let swatch = if let Some(id) = custom_id.filter(|_| self.enabled) {
-                        let owner = cx.weak_entity();
-                        swatch
-                            .context_menu(move |menu, window, _| {
-                                let owner = owner.clone();
-                                menu.min_w(surface::css(90.).to_pixels(window.rem_size()))
-                                    .item(PopupMenuItem::new(super::label("DELETE")).on_click(
-                                        move |_, _, cx| {
-                                            if owner
-                                                .upgrade()
-                                                .is_some_and(|owner| owner.read(cx).enabled)
-                                            {
-                                                cx.update_global::<StudioCustomColors, _>(
-                                                    |state, _| {
-                                                        state.colors.retain(|&(candidate, _)| {
-                                                            candidate != id
-                                                        });
-                                                    },
-                                                );
-                                            }
-                                        },
-                                    ))
-                            })
-                            .into_any_element()
-                    } else {
-                        swatch.into_any_element()
-                    };
-                    div().p(surface::css(5.)).child(swatch)
-                }));
+                    })
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        if !this.enabled {
+                            return;
+                        }
+                        this.receive_color(color, window, cx);
+                        this.write_fields(None, window, cx);
+                        this.dirty = true;
+                        this.commit(cx);
+                    }));
+                let swatch = if let Some(id) = custom_id.filter(|_| self.enabled) {
+                    let owner = cx.weak_entity();
+                    swatch
+                        .context_menu(move |menu, window, _| {
+                            let owner = owner.clone();
+                            menu.min_w(surface::css(90.).to_pixels(window.rem_size()))
+                                .item(PopupMenuItem::new(super::label("DELETE")).on_click(
+                                    move |_, _, cx| {
+                                        if owner
+                                            .upgrade()
+                                            .is_some_and(|owner| owner.read(cx).enabled)
+                                        {
+                                            cx.update_global::<StudioCustomColors, _>(
+                                                |state, _| {
+                                                    state
+                                                        .colors
+                                                        .retain(|&(candidate, _)| candidate != id);
+                                                },
+                                            );
+                                        }
+                                    },
+                                ))
+                        })
+                        .into_any_element()
+                } else {
+                    swatch.into_any_element()
+                };
+                div()
+                    .p(surface::css(if self.dropdown { 3.5 } else { 5. }))
+                    .child(swatch)
+            }));
         if custom.len() < 8 {
             presets = presets.child(
-                div().p(surface::css(5.)).child(
-                    Button::new("studio-custom-color-add")
-                        .accessibility_label("Add New Custom Color")
-                        .disabled(!self.enabled || self.value.is_none())
-                        .size(surface::css(20.))
-                        .rounded(surface::css(3.))
-                        .border_1()
-                        .border_color(Palette::input_border())
-                        .when(self.enabled && self.value.is_some(), |view| {
-                            view.hover(|style| style.border_color(Colors::selected()))
-                        })
-                        .when(self.enabled && self.value.is_none(), |view| {
-                            view.opacity(0.3)
-                        })
-                        .child(
-                            svg()
-                                .path("synapse/chroma-studio-add-gray.svg")
-                                .size(surface::css(14.))
-                                .text_color(Colors::helper()),
-                        )
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            if !this.enabled {
-                                return;
-                            }
-                            let Some(color) = this.value() else {
-                                return;
-                            };
-                            cx.update_global::<StudioCustomColors, _>(|state, _| {
-                                if state.colors.len() < 8 {
-                                    let id = state.next_id;
-                                    state.next_id += 1;
-                                    state.colors.push((id, color));
+                div()
+                    .p(surface::css(if self.dropdown { 3.5 } else { 5. }))
+                    .child(
+                        Button::new("studio-custom-color-add")
+                            .accessibility_label("Add New Custom Color")
+                            .disabled(!self.enabled || self.value.is_none())
+                            .size(surface::css(20.))
+                            .rounded(surface::css(3.))
+                            .border_1()
+                            .border_color(Palette::input_border())
+                            .when(self.enabled && self.value.is_some(), |view| {
+                                view.hover(|style| style.border_color(Colors::selected()))
+                            })
+                            .when(self.enabled && self.value.is_none(), |view| {
+                                view.opacity(0.3)
+                            })
+                            .child(
+                                svg()
+                                    .path("synapse/chroma-studio-add-gray.svg")
+                                    .size(surface::css(14.))
+                                    .text_color(Colors::helper()),
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                if !this.enabled {
+                                    return;
                                 }
-                            });
-                        })),
-                ),
+                                let Some(color) = this.value() else {
+                                    return;
+                                };
+                                cx.update_global::<StudioCustomColors, _>(|state, _| {
+                                    if state.colors.len() < 8 {
+                                        let id = state.next_id;
+                                        state.next_id += 1;
+                                        state.colors.push((id, color));
+                                    }
+                                });
+                            })),
+                    ),
             );
         }
         div()
@@ -870,6 +893,7 @@ impl Render for StudioColor {
                 div()
                     .w_full()
                     .h(surface::css(138.))
+                    .overflow_hidden()
                     .border_1()
                     .border_color(Palette::input_border())
                     .mb(surface::css(10.))

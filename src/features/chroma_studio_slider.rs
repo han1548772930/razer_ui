@@ -90,7 +90,7 @@ impl RenderOnce for StudioSlider {
                     }
                 });
             Interaction {
-                focus: cx.focus_handle(),
+                focus: cx.focus_handle().tab_stop(true),
                 hovered: false,
                 pressed: false,
                 _activation: activation,

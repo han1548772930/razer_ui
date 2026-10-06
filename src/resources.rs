@@ -21,6 +21,9 @@ const CHROMA_STUDIO_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/chroma-studio-embedded.rs");
 const CHROMA_STUDIO_COLOR_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/chroma-studio-color-embedded.rs");
+const KITSUNE_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/kitsune-embedded.rs");
+const GAMEPAD_DIALOG_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/gamepad-2636-embedded.rs");
 const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/host-chroma-studio-favicon.svg",
     include_bytes!("../assets/synapse/host-chroma-studio-favicon.svg"),
@@ -42,6 +45,8 @@ impl AssetSource for SynapseAssets {
             .chain(SETTINGS_WINDOW_ASSETS)
             .chain(CHROMA_STUDIO_ASSETS)
             .chain(CHROMA_STUDIO_COLOR_ASSETS)
+            .chain(KITSUNE_ASSETS)
+            .chain(GAMEPAD_DIALOG_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .find(|(key, _)| *key == path)
@@ -64,6 +69,8 @@ impl AssetSource for SynapseAssets {
                 .chain(SETTINGS_WINDOW_ASSETS)
                 .chain(CHROMA_STUDIO_ASSETS)
                 .chain(CHROMA_STUDIO_COLOR_ASSETS)
+                .chain(KITSUNE_ASSETS)
+                .chain(GAMEPAD_DIALOG_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))

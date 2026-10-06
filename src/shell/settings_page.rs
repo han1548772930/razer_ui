@@ -57,6 +57,19 @@ pub(super) struct SettingsPage {
 }
 impl EventEmitter<SettingsEvent> for SettingsPage {}
 impl SettingsPage {
+    pub(super) fn tray_double_click(&self) -> crate::preferences::TrayDoubleClickAction {
+        self.values
+            .systray_double_click
+            .unwrap_or(crate::preferences::TrayDoubleClickAction::ShowMenu)
+    }
+    pub(super) fn set_tray_double_click(
+        &mut self,
+        value: crate::preferences::TrayDoubleClickAction,
+        cx: &mut Context<Self>,
+    ) {
+        self.values.systray_double_click = Some(value);
+        self.changed(cx);
+    }
     /// Shared locale owner for the independent current `/settings/` window.
     pub(super) fn set_language(
         &mut self,

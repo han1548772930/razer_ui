@@ -115,9 +115,9 @@
     "Chroma service integration"
   ],
   "artifacts": {
-    "src/features/mouse_products.rs": "f39d366c05bcfc34d5b6dcc690bcd57d33e225d598cd9d4916ee3112559fc693",
+    "src/features/mouse_products.rs": "ac550a1c2e3f6b937a7e6f4cd14dcfb247d9622a30d7ca779cd66821ea4ba31d",
     "src/features/mouse_products_data.json": "72748f38436c0e6ae8526a0350a942ceed3250e91966fdc769755b4a00fbe78a",
-    "src/features/keyboard_products.rs": "0cbdcf1f52d1b33e54bf007d89339e052d234c6af520d97188acb5db630fdcc6",
+    "src/features/keyboard_products.rs": "e3d255fe763d05d189e746cb694749da761ed8ae6d3937de781a7695663e1719",
     "src/features/keyboard_products_data.json": "f779d71c90cbc64115a38e401ddc3c299f7144a730f50f49b6771732dd98c46d"
   }
 }

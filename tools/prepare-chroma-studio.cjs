@@ -52,6 +52,11 @@ const defaults=Object.fromEntries(Object.entries({editor:'I',device:'D',effect_l
 const names=value(6257,node(6257,'x')),effectLabels=cases(2904,'a'),effectValues=cases(2904,'c'),effectParams=cases(2904,'d');
 node(9220,'i');
 const effects=names.map(name=>({name,label:value(2904,effectLabels[name]),value:value(2904,effectValues[name]),params:value(2904,effectParams[name],{t:false}),paint_params:value(2904,effectParams[name],{t:true})}));
+for(const effect of effects){
+ const key={spectrum:'Q9',breathing:'NH',reactive:'MB',starlight:'f5'}[effect.name];
+ effect.duration_values=key?value(6257,s.exported(6257,key)):[];
+ if(key&&effect.duration_values.length!==3)throw Error(`Unexpected duration scale ${effect.name}`);
+}
 const locales={};
 for(const [locale,id]of Object.entries({en:8362,es:2011,de:2175,fr:5990,ja:7185,kr:4408,ru:3234,'pt-BR':9581,'zh-CN':1993,'zh-TW':4843})){
  locales[locale]=Object.fromEntries([...s.module(id).exports].map(([key,n])=>[key,value(id,n)]));
@@ -76,7 +81,10 @@ for(const name of assetNames){
  if(!entry)throw Error(`Asset absent from current manifest: ${relative}`);
  assets.push({name,manifest_key:entry[0],source:`${s.directory}/${relative}`,url:`https://apps.razer.com/synapse/chroma-studio/${relative}`,output:`assets/synapse/chroma-studio-${name}.svg`});
 }
-const data={defaults,effects,tools:value(6257,node(6257,'R')),zoom_levels:value(6257,node(6257,'T')),locales,assets:Object.fromEntries(assets.map(a=>[a.name,a.output.replace(/^assets\//,'')]))};
+const gradients=Object.fromEntries(Object.entries({spectrum:['Zk','BI',2],audio:['sR','kI',1],default:['dp','VD',1]}).map(([name,[presets,max,min]])=>[name,{presets:value(6257,s.exported(6257,presets)),max_stops:value(6257,s.exported(6257,max)),min_stops:min}]));
+const playback={start:value(6257,s.exported(6257,'W4')),end:value(6257,s.exported(6257,'$e')),min:value(6257,s.exported(6257,'YZ')),max:value(6257,s.exported(6257,'QG')),labels:Object.fromEntries(Object.entries(cases(126,'n')).map(([name,n])=>[name,value(126,n)]))};
+const empty_color=value(6257,s.exported(6257,'FU'));
+const data={defaults,effects,gradients,playback,empty_color,tools:value(6257,node(6257,'R')),zoom_levels:value(6257,node(6257,'T')),locales,assets:Object.fromEntries(assets.map(a=>[a.name,a.output.replace(/^assets\//,'')]))};
 const evidence={method:'Current independent Studio; static Acorn and CSS parsing, no vendor execution.',route:'/synapse/chroma-studio/',manifest:{path:`${s.directory}/asset-manifest.json`,sha256:hash(fs.readFileSync(path.join(root,s.directory,'asset-manifest.json')))},receipts,css,assets};
 const check=process.argv.includes('--check');
 for(const[file,obj]of [['src/features/chroma_studio_data.json',data],['docs/re/chroma-studio-source.json',evidence]]){

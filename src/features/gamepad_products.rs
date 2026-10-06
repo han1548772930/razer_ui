@@ -15,6 +15,10 @@ use serde_json::{Value, json};
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 use crate::{i18n::t, ui::surface};
+#[path = "gamepad_deadzone_dialog.rs"]
+mod deadzone_dialog;
+#[path = "kitsune.rs"]
+mod kitsune;
 
 #[derive(Deserialize)]
 pub(crate) struct GamepadProductSpec {
@@ -54,6 +58,7 @@ pub(crate) fn source_product(pid: u32) -> Option<&'static GamepadProductSpec> {
 }
 
 pub(crate) struct GamepadProductChanged;
+pub(crate) struct GamepadCalibrationRequested;
 
 /// 源码 `GR` 的功耗取值标签：`item.value >= 60 ? ra.pHP : ra.yvH`，同时
 /// `data.value` 在 `>= 60` 时除以 60。两个别名经导出表解析为 `MIN`
@@ -114,6 +119,7 @@ struct RangeDrag {
 }
 
 pub(crate) struct GamepadProductWorkspace {
+    layout_id: u32,
     spec: &'static GamepadProductSpec,
     range_drag: RangeDrag,
     page: String,
@@ -121,17 +127,27 @@ pub(crate) struct GamepadProductWorkspace {
     selected_button: Option<String>,
     sensitivity: bool,
     low_deadzone: Option<(String, Value)>,
+    previous_deadzones: BTreeMap<String, Value>,
+    deadzone_dialog: Option<deadzone_dialog::DialogState>,
+    thumbstick_bounds: Rc<Cell<Bounds<Pixels>>>,
     sliders: BTreeMap<String, Entity<SliderState>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
 }
 
 impl EventEmitter<GamepadProductChanged> for GamepadProductWorkspace {}
+impl EventEmitter<GamepadCalibrationRequested> for GamepadProductWorkspace {}
 
 impl GamepadProductWorkspace {
-    pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(
+        pid: u32,
+        layout_id: u32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let spec = source_product(pid).expect("audited gamepad product");
         let mut this = Self {
+            layout_id,
             spec,
             range_drag: RangeDrag::default(),
             page: "TAB_CUSTOMIZE".into(),
@@ -139,6 +155,9 @@ impl GamepadProductWorkspace {
             selected_button: None,
             sensitivity: false,
             low_deadzone: None,
+            previous_deadzones: BTreeMap::new(),
+            deadzone_dialog: None,
+            thumbstick_bounds: Rc::new(Cell::new(Bounds::default())),
             sliders: BTreeMap::new(),
             subscriptions: Vec::new(),
             syncing: false,
@@ -173,9 +192,21 @@ impl GamepadProductWorkspace {
         this
     }
 
-    pub(crate) fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            // 2636's mounted thumbstick component initializes prevLeft/Right
+            // once on entry. Continue does not replace these rollback values.
+            if self.spec.product_id == 2636 && key == "THUMBSTICKS" {
+                self.previous_deadzones.clear();
+                for side in ["leftStick", "rightStick"] {
+                    let path = format!("/controller/{side}/deadzoneValue");
+                    if let Some(value) = self.draft.pointer(&path) {
+                        self.previous_deadzones.insert(path, value.clone());
+                    }
+                }
+            }
             self.page = key.into();
+            self.dismiss_deadzone(false, window, cx);
             self.low_deadzone = None;
             cx.notify();
         }
@@ -198,6 +229,7 @@ impl GamepadProductWorkspace {
             merge_known(&mut self.draft, saved);
         }
         self.selected_button = None;
+        self.dismiss_deadzone(false, window, cx);
         self.low_deadzone = None;
         self.sync_sliders(window, cx);
         cx.notify();
@@ -685,6 +717,9 @@ impl GamepadProductWorkspace {
     }
 
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 4115 {
+            return self.kitsune_customize(cx);
+        }
         let mut left = surface::panel(t("TAB_CUSTOMIZE"), cx).child(self.spec.name.clone());
         if !self.spec.arcade {
             left = left.child(h_flex().gap_2().flex_wrap().children(
@@ -847,6 +882,7 @@ impl GamepadProductWorkspace {
     }
 
     fn thumbsticks(&self, cx: &Context<Self>) -> AnyElement {
+        let bounds_cell = self.thumbstick_bounds.clone();
         let mut page = v_flex().gap_5().child(h_flex().gap_2().children(
             [(false, "DEADZONE"), (true, "SENSITIVITY_CLUTCH")].map(|(sensitivity, label)| {
                 Button::new(SharedString::from(format!("gamepad-stick-tab-{label}")))
@@ -889,19 +925,31 @@ impl GamepadProductWorkspace {
                                 .outline()
                                 .disabled(!enabled)
                                 .selected(self.number(&path) == value)
-                                .on_click(cx.listener(move |this, _, _, cx| {
+                                .on_click(cx.listener(move |this, _, window, cx| {
                                     if !enabled {
                                         return;
                                     }
                                     if !this.sensitivity && value < 7 && this.number(&path) != value
                                     {
-                                        this.low_deadzone = Some((
-                                            path.clone(),
-                                            this.draft
-                                                .pointer(&path)
-                                                .cloned()
-                                                .expect("source deadzone"),
-                                        ));
+                                        let previous = if this.spec.product_id == 2636 {
+                                            this.previous_deadzones.get(&path)
+                                        } else {
+                                            None
+                                        }
+                                        .or_else(|| this.draft.pointer(&path))
+                                        .cloned()
+                                        .expect("source deadzone");
+                                        this.low_deadzone = Some((path.clone(), previous));
+                                        if this.spec.product_id == 2636 {
+                                            this.deadzone_dialog =
+                                                Some(deadzone_dialog::DialogState::new(window, cx));
+                                        }
+                                    }
+                                    if this.spec.product_id == 2636
+                                        && !this.sensitivity
+                                        && value >= 7
+                                    {
+                                        this.previous_deadzones.insert(path.clone(), json!(value));
                                     }
                                     this.write(&path, json!(value), cx);
                                 }))
@@ -956,7 +1004,11 @@ impl GamepadProductWorkspace {
                     )),
             );
         }
-        if let Some((path, previous)) = &self.low_deadzone {
+        if let Some((path, previous)) = self
+            .low_deadzone
+            .as_ref()
+            .filter(|_| self.spec.product_id != 2636)
+        {
             let path = path.clone();
             let previous = previous.clone();
             page = page.child(
@@ -987,7 +1039,20 @@ impl GamepadProductWorkspace {
                     ),
             );
         }
-        page.into_any_element()
+        page.relative()
+            .child(
+                canvas(
+                    move |bounds, window, _| {
+                        if bounds_cell.replace(bounds) != bounds {
+                            window.refresh();
+                        }
+                    },
+                    |_, _, _, _| (),
+                )
+                .absolute()
+                .size_full(),
+            )
+            .into_any_element()
     }
 
     /// The `displayMode=chromaApp` popup mounts this page without the product
@@ -1177,7 +1242,11 @@ impl Render for GamepadProductWorkspace {
             "TAB_CALIBRATION" => self.calibration(cx),
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
         };
-        super::product_surface::body().child(content)
+        super::product_surface::body()
+            .child(content)
+            .when(self.deadzone_dialog.is_some(), |body| {
+                body.child(self.render_deadzone_dialog(window, cx))
+            })
     }
 }
 

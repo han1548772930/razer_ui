@@ -17,6 +17,10 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 use crate::i18n::t;
 use crate::ui::surface;
+#[path = "mouse_dpi_number.rs"]
+mod dpi_number;
+#[path = "mouse_dpi_rows.rs"]
+mod dpi_rows;
 
 #[derive(Deserialize)]
 pub(crate) struct MouseProductSpec {
@@ -133,6 +137,7 @@ pub(crate) struct MouseProductWorkspace {
     draft: Value,
     sliders: BTreeMap<String, Entity<SliderState>>,
     inputs: BTreeMap<String, Entity<InputState>>,
+    dpi_numbers: BTreeMap<String, dpi_number::EditState>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
     scroll: ScrollHandle,
@@ -152,6 +157,7 @@ impl MouseProductWorkspace {
             draft: spec.profile.clone(),
             sliders: BTreeMap::new(),
             inputs: BTreeMap::new(),
+            dpi_numbers: BTreeMap::new(),
             subscriptions: Vec::new(),
             syncing: false,
             scroll: ScrollHandle::new(),
@@ -165,6 +171,9 @@ impl MouseProductWorkspace {
 
     pub(crate) fn set_page(&mut self, key: &str, _window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            for state in self.dpi_numbers.values_mut() {
+                *state = dpi_number::EditState::default();
+            }
             self.page = key.into();
             self.mapping_input = None;
             self.scroll.set_offset(point(px(0.), px(0.)));
@@ -193,6 +202,9 @@ impl MouseProductWorkspace {
             );
         }
         self.mapping_input = None;
+        for state in self.dpi_numbers.values_mut() {
+            *state = dpi_number::EditState::default();
+        }
         self.syncing = true;
         for (path, state) in &self.sliders {
             if path == "smart-preset" {
@@ -261,9 +273,32 @@ impl MouseProductWorkspace {
                 }
             }
         }
+        // Current 70 cI activates a visible row when its X/Y value changes;
+        // editing an excluded row preserves the selected stage.
+        if self.spec.product_id == 70 {
+            if let Some(rest) = path.strip_prefix(&format!("{}/", self.spec.stages_path())) {
+                if let Some((slot, axis)) = rest.split_once('/') {
+                    if matches!(axis, "X" | "Y") {
+                        if let Ok(slot) = slot.parse::<usize>() {
+                            if self
+                                .draft
+                                .pointer(&format!("{}/{slot}/Active", self.spec.stages_path()))
+                                == Some(&Value::Bool(true))
+                            {
+                                set_pointer(
+                                    &mut self.draft,
+                                    self.spec.active_path(),
+                                    json!(slot + 1),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
         self.syncing = true;
         for (other_path, slider) in &self.sliders {
-            if other_path == path {
+            if other_path == path && self.spec.product_id != 70 {
                 continue;
             }
             if let Some(value) = self.draft.pointer(other_path).and_then(Value::as_f64) {
@@ -333,23 +368,60 @@ impl MouseProductWorkspace {
                 }
             },
         ));
-        let input =
-            cx.new(|cx| InputState::new(window, cx).default_value((value as i64).to_string()));
+        let dpi_70 = self.spec.product_id == 70 && path.starts_with(self.spec.stages_path());
+        if dpi_70 {
+            self.dpi_numbers
+                .insert(path.clone(), dpi_number::EditState::default());
+        }
+        let input = cx.new(|cx| {
+            let input = InputState::new(window, cx).default_value((value as i64).to_string());
+            if dpi_70 {
+                input.validate(|text, _| {
+                    let digits = text.strip_prefix('-').unwrap_or(text);
+                    digits.len() <= 6 && digits.bytes().all(|byte| byte.is_ascii_digit())
+                })
+            } else {
+                input
+            }
+        });
         let changed_path = path.clone();
         self.subscriptions.push(cx.subscribe_in(
             &input,
             window,
             move |this, input, event, window, cx| {
+                if dpi_70 && !this.syncing && matches!(event, InputEvent::Change) {
+                    if let Some(state) = this.dpi_numbers.get_mut(&changed_path) {
+                        state.typed = true;
+                    }
+                }
+                if dpi_70 && matches!(event, InputEvent::PressEnter { .. }) {
+                    window.blur(cx);
+                    return;
+                }
                 if this.syncing
                     || !matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
                 {
                     return;
                 }
-                let Ok(value) = input.read(cx).value().parse::<f32>() else {
-                    return;
+                let value = match input.read(cx).value().parse::<f32>() {
+                    Ok(value) => value,
+                    Err(_) if dpi_70 => 0.,
+                    Err(_) => return,
                 };
                 let value = ((value / step).ceil() * step).clamp(min, max);
+                if dpi_70 {
+                    this.finish_dpi_number(&changed_path);
+                }
                 this.write_number(&changed_path, value, window, cx);
+                // 4230.handleBlur always replaces the draft with parseInput's
+                // normalized text, including when the slider already equals it.
+                if dpi_70 {
+                    this.syncing = true;
+                    input.update(cx, |input, cx| {
+                        input.set_value((value as i64).to_string(), window, cx)
+                    });
+                    this.syncing = false;
+                }
                 if let Some(slider) = this.sliders.get(&changed_path).cloned() {
                     this.syncing = true;
                     slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
@@ -548,6 +620,16 @@ impl MouseProductWorkspace {
     }
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 70 {
+            let mut right = v_flex().gap_5().child(self.polling(cx));
+            if self.spec.performance_power {
+                right = right.child(self.power(cx));
+            }
+            return surface::page_columns()
+                .child(surface::page_column(self.dpi_rows_70(cx)))
+                .child(surface::page_column(right))
+                .into_any_element();
+        }
         let count = self
             .draft
             .pointer(self.spec.stages_path())

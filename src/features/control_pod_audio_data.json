@@ -1,0 +1,133 @@
+{
+  "modes": [
+    {
+      "id": "SwitchAudioEq",
+      "content": "SWITCH_AUDIO_EQ"
+    },
+    {
+      "id": "SwitchPlaybackDevice",
+      "content": "SWITCH_PLAYBACK_DEVICE"
+    }
+  ],
+  "playback": [
+    {
+      "id": "CycleUpSoundDevice",
+      "content": "CYCLE_UP_SOUND_DEVICE"
+    },
+    {
+      "id": "CycleDownSoundDevice",
+      "content": "CYCLE_DOWN_SOUND_DEVICE"
+    },
+    {
+      "id": "ToggleSoundDevices",
+      "content": "TOGGLE_SOUND_DEVICES"
+    }
+  ],
+  "equalizer": [
+    {
+      "id": "CycleUpAudioEq",
+      "content": "CYCLE_UP_AUDIO_EQ"
+    },
+    {
+      "id": "CycleDownAudioEq",
+      "content": "CYCLE_DOWN_AUDIO_EQ"
+    },
+    {
+      "id": "SpecificAudioEq",
+      "content": "SPECIFIC_AUDIO_EQ"
+    }
+  ],
+  "presets": [
+    {
+      "content": "DEFAULT",
+      "id": "default"
+    },
+    {
+      "content": "GAME",
+      "id": "game"
+    },
+    {
+      "content": "MOVIE",
+      "id": "movie"
+    },
+    {
+      "content": "MUSIC",
+      "id": "music"
+    },
+    {
+      "content": "CUSTOM",
+      "id": "custom"
+    }
+  ],
+  "inputs": [
+    {
+      "outputType": "multimediaGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodClick",
+      "multimediaGroup": {
+        "multimediaAssignment": "MuteVolume"
+      }
+    },
+    {
+      "outputType": "multimediaGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodDoubleClick",
+      "multimediaGroup": {
+        "multimediaAssignment": "Play"
+      }
+    },
+    {
+      "outputType": "multimediaGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodTripleClick",
+      "multimediaGroup": {
+        "multimediaAssignment": "NextTrack"
+      }
+    },
+    {
+      "outputType": "audioGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodSourceClick",
+      "audioGroup": {
+        "audioAssignment": "CycleDownSoundDevice",
+        "audioMode": "SwitchPlaybackDevice"
+      }
+    },
+    {
+      "outputType": "multimediaGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodClockwise",
+      "multimediaGroup": {
+        "multimediaAssignment": "VolumeUp"
+      }
+    },
+    {
+      "outputType": "multimediaGroup",
+      "isHyperShift": false,
+      "inputType": "ControlPodInput",
+      "inputID": "ControlPodAnticlockwise",
+      "multimediaGroup": {
+        "multimediaAssignment": "VolumeDown"
+      }
+    }
+  ],
+  "labels": {
+    "x3E": "NONE",
+    "fYN": "SELECT_AUDIO_DEVICE",
+    "diY": "AUDIO_FUNCTION_DESC_AT_LEAST_ONE_AUDIO_DEVICE",
+    "RFv": "VIEW_COMPATIBLE_DEVICES",
+    "uTW": "AUDIO_FUNCTION_DESC",
+    "f_P": "DEVICE_NOT_CONNECTED_MSG",
+    "Ep9": "SAVE_REMAPPED_BUTTON_HEADER",
+    "Lvx": "SAVE_REMAPPED_BUTTON_MSG1",
+    "ENf": "SAVE_REMAPPED_BUTTON_MSG2",
+    "set": "DONT_SAVE",
+    "W0P": "SAVE",
+    "bOp": "CANCEL"
+  }
+}

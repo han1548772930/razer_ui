@@ -41335,15 +41335,15 @@
       },
       "device": {
         "streamMixerSettings": {
-          "isStreamMixerEnabled": true,
+          "isStreamMixerEnabled": false,
           "isStreamMixMonitor": true,
           "streamMixVolume": {
-            "isEnabled": true,
-            "value": 50
+            "isEnabled": false,
+            "value": 0
           },
           "playbackMixVolume": {
-            "isEnabled": true,
-            "value": 50
+            "isEnabled": false,
+            "value": 0
           }
         }
       }
@@ -41400,7 +41400,10 @@
                 "min": 0,
                 "max": 100,
                 "step": 1,
-                "enabled_by": "/device/streamMixerSettings/streamMixVolume/isEnabled"
+                "enabled_by": "/device/streamMixerSettings/streamMixVolume/isEnabled",
+                "enabled_all": [
+                  "/device/streamMixerSettings/isStreamMixerEnabled"
+                ]
               }
             ]
           },
@@ -41420,7 +41423,10 @@
                 "min": 0,
                 "max": 100,
                 "step": 1,
-                "enabled_by": "/device/streamMixerSettings/playbackMixVolume/isEnabled"
+                "enabled_by": "/device/streamMixerSettings/playbackMixVolume/isEnabled",
+                "enabled_all": [
+                  "/device/streamMixerSettings/isStreamMixerEnabled"
+                ]
               }
             ]
           }
@@ -41491,15 +41497,15 @@
       },
       "device": {
         "streamMixerSettings": {
-          "isStreamMixerEnabled": true,
+          "isStreamMixerEnabled": false,
           "isStreamMixMonitor": true,
           "streamMixVolume": {
-            "isEnabled": true,
-            "value": 50
+            "isEnabled": false,
+            "value": 0
           },
           "playbackMixVolume": {
-            "isEnabled": true,
-            "value": 50
+            "isEnabled": false,
+            "value": 0
           }
         }
       }
@@ -41556,7 +41562,10 @@
                 "min": 0,
                 "max": 100,
                 "step": 1,
-                "enabled_by": "/device/streamMixerSettings/streamMixVolume/isEnabled"
+                "enabled_by": "/device/streamMixerSettings/streamMixVolume/isEnabled",
+                "enabled_all": [
+                  "/device/streamMixerSettings/isStreamMixerEnabled"
+                ]
               }
             ]
           },
@@ -41576,7 +41585,10 @@
                 "min": 0,
                 "max": 100,
                 "step": 1,
-                "enabled_by": "/device/streamMixerSettings/playbackMixVolume/isEnabled"
+                "enabled_by": "/device/streamMixerSettings/playbackMixVolume/isEnabled",
+                "enabled_all": [
+                  "/device/streamMixerSettings/isStreamMixerEnabled"
+                ]
               }
             ]
           }

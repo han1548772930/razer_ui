@@ -223,6 +223,24 @@
     },
     {
       "module": 9762,
+      "name": "ge",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33696,
+      "end": 33901,
+      "source": "function ge(e){let t;switch(e.type){case\"showMenu\":t=(0,h.JN)(u.DROPDOWN_SYSTRAY_1);break;case\"launch\":t=\"\".concat((0,h.JN)(u.DROPDOWN_SYSTRAY_2),\" \").concat(RazerApp.getAppTitle(e.payload,\"en\"))}return t}"
+    },
+    {
+      "module": 9762,
+      "name": "ve",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33910,
+      "end": 33933,
+      "source": "\"systrayDblClickAction\""
+    },
+    {
+      "module": 9762,
       "name": "de",
       "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
       "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
@@ -238,6 +256,24 @@
       "offset": 34933,
       "end": 35330,
       "source": "()=>(0,f.jsx)(\"div\",{id:\"settings\",className:\"settings\",children:(0,f.jsx)(ue.A,{children:(0,f.jsxs)(pe.A,{children:[(0,f.jsx)(me.A,{children:(0,f.jsx)(he.A,{title:u.TEXT_QUICK_LAUNCHER,children:(0,f.jsx)(x,{})})}),(0,f.jsxs)(me.A,{children:[(0,f.jsx)(he.A,{title:u.GENERAL,children:(0,f.jsx)(fe,{})}),(0,f.jsx)(he.A,{title:u.TEXT_WIDGETS,children:(0,f.jsx)(de,{name:\"setting-widget\"})})]})]})})})"
+    },
+    {
+      "module": 6584,
+      "name": "u",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 8019,
+      "end": 11431,
+      "source": "class u extends o.Component{constructor(e){super(e),this.bodyOnClick=e=>{let t=e.target;const n=this.dropdown.current;n&&!n.contains(t)&&this.state.shouldRender&&(console.log(\"\\ud83d\\ude80 ~ file: Dropdown.js:73 ~ Dropdown ~ current:\",n,t),this.hideDropdown())},this.parentOnMouseEnter=()=>{this.setState({parentOnHover:!0})},this.parentOnMouseLeave=()=>{this.setState({parentOnHover:!1})},this.addParentEventListeners=()=>{(this.parentNodes=document.querySelectorAll(\".dropdown-item.parent\")).forEach(e=>{e.addEventListener(\"mouseenter\",this.parentOnMouseEnter),e.addEventListener(\"mouseleave\",this.parentOnMouseLeave)})},this.removeParentEventListeners=()=>{const e=this.parentNodes;this.setState({parentOnHover:!1}),Array.isArray(e)&&e.forEach(e=>{e.addEventListener(\"mouseenter\",this.parentOnMouseEnter),e.addEventListener(\"mouseleave\",this.parentOnMouseLeave)})},this.showDropdown=()=>{clearTimeout(this._timeout),this.setState({shouldRender:!0},()=>{this._timeout=setTimeout(()=>{const e=this.dropdown.current,t=this.props,n=t.maxHeight,o=t.target,i=t.targetPosition,a=Math.min(e.scrollHeight+2,\"number\"===typeof n?n:1/0);let r={};if(o){const t=function(e){let t={x:0,y:0,width:0,height:0};const n=document.getElementById(\"settings\");if(!n)return t;const s=\"string\"===typeof e?document.getElementById(e):e;if(!s)return t;const o=n.getBoundingClientRect(),i=s.getBoundingClientRect();return{x:i.left-o.left,y:i.top-o.top,width:i.width,height:i.height}}(o);let n=t.x,a=t.y;\"center\"===i?(n+=t.width/2,a+=t.height/2):(a+=t.height,r.minWidth=t.width),n+e.offsetWidth>window.innerWidth&&(n-=e.offsetWidth),r=(0,s.A)((0,s.A)({},r),{},{position:\"fixed\",left:n,top:a})}this.setState({height:a,style:r},()=>{const t=e.querySelector(\".active\");t&&(e.scrollTop=t.offsetTop),this._timeout=setTimeout(()=>{this.props.onShown(),this.setState({overflowY:\"number\"===typeof n&&e.scrollHeight>n?\"auto\":\"hidden\"}),this.addParentEventListeners()},100)})},100)})},this.hideDropdown=()=>{clearTimeout(this._timeout),this.removeParentEventListeners(),this.setState({height:0,overflowY:\"hidden\"},()=>{this._timeout=setTimeout(()=>{this.setState({shouldRender:!1},this.props.onHidden)},100)})},this.state={shouldRender:e.isMounted,height:0,overflowY:\"hidden\",position:void 0,top:void 0,left:void 0,parentOnHover:!1},this.dropdown=(0,o.createRef)()}componentDidMount(){this.props.isMounted&&this.showDropdown(),document.body.addEventListener(\"mousedown\",this.bodyOnClick)}componentDidUpdate(e){const t=this.props,n=t.isMounted,s=t.maxHeight;if(e.isMounted!==n&&(n?this.showDropdown():this.hideDropdown()),e.maxHeight!==s&&n&&\"number\"!==typeof s){const e=this.dropdown.current;this.setState({height:Math.min(e.scrollHeight+2,1/0)})}}componentWillUnmount(){document.body.removeEventListener(\"mousedown\",this.bodyOnClick),this.removeParentEventListeners(),clearTimeout(this._timeout)}render(){if(!this.state.shouldRender)return null;const e=this.dropdown,t=this.props,n=t.className,o=t.children,i=t.maxHeight,a=t.onMouseDown,r=t.target,c=t.withPortal,u=t.position,p=this.state,h=p.height,m=p.overflowY,g=p.parentOnHover,v=p.style,f=(0,d.jsx)(\"div\",{ref:e,onMouseDown:a,className:\"dropdown-razer \".concat(u,\" \").concat(n,\" \").concat(h>0?\"show\":\"\",\" \").concat(c?\"with-portal\":\"\"),style:(0,s.A)((0,s.A)({maxHeight:i,overflowY:g?\"visible\":m,height:\"\".concat(h,\"px\")},v),{},{padding:0}),children:o});return r&&c?(0,d.jsx)(l,{children:f}):f}}"
+    },
+    {
+      "module": 6584,
+      "name": "h",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 11536,
+      "end": 12169,
+      "source": "(0,o.forwardRef)((e,t)=>{let n,i=e.className,r=e.type,c=e.onClick,l=e.value,u=e.placeholder,h=e.icon,m=e.disabled,g=e.dropdownProps,v=e.children;if(\"icon\"===r)n=(0,d.jsxs)(o.Fragment,{children:[(0,d.jsx)(\"div\",{style:h?{backgroundImage:\"url(\".concat(h,\")\")}:null,className:\"icon\"}),(0,d.jsx)(\"div\",{onClick:c,className:\"box\",children:l||u})]});else n=(0,d.jsx)(\"div\",{onClick:c,className:\"box\",children:l||u});return(0,d.jsxs)(\"div\",{ref:t,className:\"dropdown-selector \".concat(i,\" \").concat(a()({active:g&&g.isMounted,disabled:m,icon:\"icon\"===r,\"disabled-2\":!l})),children:[n,(0,d.jsx)(p,(0,s.A)((0,s.A)({},g),{},{children:v}))]})})"
     },
     {
       "module": 3414,

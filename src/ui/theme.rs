@@ -1,6 +1,76 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// 1382 MapAudio inline declarations and shared radio CSS.
+pub(crate) struct ControlPodAudioColors;
+impl ControlPodAudioColors {
+    pub(crate) fn warning_panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn warning_backdrop() -> Hsla {
+        rgba(0x00000080).into()
+    }
+    pub(crate) fn warning_button_border() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn warning_secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn warning_secondary_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn error() -> Hsla {
+        rgb(0xfd4949).into()
+    }
+    pub(crate) fn radio_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+    pub(crate) fn selected() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+}
+
+/// Current 2636 `.alert-backdrop`, `.alert-container` and deadzone disclosure.
+pub(crate) struct GamepadDialogColors;
+impl GamepadDialogColors {
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x111111b3).into()
+    }
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn detail() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn secondary_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn primary() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn primary_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+    pub(crate) fn shadow() -> Hsla {
+        rgba(0x00000033).into()
+    }
+}
+
 /// Current independent Settings `.installed-software .action`.
 pub(crate) struct SettingsWindowColors;
 impl SettingsWindowColors {

@@ -48,6 +48,7 @@ mod release_notes;
 mod runtime_page;
 mod service_pages;
 mod settings_page;
+mod settings_systray_action;
 mod settings_window;
 mod tray;
 use introduction_tour::TourKind;

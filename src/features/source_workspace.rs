@@ -64,6 +64,23 @@ impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    /// Reserved for the current host's observed validDevices stream, never preview data.
+    #[expect(
+        dead_code,
+        reason = "Current host runtime publisher is not yet connected"
+    )]
+    pub(crate) fn observe_pod_runtime_devices(
+        &mut self,
+        devices: Vec<super::audio_products::RuntimeAudioDevice>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_pod_runtime_devices(devices, window, cx)
+            });
+        }
+    }
     pub(crate) fn observe_oled_runtime(
         &mut self,
         observation: super::OledRuntimeObservation,
@@ -371,12 +388,28 @@ impl SourceProductWorkspace {
             FamilyBody::Keyboard(body)
         } else if super::gamepad_products::source_product(device.product_id).is_some() {
             let body = cx.new(|cx| {
-                super::gamepad_products::GamepadProductWorkspace::new(device.product_id, window, cx)
+                super::gamepad_products::GamepadProductWorkspace::new(
+                    device.product_id,
+                    device.layout_id,
+                    window,
+                    cx,
+                )
             });
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self, body, _: &super::gamepad_products::GamepadProductChanged, cx| {
                     this.capture(body.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe_in(
+                &body,
+                window,
+                |this: &mut Self,
+                 _,
+                 _: &super::gamepad_products::GamepadCalibrationRequested,
+                 window,
+                 cx| {
+                    this.set_page_key("TAB_CALIBRATION", window, cx);
                 },
             ));
             FamilyBody::Gamepad(body)
@@ -398,6 +431,24 @@ impl SourceProductWorkspace {
                 &body,
                 |this: &mut Self, body, _: &super::audio_products::AudioProductChanged, cx| {
                     this.capture(body.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe_in(
+                &body,
+                window,
+                |this: &mut Self,
+                 _,
+                 navigation: &super::audio_products::AudioNavigation,
+                 window,
+                 cx| {
+                    match navigation {
+                        super::audio_products::AudioNavigation::Page(page) => {
+                            this.set_page(*page, window, cx)
+                        }
+                        super::audio_products::AudioNavigation::History(forward) => {
+                            this.step_page_history(*forward, window, cx)
+                        }
+                    }
                 },
             ));
             FamilyBody::Audio(body)
@@ -897,6 +948,17 @@ impl SourceProductWorkspace {
         if self.page == Some(page) {
             return;
         }
+        if let FamilyBody::Audio(body) = &self.body {
+            if body.update(cx, |body, cx| {
+                body.defer_pod_navigation(
+                    super::audio_products::AudioNavigation::Page(page),
+                    window,
+                    cx,
+                )
+            }) {
+                return;
+            }
+        }
         self.page_history.truncate(self.page_history_index + 1);
         self.page_history.push(page);
         self.page_history_index = self.page_history.len() - 1;
@@ -920,6 +982,17 @@ impl SourceProductWorkspace {
     ) {
         if !self.can_step_history(forward) {
             return;
+        }
+        if let FamilyBody::Audio(body) = &self.body {
+            if body.update(cx, |body, cx| {
+                body.defer_pod_navigation(
+                    super::audio_products::AudioNavigation::History(forward),
+                    window,
+                    cx,
+                )
+            }) {
+                return;
+            }
         }
         if forward {
             self.page_history_index += 1;

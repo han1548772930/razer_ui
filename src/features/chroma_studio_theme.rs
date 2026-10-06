@@ -3,6 +3,33 @@ use gpui_kit::*;
 
 pub(super) struct Colors;
 impl Colors {
+    pub(super) fn checkbox_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+    pub(super) fn checkbox_hover() -> Hsla {
+        rgb(0x7ce26b).into()
+    }
+    pub(super) fn checkbox_pressed() -> Hsla {
+        rgb(0x2f951e).into()
+    }
+    pub(super) fn spinner_hover() -> Hsla {
+        rgba(0xffffff1a).into()
+    }
+    pub(super) fn menu_hover() -> Hsla {
+        rgb(0x1a1a1a).into()
+    }
+    pub(super) fn dropdown_arrow() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(super) fn black() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(super) fn input_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(super) fn gradient_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
     pub(super) fn helper() -> Hsla {
         rgb(0x707070).into()
     }

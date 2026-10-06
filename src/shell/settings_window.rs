@@ -50,7 +50,7 @@ fn source() -> &'static Source {
             .expect("audited settings data")
     })
 }
-fn text(key: &str) -> String {
+pub(super) fn text(key: &str) -> String {
     source()
         .translations
         .get(&i18n::locale().to_lowercase())
@@ -70,6 +70,7 @@ fn language_choices() -> Vec<Choice> {
 pub(super) struct SettingsWindow {
     selected: String,
     language: Entity<SelectState<Vec<Choice>>>,
+    tray_action: Entity<super::settings_systray_action::SystrayActionSelector>,
     focus: FocusHandle,
     _subscriptions: Vec<Subscription>,
 }
@@ -93,6 +94,8 @@ impl SettingsWindow {
                 }
             },
         );
+        let tray_action = cx
+            .new(|_| super::settings_systray_action::SystrayActionSelector::new(settings.clone()));
         let subscription = cx.subscribe_in(&language, window, move |_, _, event, window, cx| {
             if let SelectEvent::Confirm(Some(code)) = event {
                 settings.update(cx, |settings, cx| settings.set_language(code, window, cx));
@@ -105,6 +108,7 @@ impl SettingsWindow {
         Self {
             selected: source().nav[0].clone(),
             language,
+            tray_action,
             focus,
             _subscriptions: vec![subscription, language_observer],
         }
@@ -170,14 +174,7 @@ impl SettingsWindow {
                     .text_color(cx.theme().muted_foreground)
                     .child(text("SYSTRAY_ICON_DESC")),
             )
-            .child(
-                div()
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .px(surface::css(10.))
-                    .py(surface::css(4.))
-                    .child(text("DROPDOWN_SYSTRAY_1")),
-            );
+            .child(self.tray_action.clone());
         h_flex()
             .items_start()
             .flex_wrap()
@@ -365,6 +362,8 @@ impl Render for SettingsWindow {
                                 false,
                                 cx.listener(|this, _, _, cx| {
                                     this.selected = source().nav[0].clone();
+                                    this.tray_action
+                                        .update(cx, |selector, cx| selector.unmount(cx));
                                     cx.notify();
                                 }),
                                 window,
@@ -410,6 +409,10 @@ impl Render for SettingsWindow {
                         )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.selected = target.clone();
+                            if target != "TEXT_SYSTRAY_SETTING" {
+                                this.tray_action
+                                    .update(cx, |selector, cx| selector.unmount(cx));
+                            }
                             cx.notify();
                         }))
                     })),

@@ -170,7 +170,29 @@ for(const p of evidence){
    sections.push({title:isMic?'MIC_EQUALIZER':'AUDIO_EQUALIZER',controls:[],equalizer:kind});
   }
   // The stream bus is a reducer on some microphones and profile-owned on others.
-  if(pg.key==='STREAM_MIXER_HEADER'&&!draft.profile.streamMixerSettings&&draft.profile.isStreamMixerEnabled!==undefined){
+  if(pg.key==='STREAM_MIXER_HEADER'&&[3334,3337].includes(Number(p.product_id))){
+   // These current roots select streamMixerReducer, not DEFAULTPROFILE.
+   // Recheck both the selector and the reducer literal before using its defaults.
+   const state=states.find(s=>s.symbol==='Wn'&&s.fields.includes('inputChannels'));
+   if(!state)throw Error(`Missing Stream Mixer reducer initial state: ${p.product_id}`);
+   const current=read(state.path),sha256=crypto.createHash('sha256').update(current).digest('hex');
+   if(sha256!==p.sha256||current.slice(state.offset,state.end)!==state.source)throw Error(`Stale Stream Mixer initial state: ${p.product_id}`);
+   const start=current.indexOf('yU=(0,h.connect)');
+   if(start<0)throw Error(`Missing Stream Mixer selector: ${p.product_id}`);
+   const connected=acorn.parseExpressionAt(current,start+3,{ecmaVersion:'latest'});
+   const selector=connected.callee?.arguments?.[0];
+   if(selector?.type!=='ArrowFunctionExpression'||selector.body.type!=='ObjectExpression')throw Error('Unexpected Stream Mixer selector');
+   const initial=literal(acorn.parseExpressionAt(current,state.offset,{ecmaVersion:'latest'}));
+   const fields=['isStreamMixerEnabled','isStreamMixMonitor','streamMixVolume','playbackMixVolume'];
+   for(const field of fields){
+    const value=selector.body.properties.find(prop=>key(prop.key)===field)?.value;
+    if(value?.type!=='MemberExpression'||key(value.property)!==field||value.object?.type!=='MemberExpression'||key(value.object.property)!=='streamMixerReducer'||value.object.object?.name!==selector.params[0]?.name||initial[field]===undefined)throw Error(`Unexpected Stream Mixer field source: ${field}`);
+   }
+   draft.device.streamMixerSettings=Object.fromEntries(fields.map(field=>[field,structuredClone(initial[field])]));
+   supplementary_source.push({purpose:'Stream Mixer reducer initial state',path:state.path,sha256,offset:state.offset,end:state.end,source:state.source});
+   supplementary_source.push({purpose:'Stream Mixer state selector',path:state.path,sha256,offset:selector.start,end:selector.end,source:current.slice(selector.start,selector.end)});
+  }
+  if(pg.key==='STREAM_MIXER_HEADER'&&!draft.profile.streamMixerSettings&&!draft.device.streamMixerSettings&&draft.profile.isStreamMixerEnabled!==undefined){
    draft.device.streamMixerSettings=Object.fromEntries(['isStreamMixerEnabled','isStreamMixMonitor','streamMixVolume','playbackMixVolume'].map(k=>[k,structuredClone(draft.profile[k])]));
    // These products explicitly declare their physical headphone/mic channels
    // nonexistent. Do not fabricate those rows from shared DEFAULTPROFILE data.
@@ -426,6 +448,20 @@ for(const p of evidence){
     }
     sections.push({title:'AUDIO_MODE',description:'AUDIO_MODE_CONTENT',controls:[{path:'/profile/name',label:'AUDIO_MODE_BUTTON',kind:'unavailable'},{path:'/profile/name',label:'FAQ',kind:'link',url:'https://mysupport.razer.com/app/answers/detail/a_id/13581'}]});
     gaps.push('Control Pod currently supports source multimedia, default playback cycling and disable drafts only; keyboard, mouse, macro, profile, lighting, launch, text and dial assignment editors, product artwork, tutorials and pairing remain incomplete');
+   }
+  }
+  // Independently re-audited current 3334/3337 roots pass !C to every uU
+  // fader, where C is the master switch. Retain the bus's own gate as well.
+  if([3334,3337].includes(Number(p.product_id))&&pg.key==='STREAM_MIXER_HEADER'){
+   const component=pg.components.filter(c=>c.source.includes('C=e.isStreamMixerEnabled')&&c.source.includes('isDisable:!C')).sort((a,b)=>(a.end-a.offset)-(b.end-b.offset))[0];
+   if(!component)throw Error(`Missing audited Stream Mixer gate: ${p.product_id}`);
+   const current=read(component.path),sha256=crypto.createHash('sha256').update(current).digest('hex');
+   if(sha256!==p.sha256||current.slice(component.offset,component.end)!==component.source)throw Error(`Stale Stream Mixer source: ${p.product_id}`);
+   supplementary_source.push({purpose:'Stream Mixer master gate',path:component.path,sha256,offset:component.offset,end:component.end,source:component.source});
+   for(const section of sections)for(const control of section.controls){
+    if(control.kind==='slider'&&control.path.includes('/streamMixerSettings/')){
+     control.enabled_all=[control.path.split('/streamMixerSettings/')[0]+'/streamMixerSettings/isStreamMixerEnabled'];
+    }
    }
   }
   pages.push({key:pg.key,sections});

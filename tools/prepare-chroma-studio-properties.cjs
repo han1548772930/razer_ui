@@ -5,7 +5,7 @@ const {walk,key,hash}=require('./webpack-source.cjs');
 const {parseCSS}=require('./css-source.cjs');
 const root=path.resolve(__dirname,'..');
 const roots={ambient:1958,audio:9120,breathing:2777,'chroma-generate':2474,fire:5591,reactive:7518,ripple:5305,spectrum:8552,starlight:6548,static:3181,tidal:8154,wave:1591,wheel:8379};
-const shared={color:1698,color_dropdown:16,gradient:3690,playback:5805,slider_stepper:768,number_input:2245,slider:2132,duration:1991,custom_colors:4809};
+const shared={checkbox:9741,color:1698,color_dropdown:16,gradient:3690,dropdown_selector:99,dropdown:1592,gradient_css:3968,playback:5805,slider_stepper:768,number_input:2245,slider:2132,duration:1991,custom_colors:4809};
 function value(id,n,seen=new Set()){
  if(!n||seen.has(n))throw Error('Unresolved literal');
  seen=new Set([...seen,n]); const v=c=>value(id,c,seen);
@@ -95,15 +95,16 @@ for(const [name,id] of Object.entries(roots))for(const control of controls[name]
 const receipts=ids.map(id=>({module:id,...s.receipt(id,s.module(id).fn)}));
 for(const[id,names]of [[4264,['se']],[9286,['R','N','P','U']],[1638,['j']],[9870,['d']],[2925,['a']],[7155,['c']]])for(const name of names)receipts.push({module:id,symbol:name,...s.receipt(id,s.binding(id,name))});
 const manifestPath=`${s.directory}/asset-manifest.json`,manifest=JSON.parse(fs.readFileSync(path.join(root,manifestPath),'utf8'));
-const css=[],missingCSS=[];
+const css=[],missingCSS=[],keyframes=[];
 for(const relative of [...new Set(Object.values(manifest.files))].filter(v=>v.endsWith('.css'))){
  const file=`${s.directory}/${relative.replace(/^\.\//,'')}`;
  if(!fs.existsSync(path.join(root,file))){missingCSS.push(file);continue;}
  const raw=fs.readFileSync(path.join(root,file),'utf8');
- const rules=parseCSS(raw).filter(r=>/panel|section|input-label|color|gradient|slider|stepper|playback|screen|ambient|generate|center-point|direction|duration-preview/.test(r.selector));
+ for(const match of raw.matchAll(/@keyframes (tickTop|tickBottom)\{(?:[^{}]|\{[^{}]*\})*\}/g))keyframes.push({path:file,sha256:hash(raw),name:match[1],offset:match.index,source:match[0]});
+ const rules=parseCSS(raw).filter(r=>/panel|section|input-label|color|gradient|slider|stepper|playback|screen|ambient|generate|center-point|direction|duration-preview|dropdown|btn-icon|checkbox|tickTop|tickBottom/.test(r.selector));
  if(rules.length)css.push({path:file,sha256:hash(raw),rules});
 }
-const evidence={method:'Current manifest-declared JavaScript parsed as Acorn AST; literal extraction and JSX inventory only. No vendor code execution. Null in extracted literals represents source undefined.',manifest:{path:manifestPath,sha256:hash(fs.readFileSync(path.join(root,manifestPath)))},receipts,jsx:Object.fromEntries(ids.map(id=>[id,inventory(id)])),css,missing_css:missingCSS};
+const evidence={method:'Current manifest-declared JavaScript parsed as Acorn AST; literal extraction and JSX inventory only. No vendor code execution. Null in extracted literals represents source undefined.',manifest:{path:manifestPath,sha256:hash(fs.readFileSync(path.join(root,manifestPath)))},receipts,jsx:Object.fromEntries(ids.map(id=>[id,inventory(id)])),css,keyframes,missing_css:missingCSS};
 for(const[file,obj]of [['src/features/chroma_studio_properties_data.json',data],['docs/re/chroma-studio-properties-source.json',evidence]]){
  const text=JSON.stringify(obj,null,2)+'\n',target=path.join(root,file);
  if(process.argv.includes('--check')){if(fs.readFileSync(target,'utf8')!==text)throw Error(`Stale ${file}`);}else fs.writeFileSync(target,text);

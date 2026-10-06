@@ -17,10 +17,26 @@ use serde_json::Value;
 use std::{collections::BTreeMap, sync::OnceLock};
 #[path = "chroma_studio_canvas.rs"]
 mod studio_canvas;
+#[path = "chroma_studio_checkbox.rs"]
+mod studio_checkbox;
 #[path = "chroma_studio_color.rs"]
 mod studio_color;
+#[path = "chroma_studio_color_dropdown.rs"]
+mod studio_color_dropdown;
+#[path = "chroma_studio_dropdown.rs"]
+mod studio_dropdown;
+#[path = "chroma_studio_duration.rs"]
+mod studio_duration;
+#[path = "chroma_studio_gradient.rs"]
+mod studio_gradient;
+#[path = "chroma_studio_gradient_data.rs"]
+mod studio_gradient_data;
+#[path = "chroma_studio_gradient_preset.rs"]
+mod studio_gradient_preset;
 #[path = "chroma_studio_layers.rs"]
 mod studio_layers;
+#[path = "chroma_studio_playback.rs"]
+mod studio_playback;
 #[path = "chroma_studio_properties.rs"]
 mod studio_properties;
 #[path = "chroma_studio_region_preset.rs"]
@@ -29,11 +45,16 @@ mod studio_region_preset;
 mod studio_slider;
 #[path = "chroma_studio_theme.rs"]
 mod theme;
+use studio_gradient_data::GradientDefinition;
+use studio_playback::PlaybackSource;
 use theme::Colors;
 
 #[derive(Deserialize)]
 struct Source {
     effects: Vec<Effect>,
+    gradients: BTreeMap<String, GradientDefinition>,
+    playback: PlaybackSource,
+    empty_color: u32,
     tools: Vec<String>,
     zoom_levels: Vec<u32>,
     locales: BTreeMap<String, BTreeMap<String, String>>,
@@ -46,6 +67,7 @@ struct Effect {
     value: u32,
     params: Value,
     paint_params: Value,
+    duration_values: Vec<u64>,
 }
 fn source() -> &'static Source {
     static SOURCE: OnceLock<Source> = OnceLock::new();

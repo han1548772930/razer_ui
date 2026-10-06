@@ -823,6 +823,27 @@ impl KeyboardProductWorkspace {
                     .checked(enabled)
                     .disabled(true),
             )
+            .children(
+                // Current 716 Gaming Mode: T is derived from the button list;
+                // the read-only Copilot row mirrors isWindowsKeyDisabled.
+                // Other products require their own mounted-source audit.
+                (self.spec.product_id == 716
+                    && self
+                        .spec
+                        .keys
+                        .iter()
+                        .any(|key| matches!(key["inputID"].as_str(), Some("DKM_D2" | "DKM_F6"))))
+                .then(|| {
+                    Checkbox::new("keyboard-game-mode-copilot")
+                        .label(t("DISABLE_COPILOT_KEY"))
+                        .checked(
+                            self.draft["gamingMode"]["isWindowsKeyDisabled"]
+                                .as_bool()
+                                .unwrap_or(false),
+                        )
+                        .disabled(true)
+                }),
+            )
             .child(self.toggle(
                 "/gamingMode/isAltTabDisabled",
                 t("DISABLE_ALT_TAB"),

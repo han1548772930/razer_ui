@@ -91,8 +91,7 @@ services, quick-launch persistence and notification service are not connected.
 The Software and Widgets collections remain at their source initial empty state;
 this is not evidence that the machine has no installed Razer applications. No
 installed app entries, update progress, successful writes or widget records are
-invented. The five empty launcher slots are visibly unavailable. The source
-default systray action is shown as static text, not a functional dropdown.
+invented. The five empty launcher slots are visibly unavailable. The empty-catalog systray action now has a native dropdown and local preference persistence (see the dated update below). Host-derived launch options remain unconnected.
 
 The source's toolbar account/status/feedback/Settings integrations,
 full launcher popup/drag behavior, runtime
@@ -112,3 +111,17 @@ behavior have not been run or visually verified under the user's prohibition.
   passed.
 - Application/build/test execution was not performed. The parent task owns the
   unified permitted `cargo check --locked --all-targets` result.
+
+
+## 2026-10-06: empty-catalog systray action
+
+`settings_systray_action.rs` now mounts the source's `showMenu` option when the host app list is unavailable. This is the option that 9762:fe includes even with `app.items=[]`; no installed apps are inferred from the local code or package catalog. The new local `TrayDoubleClickAction` currently supports only this known option. Old workspaces omit the field and retain the source default; choosing the option stores `{type:"showMenu"}` within local preferences through SettingsPage's existing Changed/save-auxiliary chain. The tray double-click handler now reads that same state owner. It does not modify the official host's localStorage or call a DLL.
+
+The trigger uses the current `sys-icon-dropdown-selector` 200×27px dimensions, 6/30px horizontal padding, 10×5px CSS triangle geometry and 100ms arrow transition. The one menu item uses the overriding current dropdown CSS: 14px text, 1.36 line height, 4×6px padding, square corners, selected green and hover background. The popup starts at zero height, waits 100ms, then expands over 100ms; closing shrinks before unmounting after 100ms. Mouse clicks on an already-open trigger are ignored. Leaving the Systray page or refreshing clears its retained popup and timer.
+
+Remaining: real app-catalog arrival, all launch choices and launch execution, host preference synchronization, the trigger border/item hover color transitions, full keyboard parity and exact popup edge/cascade behavior. Base Popover owns keyboard focus, Escape and outside dismissal; this has not been visually or interactively verified. This change repairs the missing empty-state UI, not the whole independent audit item D or whole Settings application.
+
+The source extractor now records 9762:ge/ve and 6584:u/h in addition to the previous component evidence: 33 AST receipts, 556 CSS rules, 10 locales. `cargo fmt --all`, `cargo check --locked --all-targets`, Settings source `--check` and embedded JSON validation passed (49 documents, 0 failures, 4 existing skips; 3 existing Rust unused-method warnings). No app, build, test, installer, vendor JavaScript or DLL execution was performed.
+
+
+Independent follow-up caught and the parent fixed the outside-dismissal timing: trigger active state now survives the 100ms collapse and clears on unmount, while selecting the menu item clears it immediately. This preserves 6584's onHidden versus 9762's direct selection distinction. The broader D gaps above remain open.

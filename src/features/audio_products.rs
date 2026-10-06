@@ -16,6 +16,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+#[path = "control_pod_audio.rs"]
+mod control_pod_audio;
+pub(crate) use control_pod_audio::RuntimeAudioDevice;
 #[path = "audio_demo.rs"]
 mod demo;
 #[path = "audio_nommo.rs"]
@@ -26,6 +29,8 @@ mod nommo_effects;
 mod oled;
 #[path = "audio_oled_home.rs"]
 mod oled_home;
+#[path = "stream_mixer_number.rs"]
+mod stream_mixer_number;
 pub(crate) use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
 
 #[derive(Deserialize)]
@@ -56,6 +61,9 @@ struct AudioControl {
     options: Vec<AudioOption>,
     #[serde(default)]
     enabled_by: Option<String>,
+    /// Additional source-confirmed gates, combined with the local bus switch.
+    #[serde(default)]
+    enabled_all: Vec<String>,
     #[serde(default)]
     exclusive_with: Vec<String>,
     #[serde(default)]
@@ -164,11 +172,17 @@ pub(crate) fn supports_chroma_lighting_page(pid: u32) -> bool {
 }
 pub(crate) struct AudioProductChanged;
 pub(crate) struct AudioStudioRequested;
+#[derive(Clone)]
+pub(crate) enum AudioNavigation {
+    Page(crate::product::ProductPageId),
+    History(bool),
+}
 pub(crate) struct AudioProductWorkspace {
     spec: &'static AudioProductSpec,
     page: String,
     draft: Value,
     sliders: BTreeMap<String, Entity<SliderState>>,
+    mixer_numbers: BTreeMap<String, Entity<stream_mixer_number::MixerNumber>>,
     selects: BTreeMap<String, Entity<SelectState<Vec<Choice>>>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
@@ -179,9 +193,13 @@ pub(crate) struct AudioProductWorkspace {
     nommo_effects: Option<nommo_effects::NommoEffectsState>,
     oled_home: Option<oled_home::OledHomeState>,
     demo: Option<Entity<demo::AudioDemo>>,
+    pod_audio_editor: Option<(String, Entity<control_pod_audio::AudioEditor>)>,
+    pod_audio_subscription: Option<Subscription>,
+    pod_runtime_devices: Vec<RuntimeAudioDevice>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
 impl EventEmitter<AudioStudioRequested> for AudioProductWorkspace {}
+impl EventEmitter<AudioNavigation> for AudioProductWorkspace {}
 
 impl AudioProductWorkspace {
     pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -191,6 +209,7 @@ impl AudioProductWorkspace {
             page: spec.pages.first().map_or(String::new(), |p| p.key.clone()),
             draft: spec.draft.clone(),
             sliders: BTreeMap::new(),
+            mixer_numbers: BTreeMap::new(),
             selects: BTreeMap::new(),
             subscriptions: Vec::new(),
             syncing: false,
@@ -200,6 +219,9 @@ impl AudioProductWorkspace {
             nommo_effects: nommo_effects::NommoEffectsState::new(pid, window, cx),
             oled_home: oled_home::OledHomeState::new(pid),
             demo: demo::AudioDemo::for_product(pid, cx),
+            pod_audio_editor: None,
+            pod_audio_subscription: None,
+            pod_runtime_devices: Vec::new(),
         };
         this.initialize_equalizers();
         this.initialize_nommo_draft();
@@ -220,6 +242,7 @@ impl AudioProductWorkspace {
                     window,
                     cx,
                 );
+                this.add_mixer_number(control, window, cx);
             } else if control.kind == "select" && !this.selects.contains_key(&control.path) {
                 // Option identity is its serialized source value, not its translated label.
                 let choices = control
@@ -300,6 +323,8 @@ impl AudioProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
+        self.pod_audio_editor = None;
+        self.pod_audio_subscription = None;
         self.draft = self.spec.draft.clone();
         self.selected_region = 0;
         self.staged.clear();
@@ -312,6 +337,9 @@ impl AudioProductWorkspace {
         self.initialize_oled_home(window);
         if let Some(saved) = saved.filter(|v| v.is_object()) {
             merge_known(&mut self.draft, saved);
+            if self.spec.product_id == 1382 {
+                self.restore_pod_audio(saved);
+            }
             self.restore_oled_home_saved(saved);
         }
         self.normalize_nommo_draft();
@@ -377,16 +405,20 @@ impl AudioProductWorkspace {
             }
         }
         self.sync(window, cx);
+        self.reset_mixer_numbers(window, cx);
         cx.notify();
     }
     pub(crate) fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            self.pod_audio_editor = None;
+            self.pod_audio_subscription = None;
             if self.page == "TAB_OLED" || page == "TAB_OLED" {
                 // Bv's staged selection is local to the mounted OLED page.
                 self.staged.remove("/device/oledLanguage");
                 self.sync_oled_runtime_select(window, cx);
             }
             self.page = page.into();
+            self.reset_mixer_numbers(window, cx);
             if page == "TAB_OLED" {
                 self.request_oled_runtime_data(cx);
             }
@@ -407,6 +439,10 @@ impl AudioProductWorkspace {
                 .enabled_by
                 .as_ref()
                 .is_none_or(|p| self.draft.pointer(p).and_then(Value::as_bool) == Some(true))
+            && control
+                .enabled_all
+                .iter()
+                .all(|p| self.draft.pointer(p).and_then(Value::as_bool) == Some(true))
     }
     /// 暂存值优先，否则当前值：原版选择框显示的是已提交值，未按 APPLY 前不被改写。
     fn selection_value(&self, control: &AudioControl) -> Option<Value> {
@@ -468,7 +504,22 @@ impl AudioProductWorkspace {
         if self.control(path).is_some_and(|c| !self.enabled(c)) {
             return;
         }
+        if self
+            .pod_audio_editor
+            .as_ref()
+            .is_some_and(|(editor_path, _)| {
+                editor_path.strip_suffix("/outputType").is_some_and(|base| {
+                    path == base
+                        || path.starts_with(&format!("{base}/"))
+                        || base.starts_with(&format!("{path}/"))
+                })
+            })
+        {
+            self.pod_audio_editor = None;
+            self.pod_audio_subscription = None;
+        }
         if self.draft.pointer(path) == Some(&value) {
+            cx.notify();
             return;
         }
         let enabled = value == Value::Bool(true);
@@ -634,6 +685,7 @@ impl AudioProductWorkspace {
     }
     fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.syncing = true;
+        self.sync_mixer_numbers(window, cx);
         for (path, state) in &self.sliders {
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
                 state.update(cx, |s, cx| s.set_value(value as f32, window, cx));
@@ -706,6 +758,21 @@ impl AudioProductWorkspace {
                 .when_some(self.selects.get(&path), |d, state| {
                     d.child(Select::new(state).disabled(!enabled).w_full())
                 })
+                .when(self.has_pod_audio_editor(&path), |d| {
+                    if let Some((editor_path, editor)) = &self.pod_audio_editor {
+                        if editor_path == &path {
+                            return d.child(editor.clone());
+                        }
+                    }
+                    d.child(
+                        Button::new(SharedString::from(format!("pod-audio-edit-{path}")))
+                            .label(t("AUDIO_FUNCTION"))
+                            .disabled(!enabled)
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.open_pod_audio(&path, window, cx)
+                            })),
+                    )
+                })
                 .into_any_element(),
             "slider" => {
                 let value = self
@@ -721,7 +788,13 @@ impl AudioProductWorkspace {
                 let rendered = format!("{value:.digits$}{}", control.unit);
                 v_flex()
                     .gap_3()
-                    .child(h_flex().justify_between().child(label).child(rendered))
+                    .child(h_flex().justify_between().child(label).child(
+                        if let Some(number) = self.mixer_numbers.get(&path) {
+                            number.clone().into_any_element()
+                        } else {
+                            div().child(rendered).into_any_element()
+                        },
+                    ))
                     .when_some(self.sliders.get(&path), |d, state| {
                         d.child(Slider::new(state).disabled(!enabled))
                     })
