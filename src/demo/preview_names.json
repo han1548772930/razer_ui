@@ -1,0 +1,8313 @@
+{
+  "70": {
+    "0": {
+      "en": {
+        "product": "Razer Mamba TE"
+      },
+      "zh-cn": {
+        "product": "RAZER 曼巴眼镜蛇竞技版"
+      }
+    }
+  },
+  "80": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Hex V2"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇那伽六芒星 V2"
+      }
+    }
+  },
+  "83": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇那伽幻彩版"
+      }
+    }
+  },
+  "89": {
+    "0": {
+      "en": {
+        "product": "Razer Lancehead"
+      },
+      "zh-cn": {
+        "product": "RAZER 锐蝮蛇"
+      }
+    }
+  },
+  "92": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇蝰蛇精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder Elite Overwatch",
+        "dashboard": "Razer Deathadder Elite",
+        "edition": "Overwatch"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇蝰蛇精英版 守望先锋",
+        "dashboard": "Razer 雷蛇蝰蛇精英版",
+        "edition": "守望先锋"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Deathadder Elite Destiny 2",
+        "dashboard": "Razer Deathadder Elite",
+        "edition": "Destiny 2"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇蝰蛇精英版 命运2",
+        "dashboard": "Razer 雷蛇蝰蛇精英版 ",
+        "edition": "命运2"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Deathadder Elite SKT T1 Edition",
+        "dashboard": "Razer Deathadder Elite",
+        "edition": "SKT T1 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇蝰蛇精英版 SKT T1",
+        "dashboard": "Razer 雷蛇蝰蛇精英版 ",
+        "edition": "SKT T1"
+      }
+    }
+  },
+  "96": {
+    "0": {
+      "en": {
+        "product": "Razer Lancehead TE"
+      },
+      "zh-cn": {
+        "product": "RAZER 锐蝮蛇竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Lancehead TE Mercury White",
+        "dashboard": "Razer Lancehead TE",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 锐蝮蛇竞技 水银版",
+        "dashboard": "RAZER 锐蝮蛇竞技",
+        "edition": "水银版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Lancehead TE Gunmetal Grey",
+        "dashboard": "Razer Lancehead TE",
+        "edition": "Gunmetal Grey"
+      },
+      "zh-cn": {
+        "product": "RAZER 锐蝮蛇竞技 粉晶版",
+        "dashboard": "RAZER 锐蝮蛇竞技",
+        "edition": "粉晶版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Lancehead TE Quartz Pink",
+        "dashboard": "Razer Lancehead TE",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "\tRAZER 锐蝮蛇竞技 粉晶版",
+        "dashboard": "RAZER 锐蝮蛇竞技",
+        "edition": "粉晶版"
+      }
+    }
+  },
+  "98": {
+    "0": {
+      "en": {
+        "product": "Razer Atheris"
+      },
+      "zh-cn": {
+        "product": "Razer 刺鳞树蝰"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Atheris Mercury",
+        "dashboard": "Razer Atheris",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "Razer 刺鳞树蝰 水银版",
+        "dashboard": "Razer 刺鳞树蝰 ",
+        "edition": "水银版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Atheris StormTrooper Edition",
+        "dashboard": "Razer Atheris",
+        "edition": "StormTrooper Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 刺鳞树蝰 冲锋队员版",
+        "dashboard": "Razer 刺鳞树蝰 ",
+        "edition": "冲锋队员版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Pokémon Pikachu Limited Edition Wireless Mouse",
+        "dashboard": "Razer Pokémon",
+        "edition": "Pikachu Limited Edition Wireless Mouse"
+      },
+      "zh-cn": {
+        "product": "RAZER 宝可梦 皮卡丘限定款无线鼠标",
+        "dashboard": "RAZER 宝可梦 ",
+        "edition": "皮卡丘限定款无线鼠标"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Atheris",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 刺鳞树蝰 ",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "99": {
+    "0": {
+      "en": {
+        "product": "Razer Jugan"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻目灵蛇"
+      }
+    }
+  },
+  "100": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇 粉晶版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Basilisk Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇 水银版"
+      }
+    }
+  },
+  "101": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk Essential"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇标准版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk Essential Crossfire Edition",
+        "dashboard": "Razer Basilisk Essential",
+        "edition": "Crossfire Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇标准版 穿越火线",
+        "dashboard": "RAZER 巴塞利斯蛇标准版",
+        "edition": "穿越火线"
+      }
+    }
+  },
+  "103": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Trinity"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇那伽进化版"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {},
+    "131": {}
+  },
+  "104": {
+    "0": {
+      "en": {
+        "product": "Razer Mamba Hyperflux"
+      },
+      "zh-cn": {
+        "product": "RAZER 曼巴眼镜蛇超极版"
+      }
+    }
+  },
+  "105": {
+    "0": {
+      "en": {
+        "product": "Razer Mamba Hyperflux"
+      },
+      "zh-cn": {
+        "product": "RAZER 曼巴眼镜蛇超极版"
+      }
+    }
+  },
+  "106": {
+    "0": {
+      "en": {
+        "product": "D.VA Razer Abyssus Elite"
+      },
+      "zh-cn": {
+        "product": "D.VA 雷蛇狂蛇精英版"
+      }
+    }
+  },
+  "107": {
+    "0": {
+      "en": {
+        "product": "Razer Abyssus Essential"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻目灵蛇"
+      }
+    }
+  },
+  "108": {
+    "0": {
+      "en": {
+        "product": "Razer Mamba Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 曼巴眼镜蛇精英版"
+      }
+    }
+  },
+  "110": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder Essential"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版"
+      }
+    }
+  },
+  "112": {
+    "0": {
+      "en": {
+        "product": "Razer Lancehead Wireless"
+      },
+      "es": {
+        "product": "Razer Lancehead"
+      },
+      "fr": {
+        "product": "Razer Lancehead"
+      },
+      "ja": {
+        "product": "Razer Lancehead"
+      },
+      "kr": {
+        "product": "Razer Lancehead"
+      },
+      "pt-br": {
+        "product": "Razer Lancehead"
+      },
+      "ru": {
+        "product": "Razer Lancehead"
+      },
+      "zh-cn": {
+        "product": "RAZER 锐蝮蛇"
+      },
+      "zh-tw": {
+        "product": "Razer Lancehead"
+      }
+    }
+  },
+  "113": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder Essential White",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇蝰蛇标准版 白色",
+        "dashboard": "Razer 雷蛇蝰蛇标准版",
+        "edition": "白色"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Pokémon Pikachu Limited Edition Mouse",
+        "dashboard": "Razer Pokémon",
+        "edition": "Pikachu Limited Edition Mouse"
+      },
+      "zh-cn": {
+        "product": "\tRazer 宝可梦 皮卡丘限定款鼠标",
+        "dashboard": "Razer 宝可梦",
+        "edition": "皮卡丘限定款鼠标"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Deathadder Essential Pokemon Limited Edition",
+        "dashboard": "Razer Deathadder Essential",
+        "edition": "Pokemon Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 宝可梦 皮卡丘限定款鼠标",
+        "dashboard": "Razer 宝可梦",
+        "edition": "皮卡丘限定款鼠标"
+      }
+    }
+  },
+  "115": {
+    "0": {
+      "en": {
+        "product": "Razer Mamba Wireless"
+      },
+      "zh-cn": {
+        "product": "RAZER 曼巴眼镜蛇无线版"
+      }
+    },
+    "128": {
+      "de": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "en": {
+        "product": "RAZER MAMBA WIRELESS GOW5"
+      },
+      "es": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "fr": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "ja": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "kr": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "pt-br": {
+        "product": "RAZER MAMBA WIRELESS"
+      },
+      "ru": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      },
+      "zh-cn": {
+        "product": "RAZER 曼巴眼镜蛇无线版 战争机器5"
+      },
+      "zh-tw": {
+        "product": "RAZER MAMBA WIRELESS GOW 5"
+      }
+    }
+  },
+  "116": {
+    "0": {
+      "en": {
+        "product": "Razer Abyssus Lite"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻目灵蛇"
+      }
+    }
+  },
+  "117": {
+    "0": {
+      "en": {
+        "product": "Razer Turret Mouse Xbox One Edition",
+        "dashboard": "Razer Turret Mouse",
+        "edition": "Xbox One Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 堡垒神蛛鼠标 XBOX ONE 版",
+        "dashboard": "RAZER 堡垒神蛛鼠标",
+        "edition": "XBOX ONE 版"
+      }
+    }
+  },
+  "120": {
+    "0": {
+      "en": {
+        "product": "Razer Viper"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper Quartz Edition",
+        "dashboard": "Razer Viper",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰 粉晶",
+        "dashboard": "Razer 毒蝰",
+        "edition": "粉晶"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper Mercury Edition",
+        "dashboard": "Razer Viper",
+        "edition": "Mercury Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰 水银",
+        "dashboard": "Razer 毒蝰",
+        "edition": "水银"
+      }
+    }
+  },
+  "122": {
+    "0": {
+      "en": {
+        "product": "Razer Viper Ultimate"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰终极版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper Ultimate Quartz Edition",
+        "dashboard": "Razer Viper Ultimate",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰终极版 – 粉晶款",
+        "dashboard": "Razer 毒蝰终极版",
+        "edition": "粉晶款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Viper Ultimate Mercury Edition",
+        "dashboard": "Razer Viper Ultimate",
+        "edition": "Mercury Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰终极版 - 水银款",
+        "dashboard": "Razer 毒蝰终极版",
+        "edition": "水银款"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper Ultimate Cyberpunk 2077 Edition",
+        "dashboard": "Razer Viper Ultimate",
+        "edition": "Cyberpunk 2077 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰终极版 赛博朋克2077限定款",
+        "dashboard": "Razer 毒蝰终极版",
+        "edition": "赛博朋克2077限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper Ultimate LPL Limited Edition",
+        "dashboard": "Razer Viper Ultimate",
+        "edition": "LPL Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰终极版 LPL限定款",
+        "dashboard": "Razer 毒蝰终极版",
+        "edition": "LPL限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Viper Ultimate Pokemon Edition",
+        "dashboard": "Razer Viper Ultimate",
+        "edition": "Pokemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 宝可梦 皮卡丘款无线鼠标",
+        "dashboard": "Razer 毒蝰终极版",
+        "edition": "宝可梦 皮卡丘"
+      }
+    }
+  },
+  "124": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder V2 Pro Genshin Impact Edition",
+        "dashboard": "Razer Deathadder V2 Pro",
+        "edition": "Genshin Impact Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2 专业版 原神限定款",
+        "dashboard": "Razer 炼狱蝰蛇 V2",
+        "edition": "专业版 原神限定款"
+      }
+    }
+  },
+  "126": {
+    "0": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩鼠标底座"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma Quartz Edition",
+        "dashboard": "Razer Mouse Dock Chroma",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩鼠标底座 粉晶",
+        "dashboard": "Razer 幻彩鼠标底座",
+        "edition": "粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma Mercury Edition",
+        "dashboard": "Razer Mouse Dock Chroma",
+        "edition": "Mercury Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩鼠标底座 水银",
+        "dashboard": "Razer 幻彩鼠标底座",
+        "edition": "水银"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma Cyberpunk 2077 Edition",
+        "dashboard": "Razer Mouse Dock Chroma",
+        "edition": "Cyberpunk 2077 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩鼠标底座 赛博朋克2077限定款",
+        "dashboard": "Razer 幻彩鼠标底座",
+        "edition": "赛博朋克2077限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma LPL Limited Edition",
+        "dashboard": "Razer Mouse Dock Chroma",
+        "edition": "LPL Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩鼠标充电底座 LPL限定款",
+        "dashboard": "Razer 幻彩鼠标充电底座",
+        "edition": "LPL限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Mouse Dock Chroma Pokemon Edition",
+        "dashboard": "Razer Mouse Dock Chroma",
+        "edition": "Pokemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer| 宝可梦 皮卡丘款无线鼠标幻彩充电底座",
+        "dashboard": "Razer 幻彩充电底座",
+        "edition": "宝可梦版"
+      }
+    }
+  },
+  "128": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Click"
+      }
+    }
+  },
+  "131": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk X HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 X 极速版"
+      }
+    },
+    "128": {
+      "de": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "en": {
+        "product": "Razer Basilisk X HyperSpeed Crossfire 2021 Edition",
+        "dashboard": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "es": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "fr": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "ja": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "kr": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "pt-br": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "ru": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇X极速版CFHD限定款",
+        "dashboard": "Razer 巴塞利斯蛇 X 极速版",
+        "edition": "CFHD限定款"
+      },
+      "zh-tw": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Crossfire 2021 Edition"
+      }
+    },
+    "129": {
+      "de": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "en": {
+        "product": "Razer Basilisk X HyperSpeed Minions Edition",
+        "dashboard": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "es": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "fr": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "ja": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "kr": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "pt-br": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "ru": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      },
+      "zh-cn": {
+        "product": "Razer | 小黄人 巴塞利斯蛇 X 极速版限定款",
+        "dashboard": "Razer | 小黄人 巴塞利斯蛇 X",
+        "edition": "极速版限定款"
+      },
+      "zh-tw": {
+        "product": "Razer Basilisk X HyperSpeed",
+        "edition": "Minions Edition"
+      }
+    }
+  },
+  "132": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V2"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder V2 Bape Edition",
+        "dashboard": "Razer Deathadder V2",
+        "edition": "Bape Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2 BAPE 限定款",
+        "dashboard": "Razer 炼狱蝰蛇 V2",
+        "edition": "BAPE 限定款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Deathadder V2 Halo Infinite Edition",
+        "dashboard": "Razer Deathadder V2",
+        "edition": "Halo Infinite Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2 光环:无限 限定版",
+        "dashboard": "Razer 炼狱蝰蛇 V2",
+        "edition": "光环:无限 限定版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Deathadder V2 Special Edition",
+        "dashboard": "Razer Deathadder V2",
+        "edition": "Special Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V2 特别版",
+        "dashboard": "Razer 炼狱蝰蛇 V2",
+        "edition": "特别版"
+      }
+    }
+  },
+  "133": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V2"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V2"
+      }
+    }
+  },
+  "134": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk Ultimate"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇终极版"
+      }
+    }
+  },
+  "138": {
+    "0": {
+      "en": {
+        "product": "Razer Viper Mini"
+      },
+      "fr": {
+        "product": "Razer Viper Mini Mini"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper Mini One Piece Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "One Piece Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 航海王限定款鼠标"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Viper Mini Doraemon Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "Doraemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 哆啦A梦50周年限定款鼠标",
+        "dashboard": "Razer 毒蝰迷你版",
+        "edition": "哆啦A梦50周年限定款鼠标"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper Mini Doraemon Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "Doraemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 哆啦A梦50周年限定款鼠标",
+        "dashboard": "Razer 毒蝰迷你版",
+        "edition": "哆啦A梦50周年限定款鼠标"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Viper Mini Sanrio Limited Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "Sanrio Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰迷你版 Sanrio限定款",
+        "dashboard": "Razer 毒蝰迷你版",
+        "edition": "Sanrio限定款"
+      }
+    }
+  },
+  "140": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V2 Mini"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇 V2 迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder V2 Mini - Tencent Esports Edition",
+        "dashboard": "Razer Deathadder V2 Mini",
+        "edition": "Tencent Esports Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇 V2 迷你版 - 腾讯电竞定制款",
+        "dashboard": "RAZER 炼狱蝰蛇 V2 迷你版",
+        "edition": "腾讯电竞定制款"
+      }
+    }
+  },
+  "141": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Left-Handed Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 那伽梵蛇左手版"
+      }
+    }
+  },
+  "143": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 那伽梵蛇专业版"
+      }
+    }
+  },
+  "145": {
+    "0": {
+      "en": {
+        "product": "Razer Viper 8Khz"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰 8khz"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Viper 8Khz Esl Edition",
+        "dashboard": "Razer Viper 8Khz",
+        "edition": "Esl Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰 8khz Esl 特别版",
+        "dashboard": "Razer 毒蝰 8khz",
+        "edition": "Esl 特别版"
+      }
+    }
+  },
+  "147": {
+    "0": {
+      "en": {
+        "product": "Razer Naga Classic Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 那伽梵蛇经典版"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {},
+    "131": {}
+  },
+  "148": {
+    "0": {
+      "en": {
+        "product": "Razer Orochi V2"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Orochi V2 Customs Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Customs Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 Customs Edition",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "Customs Edition"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Orochi V2 White Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 白色",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Orochi V2 Customs White Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Customs White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 定制版 白色",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "定制版 白色"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Orochi V2 Roblox Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Roblox Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 罗布乐思特别版",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "罗布乐思特别版"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Orochi V2 Minions Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Minions Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 限定款",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "限定款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Orochi V2 Pokemon Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Pokemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 POKÉMON 联名款无线鼠标",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "POKÉMON 联名款无线鼠标"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Orochi V2 Strike Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Strike Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 Strike 特别版",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "Strike 特别版"
+      }
+    },
+    "135": {
+      "en": {
+        "product": "Razer Orochi V2 Quartz Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 粉晶",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "粉晶"
+      }
+    },
+    "136": {
+      "en": {
+        "product": "Razer Orochi V2 Evisu Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Evisu Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 Evisu 限定款",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "Evisu 限定款"
+      }
+    },
+    "138": {
+      "en": {
+        "product": "Razer Orochi V2 Hello Kitty and Friends Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2 Hello Kitty and Friends款",
+        "dashboard": "Razer 八岐大蛇 V2",
+        "edition": "Hello Kitty and Friends款"
+      }
+    }
+  },
+  "150": {
+    "0": {
+      "en": {
+        "product": "Razer Naga X"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇那伽进化版"
+      }
+    }
+  },
+  "152": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder Essential"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathAdder Essential White Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer DeathAdder Essential Sanrio Global Edition",
+        "edition": "Sanrio Global Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版",
+        "edition": "Hello Kitty和朋友们联名款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Deathadder Essential Pokémon Pikachu Edition Mouse",
+        "dashboard": "Razer Deathadder Essential",
+        "edition": "Pokémon Pikachu Edition Mouse"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版 宝可梦皮卡丘款鼠标",
+        "dashboard": "Razer 炼狱蝰蛇标准版",
+        "edition": "宝可梦皮卡丘款鼠标"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer DeathAdder Essential Cinnamoroll Edition",
+        "edition": "Cinnamoroll Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版",
+        "edition": "Cinnamoroll 和朋友们联名款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer DeathAdder Essential Kuromi Limited Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Kuromi Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer Kuromi 限定款鼠标",
+        "dashboard": "Razer 炼狱蝰蛇标准版",
+        "edition": "Kuromi 限定款鼠标"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer DeathAdder Essential Kuromi Limited Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Kuromi Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer Kuromi 限定款鼠标",
+        "dashboard": "Razer 炼狱蝰蛇标准版",
+        "edition": "Kuromi 限定款鼠标"
+      }
+    },
+    "135": {
+      "en": {
+        "product": "Razer DeathAdder Essential – Hello Kitty and Friends Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 蝰蛇标准版-Hello Kitty和小伙伴限定款",
+        "dashboard": "Razer 炼狱蝰蛇标准版",
+        "edition": "Hello Kitty和小伙伴限定款"
+      }
+    },
+    "136": {
+      "en": {
+        "product": "Razer DeathAdder Essential Blackpink Edition (Pink)",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Blackpink Edition (Pink)"
+      },
+      "zh-cn": {
+        "product": "Razer丨Blackpink 限定款游戏鼠标 (粉色款)",
+        "dashboard": "Razer丨Blackpink 限定款游戏鼠标",
+        "edition": "(粉色款)"
+      }
+    },
+    "137": {},
+    "144": {
+      "en": {
+        "product": "Razer DeathAdder Essential Hello Kitty and Friends Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇标准版 Hello Kitty和小伙伴限定款",
+        "dashboard": "Razer 炼狱蝰蛇标准版",
+        "edition": "Hello Kitty和小伙伴限定款"
+      }
+    },
+    "145": {
+      "en": {
+        "product": "Razer DeathAdder Essential Pompompurin Edition",
+        "dashboard": "Razer DeathAdder Essential",
+        "edition": "Pompompurin Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇标准版 布丁狗款",
+        "dashboard": "RAZER 炼狱蝰蛇标准版",
+        "edition": "布丁狗款"
+      }
+    }
+  },
+  "153": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V3 White Edition",
+        "dashboard": "Razer Basilisk V3",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 白色",
+        "dashboard": "Razer 巴塞利斯蛇 V3",
+        "edition": "白色"
+      }
+    }
+  },
+  "154": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Click Mini"
+      }
+    }
+  },
+  "156": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder V2 X Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "RAZER炼狱蝰蛇V2 X极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathAdder V2 X Hyperspeed Customs Edition",
+        "dashboard": "Razer DeathAdder V2 X Hyperspeed",
+        "edition": "Customs Edition"
+      },
+      "zh-cn": {
+        "product": "Razer炼狱蝰蛇V2 X极速 定制款",
+        "dashboard": "Razer炼狱蝰蛇V2 X极速",
+        "edition": "定制款"
+      }
+    }
+  },
+  "158": {
+    "0": {
+      "en": {
+        "product": "Razer Viper Mini Signature Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "Signature Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰迷你 Signature Edition",
+        "dashboard": "Razer 毒蝰迷你 ",
+        "edition": "Signature Edition"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper Mini Signature Edition",
+        "dashboard": "Razer Viper Mini",
+        "edition": "Signature Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰迷你 Signature Edition",
+        "dashboard": "Razer 毒蝰迷你 ",
+        "edition": "Signature Edition"
+      }
+    }
+  },
+  "161": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V2 Lite"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇 V2 轻装版"
+      }
+    },
+    "128": {}
+  },
+  "162": {
+    "0": {}
+  },
+  "163": {
+    "0": {
+      "en": {
+        "product": "Razer Cobra"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Cobra Minecraft Edition",
+        "dashboard": "Razer Cobra",
+        "edition": "Minecraft Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 眼镜蛇 我的世界 特别版",
+        "dashboard": "RAZER 眼镜蛇",
+        "edition": "我的世界 特别版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER COBRA POKÉMON EDITION",
+        "dashboard": "RAZER COBRA",
+        "edition": "POKÉMON EDITION"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Cobra Gengar Edition",
+        "dashboard": "RAZER COBRA",
+        "edition": "GENGAR EDITION"
+      },
+      "zh-cn": {
+        "product": "RAZER眼镜蛇 耿鬼款",
+        "dashboard": "RAZER 眼镜蛇",
+        "edition": "耿鬼款"
+      },
+      "zh-tw": {
+        "product": "RAZER 眼镜蛇 耿鬼款",
+        "dashboard": "RAZER 眼镜蛇",
+        "edition": "耿鬼款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Cobra Zenless Zone Zero Edition",
+        "dashboard": "RAZER COBRA",
+        "edition": "ZENLESS ZONE ZERO EDITION"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇 绝区零限定款",
+        "dashboard": "RAZER 眼镜蛇",
+        "edition": "绝区零限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Cobra Cinnamoroll Edition",
+        "dashboard": "RAZER COBRA",
+        "edition": "CINNAMOROLL EDITION"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇 大耳狗款",
+        "dashboard": "Razer 眼镜蛇",
+        "edition": "大耳狗款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Cobra Espeon & Umbreon Edition",
+        "dashboard": "RAZER COBRA",
+        "edition": "Espeon & Umbreon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇 库洛米款 太阳伊布与月亮伊布款",
+        "dashboard": "Razer 眼镜蛇",
+        "edition": "库洛米款 太阳伊布与月亮伊布款"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Cobra Pikachu & Eevee Edition",
+        "dashboard": "RAZER COBRA",
+        "edition": "Pikachu & Eevee Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇  皮卡丘与伊布款",
+        "dashboard": "Razer 眼镜蛇",
+        "edition": "皮卡丘与伊布款"
+      }
+    }
+  },
+  "164": {
+    "0": {
+      "en": {
+        "product": "Razer Mouse Dock Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 鼠标底座专业版"
+      }
+    }
+  },
+  "165": {
+    "0": {
+      "en": {
+        "product": "Razer Viper V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V2专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper V2 Pro White"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V2专业版 白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper V2 Pro",
+        "edition": "PUBG: BATTLEGROUNDS Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V2专业版",
+        "edition": "PUBG: 绝地求生"
+      }
+    }
+  },
+  "167": {
+    "0": {
+      "en": {
+        "product": "Razer Naga V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 那伽梵蛇V2专业版"
+      }
+    }
+  },
+  "170": {
+    "0": {
+      "en": {
+        "product": "RAZER BASILISK V3 PRO"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "RAZER BASILISK V3 PRO WHITE EDITION",
+        "dashboard": "RAZER BASILISK V3 PRO",
+        "edition": "WHITE EDITION"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 专业版 白色",
+        "dashboard": "Razer 巴塞利斯蛇 V3 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "175": {
+    "0": {
+      "en": {
+        "product": "Razer Cobra Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Cobra Pro White Edition",
+        "dashboard": "Razer Cobra Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇专业版 白色",
+        "dashboard": "Razer 眼镜蛇专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "178": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder V3"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V3"
+      }
+    }
+  },
+  "179": {
+    "0": {
+      "en": {
+        "product": "Razer HyperPolling Wireless Dongle"
+      },
+      "zh-cn": {
+        "product": "RAZER HYPERPOLLING 无线接收器"
+      }
+    }
+  },
+  "180": {
+    "0": {
+      "en": {
+        "product": "Razer Naga V2 Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 那伽梵蛇 V2 极速版"
+      }
+    }
+  },
+  "182": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V3专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro White Edition",
+        "dashboard": "Razer Deathadder V3 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER炼狱蝰蛇 V3 专业版 白色",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro Faker Edition",
+        "dashboard": "Razer Deathadder V3 Pro",
+        "edition": "Faker Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER炼狱蝰蛇 V3 专业版 FAKER 限定",
+        "dashboard": "RAZER炼狱蝰蛇 V3 专业版",
+        "edition": "FAKER 限定"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer DeathAdder V3 Pro - Gamers8 2023 Edition",
+        "dashboard": "Razer Deathadder V3 Pro",
+        "edition": "Gamers8 2023 Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇 V3 专业版 Gamers8 2023 限定款",
+        "dashboard": "RAZER 炼狱蝰蛇 V3 专业版",
+        "edition": "Gamers8 2023 限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer DeathAdder V3 Pro – Gamers8 | Qiddiya Edition",
+        "dashboard": "Razer DeathAdder V3 Pro",
+        "edition": "Gamers8 | Qiddiya Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇V3专业版 Gamers8 | 奇迪亚 限定款",
+        "dashboard": "RAZER 炼狱蝰蛇V3专业版",
+        "edition": "Gamers8 | 奇迪亚 限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro Fortnite Edition",
+        "dashboard": "Razer Deathadder V3 Pro",
+        "edition": "Fortnite Edition"
+      }
+    }
+  },
+  "184": {
+    "0": {
+      "en": {
+        "product": "Razer Viper V3 HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V3极速版"
+      }
+    }
+  },
+  "185": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3 X HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 X 极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V3 X HyperSpeed White Edition",
+        "dashboard": "Razer Basilisk V3 X HyperSpeed",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 X 极速版 白色",
+        "dashboard": "Razer 巴塞利斯蛇 V3 X 极速版",
+        "edition": "白色"
+      }
+    }
+  },
+  "190": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro White Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版 白色",
+        "dashboard": "Razer 炼狱蝰蛇 V4 专业版",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro Esports Green Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版 电竞绿",
+        "dashboard": "Razer 炼狱蝰蛇 V4 专业版",
+        "edition": "电竞绿"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro NiKo Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "NiKo Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版 NiKo限定款",
+        "dashboard": "Razer 炼狱蝰蛇 V4 专业版",
+        "edition": "NiKo限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro Evangelion (EVA-01) Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "Evangelion (EVA-01) Edition"
+      },
+      "zh-cn": {
+        "product": "Razer丨炼狱蝰蛇 V4 专业版 【新世纪福音战士初号机联名款】游戏鼠标",
+        "dashboard": "Razer丨炼狱蝰蛇 V4 专业版",
+        "edition": "【新世纪福音战士初号机联名款】游戏鼠标"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro Faker Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "Faker Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版 Faker限定款",
+        "dashboard": "Razer 炼狱蝰蛇 V4 专业版",
+        "edition": "Faker限定款"
+      }
+    }
+  },
+  "192": {
+    "0": {
+      "en": {
+        "product": "Razer Viper V3 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V3 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper V3 Pro White Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V3 专业版 白色",
+        "dashboard": "RAZER 毒蝰V3 专业版",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "de": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "en": {
+        "product": "Razer | Pokémon Gengar Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Gengar Edition Wireless Mouse"
+      },
+      "es": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "fr": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "ja": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "kr": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "pt-br": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "ru": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      },
+      "zh-cn": {
+        "product": "雷蛇 | 宝可梦 耿鬼款无线鼠标",
+        "dashboard": "雷蛇 | 宝可梦",
+        "edition": "宝可梦 耿鬼款无线鼠标"
+      },
+      "zh-tw": {
+        "product": "Razer Pokemon Gengar Viper V3 Pro",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Pokemon Gengar"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper V3 Pro Sentinels Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Sentinels Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3专业版 Sentinels Edition",
+        "dashboard": "RAZER 毒蝰V3 专业版",
+        "edition": "Sentinels Edition"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper V3 Pro Faker Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Faker Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V3 专业版 FAKER 限定款",
+        "dashboard": "RAZER 毒蝰V3 专业版",
+        "edition": "FAKER 限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Viper V3 Pro Esports Green Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3专业版 电竞绿",
+        "dashboard": "RAZER 毒蝰V3专业版",
+        "edition": "电竞绿"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer | Pokémon Pikachu Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pikachu Edition Wireless Mouse"
+      },
+      "zh-cn": {
+        "product": "Razer | Pokémon 皮卡丘款无线鼠标",
+        "dashboard": "Razer | Pokémon",
+        "edition": "皮卡丘款无线鼠标"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Viper V3 Pro Counter-Strike 2 Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Counter-Strike 2 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3 专业版反恐精英2限定款",
+        "dashboard": "RAZER 毒蝰V3",
+        "edition": "专业版反恐精英2限定款"
+      },
+      "zh-tw": {
+        "product": "Razer 毒蝰V3 专业版反恐精英2限定款",
+        "dashboard": "RAZER 毒蝰V3",
+        "edition": "专业版反恐精英2限定款"
+      }
+    },
+    "135": {
+      "en": {
+        "product": "Razer Viper V3 Pro Evangelion-02 Edition",
+        "dashboard": "Razer Viper V3 Pro",
+        "edition": "Evangelion-02 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3 专业版【新世纪福音战士 2号机联名款】",
+        "dashboard": "RAZER 毒蝰V3 专业版",
+        "edition": "【新世纪福音战士 2号机联名款】"
+      }
+    }
+  },
+  "194": {
+    "0": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro Hyperpolling Technology"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V3 专业版 Hyperpolling 无线技术"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Deathadder V3 Pro Hyperpolling Technology White Edition",
+        "dashboard": "Razer Deathadder V3 Pro Hyperpolling Technology",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V3 专业版 Hyperpolling 无线技术 白色",
+        "edition": "白色"
+      }
+    }
+  },
+  "196": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder V3 HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 炼狱蝰蛇V3 极速版"
+      }
+    },
+    "128": {}
+  },
+  "199": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Click V2 Vertical Edition"
+      }
+    }
+  },
+  "203": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3 35K"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇 V3 35K"
+      }
+    },
+    "128": {}
+  },
+  "204": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇 V3 专业版 35K"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K White Edition",
+        "dashboard": "Razer Basilisk V3 Pro 35K",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 巴塞利斯蛇 V3 专业版 35K 白色",
+        "dashboard": "RAZER 巴塞利斯蛇 V3 专业版 35K",
+        "edition": "白色"
+      }
+    }
+  },
+  "207": {
+    "0": {
+      "en": {
+        "product": "Razer HyperFlux V2 Hard Edition",
+        "dashboard": "Razer HyperFlux V2",
+        "edition": "Hard Edition"
+      },
+      "zh-cn": {
+        "product": "Razer HyperFlux V2 硬质版",
+        "dashboard": "Razer HyperFlux V2",
+        "edition": "硬质版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer HyperFlux V2 Cloth Edition",
+        "dashboard": "Razer HyperFlux V2",
+        "edition": "Cloth Edition"
+      },
+      "zh-cn": {
+        "product": "Razer HyperFlux V2 织物版",
+        "dashboard": "Razer HyperFlux V2",
+        "edition": "织物版"
+      }
+    }
+  },
+  "208": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Click V2"
+      }
+    }
+  },
+  "211": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk Mobile"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇移动版"
+      }
+    },
+    "128": {}
+  },
+  "214": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K Phantom Green Edition",
+        "dashboard": "Razer Basilisk V3 Pro 35K",
+        "edition": "Phantom Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影绿",
+        "dashboard": "Razer 巴塞利斯蛇 V3 专业版 35K",
+        "edition": "幻影绿"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K Phantom White Edition",
+        "dashboard": "Razer Basilisk V3 Pro 35K",
+        "edition": "Phantom White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影白",
+        "dashboard": "Razer 巴塞利斯蛇 V3 专业版 35K",
+        "edition": "幻影白"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K Phantom Black Edition",
+        "dashboard": "Razer Basilisk V3 Pro 35K",
+        "edition": "Phantom Black Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影黑",
+        "dashboard": "Razer 巴塞利斯蛇 V3 专业版 35K",
+        "edition": "幻影黑"
+      }
+    }
+  },
+  "218": {
+    "0": {
+      "en": {
+        "product": "Razer Cobra HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇极速版"
+      }
+    },
+    "128": {}
+  },
+  "221": {
+    "0": {
+      "en": {
+        "product": "Razer Boomslang 20th Anniversary Edition",
+        "dashboard": "Razer Boomslang",
+        "edition": "20th Anniversary Edition"
+      },
+      "zh-cn": {
+        "product": "Razer布斯朗悍蛇 20周年纪念款",
+        "dashboard": "RAZER布斯朗悍蛇",
+        "edition": "20周年纪念款"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Krakoff White Edition",
+        "dashboard": "Razer Krakoff",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 眼镜蛇专业版 白色",
+        "dashboard": "Razer 眼镜蛇专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "222": {
+    "0": {
+      "en": {
+        "product": "Razer Viper V3 Pro SE"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰 V3 专业版 SE"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer | Pokémon Pikachu Edition Wireless Mouse (2026)",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pikachu Edition Wireless Mouse (2026)"
+      },
+      "zh-cn": {
+        "product": "Razer丨宝可梦 皮卡丘款无线鼠标(2026)",
+        "dashboard": "Razer丨宝可梦",
+        "edition": "皮卡丘款无线鼠标(2026)"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer | Pokémon Gengar Edition Wireless Mouse (2026)",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Gengar Edition Wireless Mouse (2026)"
+      },
+      "zh-cn": {
+        "product": "Razer丨宝可梦 耿鬼款无线鼠标(2026)",
+        "dashboard": "Razer丨宝可梦",
+        "edition": "耿鬼款无线鼠标(2026)"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper V3 Pro SE Delta Force Edition",
+        "dashboard": "Razer Viper V3 Pro SE",
+        "edition": "Delta Force Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3专业版SE-《三角洲行动》联动游戏鼠标",
+        "dashboard": "Razer 毒蝰V3专业版SE",
+        "edition": "《三角洲行动》联动游戏鼠标"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper V3 Pro SE Wuthering Waves Edition",
+        "dashboard": "Razer Viper V3 Pro SE",
+        "edition": "Wuthering Waves Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V3专业版SE【鸣潮游戏款】",
+        "dashboard": "Razer 毒蝰V3专业版SE",
+        "edition": "【鸣潮游戏款】"
+      }
+    }
+  },
+  "224": {
+    "0": {
+      "en": {
+        "product": "Razer Orochi V2"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Orochi V2 White Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇V2 白色",
+        "dashboard": "Razer 八岐大蛇V2",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Orochi V2 Quartz Edition",
+        "dashboard": "Razer Orochi V2",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 八岐大蛇V2 粉晶",
+        "dashboard": "Razer 八岐大蛇V2",
+        "edition": "粉晶"
+      }
+    },
+    "130": {},
+    "131": {},
+    "132": {},
+    "133": {},
+    "134": {},
+    "135": {},
+    "136": {},
+    "138": {}
+  },
+  "226": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V4 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V4 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V4 Pro White Edition",
+        "dashboard": "Razer Basilisk V4 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V4 专业版 白色",
+        "dashboard": "Razer 巴塞利斯蛇 V4 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "229": {
+    "0": {
+      "en": {
+        "product": "Razer Viper V4 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V4专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Viper V4 Pro White Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V4专业版 白色",
+        "dashboard": "Razer 毒蝰V4专业版",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Viper V4 Pro Carbon Fiber Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "Carbon Fiber Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V4专业版 碳纤维",
+        "dashboard": "Razer 毒蝰V4专业版",
+        "edition": "碳纤维"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Viper V4 Pro Esports Green Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V4专业版 电竞绿",
+        "dashboard": "Razer 毒蝰V4专业版",
+        "edition": "电竞绿"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Viper V4 Pro Faker Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "Faker Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 毒蝰V4专业版 Faker 限定",
+        "dashboard": "Razer 毒蝰V4专业版",
+        "edition": "Faker 限定"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Viper V4 Pro Purple Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "Purple Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V4专业版 帝王紫",
+        "dashboard": "RAZER 毒蝰V4专业版",
+        "edition": "帝王紫"
+      }
+    },
+    "133": {
+      "de": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "en": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "es": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "fr": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "ja": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "kr": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "pt-br": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "ru": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      },
+      "zh-cn": {
+        "product": "Razer丨宝可梦 Pixel Art款无线鼠标",
+        "dashboard": "Razer丨宝可梦",
+        "edition": "Pixel Art款无线鼠标"
+      },
+      "zh-tw": {
+        "product": "Razer | Pokémon Pixel Art Edition Wireless Mouse",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pixel Art Edition Wireless Mouse"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Viper V4 Pro Karmine Corp Edition",
+        "dashboard": "Razer Viper V4 Pro",
+        "edition": "Karmine Corp Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 毒蝰V4专业版 Karmine Corp联名版",
+        "dashboard": "RAZER 毒蝰V4专业版",
+        "edition": "Karmine Corp联名版"
+      }
+    }
+  },
+  "231": {
+    "0": {
+      "en": {
+        "product": "Razer Naga V3 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 那伽梵蛇 V3 专业版"
+      }
+    }
+  },
+  "235": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V4 HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V4 极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Basilisk V4 HyperSpeed White Edition",
+        "dashboard": "Razer Basilisk V4 HyperSpeed",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇 V4 极速版 白色",
+        "dashboard": "Razer 巴塞利斯蛇 V4 极速版",
+        "edition": "白色"
+      }
+    }
+  },
+  "239": {
+    "0": {
+      "en": {
+        "product": "Razer DeathAdder V4 Pro Carbon Fiber Edition",
+        "dashboard": "Razer DeathAdder V4 Pro",
+        "edition": "Carbon Fiber Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 炼狱蝰蛇 V4 专业版 [碳纤维]",
+        "dashboard": "Razer 炼狱蝰蛇 V4",
+        "edition": "专业版 [碳纤维]"
+      }
+    },
+    "128": {}
+  },
+  "241": {
+    "0": {
+      "en": {
+        "product": "Razer Mouse Dock V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 鼠标底座 V2 专业版"
+      }
+    }
+  },
+  "515": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版"
+      }
+    },
+    "1": {
+      "en": {
+        "product": "Razer BlackWidow Chroma Origin PC",
+        "dashboard": "Razer BlackWidow Chroma",
+        "edition": "Origin PC"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 Origin PC",
+        "dashboard": "Razer 黑寡妇蜘蛛幻彩版",
+        "edition": "Origin PC"
+      }
+    },
+    "2": {
+      "en": {
+        "product": "Razer BlackWidow Chroma Stealth",
+        "dashboard": "Razer BlackWidow Chroma",
+        "edition": "Stealth"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩 潜行版",
+        "dashboard": "Razer 黑寡妇蜘蛛幻彩",
+        "edition": "潜行版"
+      }
+    },
+    "3": {
+      "en": {
+        "product": "Razer BlackWidow Chroma Call Of Duty",
+        "dashboard": "Razer BlackWidow Chroma",
+        "edition": "Call Of Duty"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 使命召唤",
+        "dashboard": "Razer 黑寡妇蜘蛛幻彩版",
+        "edition": "守望先锋"
+      }
+    }
+  },
+  "521": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩版"
+      }
+    },
+    "1": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma Stealth",
+        "dashboard": "Razer BlackWidow TE Chroma",
+        "edition": "Stealth"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩潜行版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩版 V2"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩版 V2"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩版 V2"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer BlackWidow TE Chroma V2 Quartz Pink",
+        "dashboard": "Razer BlackWidow TE Chroma V2",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛竞技幻彩 V2 粉晶版",
+        "dashboard": "Razer 黑寡妇蜘蛛竞技幻彩 V2",
+        "edition": "粉晶版"
+      }
+    }
+  },
+  "529": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Chroma Overwatch",
+        "dashboard": "Razer BlackWidow Chroma",
+        "edition": "Overwatch"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 守望先锋",
+        "dashboard": "Razer 黑寡妇蜘蛛幻彩版",
+        "edition": "守望先锋"
+      }
+    },
+    "1": {
+      "en": {
+        "product": "Razer BlackWidow Chroma Deus Ex",
+        "dashboard": "Razer BlackWidow Chroma",
+        "edition": "Deus Ex"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 杀出重围",
+        "dashboard": "Razer 黑寡妇蜘蛛幻彩版",
+        "edition": "杀出重围"
+      }
+    }
+  },
+  "534": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow X Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛X幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow X Chroma Mercury",
+        "dashboard": "Razer BlackWidow X Chroma",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛X幻彩水银版",
+        "dashboard": "Razer 黑寡妇蜘蛛X幻彩",
+        "edition": "枪灰版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow X Chroma Gunmetal",
+        "dashboard": "Razer BlackWidow X Chroma",
+        "edition": "Gunmetal"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛X幻彩 枪灰版",
+        "dashboard": "Razer 黑寡妇蜘蛛X幻彩",
+        "edition": "枪灰版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow X Chroma Gold",
+        "dashboard": "Razer BlackWidow X Chroma",
+        "edition": "Gold"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛X幻彩 耀金版",
+        "dashboard": "Razer 黑寡妇蜘蛛X幻彩",
+        "edition": "耀金版"
+      }
+    }
+  },
+  "542": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Ornata Chroma Destiny 2",
+        "dashboard": "Razer Ornata Chroma",
+        "edition": "Destiny 2"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛幻彩版 命运 2",
+        "dashboard": "Razer 雨林狼蛛幻彩版 ",
+        "edition": "命运 2"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Ornata Chroma Pokemon",
+        "dashboard": "Razer Ornata Chroma",
+        "edition": "Pokemon"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛幻彩版 命运 2",
+        "dashboard": "Razer 雨林狼蛛幻彩版 ",
+        "edition": "命运 2"
+      }
+    }
+  },
+  "545": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 V2"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛幻彩版 V2"
+      }
+    }
+  },
+  "550": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛精英版"
+      }
+    }
+  },
+  "551": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman Quartz Pink",
+        "dashboard": "Razer Huntsman",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 粉晶版",
+        "dashboard": "Razer 猎魂光蛛",
+        "edition": "粉晶版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman Mercury White",
+        "dashboard": "Razer Huntsman",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 水银版",
+        "dashboard": "Razer 猎魂光蛛",
+        "edition": "水银版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman Gears 5",
+        "dashboard": "Razer Huntsman",
+        "edition": "Gears 5"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 战争机器 5",
+        "dashboard": "Razer 猎魂光蛛",
+        "edition": "战争机器 5"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Huntsman Quartz Pink",
+        "dashboard": "Razer Huntsman",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 粉晶版",
+        "dashboard": "Razer 猎魂光蛛",
+        "edition": "粉晶版"
+      }
+    }
+  },
+  "552": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow Elite"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛精英版"
+      }
+    }
+  },
+  "554": {
+    "0": {
+      "en": {
+        "product": "Razer Cynosa Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 萨诺狼蛛幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Cynosa Chroma Crossfire Edition",
+        "dashboard": "Razer Cynosa Chroma",
+        "edition": "Crossfire Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 萨诺狼蛛幻彩版 穿越火线",
+        "dashboard": "Razer 萨诺狼蛛幻彩版线",
+        "edition": "穿越火线"
+      }
+    }
+  },
+  "555": {
+    "0": {
+      "en": {
+        "product": "Razer Tartarus V2"
+      },
+      "zh-cn": {
+        "product": "Razer 塔洛斯魔蝎 V2"
+      }
+    }
+  },
+  "556": {
+    "0": {
+      "en": {
+        "product": "Razer Cynosa Chroma Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 萨诺狼蛛幻彩专业版"
+      }
+    }
+  },
+  "563": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Mercury White",
+        "dashboard": "Razer Blade 15",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15水银版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "水银版"
+      }
+    }
+  },
+  "564": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Pro 17"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃17"
+      }
+    }
+  },
+  "565": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Lite"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛轻装版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow Lite Mercury White",
+        "dashboard": "Razer BlackWidow Lite",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛轻装 水银版",
+        "dashboard": "Razer 黑寡妇蜘蛛轻装",
+        "edition": "水银版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow Lite Stormtrooper Edition",
+        "dashboard": "Razer BlackWidow Lite",
+        "edition": "Stormtrooper Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛轻装版 冲锋队员版",
+        "dashboard": "Razer 黑寡妇蜘蛛轻装版",
+        "edition": "冲锋队员版"
+      }
+    }
+  },
+  "567": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow Essential"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛标准版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow Essential Pokemon Edition",
+        "dashboard": "Razer BlackWidow Essential",
+        "edition": "Pokemon Edition"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer | Arknights Rhodes Island Limited Edition Gaming Keyboard",
+        "dashboard": "Razer | Arknights",
+        "edition": "Rhodes Island Limited Edition Gaming Keyboard"
+      },
+      "zh-cn": {
+        "product": "Razer | Arknights 罗德岛限定款机械键盘",
+        "dashboard": "Razer | Arknights",
+        "edition": "罗德岛限定款机械键盘"
+      }
+    }
+  },
+  "569": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Stealth 13 Base Model",
+        "dashboard": "Razer Blade Stealth 13",
+        "edition": "BASE MODEL"
+      },
+      "zh-cn": {
+        "product": "RAZER灵刃潜行13标准版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "标准版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade Stealth 13 Quartz Pink",
+        "dashboard": "Razer Blade Stealth 13",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "RAZER灵刃潜行13 粉晶版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "粉晶版"
+      }
+    }
+  },
+  "570": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15精英版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Mercury White",
+        "dashboard": "Razer Blade 15",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15水银版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "水银版"
+      }
+    }
+  },
+  "571": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15精英版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "精英版"
+      }
+    }
+  },
+  "574": {
+    "0": {
+      "en": {
+        "product": "Razer Turret Keyboard Xbox One Edition",
+        "dashboard": "Razer Turret Keyboard",
+        "edition": "Xbox One Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 堡垒神蛛键盘 Xbox One 版",
+        "dashboard": "Razer 堡垒神蛛键盘",
+        "edition": "Xbox One 版"
+      }
+    }
+  },
+  "575": {
+    "0": {
+      "en": {
+        "product": "Razer Cynosa Lite"
+      },
+      "zh-cn": {
+        "product": "Razer 萨诺狼蛛轻装版"
+      }
+    }
+  },
+  "576": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Mercury White",
+        "dashboard": "Razer Blade 15",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15水银版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "水银版"
+      }
+    },
+    "129": {}
+  },
+  "577": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow Halo Infinite Edition",
+        "dashboard": "Razer BlackWidow",
+        "edition": "Halo Infinite Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 光环:无限 典藏版",
+        "dashboard": "Razer 黑寡妇蜘蛛",
+        "edition": "光环:无限 典藏版"
+      },
+      "zh-tw": {
+        "product": "RAZER 黑寡妇蜘蛛 光环:无限 典藏版",
+        "dashboard": "Razer 黑寡妇蜘蛛",
+        "edition": "光环:无限 典藏版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow Mercury Edition",
+        "dashboard": "Razer BlackWidow",
+        "edition": "Mercury Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 水银",
+        "dashboard": "Razer 黑寡妇蜘蛛",
+        "edition": "水银"
+      },
+      "zh-tw": {
+        "product": "Razer 黑寡妇蜘蛛 水银",
+        "dashboard": "Razer 黑寡妇蜘蛛",
+        "edition": "水银"
+      }
+    }
+  },
+  "579": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Tournament Edition"
+      },
+      "es": {
+        "product": "Razer Huntsman Tournament Edition",
+        "dashboard": "RAZER HUNTSMAN TOURNAMENT EDITION"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman Tournament Edition"
+      },
+      "ru": {
+        "product": "Razer Huntsman Tournament Edition",
+        "dashboard": "Razer Huntsman Tournament Editionv"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛竞技版"
+      },
+      "zh-tw": {
+        "product": "Razer Huntsman Tournament Edition",
+        "dashboard": "Razer Huntsman Tournament Editionv"
+      }
+    }
+  },
+  "580": {
+    "0": {
+      "en": {
+        "product": "Razer Tartarus Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 塔洛斯魔蝎专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Tartarus Pro Mercury White",
+        "dashboard": "Razer Tartarus Pro",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 塔洛斯魔蝎专业版 水银版",
+        "dashboard": "Razer 塔洛斯魔蝎专业版",
+        "edition": "水银版"
+      }
+    }
+  },
+  "581": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Mercury White",
+        "dashboard": "Razer Blade 15",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15水银版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "水银版"
+      }
+    }
+  },
+  "582": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15精英版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade 15 Quartz Pink",
+        "dashboard": "Razer Blade 15",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15 粉晶版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "粉晶版"
+      }
+    }
+  },
+  "585": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Type"
+      }
+    }
+  },
+  "586": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Stealth 13 ",
+        "dashboard": "Razer Blade Stealth 13"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃潜行版 13"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade Stealth 13 Mercury White",
+        "dashboard": "Razer Blade Stealth 13",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER灵刃潜行13 水银版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "水银版"
+      }
+    }
+  },
+  "587": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    }
+  },
+  "588": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Pro 17"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃17"
+      }
+    }
+  },
+  "589": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Studio Edition",
+        "dashboard": "Razer Blade 15",
+        "edition": "Studio Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15精英版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Studio Edition",
+        "dashboard": "Razer Blade 15",
+        "edition": "Studio Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15精英版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "精英版"
+      }
+    }
+  },
+  "590": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V3"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V3 Quartz Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 粉晶款",
+        "dashboard": "Razer 黑寡妇蜘蛛 V3",
+        "edition": "粉晶款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V3"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V3 Halo Infinite Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Halo Infinite Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 光环:无限 限定款",
+        "dashboard": "Razer 黑寡妇蜘蛛 V3",
+        "edition": "光环:无限 限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer BlackWidow V3 Roblox Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Roblox Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 罗布乐思特别版",
+        "dashboard": "Razer 黑寡妇蜘蛛 V3",
+        "edition": "罗布乐思特别版"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer BlackWidow V3 Bape Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Bape Edition"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer BlackWidow V3 Evisu Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Evisu Edition"
+      },
+      "zh-cn": {
+        "product": "Razer黑寡妇蜘蛛V3 EVISU 限定款",
+        "dashboard": "Razer黑寡妇蜘蛛V3",
+        "edition": "EVISU 限定款"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer BlackWidow V3 Special Edition",
+        "dashboard": "Razer BlackWidow V3",
+        "edition": "Special Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 特别版",
+        "dashboard": "Razer 黑寡妇蜘蛛 V3",
+        "edition": "特别版"
+      }
+    }
+  },
+  "591": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow X: Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 X 竞技版背光款"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "RAZER BLACKWIDOW X: TENKEYLESS DORAEMON EDITION",
+        "dashboard": "Razer BlackWidow X: Tenkeyless",
+        "edition": "Doraemon Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 哆啦A梦50周年限定款机械键盘"
+      },
+      "zh-tw": {
+        "product": "RAZER BLACKWIDOW X: TENKEYLESS DORAEMON EDITION"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER BLACKWIDOW X: TENKEYLESS SANRIO LIMITED EDITION",
+        "dashboard": "Razer BlackWidow X: Tenkeyless ",
+        "edition": "Sanrio Limited Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 X 竞技版: 背光款 SANRIO 限定款",
+        "dashboard": "RAZER 黑寡妇蜘蛛 X 竞技版: 背光款",
+        "edition": "SANRIO 限定款"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow X: Tenkeyless LPL Limited Edition",
+        "dashboard": "Razer BlackWidow X: Tenkeyless ",
+        "edition": "LPL Limited Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER黑寡妇蜘蛛X竞技版背光款 LPL限定款",
+        "dashboard": "RAZER黑寡妇蜘蛛X竞技版背光款",
+        "edition": "LPL限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "RAZER BLACKWIDOW X: TENKEYLESS CROSSFIRE EDITION",
+        "dashboard": "RAZER BLACKWIDOW X: TENKEYLESS",
+        "edition": "CROSSFIRE EDITION"
+      },
+      "zh-cn": {
+        "product": "RAZER黑寡妇蜘蛛X竞技版背光款 CROSSFIRE限定款",
+        "dashboard": "RAZER黑寡妇蜘蛛X竞技版背光款",
+        "edition": "CROSSFIRE限定款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "RAZER BLACKWIDOW X: TENKEYLESS MINIONS EDITION",
+        "dashboard": "RAZER BLACKWIDOW X: TENKEYLESS",
+        "edition": "MINIONS EDITION"
+      },
+      "zh-cn": {
+        "product": "RAZER 小黄人 限定款黑寡妇蜘蛛X竞技版键盘",
+        "dashboard": "Razer 黑寡妇蜘蛛X竞技版键盘",
+        "edition": "小黄人 限定款"
+      }
+    }
+  },
+  "592": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Essential"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛标准版"
+      }
+    }
+  },
+  "593": {
+    "0": {
+      "en": {
+        "product": "Razer Pokémon Pikachu Limited Edition Backlit Keyboard",
+        "dashboard": "Razer Pokémon",
+        "edition": "Pikachu Limited Edition Backlit Keyboard"
+      },
+      "zh-cn": {
+        "product": "RAZER 宝可梦 皮卡丘限定款背光键盘",
+        "dashboard": "RAZER 宝可梦",
+        "edition": "皮卡丘限定款背光键盘"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Pokémon Pikachu Limited Edition Backlit Keyboard",
+        "dashboard": "Razer Pokémon",
+        "edition": "Pikachu Limited Edition Backlit Keyboard"
+      },
+      "zh-cn": {
+        "product": "RAZER 宝可梦 皮卡丘限定款背光键盘",
+        "dashboard": "RAZER 宝可梦",
+        "edition": "皮卡丘限定款背光键盘"
+      }
+    }
+  },
+  "594": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Stealth 13 Base Model",
+        "dashboard": "Razer Blade Stealth 13",
+        "edition": "BASE MODEL"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃潜行版 13 标准版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "标准版"
+      }
+    }
+  },
+  "595": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Studio Edition",
+        "dashboard": "Razer Blade 15",
+        "edition": "Studio Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15工作室版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "工作室版"
+      }
+    }
+  },
+  "597": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15标准版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "标准版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade 15 Quartz Pink",
+        "dashboard": "Razer Blade 15",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer灵刃15粉晶",
+        "dashboard": "Razer灵刃15",
+        "edition": "粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Mercury White",
+        "dashboard": "Razer Blade 15",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15水银版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "水银版"
+      }
+    }
+  },
+  "598": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Pro 17"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃专业版17"
+      }
+    }
+  },
+  "599": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Mini"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman Mini Mercury White",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛迷你版 水银",
+        "dashboard": "Razer 猎魂光蛛迷你版",
+        "edition": "水银"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman Mini"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛迷你版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman Mini Mercury White",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛迷你版 水银",
+        "dashboard": "Razer 猎魂光蛛迷你版",
+        "edition": "水银"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Huntsman Mini Special Edition",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Special Edition"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Huntsman Mini Quartz Edition",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你版 粉晶",
+        "dashboard": "RAZER 猎魂光蛛迷你版",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "600": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V3 Mini Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V3迷你无线版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V3 Mini Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V3迷你无线版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V3 Mini Hyperspeed Phantom Edition",
+        "dashboard": "Razer BlackWidow V3 Mini Hyperspeed",
+        "edition": "Phantom Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V3迷你幽灵版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V3 Mini Hyperspeed Phantom Edition",
+        "dashboard": "Razer BlackWidow V3 Mini Hyperspeed",
+        "edition": "Phantom Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V3迷你幽灵版"
+      }
+    }
+  },
+  "601": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Stealth 13 Base Model",
+        "dashboard": "Razer Blade Stealth 13",
+        "edition": "BASE MODEL"
+      },
+      "zh-cn": {
+        "product": "RAZER灵刃潜行13标准版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "标准版"
+      },
+      "zh-tw": {
+        "product": "RAZER灵刃潜行13标准版",
+        "dashboard": "RAZER灵刃潜行13",
+        "edition": "标准版"
+      }
+    }
+  },
+  "602": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 无线版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V3 无线版"
+      }
+    }
+  },
+  "605": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V2"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Ornata V2 Tencent Esports Edition",
+        "dashboard": "Razer Ornata V2",
+        "edition": "Tencent Esports Edition"
+      },
+      "kr": {
+        "product": "Razer Ornata V2",
+        "edition": "Tencent Esports Edition"
+      },
+      "ru": {
+        "product": "Razer Ornata V2 Tencent Esports Edition",
+        "dashboard": "Razer Ornata V2",
+        "edition": "TTencent Esports Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V2 腾讯电竞定制款",
+        "dashboard": "Razer 雨林狼蛛V2",
+        "edition": "腾讯电竞定制款"
+      }
+    }
+  },
+  "606": {
+    "0": {
+      "en": {
+        "product": "Razer Cynosa V2"
+      },
+      "zh-cn": {
+        "product": "Razer 萨诺狼蛛 V2"
+      }
+    }
+  },
+  "614": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V2 Analog"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛V2模拟光轴"
+      }
+    }
+  },
+  "616": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15标准版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "标准版"
+      }
+    }
+  },
+  "617": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Mini"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman Mini Mercury White",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你版 水银",
+        "dashboard": "RAZER 猎魂光蛛迷你版",
+        "edition": "水银"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman Mini"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman Mini Mercury White",
+        "dashboard": "Razer Huntsman Mini",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你版 水银",
+        "dashboard": "RAZER 猎魂光蛛迷你版",
+        "edition": "水银"
+      }
+    }
+  },
+  "618": {
+    "0": {
+      "en": {
+        "product": "Razer Book 13"
+      },
+      "zh-cn": {
+        "product": "Razer Book 13",
+        "edition": "Advanced Model"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Book 13 Quartz Pink Edition",
+        "dashboard": "Razer Book 13",
+        "edition": "Quartz Pink Edition"
+      }
+    }
+  },
+  "619": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V2 Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛V2 竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V2 Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛V2竞技版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman V2 Tenkeyless ESL Edition",
+        "dashboard": "Razer Huntsman V2 Tenkeyless",
+        "edition": "ESL Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛V2竞技版ESL限定款",
+        "dashboard": "RAZER 猎魂光蛛V2竞技版",
+        "edition": "ESL限定款"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman V2 Tenkeyless Quartz",
+        "dashboard": "Razer Huntsman V2 Tenkeyless",
+        "edition": "Quartz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V2 竞技版 粉晶",
+        "dashboard": "RAZER 猎魂光蛛V2竞技版",
+        "edition": "粉晶"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Huntsman V2 Tenkeyless Special Edition",
+        "dashboard": "Razer Huntsman V2 Tenkeyless",
+        "edition": "Special Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛V2竞技版 特别版",
+        "dashboard": "RAZER 猎魂光蛛V2竞技版",
+        "edition": "特别版"
+      }
+    }
+  },
+  "620": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V2"
+      },
+      "zh-cn": {
+        "product": "Razer猎魂光蛛 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V2"
+      },
+      "zh-cn": {
+        "product": "Razer猎魂光蛛 V2"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman V2 - PUBG Battlegrounds Edition",
+        "dashboard": "Razer Huntsman V2",
+        "edition": "PUBG Battlegrounds Edition"
+      },
+      "zh-cn": {
+        "product": "Razer猎魂光蛛V2",
+        "edition": "绝地求生特别版"
+      }
+    }
+  },
+  "621": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {}
+  },
+  "622": {
+    "0": {
+      "en": {
+        "product": "Razer Blade Pro 17"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃17",
+        "edition": "精英版"
+      }
+    }
+  },
+  "623": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃15标准版",
+        "dashboard": "RAZER 灵刃15",
+        "edition": "标准版"
+      }
+    }
+  },
+  "624": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 14"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃14"
+      }
+    }
+  },
+  "630": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 15 Lambda Edition",
+        "dashboard": "Razer Blade 15",
+        "edition": "Lambda Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15水银版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "水银版"
+      }
+    }
+  },
+  "631": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Type Ultra"
+      }
+    }
+  },
+  "633": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 17"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃17"
+      }
+    }
+  },
+  "634": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Base Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Base Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    }
+  },
+  "642": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Mini Analog"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛迷你模拟光轴"
+      },
+      "zh-tw": {
+        "product": "RAZER 猎魂光蛛迷你模拟光轴"
+      }
+    },
+    "128": {}
+  },
+  "647": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 Quartz Edition",
+        "dashboard": "Razer BlackWidow V4",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4 粉晶款",
+        "dashboard": "Razer 黑寡妇蜘蛛 V4",
+        "edition": "粉晶款"
+      }
+    }
+  },
+  "650": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15 Advanced Model",
+        "dashboard": "Razer Blade 15",
+        "edition": "Advanced Model"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15精英版",
+        "dashboard": "Razer 灵刃15",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer X Lambda Tensorbook"
+      }
+    }
+  },
+  "651": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 17"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃17",
+        "edition": "精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade 17 Mercury White",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃17 - 水银版",
+        "edition": "水银版"
+      }
+    }
+  },
+  "652": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 14"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃14"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade 14 Quartz Pink",
+        "dashboard": "Razer Blade 14",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃 14 粉晶版",
+        "dashboard": "RAZER 灵刃14",
+        "edition": "粉晶版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 14 Mercury White",
+        "dashboard": "Razer Blade 14",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃 14 水银版",
+        "dashboard": "RAZER 灵刃 14",
+        "edition": "水银版"
+      }
+    }
+  },
+  "653": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4专业版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4专业版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V4 Pro White Edition",
+        "dashboard": "Razer BlackWidow V4 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 专业版 白色",
+        "dashboard": "RAZER 黑寡妇蜘蛛 V4 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "654": {
+    "0": {
+      "en": {
+        "product": "Razer Cynosa Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 萨诺狼蛛专业版"
+      }
+    }
+  },
+  "655": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V3"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛 V3"
+      }
+    }
+  },
+  "658": {
+    "0": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2 无线版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2 无线版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro White Edition",
+        "dashboard": "Razer DeathStalker V2 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2 无线版白色",
+        "dashboard": "Razer 噬魂金蝎 V2 无线版",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro White Edition",
+        "dashboard": "Razer DeathStalker V2 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2 无线版白色",
+        "dashboard": "Razer 噬魂金蝎 V2 无线版",
+        "edition": "白色"
+      }
+    }
+  },
+  "659": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 X"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 X"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4 X"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 X"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 X Fortnite Edition",
+        "dashboard": "Razer BlackWidow V4 X",
+        "edition": "Fortnite Edition"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V4 X Minecraft Edition",
+        "dashboard": "Razer BlackWidow V4 X",
+        "edition": "Minecraft Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 X 我的世界 特别版",
+        "dashboard": "Razer 黑寡妇蜘蛛 V4 X",
+        "edition": "我的世界 特别版"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer BlackWidow V4 X Pokémon Edition",
+        "dashboard": "Razer BlackWidow V4 X",
+        "edition": "Pokémon Edition"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer BlackWidow V4 X Nissin Edition",
+        "dashboard": "Razer BlackWidow V4 X",
+        "edition": "Nissin Edition"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer BlackWidow V4 X Zenless Zone Zero Edition",
+        "dashboard": "Razer BlackWidow V4 X",
+        "edition": "Zenless Zone Zero Edition"
+      }
+    }
+  },
+  "660": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V3 X"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 X"
+      }
+    }
+  },
+  "661": {
+    "0": {
+      "en": {
+        "product": "Razer DeathStalker V2"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathStalker V2"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2"
+      }
+    }
+  },
+  "664": {
+    "0": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 噬魂金蝎 V2 无线竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 噬魂金蝎 V2 无线竞技版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer DeathStalker V2 Pro Tenkeyless White Edition",
+        "dashboard": "Razer DeathStalker V2 Pro Tenkeyless",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 噬魂金蝎 V2 无线版白色",
+        "dashboard": "Razer 噬魂金蝎 V2 无线版",
+        "edition": "白色"
+      }
+    }
+  },
+  "669": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 14"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃14"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 14 Mercury White",
+        "dashboard": "Razer Blade 14",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃 14 水银版",
+        "dashboard": "RAZER 灵刃 14",
+        "edition": "水银版"
+      }
+    }
+  },
+  "670": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 15"
+      },
+      "zh-cn": {
+        "product": "Razer 灵刃15"
+      }
+    },
+    "129": {}
+  },
+  "671": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 16"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 16 Mercury",
+        "dashboard": "Razer Blade 16",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16水银",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "水银"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Blade 16 Lamborghini Edition",
+        "dashboard": "Razer Blade 16",
+        "edition": "Lamborghini Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16 蓝博基尼联名",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "蓝博基尼联名"
+      }
+    }
+  },
+  "672": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 18"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18",
+        "edition": "精英版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Blade 18 Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18水银版",
+        "dashboard": "RAZER 灵刃18",
+        "edition": "水银版"
+      }
+    }
+  },
+  "673": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V3"
+      },
+      "zh-cn": {
+        "product": "RAZER 雨林狼蛛V3"
+      }
+    }
+  },
+  "674": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V3 X"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 X"
+      }
+    }
+  },
+  "675": {
+    "0": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 雨林狼蛛 V3 竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Hello Kitty And Friends Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Hello Kitty And Friends Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 雨林狼蛛 V3 竞技版 HELLO KITTY AND FRIENDS 限款版",
+        "dashboard": "RAZER 雨林狼蛛 V3 竞技版",
+        "edition": "HELLO KITTY AND FRIENDS 限款版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer | Kuromi Limited Edition Keyboard",
+        "dashboard": "Razer | Kuromi",
+        "edition": "Limited Edition Keyboard"
+      },
+      "zh-cn": {
+        "product": "RAZER | KUROMI 限定款键盘",
+        "dashboard": "RAZER | KUROMI",
+        "edition": "限定款键盘"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer | Sanrio Characters Limited Edition Keyboard",
+        "dashboard": "Razer | Sanrio Characters",
+        "edition": "Limited Edition Keyboard"
+      },
+      "zh-cn": {
+        "product": "RAZER | SANRIO CHARACTERS 限定款键盘",
+        "dashboard": "RAZER | SANRIO CHARACTERS",
+        "edition": "限定款键盘"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Kuromi Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Kuromi Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 竞技版 竞技版酷洛米款",
+        "dashboard": "Razer 雨林狼蛛V3 竞技版",
+        "edition": "竞技版酷洛米款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Cinnamoroll Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Cinnamoroll Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛 V3 竞技版 大耳狗款",
+        "dashboard": "RAZER 雨林狼蛛 V3 竞技版",
+        "edition": "大耳狗款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless BLACKPINK Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "BLACKPINK Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛 V3 竞技版 [BLACKPINK 联名款]",
+        "dashboard": "RAZER 雨林狼蛛 V3 竞技版",
+        "edition": "[BLACKPINK 联名款]"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless BLACKPINK Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "BLACKPINK Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛 V3 竞技版 [BLACKPINK 联名款]",
+        "dashboard": "RAZER 雨林狼蛛 V3 竞技版",
+        "edition": "[BLACKPINK 联名款]"
+      }
+    },
+    "135": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Pompompurin Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Pompompurin Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 竞技版 布丁狗款",
+        "dashboard": "Razer 雨林狼蛛V3 竞技版",
+        "edition": "布丁狗款"
+      }
+    },
+    "136": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Espeon/Umbreon Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Espeon/Umbreon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 竞技版 太阳伊布与月亮伊布款",
+        "dashboard": "Razer 雨林狼蛛V3 竞技版",
+        "edition": "太阳伊布与月亮伊布款"
+      }
+    },
+    "137": {
+      "en": {
+        "product": "Razer Ornata V3 Tenkeyless Pikachu/Eevee Edition",
+        "dashboard": "Razer Ornata V3 Tenkeyless",
+        "edition": "Pikachu/Eevee Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雨林狼蛛V3 竞技版 皮卡丘与伊布款",
+        "dashboard": "Razer 雨林狼蛛V3 竞技版",
+        "edition": "皮卡丘与伊布款"
+      }
+    }
+  },
+  "677": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 75%"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75%"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4 75%"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75%"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% White Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75% 白色",
+        "dashboard": "RAZER 黑寡妇蜘蛛 V4 75%",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V4 75%"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75%"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% White Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75% 白色",
+        "dashboard": "RAZER 黑寡妇蜘蛛 V4 75%",
+        "edition": "白色"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% Phantom Green Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "Phantom Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 75% 幻影绿",
+        "dashboard": "RAZER 黑寡妇蜘蛛 V4 75%",
+        "edition": "幻影绿"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% Phantom White Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "Phantom White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4 75% 幻影白",
+        "dashboard": "RAZER 黑寡妇蜘蛛V4 75%",
+        "edition": "幻影白"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% Phantom Black Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "Phantom Black Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4 75% 幻影黑",
+        "dashboard": "RAZER 黑寡妇蜘蛛V4 75%",
+        "edition": "幻影黑"
+      }
+    }
+  },
+  "678": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业版"
+      }
+    }
+  },
+  "679": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless White Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版 白色",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版",
+        "edition": "白色"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless Counter-Strike 2 Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless",
+        "edition": "Counter-Strike 2 Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版 反恐精英2联名款",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版",
+        "edition": "反恐精英2联名款"
+      }
+    }
+  },
+  "688": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Mini"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 V3 专业迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Mini White Edition",
+        "dashboard": "Razer Huntsman V3 Pro Mini",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 V3 专业迷你版 白色",
+        "dashboard": "Razer 猎魂光蛛 V3 专业迷你版",
+        "edition": "白色"
+      }
+    }
+  },
+  "689": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 X Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 V3 X 竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V3 X Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 X 竞技版"
+      }
+    }
+  },
+  "691": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Pro 75%"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 无线专业版 75%"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer | Pokémon Gengar Edition Wireless Mechanical Keyboard",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Gengar Edition Wireless Mechanical Keyboard"
+      },
+      "zh-cn": {
+        "product": "RAZER | 宝可梦 耿鬼款无线机械键盘",
+        "dashboard": "RAZER | 宝可梦",
+        "edition": "耿鬼款无线机械键盘"
+      }
+    }
+  },
+  "694": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 14"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃14"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 14 Mercury White",
+        "dashboard": "Razer Blade 14",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃 14 水银版",
+        "dashboard": "RAZER 灵刃 14",
+        "edition": "水银版"
+      }
+    }
+  },
+  "695": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 16"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 16 Mercury",
+        "dashboard": "Razer Blade 16",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16水银",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "水银"
+      }
+    }
+  },
+  "696": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 18"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18",
+        "edition": "精英版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 18 Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18水银版",
+        "dashboard": "RAZER 灵刃18",
+        "edition": "水银版"
+      }
+    }
+  },
+  "697": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Mini Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V4迷你无线版"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {}
+  },
+  "708": {
+    "0": {
+      "en": {
+        "product": "Razer Pro Type Ergo"
+      }
+    }
+  },
+  "709": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 14"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃14"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 14 Mercury White",
+        "dashboard": "Razer Blade 14",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃 14 水银版",
+        "dashboard": "RAZER 灵刃 14",
+        "edition": "水银版"
+      }
+    }
+  },
+  "710": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 16"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 16 Mercury",
+        "dashboard": "Razer Blade 16",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16水银",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "水银"
+      }
+    }
+  },
+  "711": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 18"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 18 Mercury",
+        "dashboard": "Razer Blade 18",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18水银",
+        "dashboard": "RAZER 灵刃18",
+        "edition": "水银"
+      }
+    }
+  },
+  "716": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+      }
+    }
+  },
+  "717": {
+    "0": {
+      "en": {
+        "product": "Razer Joro"
+      },
+      "zh-cn": {
+        "product": "Razer 乔罗金蛛"
+      }
+    }
+  },
+  "719": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro 8KHz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业版 8KHz"
+      }
+    }
+  },
+  "720": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHZ"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz White Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ白色",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz Esports Green Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ电竞绿",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版8KHz",
+        "edition": "电竞绿"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz NiKo Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "NiKo Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 V3 专业竞技版8KHZ NiKo限定款",
+        "dashboard": "Razer 猎魂光蛛 V3 专业竞技版8KHz",
+        "edition": "NiKo限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz Sentinels Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "Sentinels Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 V3 专业竞技版8KHZ Sentinels限定款",
+        "dashboard": "Razer 猎魂光蛛 V3 专业竞技版8KHz",
+        "edition": "Sentinels限定款"
+      }
+    }
+  },
+  "721": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Mini 8KHz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业迷你版 8KHz"
+      }
+    }
+  },
+  "724": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+      }
+    }
+  },
+  "727": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 Tenkeyless Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 竞技极速版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackWidow V4 Tenkeyless Hyperspeed Evangelion Edition",
+        "dashboard": "Razer BlackWidow V4 Tenkeyless Hyperspeed",
+        "edition": "Evangelion Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER | 新世纪福音战士2号机款无线键盘",
+        "dashboard": "RAZER | 新世纪福音战士",
+        "edition": "2号机款无线键盘"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V4 Tenkeyless Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 黑寡妇蜘蛛 V4 竞技极速版"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer BlackWidow V4 Tenkeyless Hyperspeed Wuthering Waves Edition",
+        "dashboard": "Razer BlackWidow V4 Tenkeyless Hyperspeed",
+        "edition": "Wuthering Waves Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4 竞技极速版【鸣潮游戏款】",
+        "dashboard": "Razer 黑寡妇蜘蛛 V4 竞技极速版",
+        "edition": "【鸣潮游戏款】"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer BlackWidow V4 TKL HyperSpeed - Honkai Star Rail Edition",
+        "dashboard": "Razer BlackWidow V4 TKL HyperSpeed",
+        "edition": "Honkai Star Rail Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4 竞技极速版 - 《崩坏：星穹铁道》联名款",
+        "dashboard": "Razer 黑寡妇蜘蛛 V4 竞技极速版",
+        "edition": "《崩坏：星穹铁道》联名款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer BlackWidow V4 Tenkeyless Hyperspeed - Evangelion (EVA-01) Edition",
+        "dashboard": "Razer BlackWidow V4 Tenkeyless Hyperspeed",
+        "edition": "Evangelion (EVA-01) Edition"
+      },
+      "zh-cn": {
+        "product": "Razer丨黑寡妇蜘蛛 V4 竞技极速版【新世纪福音战士 初号机联名款】游戏键盘",
+        "dashboard": "Razer丨黑寡妇蜘蛛 V4 竞技极速版",
+        "edition": "【新世纪福音战士 初号机联名款】"
+      }
+    }
+  },
+  "728": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman Signature Edition",
+        "dashboard": "Razer Huntsman",
+        "edition": "Signature Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 猎魂光蛛 Signature Edition",
+        "dashboard": "Razer 猎魂光蛛",
+        "edition": "Signature Edition"
+      }
+    }
+  },
+  "736": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 16"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 16 Mercury",
+        "dashboard": "Razer Blade 16",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16水银",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "水银"
+      }
+    },
+    "131": {}
+  },
+  "737": {
+    "0": {
+      "en": {
+        "product": "Razer Blade 18"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃18"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Blade 18 Mercury",
+        "dashboard": "Razer Blade 18",
+        "edition": "Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 灵刃16水银",
+        "dashboard": "RAZER 灵刃16",
+        "edition": "水银"
+      }
+    },
+    "131": {}
+  },
+  "739": {
+    "0": {
+      "en": {
+        "product": "Razer Reclusa X Mini 65%"
+      },
+      "zh-cn": {
+        "product": "Razer 隐蛛 X 迷你版 65%"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {}
+  },
+  "740": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 HE Magnetic Mini 65% 8KHz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂磁蛛 V3 迷你版 65% 8KHz"
+      }
+    }
+  },
+  "741": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Tenkeyless 8KHZ"
+      },
+      "zh-cn": {
+        "product": "RAZER猎魂光蛛V3竞技版8KHz"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz White Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ白色",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Tenkeyless 8KHz Esports Green Edition",
+        "dashboard": "Razer Huntsman V3 Pro Tenkeyless 8KHz",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版8KHZ电竞绿",
+        "dashboard": "RAZER 猎魂光蛛 V3 专业竞技版8KHz",
+        "edition": "电竞绿"
+      }
+    }
+  },
+  "742": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 Pro Low-Profile Tenkeyless 8KHz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂光蛛 V3 专业竞技版矮轴8KHz"
+      }
+    }
+  },
+  "746": {
+    "0": {
+      "en": {
+        "product": "Razer Huntsman V3 HE Magnetic Tenkeyless 8KHz"
+      },
+      "zh-cn": {
+        "product": "RAZER 猎魂磁蛛 V3 竞技版 8KHz"
+      }
+    }
+  },
+  "747": {
+    "0": {
+      "en": {
+        "product": "Razer Tartarus V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 塔洛斯魔蝎 V2 专业版"
+      }
+    }
+  },
+  "752": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V4 75% XBOX 25 Anniversary Edition",
+        "dashboard": "Razer BlackWidow V4 75%",
+        "edition": "XBOX 25 Anniversary Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛 V4 75% XBOX 25 周年限定款",
+        "dashboard": "Razer 黑寡妇蜘蛛 V4 75%",
+        "edition": "XBOX 25 周年限定款"
+      }
+    }
+  },
+  "769": {
+    "0": {
+      "en": {
+        "product": "Razer Philips Hue"
+      },
+      "zh-cn": {
+        "product": "RAZER Philips Hue"
+      }
+    }
+  },
+  "777": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken BT Sanrio Limited Edition",
+        "dashboard": "Razer Kraken BT",
+        "edition": "Sanrio Limited Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版BT SANRIO限定款",
+        "dashboard": "Razer 北海巨妖萌猫版BT",
+        "edition": "Sanrio限定款"
+      }
+    },
+    "128": {},
+    "129": {}
+  },
+  "778": {
+    "0": {
+      "en": {
+        "product": "ASRock B550 Taichi Razer Edition"
+      },
+      "zh-cn": {
+        "product": "华擎B550太极AMD RAZER雷蛇联名版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "ASRock X570 Taichi Razer Edition"
+      },
+      "zh-cn": {
+        "product": "华擎X570太极AMD RAZER雷蛇联名版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "ASRock Z690 Taichi Razer Edition"
+      },
+      "zh-cn": {
+        "product": "华擎Z690太极INTEL RAZER雷蛇联名版"
+      }
+    }
+  },
+  "780": {
+    "0": {
+      "en": {
+        "product": "Razer Key Light Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER CHROMA 雷蛇幻彩 RGB 补光灯"
+      }
+    }
+  },
+  "781": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Lamp Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 以太台灯专业版"
+      }
+    }
+  },
+  "782": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Lamp"
+      },
+      "zh-cn": {
+        "product": "RAZER 以太台灯"
+      }
+    }
+  },
+  "783": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Light Bulb"
+      },
+      "zh-cn": {
+        "product": "RAZER 以太灯泡"
+      }
+    }
+  },
+  "784": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Light Strip"
+      },
+      "zh-cn": {
+        "product": "RAZER 以太灯带"
+      }
+    }
+  },
+  "790": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Monitor Light Bar"
+      },
+      "zh-cn": {
+        "product": "Razer 以太显示屏挂灯"
+      }
+    }
+  },
+  "791": {
+    "0": {
+      "en": {
+        "product": "Razer Aether Standing Light Bars"
+      },
+      "zh-cn": {
+        "product": "RAZER 以太柱状氛围灯"
+      }
+    }
+  },
+  "1303": {
+    "0": {
+      "en": {
+        "product": "Razer Nommo Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 天狼星幻彩版",
+        "dashboard": "RAZER 天狼星幻彩版"
+      }
+    }
+  },
+  "1304": {
+    "0": {
+      "en": {
+        "product": "Razer Nommo Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇天狼星专业版"
+      }
+    }
+  },
+  "1306": {
+    "0": {
+      "en": {
+        "product": "Razer Nari Ultimate"
+      },
+      "zh-cn": {
+        "product": "Razer 影鲛终极版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Nari Ultimate Overwatch Lucio Edition",
+        "dashboard": "Razer Nari Ultimate",
+        "edition": "Overwatch Lucio Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 影鲛终极版《守望先锋》卢西奥特别款",
+        "dashboard": "Razer 影鲛终极版",
+        "edition": "《守望先锋》卢西奥特别款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Nari Ultimate Pewdiepie Edition",
+        "dashboard": "Razer Nari Ultimate",
+        "edition": "Pewdiepie Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 影鲛终极版PEWDIEPIE 定制款",
+        "dashboard": "Razer 影鲛终极版",
+        "edition": "PEWDIEPIE 定制款"
+      }
+    }
+  },
+  "1308": {
+    "0": {
+      "en": {
+        "product": "Razer Nari"
+      },
+      "zh-cn": {
+        "product": "RAZER  影鲛",
+        "dashboard": "RAZER 影鲛"
+      }
+    }
+  },
+  "1310": {
+    "0": {
+      "en": {
+        "product": "Razer Nari Essential"
+      },
+      "zh-cn": {
+        "product": "RAZER 影鲛标准版"
+      }
+    }
+  },
+  "1312": {
+    "0": {
+      "en": {
+        "product": "Razer USB Audio Controller"
+      },
+      "zh-cn": {
+        "product": "Razer USB 音频控制器"
+      },
+      "zh-tw": {
+        "product": "Razer USB 音频控制器"
+      }
+    }
+  },
+  "1313": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty Edition Quartz Pink",
+        "dashboard": "Razer Kraken Kitty",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版",
+        "edition": "Quartz Pink"
+      }
+    }
+  },
+  "1318": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken X USB"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖标准版X USB"
+      }
+    }
+  },
+  "1319": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Ultimate"
+      },
+      "zh-cn": {
+        "product": "RAZER  北海巨妖终极版"
+      }
+    }
+  },
+  "1320": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨V2专业版"
+      },
+      "zh-tw": {
+        "product": "Razer 旋风黑鲨V2专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro Rainbow Six Edition",
+        "dashboard": "Razer BlackShark V2 Pro",
+        "edition": "Rainbow Six Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 彩虹六号限定款",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "彩虹六号限定款"
+      },
+      "zh-tw": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 彩虹六号限定款",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "彩虹六号限定款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro White Edition",
+        "dashboard": "Razer BlackShark V2 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 白色",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "白色"
+      },
+      "zh-tw": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 白色",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "1321": {
+    "0": {
+      "en": {
+        "product": "Razer USB Sound Card"
+      },
+      "zh-cn": {
+        "product": "RAZER USB 声卡"
+      }
+    }
+  },
+  "1325": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V3 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖V3专业版"
+      }
+    }
+  },
+  "1328": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken BT Kitty Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版BT"
+      }
+    },
+    "128": {
+      "de": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "en": {
+        "product": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "es": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "fr": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "ja": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "kr": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "pt-br": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "ru": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      },
+      "zh-cn": {
+        "product": "Razer 影鲛终极版《守望先锋》卢西奥特别款",
+        "dashboard": "Razer 影鲛终极版",
+        "edition": "《守望先锋》卢西奥特别款"
+      },
+      "zh-tw": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "HELLO KITTY AND FRIENDS EDITION"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER KRAKEN BT KITTY EDITION",
+        "dashboard": "Razer Kraken BT Kitty Edition",
+        "edition": "Pewdiepie Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 影鲛终极版PEWDIEPIE 定制款",
+        "dashboard": "Razer 影鲛终极版",
+        "edition": "PEWDIEPIE 定制款"
+      }
+    }
+  },
+  "1330": {
+    "0": {
+      "en": {
+        "product": "Razer Leviathan V2"
+      },
+      "zh-cn": {
+        "product": "Razer 利维坦巨兽V2"
+      }
+    }
+  },
+  "1331": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V3 HyperSense"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖 V3 超感版"
+      }
+    }
+  },
+  "1332": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken BT - Hello Kitty and Friends Edition",
+        "dashboard": "Razer Kraken BT",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版 BT - Hello Kitty and Friends 限款版",
+        "dashboard": "Razer 北海巨妖萌猫版 BT",
+        "edition": "Hello Kitty and Friends 限款版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken BT - Hello Kitty and Friends Edition",
+        "dashboard": "Razer Kraken BT",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版 BT - Hello Kitty and Friends 限款版"
+      }
+    },
+    "129": {}
+  },
+  "1335": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V3 X"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V3 X"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken V3 X"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V3 X"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER | POKÉMON PIKACHU EDITION HEADSET",
+        "dashboard": "RAZER | POKÉMON",
+        "edition": "PIKACHU EDITION HEADSET"
+      },
+      "zh-cn": {
+        "product": "雷蛇｜宝可梦 皮卡丘款头戴式耳机",
+        "dashboard": "雷蛇｜宝可梦",
+        "edition": "皮卡丘款头戴式耳机"
+      },
+      "zh-tw": {
+        "product": "Razer Kraken V3 X Fortnite Edition",
+        "edition": "PIKACHU EDITION HEADSET"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Kraken V3 X Fortnite Edition",
+        "dashboard": "Razer Kraken V3 X",
+        "edition": "Fortnite Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V3 X",
+        "edition": "Fortnite Edition"
+      }
+    }
+  },
+  "1337": {
+    "0": {
+      "en": {
+        "product": "Razer Barracuda Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER梭鱼专业版"
+      }
+    }
+  },
+  "1339": {
+    "0": {
+      "en": {
+        "product": "Razer Barracuda"
+      },
+      "zh-cn": {
+        "product": "RAZER梭鱼"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Barracuda Quartz Pink Edition",
+        "dashboard": "Razer Barracuda",
+        "edition": "Quartz Pink Edition"
+      },
+      "zh-cn": {
+        "product": "Razer梭鱼 粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Barracuda Mercury White Edition",
+        "dashboard": "Razer Barracuda",
+        "edition": "Mercury White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer梭鱼 水银"
+      }
+    }
+  },
+  "1342": {
+    "0": {
+      "en": {
+        "product": "Razer Audio Mixer"
+      },
+      "es": {
+        "product": "MIXER DE AUDIO RAZER"
+      },
+      "fr": {
+        "product": "MIXEUR AUDIO RAZER"
+      },
+      "kr": {
+        "product": "RAZER 오디오 믹서"
+      },
+      "pt-br": {
+        "product": "MIXER DE ÁUDIO RAZER"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇调音台"
+      },
+      "zh-tw": {
+        "product": "RAZER 音訊混音器"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Audio Mixer"
+      },
+      "zh-cn": {
+        "product": "Razer 混音器 DEV"
+      },
+      "zh-tw": {
+        "product": "Razer 混音器 DEV"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Audio Mixer"
+      },
+      "zh-cn": {
+        "product": "Razer 混音器 DEV"
+      },
+      "zh-tw": {
+        "product": "Razer 混音器 DEV"
+      }
+    }
+  },
+  "1346": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V2专业版"
+      }
+    }
+  },
+  "1347": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V2 X"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖 V2 X"
+      }
+    }
+  },
+  "1352": {
+    "0": {
+      "en": {
+        "product": "Razer Leviathan V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 利维坦巨兽V2专业版"
+      }
+    }
+  },
+  "1353": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V3"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖 V3"
+      }
+    }
+  },
+  "1354": {
+    "0": {
+      "en": {
+        "product": "Razer Leviathan V2 X"
+      },
+      "zh-cn": {
+        "product": "Razer 利维坦巨兽 V2 X"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer | Pokémon Pikachu Edition Soundbar",
+        "dashboard": "Razer | Pokémon",
+        "edition": "Pikachu Edition Soundbar"
+      },
+      "zh-cn": {
+        "product": "Razer | Pokémon 皮卡丘款条形音箱",
+        "dashboard": "Razer | Pokémon",
+        "edition": "皮卡丘款条形音箱"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Leviathan V2 X Pokémon AP Edition",
+        "dashboard": "Razer Leviathan V2 X",
+        "edition": "Pokémon AP Edition"
+      },
+      "kr": {
+        "product": "Razer Leviathan V2 X",
+        "edition": "Pokémon AP Edition"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer | Kuromi Limited Edition Soundbar"
+      },
+      "zh-cn": {
+        "product": "Razer | Kuromi 限定款条形音箱"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Leviathan V2 X Kuromi Edition",
+        "dashboard": "Razer Leviathan V2 X",
+        "edition": "Kuromi Edition"
+      }
+    }
+  },
+  "1364": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫专业版V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 Pro Quartz"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫专业版V2"
+      }
+    }
+  },
+  "1365": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨V2专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro Rainbow Six Edition",
+        "dashboard": "Razer BlackShark V2 Pro",
+        "edition": "Rainbow Six Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 彩虹六号限定款",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "彩虹六号限定款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V2 Pro White Edition",
+        "dashboard": "Razer BlackShark V2 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V2 专业版 白色",
+        "dashboard": "RAZER 旋风黑鲨 V2 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "1370": {
+    "0": {
+      "en": {
+        "product": "Razer Nommo V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 天狼星V2专业版"
+      }
+    }
+  },
+  "1372": {
+    "0": {
+      "en": {
+        "product": "Razer Nommo V2"
+      },
+      "zh-cn": {
+        "product": "RAZER 天狼星V2"
+      }
+    }
+  },
+  "1374": {
+    "0": {
+      "en": {
+        "product": "Razer Nommo V2 X"
+      },
+      "zh-cn": {
+        "product": "RAZER 天狼星V2 X"
+      }
+    }
+  },
+  "1376": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty V2"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 Quartz Edition",
+        "dashboard": "Razer Kraken Kitty V2",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫 V2 粉晶",
+        "dashboard": "RAZER 北海巨妖萌猫 V2",
+        "edition": "粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER | POKÉMON GENGAR EDITION USB HEADSET",
+        "dashboard": "RAZER | POKÉMON",
+        "edition": "GENGAR EDITION USB HEADSET"
+      },
+      "zh-cn": {
+        "product": "雷蛇 | 宝可梦 耿鬼款头戴式耳机",
+        "dashboard": "雷蛇 | 宝可梦",
+        "edition": "耿鬼款头戴式耳机"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer | Kuromi Limited Edition USB Headset",
+        "dashboard": "Razer | Kuromi",
+        "edition": "Limited Edition USB Headset"
+      },
+      "zh-cn": {
+        "product": "RAZER | KUROMI 限定款头戴式耳机",
+        "dashboard": "RAZER | KUROMI",
+        "edition": "限定款头戴式耳机"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 Hello Kitty and Friends Edition",
+        "dashboard": "Razer Kraken Kitty V2",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版 V2 HELLO KITTY AND FRIENDS 限款版",
+        "dashboard": "RAZER 北海巨妖萌猫版 V2",
+        "edition": "HELLO KITTY AND FRIENDS 限款版"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 White Edition",
+        "dashboard": "Razer Kraken Kitty V2",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版 V2 白色",
+        "dashboard": "RAZER 北海巨妖萌猫版 V2",
+        "edition": "白色"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "RAZER KRAKEN KITTY V2 Gengar Edition",
+        "dashboard": "RAZER KRAKEN KITTY V2",
+        "edition": "Gengar Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER北海巨妖萌猫版V2 耿鬼款",
+        "dashboard": "RAZER北海巨妖萌猫版V2",
+        "edition": "耿鬼款"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 Hello Kitty Edition",
+        "dashboard": "RAZER KRAKEN KITTY V2",
+        "edition": "Hello Kitty Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER北海巨妖萌猫版V2"
+      }
+    }
+  },
+  "1378": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Quartz Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版 V2 BT 粉晶",
+        "dashboard": "RAZER 北海巨妖萌猫版 V2 BT",
+        "edition": "粉晶"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Hello Kitty and Friends Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版 V2 BT HELLO KITTY AND FRIENDS 限款版",
+        "dashboard": "RAZER 北海巨妖萌猫版 V2 BT",
+        "edition": "HELLO KITTY AND FRIENDS 限款版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer | Sanrio Characters Limited Edition Wireless Headset",
+        "dashboard": "Razer | Sanrio Characters",
+        "edition": "Limited Edition Wireless Headset"
+      },
+      "zh-cn": {
+        "product": "Razer | Sanrio Characters 限定款无线耳机",
+        "dashboard": "Razer | Sanrio Characters",
+        "edition": "限定款无线耳机"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Kuromi Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Kuromi Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版V2 BT 酷洛米款",
+        "dashboard": "RAZER 北海巨妖萌猫版V2 BT",
+        "edition": "酷洛米款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Kuromi Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Kuromi Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版V2 BT 酷洛米款",
+        "dashboard": "RAZER 北海巨妖萌猫版V2 BT",
+        "edition": "酷洛米款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版 V2 BT"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT White Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫版 V2 BT 白色",
+        "dashboard": "Razer 北海巨妖萌猫版 V2 BT",
+        "edition": "白色"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Cinnamoroll Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Cinnamoroll Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER丨大耳狗限定款无线耳机",
+        "dashboard": "RAZER丨大耳狗限定款",
+        "edition": "无线耳机"
+      }
+    },
+    "137": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT Pompompurin Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Pompompurin Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V2 BT-布丁狗款",
+        "dashboard": "Razer 北海巨妖V2 BT",
+        "edition": "布丁狗款"
+      }
+    },
+    "138": {
+      "en": {
+        "product": "Razer Kraken Kitty V2 BT - Juicy Couture Edition",
+        "dashboard": "Razer Kraken Kitty V2 BT",
+        "edition": "Juicy Couture Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖萌猫V2 BT-橘滋款",
+        "dashboard": "Razer 北海巨妖萌猫V2 BT",
+        "edition": "橘滋款"
+      }
+    }
+  },
+  "1382": {
+    "0": {
+      "en": {
+        "product": "Razer Wireless Control Pod"
+      },
+      "zh-cn": {
+        "product": "RAZER 无线控制盘"
+      }
+    },
+    "128": {}
+  },
+  "1383": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V4 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4专业版"
+      },
+      "zh-tw": {
+        "product": "Razer 北海巨妖V4專業版"
+      }
+    },
+    "128": {}
+  },
+  "1386": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V3 Mini"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3迷你版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Seiren V3 Mini Quartz"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3迷你版 Quartz"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Seiren V3 Mini White"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3迷你版 White"
+      }
+    }
+  },
+  "1387": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V4"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖V4"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken V4 Evangelion Edition",
+        "dashboard": "Razer Kraken V4",
+        "edition": "Evangelion Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER丨新世纪福音战士2号机款无线耳机",
+        "dashboard": "RAZER丨新世纪福音战士",
+        "edition": "2号机款无线耳机"
+      }
+    }
+  },
+  "1389": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V4 X"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖V4 X"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken V4 X Minecraft Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Minecraft Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖V4 X 我的世界 特别版",
+        "dashboard": "RAZER 北海巨妖V4 X",
+        "edition": "我的世界 特别版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Kraken V4 X Pokémon Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Pokémon Edition"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Kraken V4 X Cinnamoroll Edition",
+        "dashboard": "RAZER Kraken V4 X",
+        "edition": "Cinnamoroll Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4 X 大耳狗款",
+        "dashboard": "RAZER 北海巨妖V4 X",
+        "edition": "大耳狗款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Kraken V4 X My Melody Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "My Melody Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4 X 美乐蒂款",
+        "dashboard": "RAZER 北海巨妖V4 X",
+        "edition": "美乐蒂款"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Kraken V4 X Charizard Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Charizard Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4X 喷火龙款",
+        "dashboard": "RAZER 北海巨妖V4X",
+        "edition": "喷火龙款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Kraken V4 X Pikachu & Eevee Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Pikachu & Eevee Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4X 皮卡丘和伊布款",
+        "dashboard": "RAZER 北海巨妖V4X",
+        "edition": "皮卡丘和伊布款"
+      }
+    },
+    "134": {
+      "en": {
+        "product": "Razer Kraken V4 X Snorlax Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Snorlax Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4X 卡比兽款",
+        "dashboard": "RAZER 北海巨妖V4X",
+        "edition": "卡比兽款"
+      }
+    },
+    "135": {
+      "en": {
+        "product": "Razer Kraken V4 X Sylveon Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Sylveon Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖V4X 仙子伊布款",
+        "dashboard": "RAZER 北海巨妖V4X",
+        "edition": "仙子伊布款"
+      }
+    },
+    "136": {
+      "en": {
+        "product": "Razer Kraken V4 X Espeon & Umbreon Edition",
+        "dashboard": "Razer Kraken V4 X",
+        "edition": "Espeon & Umbreon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 北海巨妖V4X 太阳伊布&月亮伊布款",
+        "dashboard": "RAZER 北海巨妖V4X",
+        "edition": "太阳伊布&月亮伊布款"
+      }
+    }
+  },
+  "1390": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V2 Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨 V2 极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V2 Hyperspeed White Edition",
+        "dashboard": "Razer BlackShark V2 Hyperspeed",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨 V2 极速版 白色",
+        "dashboard": "Razer 旋风黑鲨 V2",
+        "edition": "极速版 白色"
+      }
+    }
+  },
+  "1391": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma Quartz"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3幻彩版 Quartz"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma White"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖V3幻彩版 White"
+      }
+    }
+  },
+  "1392": {
+    "0": {
+      "en": {
+        "product": "Razer Clio"
+      },
+      "zh-cn": {
+        "product": "RAZER 悦神"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Clio"
+      },
+      "zh-cn": {
+        "product": "RAZER 悦神"
+      }
+    }
+  },
+  "1396": {
+    "0": {
+      "en": {
+        "product": "Razer Barracuda X Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼X幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Barracuda X Chroma White Edition",
+        "dashboard": "Razer Barracuda X Chroma",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼X幻彩版 白色",
+        "dashboard": "Razer 梭鱼X幻彩版",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Barracuda X Chroma Phantom Green Edition",
+        "dashboard": "Razer Barracuda X Chroma",
+        "edition": "Phantom Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼X幻彩版 幻影绿",
+        "dashboard": "Razer 梭鱼X幻彩版",
+        "edition": "幻影绿"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Barracuda X Chroma Phantom Black Edition",
+        "dashboard": "Razer Barracuda X Chroma",
+        "edition": "Phantom Black Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼X幻彩版 幻影黑",
+        "dashboard": "Razer 梭鱼X幻彩版",
+        "edition": "幻影黑"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Barracuda X Chroma Phantom White Edition",
+        "dashboard": "Razer Barracuda X Chroma",
+        "edition": "Phantom White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼X幻彩版 幻影白",
+        "dashboard": "Razer 梭鱼X幻彩版",
+        "edition": "幻影白"
+      }
+    }
+  },
+  "1398": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro White Edition",
+        "dashboard": "Razer BlackShark V3 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro Esports Green Edition",
+        "dashboard": "Razer BlackShark V3 Pro",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 电竞绿",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版",
+        "edition": "电竞绿"
+      }
+    },
+    "130": {},
+    "131": {
+      "en": {
+        "product": "Razer Blackshark V3 Pro Counter-Strike 2 Edition",
+        "dashboard": "Razer Blackshark V3 Pro",
+        "edition": "Counter-Strike 2 Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 反恐精英2联名款",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版",
+        "edition": "反恐精英2联名款"
+      }
+    },
+    "132": {
+      "de": {
+        "product": "Razer BlackShark V3 Pro - NiKo Edition",
+        "dashboard": "Razer BlackShark V3 Pro",
+        "edition": "NiKo Edition"
+      },
+      "en": {
+        "product": "Razer BlackShark V3 Pro NiKo Edition",
+        "dashboard": "Razer BlackShark V3 Pro",
+        "edition": "NiKo Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 NiKo限定款",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版",
+        "edition": "NiKo限定款"
+      }
+    }
+  },
+  "1401": {
+    "0": {
+      "de": {
+        "product": "Razer BlackShark V3 ",
+        "dashboard": "Razer BlackShark V3"
+      },
+      "en": {
+        "product": "Razer BlackShark V3"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 White Edition",
+        "dashboard": "Razer BlackShark V3",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER BLACKSHARK V3 ESPORTS GREEN EDITION"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackShark V3 Delta Force Edition",
+        "dashboard": "Razer BlackShark V3",
+        "edition": "Delta Force Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨V3 联动耳机《三角洲行动》",
+        "dashboard": "Razer 旋风黑鲨 V3",
+        "edition": "联动耳机《三角洲行动》"
+      }
+    }
+  },
+  "1404": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 X 极速版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed Charizard Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed",
+        "edition": "Charizard Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨 V3X-喷火龙款",
+        "dashboard": "Razer 旋风黑鲨 V3X",
+        "edition": "喷火龙款"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed Lucario Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed",
+        "edition": "Lucario Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨 V3X-路卡利欧款",
+        "dashboard": "Razer 旋风黑鲨 V3X",
+        "edition": "路卡利欧款"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed Honkai Star Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed",
+        "edition": "Honkai Star Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 旋风黑鲨 V3X-Honkai Star Edition",
+        "dashboard": "Razer 旋风黑鲨 V3X",
+        "edition": "Honkai Star Edition"
+      }
+    }
+  },
+  "1406": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V2 BT Hello Kitty and Friends Edition",
+        "dashboard": "Razer Kraken V2 BT",
+        "edition": "Hello Kitty and Friends Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖萌猫版 V2 BT HELLO KITTY AND FRIENDS 限款版",
+        "dashboard": "RAZER 北海巨妖萌猫版 V2 BT",
+        "edition": "HELLO KITTY AND FRIENDS 限款版"
+      }
+    }
+  },
+  "1407": {
+    "0": {
+      "en": {
+        "product": "Razer | Sanrio Characters Limited Edition Wireless Headset",
+        "dashboard": "Razer | Sanrio Characters",
+        "edition": "Limited Edition Wireless Headset"
+      },
+      "zh-cn": {
+        "product": "Razer | Sanrio Characters 限定款无线耳机",
+        "dashboard": "Razer | Sanrio Characters",
+        "edition": "限定款无线耳机"
+      }
+    }
+  },
+  "1411": {
+    "0": {
+      "en": {
+        "product": "Razer Barracuda Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER梭鱼专业版"
+      }
+    }
+  },
+  "1412": {
+    "0": {
+      "en": {
+        "product": "Razer Barracuda"
+      },
+      "zh-cn": {
+        "product": "RAZER梭鱼"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Barracuda Quartz Pink Edition",
+        "dashboard": "Razer Barracuda",
+        "edition": "Quartz Pink Edition"
+      },
+      "zh-cn": {
+        "product": "Razer梭鱼 粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Barracuda Mercury White Edition",
+        "dashboard": "Razer Barracuda",
+        "edition": "Mercury White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer梭鱼 水银"
+      }
+    }
+  },
+  "1415": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫专业版 V3"
+      },
+      "zh-tw": {
+        "product": "Razer北海巨妖萌猫专业版 V3"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty V3 Pro White Edition",
+        "dashboard": "Razer Kraken Kitty V3 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫专业版 V3 白色",
+        "dashboard": "Razer北海巨妖萌猫专业版 V3",
+        "edition": "白色"
+      },
+      "zh-tw": {
+        "product": "Razer北海巨妖萌猫专业版 V3 白色",
+        "dashboard": "Razer北海巨妖萌猫专业版 V3",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Kraken Kitty V3 Pro Quartz Edition",
+        "dashboard": "Razer Kraken Kitty V3 Pro",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫专业版 V3 粉晶",
+        "dashboard": "Razer北海巨妖萌猫专业版 V3",
+        "edition": "粉晶"
+      },
+      "zh-tw": {
+        "product": "Razer北海巨妖萌猫专业版 V3 粉晶",
+        "dashboard": "Razer北海巨妖萌猫专业版 V3",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "1420": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇战锤狂鲨 V3 有线入耳式耳塞"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Hammerhead V3 White Edition",
+        "dashboard": "Razer Hammerhead V3",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇战锤狂鲨 V3 有线入耳式耳塞 白色",
+        "dashboard": "Razer 雷蛇战锤狂鲨 V3 有线入耳式耳塞",
+        "edition": "白色"
+      }
+    }
+  },
+  "1422": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 魔音海妖V3专业版"
+      }
+    },
+    "128": {}
+  },
+  "1427": {
+    "0": {
+      "en": {
+        "product": "RAZER BARRACUDA V2 PRO"
+      },
+      "zh-cn": {
+        "product": "Razer 梭鱼 V2 专业版"
+      }
+    }
+  },
+  "1439": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken V4 X Sensa HD Haptics"
+      },
+      "zh-cn": {
+        "product": "RAZER 北海巨妖 V4 X Sensa HD"
+      }
+    }
+  },
+  "1442": {
+    "0": {
+      "en": {
+        "product": "Razer Clio X"
+      },
+      "zh-cn": {
+        "product": "Razer 悦神 X"
+      }
+    },
+    "128": {}
+  },
+  "1443": {
+    "0": {
+      "en": {
+        "product": "Razer Leviathan V2"
+      },
+      "zh-cn": {
+        "product": "Razer 利维坦巨兽V2"
+      }
+    }
+  },
+  "1446": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma 32-Bit DSP"
+      },
+      "zh-cn": {
+        "product": "Razer 魔音海妖 V3 幻彩版 32 位 DSP"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma 32-Bit DSP",
+        "edition": "White"
+      },
+      "zh-cn": {
+        "product": "Razer 魔音海妖 V3 幻彩版 32 位 DSP",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Seiren V3 Chroma 32-Bit DSP",
+        "edition": "Quartz"
+      },
+      "zh-cn": {
+        "product": "Razer 魔音海妖 V3 幻彩版 32 位 DSP",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "1453": {
+    "0": {
+      "en": {
+        "product": "Razer Mako X"
+      },
+      "zh-cn": {
+        "product": "RAZER 灰鲭鲨 X"
+      }
+    }
+  },
+  "1462": {
+    "0": {
+      "en": {
+        "product": "Razer Kraken Kitty V3"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫版 V3"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kraken Kitty V3 - White Edition",
+        "dashboard": "Razer Kraken Kitty V3",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫版 V3白色",
+        "dashboard": "Razer北海巨妖萌猫版 V3",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Kraken Kitty V3 - Quartz Edition",
+        "dashboard": "Razer Kraken Kitty V3",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer北海巨妖萌猫版 V3 粉晶",
+        "dashboard": "Razer北海巨妖萌猫版 V3",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "1465": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨 V3 幻彩版"
+      }
+    }
+  },
+  "2594": {
+    "0": {
+      "en": {
+        "product": "Razer Turret Mouse Gears Of War 5 Edition",
+        "dashboard": "Razer Turret Mouse",
+        "edition": "Gears Of War 5 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 堡垒神蛛鼠标 战争机器5",
+        "dashboard": "Razer 堡垒神蛛鼠标",
+        "edition": "战争机器5"
+      }
+    }
+  },
+  "2595": {
+    "0": {
+      "en": {
+        "product": "Razer Turret Keyboard Gears Of War 5 Edition",
+        "dashboard": "Razer Turret Keyboard",
+        "edition": "Gears Of War 5 Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 堡垒神蛛键盘 战争机器5",
+        "dashboard": "RAZER 堡垒神蛛键盘",
+        "edition": "战争机器5"
+      }
+    }
+  },
+  "2596": {
+    "0": {
+      "en": {
+        "product": "Razer BlackWidow V3 Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "Razer黑寡妇蜘蛛 V3竞技版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackWidow V3 Tenkeyless"
+      },
+      "zh-cn": {
+        "product": "Razer黑寡妇蜘蛛 V3竞技版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackWidow V3 Tenkeyless Pokemon Edition",
+        "dashboard": "Razer BlackWidow V3 Tenkeyless",
+        "edition": "Pokemon Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 黑寡妇蜘蛛V3竞技版",
+        "dashboard": "Razer黑寡妇蜘蛛 V3",
+        "edition": "竞技版"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "RAZER BLACKWIDOW V3 TENKEYLESS POKÉMON EDITION",
+        "dashboard": "RAZER BLACKWIDOW V3 TENKEYLESS",
+        "edition": "POKÉMON EDITION"
+      }
+    }
+  },
+  "2629": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V3 Tournament Edition Xbox",
+        "dashboard": "Razer Wolverine V3 Tournament Edition",
+        "edition": "Xbox"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻影战狼 V3 竞技版 XBOX",
+        "dashboard": "RAZER 幻影战狼 V3 竞技版",
+        "edition": "XBOX"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Wolverine V3 Tournament Edition Xbox",
+        "dashboard": "Razer Wolverine V3 Tournament Edition",
+        "edition": "Xbox - White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻影战狼 V3 竞技版 XBOX",
+        "dashboard": "RAZER 幻影战狼 V3 竞技版",
+        "edition": "Xbox - 白色"
+      }
+    }
+  },
+  "2636": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V3 Pro Xbox",
+        "dashboard": "Razer Wolverine V3 Pro",
+        "edition": "Xbox"
+      },
+      "zh-cn": {
+        "product": "Razer 幻影战狼 V3 专业版 Xbox",
+        "dashboard": "Razer 幻影战狼 V3 专业版",
+        "edition": "Xbox"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Wolverine V3 Pro Xbox - White Edition",
+        "dashboard": "Razer Wolverine V3 Pro",
+        "edition": "Xbox - White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻影战狼 V3 专业版 Xbox - 白色",
+        "dashboard": "Razer 幻影战狼 V3 专业版",
+        "edition": "Xbox - 白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "RAZER WOLVERINE V3 PRO ESPORTS GREEN EDITION",
+        "dashboard": "RAZER WOLVERINE V3 PRO",
+        "edition": "ESPORTS GREEN EDITION"
+      },
+      "zh-cn": {
+        "product": "RAZER幻影战狼V3专业版 电竞绿",
+        "dashboard": "RAZER幻影战狼V3专业版",
+        "edition": "电竞绿"
+      }
+    }
+  },
+  "2638": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Xbox"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 Xbox兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Xbox White Edition",
+        "dashboard": "Razer BlackShark V3 Pro For Xbox",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 Xbox兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版 Xbox兼容",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Xbox",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 Xbox兼容",
+        "edition": "电竞绿"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro 2XKO Edition",
+        "dashboard": "Razer BlackShark V3 Pro",
+        "edition": "2XKO Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版《2XKO》联名款",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版",
+        "edition": "《2XKO》联名款"
+      }
+    }
+  },
+  "2641": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 For Xbox"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 Xbox兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 For Xbox White Edition",
+        "dashboard": "Razer BlackShark V3 For Xbox",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 Xbox兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 Xbox兼容",
+        "edition": "白色"
+      }
+    }
+  },
+  "2644": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed For Xbox"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 X 极速版 Xbox兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed For Xbox White Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed For Xbox",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 X 极速版 Xbox兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 X 极速版 Xbox兼容",
+        "edition": "白色"
+      }
+    }
+  },
+  "2647": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V3 Pro 8K PC",
+        "dashboard": "Razer Wolverine V3 Pro 8K",
+        "edition": "PC"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻影战狼 V3 专业版 8K PC 专用",
+        "dashboard": "Razer 幻影战狼 V3 专业版 8K",
+        "edition": "PC 专用"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Wolverine V3 Pro 8K PC - ESports Green Edition",
+        "dashboard": "Razer Wolverine V3 Pro 8K",
+        "edition": "PC - ESports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 幻影战狼 V3 专业版 8K PC 专用 电竞绿",
+        "dashboard": "Razer 幻影战狼 V3 专业版 8K",
+        "edition": "PC 专用 电竞绿"
+      }
+    }
+  },
+  "2650": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V3 Tournament Edition 8K PC",
+        "dashboard": "Razer Wolverine V3 Tournament Edition 8K",
+        "edition": "PC"
+      },
+      "zh-cn": {
+        "product": "Razer 幻影战狼 V3 竞技版 8K PC专用",
+        "dashboard": "Razer 幻影战狼 V3 竞技版 8K",
+        "edition": "PC专用"
+      }
+    },
+    "128": {}
+  },
+  "2657": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 HyperSpeed"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨 V3 极速版"
+      }
+    }
+  },
+  "2660": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 X Hyperspeed"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨V3 X极速版"
+      }
+    }
+  },
+  "2664": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 X HyperSpeed for Xbox"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨V3 X极速版（Xbox授权）"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Hammerhead V3 X HyperSpeed - Xbox 25 Anniversary Edition",
+        "dashboard": "Razer Hammerhead V3 X HyperSpeed",
+        "edition": "Xbox 25 Anniversary Edition"
+      },
+      "kr": {
+        "product": "Razer Hammerhead V3 X HyperSpeed for Xbox - Xbox 25 Anniversary Edition",
+        "dashboard": "Razer Hammerhead V3 X HyperSpeed for Xbox",
+        "edition": "Xbox 25 Anniversary Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨V3 X极速版 Xbox 25周年限定款",
+        "dashboard": "Razer 战锤狂鲨V3 X极速版",
+        "edition": "Xbox 25周年限定款"
+      }
+    }
+  },
+  "2668": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 X HyperSpeed For PlayStation"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨V3 X极速版（PlayStation授权）"
+      }
+    }
+  },
+  "2676": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V4 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 幻影战狼 V4 专业版"
+      }
+    }
+  },
+  "2684": {
+    "0": {
+      "en": {
+        "product": "Razer Wolverine V4 Tournament Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻影战狼 V4 竞技版",
+        "dashboard": "Razer 幻影战狼 V4 竞技版"
+      }
+    }
+  },
+  "2689": {
+    "0": {
+      "en": {
+        "product": "Razer Hammerhead V3 X Hyperspeed Kuromi Edition",
+        "dashboard": "Razer Hammerhead V3 X Hyperspeed",
+        "edition": "Kuromi Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 战锤狂鲨V3X 极速版-酷洛米款",
+        "dashboard": "Razer 战锤狂鲨V3X 极速版",
+        "edition": "酷洛米款"
+      }
+    }
+  },
+  "3072": {
+    "0": {
+      "en": {
+        "product": "Razer Firefly Hard Edition",
+        "dashboard": "Razer Firefly",
+        "edition": "Hard Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 烈焰神虫硬质版",
+        "dashboard": "Razer 烈焰神虫",
+        "edition": "硬质版"
+      }
+    },
+    "1": {
+      "en": {
+        "product": "Razer Firefly Cloth Edition",
+        "dashboard": "Razer Firefly",
+        "edition": "Cloth Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 烈焰神虫 织物版",
+        "dashboard": "Razer 烈焰神虫",
+        "edition": "织物版"
+      }
+    }
+  },
+  "3073": {
+    "0": {
+      "en": {
+        "product": "Razer Goliathus Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 重装甲虫幻彩版"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {},
+    "132": {}
+  },
+  "3074": {
+    "0": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩加长款"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma Quartz Pink",
+        "dashboard": "Razer Goliathus Extended Chroma",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩版加长款 粉晶版",
+        "dashboard": "Razer 重装甲虫幻彩加长款",
+        "edition": "粉晶版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma Mercury White",
+        "dashboard": "Razer Goliathus Extended Chroma ",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩加长款 水银版",
+        "dashboard": "Razer 重装甲虫幻彩加长款",
+        "edition": "水银版"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma Gears Of War 5 Edition",
+        "dashboard": "Razer Goliathus Extended Chroma",
+        "edition": "Gears Of War 5 Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩版 战争机器5",
+        "dashboard": "Razer 重装甲虫幻彩版",
+        "edition": "战争机器5"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma HALO Infinite Edition",
+        "dashboard": "Razer Goliathus Extended Chroma",
+        "edition": "HALO Infinite Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩版加长款 光环:无限 限定版",
+        "dashboard": "Razer 重装甲虫幻彩版",
+        "edition": "光环:无限 限定版"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Goliathus Extended Chroma Fortnite Edition",
+        "dashboard": "Razer Goliathus Extended Chroma",
+        "edition": "Fortnite Edition"
+      }
+    }
+  },
+  "3076": {
+    "0": {
+      "en": {
+        "product": "Razer Firefly V2"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2"
+      }
+    },
+    "128": {},
+    "129": {},
+    "130": {},
+    "132": {}
+  },
+  "3077": {
+    "0": {
+      "en": {
+        "product": "Razer Strider Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 凌甲虫幻彩版"
+      }
+    }
+  },
+  "3078": {
+    "0": {
+      "en": {
+        "product": "Razer Goliathus Chroma 3XL"
+      },
+      "zh-cn": {
+        "product": "Razer 重装甲虫幻彩版3XL"
+      }
+    }
+  },
+  "3080": {
+    "0": {
+      "en": {
+        "product": "Razer Firefly V2 Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Firefly V2 Pro White Edition",
+        "dashboard": "Razer Firefly V2 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2 专业版 白色",
+        "dashboard": "RAZER 烈焰神虫 V2 专业版",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Firefly V2 Pro Phantom Black Edition",
+        "dashboard": "Razer Firefly V2 Pro",
+        "edition": "Phantom Black Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2 专业版 幻影黑",
+        "dashboard": "RAZER 烈焰神虫 V2 专业版",
+        "edition": "幻影黑"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Firefly V2 Pro Phantom Green Edition",
+        "dashboard": "Razer Firefly V2 Pro",
+        "edition": "Phantom Green Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2 专业版 幻影绿",
+        "dashboard": "RAZER 烈焰神虫 V2 专业版",
+        "edition": "幻影绿"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Firefly V2 Pro Phantom White Edition",
+        "dashboard": "Razer Firefly V2 Pro",
+        "edition": "Phantom White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 烈焰神虫 V2 专业版 幻影白",
+        "dashboard": "RAZER 烈焰神虫 V2 专业版",
+        "edition": "幻影白"
+      }
+    }
+  },
+  "3331": {
+    "0": {
+      "en": {
+        "product": "Razer Ripsaw HD"
+      },
+      "zh-cn": {
+        "product": "RAZER 锯齿鲶高清版"
+      }
+    }
+  },
+  "3334": {
+    "0": {
+      "en": {
+        "product": "Razer Stream Controller"
+      },
+      "zh-cn": {
+        "product": "RAZER 直播控制台"
+      }
+    }
+  },
+  "3337": {
+    "0": {
+      "en": {
+        "product": "Razer Stream Controller X"
+      },
+      "zh-cn": {
+        "product": "RAZER 直播控制台 X"
+      }
+    }
+  },
+  "3587": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬"
+      }
+    }
+  },
+  "3589": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kiyo Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬专业版"
+      }
+    }
+  },
+  "3590": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo X"
+      },
+      "zh-cn": {
+        "product": "RAZER 清姬 X"
+      }
+    }
+  },
+  "3592": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo Pro Ultra"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬专业版 Ultra"
+      }
+    }
+  },
+  "3594": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo V2 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 V2 专业版"
+      }
+    }
+  },
+  "3595": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo V2"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kiyo V2 White Edition",
+        "dashboard": "Razer Kiyo V2",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 v2 白色",
+        "dashboard": "Razer 清姬 v2",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Kiyo V2 Quartz Edition",
+        "dashboard": "Razer Kiyo V2",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 v2 粉晶",
+        "dashboard": "Razer 清姬 v2",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "3596": {
+    "0": {
+      "en": {
+        "product": "Razer Kiyo V2 X"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬V2 X"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Kiyo V2 X White Edition",
+        "dashboard": "Razer Kiyo V2 X",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 V2 X 白色",
+        "dashboard": "Razer 清姬V2 X",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Kiyo V2 X Quartz Edition",
+        "dashboard": "Razer Kiyo V2 X",
+        "edition": "Quartz Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 清姬 V2 X 粉晶",
+        "dashboard": "Razer 清姬 V2 X",
+        "edition": "粉晶"
+      }
+    }
+  },
+  "3848": {
+    "0": {
+      "en": {
+        "product": "Razer Base Station Chroma",
+        "dashboard": "RAZER BASE STATION CHROMA"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座",
+        "dashboard": "RAZER 幻彩基座"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Base Station Chroma Quartz Pink",
+        "dashboard": "Razer Base Station Chroma",
+        "edition": "Quartz Pink"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座 粉晶版",
+        "dashboard": "RAZER 幻彩基座",
+        "edition": "粉晶版"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Base Station Chroma Mercury White",
+        "dashboard": "Razer Base Station Chroma",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座水银版",
+        "dashboard": "RAZER 幻彩基座",
+        "edition": "水银版"
+      }
+    }
+  },
+  "3849": {
+    "0": {
+      "en": {
+        "product": "Razer Chroma HDK"
+      },
+      "zh-cn": {
+        "product": "RAZER CHROMA 幻彩硬件开发套件"
+      }
+    }
+  },
+  "3853": {
+    "0": {
+      "en": {
+        "product": "Razer Laptop Stand Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻彩笔记本托架"
+      }
+    }
+  },
+  "3858": {
+    "0": {
+      "en": {
+        "product": "Razer Raptor 27"
+      },
+      "zh-cn": {
+        "product": "Razer 战鹰 27"
+      }
+    }
+  },
+  "3859": {
+    "0": {
+      "en": {
+        "product": "Lian Li O11 Dynamic",
+        "edition": "Designed By Razer"
+      },
+      "zh-cn": {
+        "product": "包豪斯-O11 RAZER 定制版",
+        "dashboard": "包豪斯-O11",
+        "edition": "RAZER 定制版"
+      }
+    }
+  },
+  "3863": {
+    "0": {
+      "en": {
+        "product": "Razer Tomahawk Chassis"
+      },
+      "zh-cn": {
+        "product": "Razer 战斧电脑机箱"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Tomahawk ATX",
+        "dashboard": "Razer Tomahawk",
+        "edition": "ATX"
+      },
+      "zh-cn": {
+        "product": "RAZER 战斧 ATX",
+        "dashboard": "RAZER 战斧",
+        "edition": "ATX"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Tomahawk Mini-ITX",
+        "dashboard": "Razer Tomahawk",
+        "edition": "Mini-ITX"
+      },
+      "zh-cn": {
+        "product": "RAZER 战斧 Mini-ITX",
+        "dashboard": "RAZER 战斧",
+        "edition": "Mini-ITX"
+      }
+    }
+  },
+  "3866": {
+    "0": {
+      "en": {
+        "product": "Razer Core X Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座",
+        "dashboard": "RAZER 幻彩基座"
+      }
+    },
+    "128": {}
+  },
+  "3867": {
+    "0": {
+      "en": {
+        "product": "Razer Seiren Emote"
+      },
+      "zh-cn": {
+        "product": "RAZER 魔音海妖情动版"
+      }
+    }
+  },
+  "3869": {
+    "0": {
+      "en": {
+        "product": "Razer Bungee V3 Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 鼠标固线器 V3 幻彩版"
+      }
+    }
+  },
+  "3871": {
+    "0": {
+      "en": {
+        "product": "Razer Chroma Addressable RGB Controller"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩ARGB灯光控制器"
+      }
+    }
+  },
+  "3872": {
+    "0": {
+      "en": {
+        "product": "Razer Base Station V2 Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座 V2"
+      },
+      "zh-tw": {
+        "product": "RAZER 幻彩基座 V2"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Base Station V2 Chroma Quartz Pink",
+        "dashboard": "RAZER BASE STATION V2 CHROMA",
+        "edition": "QUARTZ PINK"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻彩基座 V2 粉晶",
+        "edition": "粉晶"
+      },
+      "zh-tw": {
+        "product": "RAZER 幻彩基座 V2 粉晶",
+        "edition": "粉晶"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Base Station V2 Chroma Mercury White",
+        "dashboard": "RAZER BASE STATION V2 CHROMA",
+        "edition": "MERCURY WHITE"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻彩基座 V2 水银",
+        "edition": "水银"
+      }
+    }
+  },
+  "3873": {
+    "0": {
+      "en": {
+        "product": "Razer Thunderbolt 4 Dock Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷电4扩展坞幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Thunderbolt 4 Dock - Mercury"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇雷电4扩展坞-幻彩版"
+      }
+    }
+  },
+  "3878": {
+    "0": {
+      "en": {
+        "product": "Razer Charging Pad Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 无线充电器 幻彩版"
+      }
+    }
+  },
+  "3879": {
+    "0": {
+      "en": {
+        "product": "Razer Tomahawk Gaming Desktop"
+      },
+      "zh-cn": {
+        "product": "RAZER 战斧桌面游戏系统"
+      }
+    }
+  },
+  "3880": {
+    "0": {
+      "en": {
+        "product": "Razer Raptor 27 (165Hz)"
+      },
+      "zh-cn": {
+        "product": "Razer 战鹰 27 (165Hz)"
+      }
+    }
+  },
+  "3883": {
+    "0": {
+      "en": {
+        "product": "Razer Laptop Stand Chroma V2"
+      },
+      "zh-cn": {
+        "product": "Razer 笔记本电脑支架幻彩版 V2"
+      }
+    }
+  },
+  "3884": {
+    "0": {
+      "en": {
+        "product": "Razer Chroma Wireless ARGB Controller"
+      },
+      "zh-cn": {
+        "product": "RAZER CHROMA 幻彩无线ARGB灯光控制器"
+      }
+    }
+  },
+  "3886": {
+    "0": {}
+  },
+  "3893": {
+    "0": {
+      "en": {
+        "product": "Razer Hanbo AIO 240MM"
+      },
+      "zh-cn": {
+        "product": "Razer 冰尺水冷 240MM ARGB"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Hanbo AIO 360MM"
+      },
+      "zh-cn": {
+        "product": "Razer 冰尺水冷 360MM ARGB"
+      }
+    }
+  },
+  "3894": {
+    "0": {
+      "en": {
+        "product": "Razer Head Cushion Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇头枕幻彩版"
+      }
+    },
+    "255": {
+      "en": {
+        "product": "Razer Head Cushion Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷蛇头枕幻彩版"
+      }
+    }
+  },
+  "3900": {
+    "0": {
+      "en": {
+        "product": "Razer PWM PC Fan Controller"
+      },
+      "zh-cn": {
+        "product": "Razer PWM 风扇控制器"
+      },
+      "zh-tw": {
+        "product": "Razer PWM 风扇控制器"
+      }
+    }
+  },
+  "3907": {
+    "0": {
+      "en": {
+        "product": "Razer Laptop Cooling Pad"
+      },
+      "zh-cn": {
+        "product": "Razer 笔记本散热垫支架"
+      }
+    }
+  },
+  "3909": {
+    "0": {
+      "en": {
+        "product": "Razer Freyja"
+      },
+      "zh-cn": {
+        "product": "RAZER 幻神"
+      }
+    }
+  },
+  "3921": {
+    "0": {
+      "en": {
+        "product": "Razer Core X V2"
+      },
+      "zh-cn": {
+        "product": "Razer 雷蛇战核 X V2",
+        "dashboard": "RAZER 雷蛇战核 X V2"
+      }
+    },
+    "128": {}
+  },
+  "3922": {
+    "0": {
+      "en": {
+        "product": "Razer Thunderbolt 5 Dock Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 雷电5扩展坞幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Thunderbolt 5 Dock Mercury White",
+        "dashboard": "Razer Thunderbolt 5 Dock",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER雷电 5 扩展坞水银版",
+        "dashboard": "RAZER雷电 5 扩展坞",
+        "edition": "水银版"
+      }
+    }
+  },
+  "3929": {
+    "0": {
+      "en": {
+        "product": "Razer Monitor Stand Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 显示器增高架 幻彩版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Monitor Stand Chroma - Mercury"
+      },
+      "zh-cn": {
+        "product": "Razer 显示器增高架 幻彩版"
+      }
+    }
+  },
+  "3932": {
+    "0": {
+      "en": {
+        "product": "Razer Handheld Dock Chroma"
+      },
+      "zh-cn": {
+        "product": "RAZER 掌机拓展坞"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Handheld Dock Chroma Mercury White",
+        "dashboard": "Razer Handheld Dock Chroma",
+        "edition": "Mercury White"
+      },
+      "zh-cn": {
+        "product": "RAZER 掌机拓展坞水银版",
+        "dashboard": "RAZER 掌机拓展坞",
+        "edition": "水银版"
+      }
+    }
+  },
+  "3940": {
+    "0": {
+      "en": {
+        "product": "Razer Soma Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 辉月神 幻彩版"
+      }
+    },
+    "128": {}
+  },
+  "3942": {
+    "0": {
+      "en": {
+        "product": "Razer Soma Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 辉月神专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Soma Pro"
+      },
+      "zh-cn": {
+        "product": "RAZER 悦神"
+      }
+    }
+  },
+  "3946": {
+    "0": {
+      "en": {
+        "product": "Razer Base Station V3 Chroma"
+      },
+      "zh-cn": {
+        "product": "Razer 幻彩基座 V3"
+      },
+      "zh-tw": {
+        "product": "RAZER 幻彩基座 V3"
+      }
+    }
+  },
+  "3949": {
+    "0": {
+      "en": {
+        "product": "Razer Soma Sensa HD Haptics"
+      },
+      "zh-cn": {
+        "product": "RAZER 辉月神 Sensa HD"
+      }
+    }
+  },
+  "4115": {
+    "0": {
+      "en": {
+        "product": "Razer Kitsune"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐"
+      }
+    },
+    "128": {
+      "de": {
+        "product": "Razer Kitsune",
+        "edition": "SF6 Cammy Edition"
+      },
+      "en": {
+        "product": "Razer Kitsune SF6 Cammy Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Cammy Edition"
+      },
+      "ja": {
+        "product": "Razer Kitsune",
+        "edition": "SF6 Cammy Edition"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐-《街头霸王6》嘉米限定版",
+        "dashboard": "Razer妖狐",
+        "edition": "《街头霸王6》嘉米限定版"
+      }
+    },
+    "129": {
+      "de": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "en": {
+        "product": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "es": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "fr": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "ja": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "kr": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "pt-br": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "ru": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐-《街头霸王6》春丽限定版",
+        "dashboard": "Razer妖狐",
+        "edition": "《街头霸王6》春丽限定版"
+      },
+      "zh-tw": {
+        "product": "Razer Kitsune SF6 Chun-Li Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "SF6 Chun-Li Edition"
+      }
+    },
+    "130": {
+      "en": {
+        "product": "Razer Kitsune Fighters Edition: Akuma",
+        "dashboard": "Razer Kitsune",
+        "edition": "Fighters Edition: Akuma"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐-《街头霸王6》豪鬼限定款",
+        "dashboard": "Razer妖狐",
+        "edition": "《街头霸王6》豪鬼限定款"
+      }
+    },
+    "131": {
+      "en": {
+        "product": "Razer Kitsune Esports Green Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐 电竞绿",
+        "dashboard": "Razer妖狐",
+        "edition": "电竞绿"
+      }
+    },
+    "132": {
+      "en": {
+        "product": "Razer Kitsune 2XKO Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "2XKO Edition"
+      },
+      "zh-cn": {
+        "product": "Razer妖狐-《2XKO》联名款",
+        "dashboard": "Razer妖狐-",
+        "edition": "《2XKO》联名款"
+      }
+    },
+    "133": {
+      "en": {
+        "product": "Razer Kitsune Ryu Edition",
+        "dashboard": "Razer Kitsune",
+        "edition": "Ryu Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 妖狐《街头霸王》隆限定款",
+        "dashboard": "Razer 妖狐",
+        "edition": "《街头霸王》隆限定款"
+      }
+    }
+  },
+  "4124": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Playstation"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 PlayStation兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Playstation White Edition",
+        "dashboard": "Razer BlackShark V3 Pro For Playstation",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 PlayStation兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 专业版 PlayStation兼容",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V3 Pro For Playstation"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 专业版 PlayStation兼容"
+      }
+    }
+  },
+  "4126": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 For Playstation"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 PlayStation兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 For Playstation White Edition",
+        "dashboard": "Razer BlackShark V3 For Playstation",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 PlayStation兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 PlayStation兼容",
+        "edition": "白色"
+      }
+    }
+  },
+  "4130": {
+    "0": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed For Playstation"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 X 极速版 PlayStation兼容"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed For Playstation White Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed For Playstation",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "RAZER 旋风黑鲨 V3 X 极速版 PlayStation兼容 白色",
+        "dashboard": "RAZER 旋风黑鲨 V3 X 极速版 PlayStation兼容",
+        "edition": "白色"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer BlackShark V3 X Hyperspeed For Playstation Lavender Edition",
+        "dashboard": "Razer BlackShark V3 X Hyperspeed For Playstation",
+        "edition": "Lavender Edition"
+      }
+    }
+  },
+  "4133": {
+    "0": {
+      "en": {
+        "product": "Razer Raiju V3 Pro"
+      },
+      "zh-cn": {
+        "product": "Razer 飓兽 V3 专业版"
+      }
+    },
+    "128": {
+      "en": {
+        "product": "Razer Raiju V3 Pro Esports Green Edition",
+        "dashboard": "Razer Raiju V3 Pro",
+        "edition": "Esports Green Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 飓兽 V3 专业版 电竞绿",
+        "dashboard": "Razer 飓兽 V3 专业版",
+        "edition": "电竞绿"
+      }
+    },
+    "129": {
+      "en": {
+        "product": "Razer Raiju V3 Pro White Edition",
+        "dashboard": "Razer Raiju V3 Pro",
+        "edition": "White Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 飓兽 V3 专业版 白色",
+        "dashboard": "Razer 飓兽 V3 专业版",
+        "edition": "白色"
+      }
+    }
+  },
+  "4144": {
+    "0": {
+      "en": {
+        "product": "Razer Raiju V3 Pro  Signature Edition",
+        "dashboard": "Razer Raiju V3 Pro ",
+        "edition": "Signature Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 飓兽 V3 专业版 Signature Edition",
+        "dashboard": "Razer 飓兽 V3 专业版",
+        "edition": "Signature Edition"
+      }
+    }
+  },
+  "45066": {
+    "0": {
+      "en": {
+        "product": "Razer Basilisk V3 Pro 35K - Xbox 25 Anniversary Edition"
+      },
+      "zh-cn": {
+        "product": "Razer 巴塞利斯蛇V3专业版35K Xbox 25周年限定款"
+      }
+    }
+  }
+}

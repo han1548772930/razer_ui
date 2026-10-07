@@ -83,9 +83,9 @@ pub(crate) struct DockPairing {
 struct PreviewDialogRequested;
 impl EventEmitter<PreviewDialogRequested> for DockPairing {}
 
-/// 配对文案里的设备名被点击。源用 `Es(peer, devices)` 命中应用设备列表时把名字渲染成
-/// `.deviceNameLink`（`cursor:pointer;text-decoration:underline`，hover `#44d62c`），
-/// 点击 `z(e)` 切到该设备。
+/// 241 配对文案里的设备名被点击。源 `Es(peer, devices)` 允许 peer 的 edition 为
+/// 缺省/0；此事件已解析成命中设备的真实 edition。`z(e)` 切到该设备；164 的名称
+/// 另走打开配对工具的 `g`，不发此事件。
 pub(crate) struct DeviceLinkRequested {
     pub(crate) product_id: u32,
     pub(crate) edition_id: u32,
@@ -165,7 +165,15 @@ impl DockPairing {
         } else {
             "MULTI__DUALINK_PROPERTIES_TOOLTIP"
         };
-        let paired = self.state.peers();
+        let mut paired = self.state.peers();
+        // 241/Ps renders both Z(mouse), Z(keyboard) and q(mouse), q(keyboard)
+        // in that order. Channel storage uses keyboard first for the dialog.
+        if dual {
+            paired.sort_by_key(|peer| match peer.lane {
+                Lane::Mouse => 0,
+                Lane::Keyboard => 1,
+            });
+        }
         // `W = DeviceInfo.showBothDevicesConnectedWarning && we(pairedInfo)`：鼠标与
         // 键盘同时在底座上时，源把轮询率说明整行 `V = !W && …` 去掉，改为显示上面那条提示。
         let both_devices_capped =
@@ -202,99 +210,131 @@ impl DockPairing {
                     .on_click(cx.listener(|this, _, window, cx| this.open(window, cx))),
             );
         } else {
-            content = content
-                .child(
-                    v_flex()
+            let description = v_flex()
+                .when(dual, |view| view.flex_1())
+                .when(!dual, |view| view.w(surface::css(369.)).flex_shrink_0())
+                .min_w_0()
+                .children(paired.iter().map(|peer| {
+                    // 241/Es treats a missing/zero edition as a wildcard.
+                    // Resolve the real target edition before emitting the
+                    // shell event, whose device lookup is deliberately exact.
+                    let target = self.known_devices.iter().copied().find(|(pid, edition)| {
+                        peer.product_id != 0
+                            && *pid == peer.product_id
+                            && (peer.edition == 0 || *edition == peer.edition)
+                    });
+                    let linked = target.is_some();
+                    let name = SharedString::from(peer.name.clone());
+                    let link = |name: SharedString, product_id: u32, edition_id: u32| {
+                        gpui_kit::base::Button::new(SharedString::from(format!(
+                            "dock-device-link-{product_id}-{edition_id}"
+                        )))
+                        .accessibility_label(name.clone())
+                        .cursor_pointer()
+                        .underline()
+                        // `.deviceNameLink{cursor:pointer;text-decoration:underline}` +
+                        // `.hyperpolling-span-hover:hover{color:#44d62c}`。
+                        .hover(|style| style.text_color(rgb(0x44d62c)))
+                        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
+                        .on_click(cx.listener(move |_, _, _, cx| {
+                            cx.emit(DeviceLinkRequested {
+                                product_id,
+                                edition_id,
+                            });
+                        }))
+                        .child(name)
+                    };
+                    let text = if dual && paired.len() > 1 {
+                        // `<lane>: <name>`，名字可能是链接。
+                        let prefix = format!("{}: ", self.spec.text(peer.lane.key()));
+                        h_flex()
+                            .child(SharedString::from(prefix))
+                            .when(linked, |row| {
+                                let (product_id, edition_id) = target.expect("linked device");
+                                row.child(link(name.clone(), product_id, edition_id))
+                            })
+                            .when(!linked, |row| row.child(name.clone()))
+                            .into_any_element()
+                    } else if dual {
+                        // `SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION` 里的
+                        // `{{deviceName}}` 替换成纯文本或链接。
+                        let sentence = self.spec.text("SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION");
+                        let (prefix, suffix) = sentence
+                            .split_once("{{deviceName}}")
+                            .map(|(prefix, suffix)| (prefix.to_owned(), suffix.to_owned()))
+                            .unwrap_or((sentence, String::new()));
+                        h_flex()
+                            .child(SharedString::from(prefix))
+                            .when(linked, |row| {
+                                let (product_id, edition_id) = target.expect("linked device");
+                                row.child(link(name.clone(), product_id, edition_id))
+                            })
+                            .when(!linked, |row| row.child(name.clone()))
+                            .child(SharedString::from(suffix))
+                            .into_any_element()
+                    } else {
+                        // 164/Re's pairedTitle uses onClick:g, which opens
+                        // its pairing utility. It never calls the 241
+                        // device-navigation callback, even for known peers.
+                        gpui_kit::base::Button::new("dock-paired-name-open-pairing")
+                            .accessibility_label(name.clone())
+                            .focus_visible(|style| {
+                                style.border_1().border_color(cx.theme().primary)
+                            })
+                            .child(name.clone())
+                            .on_click(cx.listener(|this, _, window, cx| this.open(window, cx)))
+                            .into_any_element()
+                    };
+                    div()
+                        .text_size(surface::css(14.))
+                        .when(dual, |row| row.line_height(surface::css(17.)))
+                        .child(text)
+                }))
+                .when(!both_devices_capped, |view| {
+                    // `.pairedContent{font-size:12px;padding-top:10px}` +
+                    // `.pollingRateInfo{color:#999;margin-top:10px}`。
+                    view.child(
+                        div()
+                            .mt(surface::css(10.))
+                            .text_size(surface::css(12.))
+                            .text_color(Colors::warning_text())
+                            .child(
+                                self.spec
+                                    .text("CONFIGURE_POLLING_RATE_DEVICE_DISCONNECTED_TEXT"),
+                            ),
+                    )
+                });
+            let unpair = command(
+                "dock-page-unpair",
+                self.spec.text("UNPAIR"),
+                false,
+                false,
+                cx,
+            )
+            .kind(CommandKind::PageUnpair(dual))
+            .mt(surface::css(if dual { 9. } else { 0. }))
+            .on_click(cx.listener(|this, _, window, cx| this.open(window, cx)));
+            // 241 nests description + action in pairedContentGroup. The icon
+            // gap is 10px, while that group's action gap is 20px. Both dock
+            // pairInfoBox rules reserve 20px below the complete row.
+            content = if dual {
+                content.items_center().mb(surface::css(20.)).child(
+                    h_flex()
                         .flex_1()
                         .min_w_0()
-                        .gap(surface::css(4.))
-                        .children(paired.iter().map(|peer| {
-                            // 源 `Es(e, devices)`：只有设备名能在应用设备列表里按
-                            // `productId`+`editionId` 命中时才是链接。
-                            let linked = self.known_devices.iter().any(|(pid, edition)| {
-                                *pid == peer.product_id && *edition == peer.edition
-                            });
-                            let name = SharedString::from(peer.name.clone());
-                            let link = |name: SharedString, product_id: u32, edition_id: u32| {
-                                div()
-                                    .id(SharedString::from(format!(
-                                        "dock-device-link-{product_id}-{edition_id}"
-                                    )))
-                                    .cursor_pointer()
-                                    .underline()
-                                    // `.deviceNameLink{cursor:pointer;text-decoration:underline}` +
-                                    // `.hyperpolling-span-hover:hover{color:#44d62c}`。
-                                    .hover(|style| style.text_color(rgb(0x44d62c)))
-                                    .on_click(cx.listener(move |_, _, _, cx| {
-                                        cx.emit(DeviceLinkRequested {
-                                            product_id,
-                                            edition_id,
-                                        });
-                                    }))
-                                    .child(name)
-                            };
-                            let text = if dual && paired.len() > 1 {
-                                // `<lane>: <name>`，名字可能是链接。
-                                let prefix = format!("{}: ", self.spec.text(peer.lane.key()));
-                                h_flex()
-                                    .child(SharedString::from(prefix))
-                                    .when(linked, |row| {
-                                        row.child(link(name.clone(), peer.product_id, peer.edition))
-                                    })
-                                    .when(!linked, |row| row.child(name.clone()))
-                                    .into_any_element()
-                            } else if dual {
-                                // `SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION` 里的
-                                // `{{deviceName}}` 替换成纯文本或链接。
-                                let sentence =
-                                    self.spec.text("SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION");
-                                let (prefix, suffix) = sentence
-                                    .split_once("{{deviceName}}")
-                                    .map(|(prefix, suffix)| (prefix.to_owned(), suffix.to_owned()))
-                                    .unwrap_or((sentence, String::new()));
-                                h_flex()
-                                    .child(SharedString::from(prefix))
-                                    .when(linked, |row| {
-                                        row.child(link(name.clone(), peer.product_id, peer.edition))
-                                    })
-                                    .when(!linked, |row| row.child(name.clone()))
-                                    .child(SharedString::from(suffix))
-                                    .into_any_element()
-                            } else if linked {
-                                link(name.clone(), peer.product_id, peer.edition).into_any_element()
-                            } else {
-                                div().child(name.clone()).into_any_element()
-                            };
-                            div().text_size(surface::css(14.)).child(text)
-                        }))
-                        .when(!both_devices_capped, |view| {
-                            // `.pairedContent{font-size:12px;padding-top:10px}` +
-                            // `.pollingRateInfo{color:#999;margin-top:10px}`。
-                            view.child(
-                                div()
-                                    .mt(surface::css(10.))
-                                    .text_size(surface::css(12.))
-                                    .text_color(Colors::warning_text())
-                                    .child(
-                                        self.spec.text(
-                                            "CONFIGURE_POLLING_RATE_DEVICE_DISCONNECTED_TEXT",
-                                        ),
-                                    ),
-                            )
-                        }),
+                        .items_center()
+                        .gap(surface::css(20.))
+                        .child(description)
+                        .child(unpair),
                 )
-                .child(
-                    command(
-                        "dock-page-unpair",
-                        self.spec.text("UNPAIR"),
-                        false,
-                        false,
-                        cx,
-                    )
-                    .kind(CommandKind::PageUnpair(dual))
-                    .mt(surface::css(if dual { 9. } else { 0. }))
-                    .on_click(cx.listener(|this, _, window, cx| this.open(window, cx))),
-                );
+            } else {
+                content
+                    .gap_0()
+                    .justify_between()
+                    .mb(surface::css(20.))
+                    .child(description)
+                    .child(unpair)
+            };
         }
         let panel = surface::panel_with_control(
             self.spec.text(title),
@@ -497,8 +537,12 @@ impl RenderOnce for SourceCommand {
                     .rounded(surface::css(3.))
             })
             .when(matches!(self.kind, CommandKind::PageUnpair(true)), |b| {
-                b.px(surface::css(16.))
-                    .py(surface::css(6.))
+                b.h_auto()
+                    .flex_shrink_0()
+                    .self_start()
+                    .px(surface::css(16.))
+                    .pt(surface::css(7.))
+                    .pb(surface::css(6.))
                     .line_height(surface::css(14.))
             })
             .on_hover(window.listener_for(&hovered, |hovered, value, _, cx| {

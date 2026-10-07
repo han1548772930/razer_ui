@@ -42,6 +42,7 @@ pub(crate) struct SourceProductWorkspace {
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
     page_history_index: usize,
+    active: bool,
     body: FamilyBody,
     help: Entity<super::source_help::SourceHelp>,
     supplement: Option<Entity<super::source_controls::SourceControls>>,
@@ -62,8 +63,57 @@ pub(crate) struct SourceProductWorkspace {
 }
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
+impl EventEmitter<super::ReceiverPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(crate) fn observe_connection(
+        &mut self,
+        observation: Option<crate::model::DeviceConnectionObservation>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device.observe_connection(observation.clone());
+        self.saved.observe_connection(observation);
+        cx.notify();
+    }
+
+    pub(crate) fn observe_receiver_pairing(
+        &mut self,
+        observation: super::ReceiverPairingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if self.device.product_id != 179 {
+            return;
+        }
+        if let FamilyBody::Controls(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_receiver_pairing(observation, cx)
+            });
+        } else if let Some(body) = &self.supplement {
+            body.update(cx, |body, cx| {
+                body.observe_receiver_pairing(observation, cx)
+            });
+        }
+    }
+    pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.active = active;
+        self.sync_mouse_active(window, cx);
+        if !active {
+            if let FamilyBody::Gamepad(body) = &self.body {
+                body.update(cx, |body, cx| body.cancel_range_edits(cx));
+            }
+        }
+    }
+
+    fn sync_mouse_active(&self, window: &mut Window, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            let active = self.active
+                && self
+                    .current_page()
+                    .is_some_and(|page| page.role() != ProductPageRole::Help);
+            body.update(cx, |body, cx| body.set_active(active, window, cx));
+        }
+    }
+
     pub(crate) fn observe_dpi_editing_enabled(
         &mut self,
         enabled: bool,
@@ -548,6 +598,12 @@ impl SourceProductWorkspace {
             });
             subscriptions.push(cx.subscribe(
                 &body,
+                |_, _, event: &super::ReceiverPairingEvent, cx| {
+                    cx.emit(event.clone());
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
                 |this: &mut Self, body, _: &super::source_controls::SourceControlsChanged, cx| {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
@@ -582,6 +638,12 @@ impl SourceProductWorkspace {
             let controls = cx.new(|cx| {
                 super::source_controls::SourceControls::new(device.product_id, window, cx)
             });
+            subscriptions.push(cx.subscribe(
+                &controls,
+                |_, _, event: &super::ReceiverPairingEvent, cx| {
+                    cx.emit(event.clone());
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &controls,
                 |this: &mut Self,
@@ -681,6 +743,7 @@ impl SourceProductWorkspace {
             page,
             page_history: page.into_iter().collect(),
             page_history_index: 0,
+            active: false,
             body,
             help,
             supplement,
@@ -1066,6 +1129,7 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_mouse_active(window, cx);
         if let Some(view) = &self.accessory {
             view.dismiss(window, cx);
         }
@@ -1085,6 +1149,9 @@ impl SourceProductWorkspace {
                 }
                 FamilyBody::Keyboard(body) => {
                     body.update(cx, |body, cx| body.leave_snap_tap(window, cx))
+                }
+                FamilyBody::Gamepad(body) => {
+                    body.update(cx, |body, cx| body.cancel_range_edits(cx))
                 }
                 _ => {}
             }

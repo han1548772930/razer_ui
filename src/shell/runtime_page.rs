@@ -2,6 +2,7 @@
 //! no DLL, pipe operation, mutex wait or child destructor runs on the UI thread.
 use crate::{
     backend::runtime::{ServiceClient, ServiceRequest},
+    backend::discovery::{self, DiscoverySnapshot},
     ui::surface,
 };
 use gpui_kit::component::{
@@ -15,7 +16,7 @@ use std::{sync::mpsc, time::Duration};
 #[derive(Clone)]
 struct RuntimeBridge(mpsc::Sender<Command>);
 enum Command {
-    Refresh(mpsc::Sender<Readings>),
+    Refresh(bool, mpsc::Sender<Readings>),
     Disconnect(mpsc::Sender<Result<(), String>>),
 }
 
@@ -25,13 +26,25 @@ struct Readings {
     hid: Option<Result<Value, String>>,
     version: Option<Result<Value, String>>,
     audio: Option<Result<Value, String>>,
+    discovery: Option<Result<DiscoverySnapshot, String>>,
+    services_requested: bool,
 }
+
+#[derive(Clone)]
+pub(super) struct DiscoveryObserved(pub(super) Result<DiscoverySnapshot, String>);
+impl EventEmitter<DiscoveryObserved> for RuntimePanel {}
 
 impl Readings {
     fn has_partial_results(&self) -> bool {
-        [&self.hid, &self.version, &self.audio]
+        let required = if self.services_requested || self.version.is_some() || self.audio.is_some() {
+            vec![&self.hid, &self.version, &self.audio]
+        } else { vec![&self.hid] };
+        required
             .iter()
-            .any(|result| matches!(result, Some(Err(_))))
+            .any(|result| !matches!(result, Some(Ok(_))))
+            || self.discovery.as_ref().is_some_and(|result| match result {
+                Ok(snapshot) => !snapshot.errors().is_empty(), Err(_) => true,
+            })
             || self
                 .hid
                 .as_ref()
@@ -66,12 +79,12 @@ impl RuntimeBridge {
                 let mut client: Option<ServiceClient> = None;
                 while let Ok(command) = commands.recv() {
                     match command {
-                        Command::Refresh(reply) => {
+                        Command::Refresh(services, reply) => {
                             let result = match client.as_mut() {
-                                Some(client) => read_services(client),
+                                Some(client) => read_services(client, services),
                                 None => match ServiceClient::spawn() {
                                     Ok(mut connection) => {
-                                        let result = read_services(&mut connection);
+                                        let result = read_services(&mut connection, services);
                                         client = Some(connection);
                                         result
                                     }
@@ -81,7 +94,9 @@ impl RuntimeBridge {
                                             connected: false,
                                             hid: Some(Err(error.clone())),
                                             version: Some(Err(error.clone())),
-                                            audio: Some(Err(error)),
+                                            audio: services.then(|| Err(error.clone())),
+                                            discovery: Some(Err(error)),
+                                            services_requested: services,
                                         }
                                     }
                                 },
@@ -113,10 +128,10 @@ impl RuntimeBridge {
         Ok(Self(sender))
     }
 
-    fn refresh(&self) -> Result<Readings, String> {
+    fn refresh(&self, services: bool) -> Result<Readings, String> {
         let (reply, response) = mpsc::channel();
         self.0
-            .send(Command::Refresh(reply))
+            .send(Command::Refresh(services, reply))
             .map_err(|_| "服务连接已结束，请重新连接。".to_string())?;
         response
             .recv_timeout(Duration::from_secs(55))
@@ -129,29 +144,28 @@ impl RuntimeBridge {
             .send(Command::Disconnect(reply))
             .map_err(|_| "服务连接已经结束。".to_string())?;
         response
-            .recv_timeout(Duration::from_secs(20))
+            .recv_timeout(Duration::from_secs(30))
             .map_err(|error| format!("服务关闭未完成：{error}"))?
     }
 }
 
-fn read_services(client: &mut ServiceClient) -> Readings {
+fn read_services(client: &mut ServiceClient, services: bool) -> Readings {
     // Read HID first so a vendor initialization error cannot hide a successful
     // metadata enumeration. Every failure stays associated with its own query.
-    let mut query = |request| {
-        Some(
-            client
-                .request(request)
-                .map_err(|error| format!("{error:#}")),
-        )
+    let hid = client.request(ServiceRequest::HidDevices).map_err(|error| format!("{error:#}"));
+    let discovery = match &hid {
+        Ok(hid) => discovery::discover(client, hid).map_err(|error| format!("{error:#}")),
+        Err(error) => Err(error.clone()),
     };
-    let hid = query(ServiceRequest::HidDevices);
-    let version = query(ServiceRequest::SimpleVersion);
-    let audio = query(ServiceRequest::AudioDevices);
+    let version = services.then(|| client.request(ServiceRequest::SimpleVersion).map_err(|error| format!("{error:#}")));
+    let audio = services.then(|| client.request(ServiceRequest::AudioDevices).map_err(|error| format!("{error:#}")));
     Readings {
         connected: !client.is_stopped(),
-        hid,
+        hid: Some(hid),
         version,
         audio,
+        discovery: Some(discovery),
+        services_requested: services,
     }
 }
 
@@ -177,6 +191,14 @@ impl RuntimePanel {
     }
 
     fn refresh(&mut self, cx: &mut Context<Self>) {
+        self.refresh_queries(true, cx);
+    }
+
+    pub(super) fn discover_devices(&mut self, cx: &mut Context<Self>) {
+        self.refresh_queries(false, cx);
+    }
+
+    fn refresh_queries(&mut self, services: bool, cx: &mut Context<Self>) {
         if self.busy {
             return;
         }
@@ -189,7 +211,7 @@ impl RuntimePanel {
             let result = cx
                 .background_spawn(async move {
                     let bridge = bridge.map_or_else(RuntimeBridge::start, Ok)?;
-                    let readings = bridge.refresh()?;
+                    let readings = bridge.refresh(services)?;
                     Ok::<_, String>((bridge, readings))
                 })
                 .await;
@@ -197,11 +219,15 @@ impl RuntimePanel {
                 this.busy = false;
                 match result {
                     Ok((bridge, readings)) => {
+                        if let Some(observation) = &readings.discovery {
+                            cx.emit(DiscoveryObserved(observation.clone()));
+                        }
                         this.bridge = readings.connected.then_some(bridge);
                         this.status = readings.status().into();
                         this.readings = readings;
                     }
                     Err(error) => {
+                        cx.emit(DiscoveryObserved(Err(error.clone())));
                         this.bridge = None;
                         this.readings.connected = false;
                         this.status = "连接失败；已有结果未更新。".into();
@@ -231,6 +257,7 @@ impl RuntimePanel {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.finish_disconnect(result);
+                cx.emit(DiscoveryObserved(Err("服务连接已断开，此前设备观察已过期".into())));
                 cx.notify();
             });
         })
@@ -289,6 +316,8 @@ impl Render for RuntimePanel {
                 div()
                     .id("runtime-status")
                     .test_support()
+                    .role(Role::Status)
+                    .aria_label(self.status.clone())
                     .child(self.status.clone()),
             )
             .when_some(self.error.clone(), |this, error| {
@@ -303,6 +332,15 @@ impl Render for RuntimePanel {
             })
             .when_some(self.readings.hid.as_ref(), |this, result| {
                 this.child(hid_result(result, cx))
+            })
+            .when_some(self.readings.discovery.as_ref(), |view, result| {
+                let label = match result {
+                    Ok(snapshot) => format!("识别到 {} 项产品接口或接收器关联；配置尚未读取。{}",
+                        snapshot.devices().len(), snapshot.errors().join("；")),
+                    Err(error) => format!("产品发现失败：{error}"),
+                };
+                view.child(div().id("runtime-discovery-status").test_support().role(Role::Status)
+                    .aria_label(label.clone()).child(label))
             })
             .when_some(self.readings.version.as_ref(), |this, result| {
                 this.child(reading("服务版本", result, cx))
@@ -388,25 +426,22 @@ fn hid_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
         .and_then(Value::as_array)
         .map_or(0, Vec::len);
     let incomplete = value.get("complete") == Some(&Value::Bool(false));
+    let summary = if incomplete {
+        format!("部分接口读取完成：已读取到 {} 个 Razer 设备接口，枚举未完成。", interfaces.len())
+    } else {
+        format!("读取到 {} 个 Razer 设备接口；同一设备可能包含多个接口。", interfaces.len())
+    };
     v_flex()
         .gap_2()
         .child(
             div()
                 .id("runtime-hid-summary")
                 .test_support()
-                .child(if incomplete {
-                    format!(
-                        "部分接口读取完成：已读取到 {} 个 Razer 设备接口，枚举未完成。",
-                        interfaces.len()
-                    )
-                } else {
-                    format!(
-                        "读取到 {} 个 Razer 设备接口；同一设备可能包含多个接口。",
-                        interfaces.len()
-                    )
-                }),
+                .role(Role::Status)
+                .aria_label(summary.clone())
+                .child(summary),
         )
-        .children(interfaces.iter().enumerate().map(|(ix, item)| {
+        .children(interfaces.iter().map(|item| {
             let product = item
                 .get("product")
                 .and_then(Value::as_str)
@@ -428,7 +463,10 @@ fn hid_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
                 .map(|value| format!("{value:04X}"))
                 .unwrap_or_else(|| "未知".into());
             v_flex()
-                .id(SharedString::from(format!("runtime-hid-{ix}")))
+                .id(SharedString::from(format!("runtime-hid-{}", item["path"].as_str().unwrap_or("missing-path"))))
+                .test_support()
+                .role(Role::ListItem)
+                .aria_label(format!("{product} · USB {vid}:{pid} · {serial}"))
                 .gap_1()
                 .child(product.to_string())
                 .child(surface::note(

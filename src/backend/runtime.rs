@@ -29,6 +29,17 @@ pub(crate) enum ServiceRequest {
     SimpleVersion,
     AudioDevices,
     HidDevices,
+    /// Observe global input through the current mapping-engine recorder.
+    /// These requests do not submit macros or mappings to a device.
+    StartMacroRecording,
+    StopMacroRecording,
+    MacroRecordingEvents,
+    SuspendMacroMappings,
+    ResumeMacroMappings,
+    ReceiverWirelessStatus {
+        path: String,
+        device_container_id: String,
+    },
     GlobalMode,
     GlobalShortcuts,
     RegisterShortcut {
@@ -167,6 +178,7 @@ impl ServiceClient {
             bail!("设备服务已停止，请重新连接");
         }
         let shutting_down = matches!(request, ServiceRequest::Shutdown);
+        let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording);
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         let mut frame = serde_json::to_vec(&RequestEnvelope { id, request })?;
@@ -183,7 +195,19 @@ impl ServiceClient {
             let error = anyhow::Error::new(error).context("设备服务连接中断");
             return Err(self.stop_after_error(error));
         }
-        let response = match self.responses.recv_timeout(self.timeout) {
+        // Recorder setup can require initialize/register/callback/start, each
+        // with its own bounded native completion. Other queries retain their
+        // existing timeout; a timeout still terminates this owned worker.
+        let timeout = if shutting_down {
+            // Recorder stop, mapping restore, callback unregister and two
+            // independent engine shutdowns can each consume CALLBACK_TIMEOUT.
+            Duration::from_secs(25)
+        } else if starting_recorder {
+            Duration::from_secs(20)
+        } else {
+            self.timeout
+        };
+        let response = match self.responses.recv_timeout(timeout) {
             Ok(response) if response.id == id => response,
             Ok(_) => {
                 return Err(

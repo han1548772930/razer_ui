@@ -30,6 +30,10 @@ mod source_controls;
 mod source_help;
 mod source_workspace;
 pub(crate) use product_workspace::ProductWorkspace;
+pub(crate) use source_controls::{
+    ReceiverCategory, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
+    ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
+};
 pub(crate) mod gamepad_products;
 pub(crate) mod keyboard_products;
 pub(crate) mod mouse_products;

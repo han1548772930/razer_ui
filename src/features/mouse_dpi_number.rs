@@ -32,27 +32,7 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.page != "TAB_PERFORMANCE"
-            || self.dpi_dragged_row.is_some()
-            || !self.dpi_editing_enabled()
-        {
-            return false;
-        }
-        let Some((stage_path, axis)) = path.rsplit_once('/') else {
-            return false;
-        };
-        let Some(index) = stage_path
-            .rsplit('/')
-            .next()
-            .and_then(|v| v.parse::<usize>().ok())
-        else {
-            return false;
-        };
-        if (axis == self.spec.dpi_axis(1)
-            && !self.boolean(&format!("{stage_path}/{}", self.spec.independent_key())))
-            || (!self.boolean(self.spec.stage_enable_path())
-                && self.number(self.spec.active_path()) as usize != index + 1)
-        {
+        if !self.dpi_number_editable(path) {
             return false;
         }
         let Some(input) = self.inputs.get(path).cloned() else {

@@ -1,0 +1,76 @@
+[
+  {
+    "source": ".ref/devices/179/static/media/icon_category_mouse.aa743cd2.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_category_mouse.aa743cd2.svg",
+    "source_sha256": "adcd5cd374284b68a5ef152c21190aae61a59d926e9e6607835be78984fbeb3c",
+    "output": "assets/synapse/dock-164-icon_category_mouse.svg",
+    "sha256": "adcd5cd374284b68a5ef152c21190aae61a59d926e9e6607835be78984fbeb3c",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_category_keyboard.e681b4fe.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_category_keyboard.e681b4fe.svg",
+    "source_sha256": "66d7f106140473daadb0e38fc006919193e853ba970dd0087c3082239d61511c",
+    "output": "assets/synapse/dock-164-icon_category_keyboard.svg",
+    "sha256": "66d7f106140473daadb0e38fc006919193e853ba970dd0087c3082239d61511c",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_mouse_ensure.42d0a024.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_mouse_ensure.42d0a024.svg",
+    "source_sha256": "fcc8cc58ef92d2a16fdac15ef645a7adaa6b6c54632fe2a3cbd3c8e98aede5ad",
+    "output": "assets/synapse/dock-164-icon_mouse_ensure.svg",
+    "sha256": "fcc8cc58ef92d2a16fdac15ef645a7adaa6b6c54632fe2a3cbd3c8e98aede5ad",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_kb_ensure.ac7a960e.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_kb_ensure.ac7a960e.svg",
+    "source_sha256": "21bd2d19ecd6a751f8c95dc816aabaa5de4fedf71ac912f09caabd84409fb032",
+    "output": "assets/synapse/dock-164-icon_kb_ensure.svg",
+    "sha256": "21bd2d19ecd6a751f8c95dc816aabaa5de4fedf71ac912f09caabd84409fb032",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon-progress_spinner.e93a0af0.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon-progress_spinner.e93a0af0.svg",
+    "source_sha256": "fd7f747eb552c41ff482df7b93ae02e378baa9c59c354ef7579e885690fabd34",
+    "output": "assets/synapse/dock-164-icon-progress_spinner.svg",
+    "sha256": "fd7f747eb552c41ff482df7b93ae02e378baa9c59c354ef7579e885690fabd34",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_marching_ants_connecting_top_to_bottom.e9c10f33.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_marching_ants_connecting_top_to_bottom.e9c10f33.svg",
+    "source_sha256": "40b34739c37114215277babd35fb50b4d097a8c9897edae899db5e21aca1581f",
+    "output": "assets/synapse/dock-164-icon_marching_ants_connecting_top_to_bottom.svg",
+    "sha256": "40b34739c37114215277babd35fb50b4d097a8c9897edae899db5e21aca1581f",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_marching_ants_not_connected_top_to_bottom.d9c98565.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_marching_ants_not_connected_top_to_bottom.d9c98565.svg",
+    "source_sha256": "cdcb9b2d62a17401632f0add689962370387038f35b8fca66a9c8f8a3f4b530e",
+    "output": "assets/synapse/dock-164-icon_marching_ants_not_connected_top_to_bottom.svg",
+    "sha256": "cdcb9b2d62a17401632f0add689962370387038f35b8fca66a9c8f8a3f4b530e",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/icon_marching_ants_master_line.294a8460.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/icon_marching_ants_master_line.294a8460.svg",
+    "source_sha256": "b61c877403235be28bb9133d6dc4dfa709693d012148634e07fc6ea5782c036d",
+    "output": "assets/synapse/dock-164-icon_marching_ants_master_line.svg",
+    "sha256": "b61c877403235be28bb9133d6dc4dfa709693d012148634e07fc6ea5782c036d",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+  },
+  {
+    "source": ".ref/devices/179/static/media/uma_pairing.d84abdc7.avif",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/uma_pairing.d84abdc7.avif",
+    "source_sha256": "fd73937ad105c0288e60ba6e4fff09670cceae5e94f151fc0603b0d2f6111885",
+    "output": "assets/synapse/receiver/uma-pairing.png",
+    "sha256": "ca9dc03bf8992164959ea91310aff033f6e58e1ee383441c3fd859a750707fa1",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize",
+    "width": 975,
+    "height": 750
+  }
+]

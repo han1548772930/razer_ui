@@ -46,6 +46,7 @@ mod profile_migration;
 mod profiles_page;
 mod release_notes;
 mod runtime_page;
+mod device_discovery;
 mod service_pages;
 mod settings_page;
 mod settings_systray_action;
@@ -123,6 +124,7 @@ pub struct AppShell {
     tray_click: Option<Task<()>>,
     tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
+    receiver_queries: BTreeMap<String, (u64, u64)>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
     history: Vec<Location>,
@@ -133,6 +135,7 @@ pub struct AppShell {
     save_task: Option<Task<()>>,
     pending_saves: VecDeque<PreparedSave>,
     close_requested: bool,
+    macro_exit_wait: Option<Subscription>,
     storage_error: Option<String>,
     status: String,
     dashboard_state: Entity<main_pages::DashboardState>,
@@ -190,7 +193,7 @@ impl AppShell {
                 None,
             ),
             Ok(None) => (
-                crate::model::measured_devices(),
+                vec![],
                 false,
                 vec![],
                 Default::default(),
@@ -202,7 +205,7 @@ impl AppShell {
                 None,
             ),
             Err(error) => (
-                crate::model::measured_devices(),
+                vec![],
                 false,
                 vec![],
                 Default::default(),
@@ -215,7 +218,7 @@ impl AppShell {
             ),
         };
         for device in &mut devices {
-            device.normalize_known_measurements();
+            device.begin_local_session();
         }
         cx.set_global(CustomColors::new(custom_colors));
         let macro_library = cx.new(|_| crate::features::macro_library::MacroLibrary::new(macros));
@@ -228,9 +231,10 @@ impl AppShell {
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
         let settings =
-            cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime, window, cx));
+            cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime.clone(), window, cx));
         let mut this = Self {
             devices: vec![],
+            receiver_queries: BTreeMap::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
             history: vec![],
@@ -241,6 +245,7 @@ impl AppShell {
             save_task: None,
             pending_saves: VecDeque::new(),
             close_requested: false,
+            macro_exit_wait: None,
             tray: None,
             main_window: window.window_handle(),
             tray_events: None,
@@ -347,6 +352,9 @@ impl AppShell {
                     cx.refresh_windows();
                 }
                 settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
+                settings_page::SettingsEvent::PreviewVariant(pid, edition, layout) => {
+                    this.add_preview_variant(*pid, *edition, *layout, window, cx)
+                }
                 settings_page::SettingsEvent::PreviewChromaTour => {
                     this.navigate(Location::Tour(TourKind::Chroma), window, cx);
                 }
@@ -683,6 +691,13 @@ impl AppShell {
                 }
             }
         }
+        // --tab assigns the initial location directly, and can override the
+        // earlier --preview-product navigation. Activate only the final device.
+        for device in &this.devices {
+            let active = matches!(&this.location, Location::Device(key)
+                if device.read(cx).identity(cx) == *key);
+            device.update(cx, |device, cx| device.set_active(active, window, cx));
+        }
         this.host_tabs.visit(&this.location, cx);
         this.host_tabs.restore_order(&host_order);
         this.host_tabs.reveal_active(&this.location);
@@ -704,6 +719,13 @@ impl AppShell {
             false
         });
         this.install_tray(window, cx);
+        this.subscriptions.push(cx.subscribe_in(&runtime, window,
+            |this, _, event: &runtime_page::DiscoveryObserved, window, cx| {
+                this.observe_discovery(&event.0, window, cx);
+            }));
+        // Enumeration is scheduled once after ownership/subscriptions are installed,
+        // never from render. Startup does not initialize unrelated audio/mapping APIs.
+        runtime.update(cx, |runtime, cx| runtime.discover_devices(cx));
         this
     }
     fn add_device(&mut self, mut device: Device, window: &mut Window, cx: &mut Context<Self>) {
@@ -795,6 +817,10 @@ impl AppShell {
             self.host_tabs
                 .open(host_tabs::HostTab::Device(entity.read(cx).identity(cx)), cx);
         }
+        self.subscriptions.push(cx.subscribe_in(&entity, window,
+            |this, entity, event: &crate::features::ReceiverPairingEvent, _, cx| {
+                this.query_receiver_pairing(entity.clone(), event, cx);
+            }));
         self.devices.push(entity);
         if let Some(page) = &self.profiles_page {
             page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
@@ -1048,6 +1074,11 @@ impl AppShell {
             .update(cx, |picker, cx| picker.dismiss(window, cx));
         self.host_tabs.visit(&next, cx);
         if next != self.location {
+            if self.location == Location::Macro {
+                if let Some(page) = &self.macro_page {
+                    page.update(cx, |page, cx| page.cancel_recording(cx));
+                }
+            }
             self.module_catalog
                 .update(cx, |page, cx| page.dismiss_service_removal(window, cx));
             self.host_tabs.focus_location(&next, window, cx);
@@ -1057,7 +1088,10 @@ impl AppShell {
                     .iter()
                     .find(|device| device.read(cx).identity(cx) == *key)
                 {
-                    device.update(cx, |device, cx| device.dismiss_profile_dialog(window, cx));
+                    device.update(cx, |device, cx| {
+                        device.set_active(false, window, cx);
+                        device.dismiss_profile_dialog(window, cx);
+                    });
                 }
             }
             if self.location == Location::Pairing {
@@ -1167,6 +1201,15 @@ impl AppShell {
                 self.history.truncate(self.history_index + 1);
                 self.history.push(next.clone());
                 self.history_index = self.history.len() - 1;
+            }
+            if let Location::Device(key) = &next {
+                if let Some(device) = self
+                    .devices
+                    .iter()
+                    .find(|device| device.read(cx).identity(cx) == *key)
+                {
+                    device.update(cx, |device, cx| device.set_active(true, window, cx));
+                }
             }
             self.location = next;
             cx.notify();
@@ -1589,6 +1632,9 @@ impl AppShell {
         self.sync_persistence_state(cx);
     }
     fn request_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(page) = &self.macro_page {
+            page.update(cx, |page, cx| page.cancel_recording(cx));
+        }
         #[cfg(target_os = "windows")]
         if let Some(tray) = &mut self.tray {
             tray.hide_popup(cx);
@@ -1600,6 +1646,22 @@ impl AppShell {
     }
 
     fn request_exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(page) = self.macro_page.clone() {
+            if page.read(cx).recording_busy() {
+                if self.macro_exit_wait.is_none() {
+                    self.macro_exit_wait = Some(cx.observe_in(&page, window, |this, page, window, cx| {
+                        if !page.read(cx).recording_busy() {
+                            this.macro_exit_wait = None;
+                            this.request_exit(window, cx);
+                        }
+                    }));
+                }
+                page.update(cx, |page, cx| page.cancel_recording(cx));
+                self.status = "正在结束宏录制并恢复临时映射状态…".into();
+                cx.notify();
+                return;
+            }
+        }
         if let Some((page, _)) = &self.firmware_update {
             if !page.update(cx, |page, cx| page.allow_close(window, cx)) {
                 #[cfg(target_os = "windows")]
@@ -1621,10 +1683,34 @@ impl AppShell {
         }
     }
     fn add_preview(&mut self, pid: u32, window: &mut Window, cx: &mut Context<Self>) {
-        if crate::product::registered(pid).is_none() {
+        let Some(edition) = settings_page::preview_editions(pid).first().copied() else {
+            return;
+        };
+        let Some(layout) = settings_page::preview_layouts(pid).first().copied() else {
+            return;
+        };
+        self.add_preview_variant(pid, edition, layout, window, cx);
+    }
+    fn add_preview_variant(
+        &mut self,
+        pid: u32,
+        edition: u32,
+        layout: u32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let editions = settings_page::preview_editions(pid);
+        let layouts = settings_page::preview_layouts(pid);
+        if !editions.contains(&edition) || !layouts.contains(&layout) {
             return;
         }
-        let serial = format!("PREVIEW-{pid}");
+        let default_variant =
+            editions.first() == Some(&edition) && layouts.first() == Some(&layout);
+        let serial = if default_variant {
+            format!("PREVIEW-{pid}")
+        } else {
+            format!("PREVIEW-{pid}-{edition}-{layout}")
+        };
         if !self
             .devices
             .iter()
@@ -1633,16 +1719,31 @@ impl AppShell {
             let mut device = crate::demo::mouse_mat_preview(pid)
                 .or_else(|| crate::demo::registered_preview(pid))
                 .expect("registered preview");
-            // 653's own root selects layoutId || 1 for its default preview.
-            if pid == 653 {
-                device.layout_id = 1;
+            device.edition_id = edition;
+            device.layout_id = layout;
+            device.serial_number = serial.clone();
+            if !default_variant {
+                device.device_container_id = format!("preview-{pid}-{edition}-{layout}");
+                for profile in &mut device.profiles {
+                    let id = format!("{}-{edition}-{layout}", profile.id);
+                    if device.active_profile == profile.id {
+                        device.active_profile = id.clone();
+                    }
+                    profile.id = id.clone();
+                    profile.guid = id;
+                }
+                for name in device.name.values.values_mut() {
+                    *name = format!("{name} · edition {edition} / layout {layout}");
+                }
+                device.product_name = device.name.clone();
             }
+            crate::demo::apply_preview_names(&mut device);
             self.add_device(device, window, cx);
         }
         let key = self
             .devices
             .iter()
-            .find(|d| d.read(cx).device(cx).serial_number == format!("PREVIEW-{pid}"))
+            .find(|d| d.read(cx).device(cx).serial_number == serial)
             .unwrap()
             .read(cx)
             .identity(cx);

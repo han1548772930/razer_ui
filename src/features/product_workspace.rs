@@ -77,11 +77,45 @@ pub(crate) struct ProductWorkspace {
     body: Body,
     _subscription: Subscription,
     _oled_subscription: Option<Subscription>,
+    _receiver_subscription: Option<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for ProductWorkspace {}
+impl EventEmitter<super::ReceiverPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    pub(crate) fn observe_connection(
+        &mut self,
+        observation: Option<crate::model::DeviceConnectionObservation>,
+        cx: &mut Context<Self>,
+    ) {
+        match &self.body {
+            Body::Existing(body) => {
+                body.update(cx, |body, cx| body.observe_connection(observation, cx))
+            }
+            Body::Source(body) => {
+                body.update(cx, |body, cx| body.observe_connection(observation, cx))
+            }
+        }
+    }
+
+    pub(crate) fn observe_receiver_pairing(
+        &mut self,
+        observation: super::ReceiverPairingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_receiver_pairing(observation, cx)
+            });
+        }
+    }
+    pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.set_active(active, window, cx));
+        }
+    }
+
     #[allow(dead_code)]
     pub(crate) fn observe_dpi_editing_enabled(
         &mut self,
@@ -191,6 +225,7 @@ impl ProductWorkspace {
                 body: Body::Existing(entity),
                 _subscription: subscription,
                 _oled_subscription: None,
+                _receiver_subscription: None,
             }
         } else {
             let entity = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
@@ -218,10 +253,15 @@ impl ProductWorkspace {
                 .subscribe(&entity, |_, _, event: &super::OledRuntimeRequested, cx| {
                     cx.emit(event.clone())
                 });
+            let receiver_subscription =
+                cx.subscribe(&entity, |_, _, event: &super::ReceiverPairingEvent, cx| {
+                    cx.emit(event.clone());
+                });
             Self {
                 body: Body::Source(entity),
                 _subscription: subscription,
                 _oled_subscription: Some(oled_subscription),
+                _receiver_subscription: Some(receiver_subscription),
             }
         }
     }

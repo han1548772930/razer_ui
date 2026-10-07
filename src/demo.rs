@@ -8,6 +8,11 @@
 
 use std::collections::BTreeMap;
 
+mod preview_catalog;
+pub(crate) use preview_catalog::{
+    apply_preview_names, preview_edition_label, preview_product_label,
+};
+
 use crate::domain::{DeviceFeatures, LightingEffect, LightingZone};
 use crate::model::{
     Device, DeviceCategory, DkmKey, FirmwareInfo, LocalizedText, Profile, SetupStatus,
@@ -48,7 +53,7 @@ pub(crate) fn registered_preview(pid: u32) -> Option<Device> {
         ("zh-cn", &format!("{} · 预览", product.name())),
     ]);
     let profile_id = format!("preview-profile-{pid}");
-    Some(Device {
+    let mut device = Device {
         dashboard: Default::default(),
         sub_devices: None,
         source_device_settings: None,
@@ -86,7 +91,9 @@ pub(crate) fn registered_preview(pid: u32) -> Option<Device> {
         firmware_info: FirmwareInfo::default(),
         features: DeviceFeatures::default(),
         features_initialized: false,
-    })
+    };
+    apply_preview_names(&mut device);
+    Some(device)
 }
 
 /// Explicit local preview; no service identity, firmware or connected inputs.
@@ -97,7 +104,7 @@ pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
         ("zh-cn", &format!("{} · 预览", product.name())),
     ]);
     let profile_id = format!("preview-profile-{pid}");
-    Some(Device {
+    let mut device = Device {
         dashboard: Default::default(),
         sub_devices: None,
         source_device_settings: None,
@@ -135,7 +142,9 @@ pub(crate) fn mouse_mat_preview(pid: u32) -> Option<Device> {
         firmware_info: FirmwareInfo::default(),
         features: DeviceFeatures::for_category(DeviceCategory::Mousepad, false, true),
         features_initialized: true,
-    })
+    };
+    apply_preview_names(&mut device);
+    Some(device)
 }
 
 /// 构造一台合成键盘。

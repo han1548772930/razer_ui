@@ -27,6 +27,7 @@ impl MacroPage {
         let list_height = (height - 208.).max(450.);
         let empty = self.macro_count() == 0;
         let palette_disabled = empty
+            || self.recording_busy()
             || self.record_ui.open
             || matches!(self.tutorial, Tutorial::Initial | Tutorial::Record);
         let page = cx.entity_id();
@@ -49,6 +50,12 @@ impl MacroPage {
                             .w_full()
                             .when(empty, |v| v.opacity(0.7))
                             .child(self.action_bar(window, cx))
+                            .when(
+                                self.recording_busy()
+                                    || !self.recording.status.is_empty()
+                                    || self.recording.error.is_some(),
+                                |v| v.child(self.recording_status()),
+                            )
                             .child(self.item_editor(list_height, window, cx)),
                     )
                     .child(
@@ -128,8 +135,10 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let disabled =
-            self.macro_count() == 0 || self.record_ui.open || self.tutorial != Tutorial::Complete;
+        let disabled = self.macro_count() == 0
+            || self.recording_busy()
+            || self.record_ui.open
+            || self.tutorial != Tutorial::Complete;
         let page = cx.entity_id();
         if self.current_macro_type() == crate::features::macro_library::MacroType::Phased {
             return self.phased_editor(list_height, disabled, window, cx);
@@ -139,6 +148,7 @@ impl MacroPage {
         let editor_bounds = self.text_ui.editor_bounds.clone();
         v_flex()
             .id("macro-item-list")
+            .test_support()
             .on_prepaint(move |bounds, _, _| editor_bounds.set(bounds))
             .w_full()
             .h(css(list_height))
@@ -148,6 +158,7 @@ impl MacroPage {
                     .opacity(0.7)
             })
             .scrollable_y()
+            .track_scroll(&self.recording.scroll)
             .children(
                 (0..action_count)
                     .map(|index| self.action_row(index, baseline.clone(), disabled, window, cx)),
@@ -185,6 +196,16 @@ impl MacroPage {
             .get(index)
             .cloned()
             .unwrap_or_else(|| ActionItem::new(kind));
+        if item.mouse_movement.is_some() {
+            return h_flex()
+                .id(("macro-movement-value", index))
+                .test_support()
+                .text_size(css(14.))
+                .child(tr("TEXT_MOUSE_MOVEMENT"))
+                .child(img("synapse/macro/delay.svg").size(css(20.)).mx(css(10.)))
+                .child(format!("{}s", item.value))
+                .into_any_element();
+        }
         if kind == ActionKind::Macro {
             return self.nested_macro_editor(index, &item, window, cx);
         }
@@ -466,7 +487,8 @@ impl MacroPage {
         let record_trigger = self.record_ui.trigger_bounds.clone();
         let selected_count = self.selected_actions.len();
         let page = cx.entity_id();
-        let selection_disabled = self.tutorial != Tutorial::Complete || self.record_ui.open;
+        let selection_disabled =
+            self.tutorial != Tutorial::Complete || self.recording_busy() || self.record_ui.open;
         h_flex()
             .id("macro-action-bar")
             .when(
@@ -563,7 +585,12 @@ impl MacroPage {
                         .border_color(rgba(0x0000004d))
                         .child(
                             BaseButton::new("macro-record")
-                                .disabled(true)
+                                .disabled(
+                                    self.current.is_none()
+                                        || self.tutorial != Tutorial::Complete
+                                        || self.recording.stage == recording::Stage::Stopping,
+                                )
+                                .accessibility_label(self.record_label())
                                 .h_full()
                                 .min_w(css(94.))
                                 .px(css(10.))
@@ -573,57 +600,94 @@ impl MacroPage {
                                 .text_color(rgb(0xffffff))
                                 .border_r_1()
                                 .border_color(rgba(0x0000004d))
-                                .child(img("synapse/macro/record.svg").size(css(12.)).mr(css(4.)))
-                                .child(tr("TEXT_ACTION_BAR_RECORD").to_uppercase()),
-                        )
-                        .child(
-                            BaseButton::new("macro-record-options")
-                                .group("macro-record-options")
-                                .on_prepaint(move |bounds, _, _| record_trigger.set(bounds))
-                                .disabled(
-                                    self.current.is_none() || self.tutorial != Tutorial::Complete,
-                                )
-                                .w(css(27.))
-                                .h_full()
-                                .p_0()
-                                .rounded_r(css(3.))
                                 .hover(|s| s.bg(rgba(0xffffff4d)))
-                                .active(|s| s.bg(rgba(0x0000004d)))
-                                .when(self.record_ui.open, |v| {
-                                    v.bg(rgba(0x0000004d)).hover(|s| s.bg(rgba(0x0000004d)))
+                                .active(|s| s.bg(rgba(0x0000004d)).text_color(rgba(0xffffff4d)))
+                                .when(self.recording_controls_active(), |v| v.border_r_0())
+                                .when(!self.recording_controls_active(), |v| {
+                                    v.child(
+                                        img("synapse/macro/record.svg").size(css(12.)).mr(css(4.)),
+                                    )
                                 })
-                                .child(
-                                    div()
-                                        .relative()
-                                        .size(css(10.))
-                                        .child(img("synapse/macro/record-expand.svg").size_full())
-                                        .when(!self.record_ui.open, |v| {
-                                            v.child(
-                                                img("synapse/macro/record-expand-hover.svg")
+                                .child(self.record_label())
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.toggle_recording(window, cx)
+                                })),
+                        )
+                        .when(!self.recording_controls_active(), |v| {
+                            v.child(
+                                BaseButton::new("macro-record-options")
+                                    .group("macro-record-options")
+                                    .on_prepaint(move |bounds, _, _| record_trigger.set(bounds))
+                                    .disabled(
+                                        self.recording_busy()
+                                            || self.current.is_none()
+                                            || self.tutorial != Tutorial::Complete,
+                                    )
+                                    .w(css(27.))
+                                    .h_full()
+                                    .p_0()
+                                    .rounded_r(css(3.))
+                                    .hover(|s| s.bg(rgba(0xffffff4d)))
+                                    .active(|s| s.bg(rgba(0x0000004d)))
+                                    .when(self.record_ui.open, |v| {
+                                        v.bg(rgba(0x0000004d)).hover(|s| s.bg(rgba(0x0000004d)))
+                                    })
+                                    .child(
+                                        div()
+                                            .relative()
+                                            .size(css(10.))
+                                            .child(
+                                                img("synapse/macro/record-expand.svg").size_full(),
+                                            )
+                                            .when(!self.record_ui.open, |v| {
+                                                v.child(
+                                                    img("synapse/macro/record-expand-hover.svg")
+                                                        .absolute()
+                                                        .inset_0()
+                                                        .size_full()
+                                                        .opacity(0.)
+                                                        .group_hover("macro-record-options", |s| {
+                                                            s.opacity(1.)
+                                                        }),
+                                                )
+                                            })
+                                            .child(
+                                                img("synapse/macro/record-expand.svg")
                                                     .absolute()
                                                     .inset_0()
                                                     .size_full()
                                                     .opacity(0.)
-                                                    .group_hover("macro-record-options", |s| {
+                                                    .group_active("macro-record-options", |s| {
                                                         s.opacity(1.)
                                                     }),
-                                            )
-                                        })
-                                        .child(
-                                            img("synapse/macro/record-expand.svg")
-                                                .absolute()
-                                                .inset_0()
-                                                .size_full()
-                                                .opacity(0.)
-                                                .group_active("macro-record-options", |s| {
-                                                    s.opacity(1.)
-                                                }),
-                                        ),
-                                )
-                                .on_click(cx.listener(|this, _, window, cx| {
-                                    this.toggle_record_options(window, cx)
-                                })),
-                        )
+                                            ),
+                                    )
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.toggle_record_options(window, cx)
+                                    })),
+                            )
+                        })
+                        .when_some(self.record_countdown_label(), |v, label| {
+                            v.child(
+                                div()
+                                    .id("macro-record-countdown")
+                                    .test_support()
+                                    .absolute()
+                                    .top(css(58.))
+                                    .w(css(123.))
+                                    .h(css(40.))
+                                    .px(css(16.))
+                                    .py(css(12.))
+                                    .rounded(css(5.))
+                                    .bg(rgb(0x44d62c))
+                                    .text_color(rgb(0x212121))
+                                    .text_size(css(12.))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_center()
+                                    .aria_label(label.clone())
+                                    .child(label),
+                            )
+                        })
                         .when(self.record_ui.open, |v| {
                             v.child(deferred(self.record_options(window, cx)).with_priority(99))
                         }),

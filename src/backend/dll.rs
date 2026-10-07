@@ -32,17 +32,18 @@ impl EnginePaths {
             .unwrap_or_else(|| PathBuf::from(r"C:\Program Files"));
         let engine_root = program_files.join("Razer").join("RazerAppEngine");
 
-        // `app-<ver>` 是按版本并列的目录，取**目录名最大**的那个：
-        // 雷云始终用四位版本号（如 `app-4.0.0.0`），位数相同时字符串序与数值序一致。
+        // Compare numeric components: app-4.0.1000 is newer than app-4.0.999.
+        // Directory discovery is not proof of the loaded host or a live service.
         let common_dll = std::fs::read_dir(&engine_root)
             .ok()
             .into_iter()
             .flatten()
             .flatten()
-            .filter(|entry| entry.file_name().to_string_lossy().starts_with("app-"))
             .filter_map(|entry| {
+                let name = entry.file_name();
+                let version = numeric_version(name.to_str()?.strip_prefix("app-")?)?;
                 let dir = entry.path().join("CommonDLL");
-                dir.is_dir().then_some((entry.file_name(), dir))
+                dir.is_dir().then_some((version, dir))
             })
             .max_by_key(|(name, _)| name.clone())
             .map(|(_, dir)| dir);
@@ -78,27 +79,61 @@ impl EnginePaths {
     /// 用 `_v` 作分隔而不是 `starts_with(stem)`，避免 `lighting_driver`
     /// 误匹配到 `lighting_driver_helper`。
     pub fn resolve(&self, stem: &str) -> Option<PathBuf> {
-        let mut candidates: Vec<PathBuf> = Vec::new();
         for dir in [self.common_dll.as_ref(), self.apps_common.as_ref()]
             .into_iter()
             .flatten()
         {
+            let mut candidates = Vec::new();
             collect_dlls(dir, stem, 0, &mut candidates);
+            candidates.sort_by_key(|path| dll_rank(path, stem));
+            if let Some(path) = candidates.pop() {
+                return Some(path);
+            }
         }
-
-        // 精确名优先；否则取排序后最后一个（版本号最大的）。
-        candidates.sort();
-        let exact = format!("{stem}.dll").to_ascii_lowercase();
-        candidates
-            .iter()
-            .find(|path| {
-                path.file_name()
-                    .map(|name| name.to_string_lossy().to_ascii_lowercase() == exact)
-                    .unwrap_or(false)
-            })
-            .cloned()
-            .or_else(|| candidates.last().cloned())
+        None
     }
+
+    /// Current packaged host main.js loads these core services by their exact
+    /// CommonDLL filenames. Apps/Common is only used by its explicit debug mode.
+    /// Do not silently initialize a product-scoped or downloaded substitute.
+    pub(crate) fn resolve_host_service(&self, stem: &str) -> anyhow::Result<PathBuf> {
+        anyhow::ensure!(
+            matches!(stem, "mapping_engine" | "simple_service"),
+            "未知宿主服务 {stem}"
+        );
+        let directory = self
+            .common_dll
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("未找到已安装宿主的 CommonDLL 目录"))?;
+        let path = directory.join(format!("{stem}.dll"));
+        anyhow::ensure!(path.is_file(), "宿主服务文件不存在：{}", path.display());
+        Ok(path)
+    }
+}
+
+fn numeric_version(value: &str) -> Option<Vec<u32>> {
+    let parts = value
+        .split('.')
+        .map(str::parse)
+        .collect::<Result<Vec<u32>, _>>()
+        .ok()?;
+    (parts.len() >= 2).then_some(parts)
+}
+
+fn dll_rank(path: &Path, stem: &str) -> (bool, Vec<u32>, PathBuf) {
+    let name = path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_ascii_lowercase();
+    let stem = stem.to_ascii_lowercase();
+    let exact = name == format!("{stem}.dll");
+    let version = name
+        .strip_prefix(&format!("{stem}_v"))
+        .and_then(|name| name.strip_suffix(".dll"))
+        .and_then(numeric_version)
+        .unwrap_or_default();
+    (exact, version, path.to_owned())
 }
 
 /// 在 `dir` 下收集匹配 `stem` 的 DLL。
@@ -125,7 +160,13 @@ fn collect_dlls(dir: &Path, stem: &str, depth: usize, out: &mut Vec<PathBuf>) {
         else {
             continue;
         };
-        if name == exact || name.starts_with(&versioned) {
+        if name == exact
+            || name
+                .strip_prefix(&versioned)
+                .and_then(|name| name.strip_suffix(".dll"))
+                .and_then(numeric_version)
+                .is_some()
+        {
             out.push(path);
         }
     }
@@ -178,7 +219,8 @@ impl EngineLibrary {
     /// # Safety
     ///
     /// 调用方必须保证 `T` 与该 DLL 的真实导出签名一致：签名不符会损坏栈。
-    /// 签名来源见 `.ref/notes/exports_*.txt`（`dumpbin /exports` 的原始输出）。
+    /// Signatures require the current wrapper and callback contract; a PE export
+    /// name alone does not prove ABI. See docs/re/dll-readonly-inventory.md.
     pub unsafe fn func<T>(&self, name: &str) -> Option<T> {
         // SAFETY: 由调用方保证 `T` 的签名正确（见上）。
         let symbol = unsafe { self.lib.get::<T>(name.as_bytes()) }.ok()?;

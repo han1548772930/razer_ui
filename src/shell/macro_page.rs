@@ -7,7 +7,7 @@ use crate::{
     ui::{scroll::SourceScrollable as _, surface::css, tutorial::TutorialIndicator},
 };
 use gpui_kit::base::{
-    Button as BaseButton,
+    Button as BaseButton, TestSupportExt as _,
     motion::{self, Easing, Presence, Transition},
 };
 use gpui_kit::component::{
@@ -31,6 +31,9 @@ mod phased;
 mod record_help;
 mod record_options;
 mod record_shortcut;
+mod recording;
+mod recording_actor;
+mod recording_decode;
 mod row_actions;
 mod row_controls;
 mod row_drag;
@@ -117,6 +120,7 @@ pub(super) struct MacroPage {
     launch_ui: launch::LaunchUi,
     keyboard_ui: keyboard::KeyboardUi,
     record_ui: record_options::RecordUi,
+    recording: recording::RecordingUi,
     phased_ui: phased::PhasedUi,
     delay_min_editor: Entity<InputState>,
     delay_max_editor: Entity<InputState>,
@@ -292,6 +296,7 @@ impl MacroPage {
             launch_ui: Default::default(),
             keyboard_ui: keyboard::KeyboardUi::new(keyboard_focus),
             record_ui,
+            recording: Default::default(),
             phased_ui: Default::default(),
             delay_min_editor,
             delay_max_editor,
@@ -369,6 +374,9 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.recording_busy() {
+            return;
+        }
         if forward && self.has_next_page() {
             self.history_index += 1;
         } else if !forward && self.has_previous_page() {
@@ -404,7 +412,7 @@ impl MacroPage {
         cx.notify();
     }
     fn set_tab(&mut self, tab: MacroTab, window: &mut Window, cx: &mut Context<Self>) {
-        if self.tab == tab {
+        if self.recording_busy() || self.tab == tab {
             return;
         }
         self.tab = tab;
@@ -422,7 +430,11 @@ impl MacroPage {
     }
     fn actions(&self) -> &[ActionItem] {
         if self.actions_for == self.current {
-            &self.actions
+            if self.recording_busy() {
+                &self.recording.preview
+            } else {
+                &self.actions
+            }
         } else {
             &[]
         }
@@ -448,17 +460,21 @@ impl MacroPage {
         self.add_action_at(kind, index, cx);
     }
     pub(super) fn can_undo(&self) -> bool {
-        !self.record_ui.open && !self.undo.is_empty()
+        !self.recording_busy() && !self.record_ui.open && !self.undo.is_empty()
     }
     pub(super) fn can_redo(&self) -> bool {
-        !self.record_ui.open && !self.redo.is_empty()
+        !self.recording_busy() && !self.record_ui.open && !self.redo.is_empty()
     }
     pub(super) fn can_save(&self) -> bool {
-        self.current.is_some()
+        !self.recording_busy()
+            && self.current.is_some()
             && self.actions_for == self.current
             && (self.saved_actions_for != self.current || self.actions != self.saved_actions)
     }
     fn can_save_with_pending(&self, cx: &App) -> bool {
+        if self.recording_busy() {
+            return false;
+        }
         self.can_save()
             || self.keyboard_pending()
             || self
@@ -483,7 +499,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.record_ui.open {
+        if self.recording_busy() || self.record_ui.open {
             return;
         }
         if self
@@ -573,7 +589,7 @@ impl MacroPage {
     }
 
     pub(super) fn toggle_delay_randomized(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open {
+        if self.recording_busy() || self.record_ui.open {
             return;
         }
         let Some(item) = self.actions.get(index).cloned() else {
@@ -695,7 +711,7 @@ impl MacroPage {
 
     pub(super) fn add_action_at(&mut self, kind: &str, index: usize, cx: &mut Context<Self>) {
         let Some(current) = self.current else { return };
-        if self.tutorial != Tutorial::Complete || self.record_ui.open {
+        if self.tutorial != Tutorial::Complete || self.recording_busy() || self.record_ui.open {
             return;
         }
         let Some(kind) = ActionKind::from_palette(kind) else {
@@ -782,7 +798,7 @@ impl MacroPage {
         }
     }
     pub(super) fn toggle_action_selection(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open || self.tutorial != Tutorial::Complete {
+        if self.recording_busy() || self.record_ui.open || self.tutorial != Tutorial::Complete {
             return;
         }
         if index >= self.actions().len() {
@@ -801,7 +817,7 @@ impl MacroPage {
     }
 
     pub(super) fn delete_selected_actions(&mut self, cx: &mut Context<Self>) {
-        if self.record_ui.open || self.tutorial != Tutorial::Complete {
+        if self.recording_busy() || self.record_ui.open || self.tutorial != Tutorial::Complete {
             return;
         }
         self.finish_keyboard_editor();
@@ -876,6 +892,7 @@ impl Render for MacroPage {
         };
         v_flex()
             .id("macro-window")
+            .test_support()
             .on_prepaint({
                 let viewport = self.source_viewport.clone();
                 move |bounds, _, _| viewport.set(bounds)

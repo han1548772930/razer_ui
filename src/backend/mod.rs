@@ -28,6 +28,10 @@
 // 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
 pub(crate) mod runtime;
+pub(crate) mod discovery;
+pub(crate) mod device_identity;
+pub(crate) mod receiver_capabilities;
+pub(crate) mod receiver_protocol;
 pub(crate) mod system;
 
 pub mod dll;
@@ -50,9 +54,8 @@ pub struct EngineSpec {
     pub purpose: &'static str,
     /// 用来验证可用性的关键符号。
     ///
-    /// `simple_service` 与 `mapping_engine` 的导出是 **C++ 修饰名**，
-    /// 必须按修饰名逐字查找（`GetProcAddress` 匹配完整名字）；
-    /// 其余是 extern "C" 的普通名字。
+    /// Current mapping/simple wrappers use undecorated aliases, also present in
+    /// the statically inspected DLLs. Export presence alone does not prove ABI.
     pub symbols: &'static [&'static str],
 }
 
@@ -97,10 +100,10 @@ const ENGINES: &[EngineSpec] = &[
         stem: "mapping_engine",
         purpose: "按键重映射、Hypershift、Snap Tap、宏录制、全局快捷键",
         symbols: &[
-            "?mappingEngineInitialize@@YAXP6AXXZ@Z",
-            "?mappingEngineShutdown@@YAXP6AXXZ@Z",
-            "?getGlobalMode@@YAXP6AX_NPEBD1@Z@Z",
-            "?getDeviceMode@@YAXPEBDP6AX_N00@Z@Z",
+            "mappingEngineInitialize",
+            "mappingEngineShutdown",
+            "getGlobalMode",
+            "getDeviceMode",
         ],
     },
     EngineSpec {
@@ -108,13 +111,13 @@ const ENGINES: &[EngineSpec] = &[
         stem: "simple_service",
         purpose: "默认音频设备、音量、侧音，以及进程启动",
         symbols: &[
-            "?simpleGetVersionInfo@@YAXP6AX_NPEBD1@Z@Z",
-            "?simpleEnumerateAudioDevices@@YAXP6AX_NPEBD1@Z@Z",
-            "?simpleGetDefaultSpeaker@@YAXP6AX_NPEBD110E@Z@Z",
-            "?simpleGetDefaultMicrophone@@YAXP6AX_NPEBD110E@Z@Z",
-            "?simpleGetSpeakerVolume@@YAXPEBDP6AX_N001E@Z@Z",
-            "?simpleGetMicrophoneVolume@@YAXPEBDP6AX_N001E@Z@Z",
-            "?simpleGetSidetoneVolume@@YAXPEBDP6AX_N001E@Z@Z",
+            "simpleGetVersionInfo",
+            "simpleEnumerateAudioDevices",
+            "simpleGetDefaultSpeaker",
+            "simpleGetDefaultMicrophone",
+            "simpleGetSpeakerVolume",
+            "simpleGetMicrophoneVolume",
+            "simpleGetSidetoneVolume",
         ],
     },
     EngineSpec {

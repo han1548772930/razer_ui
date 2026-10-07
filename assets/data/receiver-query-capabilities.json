@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "scope": "Exact direct receiver bindings audited from current product middleware. No inference from catalog membership or shared class presence.",
+  "capabilities": [
+    {
+      "source_product_id": 179,
+      "vendor_id": 5426,
+      "product_id": 179,
+      "claim_interface": 0,
+      "report_bytes": 91,
+      "report_id": 0,
+      "protocol": "razer_device25_wireless_status_v2",
+      "command": [
+        80,
+        0,
+        191
+      ],
+      "transaction_prefix": 224,
+      "transaction_modulus": 31,
+      "max_retry_in": 10,
+      "max_retry_out": 20,
+      "sleep_between_out_ms": 25,
+      "sleep_between_out_in_ms": 25,
+      "sleep_between_in_ms": 25,
+      "source_class": "rzDevice25LinkerUma",
+      "evidence_path": "docs/re/receiver-capabilities-current-evidence.json"
+    },
+    {
+      "source_product_id": 226,
+      "vendor_id": 5426,
+      "product_id": 227,
+      "claim_interface": 3,
+      "report_bytes": 91,
+      "report_id": 0,
+      "protocol": "razer_device25_wireless_status_v2",
+      "command": [
+        80,
+        0,
+        191
+      ],
+      "transaction_prefix": 0,
+      "transaction_modulus": 31,
+      "max_retry_in": 10,
+      "max_retry_out": 20,
+      "sleep_between_out_ms": 25,
+      "sleep_between_out_in_ms": 25,
+      "sleep_between_in_ms": 25,
+      "source_class": "rzDevice25DualLinkMouse",
+      "evidence_path": "docs/re/receiver-capabilities-current-evidence.json"
+    }
+  ]
+}

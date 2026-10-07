@@ -1,0 +1,688 @@
+{
+  "method": "Manifest-scoped current Macro Acorn parse and current host static ABI inspection; no vendor execution, DLL loading or runtime tests",
+  "main": {
+    "_r": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 670679,
+      "end": 672060,
+      "source": "e=>{if(Do.j.reduxStore.getState().macroList.otfmKeyAssigning||Do.j.reduxStore.getState().macroList.isOTFMMode)return;0===Dr.onFirstMacro&&(Dr.onFirstMacro=Date.now());const t=JSON.parse(e.macroItem);console.log(\"[onMacroItem] - Macro item received:\",JSON.parse(e.macroItem));const n=t.pop();if(n.timerTick=e.timeTick,t.length>0){let o=0;sr.send(\"ON_MACRO_MOUSE_MOVE_LIST\",{macroItems:t.map(t=>(t.timerTick=e.timeTick,o+=t.time,t))});const r=new CustomEvent(\"onmacroitemui\");(0,G.L9)(t[0]),r.payload={...t[0],timerTick:e.timeTick,time:o},window.dispatchEvent(r),n.timerTick=(parseInt(n.timerTick)+1).toString()}if(cr.includes(n.vkCode)||ur.includes(n.vkCode)&&!lr.includes(n.scanCode))return;let o=Do.j.reduxStore.getState().macroList.recordProfile.shortcutKey;if(o=o?o.map(e=>{var t;const n=G.vp[e];return void 0!==n?n:Number(null===(t=l.HP.KEYS.find(t=>t.inputID===e))||void 0===t?void 0:t.virtualKey)||e}):[],o.length&&vr&&\"keyup\"===n.action&&o.includes(n.vkCode))return;vr=!1,sr.send(\"ON_MACRO_ITEM\",{macroItem:n});const r=e=>{console.log(\"sendui\",e);const t=new CustomEvent(\"onmacroitemui\");(0,G.L9)(e),t.payload=e,window.dispatchEvent(t)};o.length&&\"keydown\"===n.action&&o.includes(n.vkCode)&&Ir.every(e=>e.vkCode!==n.vkCode)&&Ir.length!==o.length?Ir.push({...n,timerTick:e.timeTick}):(o.length&&Ir.length!==o.length&&(Ir.map(e=>{r(e)}),Ir=[]),r({...n,timerTick:e.timeTick}))}"
+    },
+    "wr": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 673231,
+      "end": 673610,
+      "source": "e=>{Dr.onMacroStarted=Date.now(),Dr.onFirstMacro=0,jt.A.lock().then(()=>{Do.j.reduxStore.dispatch({type:u.km,payload:!0}),Do.j.apiElectron.doElectronAction({action:\"registerNoBrowserInputHandler\"}),\"kOTFM\"!==e.mode?tn.A.init().then(t=>{ir(t),Do.j.reduxStore.dispatch({type:h.GL,payload:!0}),sr.send(\"RECORDING\",{timerTick:e.timeTick})}):sr.send(\"OTFM\",{timerTick:e.timerTick})})}"
+    },
+    "br": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 672064,
+      "end": 672466,
+      "source": "()=>{Do.j.reduxStore.dispatch({type:h.GR,payload:!1}),Do.j.apiElectron.doElectronAction({action:\"unRegisterNoBrowserInputHandler\"}),vr=!0,Ir=[],Do.j.reduxStore.dispatch({type:u.km,payload:!1}),Do.j.reduxStore.dispatch({type:h._s,payload:!1}),Do.j.reduxStore.dispatch({type:h.GL,payload:!1}),jt.A.lock().then(()=>{Do.j.reduxStore.dispatch({type:h.lj,name:\"completed\"})}),sr.send(\"ON_RECORDING_STOPPED\")}"
+    },
+    "Or": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 673614,
+      "end": 673840,
+      "source": "async()=>(vo.A.on(\"macroitem\",_r),vo.A.on(\"macrorecordingstarted\",wr),vo.A.on(\"macrorecordingstopped\",br),vo.A.on(\"macrorecorderconnectionerror\",Ar),vo.A.on(\"globalshortcutevent\",Sr),await vo.A.registerMacroRecorderEvent(),!0)"
+    },
+    "Nr": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 681266,
+      "end": 685280,
+      "source": "()=>{window.addEventListener(\"postRecordingEvent\",e=>{var t,n;const o=(Dr.onFirstMacro-Dr.onMacroStarted)/1e3;Dr.onFirstMacro=0,Dr.onMacroStarted=0;const{payload:{macroItems:r,virtualScreenInfoFirst:a,virtualScreenInfoSecond:s,shortcutKey:c}}=e,u=e.payload.stopBy;(0,G.MN)(r);const l=Do.j.reduxStore.getState().macroList.macroList,p=Do.j.reduxStore.getState().macroList.currentProfile,{delayTime:d,delaySetting:y,macroType:g,randomizeDelay:f}=Do.j.reduxStore.getState().macroList.recordProfile,m=(0,pn.Rk)(l,p),E=Do.j.reduxStore.getState().macroList.recordProfile.mmtSetting,v=null===m||void 0===m||null===(t=m.appEngine)||void 0===t?void 0:t.mouseMoveType,I=!!m.appEngine.events.length?\"none\"!==v:0!==E;let D=[],_=[];if(I&&(a.top!==s.top||a.left!==s.left||a.width!==s.width||a.height!==s.height))return window.MacroService.serviceNotification(\"Monitor setting has been changed\",\"MONITOR_CHANGED\"),void sr.send(\"ON_MACRO_REJECTED\");if(r.length){r.forEach((e,t)=>{const{macroItem:n,Id:o}=e;if(I)if(\"mousemove\"===n.action){if(D.push({x:n.x,y:n.y,time:n.time/1e3}),t===r.length-1||\"mousemove\"!=r[t+1].macroItem.action){Rr(null===m||void 0===m?void 0:m.delaySetting,null===m||void 0===m?void 0:m.macroType,n,o,_,d,f).forEach(e=>_.push(e));const e=_.slice().reverse().find(e=>3===e.Type);let t=0;for(const n in D)n&&(t=D[n].time+t);e&&(e.MouseEvent.Buffer=JSON.parse(JSON.stringify(D)),e.Number=parseFloat((t/1e3).toString()).toFixed(3)),D=[]}}else{Rr(null===m||void 0===m?void 0:m.delaySetting,null===m||void 0===m?void 0:m.macroType,n,o,_,d,f,(null===m||void 0===m?void 0:m.macroType)===T.CKm.ENGINE.PHASED?null===m||void 0===m?void 0:m.activePhase:void 0).forEach(e=>_.push(e))}else if(\"mousemove\"!==n.action){Rr(null===m||void 0===m?void 0:m.delaySetting,null===m||void 0===m?void 0:m.macroType,n,o,_,d,f,(null===m||void 0===m?void 0:m.macroType)===T.CKm.ENGINE.PHASED?null===m||void 0===m?void 0:m.activePhase:void 0).forEach(e=>_.push(e))}});const e=g===T.CKm.ENGINE.SEQUENCE;if(u===i.ey.CLICK_STOP_BTN){console.log(\"nnn action test\",\"click\");const t=[];for(let n=_.length-1;n>=0;n--){var b;const o=_[n];if(0===(null===(b=o.MouseEvent)||void 0===b?void 0:b.MouseButton)&&!e){if(0===o.MouseEvent.MouseButton){t.push(n);break}if(0===o.MouseEvent.State){t.push(n);break}1===o.MouseEvent.State&&t.push(n)}}_=_.filter((e,n)=>!t.includes(n))}else if(u===i.ey.PRESS_SHORTCUT_KEY){console.log(\"[postRecordingEvent] pressShortcut\",_,c);const e=[],t={};let n=[...c];if(!n.length)return void console.warn(\"[postRecordingEvent] pressShortcut, no shortcut key found\");n.forEach(e=>{t[e.keyCode]=0});for(let o=_.length-1;o>=0&&n.length>0;o--){var A,S,w;const r=_[o];if(!r)break;if(0===r.Type)continue;const i=null===(A=r.KeyEvent)||void 0===A?void 0:A.Makecode;if(!n.some(e=>Number(e.keyCode)===i))break;0===t[i]&&0===(null===(S=r.KeyEvent)||void 0===S?void 0:S.State)&&(t[i]=1),t[i]&&(n=n.filter(e=>Number(e.keyCode)!==i)),e.push(o),0===(null===(w=_[o-1])||void 0===w?void 0:w.Type)&&(e.push(o-1),o--)}_=_.filter((t,n)=>!e.includes(n))}}console.log(\"Final EventList: \",_);let O=_;g!==T.CKm.ENGINE.SEQUENCE&&(O=ar(_)),y===T.AX$.ENGINE.RECORD_DELAY&&(null===(n=O[0])||void 0===n?void 0:n.Type)===T.G6K.DELAY&&(O[0].Number=o.toString()),g!==T.CKm.ENGINE.SEQUENCE&&_.every(e=>0===e.Type)&&(O=[]),jt.A.lock().then(()=>{Do.j.reduxStore.dispatch({type:h.nu,payload:O})})});let e=!1;Do.j.apiElectron.response(\"tab-message\",t=>{if(window.name===t.name&&e&&\"request-close-tab\"===t.action){const{currentProfile:e,macroList:t}=Do.j.reduxStore.getState().macroList,n=t.find(t=>t.guid===e);if(n&&!n.saved)return Do.j.reduxStore.dispatch({type:h.O$,payload:{type:h.I5,payload:{saveMacro:!0}}}),void Do.j.reduxStore.dispatch({type:h.K3,payload:!0});Do.j.reduxStore.dispatch({type:h.I5})}});return window.addEventListener(\"macro-saved-report\",t=>{const n=t.detail;if(!n&&!e)return m.A.setManualClose(\"macro\"),Do.j.apiElectron.doElectronAction({action:\"setManualClose\",name:\"macro\"}),void(e=!0);n&&e&&(m.A.removeManualClose(\"macro\"),e=!1)}),!0}"
+    },
+    "Rr": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 685284,
+      "end": 686620,
+      "source": "(e,t,n,o,r,i,a,s)=>{let c;const u=(e=>(92==e.scanCode&&(e.scanCode=91),92===e.scanCode?{...e,scanCode:91}:e))(n);return c=[T.AX$.ENGINE.RECORD_DELAY,T.AX$.ENGINE.QUEUE].includes(e)&&t===T.CKm.ENGINE.STANDARD?l.yI.recordDelayOption(u,r,void 0,o):e===T.AX$.ENGINE.RECORD_DELAY_TIME&&t===T.CKm.ENGINE.STANDARD?l.yI.recordDelayOption(u,r,i,o):e===T.AX$.ENGINE.RANDOMIZED&&t===T.CKm.ENGINE.STANDARD?l.yI.recordDelayOption(u,r,void 0,o,a):t===T.CKm.ENGINE.SEQUENCE?((e,t)=>{if(Ro===t)return[];switch(Ro=t,e.action){case\"keydown\":case\"lbuttondown\":case\"rbuttondown\":case 523:case\"mbuttondown\":default:return[];case\"keyup\":{No++;let t=So(To.Ay.keyboard);return t.KeyEvent.Makecode=Oo(e.vkCode),t.Id=No,[t]}case\"lbuttonup\":{No++;const e=So(To.Ay.mouse);return e.MouseEvent.MouseButton=0,e.Id=No,[e]}case\"rbuttonup\":{No++;const e=So(To.Ay.mouse);return e.MouseEvent.MouseButton=1,e.Id=No,[e]}case 524:{No++;const t=So(To.Ay.mouse);return t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?3:4,t.Id=No,[t]}case\"mbuttonup\":{No++;const e=So(To.Ay.mouse);return e.MouseEvent.MouseButton=2,e.Id=No,[e]}case\"mousewheel\":case\"mousehwheel\":{No++;const t=So(To.Ay.mouse);return t.MouseEvent.MouseButton=wo(ko(e.data,e.action)),t.Id=No,[t]}}})(u,o):t===T.CKm.ENGINE.PHASED?l.yI.recordPhasedOption(u,r,o,s):l.yI.recordDelayOption(u,r,\"none\",o),c}"
+    },
+    "dr": {
+      "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+      "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+      "offset": 666290,
+      "end": 666473,
+      "source": "async()=>{if(pr)return;if(await vo.A.hasMacroRecordingStarted()){pr=!0;try{await vo.A.stopMacroRecording()}catch(e){console.error(\"Error stopping macro recording:\",e)}finally{pr=!1}}}"
+    }
+  },
+  "ui": {
+    "xa": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1355870,
+      "end": 1357340,
+      "source": "e=>{const t=(0,Se.useDispatch)(),{currentProfile:n,recordProfile:r,activeRecord:i}=e,s=(0,a.useRef)(null),c=(0,a.useRef)(),l=(0,a.useRef)(!1),d=(0,a.useCallback)(()=>{t({type:Ua.km,payload:!0}),t({type:o.GL,payload:!0}),window.MacroStateMachineService.send(\"ON_RECORDING_PRESS\",{mouseMoveType:\"mouseMoveType\",timerTick:\"triggerTimerTick\"}),window.MacroStateMachineService.send(\"RECORDING\",{timerTick:Math.floor(Date.now()/1e3)})},[]),_=(0,a.useCallback)(e=>{var n;t({type:Ua.km,payload:!1}),t({type:o.GL,payload:!1}),window.MacroStateMachineService.send(\"ON_STOP_RECORDING\",{stopBy:(null===e||void 0===e||null===(n=e.detail)||void 0===n?void 0:n.action)||C.ey.CLICK_STOP_BTN})},[]),E=(0,a.useCallback)(e=>{if(!s.current)return;if(0===e)return clearTimeout(c.current),s.current.classList.remove(Fa),l.current=!1,void d();s.current.classList.add(Fa),s.current.innerText=(0,O.JN)(R.K$d,{time:e}),c.current=setTimeout(()=>{E(e-1)},1e3)},[d]),u=(0,a.useCallback)(()=>{clearTimeout(c.current),l.current=!1},[]),m=(0,a.useCallback)(e=>{if(y.A.init().then(e=>Va(e)),(e=>{let t=new CustomEvent(C.uM,e);window.dispatchEvent(t)})(e),!n)return;const t=\"number\"===typeof r.startDelay&&r.startDelay>0,a=!i;if(t&&a&&!l.current)return l.current=!0,void E(r.startDelay);t&&a&&l.current?u():i?_(e):d()},[n,r,i,d,_]);return(0,a.useEffect)(()=>(window.addEventListener(C.sp,m),()=>window.removeEventListener(C.sp,m)),[m]),{startRecording:d,stopRecording:_,changeRecording:m,countDownRef:s}}"
+    },
+    "Gr": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1390956,
+      "end": 1392670,
+      "source": "(0,Se.connect)(e=>({currentProfile:e.macroList.currentProfile,recordProfile:e.macroList.recordProfile,isRecordingReady:e.macroList.isRecordingReady,isOTFMMode:e.macroList.isOTFMMode,activeRecord:e.macroList.activeRecord,activeSettingWindow:e.page.activeSettingWindow}))(e=>{const t=(0,Se.useDispatch)(),{currentProfile:n,recordProfile:r}=e,[i,s]=(0,a.useState)(!1),c=(0,a.useRef)(),l=(0,Se.useSelector)(e=>e.languageReducer.lang),{changeRecording:d,countDownRef:_}=xa(e),E=()=>{s(!i),t({type:Ua.km,payload:!e.activeSettingWindow}),t({type:o.oA,payload:e.activeSettingWindow})},u=e.activeRecord?`${Pa} ${ka}`:Pa,m=e.activeRecord?(0,Ne.jsx)(Ne.Fragment,{children:(0,Ne.jsx)(\"span\",{children:(0,O.JN)(R._CE,{_lang:l})})}):(0,Ne.jsxs)(Ne.Fragment,{children:[(0,Ne.jsx)(\"span\",{className:Ga}),(0,Ne.jsx)(\"span\",{id:\"stopRecord\",children:(0,O.JN)(R.l4k,{_lang:l})})]});e.activeRecord&&i&&s(!1);const h=i?`${ba} ${Fa}`:ba,A=e.isOTFMMode?`${$a} ${Ha}`:$a;return null===n?(0,Ne.jsxs)(\"div\",{className:u,id:\"record-btn\",children:[(0,Ne.jsxs)(\"div\",{className:$a,id:\"record-btn\",children:[m,(0,Ne.jsx)(\"div\",{className:Ba,ref:_})]}),(0,Ne.jsx)(\"div\",{className:h,onClick:E,ref:c})]}):((0,a.useEffect)(()=>(window.addEventListener(C.sp,d),()=>{window.removeEventListener(C.sp,d)}),[d]),(0,Ne.jsxs)(\"div\",{className:u,id:\"record-btn\",children:[(0,Ne.jsxs)(\"div\",{className:A,onClick:d,disabled:r.shortcutKey.length,children:[m,(0,Ne.jsx)(\"div\",{className:Ba,ref:_})]}),(0,Ne.jsx)(\"div\",{className:h,onClick:E,ref:c}),(0,Ne.jsx)($r,{show:i,click:n=>{c.current&&c.current.contains(n.target)||(t({type:Ua.km,payload:!1}),t({type:o.oA,payload:e.activeSettingWindow}),s(!1),\"stopRecord\"!==n.target.id||e.activeRecord||d(n))}})]}))})"
+    },
+    "Fr": {
+      "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+      "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+      "offset": 1398926,
+      "end": 1402147,
+      "source": "e=>{const{macroList:t,currentProfile:n,firstTime:r,lastAction:i,recordProfile:s}=e,c=(0,nt.A)(),l=(0,a.useRef)(),d=(0,a.useMemo)(()=>t.find(e=>e.guid===n),[t,n]);(0,a.useEffect)(()=>{if(l.current&&d){const e=!!d.appEngine.events.length,t=s.mmtSetting,n=d.appEngine.mouseMoveType,a=e?(0,wa.NX)(n):t;l.current.updateSetting({...s,macroType:null===d||void 0===d?void 0:d.macroType,delaySetting:null===d||void 0===d?void 0:d.delaySetting,mmtSetting:a,t:c})}},[s,c,d]),(0,a.useEffect)(()=>{l.current=new le({...s,t:c})},[]),(0,a.useEffect)(()=>{const t=de.A.get(C.y0);JSON.parse(t)&&e.resetTutorial()},[]),(0,a.useEffect)(()=>{null!==e&&void 0!==e&&e.isOTFMMode||((null===d||void 0===d?void 0:d.macroType)===C.CK.PHASED?E(0):E(void 0))},[null===d||void 0===d?void 0:d.macroType]);let _=null;if(t.length){const e=(0,De.Rk)(t,n),a=e&&e.macroEvents&&e.macroEvents[0];_=a?(0,Ne.jsx)(br,{macroList:t,currentProfile:n,firstTime:r,recordProfile:s,item:a,itemIndex:0,updateRecordAction:()=>{},saveEnabled:!e.saved,activePhase:null===d||void 0===d?void 0:d.activePhase},0):null}else _=(0,Ne.jsx)(br,{macroList:t,currentProfile:n,firstTime:r,recordProfile:s,item:{Type:\"actionBar\"},itemIndex:0,updateRecordAction:()=>{},saveEnabled:!1,activePhase:null===d||void 0===d?void 0:d.activePhase},0);(0,a.useEffect)(()=>{ge.A.getMonitorInfo().then(e=>{y.A.monitorInforBefore=e}),ge.A.getVirtualScreenRect().then(e=>{y.A.virtualScreenInforBefore=e});const e=e=>{const{payload:t}=e;l.current.recordingAction(t,null===d||void 0===d?void 0:d.activePhase,null===d||void 0===d?void 0:d.macroType)};return window.addEventListener(\"onmacroitemui\",e),()=>{window.removeEventListener(\"onmacroitemui\",e)}},[null===d||void 0===d?void 0:d.activePhase,null===d||void 0===d?void 0:d.macroType]),(0,a.useLayoutEffect)(()=>{const a=document.getElementById(\"item_editor\"),r=t.length&&(0,De.Rk)(t,n),s=!!r&&(r.macroEvents||[]).find(e=>!0===e.selected);i!==o.oA&&(!s&&e.activeRecord&&a.scrollTo(0,a.scrollHeight),!e.activeRecord&&(()=>{const e=document.getElementById(\"fake_ui_container\");e&&e.parentNode.removeChild(e)})())},[i,t,n,e.activeRecord,null===d||void 0===d?void 0:d.activePhase]);const E=t=>{e.setActivePhase(t)},u=e.activeSettingWindow?za.recording:e.isOTFMMode?za.disabled:\"\";return(0,Ne.jsxs)(\"div\",{className:`${za.macro_content} ${(()=>{if(!r.isAdded||!t.length)return r.isAdded&&!t.length?za.step_1:r.isAdded&&r.isRecorded?za.step_3:r.isAdded&&!r.isRecorded&&r.isCreated?za.step_2:t.length>0&&r.isRecorded?za.step_3:t.length>0?za.step_2:za.step_1})()} `,children:[!r.isCompleted&&!e.isOTFMMode&&(m=r.isCreated,t.length||m?(0,Ne.jsx)(qa,{}):(0,Ne.jsx)(Ya,{})),(0,Ne.jsxs)(\"div\",{className:`${za.editor} ${t.length?\"\":za.disable}`,id:\"macro_editor\",children:[_,(0,Ne.jsx)(\"div\",{style:{position:\"relative\"},children:(0,Ne.jsx)(ja,{className:`${za.item_editor} ${u}`,onDragOver:G,onDrop:t=>{t.stopPropagation(),t.dataTransfer.getData(\"name\")&&e.createNewItem(t)},activePhase:null===d||void 0===d?void 0:d.activePhase,setActivePhase:E,deleteSpecificPhaseItem:(t,n)=>{e.deleteSpecificPhaseItem(t,n)}})}),(0,Ne.jsx)(fe,{active:!1,confirmDel:()=>{},extraStyle:{zIndex:\"101\"},blurAlert:()=>{},dontSave:()=>{},save:()=>{}})]}),(0,Ne.jsx)(Me,{})]});var m}"
+    }
+  },
+  "converter": {
+    "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+    "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+    "offset": 80776,
+    "end": 88096,
+    "source": "new class{constructor(){this.timeId=0,this.uniqueId=Date.now()}getUniqueId(){const e=Date.now();return this.uniqueId<e?e:this.uniqueId+1}createKeyEvent(e,t){const n=(e=>{if((e=>[0,128].includes(e.flags)&&69===e.scanCode&&19===e.vkCode)(e))return i.R.find(e=>\"19\"===e.virtualKey);const t={32:0,33:2,0:0,128:1,1:2,129:3}[e.flags],n=t-t%2;let o=i.R.find(t=>{const o=t.outputFlag||t.flag;return t.scancode===e.scanCode&&+t.virtualKey===+`${e.vkCode}`&&n===o});return o||(o=i.R.find(t=>`${e.vkCode}`===t.virtualKey)),o})(e),o=p(u.keyboard),r=n?n.outputFlag||n.flag:0;return o.KeyEvent.State=\"keydown\"===t?r:r+1,n&&(o.KeyEvent.Makecode=y(+n.virtualKey)),o.ScanCode=e.scanCode,o.flag=e.flags,o.Id=this.uniqueId,o}getKeydownFlag(e){let t=i.R.find(t=>t.scancode===e.scanCode&&`${e.vkCode}`===t.virtualKey);return t||(t=i.R.find(t=>`${e.vkCode}`===t.virtualKey)),t?t.outputFlag||t.flag:0}recordDelayOption(e,t,n,o,r){let i=arguments.length>5&&void 0!==arguments[5]&&arguments[5];var a,s;let c,l,d,f;if(this.timeId===o&&!i)return[];switch(this.timeId=o,e.action){case\"keydown\":this.uniqueId=this.getUniqueId();f=[this.createKeyEvent(e,\"keydown\")];break;case\"keyup\":c=t.slice().reverse().find(t=>t.KeyEvent&&t.KeyEvent.Makecode===y(e.vkCode)),c?(l=p(c),l.KeyEvent.State=l.KeyEvent.State+1,f=[l]):(l=this.createKeyEvent(e,\"keyup\"),f=[l]);break;case\"lbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=0,e.Id=this.uniqueId,f=[e]}break;case\"lbuttonup\":if(c=t.slice().reverse().find(e=>e.MouseEvent&&0===e.MouseEvent.MouseButton),c){const e=p(c);e.MouseEvent.State=1,f=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=0,e.Id=this.uniqueId,f=[e]}break;case\"rbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=1,e.Id=this.uniqueId,f=[e]}break;case\"rbuttonup\":if(c=t.slice().reverse().find(e=>e.MouseEvent&&1===e.MouseEvent.MouseButton),c){const e=p(c);e.MouseEvent.State=1,f=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=1,e.Id=this.uniqueId,f=[e]}break;case 523:{this.uniqueId=this.getUniqueId();const t=p(u.mouse);t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?4:3,t.Id=this.uniqueId,f=[t]}break;case 524:if(c=x(t,t=>t.MouseEvent&&t.MouseEvent.MouseButton===(131072===e.data?4:3)),c){const e=p(c);e.MouseEvent.State=1,f=[e]}else{const t=p(u.mouse);t.MouseEvent.State=1,t.MouseEvent.MouseButton=131072===e.data?4:3,t.Id=this.uniqueId,f=[t]}break;case\"mbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=2,e.Id=this.uniqueId,e.flag=0,f=[e]}break;case\"mbuttonup\":if(c=x(t,e=>e.MouseEvent&&2===e.MouseEvent.MouseButton),c){const e=p(c);e.MouseEvent.State=1,e.flag=1,f=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=2,e.Id=this.uniqueId,e.flag=1,f=[e]}break;case\"mousewheel\":case\"mousehwheel\":{const t=p(u.mouse);t.MouseEvent.MouseButton=g(h(e.data||0,e.action)),f=[t]}break;case\"mousemove\":f=[p(u.mousemovement)];break;default:f=[]}if(\"none\"!==n&&0!==n){if(d=p(u.delay),r&&\"none\"!==r){const e=null!=(a=r.min)?a:0,t=null!=(s=r.max)?s:0,n=\"string\"===typeof e?e:e.toString(),o=\"string\"===typeof t?t:t.toString(),i=parseFloat(n.replace(\"s\",\"\"))||0,c=parseFloat(o.replace(\"s\",\"\"))||0;d.Number={min:i,max:c}}else d.Number=n?n.toString():Number((Number(e.time)/1e6).toFixed(3)).toString();f.unshift(d)}return f}recordPhasedOption(e,t,n,o){let r,i,s;if(this.timeId===n)return[];switch(this.timeId=n,e.action){case\"keydown\":this.uniqueId=this.getUniqueId();s=[this.createKeyEvent(e,\"keydown\")];break;case\"keyup\":r=t.slice().reverse().find(t=>t.KeyEvent&&t.KeyEvent.Makecode===y(e.vkCode)),r?(i=p(r),i.KeyEvent.State=i.KeyEvent.State+1,s=[i]):(i=this.createKeyEvent(e,\"keyup\"),s=[i]);break;case\"lbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=0,e.Id=this.uniqueId,s=[e]}break;case\"lbuttonup\":if(r=t.slice().reverse().find(e=>e.MouseEvent&&0===e.MouseEvent.MouseButton),r){const e=p(r);e.MouseEvent.State=1,s=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=0,e.Id=this.uniqueId,s=[e]}break;case\"rbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=1,e.Id=this.uniqueId,s=[e]}break;case\"rbuttonup\":if(r=t.slice().reverse().find(e=>e.MouseEvent&&1===e.MouseEvent.MouseButton),r){const e=p(r);e.MouseEvent.State=1,s=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=1,e.Id=this.uniqueId,s=[e]}break;case 523:{this.uniqueId=this.getUniqueId();const t=p(u.mouse);t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?4:3,t.Id=this.uniqueId,s=[t]}break;case 524:if(r=x(t,t=>t.MouseEvent&&t.MouseEvent.MouseButton===(131072===e.data?4:3)),r){const e=p(r);e.MouseEvent.State=1,s=[e]}else{const t=p(u.mouse);t.MouseEvent.State=1,t.MouseEvent.MouseButton=131072===e.data?4:3,t.Id=this.uniqueId,s=[t]}break;case\"mbuttondown\":{this.uniqueId=this.getUniqueId();const e=p(u.mouse);e.MouseEvent.State=0,e.MouseEvent.MouseButton=2,e.Id=this.uniqueId,e.flag=0,s=[e]}break;case\"mbuttonup\":if(r=x(t,e=>e.MouseEvent&&2===e.MouseEvent.MouseButton),r){const e=p(r);e.MouseEvent.State=1,e.flag=1,s=[e]}else{const e=p(u.mouse);e.MouseEvent.State=1,e.MouseEvent.MouseButton=2,e.Id=this.uniqueId,e.flag=1,s=[e]}break;case\"mousewheel\":case\"mousehwheel\":{const t=p(u.mouse);t.MouseEvent.MouseButton=g(h(e.data||0,e.action)),s=[t]}break;default:s=[]}return void 0!==o||null!==o?s.map(e=>(0,a.ko)((0,a.IA)({},e),{phase:o})):s}recordSequenceOption(e,t){if(this.timeId===t)return[];switch(this.timeId=t,e.action){case\"keydown\":case\"lbuttondown\":case\"rbuttondown\":case 523:default:return[];case\"keyup\":{this.uniqueId++;const t=p(u.keyboard);return t.KeyEvent.Makecode=y(e.vkCode),t.Id=this.uniqueId,[t]}case\"lbuttonup\":{this.uniqueId++;const e=p(u.mouse);return e.MouseEvent.MouseButton=0,e.Id=this.uniqueId,[e]}case\"rbuttonup\":{this.uniqueId++;const e=p(u.mouse);return e.MouseEvent.MouseButton=1,e.Id=this.uniqueId,[e]}case 524:{this.uniqueId++;const t=p(u.mouse);return t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?4:3,t.Id=this.uniqueId,[t]}case\"mousewheel\":case\"mousehwheel\":{this.uniqueId++;const t=p(u.mouse);return t.MouseEvent.MouseButton=g(h(e.data||0,e.action)),t.Id=this.uniqueId,[t]}}}createMacro(e,t){const n=v(e),o=[];for(const i of n){const e=A(i,o);e&&e.map(e=>o.push(e))}const r={events:[]};for(const i of o){_(JSON.parse(JSON.stringify(i))).map(e=>r.events.push(e))}return r.hash=(0,K.Zd)(r),{name:E(t),guid:(0,K.gZ)(),appEngine:r,macroEvents:[{Type:\"actionBar\",recordProfile:{},selected:!1},...o],deviceList:[]}}generateMacroUIEvent(e){return e.reduce((e,t)=>{const n=A(t,e);return n&&n.map(t=>e.push(t)),e},[])}generateAppEngineEvents(e){let t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"none\";const n=[];for(const o of e){_(o,t).forEach(e=>n.push(e))}return{mappings:n}}generateAppEngine(e,t,n){let o=arguments.length>3&&void 0!==arguments[3]?arguments[3]:\"none\";M({monitorInforBefore:[...t],virtualScreenInforBefore:n});const r={events:[],mouseMoveType:o};for(const i of e){const e=_(JSON.parse(JSON.stringify(i)),o);e&&e.map(e=>r.events.push(e))}return r.hash=(0,K.Zd)(r),r}}"
+  },
+  "combine": {
+    "path": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+    "sha256": "fd20eeea9ac259a741c5deec4cc23f7e293cb99fa8ed658816af50bbd894941d",
+    "offset": 88232,
+    "end": 88702,
+    "source": "e=>{const t=e=>e.KeyEvent&&e.KeyEvent.State%2===0,n=e=>0===e.Type,o=new Set;return e.reduce((e,r)=>{const i=(e=>1===e.Type)(r)?`${(a=r).Type}-${a.KeyEvent.Makecode}`:\"\";var a;if(t(r)&&!o.has(i))return o.add(i),e.push(r),e;if(t(r)&&o.has(i))return e;if(n(r)&&e.length&&n(e[e.length-1])){const t=e[e.length-1];return t.Number=(parseFloat(t.Number)+parseFloat(r.Number)).toFixed(3),e}return(e=>e.KeyEvent&&e.KeyEvent.State%2===1)(r)&&o.has(i)&&o.delete(i),e.push(r),e},[])}"
+  },
+  "preview": {
+    "path": ".ref/applications/synapse/macro/static/js/8190.61506f5b.chunk.js",
+    "sha256": "003b116007bb415462e5175c09fc84928d2a20c8d1a7c73113a432643d2cbe9f",
+    "offset": 1217772,
+    "end": 1226158,
+    "source": "class{constructor(e){let{mmtSetting:t,delaySetting:n,delayTime:a,macroType:r,randomizeDelay:o,t:i}=e;this.updateSetting=e=>{let{mmtSetting:t,delaySetting:n,delayTime:a,macroType:r,randomizeDelay:o,t:i}=e;console.log(\"#####delay GenerateUILib\",{mmtSetting:t,macroType:r,delaySetting:n,delayTime:a,randomizeDelay:o,t:i}),this.macroType=r,this.mmtSetting=t,this.delaySetting=n,this.constantDelay=this.delaySetting===re.AX$.ENGINE.RECORD_DELAY_TIME,this.delayTime=a,this.randomizeDelay=o,this.constantRandomizeDelay=this.delaySetting===re.AX$.ENGINE.RANDOMIZED,this.t=i,this.previousKeyDown=null},this.recordingAction=(e,t,n)=>{let a=[];0===this.mmtSetting?\"mousemove\"!==e.action&&(a=this.createMacroItem(e)):\"mousemove\"===e.action?(this.isEndMove&&(this.isEndMove=!1,a=this.createMacroItem(e)),this.mousemoveDataList.push({time:e.time})):(this.mousemoveDataList&&(this.updateMacroEventValue(this.mousemoveDataList),this.mousemoveDataList=[]),this.isEndMove=!0,a=this.createMacroItem(e)),a.forEach(e=>this.createMacroItemUI(e,t,n))},this.keydownDelay=0,this.previousKeyDown=0,this._isSameKeydown=(e,t)=>{var n,a,r,o;return(null===(n=e.KeyEvent)||void 0===n?void 0:n.State)+(null===(a=t.KeyEvent)||void 0===a?void 0:a.State)===0&&(null===(r=e.KeyEvent)||void 0===r?void 0:r.Makecode)===(null===(o=t.KeyEvent)||void 0===o?void 0:o.Makecode)},this.recordDelayOption=e=>{let t,n,a=!1;switch(e.action){case\"keydown\":t=this.createKeyEvent(e,\"keydown\"),this.previousKeyDown&&this._isSameKeydown(this.previousKeyDown,t)?this._isSameKeydown(this.previousKeyDown,t)?(this.keydownDelay+=Number(parseFloat(e.time)/1e6),n=[]):n=[]:(this.keydownDelay=0,this.previousKeyDown=t,n=[t],a=!0);break;case\"keyup\":t=this.createKeyEvent(e,\"keyup\"),n=[t],this.previousKeyDown=null;break;case\"lbuttondown\":t=oe(J.Ay.mouse),t.MouseEvent.State=0,t.MouseEvent.MouseButton=0,n=[t];break;case\"lbuttonup\":t=oe(J.Ay.mouse),t.MouseEvent.State=1,t.MouseEvent.MouseButton=0,n=[t];break;case\"rbuttondown\":t=oe(J.Ay.mouse),t.MouseEvent.State=0,t.MouseEvent.MouseButton=1,n=[t];break;case\"rbuttonup\":t=oe(J.Ay.mouse),t.MouseEvent.State=1,t.MouseEvent.MouseButton=1,n=[t];break;case 523:t=oe(J.Ay.mouse),t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?4:3,n=[t];break;case 524:t=oe(J.Ay.mouse),t.MouseEvent.State=1,t.MouseEvent.MouseButton=131072===e.data?4:3,n=[t];break;case\"mbuttondown\":t=oe(J.Ay.mouse),t.MouseEvent.State=0,t.MouseEvent.MouseButton=2,n=[t];break;case\"mbuttonup\":t=oe(J.Ay.mouse),t.MouseEvent.State=1,t.MouseEvent.MouseButton=2,n=[t];break;case\"mousewheel\":case\"mousehwheel\":t=oe(J.Ay.mouse),t.MouseEvent.MouseButton=ie(ce(e.data,e.action)),n=[t];break;case\"mousemove\":t=oe(J.Ay.mousemovement),t.time=(e.time/1e6).toFixed(3),n=[t];break;default:n=[]}if(console.log(\"#### recordDelayOption\",n),\"none\"===this.delayTime||this.delaySetting===C.kT.NO_DELAY)return n;if(![re.AX$.ENGINE.RANDOMIZED,re.AX$.ENGINE.RECORD_DELAY,re.AX$.ENGINE.QUEUE].includes(this.delaySetting)&&!this.delayTime)return n;if((\"keydown\"!==e.action||!a&&!this._isSameKeydown(this.previousKeyDown,t))&&0===this.macroType){let t=oe(J.Ay.delay);if(t){var r,o;if(this.constantRandomizeDelay)t.Number={min:this.randomizeDelay&&void 0!==this.randomizeDelay.min?this.randomizeDelay.min.toFixed(3):0,max:this.randomizeDelay&&void 0!==this.randomizeDelay.max?this.randomizeDelay.max.toFixed(3):0,displayText:(0,O.JN)(R.KNn,{times:`${(null===(r=this.randomizeDelay)||void 0===r?void 0:r.min)||0}s - ${(null===(o=this.randomizeDelay)||void 0===o?void 0:o.max)||0}s`})};else t.Number=(this.constantDelay?this.delayTime:Number(parseFloat(e.time)/1e6)+this.keydownDelay).toFixed(3);n.unshift(t)}return this.keydownDelay=0,this.previousKeyDown=null,n}if(a&&0===this.macroType){let t=oe(J.Ay.delay);var i,s;if(this.constantRandomizeDelay)t.Number={min:this.randomizeDelay&&void 0!==this.randomizeDelay.min?this.randomizeDelay.min.toFixed(3):0,max:this.randomizeDelay&&void 0!==this.randomizeDelay.max?this.randomizeDelay.max.toFixed(3):0,displayText:(0,O.JN)(R.KNn,{times:`${(null===(i=this.randomizeDelay)||void 0===i?void 0:i.min)||0}s - ${(null===(s=this.randomizeDelay)||void 0===s?void 0:s.max)||0}s`})};else t.Number=(this.constantDelay?this.delayTime:Number(parseFloat(e.time)/1e6)+this.keydownDelay).toFixed(3);return n.unshift(t),n}return n},this.recordSequenceOption=e=>{switch(e.action){case\"keydown\":case\"lbuttondown\":case\"rbuttondown\":case 523:case\"mbuttondown\":default:return[];case\"keyup\":return[this.createKeyEvent(e,\"keydown\")];case\"lbuttonup\":{const e=oe(J.Ay.mouse);return e.MouseEvent.MouseButton=0,[e]}case\"rbuttonup\":{const e=oe(J.Ay.mouse);return e.MouseEvent.MouseButton=1,[e]}case 524:{const t=oe(J.Ay.mouse);return t.MouseEvent.State=0,t.MouseEvent.MouseButton=131072===e.data?4:3,[t]}case\"mbuttonup\":{const e=oe(J.Ay.mouse);return e.MouseEvent.MouseButton=2,[e]}case\"mousewheel\":case\"mousehwheel\":{const t=oe(J.Ay.mouse);return t.MouseEvent.MouseButton=ie(ce(e.data,e.action)),[t]}}},this.createMacroItem=e=>1===this.macroType?this.recordSequenceOption(e):this.recordDelayOption(e),this.createMacroItemUI=(e,t,n)=>{console.log(\"#### create ui item\",e);const a=document.getElementById(\"item_editor\");let r=document.getElementById(\"fake_ui_container\"),o=document.createElement(\"div\");o.setAttribute(\"class\",\"functional_item fake\");const i=[];let s=document.createElement(\"img\");s.setAttribute(\"class\",\"mr10\");let c=document.createElement(\"label\");c.setAttribute(\"class\",\"check-box check-item mr10\"),i.push(c);let l=document.createElement(\"img\");l.setAttribute(\"class\",\"mr10\");let d=null;switch(e.Type){case x.RG:var _;if(s.setAttribute(\"src\",Q.A),s.setAttribute(\"alt\",\"delay icon\"),i.push(s),this.constantRandomizeDelay)null!==(_=e.Number)&&void 0!==_&&_.displayText&&(d=document.createTextNode(e.Number.displayText));else d=document.createTextNode(`${e.Number}s`);i.push(d);break;case x.Jr:{var E;let t=K.Rk.find(t=>(t.outputFlag||t.flag)===e.flag-e.flag%2&&t.scancode===e.scancode);t||(t=K.Rk.find(t=>t.virtualKey===`${e.KeyEvent.Makecode}`));const n=this.t((0,ae.A)(window.reduxStore.getState().commonReducer.systemKeyboardLayout,null===(E=t)||void 0===E?void 0:E.inputID));s.setAttribute(\"src\",q.A),s.setAttribute(\"alt\",\"delay icon\"),i.push(s),d=document.createTextNode(`${n}`),1!==this.macroType&&(e.KeyEvent.State%2===0?(l.setAttribute(\"src\",Z.A),i.push(l)):e.KeyEvent.State&&(l.setAttribute(\"src\",ee.A),i.push(l))),i.push(d);break}case x.lk:{const t=this.t(W[e.MouseEvent.MouseButton].name);s.setAttribute(\"src\",te.A),s.setAttribute(\"alt\",\"delay icon\"),i.push(s),d=document.createTextNode(`${t}`),0===e.MouseEvent.State?(l.setAttribute(\"src\",Z.A),i.push(l)):e.MouseEvent.State&&(l.setAttribute(\"src\",ee.A),i.push(l)),i.push(d);break}case x.m2:{const t=this.t(R.Vpj);o.setAttribute(\"class\",\"functional_item mouseMove\"),l.setAttribute(\"class\",\"mr10 ml10\"),s.setAttribute(\"src\",ne),s.setAttribute(\"alt\",\"delay icon\"),i.push(s),d=document.createTextNode(`${t}`),i.push(d),l.setAttribute(\"src\",Q.A),i.push(l),d=document.createTextNode(this.constantRandomizeDelay?`${e.Number}`:`${e.Number}s`),i.push(d);break}default:return!1}if(o.append(...i),!r)if(r=document.createElement(\"div\"),r.setAttribute(\"id\",\"fake_ui_container\"),void 0!==t&&2===n){const e=document.querySelector(`#drop_space_${t}`);e&&e.parentNode.insertBefore(r,e)}else a&&a.insertBefore(r,a.querySelector(\"#drop_space\"));r.append(o),r.children.length>50&&r.removeChild(r.firstChild),console.log(\"scroll height\"),window.ignoreEditorScrollEvent=!0,a&&a.scrollTo(0,a.scrollHeight)},this.updateMacroEventValue=e=>{if(!e.length)return 0;let t=0;for(let n in e)n&&(t=e[n].time+t);return parseFloat(t/1e3).toFixed(3)},this.macroType=r,this.mmtSetting=t,this.delaySetting=n,this.delayTime=a,this.randomizeDelay=o,this.mousemoveDataList=[],this.t=i}createKeyEvent(e,t){const n=(e=>{if((e=>[0,128].includes(e.flags)&&69===e.scanCode&&19===e.vkCode)(e))return K.Rk.find(e=>\"19\"===e.virtualKey);92==e.scanCode&&(e.scanCode=91);const t={32:0,33:2,0:0,128:1,1:2,129:3}[e.flags],n=t-t%2;let a=K.Rk.find(t=>{const a=t.outputFlag||t.flag;return t.scancode===e.scanCode&&n===a});return a||(a=K.Rk.find(t=>`${e.vkCode}`===t.virtualKey)),a})(e),a=oe(J.Ay.keyboard),r=n?n.outputFlag||n.flag:e.flags;return a.KeyEvent.State=\"keydown\"===t?r:r+1,a.KeyEvent.Makecode=n?se(+n.virtualKey):e.vkCode,a.Id=this.uniqueId,a.flag=a.KeyEvent.State,a.scancode=n?n.scancode:e.scanCode,a}}"
+  },
+  "css": [
+    {
+      "path": ".ref/applications/synapse/macro/static/css/8190.5ef5dbbc.chunk.css",
+      "sha256": "fae96b1ea43dc90da9654e1fd8816daab4a3aa92e4428e8a0f947c19410bf911",
+      "rules": [
+        {
+          "offset": 27583,
+          "selector": ".SplitBtn_split_btn__jNGDD",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#707070;border:1px solid #0000004d;border-radius:3px;display:flex;height:27px;position:relative;transition:width .2s",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "width .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 27763,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4",
+          "conditions": [],
+          "declarations": "align-items:center;border-radius:3px 0 0 3px;border-right:1px solid #0000004d;color:#fff;display:flex;font-size:12px;height:inherit;justify-content:center;line-height:14px;min-width:94px;padding:0 10px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px 0 0 3px",
+              "important": false
+            },
+            {
+              "property": "border-right",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "inherit",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "94px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 10px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28045,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4 .SplitBtn_icon__Hczzv",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_record.9183ffe6.svg);background-position:50%;background-repeat:no-repeat;height:12px;margin-right:4px;width:12px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_record.9183ffe6.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "4px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "12px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28280,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4:hover",
+          "conditions": [],
+          "declarations": "background-color:#ffffff4d;color:#fff;cursor:pointer",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#ffffff4d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28394,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4:hover .SplitBtn_icon__Hczzv",
+          "conditions": [],
+          "declarations": "opacity:1",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28487,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4:active",
+          "conditions": [],
+          "declarations": "background-color:#0000004d;color:#ffffff4d",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000004d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ffffff4d",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28592,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4:active .SplitBtn_icon__Hczzv",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28687,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_click_btn__a\\+qP4.SplitBtn_disabled__\\+Ge6P",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 28799,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_dropdown_btn__065YR",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/icon_expand_d.0cbe4fcf.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;border-radius:0 3px 3px 0;height:inherit;right:0;top:0;width:27px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_expand_d.0cbe4fcf.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "0 3px 3px 0",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "inherit",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "27px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29063,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_dropdown_btn__065YR:hover",
+          "conditions": [],
+          "declarations": "background-color:#ffffff4d;background-image:url(../../static/media/icon_expand_d.3.2a1d50df.svg);cursor:pointer",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#ffffff4d",
+              "important": false
+            },
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_expand_d.3.2a1d50df.svg)",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29238,
+          "selector": ".SplitBtn_split_btn__jNGDD .SplitBtn_dropdown_btn__065YR.SplitBtn_active__tqZMe,.SplitBtn_split_btn__jNGDD .SplitBtn_dropdown_btn__065YR:active",
+          "conditions": [],
+          "declarations": "background-color:#0000004d;background-image:url(../../static/media/icon_expand_d.0cbe4fcf.svg)",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#0000004d",
+              "important": false
+            },
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/icon_expand_d.0cbe4fcf.svg)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29477,
+          "selector": ".SplitBtn_split_btn__jNGDD.SplitBtn_recording__qi4t9",
+          "conditions": [],
+          "declarations": "transition:width .2s;width:94px",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "width .2s",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "94px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29562,
+          "selector": ".SplitBtn_split_btn__jNGDD.SplitBtn_recording__qi4t9 .SplitBtn_click_btn__a\\+qP4",
+          "conditions": [],
+          "declarations": "border-right:none",
+          "properties": [
+            {
+              "property": "border-right",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29661,
+          "selector": ".SplitBtn_split_btn__jNGDD.SplitBtn_recording__qi4t9 .SplitBtn_dropdown_btn__065YR",
+          "conditions": [],
+          "declarations": "display:none",
+          "properties": [
+            {
+              "property": "display",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 29757,
+          "selector": ".SplitBtn_countdown__tcqJ6",
+          "conditions": [],
+          "declarations": "background-color:#44d62c;border-radius:5px;box-shadow:0 4px 20px 0 #000000b3;color:#212121;font-size:12px;font-weight:700;height:40px;opacity:0;padding:12px 16px;pointer-events:none;position:absolute;text-align:center;text-transform:inherit;top:58px;transition:opacity .2s;width:123px",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "box-shadow",
+              "value": "0 4px 20px 0 #000000b3",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#212121",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "700",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "40px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "12px 16px",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "inherit",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "58px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "123px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 30069,
+          "selector": ".SplitBtn_countdown__tcqJ6.SplitBtn_active__tqZMe",
+          "conditions": [],
+          "declarations": "opacity:1;transition:opacity .2s",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "host": {
+    "startMacroRecording": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 7781,
+        "end": 7830,
+        "source": "startMacroRecording:[\"void\",[\"string\",\"pointer\"]]"
+      }
+    ],
+    "stopMacroRecording": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 7831,
+        "end": 7870,
+        "source": "stopMacroRecording:[\"void\",[\"pointer\"]]"
+      }
+    ],
+    "registerMacroRecorderEvent": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 7871,
+        "end": 7918,
+        "source": "registerMacroRecorderEvent:[\"void\",[\"pointer\"]]"
+      }
+    ],
+    "unregisterMacroRecorderEvent": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 7919,
+        "end": 7968,
+        "source": "unregisterMacroRecorderEvent:[\"void\",[\"pointer\"]]"
+      }
+    ],
+    "setMacroRecorderEventCallback": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 7969,
+        "end": 8049,
+        "source": "setMacroRecorderEventCallback:[\"void\",[\"pointer\",\"pointer\",\"pointer\",\"pointer\"]]"
+      }
+    ],
+    "disableMapping": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 5960,
+        "end": 5995,
+        "source": "disableMapping:[\"void\",[\"pointer\"]]"
+      }
+    ],
+    "enableMapping": [
+      {
+        "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+        "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+        "offset": 5925,
+        "end": 5959,
+        "source": "enableMapping:[\"void\",[\"pointer\"]]"
+      }
+    ]
+  },
+  "native": {
+    "src/features/macro_library.rs": "b89fb56a8bf95e401a1bd38e104d70d25752ae529aca2d6a88db89469c702048",
+    "src/shell/macro_page.rs": "04fce613ba47394a27641d770c5d00e21ca843576337b730c889a2eb1f2eabff",
+    "src/shell/macro_page/body.rs": "4aaffd149c582b8e7a08dd422f29a40492e6a4acd69c53ddf1b5fc4db8d3024a",
+    "src/shell/macro_page/record_options.rs": "e257fccc151dd6a756a6a5075bef245f47d66592968cceeef8d92056a9ee7443",
+    "src/shell/macro_page/recording.rs": "988c10fa1148c492ab149da8415a9263a4e29a087180eb180b2154bcc5559327",
+    "src/shell/macro_page/recording_actor.rs": "7f8c137f7f101321b41f1eef9b97fd22264ca4c9c640ba758c750cc7c9be1bf3",
+    "src/shell/macro_page/recording_decode.rs": "73bdcad90d5e22f4fb28c3bda99ed3c5877927990622cceb914b0a3d668640a3",
+    "src/shell/macro_page/row_view.rs": "a7c782f0d518aaa4b55e25b7efae2fbd1a8ecae66cee5c93a6f93f4a1d02f291"
+  },
+  "contract": {
+    "state": "start accepted is not started; await started, suspend only this session mappings; stop accepted is not stopped; await stopped, decode local draft, restore mappings and shut down on actor thread",
+    "time": "Item time is microseconds; callback time_tick is identity only. Initial recorded delay is first callback receipt minus started receipt in milliseconds.",
+    "rows": "Standard recorded/fixed/random/no-delay; source zero fixed delay omits delay rows; Sequence releases and wheel; Phased selected phase. Local pair IDs use document high-water mark.",
+    "raw": "Each surviving recorded input row retains original callback JSON, including preceding mouse movement buffer. No coordinate transformation or fabricated monitor metadata.",
+    "preview": "Separate current 58190 le converter; temporary latest 50 rows and scroll follow after append. Preview can differ from final 13139 H normalization. UI drafts, saved baseline and undo remain unchanged until valid stopped and cleanup completion.",
+    "failure": "Malformed JSON/events, callback overflow, missing started/stopped, unknown keys and bounded session limits fail without changing baseline. Escape cancels. UI drop performs worker cleanup.",
+    "limitations": "Movement recording unavailable pending monitor queries; shortcut settings remain local and cannot start/stop global recording. Runtime behavior is unexecuted under current verification restriction.",
+    "test_support": [
+      "macro-window",
+      "macro-item-list",
+      "macro-phased-item-list",
+      "macro-record",
+      "macro-record-options",
+      "macro-record-countdown",
+      "macro-recording-status",
+      "macro-recording-error",
+      "macro-recording-row",
+      "macro-action-row",
+      "macro-save",
+      "macro-undo",
+      "macro-redo"
+    ]
+  }
+}

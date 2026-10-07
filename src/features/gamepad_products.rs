@@ -1,6 +1,7 @@
 //! Native controller pages from each current product's mounted components.
 //! `profile` and the independent Redux controller states remain separate. These
 //! are local drafts; service acknowledgements and live tester data are not faked.
+use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
     Disableable, Selectable, StyledExt,
     button::Button,
@@ -110,18 +111,27 @@ pub(crate) enum RangeHandle {
     End,
 }
 
-/// `QP` 的几何与拖拽状态：`.rangeSlider` 的容器 bounds 由 canvas 记录，指针位置
-/// 按容器宽度换算成 0–100 的整数。
+/// `QP` 的几何与临时取值。canvas 记录容器 bounds，鼠标位移按原生 range
+/// thumb 的可移动宽度换算；预览不进入本地 profile 快照。
 #[derive(Clone, Default)]
 struct RangeDrag {
     bounds: Rc<Cell<Bounds<Pixels>>>,
-    handle: Option<RangeHandle>,
+    pointer: Option<RangePointer>,
+    preview: Option<(i64, i64)>,
+}
+
+#[derive(Clone, Copy)]
+struct RangePointer {
+    handle: RangeHandle,
+    origin: Pixels,
+    value: i64,
+    travel: Pixels,
 }
 
 pub(crate) struct GamepadProductWorkspace {
     layout_id: u32,
     spec: &'static GamepadProductSpec,
-    range_drag: RangeDrag,
+    range_drags: BTreeMap<String, RangeDrag>,
     page: String,
     draft: Value,
     selected_button: Option<String>,
@@ -149,7 +159,7 @@ impl GamepadProductWorkspace {
         let mut this = Self {
             layout_id,
             spec,
-            range_drag: RangeDrag::default(),
+            range_drags: BTreeMap::new(),
             page: "TAB_CUSTOMIZE".into(),
             draft: json!({"profile": spec.profile, "controller": spec.controller}),
             selected_button: None,
@@ -164,16 +174,16 @@ impl GamepadProductWorkspace {
         };
         if spec.pages.iter().any(|p| p == "TRIGGERS") {
             for side in ["leftTrigger", "rightTrigger"] {
-                for (field, min) in [("startRange", 0.), ("endRange", 0.), ("actuationPoint", 1.)] {
-                    this.add_slider(
-                        &format!("/controller/{side}/{field}"),
-                        min,
-                        100.,
-                        1.,
-                        window,
-                        cx,
-                    );
-                }
+                this.range_drags
+                    .insert(format!("/controller/{side}"), RangeDrag::default());
+                this.add_slider(
+                    &format!("/controller/{side}/actuationPoint"),
+                    1.,
+                    100.,
+                    1.,
+                    window,
+                    cx,
+                );
             }
         }
         if let Some(step) = spec.brightness_step {
@@ -189,11 +199,18 @@ impl GamepadProductWorkspace {
                 );
             }
         }
+        this.subscriptions
+            .push(cx.observe_window_activation(window, |this, window, cx| {
+                if !window.is_window_active() {
+                    this.cancel_range_edits(cx);
+                }
+            }));
         this
     }
 
     pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            self.cancel_range_edits(cx);
             // 2636's mounted thumbstick component initializes prevLeft/Right
             // once on entry. Continue does not replace these rollback values.
             if self.spec.product_id == 2636 && key == "THUMBSTICKS" {
@@ -222,6 +239,7 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.cancel_range_edits(cx);
         self.draft = json!({"profile": self.spec.profile, "controller": self.spec.controller});
         if let Some(saved) =
             saved.filter(|v| v["profile"].is_object() && v["controller"].is_object())
@@ -263,15 +281,7 @@ impl GamepadProductWorkspace {
                     return;
                 }
                 if let SliderEvent::Change(value) = event {
-                    let mut value = value.start().clamp(min, max).round() as i64;
-                    // The source's dual range control cannot cross its other handle.
-                    if key.ends_with("/startRange") {
-                        let other = key.replace("/startRange", "/endRange");
-                        value = value.min(this.number(&other));
-                    } else if key.ends_with("/endRange") {
-                        let other = key.replace("/endRange", "/startRange");
-                        value = value.max(this.number(&other));
-                    }
+                    let value = value.start().clamp(min, max).round() as i64;
                     this.write(&key, json!(value), cx);
                     this.sync_sliders(window, cx);
                 }
@@ -291,6 +301,11 @@ impl GamepadProductWorkspace {
     }
 
     fn write(&mut self, path: &str, value: Value, cx: &mut Context<Self>) {
+        if let Some((root, field)) = path.rsplit_once('/') {
+            if matches!(field, "mode" | "startRange" | "endRange") {
+                self.cancel_range_edit(root, cx);
+            }
+        }
         if let Some(target) = self.draft.pointer_mut(path) {
             if *target != value {
                 *target = value;
@@ -374,37 +389,86 @@ impl GamepadProductWorkspace {
     /// 以及下方两端对齐的 `0`/`100`。手柄不能互相越过，对应原版的
     /// `Math.min(value, max-1)` / `Math.max(value, min+1)`。
     fn range_control(&self, root: &str, start: i64, end: i64, cx: &Context<Self>) -> AnyElement {
-        let bounds_cell = self.range_drag.bounds.clone();
+        let Some(drag) = self.range_drags.get(root) else {
+            return div().into_any_element();
+        };
+        let (start, end) = drag.preview.unwrap_or((start, end));
+        let bounds_cell = drag.bounds.clone();
         // 原版用 `:active` 表示手柄被按住；本地按拖拽状态给同样的
         // `background:#383838;border:2px solid #44d62c`。
         let thumb = |value: i64, handle: RangeHandle| {
-            let pressed = self.range_drag.handle == Some(handle);
+            let pressed = drag.pointer.is_some_and(|pointer| pointer.handle == handle);
+            let root_down = root.to_owned();
+            let root_key = root.to_owned();
+            let root_up = root.to_owned();
+            let root_up_out = root.to_owned();
+            let prefix = if root.ends_with("leftTrigger") {
+                "LEFT"
+            } else {
+                "RIGHT"
+            };
+            let (_, range_key, _) = trigger_keys(prefix);
             div()
                 .absolute()
                 .left(relative(value as f32 / 100.))
+                // Native range thumb centers travel over input width minus 20px.
+                // The input's -10px margin cancels the initial half-thumb inset.
+                .ml(surface::css(-20. * value as f32 / 100.))
                 .top(surface::css(11.))
                 .w_0()
                 .flex()
                 .justify_center()
                 .child(
-                    div()
-                        .w(surface::css(20.))
-                        .h(surface::css(20.))
-                        .rounded_full()
-                        .bg(if pressed {
-                            rgb(0x383838)
-                        } else {
-                            rgb(0x44d62c)
-                        })
-                        .when(pressed, |thumb| {
-                            thumb.border_2().border_color(rgb(0x44d62c))
-                        })
-                        .hover(|style| {
+                    BaseButton::new(SharedString::from(format!(
+                        "gamepad-range-{root}-{handle:?}"
+                    )))
+                    .role(Role::Slider)
+                    .accessibility_label(t(range_key))
+                    .aria_numeric_value(value as f64)
+                    .aria_min_numeric_value(0.)
+                    .aria_max_numeric_value(100.)
+                    .aria_numeric_value_step(1.)
+                    .flex_shrink_0()
+                    .w(surface::css(20.))
+                    .h(surface::css(20.))
+                    .rounded_full()
+                    .bg(if pressed {
+                        rgb(0x383838)
+                    } else {
+                        rgb(0x44d62c)
+                    })
+                    .when(pressed, |thumb| {
+                        thumb.border_2().border_color(rgb(0x44d62c))
+                    })
+                    .when(!pressed, |thumb| {
+                        thumb.hover(|style| {
                             style
                                 .bg(rgb(0x5d5d5d))
                                 .border_2()
                                 .border_color(rgb(0x44d62c))
+                        })
+                    })
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, event: &MouseDownEvent, window, cx| {
+                            this.range_drag_start(event, &root_down, handle, window, cx);
                         }),
+                    )
+                    .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _, cx| {
+                        this.range_key_edit(&root_key, handle, event, cx);
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(move |this, event: &MouseUpEvent, _, cx| {
+                            this.finish_range_edit(&root_up, event.position.x, cx);
+                        }),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(move |this, event: &MouseUpEvent, _, cx| {
+                            this.finish_range_edit(&root_up_out, event.position.x, cx);
+                        }),
+                    ),
                 )
         };
         let tip = |value: i64| {
@@ -427,8 +491,9 @@ impl GamepadProductWorkspace {
                         .child(value.to_string()),
                 )
         };
-        let root_down = root.to_owned();
-        let root_move = root.to_owned();
+        let root_events = root.to_owned();
+        let owner = cx.weak_entity();
+        let dragging = drag.pointer.is_some();
         v_flex()
             .mt(surface::css(20.))
             .child(
@@ -439,9 +504,42 @@ impl GamepadProductWorkspace {
                     .mb(surface::css(-8.))
                     .h(surface::css(40.))
                     .child(
-                        canvas(move |bounds, _, _| bounds_cell.set(bounds), |_, _, _, _| ())
-                            .absolute()
-                            .inset_0(),
+                        canvas(
+                            move |bounds, _, _| bounds_cell.set(bounds),
+                            move |_, _, window, _| {
+                                if !dragging {
+                                    return;
+                                }
+                                let moving = owner.clone();
+                                let moving_root = root_events.clone();
+                                window.on_mouse_event(
+                                    move |event: &MouseMoveEvent, phase, _, cx| {
+                                        if phase == DispatchPhase::Bubble {
+                                            let _ = moving.update(cx, |this, cx| {
+                                                this.range_drag_move(event, &moving_root, cx);
+                                            });
+                                        }
+                                    },
+                                );
+                                let release = owner.clone();
+                                let release_root = root_events.clone();
+                                window.on_mouse_event(move |event: &MouseUpEvent, phase, _, cx| {
+                                    if phase == DispatchPhase::Bubble
+                                        && event.button == MouseButton::Left
+                                    {
+                                        let _ = release.update(cx, |this, cx| {
+                                            this.finish_range_edit(
+                                                &release_root,
+                                                event.position.x,
+                                                cx,
+                                            );
+                                        });
+                                    }
+                                });
+                            },
+                        )
+                        .absolute()
+                        .inset_0(),
                     )
                     .child(
                         div()
@@ -458,6 +556,8 @@ impl GamepadProductWorkspace {
                             .absolute()
                             .left(relative(start as f32 / 100.))
                             .right(relative((100 - end) as f32 / 100.))
+                            .ml(surface::css(-10.))
+                            .mr(surface::css(12.))
                             .top(surface::css(18.))
                             .h(surface::css(6.))
                             .rounded(surface::css(5.))
@@ -471,66 +571,227 @@ impl GamepadProductWorkspace {
                             .child(tip(end)),
                     )
                     .child(thumb(start, RangeHandle::Start))
-                    .child(thumb(end, RangeHandle::End))
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, event: &MouseDownEvent, _, cx| {
-                            this.range_drag_start(event, &root_down, cx)
-                        }),
-                    )
-                    .on_mouse_move(cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
-                        this.range_drag_move(event, &root_move, cx)
-                    }))
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, _| this.range_drag.handle = None),
-                    ),
+                    .child(thumb(end, RangeHandle::End)),
             )
             .child(h_flex().justify_between().child("0").child("100"))
             .into_any_element()
     }
 
-    fn range_pointer_value(&self, x: Pixels) -> i64 {
-        let bounds = self.range_drag.bounds.get();
-        let width = f32::from(bounds.size.width).max(1.);
-        let local = f32::from(x - bounds.left()) / width;
-        (local * 100.).round().clamp(0., 100.) as i64
+    fn range_pointer_value(&self, root: &str, x: Pixels) -> Option<i64> {
+        let pointer = self.range_drags.get(root)?.pointer?;
+        if pointer.travel <= px(0.) {
+            return None;
+        }
+        let delta = (x - pointer.origin) / pointer.travel;
+        Some(
+            (pointer.value as f32 + delta * 100.)
+                .round()
+                .clamp(0., 100.) as i64,
+        )
     }
 
-    /// 原版是两个重叠的 `<input type=range>`，由浏览器命中决定拖哪一个；本地按
-    /// 「离哪个手柄更近」选择。
-    fn range_drag_start(&mut self, event: &MouseDownEvent, root: &str, cx: &mut Context<Self>) {
-        let start = self.number(&format!("{root}/startRange"));
-        let end = self.number(&format!("{root}/endRange"));
-        let value = self.range_pointer_value(event.position.x);
-        self.range_drag.handle = Some(if (value - start).abs() <= (value - end).abs() {
-            RangeHandle::Start
-        } else {
-            RangeHandle::End
+    /// Current CSS disables hit testing on the input track and enables it only
+    /// on the two thumbs. Preserve the grab offset instead of jumping on press.
+    fn range_drag_start(
+        &mut self,
+        event: &MouseDownEvent,
+        root: &str,
+        handle: RangeHandle,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.page != "TRIGGERS" || self.number(&format!("{root}/mode")) != self.spec.analog_mode
+        {
+            return;
+        }
+        let Some(drag) = self.range_drags.get(root) else {
+            return;
+        };
+        let travel = drag.bounds.get().size.width - surface::css(20.).to_pixels(window.rem_size());
+        if travel <= px(0.) {
+            return;
+        }
+        let (start, end) = drag.preview.unwrap_or_else(|| {
+            (
+                self.number(&format!("{root}/startRange")),
+                self.number(&format!("{root}/endRange")),
+            )
         });
-        self.range_drag_apply(root, value, cx);
+        self.cancel_range_edits(cx);
+        let Some(drag) = self.range_drags.get_mut(root) else {
+            return;
+        };
+        drag.preview = Some((start, end));
+        drag.pointer = Some(RangePointer {
+            handle,
+            origin: event.position.x,
+            value: if handle == RangeHandle::Start {
+                start
+            } else {
+                end
+            },
+            travel,
+        });
+        cx.notify();
     }
 
     fn range_drag_move(&mut self, event: &MouseMoveEvent, root: &str, cx: &mut Context<Self>) {
-        if self.range_drag.handle.is_none() {
+        if event.pressed_button != Some(MouseButton::Left) {
+            self.cancel_range_edits(cx);
             return;
         }
-        let value = self.range_pointer_value(event.position.x);
+        let Some(value) = self.range_pointer_value(root, event.position.x) else {
+            return;
+        };
         self.range_drag_apply(root, value, cx);
     }
 
     fn range_drag_apply(&mut self, root: &str, value: i64, cx: &mut Context<Self>) {
-        let Some(handle) = self.range_drag.handle else {
+        let Some(drag) = self.range_drags.get_mut(root) else {
             return;
         };
-        let start_path = format!("{root}/startRange");
-        let end_path = format!("{root}/endRange");
-        let (start, end) = (self.number(&start_path), self.number(&end_path));
+        let (Some(pointer), Some((start, end))) = (drag.pointer, drag.preview) else {
+            return;
+        };
+        let handle = pointer.handle;
         let next = range_handle_value(handle, value, start, end);
         match handle {
-            RangeHandle::Start if next != start => self.write(&start_path, json!(next), cx),
-            RangeHandle::End if next != end => self.write(&end_path, json!(next), cx),
-            _ => {}
+            RangeHandle::Start => drag.preview = Some((next, end)),
+            RangeHandle::End => drag.preview = Some((start, next)),
+        }
+        cx.notify();
+    }
+
+    fn range_key_edit(
+        &mut self,
+        root: &str,
+        handle: RangeHandle,
+        event: &KeyDownEvent,
+        cx: &mut Context<Self>,
+    ) {
+        if self.page != "TRIGGERS" || self.number(&format!("{root}/mode")) != self.spec.analog_mode
+        {
+            return;
+        }
+        if event.keystroke.key == "escape" {
+            self.cancel_range_edit(root, cx);
+            cx.stop_propagation();
+            return;
+        }
+        let Some(drag) = self.range_drags.get(root) else {
+            return;
+        };
+        if drag.pointer.is_some() {
+            return;
+        }
+        let (start, end) = drag.preview.unwrap_or_else(|| {
+            (
+                self.number(&format!("{root}/startRange")),
+                self.number(&format!("{root}/endRange")),
+            )
+        });
+        let current = if handle == RangeHandle::Start {
+            start
+        } else {
+            end
+        };
+        let requested = match event.keystroke.key.as_str() {
+            "left" | "down" => current - 1,
+            "right" | "up" => current + 1,
+            "home" => 0,
+            "end" => 100,
+            _ => return,
+        };
+        let next = range_handle_value(handle, requested, start, end);
+        if let Some(drag) = self.range_drags.get_mut(root) {
+            // The source input's onChange updates component state. Its
+            // changeValue callback is only called by onMouseUp.
+            drag.preview = Some(if handle == RangeHandle::Start {
+                (next, end)
+            } else {
+                (start, next)
+            });
+        }
+        cx.stop_propagation();
+        cx.notify();
+    }
+
+    fn finish_range_edit(&mut self, root: &str, x: Pixels, cx: &mut Context<Self>) {
+        if self.page != "TRIGGERS" || self.number(&format!("{root}/mode")) != self.spec.analog_mode
+        {
+            self.cancel_range_edits(cx);
+            return;
+        }
+        if let Some(value) = self.range_pointer_value(root, x) {
+            self.range_drag_apply(root, value, cx);
+        }
+        let Some(drag) = self.range_drags.get_mut(root) else {
+            return;
+        };
+        if drag.pointer.take().is_none() {
+            return;
+        }
+        let Some((start, end)) = drag.preview.take() else {
+            return;
+        };
+        // Current per-trigger range component commits both fields on mouseup.
+        // Pointer preview never enters a profile snapshot or emits Changed.
+        let mut changed = false;
+        for (field, value) in [("startRange", start), ("endRange", end)] {
+            if let Some(target) = self.draft.pointer_mut(&format!("{root}/{field}")) {
+                if *target != json!(value) {
+                    *target = json!(value);
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            cx.emit(GamepadProductChanged);
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn cancel_range_edits(&mut self, cx: &mut Context<Self>) {
+        let mut changed = false;
+        for drag in self.range_drags.values_mut() {
+            changed |= drag.pointer.take().is_some() | drag.preview.take().is_some();
+        }
+        if changed {
+            cx.notify();
+        }
+    }
+
+    fn cancel_range_edit(&mut self, root: &str, cx: &mut Context<Self>) {
+        if let Some(drag) = self.range_drags.get_mut(root) {
+            if drag.pointer.take().is_some() | drag.preview.take().is_some() {
+                cx.notify();
+            }
+        }
+    }
+
+    fn reset_trigger(&mut self, root: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_range_edit(root, cx);
+        let fields: &[&str] = if self.number(&format!("{root}/mode")) == self.spec.analog_mode {
+            &["startRange", "endRange"]
+        } else {
+            &["actuationPoint", "isRapidTrigger"]
+        };
+        let mut changed = false;
+        for field in fields {
+            if let (Some(target), Some(value)) = (
+                self.draft.pointer_mut(&format!("{root}/{field}")),
+                self.spec.trigger_reset.get(*field),
+            ) {
+                if *target != *value {
+                    *target = value.clone();
+                    changed = true;
+                }
+            }
+        }
+        self.sync_sliders(window, cx);
+        if changed {
+            cx.emit(GamepadProductChanged);
+            cx.notify();
         }
     }
 
@@ -613,8 +874,9 @@ impl GamepadProductWorkspace {
                 //  text-decoration:underline;text-transform:capitalize}` 与
                 // `:hover{color:#44d62c}`、`.disabled{opacity 由调用方控制}`。
                 // 图标 `icon_reset.f416d0b7.svg` 不在已抓取的设备包里，因此只渲染文字。
-                div()
-                    .id(SharedString::from(format!("gamepad-reset-{side}")))
+                BaseButton::new(SharedString::from(format!("gamepad-reset-{side}")))
+                    .accessibility_label(t("RESET"))
+                    .disabled(!changed)
                     .font_family("Roboto")
                     .text_size(surface::css(14.))
                     .text_color(rgb(0xcccccc))
@@ -627,17 +889,7 @@ impl GamepadProductWorkspace {
                             if !changed {
                                 return;
                             }
-                            let fields: &[&str] = if analog {
-                                &["startRange", "endRange"]
-                            } else {
-                                &["actuationPoint", "isRapidTrigger"]
-                            };
-                            for field in fields {
-                                if let Some(value) = this.spec.trigger_reset.get(*field) {
-                                    this.write(&format!("{reset_root}/{field}"), value.clone(), cx);
-                                }
-                            }
-                            this.sync_sliders(window, cx);
+                            this.reset_trigger(&reset_root, window, cx);
                         })
                     })
                     .child(t("RESET")),

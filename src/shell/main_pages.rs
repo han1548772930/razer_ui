@@ -26,6 +26,9 @@ pub(super) fn local_installation_entry(
     has_local_page: bool,
 ) -> bool {
     use crate::model::SetupStatus;
+    if device.dashboard.local_snapshot {
+        return has_local_page;
+    }
     has_local_page
         && matches!(
             device.setup_status,

@@ -6,16 +6,26 @@ use gpui_kit::base::{
 };
 use std::time::{Duration, Instant};
 
+#[path = "receiver_pairing_state.rs"]
+mod pairing_state;
+#[path = "receiver_pairing_view.rs"]
+mod pairing_view;
+use pairing_state::PairingState;
+pub(crate) use pairing_state::{
+    ReceiverCategory, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
+    ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
+};
+
 pub(super) struct ReceiverState {
     indicator_since: Instant,
-    pairing_open: bool,
+    pairing: PairingState,
     return_focus: Option<FocusHandle>,
 }
 impl Default for ReceiverState {
     fn default() -> Self {
         Self {
             indicator_since: Instant::now(),
-            pairing_open: false,
+            pairing: PairingState::default(),
             return_focus: None,
         }
     }
@@ -261,6 +271,7 @@ impl SourceControls {
                     )
                     .child(
                         gpui_kit::base::Button::new("receiver-open-pairing")
+                            .accessibility_label(crate::i18n::t("OPEN_PAIRING_UTILITY"))
                             .h(surface::css(44.))
                             .text_size(surface::css(14.))
                             .line_height(surface::css(44.))
@@ -270,10 +281,7 @@ impl SourceControls {
                             .active(|s| s.opacity(0.7))
                             .child(crate::i18n::t("OPEN_PAIRING_UTILITY"))
                             .on_click(cx.listener(|this, _, window, cx| {
-                                this.receiver.return_focus = window.focused(cx);
-                                this.receiver.pairing_open = true;
-                                this.focus.focus(window, cx);
-                                cx.notify();
+                                this.open_receiver_pairing(window, cx);
                             })),
                     ),
             );
@@ -337,15 +345,16 @@ impl SourceControls {
             )
             .children(
                 self.receiver
-                    .pairing_open
+                    .pairing
+                    .is_open()
                     .then(|| self.receiver_pairing_modal(window, cx)),
             )
             .into_any_element()
     }
 
     fn receiver_pairing_modal(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
-        // G/se mounts LOADING and waits for DUALLINK_BIND_INFO. No service
-        // transport is connected, so no LOADED/error/paired response is invented.
+        // G/se mounts LOADING; only typed, current-session observations may
+        // expose loaded/service-result states. Local intents never fake them.
         let size = window.viewport_size();
         let unit = window.rem_size() / 16.;
         // Electron mounts the product WebContents below its 42px TabUI.
@@ -367,6 +376,9 @@ impl SourceControls {
                         .child(
                             v_flex()
                                 .id("receiver-pairing-modal")
+                                .test_support()
+                                .role(Role::Dialog)
+                                .aria_label(crate::i18n::t("PAIRING_UTILITY"))
                                 .absolute()
                                 .left((size.width - width) / 2.)
                                 .top(unit * 100.)
@@ -397,29 +409,17 @@ impl SourceControls {
                                         .child(crate::i18n::t("PAIRING_UTILITY").to_uppercase())
                                         .child(
                                             gpui_kit::base::Button::new("receiver-close-pairing")
+                                                .accessibility_label(crate::i18n::t("CLOSE"))
                                                 .absolute()
                                                 .right(surface::css(5.))
                                                 .size(surface::css(20.))
                                                 .child(img("synapse/mapping-close.svg").size_full())
                                                 .on_click(cx.listener(|this, _, window, cx| {
-                                                    this.receiver.pairing_open = false;
-                                                    if let Some(focus) =
-                                                        this.receiver.return_focus.take()
-                                                    {
-                                                        focus.focus(window, cx);
-                                                    }
-                                                    cx.notify();
+                                                    this.close_receiver_pairing(window, cx);
                                                 })),
                                         ),
                                 )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .h_full()
-                                        .items_center()
-                                        .justify_center()
-                                        .child(ReceiverSpinner),
-                                ),
+                                .child(self.receiver_pairing_body(cx)),
                         ),
                 ),
         )

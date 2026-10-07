@@ -149,6 +149,7 @@ pub(crate) struct MouseProductChanged;
 pub(crate) struct MouseProductWorkspace {
     spec: &'static MouseProductSpec,
     page: String,
+    active: bool,
     draft: Value,
     sliders: BTreeMap<String, Entity<SliderState>>,
     inputs: BTreeMap<String, Entity<InputState>>,
@@ -174,6 +175,7 @@ impl MouseProductWorkspace {
         let mut this = Self {
             spec,
             page: "TAB_CUSTOMIZE".into(),
+            active: false,
             draft: spec.profile.clone(),
             sliders: BTreeMap::new(),
             inputs: BTreeMap::new(),
@@ -223,6 +225,15 @@ impl MouseProductWorkspace {
     pub(crate) fn snapshot(&self) -> Value {
         self.draft.clone()
     }
+    pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if self.active != active {
+            self.active = active;
+            if !active {
+                self.dismiss_editors(window, cx);
+            }
+            cx.notify();
+        }
+    }
     pub(crate) fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(editor) = &self.scroll_editor {
             editor.update(cx, |editor, cx| editor.deactivate(window, cx));
@@ -230,6 +241,8 @@ impl MouseProductWorkspace {
         self.dismiss_dpi_editors(window, cx);
     }
     fn dismiss_dpi_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.draft_generation = self.draft_generation.wrapping_add(1);
+        self.dpi_dragged_row = None;
         for state in self.dpi_numbers.values_mut() {
             *state = dpi_number::EditState::default();
         }
@@ -261,6 +274,7 @@ impl MouseProductWorkspace {
     ) {
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = self.spec.profile.clone();
+        self.dpi_dragged_row = None;
         if let (Some(target), Some(saved)) =
             (self.draft.as_object_mut(), value.and_then(Value::as_object))
         {
@@ -317,7 +331,29 @@ impl MouseProductWorkspace {
     fn dpi_editing_enabled(&self) -> bool {
         // Current 226 Pe.enableStages starts true; None is a source UI default,
         // not a successful OTFS query. Runtime observations never enter draft.
-        self.spec.product_id != 226 || self.dpi_editing_observed.unwrap_or(true)
+        self.active
+            && self.page == "TAB_PERFORMANCE"
+            && (self.spec.product_id != 226 || self.dpi_editing_observed.unwrap_or(true))
+    }
+    fn dpi_number_editable(&self, path: &str) -> bool {
+        if !self.dpi_editing_enabled() || self.dpi_dragged_row.is_some() {
+            return false;
+        }
+        let Some((stage, axis)) = path.rsplit_once('/') else {
+            return false;
+        };
+        let Some(slot) = stage
+            .rsplit('/')
+            .next()
+            .and_then(|slot| slot.parse::<usize>().ok())
+        else {
+            return false;
+        };
+        self.draft.pointer(stage).is_some()
+            && (axis == self.spec.dpi_axis(0)
+                || self.boolean(&format!("{stage}/{}", self.spec.independent_key())))
+            && (self.boolean(self.spec.stage_enable_path())
+                || self.number(self.spec.active_path()) as usize == slot + 1)
     }
     pub(crate) fn observe_dpi_editing_enabled(
         &mut self,
@@ -524,13 +560,25 @@ impl MouseProductWorkspace {
         self.subscriptions.push(cx.subscribe_in(
             &slider,
             window,
-            move |this, _, event, window, cx| {
+            move |this, slider, event, window, cx| {
                 if this.syncing {
                     return;
                 }
                 let SliderEvent::Change(value) = event else {
                     return;
                 };
+                if this.spec.has_dpi_number(&changed_path)
+                    && (!this.dpi_number_editable(&changed_path)
+                        || !changed_path.rsplit_once('/').is_some_and(|(stage, _)| {
+                            this.boolean(&format!("{stage}/{}", this.spec.visible_key()))
+                        }))
+                {
+                    let value = this.number(&changed_path);
+                    this.syncing = true;
+                    slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
+                    this.syncing = false;
+                    return;
+                }
                 let value = value.start().clamp(min, max);
                 this.write_number(&changed_path, value, window, cx);
                 if let Some(input) = this.inputs.get(&changed_path).cloned() {
@@ -561,7 +609,14 @@ impl MouseProductWorkspace {
             &input,
             window,
             move |this, input, event, window, cx| {
-                if dpi_number && !this.syncing && matches!(event, InputEvent::Change) {
+                if this.syncing {
+                    return;
+                }
+                if dpi_number && !this.dpi_number_editable(&changed_path) {
+                    this.dismiss_dpi_editors(window, cx);
+                    return;
+                }
+                if dpi_number && matches!(event, InputEvent::Change) {
                     if let Some(state) = this.dpi_numbers.get_mut(&changed_path) {
                         state.typed = true;
                     }
@@ -571,13 +626,7 @@ impl MouseProductWorkspace {
                     window.blur(cx);
                     return;
                 }
-                if this.syncing
-                    || !matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
-                {
-                    return;
-                }
-                if dpi_number && !this.dpi_editing_enabled() {
-                    this.dismiss_dpi_editors(window, cx);
+                if !matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. }) {
                     return;
                 }
                 let value = match input.read(cx).value().parse::<f32>() {

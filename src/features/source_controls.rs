@@ -23,6 +23,10 @@ mod oled_page;
 mod oled_presets;
 mod oled_system_editor;
 mod receiver;
+pub(crate) use receiver::{
+    ReceiverCategory, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
+    ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
+};
 
 #[derive(Deserialize)]
 struct OptionSpec {

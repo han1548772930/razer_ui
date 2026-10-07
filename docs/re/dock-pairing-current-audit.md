@@ -1,5 +1,7 @@
 # 当前鼠标底座配对页复核
 
+2026-10-07 续查见 [接收器交互复核](receiver-interactions-verification-2026-10-07.md)：纠正 164 名称误导航、241 edition=0 匹配、鼠标/键盘顺序及已配对行布局。下文 2026-10-06 的“下一轮”与“仍未完成”是当时记录；设备名基础导航已局部接入，完整连接/配置门控和真实服务仍未完成。
+
 产品 164 Mouse Dock Pro 与 241 Mouse Dock V2 Pro，2026-10-03。来源、Acorn UTF-16 组件偏移、当前 JS/CSS/manifest SHA-256 见 [原码证据](dock-pairing-current-evidence.json)。164 普通页为 TAB_CUSTOMIZE，241 为 TAB_PAIRING；独立 pairing 根并不等于普通页配置栏条件。
 
 本轮补齐 164 原本漏取的主包内十语言字典，使用挂载点指定的 `zia_pairing.8cf19beb.avif` 单设备图（77×60），不再混用一般产品大图。241 增加取消配对完成 / 配对完成翻译键。共 27 个资源，`validate-dock-pairing.py` 校验当前源、组件区间、20 个语言表和资源声明/内容哈希。

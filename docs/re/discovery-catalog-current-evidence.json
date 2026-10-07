@@ -1,0 +1,118 @@
+{
+  "method": "Lossless field projection of all current AvailableDevices rows; no runtime observations. Host HD aliases and middleware he strict scalar matches remain separate.",
+  "sources": [
+    {
+      "path": ".ref/applications/synapse/dashboard/AvailableDevices.json",
+      "sha256": "428b43ac965095a26d3033e7e4043966eebe05138a3fcd7087e7fe00281be511",
+      "acquisition": {
+        "source_url": "https://apps.razer.com/synapse/dashboard/AvailableDevices.json",
+        "final_url": "https://apps.razer.com/synapse/dashboard/AvailableDevices.json",
+        "http_status": 200,
+        "fetched_at_utc": "2026-10-07T03:17:15.848300+00:00",
+        "content_type": "application/json",
+        "last_modified": "Mon, 05 Oct 2026 05:42:00 GMT",
+        "etag": "\"bec63dbb4a6889b1112069a2a8a0e94d\"",
+        "sha256": "428b43ac965095a26d3033e7e4043966eebe05138a3fcd7087e7fe00281be511",
+        "bytes": 10807
+      }
+    },
+    {
+      "path": ".ref/discovery/catalogs/inDevelopmentDevices.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "acquisition": {
+        "source_url": "https://apps.razer.com/synapse/dashboard/inDevelopmentDevices.json",
+        "final_url": "https://apps.razer.com/synapse/dashboard/inDevelopmentDevices.json",
+        "redirected": false,
+        "http_status": 200,
+        "fetched_at_utc": "2026-10-02T04:42:19Z",
+        "content_type": "application/json",
+        "last_modified": "Thu, 01 Oct 2026 00:45:00 GMT",
+        "etag": "\"d751713988987e9331980363e24189ce\"",
+        "result": "ok",
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "bytes": 2,
+        "validation": {
+          "valid": true,
+          "kind": "catalog",
+          "reason": null
+        },
+        "attempts": [
+          {
+            "attempt": 1,
+            "started_at_utc": "2026-10-02T04:42:19Z",
+            "completed_at_utc": "2026-10-02T04:42:19Z",
+            "status": 200,
+            "result": "ok",
+            "error": null,
+            "final_url": "https://apps.razer.com/synapse/dashboard/inDevelopmentDevices.json",
+            "redirect_chain": []
+          }
+        ],
+        "error": null,
+        "body_file": "inDevelopmentDevices.json"
+      }
+    }
+  ],
+  "fields": {
+    "productId": "product_id",
+    "repId": "rep_id",
+    "dongleId": "dongle_id",
+    "bleId": "ble_id",
+    "xBoxId": "xbox_id",
+    "wiredId": "wired_id",
+    "psModeIds": "ps_mode_ids",
+    "monitorPortIds": "monitor_port_ids",
+    "isNotChromaDevice": "is_not_chroma_device"
+  },
+  "output": "src/backend/discovery_catalog.json",
+  "sha256": "0f23f7deb205e9762ad3080d2c082ac719644ad2db2da8f5c56622a236fbd2c0",
+  "entries": 330,
+  "scalar_dongle_rows": 93,
+  "array_dongle_rows": 2,
+  "usb_alias_count": 469,
+  "peer_alias_count": 91,
+  "usb_ambiguities": {
+    "2308": [
+      {
+        "catalog_index": 46,
+        "product_id": 574
+      },
+      {
+        "catalog_index": 123,
+        "product_id": 117
+      }
+    ],
+    "2593": [
+      {
+        "catalog_index": 29,
+        "product_id": 2595
+      },
+      {
+        "catalog_index": 107,
+        "product_id": 2594
+      }
+    ]
+  },
+  "peer_ambiguities": {
+    "2308": [
+      {
+        "catalog_index": 46,
+        "product_id": 574
+      },
+      {
+        "catalog_index": 123,
+        "product_id": 117
+      }
+    ],
+    "2593": [
+      {
+        "catalog_index": 29,
+        "product_id": 2595
+      },
+      {
+        "catalog_index": 107,
+        "product_id": 2594
+      }
+    ]
+  }
+}

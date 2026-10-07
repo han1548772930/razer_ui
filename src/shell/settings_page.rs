@@ -29,11 +29,74 @@ enum Page {
     General,
     Connection,
 }
+
+/// Source-catalog editions, or the existing local default when no edition is
+/// declared. An unregistered product never becomes a preview device.
+pub(super) fn preview_editions(pid: u32) -> Vec<u32> {
+    let Some(product) = crate::product::registered(pid) else {
+        return Vec::new();
+    };
+    if product.edition_ids().is_empty() {
+        vec![0]
+    } else {
+        product.edition_ids().to_vec()
+    }
+}
+
+pub(super) fn preview_layouts(pid: u32) -> Vec<u32> {
+    if crate::product::registered(pid).is_none() {
+        return Vec::new();
+    }
+    if pid != 653 {
+        // Other product renderers still own their source default layout. Do
+        // not offer a 653 layout to a product with a different input contract.
+        return vec![0];
+    }
+    keyboard_preview_layouts()
+        .iter()
+        .map(|layout| layout.layout_id)
+        .collect()
+}
+
+#[derive(serde::Deserialize)]
+struct PreviewLayout {
+    layout_id: u32,
+    layout_name: String,
+}
+
+fn keyboard_preview_layouts() -> &'static [PreviewLayout] {
+    #[derive(serde::Deserialize)]
+    struct Catalog {
+        layouts: Vec<PreviewLayout>,
+    }
+    static LAYOUTS: std::sync::OnceLock<Vec<PreviewLayout>> = std::sync::OnceLock::new();
+    LAYOUTS.get_or_init(|| {
+        serde_json::from_str::<Catalog>(include_str!(
+            "../../assets/synapse/keyboard-653-customize-layouts.json"
+        ))
+        .expect("audited current 653 layouts")
+        .layouts
+    })
+}
+
+fn preview_product_choices() -> Vec<Choice> {
+    crate::product::registry()
+        .iter()
+        .map(|product| {
+            Choice::new(
+                product.id().to_string(),
+                crate::demo::preview_product_label(product.id()),
+            )
+        })
+        .collect()
+}
+
 pub(super) enum SettingsEvent {
     Changed,
     Language,
     ResetTutorials,
     Preview(u32),
+    PreviewVariant(u32, u32, u32),
     PreviewChromaTour,
     PreviewAlexa,
     PreviewAppPicker,
@@ -49,6 +112,8 @@ pub(super) struct SettingsPage {
     page: Page,
     language: Entity<SelectState<Vec<Choice>>>,
     preview_product: Entity<SelectState<Vec<Choice>>>,
+    preview_edition: Entity<SelectState<Vec<Choice>>>,
+    preview_layout: Entity<SelectState<Vec<Choice>>>,
     tutorial_reset: bool,
     storage_error: Option<String>,
     dynamic_lighting_supported: bool,
@@ -91,6 +156,7 @@ impl SettingsPage {
             state.set_selected_value(&self.values.language, window, cx)
         });
         i18n::set_locale(code);
+        self.refresh_preview_labels(window, cx);
         cx.emit(SettingsEvent::Language);
         self.changed(cx);
     }
@@ -124,47 +190,141 @@ impl SettingsPage {
         });
         let preview_product = cx.new(|cx| {
             SelectState::new(
-                crate::product::registry()
-                    .iter()
-                    .map(|product| {
-                        Choice::new(
-                            product.id().to_string(),
-                            format!("{} · {}", product.id(), product.name()),
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-                None,
+                preview_product_choices(),
+                Some(IndexPath::new(0)),
                 window,
                 cx,
             )
             .searchable(true)
         });
+        let preview_edition = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
+        let preview_layout = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
         let mut this = Self {
             saved,
             values,
             page: Page::Synapse,
             language,
             preview_product,
+            preview_edition,
+            preview_layout,
             tutorial_reset: false,
             storage_error: None,
             dynamic_lighting_supported: crate::backend::system::supports_dynamic_lighting(),
             runtime,
             subscriptions: vec![],
         };
-        this.subscriptions
-            .push(cx.subscribe(&this.language, |this, _, event, cx| {
+        this.subscriptions.push(cx.subscribe_in(
+            &this.language,
+            window,
+            |this, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(language)) = event {
                     this.values.language = language.clone();
                     i18n::set_locale(language);
+                    this.refresh_preview_labels(window, cx);
                     cx.emit(SettingsEvent::Language);
                     this.changed(cx);
                 }
-            }));
-        this.subscriptions.push(cx.subscribe(
-            &this.preview_product,
-            |_, _, _: &SelectEvent<Vec<Choice>>, cx| cx.notify(),
+            },
         ));
+        this.subscriptions.push(cx.subscribe_in(
+            &this.preview_product,
+            window,
+            |this, _, event: &SelectEvent<Vec<Choice>>, window, cx| {
+                if matches!(event, SelectEvent::Confirm(_)) {
+                    this.sync_preview_variant(window, cx);
+                }
+            },
+        ));
+        this.subscriptions
+            .push(cx.observe(&this.preview_edition, |_, _, cx| cx.notify()));
+        this.subscriptions
+            .push(cx.observe(&this.preview_layout, |_, _, cx| cx.notify()));
+        this.sync_preview_variant(window, cx);
         this
+    }
+    fn refresh_preview_labels(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let selected =
+            |state: &Entity<SelectState<Vec<Choice>>>| state.read(cx).selected_value().cloned();
+        let product = selected(&self.preview_product);
+        let edition = selected(&self.preview_edition);
+        let layout = selected(&self.preview_layout);
+        self.preview_product.update(cx, |state, cx| {
+            state.set_items(preview_product_choices(), window, cx);
+            if let Some(product) = product {
+                state.set_selected_value(&product, window, cx);
+            }
+        });
+        self.sync_preview_variant(window, cx);
+        for (state, selected) in [
+            (&self.preview_edition, edition),
+            (&self.preview_layout, layout),
+        ] {
+            if let Some(selected) = selected {
+                state.update(cx, |state, cx| {
+                    state.set_selected_value(&selected, window, cx);
+                });
+            }
+        }
+    }
+    fn sync_preview_variant(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let pid = self
+            .preview_product
+            .read(cx)
+            .selected_value()
+            .and_then(|value| value.parse().ok());
+        let choices = |values: Vec<u32>| {
+            values
+                .into_iter()
+                .map(|value| {
+                    Choice::new(
+                        value.to_string(),
+                        if value == 0 {
+                            "默认 (0)".into()
+                        } else {
+                            value.to_string()
+                        },
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let layouts = if pid == Some(653) {
+            keyboard_preview_layouts()
+                .iter()
+                .map(|layout| {
+                    Choice::new(
+                        layout.layout_id.to_string(),
+                        format!("{} · {}", layout.layout_id, layout.layout_name),
+                    )
+                })
+                .collect()
+        } else {
+            choices(pid.map(preview_layouts).unwrap_or_default())
+        };
+        for (state, items) in [
+            (
+                &self.preview_edition,
+                pid.map(|pid| {
+                    preview_editions(pid)
+                        .into_iter()
+                        .map(|edition| {
+                            Choice::new(
+                                edition.to_string(),
+                                crate::demo::preview_edition_label(pid, edition),
+                            )
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            ),
+            (&self.preview_layout, layouts),
+        ] {
+            state.update(cx, |state, cx| {
+                let first = (!items.is_empty()).then_some(IndexPath::new(0));
+                state.set_items(items, window, cx);
+                state.set_selected_index(first, window, cx);
+            });
+        }
+        cx.notify();
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
         cx.emit(SettingsEvent::Changed);
@@ -612,37 +772,38 @@ impl SettingsPage {
             .gap_4()
             .child(self.runtime.clone())
             .child(
-                surface::panel("产品页面", cx)
-                    .child(surface::note("在产品标签页中查看导航、页面主体和页面内的弹层入口。以下入口仍在按原代码逐项完善。", cx))
-                    .child(h_flex().flex_wrap().gap_3().children([
-                        (740, "Huntsman V3 HE Magnetic Mini 65% 8KHz"),
-                        (746, "Huntsman V3 HE Magnetic Tenkeyless 8KHz"),
-                        (179, "HyperPolling 无线接收器"),
-                        (164, "Mouse Dock Pro"),
-                        (241, "Mouse Dock V2 Pro"),
-                        (769, "Philips Hue"),
-                        (784, "Aether 灯带"),
-                        (778, "ASRock B550 Taichi"),
-                        (3871, "Chroma ARGB 控制器"),
-                        (3884, "无线 ARGB 控制器（3884）"),
-                        (3886, "无线 ARGB 控制器（3886）"),
-                        (3946, "自动化（3946）"),
-                    ].map(|(pid, label)| {
-                        Button::new(SharedString::from(format!("preview-full-product-{pid}")))
-                            .label(label).outline()
-                            .on_click(cx.listener(move |_, _, _, cx| cx.emit(SettingsEvent::Preview(pid))))
-                    }))),
+                surface::panel("本地产品预览", cx)
+                    .child(surface::note(format!("全部 {} 个已登记产品均可搜索打开。本地预览保留产品标签页、页面主体和弹层入口；已登记不代表界面已完整复刻。", crate::product::registry().len()), cx))
+                    .child(h_flex().flex_wrap().items_end().gap_3()
+                        .child(v_flex().gap_2().child("产品名称或 ID").child(
+                            select::Select::new(&self.preview_product)
+                                .placeholder("搜索产品名称或 ID")
+                                .w(surface::css(400.))
+                        ))
+                        .child(v_flex().gap_2().child("产品版本 (edition)").child(
+                            select::Select::new(&self.preview_edition).w_56()
+                        ))
+                        .child(v_flex().gap_2().child("键盘布局 (layout)").child(
+                            select::Select::new(&self.preview_layout).w_56()
+                        ))
+                        .child(Button::new("preview-registered-product").label("打开产品预览").outline()
+                            .disabled(self.preview_product.read(cx).selected_value().is_none()
+                                || self.preview_edition.read(cx).selected_value().is_none()
+                                || self.preview_layout.read(cx).selected_value().is_none())
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                let value = |state: &Entity<SelectState<Vec<Choice>>>| {
+                                    state.read(cx).selected_value().and_then(|value| value.parse::<u32>().ok())
+                                };
+                                if let (Some(pid), Some(edition), Some(layout)) = (
+                                    value(&this.preview_product), value(&this.preview_edition), value(&this.preview_layout)
+                                ) {
+                                    cx.emit(SettingsEvent::PreviewVariant(pid, edition, layout));
+                                }
+                            }))))
+                    .child(surface::note("产品名称和版本名称来自当前官方产品清单，可按中文名、英文名或产品 ID 搜索。未声明版本的产品沿用本地默认值。653 可选择其原始键盘布局，其他产品使用各自默认布局。预览不表示已连接设备，编辑仅保留本地草稿。", cx)),
             )
             .child(
                 surface::panel("本地工作区", cx)
-                    .child(h_flex().gap_3().child(
-                        select::Select::new(&self.preview_product).placeholder("搜索产品名称或 ID").w(surface::css(400.))
-                    ).child(Button::new("preview-registered-product").label("打开产品预览").outline()
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            if let Some(pid) = this.preview_product.read(cx).selected_value().and_then(|v| v.parse::<u32>().ok()) {
-                                cx.emit(SettingsEvent::Preview(pid));
-                            }
-                        }))))
                     .children(self.preview_product.read(cx).selected_value().and_then(|v| v.parse::<u32>().ok()).and_then(crate::product::registered).map(|product| {
                         v_flex().gap_2().child(surface::note(format!("产品 ID {} · 分类 {} · editions {:?}", product.id(), product.categories().join(", "), product.edition_ids()), cx))
                             .children(product.navigations().iter().map(|navigation| {

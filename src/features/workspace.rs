@@ -130,6 +130,16 @@ mod sensitivity_tests;
 #[path = "workspace_tests.rs"]
 mod tests;
 impl DeviceWorkspace {
+    pub(crate) fn observe_connection(
+        &mut self,
+        observation: Option<crate::model::DeviceConnectionObservation>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device.observe_connection(observation.clone());
+        self.saved.observe_connection(observation);
+        cx.notify();
+    }
+
     pub(super) fn change_profile_metadata(
         &mut self,
         id: &str,

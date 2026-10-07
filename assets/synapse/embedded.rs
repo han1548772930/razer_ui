@@ -1257,4 +1257,6 @@
     ("synapse/camera-preview-unable.svg", include_bytes!("camera-preview-unable.svg") as &[u8]),
     ("synapse/camera-preview-external.svg", include_bytes!("camera-preview-external.svg") as &[u8]),
     ("synapse/camera-preview-arrow.svg", include_bytes!("camera-preview-arrow.svg") as &[u8]),
+    ("synapse/receiver/uma-pairing.png", include_bytes!("receiver/uma-pairing.png") as &[u8]),
+    ("synapse/macro/mouse-movement.svg", include_bytes!("macro/mouse-movement.svg") as &[u8]),
 ]

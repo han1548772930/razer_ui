@@ -8,6 +8,7 @@ ASSETS = {
     "key-down.svg": "icon_key_down.4d5fb90e.svg",
     "key-up.svg": "icon_key_up.5fe01d07.svg",
     "mouse.svg": "icon_config_mouse_o.8a44fbe7.svg",
+    "mouse-movement.svg": "icon_config_mouse_sensitivity_p.1c326a93.svg",
     "macro.svg": "icon_macro_a.7e1bc94f.svg",
     "launch.svg": "icon_config_launch_p.482fbff5.svg",
     "launch-folder.svg": "icon_folder.0ac33709.svg",

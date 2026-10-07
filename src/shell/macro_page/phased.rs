@@ -42,7 +42,8 @@ impl MacroPage {
         cx: &mut Context<Self>,
     ) {
         let boundary = self.phase_insertion_boundary(phase);
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || self.tutorial != Tutorial::Complete
             || drag.page != cx.entity_id()
             || drag.document != self.current
@@ -131,6 +132,9 @@ impl MacroPage {
     }
 
     fn set_active_phase(&mut self, phase: Option<u8>, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         if let Some(entry) = self
             .entries
             .iter_mut()
@@ -235,7 +239,8 @@ impl MacroPage {
     }
 
     fn delete_phase(&mut self, phase: u8, window: &mut Window, cx: &mut Context<Self>) {
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || self.tutorial != Tutorial::Complete
             || self.all_actions_selected()
             || !self.actions().iter().any(|item| item.phase == Some(phase))
@@ -265,6 +270,7 @@ impl MacroPage {
         let page = cx.entity_id();
         v_flex()
             .id("macro-phased-item-list")
+            .test_support()
             .w_full()
             .h(css(height))
             .min_h(css(420.))
@@ -276,6 +282,7 @@ impl MacroPage {
                     .capture_any_mouse_down(|_, _, cx| cx.stop_propagation())
             })
             .scrollable_y()
+            .track_scroll(&self.recording.scroll)
             .children(
                 PHASES
                     .into_iter()

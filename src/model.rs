@@ -246,6 +246,11 @@ impl PowerStatus {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct DashboardDeviceMetadata {
+    /// Session provenance, never persisted as a successful runtime observation.
+    #[serde(skip)]
+    pub(crate) local_snapshot: bool,
+    #[serde(skip)]
+    pub(crate) connection_observation: Option<DeviceConnectionObservation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_product_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -301,6 +306,13 @@ pub struct DashboardDeviceMetadata {
     pub sub_category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub controller_mode_variant: Option<String>,
+}
+
+/// Session-only evidence. Neither variant means profiles/firmware are loaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DeviceConnectionObservation {
+    HidPresent,
+    ReceiverPeer(u8),
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -367,24 +379,27 @@ pub struct Device {
 }
 
 impl Device {
-    /// Normalize the one stale local snapshot produced by the earlier DLL
-    /// adapter. The adapter reported product 182 as `NoCharge_BatteryFull`
-    /// with a cached level of 47 even though that state is the full battery
-    /// state observed for this device. Keep this narrow to the audited
-    /// product/state pair so genuine low-battery readings remain untouched.
-    pub fn normalize_known_measurements(&mut self) {
-        if self.product_id == 182
-            && self.power_status.as_ref().is_some_and(|status| {
-                status.level == 47
-                    && status
-                        .charging_status
-                        .eq_ignore_ascii_case("NoCharge_BatteryFull")
-            })
-        {
-            if let Some(status) = &mut self.power_status {
-                status.level = 100;
-            }
-        }
+    /// Persisted workspaces supply local drafts, not new hardware readings.
+    /// Keep identity, capabilities and all local profile/device settings.
+    /// Runtime status must be observed again, never inferred from cached enums.
+    pub(crate) fn begin_local_session(&mut self) {
+        self.dashboard.local_snapshot = true;
+        self.dashboard.connection_observation = None;
+        self.setup_status = SetupStatus::Unknown;
+        self.power_status = None;
+        self.firmware_info = FirmwareInfo::default();
+        self.dashboard.no_alive_sign = None;
+        self.dashboard.device_power_state = None;
+        self.dashboard.device_state = None;
+        self.dashboard.device_init_status_fail = None;
+        self.dashboard.firmware_update_info = None;
+        self.dashboard.firmware_needs_upgrade = None;
+        self.dashboard.upgrade_mode = None;
+        self.dashboard.is_dynamic_lighting = None;
+    }
+
+    pub(crate) fn observe_connection(&mut self, observation: Option<DeviceConnectionObservation>) {
+        self.dashboard.connection_observation = observation;
     }
 
     /// 界面显示名：优先中文，缺失时回退。
@@ -722,12 +737,16 @@ mod tests {
     }
 
     #[test]
-    fn stale_full_battery_snapshot_is_normalized() {
+    fn stored_runtime_values_are_not_current_observations() {
         let mut device = measured_devices()[0].clone();
         device.power_status.as_mut().unwrap().level = 47;
         device.power_status.as_mut().unwrap().charging_status = "NoCharge_BatteryFull".into();
-        device.normalize_known_measurements();
-        assert_eq!(device.power_status.unwrap().level, 100);
+        let profile_id = device.active_profile.clone();
+        device.begin_local_session();
+        assert!(device.power_status.is_none());
+        assert_eq!(device.setup_status, SetupStatus::Unknown);
+        assert!(device.dashboard.local_snapshot);
+        assert_eq!(device.active_profile, profile_id);
     }
 
     #[test]

@@ -45,7 +45,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.suspended_action.is_some() {
+        if self.recording_busy() || self.suspended_action.is_some() {
             return;
         }
         self.record_ui.close();

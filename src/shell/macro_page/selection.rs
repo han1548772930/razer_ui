@@ -8,7 +8,7 @@ impl MacroPage {
     }
 
     pub(super) fn toggle_all_actions(&mut self, cx: &mut Context<Self>) {
-        if self.record_ui.open || self.tutorial != Tutorial::Complete {
+        if self.recording_busy() || self.record_ui.open || self.tutorial != Tutorial::Complete {
             return;
         }
         self.selected_actions = if self.all_actions_selected() {

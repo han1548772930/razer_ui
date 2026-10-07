@@ -16650,7 +16650,7 @@
       "sha256": "50585b9e80ec0661766ed679df1031e87a0e802d85b1b96c67d7769661bae771",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "Lüftergeschwindigkeit",
+      "text": "L\u00fcftergeschwindigkeit",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16690,7 +16690,7 @@
       "sha256": "d38ac3f8c0e0e21a2e1b744d94162c538db20a598c863484126e34518e3632c2",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "ファン速度",
+      "text": "\u30d5\u30a1\u30f3\u901f\u5ea6",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16700,7 +16700,7 @@
       "sha256": "9002d053c44fecb0c3419095ba706dd93a0ab2a5b69a5f5548f4374cfcf7e5b1",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "팬 속도",
+      "text": "\ud32c \uc18d\ub3c4",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16720,7 +16720,7 @@
       "sha256": "d216a69752f53604bb973a020fa3e9006d61b8ede4923802da4d38cf41b940ba",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "Скорость вращения вентилятора",
+      "text": "\u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u0432\u0440\u0430\u0449\u0435\u043d\u0438\u044f \u0432\u0435\u043d\u0442\u0438\u043b\u044f\u0442\u043e\u0440\u0430",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16730,7 +16730,7 @@
       "sha256": "b46eb9997ebe2548ea9c9990bff8009cfe978b9f20093c67c4ae8e3e27913ccc",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "风扇转速",
+      "text": "\u98ce\u6247\u8f6c\u901f",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16740,7 +16740,7 @@
       "sha256": "22402ccf606038092a8d3d7afa3db3e9ef815ff67066c7d4956a2f7fdef33901",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "風扇速度",
+      "text": "\u98a8\u6247\u901f\u5ea6",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -18282,6 +18282,23 @@
         "end": 6093060,
         "sha256": "71cd188061f4f267a4489754f5265a71251f2d5390f831cdd7c343d037b73262"
       }
+    },
+    {
+      "source": ".ref/devices/179/static/media/uma_pairing.d84abdc7.avif",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/uma_pairing.d84abdc7.avif",
+      "source_sha256": "fd73937ad105c0288e60ba6e4fff09670cceae5e94f151fc0603b0d2f6111885",
+      "output": "assets/synapse/receiver/uma-pairing.png",
+      "sha256": "ca9dc03bf8992164959ea91310aff033f6e58e1ee383441c3fd859a750707fa1",
+      "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize",
+      "width": 975,
+      "height": 750
+    },
+    {
+      "source": ".ref/applications/synapse/macro/static/media/icon_config_mouse_sensitivity_p.1c326a93.svg",
+      "output": "assets/synapse/macro/mouse-movement.svg",
+      "source_sha256": "bb8b3d3db15ffba5dcfdfaed6311d46b07647e42d023ddfda147e5000e5fe591",
+      "sha256": "bb8b3d3db15ffba5dcfdfaed6311d46b07647e42d023ddfda147e5000e5fe591",
+      "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_mouse_sensitivity_p.1c326a93.svg"
     }
   ]
 }

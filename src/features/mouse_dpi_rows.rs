@@ -511,15 +511,22 @@ impl MouseProductWorkspace {
                                 },
                                 move |drag, _, _, cx| {
                                     let _ = drag_owner.update(cx, |owner, cx| {
-                                        owner.dpi_dragged_row = Some(drag.from);
-                                        cx.notify();
+                                        if owner.dpi_editing_enabled()
+                                            && owner.draft_generation == drag.generation
+                                        {
+                                            owner.dpi_dragged_row = Some(drag.from);
+                                            cx.notify();
+                                        }
                                     });
                                     let release_owner = drag_owner.clone();
+                                    let generation = drag.generation;
                                     cx.new(|cx| {
                                         cx.on_release(move |_, cx| {
                                             let _ = release_owner.update(cx, |owner, cx| {
-                                                owner.dpi_dragged_row = None;
-                                                cx.notify();
+                                                if owner.draft_generation == generation {
+                                                    owner.dpi_dragged_row = None;
+                                                    cx.notify();
+                                                }
                                             });
                                         })
                                         .detach();

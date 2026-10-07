@@ -1,0 +1,1288 @@
+[
+  {
+    "product_id": 1382
+  },
+  {
+    "product_id": 769
+  },
+  {
+    "product_id": 778
+  },
+  {
+    "product_id": 659
+  },
+  {
+    "product_id": 677
+  },
+  {
+    "product_id": 653
+  },
+  {
+    "product_id": 675
+  },
+  {
+    "product_id": 661
+  },
+  {
+    "product_id": 642
+  },
+  {
+    "product_id": 664,
+    "dongle_id": 662,
+    "ble_id": 663
+  },
+  {
+    "product_id": 717,
+    "dongle_id": 730,
+    "ble_id": 718
+  },
+  {
+    "product_id": 658,
+    "dongle_id": 656,
+    "ble_id": 657
+  },
+  {
+    "product_id": 614
+  },
+  {
+    "product_id": 631,
+    "dongle_id": 635,
+    "ble_id": 632,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 585,
+    "dongle_id": 585,
+    "ble_id": 584,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 600,
+    "dongle_id": 625,
+    "ble_id": 626
+  },
+  {
+    "product_id": 620
+  },
+  {
+    "product_id": 619
+  },
+  {
+    "product_id": 617
+  },
+  {
+    "product_id": 602,
+    "dongle_id": 604,
+    "ble_id": 603
+  },
+  {
+    "product_id": 590
+  },
+  {
+    "product_id": 2596
+  },
+  {
+    "product_id": 599
+  },
+  {
+    "product_id": 606
+  },
+  {
+    "product_id": 605
+  },
+  {
+    "product_id": 655
+  },
+  {
+    "product_id": 660
+  },
+  {
+    "product_id": 673
+  },
+  {
+    "product_id": 674
+  },
+  {
+    "product_id": 2595,
+    "dongle_id": 2593
+  },
+  {
+    "product_id": 579
+  },
+  {
+    "product_id": 550
+  },
+  {
+    "product_id": 552
+  },
+  {
+    "product_id": 515
+  },
+  {
+    "product_id": 545
+  },
+  {
+    "product_id": 554
+  },
+  {
+    "product_id": 575
+  },
+  {
+    "product_id": 534
+  },
+  {
+    "product_id": 577
+  },
+  {
+    "product_id": 542
+  },
+  {
+    "product_id": 521
+  },
+  {
+    "product_id": 529
+  },
+  {
+    "product_id": 556
+  },
+  {
+    "product_id": 654,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 567,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 565,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 574,
+    "dongle_id": 2308
+  },
+  {
+    "product_id": 551,
+    "dongle_id": 551
+  },
+  {
+    "product_id": 592,
+    "dongle_id": 592,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 593,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 591,
+    "dongle_id": 591,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 647
+  },
+  {
+    "product_id": 678
+  },
+  {
+    "product_id": 688
+  },
+  {
+    "product_id": 679
+  },
+  {
+    "product_id": 680
+  },
+  {
+    "product_id": 689
+  },
+  {
+    "product_id": 720
+  },
+  {
+    "product_id": 719
+  },
+  {
+    "product_id": 728
+  },
+  {
+    "product_id": 739
+  },
+  {
+    "product_id": 740
+  },
+  {
+    "product_id": 746
+  },
+  {
+    "product_id": 691,
+    "dongle_id": 692,
+    "ble_id": 693
+  },
+  {
+    "product_id": 697,
+    "dongle_id": 698,
+    "ble_id": 699
+  },
+  {
+    "product_id": 716,
+    "dongle_id": 713,
+    "ble_id": 714
+  },
+  {
+    "product_id": 727,
+    "dongle_id": 725,
+    "ble_id": 726
+  },
+  {
+    "product_id": 741
+  },
+  {
+    "product_id": 708,
+    "dongle_id": 706,
+    "ble_id": 707
+  },
+  {
+    "product_id": 721
+  },
+  {
+    "product_id": 742
+  },
+  {
+    "product_id": 163
+  },
+  {
+    "product_id": 185,
+    "dongle_id": 185,
+    "ble_id": 186
+  },
+  {
+    "product_id": 180,
+    "dongle_id": 181,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 184,
+    "dongle_id": 184,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 190,
+    "dongle_id": 191,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 192,
+    "dongle_id": 193,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 158,
+    "dongle_id": 159,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 170,
+    "dongle_id": 171,
+    "ble_id": 172
+  },
+  {
+    "product_id": 178,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 182,
+    "dongle_id": 183,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 194,
+    "dongle_id": 195,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 196,
+    "dongle_id": 197,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 98,
+    "dongle_id": 98,
+    "ble_id": 97,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 154,
+    "dongle_id": 154,
+    "ble_id": 155,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 115,
+    "dongle_id": 114
+  },
+  {
+    "product_id": 165,
+    "dongle_id": 166,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 156,
+    "dongle_id": 156,
+    "ble_id": 157,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 148,
+    "dongle_id": 148,
+    "ble_id": 149,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 145
+  },
+  {
+    "product_id": 153
+  },
+  {
+    "product_id": 203
+  },
+  {
+    "product_id": 204,
+    "dongle_id": 205,
+    "ble_id": 206
+  },
+  {
+    "product_id": 208,
+    "dongle_id": 209,
+    "ble_id": 210
+  },
+  {
+    "product_id": 214,
+    "dongle_id": 215,
+    "ble_id": 216
+  },
+  {
+    "product_id": 45066,
+    "dongle_id": 45067,
+    "ble_id": 45068
+  },
+  {
+    "product_id": 152,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 150
+  },
+  {
+    "product_id": 143,
+    "dongle_id": 144,
+    "ble_id": 146
+  },
+  {
+    "product_id": 167,
+    "dongle_id": 168,
+    "ble_id": 169
+  },
+  {
+    "product_id": 231,
+    "dongle_id": 232,
+    "ble_id": 233
+  },
+  {
+    "product_id": 124,
+    "dongle_id": 125,
+    "ble_id": 142
+  },
+  {
+    "product_id": 128,
+    "dongle_id": 119,
+    "ble_id": 118,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 141
+  },
+  {
+    "product_id": 140
+  },
+  {
+    "product_id": 161
+  },
+  {
+    "product_id": 138
+  },
+  {
+    "product_id": 2594,
+    "dongle_id": 2593
+  },
+  {
+    "product_id": 113,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 89,
+    "dongle_id": 90
+  },
+  {
+    "product_id": 70
+  },
+  {
+    "product_id": 92
+  },
+  {
+    "product_id": 96
+  },
+  {
+    "product_id": 99
+  },
+  {
+    "product_id": 107
+  },
+  {
+    "product_id": 108
+  },
+  {
+    "product_id": 100
+  },
+  {
+    "product_id": 106
+  },
+  {
+    "product_id": 80
+  },
+  {
+    "product_id": 116
+  },
+  {
+    "product_id": 112,
+    "dongle_id": 111
+  },
+  {
+    "product_id": 110,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 101
+  },
+  {
+    "product_id": 117,
+    "dongle_id": 2308
+  },
+  {
+    "product_id": 83
+  },
+  {
+    "product_id": 120
+  },
+  {
+    "product_id": 131,
+    "dongle_id": 131,
+    "ble_id": 130,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 122,
+    "dongle_id": 123
+  },
+  {
+    "product_id": 103
+  },
+  {
+    "product_id": 147
+  },
+  {
+    "product_id": 132
+  },
+  {
+    "product_id": 134,
+    "dongle_id": 136
+  },
+  {
+    "product_id": 133
+  },
+  {
+    "product_id": 175,
+    "dongle_id": 176,
+    "ble_id": 177
+  },
+  {
+    "product_id": 199,
+    "dongle_id": 200,
+    "ble_id": 201
+  },
+  {
+    "product_id": 211,
+    "dongle_id": 212,
+    "ble_id": 213
+  },
+  {
+    "product_id": 218,
+    "dongle_id": 219,
+    "ble_id": 220
+  },
+  {
+    "product_id": 224,
+    "dongle_id": 224,
+    "ble_id": 225,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 222,
+    "dongle_id": 223
+  },
+  {
+    "product_id": 221,
+    "dongle_id": 221
+  },
+  {
+    "product_id": 229,
+    "dongle_id": 230
+  },
+  {
+    "product_id": 239,
+    "dongle_id": 240
+  },
+  {
+    "product_id": 226,
+    "dongle_id": 227,
+    "ble_id": 228
+  },
+  {
+    "product_id": 235,
+    "dongle_id": 234,
+    "ble_id": 236
+  },
+  {
+    "product_id": 3080
+  },
+  {
+    "product_id": 3077
+  },
+  {
+    "product_id": 3072
+  },
+  {
+    "product_id": 3078
+  },
+  {
+    "product_id": 3074
+  },
+  {
+    "product_id": 3073
+  },
+  {
+    "product_id": 207,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3076
+  },
+  {
+    "product_id": 1392,
+    "dongle_id": 1392,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 670
+  },
+  {
+    "product_id": 564
+  },
+  {
+    "product_id": 594
+  },
+  {
+    "product_id": 586
+  },
+  {
+    "product_id": 563
+  },
+  {
+    "product_id": 576
+  },
+  {
+    "product_id": 581
+  },
+  {
+    "product_id": 588
+  },
+  {
+    "product_id": 569
+  },
+  {
+    "product_id": 623
+  },
+  {
+    "product_id": 621
+  },
+  {
+    "product_id": 622
+  },
+  {
+    "product_id": 618
+  },
+  {
+    "product_id": 624
+  },
+  {
+    "product_id": 633
+  },
+  {
+    "product_id": 634
+  },
+  {
+    "product_id": 652
+  },
+  {
+    "product_id": 669
+  },
+  {
+    "product_id": 651
+  },
+  {
+    "product_id": 650
+  },
+  {
+    "product_id": 630
+  },
+  {
+    "product_id": 601
+  },
+  {
+    "product_id": 598
+  },
+  {
+    "product_id": 595
+  },
+  {
+    "product_id": 597
+  },
+  {
+    "product_id": 616
+  },
+  {
+    "product_id": 570
+  },
+  {
+    "product_id": 587
+  },
+  {
+    "product_id": 589
+  },
+  {
+    "product_id": 582
+  },
+  {
+    "product_id": 571
+  },
+  {
+    "product_id": 672
+  },
+  {
+    "product_id": 671
+  },
+  {
+    "product_id": 695
+  },
+  {
+    "product_id": 694
+  },
+  {
+    "product_id": 696
+  },
+  {
+    "product_id": 709
+  },
+  {
+    "product_id": 710
+  },
+  {
+    "product_id": 736
+  },
+  {
+    "product_id": 711
+  },
+  {
+    "product_id": 737
+  },
+  {
+    "product_id": 164
+  },
+  {
+    "product_id": 3894,
+    "ble_id": 3894
+  },
+  {
+    "product_id": 3873
+  },
+  {
+    "product_id": 3878
+  },
+  {
+    "product_id": 3872
+  },
+  {
+    "product_id": 3869
+  },
+  {
+    "product_id": 3848
+  },
+  {
+    "product_id": 3853
+  },
+  {
+    "product_id": 3883
+  },
+  {
+    "product_id": 3871
+  },
+  {
+    "product_id": 3849
+  },
+  {
+    "product_id": 126
+  },
+  {
+    "product_id": 3900,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3893
+  },
+  {
+    "product_id": 179,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3907
+  },
+  {
+    "product_id": 3909,
+    "ble_id": 3910,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3922
+  },
+  {
+    "product_id": 3929
+  },
+  {
+    "product_id": 3932
+  },
+  {
+    "product_id": 2636,
+    "xbox_id": 2623,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2629,
+    "xbox_id": 2627,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2650,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2647,
+    "dongle_id": 2649,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 4133,
+    "ps_mode_ids": [
+      4132,
+      4134
+    ],
+    "dongle_id": 4135,
+    "ble_id": 4136,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 4115,
+    "ps_mode_ids": [
+      4114
+    ]
+  },
+  {
+    "product_id": 4144,
+    "ps_mode_ids": [
+      4143,
+      4145
+    ],
+    "dongle_id": 4146,
+    "ble_id": 4147,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3946
+  },
+  {
+    "product_id": 3940
+  },
+  {
+    "product_id": 3949,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1354,
+    "ble_id": 1369
+  },
+  {
+    "product_id": 1374,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1453
+  },
+  {
+    "product_id": 1372,
+    "ble_id": 1373
+  },
+  {
+    "product_id": 1370,
+    "ble_id": 1371
+  },
+  {
+    "product_id": 1352,
+    "ble_id": 1368
+  },
+  {
+    "product_id": 1330,
+    "ble_id": 1356
+  },
+  {
+    "product_id": 1304
+  },
+  {
+    "product_id": 1303
+  },
+  {
+    "product_id": 1342,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1415,
+    "dongle_id": 1416,
+    "ble_id": 1417
+  },
+  {
+    "product_id": 1442,
+    "dongle_id": 1442,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1443
+  },
+  {
+    "product_id": 1376
+  },
+  {
+    "product_id": 1339,
+    "dongle_id": 1340,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1412,
+    "dongle_id": 1412,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1337,
+    "dongle_id": 1338,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1411,
+    "dongle_id": 1411,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1364
+  },
+  {
+    "product_id": 1331
+  },
+  {
+    "product_id": 1353
+  },
+  {
+    "product_id": 1335
+  },
+  {
+    "product_id": 1325,
+    "dongle_id": 1324
+  },
+  {
+    "product_id": 1332,
+    "ble_id": 1332
+  },
+  {
+    "product_id": 777,
+    "ble_id": 777
+  },
+  {
+    "product_id": 1328,
+    "ble_id": 1328
+  },
+  {
+    "product_id": 1321,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1320,
+    "dongle_id": 1320,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1390,
+    "dongle_id": 1381,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1387,
+    "dongle_id": 1388
+  },
+  {
+    "product_id": 1389
+  },
+  {
+    "product_id": 1439
+  },
+  {
+    "product_id": 1383,
+    "dongle_id": 1384,
+    "ble_id": 1394
+  },
+  {
+    "product_id": 1318,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1313
+  },
+  {
+    "product_id": 1319
+  },
+  {
+    "product_id": 1306
+  },
+  {
+    "product_id": 1308
+  },
+  {
+    "product_id": 1310,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1312,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1378,
+    "ble_id": 1378
+  },
+  {
+    "product_id": 1406,
+    "ble_id": 1406
+  },
+  {
+    "product_id": 1407,
+    "ble_id": 1407
+  },
+  {
+    "product_id": 1365,
+    "dongle_id": 1365,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1396,
+    "dongle_id": 1396
+  },
+  {
+    "product_id": 1398,
+    "dongle_id": 1399,
+    "ble_id": 1397,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1427,
+    "dongle_id": 1426,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 4124,
+    "dongle_id": 4123,
+    "ble_id": 4125,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2638,
+    "xbox_id": 2637,
+    "dongle_id": 2645,
+    "ble_id": 2639,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1401,
+    "dongle_id": 1402,
+    "ble_id": 1400,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 4126,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2641,
+    "xbox_id": 2640,
+    "dongle_id": 2648,
+    "ble_id": 2642,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1404,
+    "dongle_id": 1405,
+    "ble_id": 1403,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2644,
+    "xbox_id": 2643,
+    "dongle_id": 2651,
+    "ble_id": 2646,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 4130,
+    "dongle_id": 4129,
+    "ble_id": 4131,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 724,
+    "dongle_id": 722,
+    "ble_id": 723
+  },
+  {
+    "product_id": 1420
+  },
+  {
+    "product_id": 2657,
+    "dongle_id": 2657,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2660,
+    "dongle_id": 2660,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2664,
+    "xbox_id": 2665,
+    "dongle_id": 2664,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2668,
+    "dongle_id": 2668,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1462
+  },
+  {
+    "product_id": 555
+  },
+  {
+    "product_id": 580
+  },
+  {
+    "product_id": 747
+  },
+  {
+    "product_id": 104
+  },
+  {
+    "product_id": 105
+  },
+  {
+    "product_id": 1347,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1386,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3592,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3594,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3595,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3596,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1346,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 1391
+  },
+  {
+    "product_id": 1422
+  },
+  {
+    "product_id": 1446
+  },
+  {
+    "product_id": 3590,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3589,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3587,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3867,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3331,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3858,
+    "monitor_port_ids": [
+      5122
+    ]
+  },
+  {
+    "product_id": 3880,
+    "monitor_port_ids": [
+      5125,
+      5126,
+      5127
+    ]
+  },
+  {
+    "product_id": 3866
+  },
+  {
+    "product_id": 3921
+  },
+  {
+    "product_id": 3884,
+    "dongle_id": 3884,
+    "ble_id": 3885
+  },
+  {
+    "product_id": 3859
+  },
+  {
+    "product_id": 3879
+  },
+  {
+    "product_id": 3863
+  },
+  {
+    "product_id": 3337,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3334,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 780
+  },
+  {
+    "product_id": 781
+  },
+  {
+    "product_id": 782
+  },
+  {
+    "product_id": 783
+  },
+  {
+    "product_id": 784
+  },
+  {
+    "product_id": 790
+  },
+  {
+    "product_id": 791
+  },
+  {
+    "product_id": 1465,
+    "wired_id": [
+      1465
+    ]
+  },
+  {
+    "product_id": 241,
+    "wired_id": [
+      241
+    ],
+    "dongle_id": [
+      241
+    ],
+    "is_not_chroma_device": false
+  },
+  {
+    "product_id": 2676,
+    "wired_id": [
+      2676,
+      2677
+    ],
+    "dongle_id": [
+      2680,
+      2681
+    ],
+    "xbox_id": [
+      2674,
+      2678
+    ],
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2684,
+    "wired_id": [
+      2684,
+      2685
+    ],
+    "xbox_id": 2682,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 2689,
+    "dongle_id": 2689,
+    "ble_id": 2690,
+    "is_not_chroma_device": true
+  },
+  {
+    "product_id": 3942,
+    "wired_id": [
+      3942
+    ]
+  },
+  {
+    "product_id": 752
+  }
+]

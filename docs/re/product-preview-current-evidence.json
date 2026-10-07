@@ -1,0 +1,5942 @@
+{
+  "scope": "Local product selection only; no complete UI or hardware capability claim.",
+  "method": "Static JSON manifest hashes and edition IDs; source registry set; layout IDs and current source hash. Run generate-product-registry.cjs --check and extract-keyboard.cjs --check for the corresponding AST checks.",
+  "registered_products": 331,
+  "catalog_editions": 779,
+  "default_only_products": [
+    162,
+    3886
+  ],
+  "products": [
+    {
+      "product_id": 70,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/70/ui/manifest.json",
+          "sha256": "c8109286657504f8c0c47160d7b68c705d3ef83d29003ceb461c97dfe82311fb"
+        },
+        {
+          "path": ".ref/discovery/products/70/mw/manifest.json",
+          "sha256": "3562c2acf6fef09c22cd20925e096ec3900c68d05507868accad2150b54cd5b7"
+        }
+      ]
+    },
+    {
+      "product_id": 80,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/80/ui/manifest.json",
+          "sha256": "abc96816eca6852ee519aa8aaf17bc9c05b30dfa3cb950f113907041166e32bb"
+        },
+        {
+          "path": ".ref/discovery/products/80/mw/manifest.json",
+          "sha256": "02a57fdacd93982ec45a2e6a3dbe1821e6177e9d8c152f6e6815ecfe16652a90"
+        }
+      ]
+    },
+    {
+      "product_id": 83,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/83/ui/manifest.json",
+          "sha256": "e7c84f0091a97575bb75db463ed440c4f86d0e97b4c55526370bf39792f48d1b"
+        },
+        {
+          "path": ".ref/discovery/products/83/mw/manifest.json",
+          "sha256": "c83ba4d120ea5126b41bac8fad2f0326db391c406b01d82ebeb401b14e2b349a"
+        }
+      ]
+    },
+    {
+      "product_id": 89,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/89/ui/manifest.json",
+          "sha256": "94b7ffe8b4518dbd4dda9b4b90c3e5c1c88e36e79e3a1937d18d555f7a0317fd"
+        },
+        {
+          "path": ".ref/discovery/products/89/mw/manifest.json",
+          "sha256": "f26698083c43cab3809e64da517e1d90748aa875d55e14b561e4cd06bd5361f1"
+        }
+      ]
+    },
+    {
+      "product_id": 92,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/92/ui/manifest.json",
+          "sha256": "98cd800e17c503844212a10c1e1e3b12767ed1d60f701cf74bda9aca81d87c7b"
+        },
+        {
+          "path": ".ref/discovery/products/92/mw/manifest.json",
+          "sha256": "a1eeb0f02084e29e1055671d521ca4650436d5d798c2870f245294e6d3dc3c09"
+        }
+      ]
+    },
+    {
+      "product_id": 96,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/96/ui/manifest.json",
+          "sha256": "5dcc8194393ebc7a4f64d538c535c0d54325641c88babd94fe3e34a7a131f64f"
+        },
+        {
+          "path": ".ref/discovery/products/96/mw/manifest.json",
+          "sha256": "b0f26b7791dff0705fc5512ec139ded7ae4646a773550f9895d97f4b800cf7ca"
+        }
+      ]
+    },
+    {
+      "product_id": 98,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/98/ui/manifest.json",
+          "sha256": "6674c56fef440ec4fb528e9e651cc202f9a113b402c052ae7c4eb2de52a484e5"
+        },
+        {
+          "path": ".ref/discovery/products/98/mw/manifest.json",
+          "sha256": "98d22ab8442c5b4ab664818a17734b524e549a4f701f042c2cf7f87944254eeb"
+        }
+      ]
+    },
+    {
+      "product_id": 99,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/99/ui/manifest.json",
+          "sha256": "53258c278d12099c111449d7d3787c816c1cfd218a710b1b207e89394bdd8497"
+        },
+        {
+          "path": ".ref/discovery/products/99/mw/manifest.json",
+          "sha256": "97188c3d37e46e9b2f1063fe82cd55690d0c2f9423e879fc3b6075852201ae8a"
+        }
+      ]
+    },
+    {
+      "product_id": 100,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/100/ui/manifest.json",
+          "sha256": "47fb1d5a644c7e70668cea944dc6ad5875c21ba536ffbc651bc6078fbd115bf4"
+        },
+        {
+          "path": ".ref/discovery/products/100/mw/manifest.json",
+          "sha256": "b77fed9b4d4e80a18a91d477985bee42d6fe1aa0df9d338812f1be3d391cfc38"
+        }
+      ]
+    },
+    {
+      "product_id": 101,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/101/ui/manifest.json",
+          "sha256": "12e2c01727e4c2cd8d3f82b1c34d08e7e27ffdddbb02a9d953d0124443b0065a"
+        },
+        {
+          "path": ".ref/discovery/products/101/mw/manifest.json",
+          "sha256": "90387f0159e7bc71efe4b4baf7a4a6fbb3e7b0adfad5b23a39da5e5e13dafd23"
+        }
+      ]
+    },
+    {
+      "product_id": 103,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/103/ui/manifest.json",
+          "sha256": "3b8867d6039bd7a9b08ffe4a9a38120933f3bbb48c315cb260dfb85462fe3239"
+        },
+        {
+          "path": ".ref/discovery/products/103/mw/manifest.json",
+          "sha256": "985b63752573648f564c4be58b48ad3c5f284eb90531217c402c45fbbde9f5cb"
+        }
+      ]
+    },
+    {
+      "product_id": 104,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/104/ui/manifest.json",
+          "sha256": "191d745fb191cc1a8f0d73a42a0874a26768f2e839cfcfb12242f0f35ecc9a21"
+        },
+        {
+          "path": ".ref/discovery/products/104/mw/manifest.json",
+          "sha256": "6a2c28563f875f39be449eba41c8b610197746fcc8bd6f39a0391e758dbfadbb"
+        }
+      ]
+    },
+    {
+      "product_id": 105,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/105/ui/manifest.json",
+          "sha256": "8e8615780c700ca8b5bd112e7d6f8d33e9197387b2404549fee6947467fbb850"
+        },
+        {
+          "path": ".ref/discovery/products/105/mw/manifest.json",
+          "sha256": "212757382f37dbcc1b4ad40f7e360a6eac5f493abbf3a2f221cad0e32476c47a"
+        }
+      ]
+    },
+    {
+      "product_id": 106,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/106/ui/manifest.json",
+          "sha256": "be184971ce75274bda36bbb8924eeb13d92404b8bce7d042e9263ae81ae8fe3a"
+        },
+        {
+          "path": ".ref/discovery/products/106/mw/manifest.json",
+          "sha256": "92501379372c486326acd9183221f204573b79a88104b116f5c2f5c406106d8b"
+        }
+      ]
+    },
+    {
+      "product_id": 107,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/107/ui/manifest.json",
+          "sha256": "49bc4e00544147fa1e1ea4f8e4c1ca7e911b37fb31f3ccb60b836378a510ea01"
+        },
+        {
+          "path": ".ref/discovery/products/107/mw/manifest.json",
+          "sha256": "79758e52745d8884d0fd797f804959dab9ca73e2be1d124eb17234ea861e9c3d"
+        }
+      ]
+    },
+    {
+      "product_id": 108,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/108/ui/manifest.json",
+          "sha256": "f3843da85421f446ee26dd8f941c64eb082cafaf3e02311275260cd9c49c511f"
+        },
+        {
+          "path": ".ref/discovery/products/108/mw/manifest.json",
+          "sha256": "08f10d08498f23cf3fa6f54bc1f8d9e5bd586f79f96fa7252775d6de82765e24"
+        }
+      ]
+    },
+    {
+      "product_id": 110,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/110/ui/manifest.json",
+          "sha256": "103aec29f4382a70afb0a9e9faef0308fdb769f5dca0280e732a944977119b13"
+        },
+        {
+          "path": ".ref/discovery/products/110/mw/manifest.json",
+          "sha256": "7638b050e494e22f1c9d17d66ab50b69151b5be75ce12f2c4e30eabde6dd5f41"
+        }
+      ]
+    },
+    {
+      "product_id": 112,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/112/ui/manifest.json",
+          "sha256": "c29b206a1dd70c6637ca50fc8e0b27839519a61847705d920b9081405d0e7549"
+        },
+        {
+          "path": ".ref/discovery/products/112/mw/manifest.json",
+          "sha256": "56762085a62330e1a9bab4708310042c2fd18c40ef2e692ca688cd5a8ef327c2"
+        }
+      ]
+    },
+    {
+      "product_id": 113,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/113/ui/manifest.json",
+          "sha256": "8f691c5900b00bf7f95fe5b21111ef728f295bb7508da6cf9388a252006fc2df"
+        },
+        {
+          "path": ".ref/discovery/products/113/mw/manifest.json",
+          "sha256": "a8acab0ccf054e2de36f0d2679d44fe5c137ff6467706341abde2d4081c74ab5"
+        }
+      ]
+    },
+    {
+      "product_id": 115,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/115/ui/manifest.json",
+          "sha256": "37675edd67570d7110640ea6181f36dd3e165e178d91c85a90bff1c1ff7a9b14"
+        },
+        {
+          "path": ".ref/discovery/products/115/mw/manifest.json",
+          "sha256": "e8c309fa9c7b7e503a28428bf899133289ad1ab5af224eabfb77ecf14816f53e"
+        }
+      ]
+    },
+    {
+      "product_id": 116,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/116/ui/manifest.json",
+          "sha256": "b6d2f3fba285d7e678de42d12901103f7a7a2614420a1fa2126a973a264eccd4"
+        },
+        {
+          "path": ".ref/discovery/products/116/mw/manifest.json",
+          "sha256": "21954e902b1f05c5625748d02dd5b4adde19379b745876cc664051f94dd327e6"
+        }
+      ]
+    },
+    {
+      "product_id": 117,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/117/ui/manifest.json",
+          "sha256": "b058c4a961e63feb9dcfb2265518404d1a1ecbf4eb65b9fef9dc75453966259e"
+        },
+        {
+          "path": ".ref/discovery/products/117/mw/manifest.json",
+          "sha256": "dc95b240504996f080a310dd0f38212c918e2279f4b076f9d2ae2599d7907488"
+        }
+      ]
+    },
+    {
+      "product_id": 120,
+      "edition_ids": [
+        0,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/120/ui/manifest.json",
+          "sha256": "783b43970afdf96273e7ec2dc756702e03a21dca5f52c216b921e723f7407d74"
+        },
+        {
+          "path": ".ref/discovery/products/120/mw/manifest.json",
+          "sha256": "7e0a1860c1300c2472cad243233bd0932222e9b6f0eed1487f546e9d2d685232"
+        }
+      ]
+    },
+    {
+      "product_id": 122,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/122/ui/manifest.json",
+          "sha256": "c727268c1823b5ceb824ec06c4a10d9fb8e0040545f9c1b720f7563b381df108"
+        },
+        {
+          "path": ".ref/discovery/products/122/mw/manifest.json",
+          "sha256": "b158376fe07a2cce574335588c4d3d012998df34b028d7e19772ff8dc1118b79"
+        }
+      ]
+    },
+    {
+      "product_id": 124,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/124/ui/manifest.json",
+          "sha256": "ddd16e65384519d79aec4091b04108f3ea3259f89603541f06fb3e58ebee353a"
+        },
+        {
+          "path": ".ref/discovery/products/124/mw/manifest.json",
+          "sha256": "08b3a83691300e5c4cba3abbd0a26142659b090c988cc9cdd8491b59aa270344"
+        }
+      ]
+    },
+    {
+      "product_id": 126,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/126/ui/manifest.json",
+          "sha256": "526784a85a658c2e4201a3cfb10bb2425d5332e6b003b6bbb8d6da308e5ee40b"
+        },
+        {
+          "path": ".ref/discovery/products/126/mw/manifest.json",
+          "sha256": "c0c432a4942e8932ff88337464b183a5f39187bbbe37e693596df61511ade56f"
+        }
+      ]
+    },
+    {
+      "product_id": 128,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/128/ui/manifest.json",
+          "sha256": "165d843f7b4781e3b04358f6f23c1565d0dd7c454e9b67da504cfa3caea265ce"
+        },
+        {
+          "path": ".ref/discovery/products/128/mw/manifest.json",
+          "sha256": "dc7fdcaadd88c035df3415bb0dfe603b586791660a164ed14ae3845a6702ab40"
+        }
+      ]
+    },
+    {
+      "product_id": 131,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/131/ui/manifest.json",
+          "sha256": "4356dec87503ee0f99629d63266c7d523746a5204d9625edb64a2eaffd82d044"
+        },
+        {
+          "path": ".ref/discovery/products/131/mw/manifest.json",
+          "sha256": "ffac9d0865f79c9ec170466c311425f176f6fd25b77cd97f028bca0574af26b1"
+        }
+      ]
+    },
+    {
+      "product_id": 132,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/132/ui/manifest.json",
+          "sha256": "aff5d2e012a8744da36f7d95cbbc7f09ea5264bf4f48b1db4181d50c371c8092"
+        },
+        {
+          "path": ".ref/discovery/products/132/mw/manifest.json",
+          "sha256": "fe6e44f69d21f756c968ce43f2ce36c6357f796e2d71990fec0f7b6f35b96e29"
+        }
+      ]
+    },
+    {
+      "product_id": 133,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/133/ui/manifest.json",
+          "sha256": "e37986b105e7be2f2d8756b221fbb260d052ba3f8e5eef22534dd668dc25b489"
+        },
+        {
+          "path": ".ref/discovery/products/133/mw/manifest.json",
+          "sha256": "344e18a3906fb473636838eae816efce942f8df36d05a05e6f0a21629625573d"
+        }
+      ]
+    },
+    {
+      "product_id": 134,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/134/ui/manifest.json",
+          "sha256": "17308ce07fdf74bac28481a1d5383e291d5ec8717c204f0a071e38459e065185"
+        },
+        {
+          "path": ".ref/discovery/products/134/mw/manifest.json",
+          "sha256": "a2224e0a93bd94c232055c6ccdb8c45bd298e3e8a62cb364d61d718e4748127a"
+        }
+      ]
+    },
+    {
+      "product_id": 138,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/138/ui/manifest.json",
+          "sha256": "5291f2e006b9b595499904d0ce11510ae25047d455c23b047ae490ad82a17548"
+        },
+        {
+          "path": ".ref/discovery/products/138/mw/manifest.json",
+          "sha256": "c31d10f159ab08a5bcbab67909bb1d89f98f0d72168959051cfecd9858a52ef1"
+        }
+      ]
+    },
+    {
+      "product_id": 140,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/140/ui/manifest.json",
+          "sha256": "ac2d2d0b6a470f7bc23b65973ebad4e34e9c42fa4dda8600456685588ec8f685"
+        },
+        {
+          "path": ".ref/discovery/products/140/mw/manifest.json",
+          "sha256": "f1da09286d08237c86301f8548a48cd5f1426ba585d9495e5b518a30e0f081bd"
+        }
+      ]
+    },
+    {
+      "product_id": 141,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/141/ui/manifest.json",
+          "sha256": "d25be579258c37fcbcb4d801466567b1dbb4281e32408d3072350377fdef7eee"
+        },
+        {
+          "path": ".ref/discovery/products/141/mw/manifest.json",
+          "sha256": "b9c8ea33c5370228a5771eb808c15cbf673a0dda58515cd60bfd667feab1171f"
+        }
+      ]
+    },
+    {
+      "product_id": 143,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/143/ui/manifest.json",
+          "sha256": "5a71016a1c00a5004f26e25d0908ad13667688b7366bce14fe34c4738e7dc22c"
+        },
+        {
+          "path": ".ref/discovery/products/143/mw/manifest.json",
+          "sha256": "f65da52277cd0811cf60d12ede256f75355517e733ad79f31f4d136e7b014cd5"
+        }
+      ]
+    },
+    {
+      "product_id": 145,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/145/ui/manifest.json",
+          "sha256": "56c0252a730eac1958a040a4928a8f4b1787d2251e44826c9ac40328f7764ebc"
+        },
+        {
+          "path": ".ref/discovery/products/145/mw/manifest.json",
+          "sha256": "1aadf9dd5651e6948b4c9538e13d4517ff5a4b11350f85016fc252db7bf37a88"
+        }
+      ]
+    },
+    {
+      "product_id": 147,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/147/ui/manifest.json",
+          "sha256": "9e220e144124607371d5e2cb9dd459eba014a149c0fcba9d3da97932191fbf5f"
+        },
+        {
+          "path": ".ref/discovery/products/147/mw/manifest.json",
+          "sha256": "924077e9e9c77853d09b66c43ae8c6ab8d1868a71383f3af9a9276fb486ada38"
+        }
+      ]
+    },
+    {
+      "product_id": 148,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        138
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/148/ui/manifest.json",
+          "sha256": "af8f53c7c49b5e3a1ddd5f9399d6f1462f737e41a4867f1cc08e7bc11f375f16"
+        },
+        {
+          "path": ".ref/discovery/products/148/mw/manifest.json",
+          "sha256": "1b717b235ecdb22a166d58302208166ed9fdc6d0bc55f0755afd24bc58bea483"
+        }
+      ]
+    },
+    {
+      "product_id": 150,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/150/ui/manifest.json",
+          "sha256": "d6c8584ffc895a27f7a84f7ab4165a7dab868a0234238103109913062282ead0"
+        },
+        {
+          "path": ".ref/discovery/products/150/mw/manifest.json",
+          "sha256": "7066c6976ad65bfe305c5f2948f0bb056f6248b68db966c06e9dd5f7f2d2c89c"
+        }
+      ]
+    },
+    {
+      "product_id": 152,
+      "edition_ids": [
+        0,
+        128,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        144,
+        145
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/152/ui/manifest.json",
+          "sha256": "925638334c6dc8e6fa1c29bc4a580f7faa1fcfc2c28ab6edc5cd93e8a7e884ac"
+        },
+        {
+          "path": ".ref/discovery/products/152/mw/manifest.json",
+          "sha256": "1ed998fbe3807f011dc711bb95497e69b3fd022c1d1be21a6bbee093892cc0d6"
+        }
+      ]
+    },
+    {
+      "product_id": 153,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/153/ui/manifest.json",
+          "sha256": "ec2fc9a1c23e727b0876d829299a4519b145210af40c74c161cd03ec97859e31"
+        },
+        {
+          "path": ".ref/discovery/products/153/mw/manifest.json",
+          "sha256": "021d61a9cd7e14474046da70ff7a2bf1105b8694f3b683b615c0761c219d5371"
+        }
+      ]
+    },
+    {
+      "product_id": 154,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/154/ui/manifest.json",
+          "sha256": "0f8f520593d72e13b421f7bc0929b18c2f1aff0d3f47c34775fbea3b2adefc1b"
+        },
+        {
+          "path": ".ref/discovery/products/154/mw/manifest.json",
+          "sha256": "1efcad13e7b78c26714fc030a1d7d483079fe2abc2359d4cb08715acc81d84b9"
+        }
+      ]
+    },
+    {
+      "product_id": 156,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/156/ui/manifest.json",
+          "sha256": "8ac08495a16b38d67647151f71e1aa6323414377689b47e0d3fde6f2a59e74e3"
+        },
+        {
+          "path": ".ref/discovery/products/156/mw/manifest.json",
+          "sha256": "7928a258266c02e36dd296560394e1a2f0f0f5175863a493dd430a03944c4631"
+        }
+      ]
+    },
+    {
+      "product_id": 158,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/158/ui/manifest.json",
+          "sha256": "20d72645a8a7909cec62eebbf88d0e0fc6febb73f65fbf3501925b8b26dc7fc1"
+        },
+        {
+          "path": ".ref/discovery/products/158/mw/manifest.json",
+          "sha256": "0ed24e9684f511bc4d22934b8a26629c8ebf82bc040fffb2a853bb5017d8f5a7"
+        }
+      ]
+    },
+    {
+      "product_id": 161,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/161/ui/manifest.json",
+          "sha256": "ce4a277aa9476f1e63a0df424adcd0b462492ad9fcb3c141e8e39f6618adb959"
+        },
+        {
+          "path": ".ref/discovery/products/161/mw/manifest.json",
+          "sha256": "e5e34f5f018f5a061bbcd0d27001df3cec9d9006793c24ad17e843d7155bbfab"
+        }
+      ]
+    },
+    {
+      "product_id": 162,
+      "edition_ids": [],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/162/ui/manifest.json",
+          "sha256": "3196bd5d6d002771f6aaf168b0c07d324547467fc3846aa33239d38f99938244"
+        },
+        {
+          "path": ".ref/discovery/products/162/mw/manifest.json",
+          "sha256": "1cdd425a007905dda249b76f6db2d2ba7493dae266ba53f26d51b4b747edf4ef"
+        }
+      ]
+    },
+    {
+      "product_id": 163,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/163/ui/manifest.json",
+          "sha256": "ab018491c96732be426022c68eb637037b2c8cb3f1e41cf3ec4a9a3497becf6a"
+        },
+        {
+          "path": ".ref/discovery/products/163/mw/manifest.json",
+          "sha256": "e231c474066d5e7ea7f0c5dc2de7ac0b28e69910501c3c5c9ecf68d74fb133a5"
+        }
+      ]
+    },
+    {
+      "product_id": 164,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/164/ui/manifest.json",
+          "sha256": "cae35ed8155c0b43593ffdc379e40b9bea4afbfa1c030adf264f8352707d25e8"
+        },
+        {
+          "path": ".ref/discovery/products/164/mw/manifest.json",
+          "sha256": "aef305513d78d0a1d363f2b8429661a2d52530457ef73d2b2a55e504c15761ce"
+        }
+      ]
+    },
+    {
+      "product_id": 165,
+      "edition_ids": [
+        0,
+        128,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/165/ui/manifest.json",
+          "sha256": "54d053e2535b21d06cc08f10c07c103d2bad9401b803cbeb6e68658f0116c175"
+        },
+        {
+          "path": ".ref/discovery/products/165/mw/manifest.json",
+          "sha256": "eb4d88b0e00e20a55fd9225006a9319edb780c8c1ecee03ced89ded920818984"
+        }
+      ]
+    },
+    {
+      "product_id": 167,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/167/ui/manifest.json",
+          "sha256": "b34fb506da4a1e79581986ae59bb8c68350a3d80d863e2467ac8977b42927b64"
+        },
+        {
+          "path": ".ref/discovery/products/167/mw/manifest.json",
+          "sha256": "e79f2da79d54a09d3647342aaaca524f7bf87ad84366680787c4454a948f3ffc"
+        }
+      ]
+    },
+    {
+      "product_id": 170,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/170/ui/manifest.json",
+          "sha256": "b8773d4a67fa79142035afad64e5de60f98c9bacb030a6ca0558f7778feece84"
+        },
+        {
+          "path": ".ref/discovery/products/170/mw/manifest.json",
+          "sha256": "8737f634a881acba89cdb2ade6130263369b1b6ff0d16a8a6cbda44d9fe521ce"
+        }
+      ]
+    },
+    {
+      "product_id": 175,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/175/ui/manifest.json",
+          "sha256": "fbadeab756f1c3b5f103ef990e8e02bd686cf3a79737533dc769278f12584f14"
+        },
+        {
+          "path": ".ref/discovery/products/175/mw/manifest.json",
+          "sha256": "e7be762299e0b4845cb9d40cb8b5d5e704db2f985a1a165d8a3a7013389defb5"
+        }
+      ]
+    },
+    {
+      "product_id": 178,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/178/ui/manifest.json",
+          "sha256": "1b024186fa7c15349045570ded8c3dfd19ce0e768c40491ecb94e30273fac820"
+        },
+        {
+          "path": ".ref/discovery/products/178/mw/manifest.json",
+          "sha256": "710e10b18040271bc5af494a2668aef916211945851e5ef646f283aa95c67114"
+        }
+      ]
+    },
+    {
+      "product_id": 179,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/179/ui/manifest.json",
+          "sha256": "368e06ec0511f839bc2e32262369d550a52412e613e728321525829ccd8fb229"
+        },
+        {
+          "path": ".ref/discovery/products/179/mw/manifest.json",
+          "sha256": "72671f1738b7d9a37cf93429d457f0bff61cabcb93836ddb2cb3e1f2ba3b4929"
+        }
+      ]
+    },
+    {
+      "product_id": 180,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/180/ui/manifest.json",
+          "sha256": "b42b2cd4d42764d6b2bb641ffd71584d96c98273ee9a6b774220aef19795a598"
+        },
+        {
+          "path": ".ref/discovery/products/180/mw/manifest.json",
+          "sha256": "7911bf327427ed241f5e5b44f0fbac2add1615006fe48b2dac46988e88643a25"
+        }
+      ]
+    },
+    {
+      "product_id": 182,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/182/ui/manifest.json",
+          "sha256": "1c5b68c358d6ebc8c6755c72abdf821c5ffbfdc7f457f97f1a2b268582425527"
+        },
+        {
+          "path": ".ref/discovery/products/182/mw/manifest.json",
+          "sha256": "b358f5db15086f453a9239c860cd0e9e84ca57e062bd8b7159377cb74dd1dda9"
+        }
+      ]
+    },
+    {
+      "product_id": 184,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/184/ui/manifest.json",
+          "sha256": "9bdfc63424152b1197db1b785072e7127267c73989743411b8a2c5a931e0d062"
+        },
+        {
+          "path": ".ref/discovery/products/184/mw/manifest.json",
+          "sha256": "7098f734e3d7a6bcbbf37e19fbca714d7d733ce64fcf14ebf37074fa398d380a"
+        }
+      ]
+    },
+    {
+      "product_id": 185,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/185/ui/manifest.json",
+          "sha256": "0769424f776a4cf52d446746bf300a3ee264cd5fd35cedc692212e87f51422f4"
+        },
+        {
+          "path": ".ref/discovery/products/185/mw/manifest.json",
+          "sha256": "f50f0ab2227b4dda839c845cbc097d3f8756928abf3d2e4162e7dc18713853f0"
+        }
+      ]
+    },
+    {
+      "product_id": 190,
+      "edition_ids": [
+        0,
+        128,
+        130,
+        131,
+        132,
+        133
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/190/ui/manifest.json",
+          "sha256": "fd2a1cdd974d7256cf403d4f7d1b9e01f9630d8a44681b5278a289253ccaec52"
+        },
+        {
+          "path": ".ref/discovery/products/190/mw/manifest.json",
+          "sha256": "3972d34a634d96dcd8d1d3af5eab2c2825f7deced97036d78a23f1d2932e3cd8"
+        }
+      ]
+    },
+    {
+      "product_id": 192,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/192/ui/manifest.json",
+          "sha256": "bb402f6ccf95e22232d656a7eb6e9b81ded77645b89e7e54ab1217da9afad98a"
+        },
+        {
+          "path": ".ref/discovery/products/192/mw/manifest.json",
+          "sha256": "fc5b2f89c4603fa3e57a131f78b876167fe53bfc37dab3493456dd0ebd3641ff"
+        }
+      ]
+    },
+    {
+      "product_id": 194,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/194/ui/manifest.json",
+          "sha256": "b8199169e5e8d2c44b7d0e0b0a2448c1c9eafae28f57f7576bd570697f67e4ba"
+        },
+        {
+          "path": ".ref/discovery/products/194/mw/manifest.json",
+          "sha256": "ba2c00b87b6d0021c9d4fcdabb2e9c7d1b7f7fc02f0c4759744709a2623b6b32"
+        }
+      ]
+    },
+    {
+      "product_id": 196,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/196/ui/manifest.json",
+          "sha256": "5b728f261334ed70cdbb0d1b9a0aa3a5975951cb1c8b099308a6abc63361faed"
+        },
+        {
+          "path": ".ref/discovery/products/196/mw/manifest.json",
+          "sha256": "eaf623a8fbff30149ab343b037d919cf5d3b0fb9ca4f99b5565214b685b8404b"
+        }
+      ]
+    },
+    {
+      "product_id": 199,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/199/ui/manifest.json",
+          "sha256": "7018f7a08f6597f05f6e52bfbe96bcf016eea2f16a9228aa50c6c554f1ded548"
+        },
+        {
+          "path": ".ref/discovery/products/199/mw/manifest.json",
+          "sha256": "3300f502a8753ac4562d1ac0affe5bdfba28b03193e1022935a4741baa7038e1"
+        }
+      ]
+    },
+    {
+      "product_id": 203,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/203/ui/manifest.json",
+          "sha256": "559623bdac001c58ca511bd37b45eab5cfeda1413661cd362e9ced1b2f9cbc9f"
+        },
+        {
+          "path": ".ref/discovery/products/203/mw/manifest.json",
+          "sha256": "aba8f23fa58720544d00fabbd1837b5b4abf0fc9a743c8c35859c8157e9a4404"
+        }
+      ]
+    },
+    {
+      "product_id": 204,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/204/ui/manifest.json",
+          "sha256": "55219c0725d8a4a1eb6dace65660d07768cc0e0753fb5477cc2bc8c12a829dce"
+        },
+        {
+          "path": ".ref/discovery/products/204/mw/manifest.json",
+          "sha256": "4a205430408f7bff6f059b19869913b5aa2ed2becde5943e9e73ec9ec63c53cb"
+        }
+      ]
+    },
+    {
+      "product_id": 207,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/207/ui/manifest.json",
+          "sha256": "b6cd0779a4b4dc8490e02f64e4ed7a7b59908301674a9f660f01f9882f4b6c10"
+        },
+        {
+          "path": ".ref/discovery/products/207/mw/manifest.json",
+          "sha256": "2ec93ea55fbf18740898b08684c70f077731c7cb3880ea20029736965919a860"
+        }
+      ]
+    },
+    {
+      "product_id": 208,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/208/ui/manifest.json",
+          "sha256": "820be2c423feae458241cabbe3f2fdc14c48870d52a36f638dd0679bae27bc7f"
+        },
+        {
+          "path": ".ref/discovery/products/208/mw/manifest.json",
+          "sha256": "068ccc59d58768105bad0644bf50b2fa5fa57c7b868f64329ae5524e63672a2d"
+        }
+      ]
+    },
+    {
+      "product_id": 211,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/211/ui/manifest.json",
+          "sha256": "dce35c6bdc6d329f1409d67947e844693e22f1d9812c7f7bf4c7ee1d2e11c3c4"
+        },
+        {
+          "path": ".ref/discovery/products/211/mw/manifest.json",
+          "sha256": "48870d30e97d5290125005539cfa72d73fddd2632c520f33aa77ea1fac7e4968"
+        }
+      ]
+    },
+    {
+      "product_id": 214,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/214/ui/manifest.json",
+          "sha256": "4a6c9a72e3924f31f54edc3bbe3e8681a686e6166f7b6a2128520643bcd87b3e"
+        },
+        {
+          "path": ".ref/discovery/products/214/mw/manifest.json",
+          "sha256": "63909179410d8ecf9f8953c6ca99811dd6b44d05805e4db35819a1f490a353f4"
+        }
+      ]
+    },
+    {
+      "product_id": 218,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/218/ui/manifest.json",
+          "sha256": "4634e93819e56f89c0a0b169b4b80d81ef053e446dfe8fdd797fd262f6591385"
+        },
+        {
+          "path": ".ref/discovery/products/218/mw/manifest.json",
+          "sha256": "947b658b4e23bf8d256777992f97fcd19242735d319455191d39bb04f31bf799"
+        }
+      ]
+    },
+    {
+      "product_id": 221,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/221/ui/manifest.json",
+          "sha256": "e4570825f5e83ff5c132e26fe18d2f8deaa7df66650578c071b1d6deec67b787"
+        },
+        {
+          "path": ".ref/discovery/products/221/mw/manifest.json",
+          "sha256": "68c1b05d8889e3ee2d42f998c0e976e6f0648dbfaec88647a822e15221160c61"
+        }
+      ]
+    },
+    {
+      "product_id": 222,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/222/ui/manifest.json",
+          "sha256": "bcd0d66ccb2f1f6c9f271a51fada423eeabb92986d20b7aa8fb6c03169789642"
+        },
+        {
+          "path": ".ref/discovery/products/222/mw/manifest.json",
+          "sha256": "d384c97c3e6e0f413a8a8c68794fcf153946f694fe628a5b8e213c93fcb96bb9"
+        }
+      ]
+    },
+    {
+      "product_id": 224,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        138
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/224/ui/manifest.json",
+          "sha256": "66212baef981e47a7ef1a3cb15b874c79a1611aa68129467e5c88c3d19365925"
+        },
+        {
+          "path": ".ref/discovery/products/224/mw/manifest.json",
+          "sha256": "e2ecf231b8a6155f9332d53314dde174f03efecb433fd19c9c0fa0de3f6990b0"
+        }
+      ]
+    },
+    {
+      "product_id": 226,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/226/ui/manifest.json",
+          "sha256": "6c54334d5bd47312c306f0e471caafd24d7ef2affd45fa2070b83705a3041c20"
+        },
+        {
+          "path": ".ref/discovery/products/226/mw/manifest.json",
+          "sha256": "59ff1b03868280d15ddf4f7d7add57cffe448a5a820a4957025dd1391b1796b7"
+        }
+      ]
+    },
+    {
+      "product_id": 229,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/229/ui/manifest.json",
+          "sha256": "a49c7130a7872f9a3d0b4bd27a961428b29acf0bbaf6b188d5cc0693f17250ef"
+        },
+        {
+          "path": ".ref/discovery/products/229/mw/manifest.json",
+          "sha256": "a3c17b2766fb336518dffcb8929024596ec4fb8276ba43eea15a37e39671d2cf"
+        }
+      ]
+    },
+    {
+      "product_id": 231,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/231/ui/manifest.json",
+          "sha256": "721b7917764deec390df0ac6957f04801b78cb4ead88f6ee3b4f684128e5db84"
+        },
+        {
+          "path": ".ref/discovery/products/231/mw/manifest.json",
+          "sha256": "dcf0679dab346482922ee6c2de584cba89d9dfed9cc129ed80dbf023ce02fcad"
+        }
+      ]
+    },
+    {
+      "product_id": 235,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/235/ui/manifest.json",
+          "sha256": "3c7fe3639f2fc0a36798d3bc3983e978fa0f69f6134fb72b59a9ec0f6e0838b2"
+        },
+        {
+          "path": ".ref/discovery/products/235/mw/manifest.json",
+          "sha256": "e2d2b4a856465ab08006f57f59b82738e41d96d20290163e40e8a9a84029ea75"
+        }
+      ]
+    },
+    {
+      "product_id": 239,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/239/ui/manifest.json",
+          "sha256": "1e82c976edc61e56b23efadd33a10cda919fd5ee80b2ac895963baa698a2c1e5"
+        },
+        {
+          "path": ".ref/discovery/products/239/mw/manifest.json",
+          "sha256": "b8f8f666fe03eb6c509a2070d7a2081779e2083d119cf258c0f8f17c7cabec12"
+        }
+      ]
+    },
+    {
+      "product_id": 241,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/241/ui/manifest.json",
+          "sha256": "bce841c8f63e54fa6ddf18500f4d1b967f35bd9da5dd22ef816d26a00d01f8ee"
+        },
+        {
+          "path": ".ref/discovery/products/241/mw/manifest.json",
+          "sha256": "62066c3366cce3774f9e4088996af3c2003319870cade625d493d88b2207faa9"
+        }
+      ]
+    },
+    {
+      "product_id": 515,
+      "edition_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/515/ui/manifest.json",
+          "sha256": "5fbfcbf17711d3358fd43819b4f4b6137f48ed26e05c7e61ea30042af6dfe51c"
+        },
+        {
+          "path": ".ref/discovery/products/515/mw/manifest.json",
+          "sha256": "193444f702a69579797da7f51558c4646f8825425215bfbfa9257eaa70a70ee9"
+        }
+      ]
+    },
+    {
+      "product_id": 521,
+      "edition_ids": [
+        0,
+        1,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/521/ui/manifest.json",
+          "sha256": "144b042822b1acada1e21db4468e1df2b94f18cf4fed3c5a0d5aa89fdf3f98ad"
+        },
+        {
+          "path": ".ref/discovery/products/521/mw/manifest.json",
+          "sha256": "e19fd1b325a714939944520c03eb32575d368c1e6abde9787c9c70e67e4cbc06"
+        }
+      ]
+    },
+    {
+      "product_id": 529,
+      "edition_ids": [
+        0,
+        1
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/529/ui/manifest.json",
+          "sha256": "60ff01361340365ad4fa7046a3739cdbb1f94d7784efe0ba1b986a982e662d92"
+        },
+        {
+          "path": ".ref/discovery/products/529/mw/manifest.json",
+          "sha256": "59e58a94f60e5f0bc2f2a03fc5bde0e0f14d327fed13199e1462814f60dca800"
+        }
+      ]
+    },
+    {
+      "product_id": 534,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/534/ui/manifest.json",
+          "sha256": "f7f6bf5f5f7309dbe841efecaebd6ef1cabd347e0a2244898005b44d3834ddba"
+        },
+        {
+          "path": ".ref/discovery/products/534/mw/manifest.json",
+          "sha256": "f572da05c6b4f38965879d571c44e947ddeca76d2e0d4dcdbc83538e2586439b"
+        }
+      ]
+    },
+    {
+      "product_id": 542,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/542/ui/manifest.json",
+          "sha256": "8f3fa042da024a1d72707c3ac506b97c0565b820def784da8044346583b448b4"
+        },
+        {
+          "path": ".ref/discovery/products/542/mw/manifest.json",
+          "sha256": "bde63cbdc74168ad5d0c91c87cff5b1d7f7a6a788cf13941030cde5f3462a6ee"
+        }
+      ]
+    },
+    {
+      "product_id": 545,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/545/ui/manifest.json",
+          "sha256": "846f9832d74188cbe910614e4c2d6783dd061a0d479325e8b8ed8927d8430ae8"
+        },
+        {
+          "path": ".ref/discovery/products/545/mw/manifest.json",
+          "sha256": "f1bab29152b2c8b27b9151b077426b8495432a33da28b0a20607a6de174b1137"
+        }
+      ]
+    },
+    {
+      "product_id": 550,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/550/ui/manifest.json",
+          "sha256": "a1a628a68802fde7ed617ad05eb52f3abc12f13cdca865bc358c0554920431a0"
+        },
+        {
+          "path": ".ref/discovery/products/550/mw/manifest.json",
+          "sha256": "cabca8debaa54a03909571a8b95227ba3a26a88c66ec17fe5b4500bbdae28486"
+        }
+      ]
+    },
+    {
+      "product_id": 551,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/551/ui/manifest.json",
+          "sha256": "aac92f1be470bcd528e295c256892eed1997d9add33808470321a3f968fa133d"
+        },
+        {
+          "path": ".ref/discovery/products/551/mw/manifest.json",
+          "sha256": "ac2c75dc92cceff6551a726afde61c0ea26885a723d7b293486ebdbecc1c5075"
+        }
+      ]
+    },
+    {
+      "product_id": 552,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/552/ui/manifest.json",
+          "sha256": "85ed36a9d4d3a5ed425f7d030c276fb74e97915e1012292de4e0746231a89bd6"
+        },
+        {
+          "path": ".ref/discovery/products/552/mw/manifest.json",
+          "sha256": "2c0cf847e80d3c9910f6e88af2fae34ebbff5bb4b75eab6c7ac4d7d94613f3da"
+        }
+      ]
+    },
+    {
+      "product_id": 554,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/554/ui/manifest.json",
+          "sha256": "6e022cec643f1ebf81a93af2685637a3d2b7dd2b942ae4571acedc1402698e55"
+        },
+        {
+          "path": ".ref/discovery/products/554/mw/manifest.json",
+          "sha256": "bc20bcfb36cf83a5931c0d31764393d3a6bc5b522ecd3682d73a4a70df3494a5"
+        }
+      ]
+    },
+    {
+      "product_id": 555,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/555/ui/manifest.json",
+          "sha256": "f9e753d6a9f3982d717f752d7f40c5d73547e1822a8b146ca0dabb9d78d0aa7e"
+        },
+        {
+          "path": ".ref/discovery/products/555/mw/manifest.json",
+          "sha256": "66bed41d981dfbcefb18031fd8f9852021e035bd7d059319e7102b674762ed6d"
+        }
+      ]
+    },
+    {
+      "product_id": 556,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/556/ui/manifest.json",
+          "sha256": "4f0ba59a4f900af9ec25e39acfb08bd1f8f33deeeba661c3a0a08c76cda7ca55"
+        },
+        {
+          "path": ".ref/discovery/products/556/mw/manifest.json",
+          "sha256": "1c53523beb5f4705397daa7ed2e75fb0deda48088f7fa2b3672919f481718bfa"
+        }
+      ]
+    },
+    {
+      "product_id": 563,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/563/ui/manifest.json",
+          "sha256": "7c14266dff306c0e1f70d8fd6924526019e236f15042902291167ae7231f8a1a"
+        },
+        {
+          "path": ".ref/discovery/products/563/mw/manifest.json",
+          "sha256": "3ed797aa9931ef2193751325482d7ad51a17a02a7a5e1af48774d73cda78234b"
+        }
+      ]
+    },
+    {
+      "product_id": 564,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/564/ui/manifest.json",
+          "sha256": "cbd6723142c613ac14d71ca67d030549e19de4a98d30b4387d53f7917640b691"
+        },
+        {
+          "path": ".ref/discovery/products/564/mw/manifest.json",
+          "sha256": "cabfb51066805c9767f4321f3ea0c0ae49c76b46698e6c2366230d0dc54f3d7f"
+        }
+      ]
+    },
+    {
+      "product_id": 565,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/565/ui/manifest.json",
+          "sha256": "fbddbbd65d7851e5e34c9c02caee7b9be1176ce729ed1fd51c764fb2f6d07026"
+        },
+        {
+          "path": ".ref/discovery/products/565/mw/manifest.json",
+          "sha256": "c86669ec8c5490a738a740550afcdaca2f40e0873edc07ab4cd3ee641137def8"
+        }
+      ]
+    },
+    {
+      "product_id": 567,
+      "edition_ids": [
+        0,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/567/ui/manifest.json",
+          "sha256": "183db3baf652ef0c47a7836212d69eaf6833b2957c8a2c35badb03307a1aa234"
+        },
+        {
+          "path": ".ref/discovery/products/567/mw/manifest.json",
+          "sha256": "483cef72cab6f6917f9194e9a91af8898de1d7ac4fa6f05c0186cdafd48ad82d"
+        }
+      ]
+    },
+    {
+      "product_id": 569,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/569/ui/manifest.json",
+          "sha256": "4fcd4ebcae4d29da45963fa4f2326523dce964f744e9a9670b7d23cf5cbce803"
+        },
+        {
+          "path": ".ref/discovery/products/569/mw/manifest.json",
+          "sha256": "30bd098e5c842460fae953f1a78ed1ef1e6ad5471b0e8e2c9d86c2b324bcee45"
+        }
+      ]
+    },
+    {
+      "product_id": 570,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/570/ui/manifest.json",
+          "sha256": "68c8bc64b240868c63ff313b7aae76ae3903ab9ea8d509cfa803ed03d61bd70b"
+        },
+        {
+          "path": ".ref/discovery/products/570/mw/manifest.json",
+          "sha256": "8c0f68c3485fec357d78adb9f27dd100a8b35abdf118db77924a848fc7faaeb2"
+        }
+      ]
+    },
+    {
+      "product_id": 571,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/571/ui/manifest.json",
+          "sha256": "ab3135600161d8118122056b03440ebe0ebf5a2e117ba9fd89310a04748fc614"
+        },
+        {
+          "path": ".ref/discovery/products/571/mw/manifest.json",
+          "sha256": "9ca770b78d366a66ff59c3be990dd9426c98bd612ed84715ae3fa32154d4f242"
+        }
+      ]
+    },
+    {
+      "product_id": 574,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/574/ui/manifest.json",
+          "sha256": "a49b7802b5585003df128c596a58ef9755b0e8d442147245ed0eb0308feb407f"
+        },
+        {
+          "path": ".ref/discovery/products/574/mw/manifest.json",
+          "sha256": "2c657a52d13e256f941bd6bd4c2264a4d0bce9a75394fa48c2c0c74546744571"
+        }
+      ]
+    },
+    {
+      "product_id": 575,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/575/ui/manifest.json",
+          "sha256": "0dd3bb7db12ef28a4841bc5a56cb5991f73e5e9282091f4e902dbafa101d2a12"
+        },
+        {
+          "path": ".ref/discovery/products/575/mw/manifest.json",
+          "sha256": "c1781a97d042781c4c94edcb478a7e48174d0244ff9a0cfcf78a1e9ad2fca642"
+        }
+      ]
+    },
+    {
+      "product_id": 576,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/576/ui/manifest.json",
+          "sha256": "2219de8cf02717d23425e2c849e20dbfe9b98184a58c05868e162925091ff6d9"
+        },
+        {
+          "path": ".ref/discovery/products/576/mw/manifest.json",
+          "sha256": "519fa3292c3ad851393971b5c0fd60de2055f7fc2fb4c0296600b45c8705400d"
+        }
+      ]
+    },
+    {
+      "product_id": 577,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/577/ui/manifest.json",
+          "sha256": "9dbdf35df6d5d44eedc9b2b9ada20b120170ef789a392d0b4d711ff9f03012da"
+        },
+        {
+          "path": ".ref/discovery/products/577/mw/manifest.json",
+          "sha256": "29441df399df4fa2cec405748d7bdb2d3bcee360e96e87bcf7fd5ad5e9b04d52"
+        }
+      ]
+    },
+    {
+      "product_id": 579,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/579/ui/manifest.json",
+          "sha256": "49f6e33250e5dee51c0b123629f33b3cd428c02c0fa8992dc39cfc2004c0c253"
+        },
+        {
+          "path": ".ref/discovery/products/579/mw/manifest.json",
+          "sha256": "d06833b72555571197b286e3f6177e567e40d8b3a13203a3b5f1b7c6b20fccc0"
+        }
+      ]
+    },
+    {
+      "product_id": 580,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/580/ui/manifest.json",
+          "sha256": "c67fe7e2c577f7381e7b40f024701abc2d3e02e8466c5bcbf28fd056a0effbb9"
+        },
+        {
+          "path": ".ref/discovery/products/580/mw/manifest.json",
+          "sha256": "fbadb6fe1e2ab6dcb1a317182f4a5ddb252a348d7d3665038c36ec32dffcbb5f"
+        }
+      ]
+    },
+    {
+      "product_id": 581,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/581/ui/manifest.json",
+          "sha256": "1ee75f01c7362b2687ef8a68dbaf6bb815b42064d9cfdcc1892f245a36ec8ca6"
+        },
+        {
+          "path": ".ref/discovery/products/581/mw/manifest.json",
+          "sha256": "5e55b3a5e9dd87e142c657aee1f588fe9d85364e524ac3824a13317c3b522d9d"
+        }
+      ]
+    },
+    {
+      "product_id": 582,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/582/ui/manifest.json",
+          "sha256": "32f4f2317e8df4c1d2c22982059a77752ab27bb5b21c42943fc0c41e7050ee83"
+        },
+        {
+          "path": ".ref/discovery/products/582/mw/manifest.json",
+          "sha256": "e9a2455db685e3e67e01434424216d7b66382a6a889929b562b7f2aefc7b940f"
+        }
+      ]
+    },
+    {
+      "product_id": 585,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/585/ui/manifest.json",
+          "sha256": "ced450b15f2bee5e9ee4ccccfa38667f34850eea3daf203df354c681a6f6eed8"
+        },
+        {
+          "path": ".ref/discovery/products/585/mw/manifest.json",
+          "sha256": "f200169bc4f4f5c29f0c087d7486735ba5921d23b1eb4cbae34d66b448c875dd"
+        }
+      ]
+    },
+    {
+      "product_id": 586,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/586/ui/manifest.json",
+          "sha256": "9540c2aafdf679ad43684421ca79daf98a140461156bd84415bd063cbf96528f"
+        },
+        {
+          "path": ".ref/discovery/products/586/mw/manifest.json",
+          "sha256": "49dd7e3b402335645fc13eeb2767f0b733caa77cc2184ad5dcaea6ff7e3908b0"
+        }
+      ]
+    },
+    {
+      "product_id": 587,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/587/ui/manifest.json",
+          "sha256": "c4988bd2ddc4ded85d74757bb9ba19734f909f443d9fa9b99b888ae50b7227ef"
+        },
+        {
+          "path": ".ref/discovery/products/587/mw/manifest.json",
+          "sha256": "c18a9c2631ca2b384f776dcd68e8942f5e5ae48c953bfb9047d70015b7143eaf"
+        }
+      ]
+    },
+    {
+      "product_id": 588,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/588/ui/manifest.json",
+          "sha256": "96a131309ec84cd19f3207251da8b0c637579a73872ac10a92650e272d10c374"
+        },
+        {
+          "path": ".ref/discovery/products/588/mw/manifest.json",
+          "sha256": "771c0aafb3ad79229f089a1734e8a5afd261628134fce40c275628f5108b969a"
+        }
+      ]
+    },
+    {
+      "product_id": 589,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/589/ui/manifest.json",
+          "sha256": "124b16b88406688c550b5ae6eff8ce4493b3e2d86bdc2213ebf9003d110f6003"
+        },
+        {
+          "path": ".ref/discovery/products/589/mw/manifest.json",
+          "sha256": "4137b03cb6a4328602f9d6344a5422254ee9e1900d5045a9d32f7af3c2de00fe"
+        }
+      ]
+    },
+    {
+      "product_id": 590,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/590/ui/manifest.json",
+          "sha256": "7cddf9910861040a8449df8d483fdc8dd2388a395cef15f978fa38afa4f441bc"
+        },
+        {
+          "path": ".ref/discovery/products/590/mw/manifest.json",
+          "sha256": "dda973958a63b20d5e5e14ac7e2b01b6a14604baf9574aec229d79f463f0f0cd"
+        }
+      ]
+    },
+    {
+      "product_id": 591,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/591/ui/manifest.json",
+          "sha256": "b0748eb5d41639d92a934a23eede18d5a6dc25d20b5f54356d3f37cc45a6e401"
+        },
+        {
+          "path": ".ref/discovery/products/591/mw/manifest.json",
+          "sha256": "30d18cf33a77deaf79d06891be5d5a3a8d98b6d38b4f5f60e28c1e24c0aa67ba"
+        }
+      ]
+    },
+    {
+      "product_id": 592,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/592/ui/manifest.json",
+          "sha256": "462f0113b8a0e28a1bf7f61f8c25c86346b1481b02d3a445135eaa0bced95641"
+        },
+        {
+          "path": ".ref/discovery/products/592/mw/manifest.json",
+          "sha256": "6007f31b8bf7e93bd2ac0a10190512849b0fdff9ba38be235941500f16c61955"
+        }
+      ]
+    },
+    {
+      "product_id": 593,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/593/ui/manifest.json",
+          "sha256": "dc06fc6e1ae6bff6bd223702cfb2e0db9c39e7804df3ce3368150d37e07203fc"
+        },
+        {
+          "path": ".ref/discovery/products/593/mw/manifest.json",
+          "sha256": "8357b8aeeeb443c3e45a5ab6487bbcaecf5f3d786d1a2ddbee49f4c03a14f01a"
+        }
+      ]
+    },
+    {
+      "product_id": 594,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/594/ui/manifest.json",
+          "sha256": "a140fcec3090496f1b7321914bb122fa893cfb9a2efceeba399de512ad7792b5"
+        },
+        {
+          "path": ".ref/discovery/products/594/mw/manifest.json",
+          "sha256": "b9dd3e4b9bd97faa1b78e3129e1dd305dc3f5882ffeaf10f49905214dd3bff30"
+        }
+      ]
+    },
+    {
+      "product_id": 595,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/595/ui/manifest.json",
+          "sha256": "ea8c0b8a98fed925fe7d1f197c9b0058485df4f04a17b7a5f05fe273978b2469"
+        },
+        {
+          "path": ".ref/discovery/products/595/mw/manifest.json",
+          "sha256": "1aeb2247d1dafe34095627f12307dbdf4bc2e05026eea9b3f7221ad6b2465634"
+        }
+      ]
+    },
+    {
+      "product_id": 597,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/597/ui/manifest.json",
+          "sha256": "ad7d7d4427c6315b18fe0805cef73340dc5b77bbf500ee8f205894774c120899"
+        },
+        {
+          "path": ".ref/discovery/products/597/mw/manifest.json",
+          "sha256": "470060c15e4ec8813571934704c12e5da8d902b0bf72788185e161224a14e03f"
+        }
+      ]
+    },
+    {
+      "product_id": 598,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/598/ui/manifest.json",
+          "sha256": "585e46d7b48ea2105f900a33cd39ccb780f82c59f4feb406e05eff72d097fa85"
+        },
+        {
+          "path": ".ref/discovery/products/598/mw/manifest.json",
+          "sha256": "b5feb0dfa2c22c0c7e3b7585090c2acb9560d64848b4042e04f5983ed17a9900"
+        }
+      ]
+    },
+    {
+      "product_id": 599,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/599/ui/manifest.json",
+          "sha256": "2e14dee036407b1cac4093774de0b94d1754e35df70c76a6e0f2bea76ebad292"
+        },
+        {
+          "path": ".ref/discovery/products/599/mw/manifest.json",
+          "sha256": "4bd4b215717f4530a62db227c43fb0d16ff41e7325d1b42f1e3d53b802dfc751"
+        }
+      ]
+    },
+    {
+      "product_id": 600,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/600/ui/manifest.json",
+          "sha256": "a2be6ee17964a132c61822db0738335a72143c86d7d32ae50394b3201f03ce36"
+        },
+        {
+          "path": ".ref/discovery/products/600/mw/manifest.json",
+          "sha256": "34c56672f35f7afa0a2a10f578c0604a41b39952c1c30c1f115fdb4268ab43f1"
+        }
+      ]
+    },
+    {
+      "product_id": 601,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/601/ui/manifest.json",
+          "sha256": "0d4c04657570234240d85a126afcc4be024cc6fed6645d348bc120e046e0ca07"
+        },
+        {
+          "path": ".ref/discovery/products/601/mw/manifest.json",
+          "sha256": "a2b12c82431833bee2f9ee6b6dfc10184ddb7a9c9116ff71ff436084299e8385"
+        }
+      ]
+    },
+    {
+      "product_id": 602,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/602/ui/manifest.json",
+          "sha256": "8ef8dbc6e2d11172f84ce4d94f4d4aa785118a7491fc8b707d7d20f67cb2ba73"
+        },
+        {
+          "path": ".ref/discovery/products/602/mw/manifest.json",
+          "sha256": "36cbe4fa346f67879f8dc8aad9d9cc2707b5b40e89e1d59126ed576ce5a5d7bb"
+        }
+      ]
+    },
+    {
+      "product_id": 605,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/605/ui/manifest.json",
+          "sha256": "245dd5a420c579343d1421b8208e44ed30e639ef7e8ba802201fd429dd56cf1a"
+        },
+        {
+          "path": ".ref/discovery/products/605/mw/manifest.json",
+          "sha256": "2e3a1f4dfc877352a673425143ecde922092be456eaf5654234d066c4537a67b"
+        }
+      ]
+    },
+    {
+      "product_id": 606,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/606/ui/manifest.json",
+          "sha256": "8cc0e84c2918cce7912ee0711738af378c30c4452120e9d621195dca8f64e78d"
+        },
+        {
+          "path": ".ref/discovery/products/606/mw/manifest.json",
+          "sha256": "8247f66487b5ddfbc132b056091f411b68a1451473ad4b06e8d8b4e94fb73a9f"
+        }
+      ]
+    },
+    {
+      "product_id": 614,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/614/ui/manifest.json",
+          "sha256": "41043e6d56a705ebb1b6fe1cbb86a79d117f4cb2bd9af4e60141f1650d2bb100"
+        },
+        {
+          "path": ".ref/discovery/products/614/mw/manifest.json",
+          "sha256": "c634d4834384c688c63bbacb772b0630927d507113756780317a74f1b8385fa2"
+        }
+      ]
+    },
+    {
+      "product_id": 616,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/616/ui/manifest.json",
+          "sha256": "2d28364c9d53d49427c74f26ab57e16033ff1fb22f167faa757d456bb87d3209"
+        },
+        {
+          "path": ".ref/discovery/products/616/mw/manifest.json",
+          "sha256": "663a355e26c6e06f715c57b2dd864a1ac2e45cf3acfbd2d64139ef51bc0496f5"
+        }
+      ]
+    },
+    {
+      "product_id": 617,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/617/ui/manifest.json",
+          "sha256": "0b9a8331d8c679cbff0b3419d12e330c051dca28a08c997b6632a818404e7c19"
+        },
+        {
+          "path": ".ref/discovery/products/617/mw/manifest.json",
+          "sha256": "cbeb1525bb087b827ef6723c07da7c669ec406b000dec1c48ddfbb04863a0728"
+        }
+      ]
+    },
+    {
+      "product_id": 618,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/618/ui/manifest.json",
+          "sha256": "99d39456cae265d7ed665b6647cbdfc8195985cc0a19a0ab55f7c7516b0bcbe2"
+        },
+        {
+          "path": ".ref/discovery/products/618/mw/manifest.json",
+          "sha256": "88417f45f21b6e49c64d9a30c3086dfe5917785f09b675e92c7aa764793466c5"
+        }
+      ]
+    },
+    {
+      "product_id": 619,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/619/ui/manifest.json",
+          "sha256": "8121dcbbd83f0357c5133cf935539b191ef59c05deee14836fe02f7e72da824b"
+        },
+        {
+          "path": ".ref/discovery/products/619/mw/manifest.json",
+          "sha256": "5e815d490393c2b69d4c182f4a811ea3160f7fcf210a5844a5f6886c8db690c0"
+        }
+      ]
+    },
+    {
+      "product_id": 620,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/620/ui/manifest.json",
+          "sha256": "d7b2e26908cb1d586970190d08063413a63ce7b095ca74402820d85fb1cd1a19"
+        },
+        {
+          "path": ".ref/discovery/products/620/mw/manifest.json",
+          "sha256": "2aae65d289e398df14dbf55631510bb74e1cd016685fb81770c230425d99d59a"
+        }
+      ]
+    },
+    {
+      "product_id": 621,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/621/ui/manifest.json",
+          "sha256": "c11c1ea5e1e662586da569a2f87937d9a171b3993195d7b8575b84827ab6357e"
+        },
+        {
+          "path": ".ref/discovery/products/621/mw/manifest.json",
+          "sha256": "773191443aeb4fd525eab4ca2eeffb6e23fe5b196c530211a29071b63c91b5da"
+        }
+      ]
+    },
+    {
+      "product_id": 622,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/622/ui/manifest.json",
+          "sha256": "11ecec3da9ec9eaaea820578f976345f492f4e530eceaf64294f5a887b0c2f7b"
+        },
+        {
+          "path": ".ref/discovery/products/622/mw/manifest.json",
+          "sha256": "d506ea3bb50eb149265fd45772f16e2172568f538194ab9cf8f282239d6d66da"
+        }
+      ]
+    },
+    {
+      "product_id": 623,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/623/ui/manifest.json",
+          "sha256": "f9df22b5e5db942cc159ea160358af9daad99555d761af7c4d55b1e8f377ebd8"
+        },
+        {
+          "path": ".ref/discovery/products/623/mw/manifest.json",
+          "sha256": "c7cf00126989da55f0afdddab42887b8d116c6865698e73dfc776b1524523858"
+        }
+      ]
+    },
+    {
+      "product_id": 624,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/624/ui/manifest.json",
+          "sha256": "d7f2322a3cad040f6dc1a25e2e3c54f4c9d4f5aa07d4edc70a5f6ce95109d524"
+        },
+        {
+          "path": ".ref/discovery/products/624/mw/manifest.json",
+          "sha256": "325bec9cbce59d2632d9338cfc6375e9b5dcbf644161d71371d2407d3ed3449c"
+        }
+      ]
+    },
+    {
+      "product_id": 630,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/630/ui/manifest.json",
+          "sha256": "629d0d025c164c03912d91079eb2bbb20b6fac5a0b822e3b532f5b7ac488f070"
+        },
+        {
+          "path": ".ref/discovery/products/630/mw/manifest.json",
+          "sha256": "4e6cefe8f5dd70db681a1748678637583933c441a0fc9b86123715c2a7518279"
+        }
+      ]
+    },
+    {
+      "product_id": 631,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/631/ui/manifest.json",
+          "sha256": "34827819359ad40307d7bbaec05df2cf4cc0bc81d0fb631d9df6f53cbb738e36"
+        },
+        {
+          "path": ".ref/discovery/products/631/mw/manifest.json",
+          "sha256": "6c75e0388ceb7ac4e6f67be672511680931aea81961e2b20364705a2495d4472"
+        }
+      ]
+    },
+    {
+      "product_id": 633,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/633/ui/manifest.json",
+          "sha256": "2d819ddc4eca62f380d61b7c395814d1f6803060022fa2e1c737708de5c58df9"
+        },
+        {
+          "path": ".ref/discovery/products/633/mw/manifest.json",
+          "sha256": "f3030457377568e2e1a2671fedb0a1ea2d29fb9a1428fb2e069bccf1209e7757"
+        }
+      ]
+    },
+    {
+      "product_id": 634,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/634/ui/manifest.json",
+          "sha256": "8dff7a63b0dfc6b1312f04ffb1699163f2cef6a57bdfda0a1877e9d367feb4cb"
+        },
+        {
+          "path": ".ref/discovery/products/634/mw/manifest.json",
+          "sha256": "0ebe3a801dcc97ddf375b56b43d793d27bf07a1663282cfe72cf6a54a09d1561"
+        }
+      ]
+    },
+    {
+      "product_id": 642,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/642/ui/manifest.json",
+          "sha256": "afb5d37c4e52a41e4e793dec69caa324d725a2c5d50cfeb1c4c9aa9857bde6e2"
+        },
+        {
+          "path": ".ref/discovery/products/642/mw/manifest.json",
+          "sha256": "7db631d399b3063865f8e7829b4e04605bc0919b4a8020c4416792360faf8ec4"
+        }
+      ]
+    },
+    {
+      "product_id": 647,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/647/ui/manifest.json",
+          "sha256": "edd91a4ab6d57858371297342c0c7a1b016c683f12ef3e3fa7227857144e96fb"
+        },
+        {
+          "path": ".ref/discovery/products/647/mw/manifest.json",
+          "sha256": "a059913c8f5701b9ef51783e676fb281f07c73f6b24a3e1134bf00dceafa6699"
+        }
+      ]
+    },
+    {
+      "product_id": 650,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/650/ui/manifest.json",
+          "sha256": "a31c36d499f0be8c4222b64eb4fb2cc3f61e890b4795becc223843b83ee6745d"
+        },
+        {
+          "path": ".ref/discovery/products/650/mw/manifest.json",
+          "sha256": "17a18b3df179b139e7510680df2ddb8ffe8e864099077b028deb8b9c6fc25b1d"
+        }
+      ]
+    },
+    {
+      "product_id": 651,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/651/ui/manifest.json",
+          "sha256": "f7566b09684f909e9dc0fe660af0cb839405e532ee770012615d030a06c4d30a"
+        },
+        {
+          "path": ".ref/discovery/products/651/mw/manifest.json",
+          "sha256": "2cf5e65a2acd542b14be1e601fefa595a4ffed4943f257641d15379a4d0eaff4"
+        }
+      ]
+    },
+    {
+      "product_id": 652,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/652/ui/manifest.json",
+          "sha256": "d4d66457fc5f937af21ea10314beaa9b03be117a659cc34619eeb0cfa5dcdec3"
+        },
+        {
+          "path": ".ref/discovery/products/652/mw/manifest.json",
+          "sha256": "9d742fe2e74c57098d2a24bdbbd0f6578eade2cbbc5de89e571158004d2c7440"
+        }
+      ]
+    },
+    {
+      "product_id": 653,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/653/ui/manifest.json",
+          "sha256": "1a324eca18e8c64d28c3b110a76b2382fcf5ad60e64f78af9f6c9d77237e2101"
+        },
+        {
+          "path": ".ref/discovery/products/653/mw/manifest.json",
+          "sha256": "689e785284d82dd6193ee5645aa3376bb00d9caf971338ac7b6ef3d3ca87b3d1"
+        }
+      ]
+    },
+    {
+      "product_id": 654,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/654/ui/manifest.json",
+          "sha256": "94d411ed6f7147efbcb0567263478cdf4ce98f7eb6f4bbf318ea843cc7d0b59d"
+        },
+        {
+          "path": ".ref/discovery/products/654/mw/manifest.json",
+          "sha256": "a4495d3036ed69f8cf220c685a0d6981db67f58bc463d3d8350783b2ae25afc4"
+        }
+      ]
+    },
+    {
+      "product_id": 655,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/655/ui/manifest.json",
+          "sha256": "b182eb7888447b97938c34683ca94ea97c7d681ba0a9232df4966a5da7ad7747"
+        },
+        {
+          "path": ".ref/discovery/products/655/mw/manifest.json",
+          "sha256": "648c887d44c85f8f6e52f36263ef2e93c8260155d922a81522d214965e40d78e"
+        }
+      ]
+    },
+    {
+      "product_id": 658,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/658/ui/manifest.json",
+          "sha256": "7b70110f4713f5f22a96f87e8b2a038c90ebd712ec6c1f351de7f9539405662b"
+        },
+        {
+          "path": ".ref/discovery/products/658/mw/manifest.json",
+          "sha256": "39a66a0dd7414321762affb1caa609fe6f5e12aca606208b3756d066242b1888"
+        }
+      ]
+    },
+    {
+      "product_id": 659,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/659/ui/manifest.json",
+          "sha256": "9885623b2b376cfa356153e46c10b6fb33dc61aff31d1c49d220ed628599dc24"
+        },
+        {
+          "path": ".ref/discovery/products/659/mw/manifest.json",
+          "sha256": "aab717f63a0308136b7e8e42c3942add4d497246601670efb0e8c98679cb58b3"
+        }
+      ]
+    },
+    {
+      "product_id": 660,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/660/ui/manifest.json",
+          "sha256": "026d6c99c574def09269661e9c136a6817efb1bd4e4a153de6c1aaad0ebb5aa5"
+        },
+        {
+          "path": ".ref/discovery/products/660/mw/manifest.json",
+          "sha256": "47cfd948a9eb841ff8d9f7d8b84b4154936be28eff08259a9d4de5be3e6e6d8a"
+        }
+      ]
+    },
+    {
+      "product_id": 661,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/661/ui/manifest.json",
+          "sha256": "b89c36a7aebaa6b422bb855dc9ad6488ca74191898332e0281e55ce00ad243d6"
+        },
+        {
+          "path": ".ref/discovery/products/661/mw/manifest.json",
+          "sha256": "119b30bf5bafd1f32df1343241964580ed7cff7a868eabe8d8773f4dff228211"
+        }
+      ]
+    },
+    {
+      "product_id": 664,
+      "edition_ids": [
+        0,
+        128,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/664/ui/manifest.json",
+          "sha256": "2372565d214aecd9210f39436a1dce0d30a8ed18bc1ac5ad0b225affd8d8add0"
+        },
+        {
+          "path": ".ref/discovery/products/664/mw/manifest.json",
+          "sha256": "1cd25d5263c9c84e3beb0347dcbafd627c14b78a18ea9ff2276291b0901bec46"
+        }
+      ]
+    },
+    {
+      "product_id": 669,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/669/ui/manifest.json",
+          "sha256": "f22228e38befaea097daa228a3b01c87ecc506293e40e77e6b3aa857b4ab1ef3"
+        },
+        {
+          "path": ".ref/discovery/products/669/mw/manifest.json",
+          "sha256": "fdac0d0db545557920888aad03a4c3dddc3b71c8c52c7da0e4f82399a243ae62"
+        }
+      ]
+    },
+    {
+      "product_id": 670,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/670/ui/manifest.json",
+          "sha256": "51cf01b244c847db170874d9afc35921d357bee284d3e132ce2379e6ab537b60"
+        },
+        {
+          "path": ".ref/discovery/products/670/mw/manifest.json",
+          "sha256": "a5f2e5a8fea170dc8db522bd652658dd1de1fa9f73b14c6dd36929f1c3f08b71"
+        }
+      ]
+    },
+    {
+      "product_id": 671,
+      "edition_ids": [
+        0,
+        129,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/671/ui/manifest.json",
+          "sha256": "da03b9390e2a4309382174df7be887e5962239899094e1ec225aad936aa80aa8"
+        },
+        {
+          "path": ".ref/discovery/products/671/mw/manifest.json",
+          "sha256": "704efb810d8a619225db047cb1b695a04b7e0aae2bc3d50facdba2f750e13134"
+        }
+      ]
+    },
+    {
+      "product_id": 672,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/672/ui/manifest.json",
+          "sha256": "745345896a9cadef02ebc78bfbdbe173a36628d1f7a0d68c24fd83ee60f69509"
+        },
+        {
+          "path": ".ref/discovery/products/672/mw/manifest.json",
+          "sha256": "c7a0c209181a73e8c57a474189d3b0a1daeab2e357666dd4c201ed3a6bb752c0"
+        }
+      ]
+    },
+    {
+      "product_id": 673,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/673/ui/manifest.json",
+          "sha256": "5c011e37c5fbce6ecddd5549762a3be7c463a528e90d4ae0671fe64e1be41c77"
+        },
+        {
+          "path": ".ref/discovery/products/673/mw/manifest.json",
+          "sha256": "4803dc10d72a745b67fd4f54cc19d6a3b8696b74a1c2a3e71707c4332883f1e2"
+        }
+      ]
+    },
+    {
+      "product_id": 674,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/674/ui/manifest.json",
+          "sha256": "445c87afb428c9946dcb4cffdafccd3599d39e828b1352449ad28a58355a2fb7"
+        },
+        {
+          "path": ".ref/discovery/products/674/mw/manifest.json",
+          "sha256": "af36dc7fad8b2d99f31e169f985b5ad1382763de7831cd31aecf8ce3df19f66e"
+        }
+      ]
+    },
+    {
+      "product_id": 675,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/675/ui/manifest.json",
+          "sha256": "3f0403d3a5ed164469ed28396c0746d6571c191418837f8896d32da05bc8816d"
+        },
+        {
+          "path": ".ref/discovery/products/675/mw/manifest.json",
+          "sha256": "c6aa504ad468812e7019d5d004bc248a3bc6550a8ef55341efd28cadef574686"
+        }
+      ]
+    },
+    {
+      "product_id": 677,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/677/ui/manifest.json",
+          "sha256": "964836d13a2b1637eaaa0488bd1ab7f82e01e76e095801fabd0df0a4dec18e55"
+        },
+        {
+          "path": ".ref/discovery/products/677/mw/manifest.json",
+          "sha256": "6fabc962da61e68559985cc192b95695cb41e9dd4e05cf7c0137ad034181d148"
+        }
+      ]
+    },
+    {
+      "product_id": 678,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/678/ui/manifest.json",
+          "sha256": "59769506161a96051e47747bf3d0086523955eac35202ab0b6975b4717897e7e"
+        },
+        {
+          "path": ".ref/discovery/products/678/mw/manifest.json",
+          "sha256": "be0db48d22ce0355809c0bb33b2dcdf6a29de3502024cf3e412b2a5d01f09865"
+        }
+      ]
+    },
+    {
+      "product_id": 679,
+      "edition_ids": [
+        0,
+        128,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/679/ui/manifest.json",
+          "sha256": "0bf09b0ee878cbc808042e0faf0773b0f865063eafa8f25dbe95eeccbae7616d"
+        },
+        {
+          "path": ".ref/discovery/products/679/mw/manifest.json",
+          "sha256": "e63335d0f2e73d92977b86d526c7e9ff1785c9d6fae2fff17d69ac0dc9722044"
+        }
+      ]
+    },
+    {
+      "product_id": 688,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/688/ui/manifest.json",
+          "sha256": "dbcb5b8a3691ca7dc17477cc8cf749cf7c8d11f8945e6fe5e377bb88de6158ca"
+        },
+        {
+          "path": ".ref/discovery/products/688/mw/manifest.json",
+          "sha256": "87d4fa92a5fc8adedc26c8fbec842adb746e5030f1de427a9ebb6f6f207e728f"
+        }
+      ]
+    },
+    {
+      "product_id": 689,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/689/ui/manifest.json",
+          "sha256": "4c2e123b928e67a3556383246509e5fc36d611655f833f9f29627de48a8a54a3"
+        },
+        {
+          "path": ".ref/discovery/products/689/mw/manifest.json",
+          "sha256": "80a239c902b982969aa421d7ddc28978e13ef0165f1c3a5b895fa392cfa018f4"
+        }
+      ]
+    },
+    {
+      "product_id": 691,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/691/ui/manifest.json",
+          "sha256": "287b049269d75c88a712ab6f8395b8136919398272aa02bf3fb594b4dbc83a6b"
+        },
+        {
+          "path": ".ref/discovery/products/691/mw/manifest.json",
+          "sha256": "d27b396a8d8ecf982e87ccbd53d5a5983fbdcbdf1268e0747f75984946974a4e"
+        }
+      ]
+    },
+    {
+      "product_id": 694,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/694/ui/manifest.json",
+          "sha256": "f4dd6e39eb8c96c17fd42fe215c70d7893132a82cab9790703a3ab1307a3c052"
+        },
+        {
+          "path": ".ref/discovery/products/694/mw/manifest.json",
+          "sha256": "6ce8aa4e335c5a923bafef5384c63e8ee1e66e22253ab1a01485f53ba3af010d"
+        }
+      ]
+    },
+    {
+      "product_id": 695,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/695/ui/manifest.json",
+          "sha256": "50c071113619cb62b2ba1aacb7dd3a4873b0d2a114a79eb1a0fa331966eef552"
+        },
+        {
+          "path": ".ref/discovery/products/695/mw/manifest.json",
+          "sha256": "7ead9d14e651def7406f97275c468d8f52d6a2e2c281eff1aa2bfae73b80a5cd"
+        }
+      ]
+    },
+    {
+      "product_id": 696,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/696/ui/manifest.json",
+          "sha256": "7a115e3aa38b3c3a017cbb60b40fc5bff0efc499dce7698d2d3b2bd313ee7c7c"
+        },
+        {
+          "path": ".ref/discovery/products/696/mw/manifest.json",
+          "sha256": "73f277c8a944c97f359535259d5c84d64e63e0d160afd9a3563d84ff02f39e29"
+        }
+      ]
+    },
+    {
+      "product_id": 697,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/697/ui/manifest.json",
+          "sha256": "3b0d52f6c4d612bcb3027ecb21f66fea2dc28d4c4262a7978dc8e4966409e1f2"
+        },
+        {
+          "path": ".ref/discovery/products/697/mw/manifest.json",
+          "sha256": "a7e10a42074298141c350930bfdef1c9e450c3b1ecd457410cc65ba49cdb2ff0"
+        }
+      ]
+    },
+    {
+      "product_id": 708,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/708/ui/manifest.json",
+          "sha256": "634e26f67459119c4bef57e16b27521a5cddee896687d8b2630b9cce8b689f7b"
+        },
+        {
+          "path": ".ref/discovery/products/708/mw/manifest.json",
+          "sha256": "4c988217266dc33b19cdd76ad49ddde34107e246c65fe6f94b2647f4b2c5e710"
+        }
+      ]
+    },
+    {
+      "product_id": 709,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/709/ui/manifest.json",
+          "sha256": "b77be1e5005b9b996094c5721cdf9eeae8a7854e1849d629e5e8e51af4a74229"
+        },
+        {
+          "path": ".ref/discovery/products/709/mw/manifest.json",
+          "sha256": "e83f15a89b5219d8e435d60abbf681156fb18948ff348baf5290bcfe502957e5"
+        }
+      ]
+    },
+    {
+      "product_id": 710,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/710/ui/manifest.json",
+          "sha256": "cb542cb0c494c40778558519d89e333a163236f69e3b89b468e1194668dbb6bb"
+        },
+        {
+          "path": ".ref/discovery/products/710/mw/manifest.json",
+          "sha256": "0a847bb91abf4051e6237fc5a74c75d354436c15ad976d9eb33656d3a886adfb"
+        }
+      ]
+    },
+    {
+      "product_id": 711,
+      "edition_ids": [
+        0,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/711/ui/manifest.json",
+          "sha256": "5836dbf26733ed1981c95d224ec9fadb258bd5ab671d980fa775b64873559af6"
+        },
+        {
+          "path": ".ref/discovery/products/711/mw/manifest.json",
+          "sha256": "9e5e943004b9caedc99603e758e02e5344ebc61ddc3f659ca01ec73ea6ecbb0d"
+        }
+      ]
+    },
+    {
+      "product_id": 716,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/716/ui/manifest.json",
+          "sha256": "843013b9d3302ed73d904196dc8e126f021b2366ad9dbbfc75a7108ceb4b3da4"
+        },
+        {
+          "path": ".ref/discovery/products/716/mw/manifest.json",
+          "sha256": "55a7570bd287b97c68be72335b8bc6b67924ca1cd2484697197ba602c229d4f6"
+        }
+      ]
+    },
+    {
+      "product_id": 717,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/717/ui/manifest.json",
+          "sha256": "7c20d14978cc4ba32499b59fa788cb2450b3094ec5a85498e1beae15938ff89c"
+        },
+        {
+          "path": ".ref/discovery/products/717/mw/manifest.json",
+          "sha256": "04ce7c9bb16553dea1d321c5bce8976f260aeec03d351c1cf46537108d01cc0b"
+        }
+      ]
+    },
+    {
+      "product_id": 719,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/719/ui/manifest.json",
+          "sha256": "62ba6bc0f854a9611a7d4c46fbafd14c2e1c9a78e8a849105c457cfccfbe4265"
+        },
+        {
+          "path": ".ref/discovery/products/719/mw/manifest.json",
+          "sha256": "104d757b7ef6d9cec3cfb8f75129ff25b062f27e89ec57c72bfe618ef3875280"
+        }
+      ]
+    },
+    {
+      "product_id": 720,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/720/ui/manifest.json",
+          "sha256": "90473a919dc43c6516fee5151e7ba9ccc70a50a07c002d55c506ef31b0506d1d"
+        },
+        {
+          "path": ".ref/discovery/products/720/mw/manifest.json",
+          "sha256": "8d2dc350036a18f0733e868ff3d1f99f1b967d5c649b50e8d019905987fe6154"
+        }
+      ]
+    },
+    {
+      "product_id": 721,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/721/ui/manifest.json",
+          "sha256": "1c3957509c038d70238a29a8fa353ee73a3a16601aff9f1c660b481e1d997e49"
+        },
+        {
+          "path": ".ref/discovery/products/721/mw/manifest.json",
+          "sha256": "91509adf8d2cbfd00dc53cfb6c6c17a9afc1e3d86111697151ef0a1a2b3040ae"
+        }
+      ]
+    },
+    {
+      "product_id": 724,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/724/ui/manifest.json",
+          "sha256": "fe9cd928afb5b32251e2f9e2a7821b69f89b6effcc5c6c0e3e7c7beedf5b31f4"
+        },
+        {
+          "path": ".ref/discovery/products/724/mw/manifest.json",
+          "sha256": "2ad630f8880462a5c0ed3331787d293e0b68294051816e048ac20a010a0ba465"
+        }
+      ]
+    },
+    {
+      "product_id": 727,
+      "edition_ids": [
+        0,
+        129,
+        130,
+        131,
+        132,
+        133
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/727/ui/manifest.json",
+          "sha256": "58537ab262bc1bb3c8825894d3c8edb21eb15447a80ffe9c3cb0c8a02a5fe942"
+        },
+        {
+          "path": ".ref/discovery/products/727/mw/manifest.json",
+          "sha256": "4b6e8d112a1a43581893803a5cbb6bd4c82e7a9e33877506246067753a2593ec"
+        }
+      ]
+    },
+    {
+      "product_id": 728,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/728/ui/manifest.json",
+          "sha256": "a91c6faa99f61c2b6a7c97dd372057b4c75a79380c3c9ceeb4c70e991702efa1"
+        },
+        {
+          "path": ".ref/discovery/products/728/mw/manifest.json",
+          "sha256": "3d5e53779c6a7d07ba236c2cfa0f5f357ca07ed02a25bb75e6b70d3a73e934bf"
+        }
+      ]
+    },
+    {
+      "product_id": 736,
+      "edition_ids": [
+        0,
+        129,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/736/ui/manifest.json",
+          "sha256": "022a4d0990d9f433cc828f07047a38618fc1388912a16975e87d1d0e5305d9e0"
+        },
+        {
+          "path": ".ref/discovery/products/736/mw/manifest.json",
+          "sha256": "7fcd1ab98d60073c1d2717b7582ac8cc88449f27ecb9684acb786c400d7b5205"
+        }
+      ]
+    },
+    {
+      "product_id": 737,
+      "edition_ids": [
+        0,
+        129,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/737/ui/manifest.json",
+          "sha256": "86e897860a12fd3e349b76d8d6daafc421ab53604eec6c1669c506c018ee575d"
+        },
+        {
+          "path": ".ref/discovery/products/737/mw/manifest.json",
+          "sha256": "a6d9402a9bf16af957393df836e1c1fde2766b896bb4b178fa800a242bd88d1e"
+        }
+      ]
+    },
+    {
+      "product_id": 739,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/739/ui/manifest.json",
+          "sha256": "f0824f1e93c0f849c36cf41b20a9881695d4d1f6ed680873b146e28cdfa0c46e"
+        },
+        {
+          "path": ".ref/discovery/products/739/mw/manifest.json",
+          "sha256": "40c8a10aadbcba8daed062c93e8c2db5ab4285a5798da4317fe2016be9c3d755"
+        }
+      ]
+    },
+    {
+      "product_id": 740,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/740/ui/manifest.json",
+          "sha256": "0ff5e2a127ec85168a6f8d8ca98361178a15b0a7c04556ef90ad8c513d3e0a80"
+        },
+        {
+          "path": ".ref/discovery/products/740/mw/manifest.json",
+          "sha256": "f9001ed8ba49cb76873d6441589e499be6895cddb24c46fdf044fe07e762377e"
+        }
+      ]
+    },
+    {
+      "product_id": 741,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/741/ui/manifest.json",
+          "sha256": "e0f0016b1cd4e46bf3dfa0fa68c830713eba5d85e2a5afa179bad53814d4f123"
+        },
+        {
+          "path": ".ref/discovery/products/741/mw/manifest.json",
+          "sha256": "6f0517ea79da9644985a4280fcf02feaebacfd529664fc64a35fd5da486e7e9b"
+        }
+      ]
+    },
+    {
+      "product_id": 742,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/742/ui/manifest.json",
+          "sha256": "8f175ba5a0d454dfcea7c2f1f5d48a35f708eca79dc8e991ebb2ced881a91dea"
+        },
+        {
+          "path": ".ref/discovery/products/742/mw/manifest.json",
+          "sha256": "debd1b9c0eeac2a72b58b92afdab418479470452c3d1d64073b28e8da43a8c5c"
+        }
+      ]
+    },
+    {
+      "product_id": 746,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/746/ui/manifest.json",
+          "sha256": "51835713681f99ee11c17723fea439b114333011e903a4110ef58b2a4b4d5deb"
+        },
+        {
+          "path": ".ref/discovery/products/746/mw/manifest.json",
+          "sha256": "9b7dd03337de954232d0f86c78cd66a1486bcf99aa5ea2e0999aa99a1a17620c"
+        }
+      ]
+    },
+    {
+      "product_id": 747,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/747/ui/manifest.json",
+          "sha256": "451d5687e0ef4bb7c5781ca225502774dd00e71dbf4a8eaa7db97ea850913f28"
+        },
+        {
+          "path": ".ref/discovery/products/747/mw/manifest.json",
+          "sha256": "a6de36f97a1f7de4966ee4e2c8c2e63f848bac6efecd72b962611bc8aa895be6"
+        }
+      ]
+    },
+    {
+      "product_id": 752,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/752/ui/manifest.json",
+          "sha256": "2795c7a7a7bb4b799c9b4765a0222e929e25636c23965d2018741310fe4a7747"
+        },
+        {
+          "path": ".ref/discovery/products/752/mw/manifest.json",
+          "sha256": "236fc73764d75478d4032d5b04112b3bc7337b4847d1757340615d11aa9ababa"
+        }
+      ]
+    },
+    {
+      "product_id": 769,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/769/ui/manifest.json",
+          "sha256": "ba44b699c095d55706550e202025257a3b8a33e8a452bbf573635c4ed329f935"
+        },
+        {
+          "path": ".ref/discovery/products/769/mw/manifest.json",
+          "sha256": "fa132684f34aa42b57e4034e6fe19723fb7c16706d61bfb6749da3ddf1e7e152"
+        }
+      ]
+    },
+    {
+      "product_id": 777,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/777/ui/manifest.json",
+          "sha256": "50eb5eda8150f1b4c7754a88320699375df5ef404f176017788c7c993872422b"
+        },
+        {
+          "path": ".ref/discovery/products/777/mw/manifest.json",
+          "sha256": "c7cfd00626eda24205f4bdc46756db2e8335abf49181980bed5fc9a630148a61"
+        }
+      ]
+    },
+    {
+      "product_id": 778,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/778/ui/manifest.json",
+          "sha256": "39382b66b6b3ed7c464b858bb3ddc4e3cf1fbfc02b3dc4c71a332605697dd220"
+        },
+        {
+          "path": ".ref/discovery/products/778/mw/manifest.json",
+          "sha256": "89f5f5e97c6e3f47fccbbb1e1dc48bfda5177ebc0b7a8b75ad43fb941ffa3e6f"
+        }
+      ]
+    },
+    {
+      "product_id": 780,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/780/ui/manifest.json",
+          "sha256": "4a0be1aaf7a3410d076a4e1e1b9432bb01f299e2cc30cb9ead0fcb234637b81c"
+        },
+        {
+          "path": ".ref/discovery/products/780/mw/manifest.json",
+          "sha256": "e2a0287378fe3108d9bb5db0d761545afe0b0d377532664b906c8a566de1004a"
+        }
+      ]
+    },
+    {
+      "product_id": 781,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/781/ui/manifest.json",
+          "sha256": "88c17d2e03fdc8dfc9be1a65c87a8fdfdc512547970502adfde8626a4ccc7c16"
+        },
+        {
+          "path": ".ref/discovery/products/781/mw/manifest.json",
+          "sha256": "595148ff0f01b62e8ac3f2f975222f7503974c112021c46a73caa82e701e0dc6"
+        }
+      ]
+    },
+    {
+      "product_id": 782,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/782/ui/manifest.json",
+          "sha256": "ad3cee6c575079c3f59a7f93f967468aaa4cc96bc958ec58b375676b3077df3d"
+        },
+        {
+          "path": ".ref/discovery/products/782/mw/manifest.json",
+          "sha256": "03abf6bb8ee4c3e07656ff9737b4785579891921f8b2ecb1dcf7206a82a38bb3"
+        }
+      ]
+    },
+    {
+      "product_id": 783,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/783/ui/manifest.json",
+          "sha256": "c5897d7d37a09cee23a39472ccc5dab694ff809dfb79787968e5970192a03da2"
+        },
+        {
+          "path": ".ref/discovery/products/783/mw/manifest.json",
+          "sha256": "73af396623305f0f319c9ad80bfebc0e9d95bae7fa63404f7f062c31873d062c"
+        }
+      ]
+    },
+    {
+      "product_id": 784,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/784/ui/manifest.json",
+          "sha256": "fde5190cc0aeef94a8582147b5dbbbc6742357a736d664c525b5542f523de562"
+        },
+        {
+          "path": ".ref/discovery/products/784/mw/manifest.json",
+          "sha256": "359b75f605066b8ba6140f3a3dadd1285a462a6606aae41f1ec3fa0704075f8a"
+        }
+      ]
+    },
+    {
+      "product_id": 790,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/790/ui/manifest.json",
+          "sha256": "aa80aa3614f3e1303d387a7a0090f141926ac7d56caacefb01f3a003452feed2"
+        },
+        {
+          "path": ".ref/discovery/products/790/mw/manifest.json",
+          "sha256": "26c044eb80435bb8f36250ab8d3cde5deb73e636c1a5b894ab55ed9b99b7862c"
+        }
+      ]
+    },
+    {
+      "product_id": 791,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/791/ui/manifest.json",
+          "sha256": "6a2c8c21d4b8ff8c8ae34b6a0e9cd3150da89eab735b73d0190718d0842d3e22"
+        },
+        {
+          "path": ".ref/discovery/products/791/mw/manifest.json",
+          "sha256": "9abfc7f800f1e119cbe2ba92ed37aee7c928d2bf11ba60e1544a72399e1cd092"
+        }
+      ]
+    },
+    {
+      "product_id": 1303,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1303/ui/manifest.json",
+          "sha256": "7e13d2c53dd388e8fe175480e33e9b321777de7fee6187443c472b0d649fcccf"
+        },
+        {
+          "path": ".ref/discovery/products/1303/mw/manifest.json",
+          "sha256": "184cdee1b0ec719ab042de3877df688af40d67e25c05257c95d372d6021afe09"
+        }
+      ]
+    },
+    {
+      "product_id": 1304,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1304/ui/manifest.json",
+          "sha256": "b7363c5f1f9989be46f8ea2c5caad623af628fd004800cfba6900cc3930e3a8e"
+        },
+        {
+          "path": ".ref/discovery/products/1304/mw/manifest.json",
+          "sha256": "83372df166875d889e812171f7697fbd9ebc9bac4156618f3cb6f72e2ea78da3"
+        }
+      ]
+    },
+    {
+      "product_id": 1306,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1306/ui/manifest.json",
+          "sha256": "4e9877dcfb9237cadea154dd8998821bbe6b684dcd7c5326447d8ebcb174dd20"
+        },
+        {
+          "path": ".ref/discovery/products/1306/mw/manifest.json",
+          "sha256": "8b4bd67e176dc5159405a16256741c6c3c7473a5c93f50dd38349a5673ac9c2e"
+        }
+      ]
+    },
+    {
+      "product_id": 1308,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1308/ui/manifest.json",
+          "sha256": "b861457a07dc9bda43c4efc124269b1e27ced5b3a528058a3b713bee497ab2f8"
+        },
+        {
+          "path": ".ref/discovery/products/1308/mw/manifest.json",
+          "sha256": "9e140f1d95b3169fbe04ffb4d61a581c74d9b0f8e38d6017c1b220f3ffc6c6b6"
+        }
+      ]
+    },
+    {
+      "product_id": 1310,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1310/ui/manifest.json",
+          "sha256": "5c35497e8fe80514031fcc42673ca72098b67a05ded4a609d57c20cb3572f168"
+        },
+        {
+          "path": ".ref/discovery/products/1310/mw/manifest.json",
+          "sha256": "e39ce0fd638e35b0ee38a4dd0d4ca56ddaa7fdd35e9dfc15e0eae79b272de2ea"
+        }
+      ]
+    },
+    {
+      "product_id": 1312,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1312/ui/manifest.json",
+          "sha256": "f8867ae0e1ee1306d9fcbe65741ee6c98cefdb6b0f2a53bd303fab3cb8c92aed"
+        },
+        {
+          "path": ".ref/discovery/products/1312/mw/manifest.json",
+          "sha256": "cd64d59cb05bac365a29aabb0a8def32646d1a3302e8d16da8eaaa71c5dc7f1f"
+        }
+      ]
+    },
+    {
+      "product_id": 1313,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1313/ui/manifest.json",
+          "sha256": "5a8867674be9f8b06f70ae9c51d8657203425ac37ecd15b42f376143464fa35c"
+        },
+        {
+          "path": ".ref/discovery/products/1313/mw/manifest.json",
+          "sha256": "6fbb9b3ea4915ebe4dcf63774a02a8cd303aa9cacc5db48115d8e7c5cd281a71"
+        }
+      ]
+    },
+    {
+      "product_id": 1318,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1318/ui/manifest.json",
+          "sha256": "d27f106863de4b21ed14b6e0d3ea069f8c1c466bf515e2dda6cefb6d58857c38"
+        },
+        {
+          "path": ".ref/discovery/products/1318/mw/manifest.json",
+          "sha256": "0795f7f8b6016e6baef0403a3057d8b1ed44081aec02e6c580d519620fd3d8fc"
+        }
+      ]
+    },
+    {
+      "product_id": 1319,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1319/ui/manifest.json",
+          "sha256": "999441544d01a63546da725f6dea0e650a54aab04c0b259829eca9672c3c2b7c"
+        },
+        {
+          "path": ".ref/discovery/products/1319/mw/manifest.json",
+          "sha256": "582a92ef21ce4d7783e21b336df6cf66a3fca9d79c168555588b33df8a49af20"
+        }
+      ]
+    },
+    {
+      "product_id": 1320,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1320/ui/manifest.json",
+          "sha256": "0d71c112bff783b7b428b3d26222f708eb8306f4215e30c5e69174291e240979"
+        },
+        {
+          "path": ".ref/discovery/products/1320/mw/manifest.json",
+          "sha256": "52bae2b69fca0105575f214de0339a121fa1666562c5147c7b1e1ca0fd7811aa"
+        }
+      ]
+    },
+    {
+      "product_id": 1321,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1321/ui/manifest.json",
+          "sha256": "6116a0a586839e2c65dbc24459da4a5f7c578e3ec247ca1481a7da5b1364c43c"
+        },
+        {
+          "path": ".ref/discovery/products/1321/mw/manifest.json",
+          "sha256": "b91c99e10fe0fa470fca0156f71f5ae2351af417bd3fa7d463186520de5116a1"
+        }
+      ]
+    },
+    {
+      "product_id": 1325,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1325/ui/manifest.json",
+          "sha256": "bf627234210da8ac3261e633e3506a7e4ac47345233412a794af375c8c440532"
+        },
+        {
+          "path": ".ref/discovery/products/1325/mw/manifest.json",
+          "sha256": "02e279881cdc9af14d180f277d7706109efbaa6bc0cbf22a59b4888a49dc705b"
+        }
+      ]
+    },
+    {
+      "product_id": 1328,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1328/ui/manifest.json",
+          "sha256": "bbe687a73cfb146b0dfea358eabe38010146774e743a04323e1df26ebfad5c02"
+        },
+        {
+          "path": ".ref/discovery/products/1328/mw/manifest.json",
+          "sha256": "0797e57845f605e14e19a2783888993d022dd650ca906c74b94e1473de1db3cf"
+        }
+      ]
+    },
+    {
+      "product_id": 1330,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1330/ui/manifest.json",
+          "sha256": "f155e9825524d970bb114cc28f22e7835e2251ee0490d32f849ed136ca19b9b9"
+        },
+        {
+          "path": ".ref/discovery/products/1330/mw/manifest.json",
+          "sha256": "1fba03bc1312c63583af567cf60fd8432e287e91d202ca2ae48b410588d1df49"
+        }
+      ]
+    },
+    {
+      "product_id": 1331,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1331/ui/manifest.json",
+          "sha256": "f4a4d2dc13b4aa99d9127da1e294098c849471123e94805435ba73cada5cf846"
+        },
+        {
+          "path": ".ref/discovery/products/1331/mw/manifest.json",
+          "sha256": "ec3c15dc8a406b829a88137bc19c599d0655ad68004015601f67ac8aa056da44"
+        }
+      ]
+    },
+    {
+      "product_id": 1332,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1332/ui/manifest.json",
+          "sha256": "b6a762306c190a9627146cbf96447bb0c8e6e92597b408b09ca66307923c6ba1"
+        },
+        {
+          "path": ".ref/discovery/products/1332/mw/manifest.json",
+          "sha256": "594c0e069fb1858cd94519ca65ec36c8e9f13349be6d624eb145450870408ee2"
+        }
+      ]
+    },
+    {
+      "product_id": 1335,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1335/ui/manifest.json",
+          "sha256": "532f4a81306dfef5f63bdd11bb0d3c182d7dd797958d2ad2a6ffc4521de9b0ff"
+        },
+        {
+          "path": ".ref/discovery/products/1335/mw/manifest.json",
+          "sha256": "a0530ceef12987c3ace0c988d07303541925d8b2151f7934c73c8cb9efc21cfb"
+        }
+      ]
+    },
+    {
+      "product_id": 1337,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1337/ui/manifest.json",
+          "sha256": "43e1b46ab3c9d86019b2c789a4564ddab6e04074306ade92dcc3bddbca81316f"
+        },
+        {
+          "path": ".ref/discovery/products/1337/mw/manifest.json",
+          "sha256": "710874ad7b98662ac93ec5d28928c406f081631d733f69c8b9cdfc4f01718912"
+        }
+      ]
+    },
+    {
+      "product_id": 1339,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1339/ui/manifest.json",
+          "sha256": "b3f53fa2f03565d7620075c3b7997844a288c434bc6fc9077f0a6b8c078eb73d"
+        },
+        {
+          "path": ".ref/discovery/products/1339/mw/manifest.json",
+          "sha256": "8177439fefa8aeaf1217f938f62d18cb3b7e504db9531a1d0928be4cad23b319"
+        }
+      ]
+    },
+    {
+      "product_id": 1342,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1342/ui/manifest.json",
+          "sha256": "3456f59046ec3409ec74dc3ac572c35ecfdde85668b1e93472b4374e6dcc7d73"
+        },
+        {
+          "path": ".ref/discovery/products/1342/mw/manifest.json",
+          "sha256": "61c858af41a4267d0249c9c8153ba0de5bf972699f1e08bdb16582e826b51f43"
+        }
+      ]
+    },
+    {
+      "product_id": 1346,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1346/ui/manifest.json",
+          "sha256": "b888966e921e530e8e6b1ea690d8fe3ed7fdac12a8514e1c45eb2501739aa58e"
+        },
+        {
+          "path": ".ref/discovery/products/1346/mw/manifest.json",
+          "sha256": "266a5b3bbea31218bfd1691d4fbda8ec3e25461eb1e9ca04c41f8658f7359e90"
+        }
+      ]
+    },
+    {
+      "product_id": 1347,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1347/ui/manifest.json",
+          "sha256": "fc55340c6b1aaf4e659c8546e99eae4b85a2edb90dde62c25f36011a9477c088"
+        },
+        {
+          "path": ".ref/discovery/products/1347/mw/manifest.json",
+          "sha256": "10661bdf01b4b4dd4affd2015dab1d92b3a9e6ecc65ffe94605f2cd9f5cbe7f9"
+        }
+      ]
+    },
+    {
+      "product_id": 1352,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1352/ui/manifest.json",
+          "sha256": "e86d12d8772f51b59c2c8fb908b725f818c8fcb578f6b09a3f318aaa13c94439"
+        },
+        {
+          "path": ".ref/discovery/products/1352/mw/manifest.json",
+          "sha256": "d5a4a8608e75d2ad7d5197ff0b62d32ed6b9e470859873fbcf7419c5d2a07e28"
+        }
+      ]
+    },
+    {
+      "product_id": 1353,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1353/ui/manifest.json",
+          "sha256": "fa620e3504c6df51c20ec087c8ac4278634d5244ee498145da650da98f585d3a"
+        },
+        {
+          "path": ".ref/discovery/products/1353/mw/manifest.json",
+          "sha256": "ab9f58213e530791010e441004e1ec3bca186b3c82198d8aebd9f3fb39e52ad1"
+        }
+      ]
+    },
+    {
+      "product_id": 1354,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1354/ui/manifest.json",
+          "sha256": "91159dbcb7766662a5fbf8c11f5b7a8137b68fd85925c379464c392f85abbc7b"
+        },
+        {
+          "path": ".ref/discovery/products/1354/mw/manifest.json",
+          "sha256": "313bd3683e370a4c47ef7d660dfeb740c73750fe6c7b22e6b82e488a5ce54216"
+        }
+      ]
+    },
+    {
+      "product_id": 1364,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1364/ui/manifest.json",
+          "sha256": "9f9eab4f4cfcc85fe89abee7c697be66f4482f4ba3c41ba964e85581e8f7a6e7"
+        },
+        {
+          "path": ".ref/discovery/products/1364/mw/manifest.json",
+          "sha256": "05bd99fd0677c6a67319e094da1ceff127164ec04234871f7bb3415c2bd10676"
+        }
+      ]
+    },
+    {
+      "product_id": 1365,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1365/ui/manifest.json",
+          "sha256": "12dfb5b9c9a3558fe0bf09b4863af774f2c2cc651372b15c468a18abb3ceeb98"
+        },
+        {
+          "path": ".ref/discovery/products/1365/mw/manifest.json",
+          "sha256": "3f23876531de9bef5f9356cc1a34dd67a547c4c5dbde9ee45503066df463c062"
+        }
+      ]
+    },
+    {
+      "product_id": 1370,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1370/ui/manifest.json",
+          "sha256": "72a22f066865c264ce0548a362390827196107c26f6c88e52f21a6ab0ba6c958"
+        },
+        {
+          "path": ".ref/discovery/products/1370/mw/manifest.json",
+          "sha256": "d498e6e3043a89a82fc985241ba376a9519b0c53138cb563e2fc80b9bee5e597"
+        }
+      ]
+    },
+    {
+      "product_id": 1372,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1372/ui/manifest.json",
+          "sha256": "f4781bea42654ac6570d43fbf1988a4a779f0208d7432a4ac6b2d9d0ab03930d"
+        },
+        {
+          "path": ".ref/discovery/products/1372/mw/manifest.json",
+          "sha256": "74179136b7be83bc8b2fa8a1a4df11cbc7f8d6546e86ec29b79035c733c986ff"
+        }
+      ]
+    },
+    {
+      "product_id": 1374,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1374/ui/manifest.json",
+          "sha256": "ea79eabdb39d7208807786e3aa47a134fd347df6657651799711d2c78755817b"
+        },
+        {
+          "path": ".ref/discovery/products/1374/mw/manifest.json",
+          "sha256": "a07e88e8dbb66676a645486e5bde4ccaa1b0758381f6240007041eca3dd79df0"
+        }
+      ]
+    },
+    {
+      "product_id": 1376,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1376/ui/manifest.json",
+          "sha256": "2ac074b2a3a2e1b043de9c43ab48e90037a0b4403d04e9602ca49791aa7f1f83"
+        },
+        {
+          "path": ".ref/discovery/products/1376/mw/manifest.json",
+          "sha256": "48e95452718f67ee1a7e93b07144195af4e3555e8a1a2c75e5ff1fe00fbb99d6"
+        }
+      ]
+    },
+    {
+      "product_id": 1378,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        137,
+        138
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1378/ui/manifest.json",
+          "sha256": "2d4edfaf56d38c399d849720fb17f9dda2bc7d9072717f75f30518cd269c6d20"
+        },
+        {
+          "path": ".ref/discovery/products/1378/mw/manifest.json",
+          "sha256": "55729b63104d0f7e25f655de448e39364ddc25eac1389b084683cde581a49fd9"
+        }
+      ]
+    },
+    {
+      "product_id": 1382,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1382/ui/manifest.json",
+          "sha256": "bc9709bd681af8ede92c8afd1fc1fa817937c5353d1f9e240656098825ae638a"
+        },
+        {
+          "path": ".ref/discovery/products/1382/mw/manifest.json",
+          "sha256": "eeac05740fe98d74b87e0452be4b22f6fc14af0345ca9756e0ebacfce9463699"
+        }
+      ]
+    },
+    {
+      "product_id": 1383,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1383/ui/manifest.json",
+          "sha256": "97ad1a255f5e8cf44c236b6500ee26cf0e8d4c58a289190a4372eb61553c6631"
+        },
+        {
+          "path": ".ref/discovery/products/1383/mw/manifest.json",
+          "sha256": "fb3d35656a8f60481185c6b978cf10e80ebd67ada417428be53e4682ae462980"
+        }
+      ]
+    },
+    {
+      "product_id": 1386,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1386/ui/manifest.json",
+          "sha256": "493f61df0fcd8ff51b1e4a7d3fe990da5e67f766ba846b39fdd36609221927f2"
+        },
+        {
+          "path": ".ref/discovery/products/1386/mw/manifest.json",
+          "sha256": "2c1ef9a375b78005f2bc365330e80d72f5e034b4ca75c00924f788d9b1d7fca7"
+        }
+      ]
+    },
+    {
+      "product_id": 1387,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1387/ui/manifest.json",
+          "sha256": "3c1cb03acad07aaa314672096d899bdaef3cf2bb84acae3da96193c56d2fb490"
+        },
+        {
+          "path": ".ref/discovery/products/1387/mw/manifest.json",
+          "sha256": "2cf24efe530e5a09e43702596cfaae2e27053e3d4253e0422a5bdd56c2ff2330"
+        }
+      ]
+    },
+    {
+      "product_id": 1389,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1389/ui/manifest.json",
+          "sha256": "7cdb1f2c188580f7c433cf06291af50017d5b81229e5cd40c1f727349ba397a8"
+        },
+        {
+          "path": ".ref/discovery/products/1389/mw/manifest.json",
+          "sha256": "f20122b9bf74176ef393af2174ba66d4c4ddd74255d8eee426c9586053483814"
+        }
+      ]
+    },
+    {
+      "product_id": 1390,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1390/ui/manifest.json",
+          "sha256": "fc67d924231c43fa4a3ef8d293a14df0c68908b27417f6502b6147637a6d8c17"
+        },
+        {
+          "path": ".ref/discovery/products/1390/mw/manifest.json",
+          "sha256": "c757d549ef6f1183f922976e10c4f68f7096908087b9a1e716b7c4b977414574"
+        }
+      ]
+    },
+    {
+      "product_id": 1391,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1391/ui/manifest.json",
+          "sha256": "5970c0e2d43623d0b26de78b331fba7acc973b37ea6e0745466b77d77699a9db"
+        },
+        {
+          "path": ".ref/discovery/products/1391/mw/manifest.json",
+          "sha256": "463ab41ff105bbd4b3ce8b978bc991aa99fd5cb17d6b32f4fe846cadad7eeca6"
+        }
+      ]
+    },
+    {
+      "product_id": 1392,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1392/ui/manifest.json",
+          "sha256": "82cd92590e71c86117315580f10aa0ea72cb840b18e3f98facb107d3190b88a0"
+        },
+        {
+          "path": ".ref/discovery/products/1392/mw/manifest.json",
+          "sha256": "ef617ff28158a399c7779125f5f77c67d3e579058e1d06f2dba87dbe0a66e898"
+        }
+      ]
+    },
+    {
+      "product_id": 1396,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1396/ui/manifest.json",
+          "sha256": "3a5cf49862bf687bc68f7ec661aef37a2f3ce7062adc62081d03a3e16b97114e"
+        },
+        {
+          "path": ".ref/discovery/products/1396/mw/manifest.json",
+          "sha256": "4edf266b1510a2c9f47e75ca0f59f65807e48a57e8bb09b49ea73cd382ed72bc"
+        }
+      ]
+    },
+    {
+      "product_id": 1398,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1398/ui/manifest.json",
+          "sha256": "63814d0f57186f139f96a80f0f64f332d371cdc4f90a3dd6437fcfa5cf4e2948"
+        },
+        {
+          "path": ".ref/discovery/products/1398/mw/manifest.json",
+          "sha256": "f51de543ccf0137dfce6e87df73949d68e9b2da3bd1877ed16f2edfd01bc9998"
+        }
+      ]
+    },
+    {
+      "product_id": 1401,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1401/ui/manifest.json",
+          "sha256": "7a24220ee9bd975343a4cc55f01a7bf5cbe04b331fbff02bf94740ddb95e06db"
+        },
+        {
+          "path": ".ref/discovery/products/1401/mw/manifest.json",
+          "sha256": "1448bf7fae8da90d02d33664eb1e40c98b17cf492c11bd9b2ffff86f9f0ff037"
+        }
+      ]
+    },
+    {
+      "product_id": 1404,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1404/ui/manifest.json",
+          "sha256": "dece376f383525d9a319f04915bff8a550d624bae04a3977e43d3e7741505335"
+        },
+        {
+          "path": ".ref/discovery/products/1404/mw/manifest.json",
+          "sha256": "5b15bb2fc9dbb33d1f908025f365248c5153703a12d1766d23b03b79dc03c4db"
+        }
+      ]
+    },
+    {
+      "product_id": 1406,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1406/ui/manifest.json",
+          "sha256": "88e2bca97a1143c7d2128b7ac3023bd33ab040f665b39181337754e7d17dd24d"
+        },
+        {
+          "path": ".ref/discovery/products/1406/mw/manifest.json",
+          "sha256": "66c89baba2cdb61d135c3cbbc132d80a7f59e4de76884d1d139d54a415cce347"
+        }
+      ]
+    },
+    {
+      "product_id": 1407,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1407/ui/manifest.json",
+          "sha256": "21e95ace5cafac89a3d497536c24abebdfe84df7c0ce4580c8f31cf137cf4b55"
+        },
+        {
+          "path": ".ref/discovery/products/1407/mw/manifest.json",
+          "sha256": "66e6646a616a7fb05bd12b2b04cacdd828bdbc1f80903d354256a4cc99197102"
+        }
+      ]
+    },
+    {
+      "product_id": 1411,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1411/ui/manifest.json",
+          "sha256": "a6882aab6e3e2412b7dd3702481d26bc62f8e943a81ae7cdb07164b012b6a1fd"
+        },
+        {
+          "path": ".ref/discovery/products/1411/mw/manifest.json",
+          "sha256": "fa57ab313dc3cd9ecb9adcc28322472bfce05078ee66c7b459cef552503c3187"
+        }
+      ]
+    },
+    {
+      "product_id": 1412,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1412/ui/manifest.json",
+          "sha256": "697b1acc235170fabd9f93829a0f38e8dd428221138e33e03828f3b5b0354ccf"
+        },
+        {
+          "path": ".ref/discovery/products/1412/mw/manifest.json",
+          "sha256": "f92bd4ee14cd70f4c1ff01520187c689d224d78def57bc775bc076deddedd0a2"
+        }
+      ]
+    },
+    {
+      "product_id": 1415,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1415/ui/manifest.json",
+          "sha256": "a7f45b72c47ce67b288385734d625d7f503cdbf0594d103f3eee14c5a159cb8d"
+        },
+        {
+          "path": ".ref/discovery/products/1415/mw/manifest.json",
+          "sha256": "ca5d50573acddd71c47f69f67b654a4ea2b6b29146a2bcdc5cb4496c3fd907e8"
+        }
+      ]
+    },
+    {
+      "product_id": 1420,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1420/ui/manifest.json",
+          "sha256": "d49e619f6ba59c44b2e499a950a249fc406afdf2a9201c38f9d8d1062834757c"
+        },
+        {
+          "path": ".ref/discovery/products/1420/mw/manifest.json",
+          "sha256": "c8c588a6e78873cccafe46225cd3ae0985bbf4d12339a4f1fa6aebb4abedf253"
+        }
+      ]
+    },
+    {
+      "product_id": 1422,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1422/ui/manifest.json",
+          "sha256": "c382e43549d02262ba88b14028ef1f9c9f7ac9943df953539417ec3b9178b698"
+        },
+        {
+          "path": ".ref/discovery/products/1422/mw/manifest.json",
+          "sha256": "a91c9c6d8dca641a0d524dc3d9d5ce2e13e61ea2e82184398fcbb4e1627f08c0"
+        }
+      ]
+    },
+    {
+      "product_id": 1427,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1427/ui/manifest.json",
+          "sha256": "3744a71331532c6af0cb3c2b4920eaf4f29af8c06d8a31c5e7110ae88b7be906"
+        },
+        {
+          "path": ".ref/discovery/products/1427/mw/manifest.json",
+          "sha256": "b4ba1f43c2378a81f969c22f4f9f55e8c68cc68dcf9c1a9a81790fc708ee3386"
+        }
+      ]
+    },
+    {
+      "product_id": 1439,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1439/ui/manifest.json",
+          "sha256": "9e872bd9f8466b969a4be93fbe604a5d4dfe28842e0cbb7518ba7294fffac0e3"
+        },
+        {
+          "path": ".ref/discovery/products/1439/mw/manifest.json",
+          "sha256": "d3a5b670c3ed7a68a38578f762ef5d15d9bee79e53df169baef6db6d6945dde8"
+        }
+      ]
+    },
+    {
+      "product_id": 1442,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1442/ui/manifest.json",
+          "sha256": "e816a7138db7c27e61ffac00e8a039a5e27e4eb045e788e1203d38a23af4fb31"
+        },
+        {
+          "path": ".ref/discovery/products/1442/mw/manifest.json",
+          "sha256": "bf6d26fac6b0778725f92a26074bdb1e7d95cb4122173e3f647b945b6c3c6012"
+        }
+      ]
+    },
+    {
+      "product_id": 1443,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1443/ui/manifest.json",
+          "sha256": "cba4fb7b0ae66fa812ace755d77af701aa603eb78b416ff97ad62ca46914de52"
+        },
+        {
+          "path": ".ref/discovery/products/1443/mw/manifest.json",
+          "sha256": "4cd4e980098dc6d2fd5d75449e716ad8bff25daff9ce6301a0e341bd21e1df9b"
+        }
+      ]
+    },
+    {
+      "product_id": 1446,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1446/ui/manifest.json",
+          "sha256": "36a2dfe234e7fcc3bd625eb4cbd11a0f8514816d1697b078e41a01964c92b06a"
+        },
+        {
+          "path": ".ref/discovery/products/1446/mw/manifest.json",
+          "sha256": "eeda36df46ee3a7fb3201ba451fd53ef4b95afff2266b47528e19c36e6c135b8"
+        }
+      ]
+    },
+    {
+      "product_id": 1453,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1453/ui/manifest.json",
+          "sha256": "f78d390b4e95abaf42b7e1c6a9d96639fe60a107486b4fffbe1208f40380e05f"
+        },
+        {
+          "path": ".ref/discovery/products/1453/mw/manifest.json",
+          "sha256": "5a8d79dda79222d6bd820716f6315c90fe0e2784542d43d336231ee693e4631e"
+        }
+      ]
+    },
+    {
+      "product_id": 1462,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1462/ui/manifest.json",
+          "sha256": "8b6464433bd2cc531012f320ad5c8997f0b3bfa79c06bf17acdb644654930fd1"
+        },
+        {
+          "path": ".ref/discovery/products/1462/mw/manifest.json",
+          "sha256": "6912367cb8fde8d97b12bdb763f63dd7b7d1afbb055c44232f0a8ce44db76310"
+        }
+      ]
+    },
+    {
+      "product_id": 1465,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/1465/ui/manifest.json",
+          "sha256": "0daa46cc65640bbb4d9bc8bdd2d11e5c8159d39da0e4d96137c88495049985fb"
+        },
+        {
+          "path": ".ref/discovery/products/1465/mw/manifest.json",
+          "sha256": "0ff9cdc81fdba81aaec60c56222f497ac57ade47b1674b7fdd63df9a98b67aaa"
+        }
+      ]
+    },
+    {
+      "product_id": 2594,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2594/ui/manifest.json",
+          "sha256": "e79809bb70641f6653c45da8e17d4bfa829eb951bc9eaeffce8a1839fca2fb47"
+        },
+        {
+          "path": ".ref/discovery/products/2594/mw/manifest.json",
+          "sha256": "905d37d005ba88d7636745c7eca886b0c63d64187f35ebc412e31522945e298f"
+        }
+      ]
+    },
+    {
+      "product_id": 2595,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2595/ui/manifest.json",
+          "sha256": "17ef41c69a134a78d1c6ebf42991a16c4894695b25242a24fe69f14ea24ab42b"
+        },
+        {
+          "path": ".ref/discovery/products/2595/mw/manifest.json",
+          "sha256": "b1b8b67d36b695e70e5e0b49cdc453be3813bd5ff9046333dadbff71abe97e91"
+        }
+      ]
+    },
+    {
+      "product_id": 2596,
+      "edition_ids": [
+        0,
+        128,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2596/ui/manifest.json",
+          "sha256": "03915bbdc4cf80615641ec411850a6e4f08b8c5ac7db155da3f6f63b87c873ca"
+        },
+        {
+          "path": ".ref/discovery/products/2596/mw/manifest.json",
+          "sha256": "8a1e73703b5f0e3f38b70cb6ac815224bffec6d9db61f749f8c81b303400f034"
+        }
+      ]
+    },
+    {
+      "product_id": 2629,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2629/ui/manifest.json",
+          "sha256": "1491d39446ac223cfd0cb49ec91350aba73569e85331096bd33b7835d8c4c03d"
+        },
+        {
+          "path": ".ref/discovery/products/2629/mw/manifest.json",
+          "sha256": "d6ec773b728b0aa3958ea2c96f3fea66e6ea6b9cdf073dd7ba8c08e82e90afdf"
+        }
+      ]
+    },
+    {
+      "product_id": 2636,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2636/ui/manifest.json",
+          "sha256": "f247f3997d17f9c30af34103dcf4230ecaec27d9e4bcf6a4cf005728f04cbc7d"
+        },
+        {
+          "path": ".ref/discovery/products/2636/mw/manifest.json",
+          "sha256": "55d616f991acfacdfffa05d827341048ccf3905e6cc8e3ade135034a99dcc22b"
+        }
+      ]
+    },
+    {
+      "product_id": 2638,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2638/ui/manifest.json",
+          "sha256": "252a2f9f4b53994cf4ce03be5f86c4bd4187174f1465f5d377002d2f4d3126f2"
+        },
+        {
+          "path": ".ref/discovery/products/2638/mw/manifest.json",
+          "sha256": "980f14fe5865bbba3c0a9771c3913b1cfad134b1cbcec108f06fbe33cdfa8b19"
+        }
+      ]
+    },
+    {
+      "product_id": 2641,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2641/ui/manifest.json",
+          "sha256": "026ca757460aaed67eead99faaf5d02dbb4f1f4f9b0fdf0af40f759445d5db09"
+        },
+        {
+          "path": ".ref/discovery/products/2641/mw/manifest.json",
+          "sha256": "5e2c648c855b91a4881075cd3a8ccf78c81c1d79b3782e552af79b0e6e546c2f"
+        }
+      ]
+    },
+    {
+      "product_id": 2644,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2644/ui/manifest.json",
+          "sha256": "58b0d43ce8add5dbda254cb099887817f5db87d500fcbbc8b29c1bea7a1b94fb"
+        },
+        {
+          "path": ".ref/discovery/products/2644/mw/manifest.json",
+          "sha256": "1169714c0bfb777ebc8076b8de1f16d0b6020bcae58006ed108517acff28ea75"
+        }
+      ]
+    },
+    {
+      "product_id": 2647,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2647/ui/manifest.json",
+          "sha256": "e9381f474830dfff7a391fa486d244e44a6496a5ff187e645729138b823e91d6"
+        },
+        {
+          "path": ".ref/discovery/products/2647/mw/manifest.json",
+          "sha256": "b08fd921be6aabf51461d9f5e5aa8ad937e7b994b26e4193183c49cca9972796"
+        }
+      ]
+    },
+    {
+      "product_id": 2650,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2650/ui/manifest.json",
+          "sha256": "f9d5d3a14798865b124681d88057c165ff30e49b23e52ab3aaf2dc64ffb7ff06"
+        },
+        {
+          "path": ".ref/discovery/products/2650/mw/manifest.json",
+          "sha256": "f67b4b344d6e5ef7f6f50e7ef3417a29e6677d35a35c83a34835c2f37397fae1"
+        }
+      ]
+    },
+    {
+      "product_id": 2657,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2657/ui/manifest.json",
+          "sha256": "e5fd743ca6cc5682cf59bb88b1d77fcf8c19c6b9916a4950673cbbeb37a79342"
+        },
+        {
+          "path": ".ref/discovery/products/2657/mw/manifest.json",
+          "sha256": "59220ee879e7ffd3b3df43eee494c2dd730a23553a84c84642c0eef9d87a606b"
+        }
+      ]
+    },
+    {
+      "product_id": 2660,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2660/ui/manifest.json",
+          "sha256": "63e5f24913d8a5173a89660392cf5ef428e02d438cf512ef756266ba6e1615a5"
+        },
+        {
+          "path": ".ref/discovery/products/2660/mw/manifest.json",
+          "sha256": "5450dd08214323f49b0d9e7f73575199232c86b5a1e9075ff446974185887a0a"
+        }
+      ]
+    },
+    {
+      "product_id": 2664,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2664/ui/manifest.json",
+          "sha256": "d2affccf40bcaf7edace7c74e48fbed451371b503351cb53ec99bee18a6d7a49"
+        },
+        {
+          "path": ".ref/discovery/products/2664/mw/manifest.json",
+          "sha256": "66a95d0e7828dbbd9465dc431554ee2b7325f23253cd44efbe09562e9ddcade3"
+        }
+      ]
+    },
+    {
+      "product_id": 2668,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2668/ui/manifest.json",
+          "sha256": "4cb178b0e22f09e010797ecde3f0eee689f3b4936d6aeb2f4f3aa6a2419dc1d5"
+        },
+        {
+          "path": ".ref/discovery/products/2668/mw/manifest.json",
+          "sha256": "fbdfa2bcb7502765c80df8e916653b360e382ab1c1511b4377cfb563d22dbb40"
+        }
+      ]
+    },
+    {
+      "product_id": 2676,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2676/ui/manifest.json",
+          "sha256": "76794ef1a66dd18a616c1b439e66c11ec2eb4e7a8e88892fb73296e676b4c961"
+        },
+        {
+          "path": ".ref/discovery/products/2676/mw/manifest.json",
+          "sha256": "0e311444a9afde779e908f851c84a6c0603228ced6e8a7756c72f4410f4603b1"
+        }
+      ]
+    },
+    {
+      "product_id": 2684,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2684/ui/manifest.json",
+          "sha256": "134f41ed46b82d67eb9ddc58abcb74f5adc7cc8087e1a1a9dbc2858964540518"
+        },
+        {
+          "path": ".ref/discovery/products/2684/mw/manifest.json",
+          "sha256": "8ab371c91ae791045da0d0fc6f294a8f244d8729fab19081a39adafbbaf7a9c9"
+        }
+      ]
+    },
+    {
+      "product_id": 2689,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/2689/ui/manifest.json",
+          "sha256": "e53224f7f55faa01d162ded2b5a0637e09d04f29c7405cef713ed7dd324dd2dc"
+        },
+        {
+          "path": ".ref/discovery/products/2689/mw/manifest.json",
+          "sha256": "ddf8c9000dc879e480833912a02274b7d3960cb4130444655ac00c861077584a"
+        }
+      ]
+    },
+    {
+      "product_id": 3072,
+      "edition_ids": [
+        0,
+        1
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3072/ui/manifest.json",
+          "sha256": "d24d03928a9c43ab0ea3d3c5e3a2b77eaa8df2145a9ebfa299c6590eb4aa47f7"
+        },
+        {
+          "path": ".ref/discovery/products/3072/mw/manifest.json",
+          "sha256": "82410aad054a29b110821b9908165222a04ef2aac4f34e9697862bcc20f95e25"
+        }
+      ]
+    },
+    {
+      "product_id": 3073,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3073/ui/manifest.json",
+          "sha256": "f602062e23fac86c724b5746c20768a119691843aa494387ed2fbd7647198de9"
+        },
+        {
+          "path": ".ref/discovery/products/3073/mw/manifest.json",
+          "sha256": "be78e12a47f8c173ca3f7f7935923b9cbee2a11d241d36e33ff49f0ff2715720"
+        }
+      ]
+    },
+    {
+      "product_id": 3074,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        132,
+        133
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3074/ui/manifest.json",
+          "sha256": "48f8117571fee11a776f0833bcf45882a215204f4c1509eb0c2154ebe73bb477"
+        },
+        {
+          "path": ".ref/discovery/products/3074/mw/manifest.json",
+          "sha256": "28b7c8178414fcf034118dcf35ffe223412fd7cab08be846712f84e0f4728739"
+        }
+      ]
+    },
+    {
+      "product_id": 3076,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        132
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3076/ui/manifest.json",
+          "sha256": "47dc0e7befd1ad197eefd3c81f16223d0722e68d9037cb8b76b7184f8a409984"
+        },
+        {
+          "path": ".ref/discovery/products/3076/mw/manifest.json",
+          "sha256": "ec5e6e09332cff9eccba2bca620d5d5b9343320268e2cf603b8aa35508dae77d"
+        }
+      ]
+    },
+    {
+      "product_id": 3077,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3077/ui/manifest.json",
+          "sha256": "82b07ca3cbe0bf97d84af312d7555c03f883db9ac62112d813125218186ce1ef"
+        },
+        {
+          "path": ".ref/discovery/products/3077/mw/manifest.json",
+          "sha256": "4f614a0308437c87e065d7496a6a044e414b1e82abbdd625f91a7bb8c50e71ee"
+        }
+      ]
+    },
+    {
+      "product_id": 3078,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3078/ui/manifest.json",
+          "sha256": "be4b2a3e7cb22aa263cefd6781ee858d44ff3471f7869fba2cff03bd46cbf0a1"
+        },
+        {
+          "path": ".ref/discovery/products/3078/mw/manifest.json",
+          "sha256": "7f92ed5409283bf7db04a3ea6d2a3c6e5e30114be03c4cea9b7db7e65d8e5c53"
+        }
+      ]
+    },
+    {
+      "product_id": 3080,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3080/ui/manifest.json",
+          "sha256": "8b23d441151d27460bdd8a865f039208076ad002a689d6dd718521ddfebc40fa"
+        },
+        {
+          "path": ".ref/discovery/products/3080/mw/manifest.json",
+          "sha256": "af7752c282b91e78e12e8a22a854bc7865de7b93aecad595610c6ed79009bd56"
+        }
+      ]
+    },
+    {
+      "product_id": 3331,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3331/ui/manifest.json",
+          "sha256": "a96d9385da750fef0f126e535f130a2b327cdab245a50254f980276007eceb22"
+        },
+        {
+          "path": ".ref/discovery/products/3331/mw/manifest.json",
+          "sha256": "8dc5f8d5f8b4bacc238df3cd81a8e8f5015edaecc48e0c6497ca47d84932f84b"
+        }
+      ]
+    },
+    {
+      "product_id": 3334,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3334/ui/manifest.json",
+          "sha256": "6cf9eadaab5e126058db8e151113c377fa6e308b43a26d592ff5444aae0c693e"
+        },
+        {
+          "path": ".ref/discovery/products/3334/mw/manifest.json",
+          "sha256": "9edb9ecdffc0a23255d543f4440e1930d7044be38d4199f684b7a91a1b7a9a74"
+        }
+      ]
+    },
+    {
+      "product_id": 3337,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3337/ui/manifest.json",
+          "sha256": "5eda60e378cf56585c8700c25d73546d0baca60056fa33a8cacc3736d3fac8cd"
+        },
+        {
+          "path": ".ref/discovery/products/3337/mw/manifest.json",
+          "sha256": "6054e56b5913e92c2218d52380861e1867b8743f936a4c2fc58359a40981d216"
+        }
+      ]
+    },
+    {
+      "product_id": 3587,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3587/ui/manifest.json",
+          "sha256": "d78deb52fbc0a1e03099248f25b674d9793803f58b5627297ffb06e56526c059"
+        },
+        {
+          "path": ".ref/discovery/products/3587/mw/manifest.json",
+          "sha256": "48cf63690cb9f9d633c68ac22a3b08e52974bd7b8e27c565fcc8a053fef77e05"
+        }
+      ]
+    },
+    {
+      "product_id": 3589,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3589/ui/manifest.json",
+          "sha256": "37c42ce03a749d3d2cfe9cb6a62046d2b8fd97c9e77a656beb1659bd57e8275b"
+        },
+        {
+          "path": ".ref/discovery/products/3589/mw/manifest.json",
+          "sha256": "6b06ac0b50659febc29e9036f6c0da827e4574358508157dbfe5f97a85dbc784"
+        }
+      ]
+    },
+    {
+      "product_id": 3590,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3590/ui/manifest.json",
+          "sha256": "dfe38cc3ec94323f94880b1973ef1ebdc7380081d6bb805a2eb53ed87d4116b0"
+        },
+        {
+          "path": ".ref/discovery/products/3590/mw/manifest.json",
+          "sha256": "c6e0d8096d730c46059cf6371f7d3ce8c14452aafcab19ac6f7841bd897b1b21"
+        }
+      ]
+    },
+    {
+      "product_id": 3592,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3592/ui/manifest.json",
+          "sha256": "f58169cb4b1065ad00dc408cc44bed099e584aab885e17a7f2851e34f5a69107"
+        },
+        {
+          "path": ".ref/discovery/products/3592/mw/manifest.json",
+          "sha256": "e39adf2e452689a98410557101a3a05f269e54109852ce61c4dcb3928750f6ce"
+        }
+      ]
+    },
+    {
+      "product_id": 3594,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3594/ui/manifest.json",
+          "sha256": "e67df849d35ffd48ef17d325de822b408bb03c423b37f5fc234bd19ad93ddd83"
+        },
+        {
+          "path": ".ref/discovery/products/3594/mw/manifest.json",
+          "sha256": "9bf2331352f6f43b34a6d09c79d30f292378f8b680ba5d26efa3f39c59ddddce"
+        }
+      ]
+    },
+    {
+      "product_id": 3595,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3595/ui/manifest.json",
+          "sha256": "9d58b097da034bac1f8a6a8908d3f569cad03587d648b7896a3a356a44bce58c"
+        },
+        {
+          "path": ".ref/discovery/products/3595/mw/manifest.json",
+          "sha256": "bb83963cc2d37e81031469fffb7747ebbd9b02f47fb126e83cb4fc60ace98a39"
+        }
+      ]
+    },
+    {
+      "product_id": 3596,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3596/ui/manifest.json",
+          "sha256": "3b218cdd3c98bd8bdc7e531a7a7ab5ec75d9344e9a2470c18885da20287cb6ab"
+        },
+        {
+          "path": ".ref/discovery/products/3596/mw/manifest.json",
+          "sha256": "3d69aa8a252c6562483407bd458e59f07609f425e7498e10957a4b4a113a3a1a"
+        }
+      ]
+    },
+    {
+      "product_id": 3848,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3848/ui/manifest.json",
+          "sha256": "059d9eba02a83a7deb6cfb353637f8edf6d381e91732e177155d5131af702d77"
+        },
+        {
+          "path": ".ref/discovery/products/3848/mw/manifest.json",
+          "sha256": "5fa4998b3c0d57602017242fd28f0d36309eb2b0c7c56d7a57d768f6d89bf23b"
+        }
+      ]
+    },
+    {
+      "product_id": 3849,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3849/ui/manifest.json",
+          "sha256": "e9ba007869edc1d5f7b40cec34b8c9c04d7559460998c208fd16c983c58cb689"
+        },
+        {
+          "path": ".ref/discovery/products/3849/mw/manifest.json",
+          "sha256": "5f4b2c70a596adae42a9bd7476a565e53b552d8bfaaa79ea40d49d899f4c2a35"
+        }
+      ]
+    },
+    {
+      "product_id": 3853,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3853/ui/manifest.json",
+          "sha256": "222ea38dd4bf9cc48481b97e6001594ac7c6d0b872b96311e0616ed845aa9766"
+        },
+        {
+          "path": ".ref/discovery/products/3853/mw/manifest.json",
+          "sha256": "e8c5786a7ec13e4153ffbd47a9ca67ece67d6fbf27d0e30ddd37dc02f43122ac"
+        }
+      ]
+    },
+    {
+      "product_id": 3858,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3858/ui/manifest.json",
+          "sha256": "798ef6215bf9ce197391fbbd8db8fe80af0edd6110898bf620ca2004bffd6958"
+        },
+        {
+          "path": ".ref/discovery/products/3858/mw/manifest.json",
+          "sha256": "8a974a6c608af1d9c4b2b29adb25ec2f934ad9289b93e1489ed45ba475e8d00f"
+        }
+      ]
+    },
+    {
+      "product_id": 3859,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3859/ui/manifest.json",
+          "sha256": "5e8dacbc5dcd71abb6026c3dd8f7703aa7638d9aa76bd9d410d4d67593616952"
+        },
+        {
+          "path": ".ref/discovery/products/3859/mw/manifest.json",
+          "sha256": "7eaaeb49f4a4de0b8c99684251f1e3fa10a99f6064f296664f94d62b353ad103"
+        }
+      ]
+    },
+    {
+      "product_id": 3863,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3863/ui/manifest.json",
+          "sha256": "017cfcc4182d78960dca81f32c2cffc2e8a19bf439396afe723389f3d2d2580e"
+        },
+        {
+          "path": ".ref/discovery/products/3863/mw/manifest.json",
+          "sha256": "756113ddc045d99b96e8afcb0a6f2cf72cdd875f3865efba63e3f20ecaf5b778"
+        }
+      ]
+    },
+    {
+      "product_id": 3866,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3866/ui/manifest.json",
+          "sha256": "54ec88b243d203c98254c188a3f510ae1df120a06b7a3130b257c4dc9b4a5745"
+        },
+        {
+          "path": ".ref/discovery/products/3866/mw/manifest.json",
+          "sha256": "2e5ec17b3f507543ae5fcdc9e872d8832a1f56a66a3be87d80b9ae9ed6adc2ac"
+        }
+      ]
+    },
+    {
+      "product_id": 3867,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3867/ui/manifest.json",
+          "sha256": "ac544b6957f28a5cd77c82752d413d2d6cd537b15912961e25e6544604918585"
+        },
+        {
+          "path": ".ref/discovery/products/3867/mw/manifest.json",
+          "sha256": "a9780aad580a3e515f422fda986300d5fbdc4bf416b4cb359a92111179c8b35a"
+        }
+      ]
+    },
+    {
+      "product_id": 3869,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3869/ui/manifest.json",
+          "sha256": "4d8a6d5d13caf42bdc34c585bb2abc72a57add742a9602537a13b4e1b48d3ab7"
+        },
+        {
+          "path": ".ref/discovery/products/3869/mw/manifest.json",
+          "sha256": "1679f12b3ac38c1c0fbabf911bb9794ef814ee30ec0ff93c92bb7eec2eda8807"
+        }
+      ]
+    },
+    {
+      "product_id": 3871,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3871/ui/manifest.json",
+          "sha256": "b3eb7e9e1d7d217bf7b2919278df8802f8fa587fc0054f6c4c92d7a4159b0c95"
+        },
+        {
+          "path": ".ref/discovery/products/3871/mw/manifest.json",
+          "sha256": "09ff35b60826bd4343bf1d8b6ac37672391fa8168a6477e4a32f0145d3cd68d3"
+        }
+      ]
+    },
+    {
+      "product_id": 3872,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3872/ui/manifest.json",
+          "sha256": "d5b4f5983ef64909751de0865753b66a9d54b879fd2c3774d056c01a630dac8d"
+        },
+        {
+          "path": ".ref/discovery/products/3872/mw/manifest.json",
+          "sha256": "10790cfa01a651d4579e42edea4211d72eda9cb79eae2aa9246f6f73c81fc945"
+        }
+      ]
+    },
+    {
+      "product_id": 3873,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3873/ui/manifest.json",
+          "sha256": "a99ce1ab48bc450a35e21be24c2daf25f757a36d13a2a6e42192f77721076eb5"
+        },
+        {
+          "path": ".ref/discovery/products/3873/mw/manifest.json",
+          "sha256": "9120a87cfdfc7fcbe964c7f146fe76d4d7a7882d74100eeb52f47ad2556d96a4"
+        }
+      ]
+    },
+    {
+      "product_id": 3878,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3878/ui/manifest.json",
+          "sha256": "d48561b81bf2c9c90ffb808f82d39decaf4f39edc919ffed624393f399e3f981"
+        },
+        {
+          "path": ".ref/discovery/products/3878/mw/manifest.json",
+          "sha256": "000d297024609431645e31ec272f2890302fe5deb0a06d17b0b422c17e38ccca"
+        }
+      ]
+    },
+    {
+      "product_id": 3879,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3879/ui/manifest.json",
+          "sha256": "458ff08273a48d7c03fc65081673a4571c0e6b5ebe58d1e0fd8a46f874c9fb10"
+        },
+        {
+          "path": ".ref/discovery/products/3879/mw/manifest.json",
+          "sha256": "feb293d4313e0d2ce8aeece4c47438ac610e0ba7ce8b8488badc43370677abc4"
+        }
+      ]
+    },
+    {
+      "product_id": 3880,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3880/ui/manifest.json",
+          "sha256": "6f5bc2ff2c6af526c6e62aa9ddb7cd154f828e2fa0928aa9896aed469d355ac7"
+        },
+        {
+          "path": ".ref/discovery/products/3880/mw/manifest.json",
+          "sha256": "80ecc84836a15d55b5740a7c6e8d885b84ea353f496dae9b7fe88a5ba9435d13"
+        }
+      ]
+    },
+    {
+      "product_id": 3883,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3883/ui/manifest.json",
+          "sha256": "a45c63f164ea30d6e2e512df5c75fcfb41770dd48c43627b87f2a6c2d7c18487"
+        },
+        {
+          "path": ".ref/discovery/products/3883/mw/manifest.json",
+          "sha256": "0d0ac582c93614cbfefcc6a799d5fb5d591e24beaa4cada21b0c865f8101747b"
+        }
+      ]
+    },
+    {
+      "product_id": 3884,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3884/ui/manifest.json",
+          "sha256": "d15e6564105c3debae95af50c96e2e9f5d3da10cddaa62055dc1720157534d06"
+        },
+        {
+          "path": ".ref/discovery/products/3884/mw/manifest.json",
+          "sha256": "4ca670c121cf1c34b8dccfdf936977660408af7bd69a5d5cf6e77c83e413bc68"
+        }
+      ]
+    },
+    {
+      "product_id": 3886,
+      "edition_ids": [],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3886/ui/manifest.json",
+          "sha256": "a4ecf40f0ad8eeb8cbe0ba39d667d5e2b0456ab1f79c9ffef3a935b63ac27acf"
+        },
+        {
+          "path": ".ref/discovery/products/3886/mw/manifest.json",
+          "sha256": "efec4fb8b89c2ee2657982cb8cd651dfe691b83b6ee1e8a067b024eadb8ddab5"
+        }
+      ]
+    },
+    {
+      "product_id": 3893,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3893/ui/manifest.json",
+          "sha256": "741e66daaa37c4deefd6c092048a390630c17f8f907295f2ebcab4b1ae86ef88"
+        },
+        {
+          "path": ".ref/discovery/products/3893/mw/manifest.json",
+          "sha256": "0b34644d4af779ce7e0fbe8d53d2f4544b317baa99c86f710b7d16a49121e985"
+        }
+      ]
+    },
+    {
+      "product_id": 3894,
+      "edition_ids": [
+        0,
+        255
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3894/ui/manifest.json",
+          "sha256": "a2202c387f0d3413d2238608bd101edd60c085d050114efc06888441d0a79aa5"
+        },
+        {
+          "path": ".ref/discovery/products/3894/mw/manifest.json",
+          "sha256": "42ce04dc9761686a29f7eb56cdcd58fe4d780fd31f3b1075167268a3b6c50410"
+        }
+      ]
+    },
+    {
+      "product_id": 3900,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3900/ui/manifest.json",
+          "sha256": "25a221d49281f8b9866c21c6e6b42a09752b61dab8f60644fc4f2e31fb0fa7b1"
+        },
+        {
+          "path": ".ref/discovery/products/3900/mw/manifest.json",
+          "sha256": "1fc53151897b833ac9a17e7382897a26c243fa368d6b1a7d3e6eb29db1f7d0d5"
+        }
+      ]
+    },
+    {
+      "product_id": 3907,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3907/ui/manifest.json",
+          "sha256": "fc78d1cc7406f88c76319223945b0dfb1de2529f44690da234901bd4bb3c8a24"
+        },
+        {
+          "path": ".ref/discovery/products/3907/mw/manifest.json",
+          "sha256": "19f3e6ce783228a8243aa0fbe6e495776f944e25ea270e4fd63fd18dcbfa291b"
+        }
+      ]
+    },
+    {
+      "product_id": 3909,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3909/ui/manifest.json",
+          "sha256": "08400496c02de5b8d5202fd64d4546118f1a288f3d134ef75a13a9c23127a822"
+        },
+        {
+          "path": ".ref/discovery/products/3909/mw/manifest.json",
+          "sha256": "6e3e96b5035b5bc28ba28d4083704b30af298978d6e13fa3406ba0a7ad7701ab"
+        }
+      ]
+    },
+    {
+      "product_id": 3921,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3921/ui/manifest.json",
+          "sha256": "e4072ad727d10f508c042534f430f62e103b26f92a253d7f41d4ffc4840c756f"
+        },
+        {
+          "path": ".ref/discovery/products/3921/mw/manifest.json",
+          "sha256": "7085d19393856c493300f85d16019aec310ed5119877b81b47771f2cd436a224"
+        }
+      ]
+    },
+    {
+      "product_id": 3922,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3922/ui/manifest.json",
+          "sha256": "45b28e859a9f2954a881dda877faac9ebee82e8757562e8f2381772594e7cd22"
+        },
+        {
+          "path": ".ref/discovery/products/3922/mw/manifest.json",
+          "sha256": "710255225470783fdeaa5061294269376018934739bb2b1d07348d86252cd3c7"
+        }
+      ]
+    },
+    {
+      "product_id": 3929,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3929/ui/manifest.json",
+          "sha256": "cd5a3975db4b98b132f2f4a4ec0e9ed2f68302f75020cb34ba106ddc73dc35dc"
+        },
+        {
+          "path": ".ref/discovery/products/3929/mw/manifest.json",
+          "sha256": "23dee7d40bf32e1e0f1fd07d0393df8a146351c8154550cc3c3c138ebb973b19"
+        }
+      ]
+    },
+    {
+      "product_id": 3932,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3932/ui/manifest.json",
+          "sha256": "778336d248074cddcf6d608f10468b499a362ef94b4e06d1812e1835cbb8cbe7"
+        },
+        {
+          "path": ".ref/discovery/products/3932/mw/manifest.json",
+          "sha256": "4e031599f8f8fe2158048ac794ae5abb52e1a3249f8c9191eef1b73e6d42ec03"
+        }
+      ]
+    },
+    {
+      "product_id": 3940,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3940/ui/manifest.json",
+          "sha256": "aab542022c1ca599442cc8bb59e0bf69389519632087d3062971eb61b3cf1605"
+        },
+        {
+          "path": ".ref/discovery/products/3940/mw/manifest.json",
+          "sha256": "1101446f64cca039fa95bf11959977604b5c01c128a6af2440c31436cbbfb520"
+        }
+      ]
+    },
+    {
+      "product_id": 3942,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3942/ui/manifest.json",
+          "sha256": "ae3e373e8ebe6469ae16c4cdfce0cb6d18d5396aff1a080c82613c62e560e4eb"
+        },
+        {
+          "path": ".ref/discovery/products/3942/mw/manifest.json",
+          "sha256": "becd39c1cce26009281c1f52c02edab4659aad3ee8b4a80f78f2d17b6af20b6b"
+        }
+      ]
+    },
+    {
+      "product_id": 3946,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3946/ui/manifest.json",
+          "sha256": "2b3442d3e1c3652e03ed1a334f30663229ba233b1e0c3ae3cd05274baff9326f"
+        },
+        {
+          "path": ".ref/discovery/products/3946/mw/manifest.json",
+          "sha256": "6aa5e50653bc42398e719d9666290e2867e6a33bb5fc87869fd935db222b4afb"
+        }
+      ]
+    },
+    {
+      "product_id": 3949,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/3949/ui/manifest.json",
+          "sha256": "bc9039512efd9590e5cf56cd47acbb69125146486927ca1ab8bbba8bd29d3d3b"
+        },
+        {
+          "path": ".ref/discovery/products/3949/mw/manifest.json",
+          "sha256": "b877bccd229bd64744360b3f05c11f813a39c18284f632914f77a987957a9a16"
+        }
+      ]
+    },
+    {
+      "product_id": 4115,
+      "edition_ids": [
+        0,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4115/ui/manifest.json",
+          "sha256": "2818e416581de60ee5d7c2e0b1c604b4cd5ca289a3824daddd53a27ecab6bfaa"
+        },
+        {
+          "path": ".ref/discovery/products/4115/mw/manifest.json",
+          "sha256": "03bf6a0a25cfc4dabb99a57e0f6341d00a1c413274b6e1f64dd66bad9198fa85"
+        }
+      ]
+    },
+    {
+      "product_id": 4124,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4124/ui/manifest.json",
+          "sha256": "c1162a880cf66ec51029142b73218fdb2b2beebc596dfd5888c7d8373fdd76f7"
+        },
+        {
+          "path": ".ref/discovery/products/4124/mw/manifest.json",
+          "sha256": "3859109b47e92a07c5eb334300f9cc5f86784f0101a9dd9df2cda167e2292a8a"
+        }
+      ]
+    },
+    {
+      "product_id": 4126,
+      "edition_ids": [
+        0,
+        128
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4126/ui/manifest.json",
+          "sha256": "31d57e17f3faed2db9b79247f7abc6f44881d46b81534677a8283f1581a878c8"
+        },
+        {
+          "path": ".ref/discovery/products/4126/mw/manifest.json",
+          "sha256": "2c5e8ebfe61aae2818ef74e79e94ec275594e3bad8592fc717f325fd3dfe1507"
+        }
+      ]
+    },
+    {
+      "product_id": 4130,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4130/ui/manifest.json",
+          "sha256": "d5769932374720c110cb8aa0c154d34691722987a96caedfaaf24948f229c12d"
+        },
+        {
+          "path": ".ref/discovery/products/4130/mw/manifest.json",
+          "sha256": "da557a91e9a7c8812aac161f47f308283efcff255d8ad9f4c8a88a0387d95afd"
+        }
+      ]
+    },
+    {
+      "product_id": 4133,
+      "edition_ids": [
+        0,
+        128,
+        129
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4133/ui/manifest.json",
+          "sha256": "d6768df1dd0c55f4f6a9f7fa8be137c8d19ec5765011cde155a13269e6658458"
+        },
+        {
+          "path": ".ref/discovery/products/4133/mw/manifest.json",
+          "sha256": "4f87d29fc6550cc43c504f407657e0dca71738ba80c890dd1139ad589061d79d"
+        }
+      ]
+    },
+    {
+      "product_id": 4144,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/4144/ui/manifest.json",
+          "sha256": "f97c338812eb7e96e78018c3bc6fed9132cda4e84443365d8b378c5d6d2fbd52"
+        },
+        {
+          "path": ".ref/discovery/products/4144/mw/manifest.json",
+          "sha256": "98a67d1d3e546b8790c2d377d7a33bdb6542030dc53876af23226f5dc32f96ad"
+        }
+      ]
+    },
+    {
+      "product_id": 45066,
+      "edition_ids": [
+        0
+      ],
+      "manifests": [
+        {
+          "path": ".ref/discovery/products/45066/ui/manifest.json",
+          "sha256": "6172d4a41067be4c8619e0d3df4ff7283e5f7f1afaa4225a2bbb1110e75bf9ec"
+        },
+        {
+          "path": ".ref/discovery/products/45066/mw/manifest.json",
+          "sha256": "a655167aad36717ed7af7fe883086c39a1020913f9e8cf2fedc619971be6c708"
+        }
+      ]
+    }
+  ],
+  "keyboard_653": {
+    "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+    "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+    "layout_enum": {
+      "module": 13254,
+      "symbol": "rE",
+      "source_range": [
+        377991,
+        378244
+      ]
+    },
+    "layout_resolver": {
+      "module": 30387,
+      "symbol": "me",
+      "source_range": [
+        1953072,
+        1953603
+      ]
+    },
+    "layouts": [
+      {
+        "layout_id": 1,
+        "layout_name": "UnitedStates",
+        "module": 21368,
+        "symbol": "o",
+        "source_range": [
+          588230,
+          659106
+        ]
+      },
+      {
+        "layout_id": 2,
+        "layout_name": "Greek",
+        "module": 30387,
+        "symbol": "Ne",
+        "source_range": [
+          1811389,
+          1881521
+        ]
+      },
+      {
+        "layout_id": 3,
+        "layout_name": "German",
+        "module": 30387,
+        "symbol": "Le",
+        "source_range": [
+          1881555,
+          1952950
+        ]
+      },
+      {
+        "layout_id": 4,
+        "layout_name": "French",
+        "module": 30387,
+        "symbol": "X",
+        "source_range": [
+          1173061,
+          1244269
+        ]
+      },
+      {
+        "layout_id": 5,
+        "layout_name": "Russian",
+        "module": 30387,
+        "symbol": "Oe",
+        "source_range": [
+          1671081,
+          1741199
+        ]
+      },
+      {
+        "layout_id": 6,
+        "layout_name": "UnitedKingdom",
+        "module": 30387,
+        "symbol": "k",
+        "source_range": [
+          1102161,
+          1173029
+        ]
+      },
+      {
+        "layout_id": 7,
+        "layout_name": "Nordic",
+        "module": 30387,
+        "symbol": "ne",
+        "source_range": [
+          1386612,
+          1457414
+        ]
+      },
+      {
+        "layout_id": 8,
+        "layout_name": "TraditionalChinese",
+        "module": 30387,
+        "symbol": "F",
+        "source_range": [
+          889226,
+          959371
+        ]
+      },
+      {
+        "layout_id": 9,
+        "layout_name": "Korean",
+        "module": 30387,
+        "symbol": "K",
+        "source_range": [
+          959403,
+          1029548
+        ]
+      },
+      {
+        "layout_id": 10,
+        "layout_name": "Turkish",
+        "module": 30387,
+        "symbol": "_e",
+        "source_range": [
+          1529103,
+          1599902
+        ]
+      },
+      {
+        "layout_id": 11,
+        "layout_name": "Thailand",
+        "module": 30387,
+        "symbol": "ue",
+        "source_range": [
+          1741233,
+          1811355
+        ]
+      },
+      {
+        "layout_id": 12,
+        "layout_name": "Japanese",
+        "module": 30387,
+        "symbol": "Y",
+        "source_range": [
+          1029580,
+          1102129
+        ]
+      },
+      {
+        "layout_id": 15,
+        "layout_name": "Swiss",
+        "module": 30387,
+        "symbol": "oe",
+        "source_range": [
+          1457448,
+          1529069
+        ]
+      },
+      {
+        "layout_id": 16,
+        "layout_name": "SpanishEU",
+        "module": 30387,
+        "symbol": "$",
+        "source_range": [
+          1315310,
+          1386578
+        ]
+      },
+      {
+        "layout_id": 17,
+        "layout_name": "Italian",
+        "module": 30387,
+        "symbol": "q",
+        "source_range": [
+          1244301,
+          1315278
+        ]
+      },
+      {
+        "layout_id": 18,
+        "layout_name": "PortuguesePT",
+        "module": 30387,
+        "symbol": "Te",
+        "source_range": [
+          1599936,
+          1671047
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "The complete catalogue is a local preview entry, not an official Settings control.",
+    "Layout variants are offered only for 653; other renderers retain their own default layout.",
+    "Edition/layout identity is not evidence of connected hardware or implemented variant behavior.",
+    "No application, build, tests, vendor JavaScript or DLLs were executed."
+  ]
+}

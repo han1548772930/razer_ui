@@ -1,0 +1,1998 @@
+{
+  "method": "Current manifest-declared AST callbacks and CSS; no vendor execution or UI execution",
+  "generator_sha256": "851ae6b6d69d2f8ce33b09528b52033aa628bc9d227742dc52ff0460d8f64380",
+  "products": [
+    {
+      "product_id": 164,
+      "manifest": {
+        "path": ".ref/devices/164/asset-manifest.json",
+        "sha256": "626f55713920c02e752c6059e7d80f47a3045a2f3a296aba57ed950bfe6c803f"
+      },
+      "components": {
+        "Pe": {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "sha256": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40",
+          "offset": 72173,
+          "end": 72932,
+          "source": "class Pe extends _.Component{constructor(e){super(e),this.state={showMultiPairingFeature:!1}}componentDidMount(){(async()=>({showMultiPairingFeature:!!(await(0,Le.A)(\"global.multipairing\"))?.provisionFlags}))().then(e=>{let{showMultiPairingFeature:E}=e;this.setState({showMultiPairingFeature:E})}).catch(e=>{console.log(\"TopViewComponent showMultiPairingFeature error:\",e)})}render(){const e={deviceName:{en:ce.DeviceInfo.deviceName,\"zh-cn\":\"Razer 鼠标底座专业版\"},imgPairing:Ne,hyperpollingNoteFour:T.Ts4,hyperpollingHeader:T.p5h,hyperpollingConfirmText:T.CEh};return(0,I.jsxs)(i.A,{children:[(0,I.jsx)(o.default,{}),ce.DeviceInfo.isMultiPairingSupported&&this.state.showMultiPairingFeature?(0,I.jsx)(De,{deviceInfo:ce.DeviceInfo}):(0,I.jsx)(de,{deviceInfo:e})]})}}"
+        },
+        "Re": {
+          "path": ".ref/devices/164/static/js/main.458d4103.js",
+          "sha256": "0324ddd7980caf41f07eeea62979c15579578cba2a13ac302a8347e6d338fb40",
+          "offset": 66663,
+          "end": 71018,
+          "source": "e=>{var E,a,i;let{deviceInfo:o}=e;const[r,O]=t().useState([]),A=(0,n.useSelector)(e=>e.languageReducer.lang).toLowerCase(),l=(0,n.useSelector)(e=>e.commonReducer.validDevices),[R,D]=t().useState(null),[L,P]=t().useState(!1),p=(0,_.useRef)(0),m=(0,_.useRef)(l),M=(0,_.useRef)(R),U=(0,_.useMemo)(()=>l.some(e=>{var E;return e.productId===(null===R||void 0===R?void 0:R.productId)||e.productId===(null===(E=r[0])||void 0===E?void 0:E.productId)}),[l,r]),h=q(),G=(0,_.useMemo)(()=>h(U?T.Qkp:T.VYK,{start:\"|||\",end:\"|||\"}).split(\"|||\"),[h]),g=t().useCallback(()=>{const{close:e}=((e,E)=>{const{container:a}=e,_=document.createElement(\"div\");a?a.appendChild(_):document.body.appendChild(_);const t=()=>{a?a.removeChild(_):document.body.removeChild(_)};return y().render((0,I.jsx)(n.Provider,{store:z.A,children:(0,I.jsx)(k,{...e,close:E,removeRoot:t})}),_),{close:t}})({title:T.UVv,view:(0,I.jsx)(le,{deviceInfo:o,pairedInfo:r,updatePairedInfo:O,setTempPairedInfo:D,closeDialog:()=>{setTimeout(()=>{e&&e()},1e3)}})},()=>{ne(),P(!1),oe(\"DUALLINK_CANCEL\",{})})},[]);(0,_.useEffect)(()=>{m.current=l,M.current=R},[l,R]);const f=t().useCallback(e=>{var E;let{payload:a}=e;if(0===a.length)return;null===M.current&&(D(a[0]),P(!0),p.current=0);const _=null===(E=a[0])||void 0===E?void 0:E.editionId,t=m.current.some(e=>{var E;return e.productId===(null===(E=a[0])||void 0===E?void 0:E.productId)&&e.editionId===_});if(t)return O(a),void P(!1);p.current+=1,p.current<=5?setTimeout(()=>{oe(\"DUALLINK_BIND_INFO\",{})},1e3):P(!1)},[D,P,O]);t().useEffect(()=>{const e=async e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(\"DUALLINK_BIND_INFO\"===a&&f({payload:_}),\"undefined\"!==typeof ie[a]){!1!==await ie[a](t,_)&&delete ie[a]}else\"DUALLINK_BIND_INFO\"!==a&&console.warn(\"ignore DEVICE_BC_EVENT.MW_RESPONSE_UI type=%s msgData=\",a,E)};return v.A.onBCEvent(x.qg.MW_RESPONSE_UI,e),()=>{v.A.offBCEvent(x.qg.MW_RESPONSE_UI,e)}},[f]),t().useEffect(()=>{oe(\"DUALLINK_BIND_INFO\",{})},[U]);const H=async()=>{let e=0;if(\"function\"!==typeof j.A.activateWindowServiceClient||!r[0].productId)return;const E=(0,F.Oh)(r[0].productId),a=E.replace(/mw/g,\"ui\"),_=await(0,B.id)(a,!1),t=await(0,B.id)(E,!1);_||(e=200);const i=t&&t.url.match(/\\/synapse\\/.*/);if(Array.isArray(i)&&i[0]){const e=i[0].replace(/mw/g,\"ui\"),a=E.replace(/mw/g,\"ui\");if(e&&a){const E=[\"shouldFocus=1\",\"policy=3,tab_visible=1\"];window.open(e,a,E.join(\",\"))}}setTimeout(()=>{const e=new BroadcastChannel(E);e.postMessage({type:Z.mQR,payload:\"TAB_PERFORMANCE\"}),e.close()},e)};return(0,I.jsx)(K.A,{title:T.FeU,tips:T.A4y,children:r.length<=0&&!R?(0,I.jsxs)(\"div\",{className:\"img-text flex\",style:{gap:\"20px\"},children:[(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"}),(0,I.jsx)(\"div\",{className:\"external\",onClick:g,children:(0,I.jsx)(s.A,{text:T.JSN})})]}):r.length<=0&&R?(0,I.jsx)(\"div\",{className:\"img-text\",children:(0,I.jsxs)(\"div\",{className:d,children:[(0,I.jsx)(\"div\",{className:\"img-text flex\",children:(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,I.jsxs)(\"div\",{className:`${c}`,children:[(0,I.jsxs)(\"div\",{className:`${u}`,onClick:L?null:g,children:[(0,I.jsx)(\"span\",{children:(null===R||void 0===R?void 0:R.name[A])||(null===R||void 0===R?void 0:R.name.en)}),L&&(0,I.jsx)(\"img\",{src:S,alt:\"loading...\",className:\"skeleton\"})]}),(0,I.jsx)(\"div\",{className:`${C}`,children:(0,I.jsx)(\"span\",{onClick:U?H:null,children:G.map((e,E)=>1===E?(0,I.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,I.jsx)(\"u\",{children:e})},E):e)})})]}),(0,I.jsx)(\"div\",{className:N,onClick:g,children:(0,I.jsx)(s.A,{text:T.ssI})})]})}):(0,I.jsx)(\"div\",{className:\"img-text\",children:(0,I.jsxs)(\"div\",{className:`${d}`,children:[(0,I.jsx)(\"div\",{className:\"img-text flex\",children:(0,I.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,I.jsxs)(\"div\",{className:`${c}`,children:[(0,I.jsx)(\"div\",{className:`${u}`,onClick:g,children:null!==(E=r[0])&&void 0!==E&&E.productName[A]?null===(a=r[0])||void 0===a?void 0:a.productName[A]:null===(i=r[0])||void 0===i?void 0:i.productName.en}),(0,I.jsx)(\"div\",{className:`${C}`,children:(0,I.jsx)(\"span\",{onClick:U?H:null,children:G.map((e,E)=>1===E?(0,I.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,I.jsx)(\"u\",{children:e})},E):e)})})]}),(0,I.jsx)(\"div\",{className:`${N}`,onClick:g,children:(0,I.jsx)(s.A,{text:T.ssI})})]})})})}"
+        }
+      },
+      "css": [
+        {
+          "path": ".ref/devices/164/static/css/main.a72b64b9.css",
+          "sha256": "11f6ffbc31ba3710131e296d9cb037b00fa618d62e7dedba10f4ae721660a01a",
+          "rules": [
+            {
+              "offset": 399025,
+              "selector": ".HyperPollingWireless_pairInfoBox__O0QbD",
+              "conditions": [],
+              "declarations": "align-items:flex-start;display:flex;justify-content:space-between;margin-bottom:20px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "flex-start",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "space-between",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "20px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399151,
+              "selector": ".HyperPollingWireless_pairInfoBox__O0QbD .HyperPollingWireless_unpairbutton__i-SxL",
+              "conditions": [],
+              "declarations": "text-wrap:nowrap;background-color:#111;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;display:block;font-family:Roboto;font-size:12px;height:28px;line-height:28px;opacity:.8;padding:0 5px;text-align:center",
+              "properties": [
+                {
+                  "property": "text-wrap",
+                  "value": "nowrap",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": ".8",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0 5px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399447,
+              "selector": ".HyperPollingWireless_pairInfoBox__O0QbD .HyperPollingWireless_unpairbutton__i-SxL:hover",
+              "conditions": [],
+              "declarations": "opacity:1",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399546,
+              "selector": ".HyperPollingWireless_pairInfoBox__O0QbD .HyperPollingWireless_disableUnpairbutton__Adcxj",
+              "conditions": [],
+              "declarations": "text-wrap:nowrap;background-color:#111;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;display:block;font-family:Roboto;font-size:12px;height:28px;line-height:28px;opacity:.8;padding:0 5px;pointer-events:none;text-align:center",
+              "properties": [
+                {
+                  "property": "text-wrap",
+                  "value": "nowrap",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "3px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": ".8",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0 5px",
+                  "important": false
+                },
+                {
+                  "property": "pointer-events",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399869,
+              "selector": ".HyperPollingWireless_pairedDes__qcqM9",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;opacity:1;text-align:left;width:369px",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "left",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "369px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399976,
+              "selector": ".HyperPollingWireless_pairedTitle__cJyhm",
+              "conditions": [],
+              "declarations": "display:flex;font-size:14px;gap:5px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "5px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 400053,
+              "selector": ".HyperPollingWireless_pairedContent__\\+ArYG",
+              "conditions": [],
+              "declarations": "font-size:12px;padding-top:10px",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "padding-top",
+                  "value": "10px",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 241,
+      "manifest": {
+        "path": ".ref/devices/241/asset-manifest.json",
+        "sha256": "8e08f0b99014b2ae6bb0befbd43d9731b080839748393920314a031a0a5cef9e"
+      },
+      "components": {
+        "bs": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 54400,
+          "end": 54531,
+          "source": "class bs extends n.Component{render(){return(0,A.jsxs)(i.A,{children:[(0,A.jsx)(Us,{}),(0,A.jsx)(js,{deviceInfo:d.DeviceInfo})]})}}"
+        },
+        "Ps": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 48748,
+          "end": 54333,
+          "source": "()=>{var e;const s=(0,c.useDispatch)(),t=(0,c.useSelector)(e=>{var s;return null!==(s=e.deviceReducer.pairedInfo)&&void 0!==s?s:[]}),i=(0,te.mF)((0,c.useSelector)(e=>e.languageReducer.lang)),o=null!==(e=(0,c.useSelector)(e=>e.commonReducer.validDevices))&&void 0!==e?e:[],{connectedRuntime:u,refreshConnectedRuntime:p}=ps(),I=(0,n.useMemo)(()=>t.some(e=>hs(e,o,u,d.DeviceInfo.productId)),[t,o,u]),v=(0,n.useMemo)(()=>!!d.DeviceInfo.showOriginalDongleConnectedWarning&&_s({pairedInfo:t,validDevices:o,connectedRuntime:u,dockDongleId:d.DeviceInfo.dongleId,dockProductId:d.DeviceInfo.productId}),[o,t,u]),D=a().useCallback(()=>{((e,s)=>{var t;null===(t=window.mwBroadcastChannel)||void 0===t||t.postMessage({type:e,payload:s,timerTick:Date.now()})})(\"DUALLINK_BIND_INFO\",{})},[]);a().useEffect(()=>{const e=e=>{let{msgData:t}=e;const{type:n,payload:a}=t;if(\"DUALLINK_BIND_INFO\"===n){const e=Array.isArray(a)?a:[];return s((0,Le.ss)(e)),void p()}\"DUALLINK_BIND_DEVICE\"!==n&&\"DUALLINK_UNBIND_DEVICE\"!==n&&\"SLAVE_CONNECT_EVENT\"!==n||(D(),p())};return M.A.onBCEvent(se.qg.MW_RESPONSE_UI,e),()=>{M.A.offBCEvent(se.qg.MW_RESPONSE_UI,e)}},[s,D,p]),a().useEffect(()=>{D(),p()},[o,D,p]);const N=(0,c.useSelector)(e=>e.deviceReducer.isDualLinkWarning);a().useEffect(()=>{N&&(s((0,Le.xt)(!1)),s((0,Le.AC)(!0)))},[N,s]);const x=(0,n.useMemo)(()=>t.find(e=>\"MOUSE\"===e.category),[t]),H=(0,n.useMemo)(()=>t.find(e=>\"KEYBOARD\"===e.category),[t]),W=(0,n.useMemo)(()=>d.DeviceInfo.showBothDevicesConnectedWarning&&we(t),[t]),K=(0,n.useMemo)(()=>t.some(e=>Cs(e.productId,e.serialNumber)),[t]),Y=(0,n.useMemo)(()=>t.filter(e=>hs(e,o,u,d.DeviceInfo.productId)).some(e=>Cs(e.productId,e.serialNumber)),[t,o,u]),J=(0,n.useMemo)(()=>t.length>1&&(W||I),[t.length,W,I]),V=!W&&(I?Y:K),z=a().useCallback(async e=>{var s;if(null===e||void 0===e||!e.productId||!Es(e,o))return;const t=xs(e.productId),n=((e,s,t,n)=>{const a=xs(null===e||void 0===e?void 0:e.productId),i=s.find(e=>xs(e.productId)===a);if(null!==i&&void 0!==i&&i.deviceContainerId)return i.deviceContainerId;const o=t.find(e=>xs(e.productId)===a&&\"ready\"===e.setupStatus);if(null!==o&&void 0!==o&&o.deviceContainerId)return o.deviceContainerId;const c=xs(n);if(null!=c){var d;const e=t.find(e=>xs(e.productId)===c&&\"ready\"===e.setupStatus),s=null===e||void 0===e||null===(d=e.subDevices)||void 0===d?void 0:d.find(e=>xs(e.productId)===a);if(null!==s&&void 0!==s&&s.deviceContainerId)return s.deviceContainerId}return\"\"})(e,o,u,d.DeviceInfo.productId),a=(0,F.Oh)(e.productId,!0,n),i=(0,F.Oh)(e.productId,!1,n),c=(e=>\"KEYBOARD\"===(null===e||void 0===e?void 0:e.category)?r.M9m:r.hIF)(e),l=\"https://apps.razer.com/synapse\";if(await(0,G.id)(a,!1)&&\"function\"===typeof rs.A.activateWindowServiceClient)return(0,G.yH)(a,c,!0),void fs(a,c);let A=200;const p=await(0,G.id)(i,!1),I=null===p||void 0===p||null===(s=p.url)||void 0===s?void 0:s.match(/\\/synapse\\/.*/);if(null!==I&&void 0!==I&&I[0]){const e=I[0].replace(/mw/g,\"ui\");window.open(e,a,[\"shouldFocus=1\",\"policy=3,tab_visible=1\",`subTab=${c}`].join(\",\"))}else{const e=n?`${l}/synapse/products/${t}/ui/index.html?containerId=${n}`:`${l}/synapse/products/${t}/ui/index.html`;window.open(e,a,[\"shouldFocus=1\",\"policy=3,tab_visible=1\",`subTab=${c}`].join(\",\")),A=400}fs(a,c,A)},[o,u]),q=e=>{if(!e)return null;const s=((e,s)=>{const t=Ds(e,s);return t?t.toLowerCase().replace(/\\b\\w/g,e=>e.toUpperCase()):\"\"})(e,i),t=Es(e,o),{prefix:n,suffix:a}=(e=>{const s=(0,te.mF)(e),t=(0,te.JN)(r.yWF,{deviceName:ms,_lang:s}),n=t.indexOf(ms);return n<0?{prefix:\"Paired with \",suffix:\".\"}:{prefix:t.slice(0,n),suffix:t.slice(n+15)}})(i);return(0,A.jsxs)(\"div\",{className:_,children:[n,t?(0,A.jsx)(\"span\",{className:`hyperpolling-span-hover ${U}`,onClick:()=>z(e),children:(0,A.jsx)(\"u\",{children:s})}):(0,A.jsx)(\"span\",{children:s}),a]},e.productId)},Z=(e,s)=>{if(!e)return null;const t=Ds(e,i),n=Es(e,o);return(0,A.jsxs)(\"div\",{className:j,children:[(0,A.jsx)(\"span\",{children:Ns(s,i)}),\": \",n?(0,A.jsx)(\"span\",{className:`hyperpolling-span-hover ${U}`,onClick:()=>z(e),children:(0,A.jsx)(\"u\",{children:t})}):(0,A.jsx)(\"span\",{children:t})]},e.productId)},$=a().useCallback(()=>{let{close:e}=X({title:r.CfR,view:(0,A.jsx)(ds,{deviceInfo:d.DeviceInfo,closeDialog:()=>{setTimeout(()=>{e&&e(),e=null},1e3)}}),extraClass:oe,headerClass:ce,closeClass:de,bodyClass:le},()=>{})},[]),ne=t.length>0;return(0,A.jsx)(Q.A,{title:r.f9h,tips:d.DeviceInfo.widgetTips,children:ne?(0,A.jsxs)(\"div\",{className:\"img-text\",children:[(0,A.jsxs)(\"div\",{className:`${m} ${y}`,children:[(0,A.jsx)(vs,{}),(0,A.jsxs)(\"div\",{className:S,children:[(0,A.jsxs)(\"div\",{className:`${E} ${R}`,children:[(0,A.jsx)(\"div\",{className:P,children:J?(0,A.jsxs)(A.Fragment,{children:[Z(x,r.kBv),Z(H,r.WQi)]}):1===t.length?q(t[0]):(0,A.jsxs)(A.Fragment,{children:[q(x),q(H)]})}),V?(0,A.jsx)(\"div\",{className:`${h} ${b}`,children:(0,A.jsx)(l.A,{text:I?r.Lps:r.VYK})}):null]}),(0,A.jsx)(\"div\",{className:`${g} ${C}`,onClick:$,children:(0,A.jsx)(l.A,{text:r.ssI})})]})]}),W?(0,A.jsxs)(\"div\",{className:`img-text flex ${O}`,children:[(0,A.jsx)(\"span\",{className:w,\"aria-hidden\":\"true\"}),(0,A.jsx)(\"div\",{className:B,children:(0,A.jsx)(\"p\",{children:(0,A.jsx)(l.A,{text:r.ITG,data:{deviceName:F.Ky.onLang(i).productName}})})})]}):null,v&&(0,A.jsxs)(\"div\",{className:`img-text flex ${T}`,children:[(0,A.jsx)(ee,{className:k}),(0,A.jsx)(\"span\",{className:L,children:(0,A.jsx)(l.A,{text:r.$0G})})]})]}):(0,A.jsxs)(\"div\",{className:`img-text flex ${f}`,children:[(0,A.jsx)(vs,{}),(0,A.jsx)(\"div\",{className:\"external\",onClick:$,children:(0,A.jsx)(l.A,{text:r.JSN})})]})})}"
+        },
+        "Es": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 45838,
+          "end": 46091,
+          "source": "(e,s)=>{if(null===e||void 0===e||!e.productId||!Array.isArray(s)||0===s.length)return!1;const t=xs(e.productId);if(null==t)return!1;const n=null===e||void 0===e?void 0:e.editionId;return s.some(e=>xs(e.productId)===t&&(null==n||0===n||e.editionId===n))}"
+        },
+        "xs": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 46716,
+          "end": 46741,
+          "source": "e=>null==e?null:Number(e)"
+        },
+        "we": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 8948,
+          "end": 9019,
+          "source": "e=>!!Array.isArray(e)&&Boolean(Oe(e,se.Su.KEYBOARD)&&Oe(e,se.Su.MOUSE))"
+        },
+        "hs": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 46095,
+          "end": 46538,
+          "source": "(e,s,t,n)=>{if(!e)return!1;if(e.status===gs)return!0;const a=xs(null===e||void 0===e?void 0:e.productId);if(null==a)return!1;if(s.some(e=>xs(e.productId)===a))return!0;if(t.some(e=>xs(e.productId)===a&&\"ready\"===e.setupStatus))return!0;const i=xs(n);if(null==i)return!1;const o=t.find(e=>xs(e.productId)===i&&\"ready\"===e.setupStatus);return(Array.isArray(null===o||void 0===o?void 0:o.subDevices)?o.subDevices:[]).some(e=>xs(e.productId)===a)}"
+        },
+        "Cs": {
+          "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+          "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+          "offset": 46891,
+          "end": 47381,
+          "source": "(e,s)=>{var t,n,a,i;const o=xs(e);if(null==o)return!1;const c=Is.A.get(`synapse_${o}`,!1);if(null===c||void 0===c||null===(t=c.profiles)||void 0===t||!t.length)return!1;let d=c.activeProfile;s&&null!==(n=c.deviceMetadatas)&&void 0!==n&&null!==(a=n[s])&&void 0!==a&&a.activeProfileGuid?d=c.deviceMetadatas[s].activeProfileGuid:s&&null!==(i=c.activeProfiles)&&void 0!==i&&i[s]&&(d=c.activeProfiles[s]);const l=d?c.profiles.find(e=>e.guid===d):c.profiles[0];return!!Ss(l)||c.profiles.some(Ss)}"
+        }
+      },
+      "css": [
+        {
+          "path": ".ref/devices/241/static/css/914.530f0373.chunk.css",
+          "sha256": "9f47b7e63b5009f40cd9ad73d1aee28cef28ac844823680985f846dbb081e0be",
+          "rules": [
+            {
+              "offset": 16900,
+              "selector": ".img-text .HyperPollingWirelessMouseDock_pairInfoBox__pcFCz",
+              "conditions": [],
+              "declarations": "gap:10px;justify-content:flex-start",
+              "properties": [
+                {
+                  "property": "gap",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "flex-start",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 16996,
+              "selector": ".HyperPollingWirelessMouseDock_pairedContentGroup__4-VLu",
+              "conditions": [],
+              "declarations": "align-items:center;display:flex;flex:1 1;gap:20px;min-width:0",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex",
+                  "value": "1 1",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "min-width",
+                  "value": "0",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17115,
+              "selector": ".HyperPollingWirelessMouseDock_unpairButton__CjT5w",
+              "conditions": [],
+              "declarations": "align-self:flex-start;border-color:#ccc;flex-shrink:0;height:auto;line-height:14px;margin-top:9px;min-width:90px;padding:7px 16px 6px",
+              "properties": [
+                {
+                  "property": "align-self",
+                  "value": "flex-start",
+                  "important": false
+                },
+                {
+                  "property": "border-color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "flex-shrink",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "auto",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "margin-top",
+                  "value": "9px",
+                  "important": false
+                },
+                {
+                  "property": "min-width",
+                  "value": "90px",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "7px 16px 6px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17300,
+              "selector": ".HyperPollingWirelessMouseDock_pairedDes__lDFxs",
+              "conditions": [],
+              "declarations": "flex:1 1;min-width:0;width:auto",
+              "properties": [
+                {
+                  "property": "flex",
+                  "value": "1 1",
+                  "important": false
+                },
+                {
+                  "property": "min-width",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "auto",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17380,
+              "selector": ".HyperPollingWirelessMouseDock_pairedTitle__P6\\+-O",
+              "conditions": [],
+              "declarations": "color:#ccc;font-size:14px;line-height:17px;word-break:break-word",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                },
+                {
+                  "property": "word-break",
+                  "value": "break-word",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17496,
+              "selector": ".HyperPollingWirelessMouseDock_deviceList__oshsQ",
+              "conditions": [],
+              "declarations": "display:flex;flex-direction:column",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17580,
+              "selector": ".HyperPollingWirelessMouseDock_deviceRow__mUZXV",
+              "conditions": [],
+              "declarations": "font-size:14px;line-height:17px",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 17660,
+              "selector": ".HyperPollingWirelessMouseDock_deviceNameLink__jCiyT",
+              "conditions": [],
+              "declarations": "cursor:pointer;text-decoration:underline",
+              "properties": [
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "text-decoration",
+                  "value": "underline",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 27457,
+              "selector": ".Duallink_pairInfoBox__wg6qs",
+              "conditions": [],
+              "declarations": "align-items:center;display:flex;justify-content:space-between;margin-bottom:20px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "space-between",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "20px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 27567,
+              "selector": ".Duallink_pairInfoBox__wg6qs .Duallink_unpairbutton__lTG1W",
+              "conditions": [],
+              "declarations": "background-color:#707070;border-radius:2px;color:#fff;display:block;font-family:Roboto;font-size:12px;height:28px;line-height:28px;min-width:90px;opacity:.8;padding:0 5px;text-align:center",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#707070",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "2px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fff",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "28px",
+                  "important": false
+                },
+                {
+                  "property": "min-width",
+                  "value": "90px",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": ".8",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0 5px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 27815,
+              "selector": ".Duallink_pairInfoBox__wg6qs .Duallink_unpairbutton__lTG1W:hover",
+              "conditions": [],
+              "declarations": "opacity:1",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 179,
+      "manifest": {
+        "path": ".ref/devices/179/asset-manifest.json",
+        "sha256": "33f8cd60c72685d968e70e2d84ba2d4dcfd116e2452528034c8bc3e1cad559bd"
+      },
+      "components": {
+        "mE": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4243839,
+          "end": 4244810,
+          "source": "class mE extends t.Component{constructor(e){super(e),this.state={UmaComponent:(0,NE.Yh)()?Ie:eE,latestVersionInfo:y.DeviceInfo.latestVersionInfo}}componentDidMount(){ME().then(e=>{console.log(\"Pairing componentDidMount - getVersions- latestVersionInfo:\",e),this.setState({latestVersionInfo:e})})}render(){const e=(JSON.parse(localStorage.getItem(lE.CV.DEVICE_DETAIL))||[]).find(e=>e.productId===y.DeviceInfo.productId)||{},E=this.state.UmaComponent;const a={deviceName:e.productName||{},imgPairing:SE,hyperpollingNoteFour:A.PXm,hyperpollingHeader:A.PRj,hyperpollingConfirmText:A.owr,productId:y.DeviceInfo.productId};return console.log(\"Pairing componentDidMount render latestVersionInfo -> \",this.state.latestVersionInfo),(0,S.jsxs)(o.A,{children:[(0,S.jsx)(r.default,{}),(0,S.jsx)(n.A,{direction:\"left\",children:E&&(0,S.jsx)(E,{deviceInfo:a,latestVersionInfo:this.state.latestVersionInfo})}),(0,S.jsx)(n.A,{direction:\"right\",children:(0,S.jsx)(AE,{uppercase:!1})})]})}}"
+        },
+        "Te": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4103122,
+          "end": 4108440,
+          "source": "e=>{var E,a,_,o,n,r;let{deviceInfo:O,latestVersionInfo:l}=e;l?Array.isArray(l)||console.error(\"HyperPollingWirelessUma: latestVersionInfo must be an array\",l):console.warn(\"HyperPollingWirelessUma: latestVersionInfo is not provided\");const[R,N]=i().useState([]),P=(0,s.useSelector)(e=>e.languageReducer.lang).toLowerCase(),p=(0,s.useSelector)(e=>e.commonReducer.validDevices),[M,m]=i().useState(null),[U,f]=i().useState(!1),y=(0,t.useRef)(0),b=(0,t.useRef)(p),V=(0,t.useMemo)(()=>p.some(e=>{var E;return e.productId===(null===M||void 0===M?void 0:M.productId)||e.productId===(null===(E=R[0])||void 0===E?void 0:E.productId)}),[p,R]),W=F(),Y=(0,t.useMemo)(()=>W(V?A.rYs:A.VYK,{start:\"|||\",end:\"|||\"}).split(\"|||\"),[W]),w=i().useCallback(()=>{let{close:e}=((e,E)=>{const{container:a}=e,_=document.createElement(\"div\");a?a.appendChild(_):document.body.appendChild(_);const t=()=>{(0,D.unmountComponentAtNode)(_),a?a.removeChild(_):document.body.removeChild(_)};return L().render((0,S.jsx)(s.Provider,{store:h.A,children:(0,S.jsx)(G,{...e,close:E,removeRoot:t})}),_),{close:t}})({title:A.UVv,view:(0,S.jsx)(se,{deviceInfo:O,pairedInfo:R,latestVersionInfo:l,updatePairedInfo:N,setTempPairedInfo:m,closeDialog:()=>{setTimeout(()=>{e&&e(),e=null},1e3)}})},()=>{Ee(),ee(\"DUALLINK_CANCEL\",{})})},[O,R]);(0,t.useEffect)(()=>{b.current=p},[p]);const k=async e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(\"SLAVE_CONNECT_EVENT\"===a&&(f(!0),setTimeout(()=>{f(!1)},2e4)),\"DUALLINK_BIND_INFO\"===a&&_.length>0){var i;null===M&&(m(_[0]),f(!0));const e=null===(i=_[0])||void 0===i?void 0:i.editionId,E=b.current.some(E=>{var a;return E.productId===(null===(a=_[0])||void 0===a?void 0:a.productId)&&E.editionId===e});E?(N(_),f(!1)):(y.current+=1,V&&y.current<=30?setTimeout(()=>{ee(\"DUALLINK_BIND_INFO\",{})},1e3):f(!1))}if(\"undefined\"!==typeof $[a]){!1!==await $[a](t,_)&&delete $[a]}else console.warn(\"ignore DEVICE_BC_EVENT.MW_RESPONSE_UI type=%s msgData=\",a,E)};i().useEffect(()=>(C.A.onBCEvent(H.qg.MW_RESPONSE_UI,k),ee(\"DUALLINK_BIND_INFO\",{}),()=>{C.A.offBCEvent(H.qg.MW_RESPONSE_UI,k)}),[V]);const x=async()=>{let e=0;if(\"function\"!==typeof v.A.activateWindowServiceClient||!R[0].productId)return;const E=(0,c.Oh)(R[0].productId),a=E.replace(/mw/g,\"ui\"),_=await(0,u.id)(a,!1),t=await(0,u.id)(E,!1);_||(e=200);const i=t&&t.url.match(/\\/synapse\\/.*/);if(Array.isArray(i)&&i[0]){const e=i[0].replace(/mw/g,\"ui\"),a=E.replace(/mw/g,\"ui\");if(e&&a){const E=[\"shouldFocus=1\",\"policy=3,tab_visible=1\"];window.open(e,a,E.join(\",\"))}}setTimeout(()=>{const e=new BroadcastChannel(E),a=R[0].category.toLowerCase();a===K?e.postMessage({type:B.mQR,payload:\"TAB_PERFORMANCE\"}):a===z&&e.postMessage({type:B.mQR,payload:\"TAB_CUSTOMIZE\"}),e.close()},e)};return(0,S.jsx)(g.A,{isHyperPolling:!0,title:A.FeU,tips:A.A4y,children:R.length<=0&&!M?(0,S.jsxs)(\"div\",{className:\"img-text flex\",style:{gap:\"10px\"},children:[(0,S.jsx)(\"div\",{className:\"multipairing hyperpolling\"}),(0,S.jsx)(\"div\",{className:\"external\",onClick:w,children:(0,S.jsx)(T.A,{text:A.JSN})})]}):R.length<=0&&M?(0,S.jsx)(\"div\",{className:\"img-text\",children:(0,S.jsxs)(\"div\",{className:d.pairInfoBox,children:[(0,S.jsx)(\"div\",{className:\"img-text flex\",children:(0,S.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,S.jsxs)(\"div\",{className:`${d.pairedDes}`,children:[(0,S.jsxs)(\"div\",{className:`${d.pairedTitle}`,children:[(0,S.jsxs)(\"span\",{children:[(0,S.jsx)(T.A,{text:A.vHO}),\" \",(0,S.jsx)(\"a\",{onClick:w,style:{textDecoration:\"underline\"},children:(X=(null===M||void 0===M||null===(E=M.productName)||void 0===E?void 0:E[P])||(null===M||void 0===M||null===(a=M.name)||void 0===a?void 0:a[P])||(null===M||void 0===M||null===(_=M.productName)||void 0===_?void 0:_.en)||(null===M||void 0===M||null===(o=M.name)||void 0===o?void 0:o.en),(null!==X&&void 0!==X?X:\"\").toLowerCase().replace(/\\b\\w/g,e=>e.toUpperCase()))})]}),U&&(0,S.jsx)(\"img\",{src:I,alt:\"loading...\",className:d.skeleton})]}),(0,S.jsx)(\"div\",{className:`${d.pairedContent}`,children:(0,S.jsx)(\"span\",{onClick:V?x:null,children:Y.map((e,E)=>1===E?(0,S.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,S.jsx)(\"u\",{children:e})},E):e)})})]}),(0,S.jsx)(\"div\",{className:U?d.disableUnpairbutton:d.unpairbutton,onClick:w,children:(0,S.jsx)(T.A,{text:A.ssI})})]})}):(0,S.jsx)(\"div\",{className:\"img-text\",children:(0,S.jsxs)(\"div\",{className:`${d.pairInfoBox}`,children:[(0,S.jsx)(\"div\",{className:\"img-text flex\",children:(0,S.jsx)(\"div\",{className:\"multipairing hyperpolling\"})}),(0,S.jsxs)(\"div\",{className:`${d.pairedDes}`,style:{paddingLeft:\"en\"!==P?\"10px\":\"0\"},children:[(0,S.jsx)(\"div\",{className:`${d.pairedTitle}`,children:(0,S.jsxs)(\"span\",{children:[(0,S.jsx)(T.A,{text:A.vHO}),\" \",(0,S.jsx)(\"a\",{onClick:V?w:null,style:{textDecoration:\"underline\",color:V?\"#cccccc\":\"#999999\"},children:null===(n=R[0])||void 0===n||null===(r=n.productName[P])||void 0===r?void 0:r.toLowerCase().replace(/\\b\\w/g,e=>e.toUpperCase())})]})}),(0,S.jsx)(\"div\",{className:`${d.pairedContent}`,children:(0,S.jsx)(\"span\",{onClick:V?x:null,children:Y.map((e,E)=>1===E?(0,S.jsx)(\"span\",{className:\"hyperpolling-span-hover\",children:(0,S.jsx)(\"u\",{children:e})},E):e)})})]}),(0,S.jsx)(\"div\",{className:`${d.unpairbutton} ${\"en\"===P?d.customWidth:\"\"}`,onClick:w,children:(0,S.jsx)(T.A,{text:A.ssI})})]})})});var X}"
+        },
+        "OE": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4238117,
+          "end": 4240854,
+          "source": "class OE extends t.Component{constructor(e){super(e),this.toggleConnectionStatus=()=>{this.props.setIndicatorLedStatus(B.Phh.Connection_Status)},this.toggleBatteryStatus=()=>{this.props.setIndicatorLedStatus(B.Phh.Battery_Status)},this.toggleBatteryWarning=()=>{this.props.setIndicatorLedStatus(B.Phh.Battery_Warning)}}render(){var e;const E=this.props.customIndicatorSVGImages?(e=>{switch(e){case 1:default:return(0,S.jsx)(aE,{});case 2:return(0,S.jsx)(_E,{});case 3:return(0,S.jsx)(tE,{})}})(this.props.indicatorLedStatus):this.props.indicatorSvg?(e=>{switch(e){case 1:default:return(0,S.jsx)(iE,{});case 2:return(0,S.jsx)(oE,{});case 3:return(0,S.jsx)(nE,{})}})(this.props.indicatorLedStatus):(e=>{switch(e){case 1:default:return(0,S.jsx)(rE,{});case 2:return(0,S.jsx)(sE,{});case 3:return(0,S.jsx)(TE,{})}})(this.props.indicatorLedStatus),a=(0,O.JN)(A.d8J,{_lang:this.props.lang}),_=!1===this.props.uppercase?\"\":\"uppercase\";return(0,S.jsx)(g.A,{title:this.props.customTitle?this.props.customTitle:A.bDV,extraClass:this.props.extraClass,tips:null!==(e=this.props.tips)&&void 0!==e?e:this.props.tips,children:(0,S.jsxs)(\"div\",{className:\"indicator-led-container\",children:[(0,S.jsx)(\"div\",{className:\"indicator-description\",children:(0,S.jsx)(T.A,{text:A.ags,style:{fontSize:14}})}),(0,S.jsx)(\"div\",{className:\"indicator-status\",children:(0,S.jsxs)(\"div\",{className:\"mt5 mb5 flex\",...!1===this.props.isDongle&&{\"indicator-tooltip\":a},children:[(0,S.jsxs)(\"div\",{className:(!1===this.props.isDongle?\"disabled\":\"\")+\" indicator-options\",children:[(0,S.jsxs)(\"div\",{className:\"connectionstatus\",children:[(0,S.jsx)(R,{name:A.orY,id:\"connectionstatus\",active:this.props.indicatorLedStatus===B.Phh.Connection_Status,onCheck:this.toggleConnectionStatus,extraClass:_}),(0,S.jsx)(\"br\",{}),(0,S.jsx)(\"div\",{className:\"msg\",children:(0,S.jsx)(T.A,{text:this.props.customConnectionStatus?this.props.customConnectionStatus:A.q2H})})]}),(0,S.jsxs)(\"div\",{className:\"batterystatus\",children:[(0,S.jsx)(R,{name:A.DJE,id:\"batterystatus\",active:this.props.indicatorLedStatus===B.Phh.Battery_Status,onCheck:this.toggleBatteryStatus,extraClass:_}),(0,S.jsx)(\"br\",{}),(0,S.jsx)(\"div\",{className:\"msg\",children:(0,S.jsx)(T.A,{text:this.props.customDesBatteryStatus?this.props.customDesBatteryStatus:A.JhZ})})]}),(0,S.jsxs)(\"div\",{className:\"batterywarning\",children:[(0,S.jsx)(R,{name:A.cbq,id:\"batterywarning\",active:this.props.indicatorLedStatus===B.Phh.Battery_Warning,onCheck:this.toggleBatteryWarning,extraClass:_}),(0,S.jsx)(\"br\",{}),(0,S.jsx)(\"div\",{className:\"msg\",children:(0,S.jsx)(T.A,{text:this.props.customDesBatteryWarning?this.props.customDesBatteryWarning:A.q0f})})]})]}),(0,S.jsx)(\"div\",{className:\"indicator-image\",children:E})]})})]})})}}"
+        },
+        "AE": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4240863,
+          "end": 4240999,
+          "source": "(0,s.connect)(e=>({indicatorLedStatus:e.indicatorLedReducer.indicatorLedStatus,lang:e.languageReducer.lang}),e=>(0,EE.zH)({..._},e))(OE)"
+        },
+        "G": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4084926,
+          "end": 4085583,
+          "source": "e=>{const{title:E,view:a,close:_,removeRoot:t,extraClass:o,bodyClass:n,headerClass:r,closeClass:s}=e,I=i().useCallback(e=>{if(_){const E=_(e);if(E instanceof Promise)return void E.then(e=>{!1!==e&&t()});!1!==E&&t()}else t()},[_]);return(0,S.jsxs)(S.Fragment,{children:[(0,S.jsx)(\"div\",{className:P,style:{position:\"fixed\"}}),(0,S.jsxs)(\"div\",{className:`${p} ${o||\"\"}`,style:{position:\"fixed\"},children:[(0,S.jsxs)(\"div\",{className:`${M} ${r||\"\"}`,children:[(0,S.jsx)(\"span\",{children:(0,S.jsx)(T.A,{text:E})}),(0,S.jsx)(\"div\",{className:`${m} ${s||\"\"}`,onClick:I,children:(0,S.jsx)(\"img\",{src:U.A})})]}),n?(0,S.jsx)(\"div\",{className:n,children:a}):a]})]})}"
+        },
+        "se": {
+          "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+          "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+          "offset": 4097087,
+          "end": 4103118,
+          "source": "(0,s.connect)(e=>({globallang:e.languageReducer.lang,currentFWVersion:e.deviceReducer.currentFWVersion,firmwareDetails:e.deviceReducer.firmwareDetails,validDevices:e.commonReducer.validDevices}),null)(e=>{var E;let{deviceInfo:a,globallang:_,pairedInfo:o,updatePairedInfo:n,closeDialog:r,currentFWVersion:s,validDevices:T,firmwareDetails:I,latestVersionInfo:O,setTempPairedInfo:A}=e;const[l,R]=i().useReducer(J,{...x,deviceInfo:a,bindInfo:o}),{status:u,bindInfo:c,scannedInfo:D,lang:L,category:P}=l,p=null!==(E=(0,t.useMemo)(()=>T.find(e=>e.productId===y.DeviceInfo.dongleId)))&&void 0!==E?E:void 0;(u===W.LOADED||u.PAIRED)&&Ee();const M=i().useCallback(e=>{R({type:\"SET_STATUS\",payload:{status:e}})},[]),m=i().useCallback(e=>{R({type:\"SET_LANG\",payload:{lang:e}})},[]),U=i().useCallback(e=>{R(e)},[]),h=i().useCallback(function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};const{productId:E,serialNumber:a}=e;if(!E||!a)return void console.error(\"openFirmwareUpdate ... productId or serialNumber is invalid ...\",e);const _=(e=>b.stringify({productId:e}))(E),t=window.location.origin+Z+`?${_}`;window.open(t,((e,E)=>j+`_${e}_${E}`)(E,a),q)},[]),G=async function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"mouse\";Ee();const E=function(e){let E=arguments.length>1&&void 0!==arguments[1]?arguments[1]:{};if(console.log(\"classifyFirmwareVersion ... version ...\",e),!/^\\d+\\.\\d+\\.\\d+(\\.\\d+)?$/.test(e))return;const a=E.allICData||[];if(!Array.isArray(a)||80!==a.length)return void console.warn(\"classifyFirmwareVersion ... firmwareDetails.allICData is not valid, it must be an array with 80 bytes.\",a);if(0!==function(e){let E=arguments.length>2&&void 0!==arguments[2]?arguments[2]:1;const a=E=>e.slice(4*E,4*E+4),_=a(arguments.length>1&&void 0!==arguments[1]?arguments[1]:0),t=a(E);for(let i=0;i<4;i++){if(_[i]<t[i])return-1;if(_[i]>t[i])return 1}return 0}(a))return console.warn(\"classifyFirmwareVersion ... firmwareDetails.allICData is not valid, it must be the same for all ICs.\",a),k;const _=parseInt(e.split(\".\")[0],10);return 3===_?z:_>=0&&_<=2?K:void 0}(s,I);if(console.log(\"Current uma support categroy is \",E),E&&p&&E!==e){console.log(`It is necessary for Uma to upgrade firmware version to support ${e}, currently firmware version is ${s}, just for ${E}`);try{const{targetFWVersion:E,sha256:a}=await async function(e,E,a,_){console.log(`getTargetFWVersion for current ${e}-device ${E}, check all latestVersionInfo ....`,_);const t=_.find(e=>e.deviceType===a);return t?{targetFWVersion:t.latestVersion,sha256:t.sha256}:{}}(p.productId,p.serialNumber,e,O),_={productId:p.productId,deviceContainerId:p.deviceContainerId,serialNumber:p.serialNumber,firmwareInfo:{currentFWVersion:s},firmwareUpdateInfo:{targetFWVersion:E,sha256:a},supportDongle:p.productId,supportUsb:p.productId,supportUpgradeConnection:{usb:!0},source:window.name,model:\"custom\"};(async function(e){var E;await(null===(E=v.A.setWindowStorageItem(\"fw-upgrade\",[e]))||void 0===E?void 0:E.catch(e=>{console.warn(\"[updateWindowStorage] set cache data, error\",e)}))})(_).then(()=>{h(_),R({type:\"SET_STATUS\",payload:{status:W.UPGRADING,category:e}})}).catch(e=>console.log(\"updateWindowStorage ... error \",e))}catch(a){console.error(\"Uma Upgrade firmware fail to start process ...\",a)}}else R({type:\"SET_STATUS\",payload:{status:W.SCANNING,category:e}}),ee(\"DUALLINK_SCAN_DEVICE\",{status:Y,category:e.toLocaleUpperCase()})},g=e=>{R({type:\"SET_STATUS\",payload:{status:W.JUSTUNPAIR}}),ee(\"DUALLINK_UNBIND_DEVICE\",{productId:e})},f=()=>{R({type:\"SET_STATUS\",payload:{status:W.UNPAIRING}})},B=()=>{R({type:\"SET_STATUS\",payload:{status:W.PAIRED}})};return i().useEffect(()=>{m(_)},[_]),i().useEffect(()=>{M(W.LOADING),ee(\"DUALLINK_BIND_INFO\",{})},[]),i().useEffect(()=>{C.A.onBCEvent(H.qg.MW_RESPONSE_UI,e=>{let{msgData:E}=e;const{type:a,payload:_,error:t}=E;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",a,_,t),t){let e=\"\";return\"DUALLINK_BIND_INFO\"===a?(e=\"Fail to get bind Info\",U({type:\"SET_ERROR\",payload:{status:W.LOADED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===a?(e=\"Fail to scan other devices\",U({type:\"SET_ERROR\",payload:{status:W.SCANNED,bindInfo:[],scannedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===a?(e=\"Fail to bind device\",U({type:\"SET_ERROR\",payload:{status:W.PAIR_FAILED}}),Q=setTimeout(()=>{U({type:\"SET_BINDINFO\",payload:{status:W.LOADED,bindInfo:[],scannedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===a&&(e=\"Fail to unbind device\",U({type:\"SET_ERROR\",payload:{status:W.UNPAIR_FAILED}}),Q=setTimeout(()=>{U({type:\"SET_STATUS\",payload:{status:W.PAIRED}})},4e3)),void console.error(`errMsg ${e}`)}switch(a){case\"DUALLINK_BIND_INFO\":var i;if(0===_.length)U({type:\"SET_BINDINFO\",payload:{status:W.LOADED,bindInfo:[],scannedInfo:[]}});else U({type:\"SET_BINDINFO\",payload:{status:W.PAIRED,category:null===(i=_[0].category)||void 0===i?void 0:i.toLowerCase(),bindInfo:_,scannedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":1===_.length?(U({type:\"SET_SCANNED_INFO\",payload:{status:W.PAIRING,scannedInfo:_}}),ee(\"DUALLINK_BIND_DEVICE\",{mode:w,device:_[0]})):U({type:\"SET_SCANNED_INFO\",payload:{status:W.SCANNED,scannedInfo:_}});break;case\"DUALLINK_BIND_DEVICE\":U({type:\"SET_BINDINFO\",payload:{status:W.PAIRED,bindInfo:[_.device],selectedIndex:0}}),n([_.device]),r();break;case\"DUALLINK_UNBIND_DEVICE\":U({type:\"SET_STATUS\",payload:{status:W.UNPAIRED}}),n([]),A(null),r()}})},[]),u===W.LOADING?(0,S.jsx)(\"div\",{className:d.loading,children:(0,S.jsx)(N.A,{isMounted:!0})}):u===W.LOADED||u===W.UPGRADING||u===W.SCANNING||u===W.SCANNED||u===W.PAIRING||u===W.PAIRED||u===W.JUSTUNPAIR||u===W.UNPAIRING||u===W.UNPAIRED||u===W.PAIR_FAILED||u===W.UNPAIR_FAILED?(0,S.jsx)(V.Provider,{value:{state:l,callAction:U},children:(0,S.jsx)(re,{status:u,bindInfo:c,scannedInfo:D,scan:G,unPair:g,setStatus:M,confirmUnpair:f,cancelUnpair:B,lang:L,deviceInfo:a,category:P,currentFWVersion:s})}):(0,S.jsx)(\"div\",{className:d.loading,children:(0,S.jsx)(N.A,{isMounted:!0})})})"
+        }
+      },
+      "css": [
+        {
+          "path": ".ref/devices/179/static/css/main.c778525e.css",
+          "sha256": "1c6a9cc7c5216a838275d9acf663b3446eb54fb43cfb9391ef805e7deec54c77",
+          "rules": [
+            {
+              "offset": 406439,
+              "selector": ".HyperPollingWirelessUma_loading__4WRAI",
+              "conditions": [],
+              "declarations": "align-items:center;display:flex;height:100%;justify-content:center",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 421563,
+              "selector": ".modal_backDrop__BYKQl",
+              "conditions": [],
+              "declarations": "background-color:#000000b3;bottom:0;left:0;position:fixed;right:0;top:0;z-index:1000",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000000b3",
+                  "important": false
+                },
+                {
+                  "property": "bottom",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "fixed",
+                  "important": false
+                },
+                {
+                  "property": "right",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "1000",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 421671,
+              "selector": ".modal_modal__UO3fZ",
+              "conditions": [],
+              "declarations": "background-color:#111;border:1px solid #515151;border-radius:5px;display:flex;flex-direction:column;height:100vh;left:50%;max-width:100%;overflow-y:scroll;position:absolute;top:100px;transform:translateX(-50%);width:850px;z-index:1001",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #515151",
+                  "important": false
+                },
+                {
+                  "property": "border-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100vh",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "50%",
+                  "important": false
+                },
+                {
+                  "property": "max-width",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "overflow-y",
+                  "value": "scroll",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "100px",
+                  "important": false
+                },
+                {
+                  "property": "transform",
+                  "value": "translateX(-50%)",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "850px",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "1001",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 421926,
+              "selector": ".modal_modal__UO3fZ .modal_emptyProfile__YmtfA",
+              "conditions": [],
+              "declarations": "color:#c8323c;flex-grow:1;font-family:Roboto;font-size:14px;line-height:17px;padding:20px 50px 0",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#c8323c",
+                  "important": false
+                },
+                {
+                  "property": "flex-grow",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "20px 50px 0",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422070,
+              "selector": ".modal_modal__UO3fZ .modal_header__hmWJt",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#222;border-bottom:1px solid #515151;border-top-left-radius:5px;border-top-right-radius:5px;color:#999;display:flex;flex-shrink:0;font-family:Roboto;font-size:14px;height:36px;justify-content:center;line-height:36px;position:relative;text-align:center;text-transform:uppercase;vertical-align:middle;width:100%",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#222",
+                  "important": false
+                },
+                {
+                  "property": "border-bottom",
+                  "value": "1px solid #515151",
+                  "important": false
+                },
+                {
+                  "property": "border-top-left-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "border-top-right-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#999",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-shrink",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "36px",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "36px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "uppercase",
+                  "important": false
+                },
+                {
+                  "property": "vertical-align",
+                  "value": "middle",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422457,
+              "selector": ".modal_modal__UO3fZ .modal_header__hmWJt .modal_close__M-QNY img",
+              "conditions": [],
+              "declarations": "position:absolute;right:5px",
+              "properties": [
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "right",
+                  "value": "5px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422550,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#222;display:flex;flex-shrink:0;height:47px;width:100%",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#222",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-shrink",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "47px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422682,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT .modal_intro__D-ls8",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;margin-left:100px;text-align:right",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "margin-left",
+                  "value": "100px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "right",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422823,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT .modal_introDropdown__PvgkG",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;margin-left:89px;text-align:right",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "margin-left",
+                  "value": "89px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "right",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 422971,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT .modal_fileIntro__lpTpZ",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#111;border:1px solid #5d5d5d;display:flex;height:27px;margin-left:10px;padding-left:6px;padding-right:4px;width:250px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#111",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "margin-left",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "padding-left",
+                  "value": "6px",
+                  "important": false
+                },
+                {
+                  "property": "padding-right",
+                  "value": "4px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "250px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423191,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT .modal_fileIntro__lpTpZ .modal_text__Y3f9C",
+              "conditions": [],
+              "declarations": "flex-grow:2;font-size:14px;overflow:hidden!important;text-overflow:ellipsis;white-space:nowrap",
+              "properties": [
+                {
+                  "property": "flex-grow",
+                  "value": "2",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "overflow",
+                  "value": "hidden",
+                  "important": true
+                },
+                {
+                  "property": "text-overflow",
+                  "value": "ellipsis",
+                  "important": false
+                },
+                {
+                  "property": "white-space",
+                  "value": "nowrap",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423370,
+              "selector": ".modal_modal__UO3fZ .modal_browse__WhpjT .modal_fileIntro__lpTpZ img",
+              "conditions": [],
+              "declarations": "height:20px;width:20px",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "20px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423462,
+              "selector": ".modal_modal__UO3fZ .modal_deselect__-o3ls",
+              "conditions": [],
+              "declarations": "height:40px;padding:12px 12px 11px 20px;width:598px",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "40px",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "12px 12px 11px 20px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "598px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423557,
+              "selector": ".modal_modal__UO3fZ .modal_deselect__-o3ls a",
+              "conditions": [],
+              "declarations": "color:#44d62c",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#44d62c",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423616,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL",
+              "conditions": [],
+              "declarations": "align-items:center;flex-grow:2;max-height:397px;padding-left:20px;padding-right:27px;width:598px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "flex-grow",
+                  "value": "2",
+                  "important": false
+                },
+                {
+                  "property": "max-height",
+                  "value": "397px",
+                  "important": false
+                },
+                {
+                  "property": "padding-left",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "padding-right",
+                  "value": "27px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "598px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423755,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_deviceName__xgHc1",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;line-height:17px;margin-bottom:6px",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "17px",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "6px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 423902,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB",
+              "conditions": [],
+              "declarations": "align-items:center;color:#ccc;display:flex;font-family:Roboto;font-size:14px;height:31px;padding-left:32px;position:relative",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "31px",
+                  "important": false
+                },
+                {
+                  "property": "padding-left",
+                  "value": "32px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 424105,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB .modal_checkboxItemImgWrapper__R1Y\\+\\+",
+              "conditions": [],
+              "declarations": "align-items:center;display:flex;height:100%;margin-left:10px;margin-right:10px;position:relative;width:20px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "margin-left",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "margin-right",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "20px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 424330,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB .modal_checkboxItemImgWrapper__R1Y\\+\\+ .modal_tip__hPkIp",
+              "conditions": [],
+              "declarations": "background-color:#000;border:1px solid #5d5d5d;opacity:0;padding:8px 10px 10px;position:absolute;top:100%;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "8px 10px 10px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "visibility 0s,opacity .3s linear",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "hidden",
+                  "important": false
+                },
+                {
+                  "property": "will-change",
+                  "value": "visibility,opacity",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 424664,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB .modal_checkboxItemImgWrapper__R1Y\\+\\+:hover>.modal_tip__hPkIp",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;z-index:100",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "100",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 424846,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB .modal_firstLine__8OYoI",
+              "conditions": [],
+              "declarations": "align-self:stretch;width:3px",
+              "properties": [
+                {
+                  "property": "align-self",
+                  "value": "stretch",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "3px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 424977,
+              "selector": ".modal_modal__UO3fZ .modal_content__z0TuL .modal_importProfileInfoItem__GyCiB .modal_text__Y3f9C",
+              "conditions": [],
+              "declarations": "align-self:center",
+              "properties": [
+                {
+                  "property": "align-self",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 425092,
+              "selector": ".modal_modal__UO3fZ .modal_footer__Yclab",
+              "conditions": [],
+              "declarations": "align-items:center;background-color:#222;border-bottom-left-radius:5px;border-bottom-right-radius:5px;border-top:1px solid #515151;display:flex;flex-direction:column;justify-content:center;padding-bottom:16px;padding-top:16px;width:600px",
+              "properties": [
+                {
+                  "property": "align-items",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "background-color",
+                  "value": "#222",
+                  "important": false
+                },
+                {
+                  "property": "border-bottom-left-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "border-bottom-right-radius",
+                  "value": "5px",
+                  "important": false
+                },
+                {
+                  "property": "border-top",
+                  "value": "1px solid #515151",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                },
+                {
+                  "property": "justify-content",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "padding-bottom",
+                  "value": "16px",
+                  "important": false
+                },
+                {
+                  "property": "padding-top",
+                  "value": "16px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "600px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 425371,
+              "selector": ".modal_modal__UO3fZ .modal_footer__Yclab .modal_willNotImport__FnB55",
+              "conditions": [],
+              "declarations": "color:#ccc;font-family:Roboto;font-size:14px;line-height:16px;margin-bottom:10px;text-align:center",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#ccc",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "Roboto",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "16px",
+                  "important": false
+                },
+                {
+                  "property": "margin-bottom",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 425539,
+              "selector": ".modal_modal__UO3fZ .modal_importProfileItem__uXvd8",
+              "conditions": [],
+              "declarations": "position:relative",
+              "properties": [
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 425609,
+              "selector": ".modal_modal__UO3fZ .modal_importProfileItem__uXvd8 .modal_checkboxWrapper__2zgtX",
+              "conditions": [],
+              "declarations": "display:flex",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 425704,
+              "selector": ".modal_modal__UO3fZ .modal_importProfileItem__uXvd8 .modal_checkingTip__yUbvE",
+              "conditions": [],
+              "declarations": "background-color:#000;border:1px solid #5d5d5d;font-size:14px;left:130px;opacity:0;padding:8px 10px 10px;position:absolute;top:calc(100% + 10px);transition:visibility 0s,opacity .3s linear;visibility:hidden;width:88px;will-change:visibility,opacity",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                },
+                {
+                  "property": "left",
+                  "value": "130px",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "8px 10px 10px",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "absolute",
+                  "important": false
+                },
+                {
+                  "property": "top",
+                  "value": "calc(100% + 10px)",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "visibility 0s,opacity .3s linear",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "hidden",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "88px",
+                  "important": false
+                },
+                {
+                  "property": "will-change",
+                  "value": "visibility,opacity",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 426031,
+              "selector": ".modal_modal__UO3fZ .modal_importProfileItem__uXvd8:hover>.modal_checkingTip__yUbvE",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;z-index:100",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "z-index",
+                  "value": "100",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447194,
+              "selector": ".indicator-led-container",
+              "conditions": [],
+              "declarations": "display:flex;flex-direction:column;gap:20px;height:227px;width:520px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "20px",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "227px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "520px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447288,
+              "selector": ".indicator-led-container .indicator-description",
+              "conditions": [],
+              "declarations": "font-size:14px",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "14px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447351,
+              "selector": ".indicator-led-container .indicator-status",
+              "conditions": [],
+              "declarations": "display:flex;flex-direction:column;gap:10px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "10px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447438,
+              "selector": ".indicator-led-container .indicator-status .indicator-options",
+              "conditions": [],
+              "declarations": "display:flex;flex-direction:column;gap:10px;width:310px",
+              "properties": [
+                {
+                  "property": "display",
+                  "value": "flex",
+                  "important": false
+                },
+                {
+                  "property": "flex-direction",
+                  "value": "column",
+                  "important": false
+                },
+                {
+                  "property": "gap",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "310px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447556,
+              "selector": ".indicator-led-container .indicator-status .indicator-options .batterystatus,.indicator-led-container .indicator-status .indicator-options .batterywarning,.indicator-led-container .indicator-status .indicator-options .connectionstatus",
+              "conditions": [],
+              "declarations": "gap:2px;width:310px",
+              "properties": [
+                {
+                  "property": "gap",
+                  "value": "2px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "310px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 447811,
+              "selector": ".indicator-led-container .indicator-status .indicator-options .batterystatus .radio-item,.indicator-led-container .indicator-status .indicator-options .batterywarning .radio-item,.indicator-led-container .indicator-status .indicator-options .connectionstatus .radio-item",
+              "conditions": [],
+              "declarations": "margin:0",
+              "properties": [
+                {
+                  "property": "margin",
+                  "value": "0",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 448091,
+              "selector": ".indicator-led-container .indicator-status .indicator-options .batterywarning,.indicator-led-container .indicator-status .indicator-options .connectionstatus",
+              "conditions": [],
+              "declarations": "height:50px",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "50px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 448261,
+              "selector": ".indicator-led-container .indicator-status .indicator-options .batterystatus",
+              "conditions": [],
+              "declarations": "height:64px",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "64px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 448350,
+              "selector": ".indicator-led-container .indicator-status .indicator-options .msg",
+              "conditions": [],
+              "declarations": "color:#999;font-size:12px;margin-left:30px;opacity:.7;width:280px",
+              "properties": [
+                {
+                  "property": "color",
+                  "value": "#999",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "12px",
+                  "important": false
+                },
+                {
+                  "property": "margin-left",
+                  "value": "30px",
+                  "important": false
+                },
+                {
+                  "property": "opacity",
+                  "value": ".7",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "280px",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 448483,
+              "selector": ".indicator-led-container .indicator-status .indicator-image",
+              "conditions": [],
+              "declarations": "height:192px;width:200px",
+              "properties": [
+                {
+                  "property": "height",
+                  "value": "192px",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "200px",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "native": [
+    {
+      "path": "src/features/dock_pairing.rs",
+      "sha256": "6ff64b71d135b286095529cc0d1ba062ce400617939844a7819b6f3f8a8f0a04"
+    },
+    {
+      "path": "src/features/dock_pairing/state.rs",
+      "sha256": "709cde3d01d06371953a9d33ba2f2b959069b62266e1150868e83fe448faa936"
+    },
+    {
+      "path": "src/features/dock_pairing/dialog.rs",
+      "sha256": "37b80feaf2a24da4ae33732e295a78eab75c4f56984afc3a9c2dfcf43e9e0a92"
+    },
+    {
+      "path": "src/features/source_controls/receiver.rs",
+      "sha256": "e1399a46a070e460c2a1959e496502e0287c75bc46a9d77781b201eec6397831"
+    }
+  ]
+}

@@ -66,7 +66,8 @@ impl MacroPage {
     }
 
     pub(super) fn new_action_items(&self, kind: ActionKind) -> Option<Vec<ActionItem>> {
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || kind == ActionKind::Delay && self.current_macro_type() != MacroType::Standard
         {
             return None;
@@ -115,7 +116,8 @@ impl MacroPage {
     }
 
     pub(super) fn duplicate_action(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || self.tutorial != Tutorial::Complete
             || self.actions_for != self.current
         {
@@ -148,6 +150,7 @@ impl MacroPage {
                 key.flag = Some(down + 1);
                 vec![item, up]
             }
+            ActionKind::Mouse if item.mouse_movement.is_some() => vec![item],
             ActionKind::Mouse => {
                 let Some(id) = self.next_event_pair_id() else {
                     return;
@@ -192,7 +195,8 @@ impl MacroPage {
     }
 
     pub(super) fn delete_action(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || self.tutorial != Tutorial::Complete
             || self.actions_for != self.current
         {
@@ -235,7 +239,8 @@ impl MacroPage {
         target: usize,
         cx: &mut Context<Self>,
     ) {
-        if self.record_ui.open
+        if self.recording_busy()
+            || self.record_ui.open
             || self.tutorial != Tutorial::Complete
             || drag.page != cx.entity_id()
             || drag.document != self.current
@@ -331,13 +336,13 @@ impl MacroPage {
     }
 
     pub(super) fn choose_mouse_action(&mut self, index: usize, button: u8, cx: &mut Context<Self>) {
-        if self.record_ui.open || self.actions_for != self.current {
+        if self.recording_busy() || self.record_ui.open || self.actions_for != self.current {
             return;
         }
         let Some(old) = self
             .actions
             .get(index)
-            .filter(|item| item.kind == ActionKind::Mouse)
+            .filter(|item| item.kind == ActionKind::Mouse && item.mouse_movement.is_none())
             .cloned()
         else {
             return;

@@ -3392,7 +3392,7 @@
   "native": [
     {
       "path": "src/features/source_controls/receiver.rs",
-      "sha256": "e1399a46a070e460c2a1959e496502e0287c75bc46a9d77781b201eec6397831"
+      "sha256": "e718eaa559b0c0bf9a520f434a1b40d11624d20abac485258d0a30a8e9e280be"
     },
     {
       "path": "src/features/source_controls/receiver_indicator_data.json",
@@ -3400,15 +3400,15 @@
     },
     {
       "path": "src/features/source_controls.rs",
-      "sha256": "5bf3886ebb77ed31f6b5184de6234f44dc40cf16ad8f405d98545a21470a6865"
+      "sha256": "cef5d106725d37e5a67b3730e769bc64d01e31b1f1dc17f7a95ec38039e024bf"
     },
     {
       "path": "src/ui/source_tooltip.rs",
-      "sha256": "cd0d8274a9d3105b647daa7c7c54b3e21eaeca564945e6187f7a279d53251ab7"
+      "sha256": "9cc4be280efbac9b203de1a85124a2b8ec3050d303db51928370782eb783f34e"
     },
     {
       "path": "src/ui/surface.rs",
-      "sha256": "18b9aa0eb789f9919af138ea495b75b21a88cfb60ea6a8a3343af482b9115e29"
+      "sha256": "b9191a8061688bac90386aba04732e952287fb2fa133306549641e9bce79bc0a"
     }
   ]
 }

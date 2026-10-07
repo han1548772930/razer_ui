@@ -1,0 +1,984 @@
+{
+  "method": "Static Acorn AST and acquisition SHA-256 checks; UTF-16 half-open offsets; no vendor execution",
+  "product_id": 179,
+  "javascript_files": 92,
+  "resolved_modules": 572,
+  "acquisition": [
+    {
+      "path": ".ref/middleware/179/index.html",
+      "sha256": "6f1343098e80eb289242926346c3cd7dfa35c17c9e12aeb77ac32f8b8b95e65d",
+      "bytes": 4206,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/index.html",
+      "fetched_at_utc": "2026-10-07T02:54:30.452624+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/webpackManifest.json",
+      "sha256": "4e1f545e1f4dcd1e5c05ba97eac1fbc8dc0cd239a3562dcf62089855d7749923",
+      "bytes": 15030,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/webpackManifest.json",
+      "fetched_at_utc": "2026-10-07T02:54:33.144615+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/manifest.json",
+      "sha256": "72671f1738b7d9a37cf93429d457f0bff61cabcb93836ddb2cb3e1f2ba3b4929",
+      "bytes": 5839,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/manifest.json",
+      "fetched_at_utc": "2026-10-07T02:54:31.204966+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/2520.5a78dc380fb17e167543.js",
+      "sha256": "f1af487e38f783e1f77bdcbdc896d2ed4cdd3f0e782251bde2afbec4946254c2",
+      "bytes": 143304,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/2520.5a78dc380fb17e167543.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.685689+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/2545.90bfd97c768dac3c67ff.js",
+      "sha256": "740b8db9a6e7075c4f276593348558cfbcf457f37243ef613e7ecdebb13725a8",
+      "bytes": 4559,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/2545.90bfd97c768dac3c67ff.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.357098+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/3006.38130c89bdba16d75b75.js",
+      "sha256": "602e4d7fdd17aacece7cd956578391e6eb4bfffa920be38b551fa389ff057f7d",
+      "bytes": 17417,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/3006.38130c89bdba16d75b75.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.293688+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/351.7032dc9468f745889e7c.js",
+      "sha256": "8943cf51cfdef2f7c0752c042f2631197285d5a2951b38fad72487c838c33848",
+      "bytes": 6481,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/351.7032dc9468f745889e7c.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.244029+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/3813.9add84663b416287cb9b.js",
+      "sha256": "be25e805590c7034786e63f90471a35073854a2614e3e38a92e3506dd0ee9bf9",
+      "bytes": 9819,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/3813.9add84663b416287cb9b.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.259430+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/4268.b6b207ac64f66457c7cf.js",
+      "sha256": "2c7148afec1336a7fe0d8b3e21e50fb5c1e8b9cacc8e98d8ac661844a255843c",
+      "bytes": 1792,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/4268.b6b207ac64f66457c7cf.js",
+      "fetched_at_utc": "2026-10-07T02:55:07.208218+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/4647.9d1e54e8ce0cd5261ce0.js",
+      "sha256": "95d9c291131e210071ea6f15675ee3ab6014304d60e196beb1bc4dc44cf983ed",
+      "bytes": 1792,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/4647.9d1e54e8ce0cd5261ce0.js",
+      "fetched_at_utc": "2026-10-07T02:55:08.015672+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/4931.d82aae58b50e9d3cdf69.js",
+      "sha256": "f1973fe42aeb476d4c3a530b09e44b7c3411c20888c85242503aabea17be3509",
+      "bytes": 20041,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/4931.d82aae58b50e9d3cdf69.js",
+      "fetched_at_utc": "2026-10-07T02:55:08.123149+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/5447.ebbbdb15f4661c1fe8be.js",
+      "sha256": "eb914caf3ee852b89461e1f13723b5fe675ce91bcf61a751c5d2dec1b6fe556e",
+      "bytes": 2460,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/5447.ebbbdb15f4661c1fe8be.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.037849+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/5502.9c773b3e046798df0bc2.js",
+      "sha256": "997ca601bc16f281bc98aed5b570656bdaff0f3e9c4cebf7d62de272fc8886ad",
+      "bytes": 17407,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/5502.9c773b3e046798df0bc2.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.067291+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/5559.7ce9faacbc35b39648d2.js",
+      "sha256": "8707b22d06548445b83cffdc8c1ab5477e54e98d5a86093995bc0f57800dae2f",
+      "bytes": 27716,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/5559.7ce9faacbc35b39648d2.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.051382+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "bytes": 2406909,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/6120.ef5d145fafdfd0069d53.js",
+      "fetched_at_utc": "2026-10-07T02:55:14.152528+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/656.31e640152d35ebda80c5.js",
+      "sha256": "f2e9a5009348683ed70369c72caa18c183ab3fb0182b59c28cc1acb2fa6b31a1",
+      "bytes": 871,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/656.31e640152d35ebda80c5.js",
+      "fetched_at_utc": "2026-10-07T02:55:12.917460+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/7116.7acd9097471155610d5e.js",
+      "sha256": "3e4369277bf777aa299680666fb2672b18a2f15d7e4a1d8db4743e16f91e685b",
+      "bytes": 25894,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/7116.7acd9097471155610d5e.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.077382+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/7254.be9dba3fe6dc42d7f519.js",
+      "sha256": "564c1ec2b49823bb0aba5da659a1cce57f4d928b55327e0bd69f0a1dff8a5b4b",
+      "bytes": 42872,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/7254.be9dba3fe6dc42d7f519.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.904167+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/7861.1cdf2d723ef11445a41a.js",
+      "sha256": "02b709a8c231cb62f484f80cf9ae6274f2c8603aaddd4a2f05e6012265dea139",
+      "bytes": 39433,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/7861.1cdf2d723ef11445a41a.js",
+      "fetched_at_utc": "2026-10-07T02:55:13.969397+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/9363.ad80af1c5f6b79e100c7.js",
+      "sha256": "b3b5c139a95cfd79a2722e94dfe024c5a51ac2cb4a5f470c410a12132bd97ca1",
+      "bytes": 57415,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/9363.ad80af1c5f6b79e100c7.js",
+      "fetched_at_utc": "2026-10-07T02:55:14.021796+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/9697.030213a00bc7233a8e6d.js",
+      "sha256": "a6ca07d2e03aff529ba9dad0c07320542e1a383f850f1e85c48ecd2258be0cf8",
+      "bytes": 9836,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/9697.030213a00bc7233a8e6d.js",
+      "fetched_at_utc": "2026-10-07T02:55:18.808187+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/AudioCamyT1.852c73235c5cc55965bb.js",
+      "sha256": "3f7a472eb89cdb97d91dba4cb50a710b552feabcd5c176701197e57d9f0ca0b0",
+      "bytes": 21577,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/AudioCamyT1.852c73235c5cc55965bb.js",
+      "fetched_at_utc": "2026-10-07T02:55:18.963286+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/AudioCamyT2.fe5299cf16077a210e45.js",
+      "sha256": "17bc005dceec8b7dea5c28694e8ed3c8aaef8b7abdc4f405aeeab32ba861ba54",
+      "bytes": 21364,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/AudioCamyT2.fe5299cf16077a210e45.js",
+      "fetched_at_utc": "2026-10-07T02:55:19.043540+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/AudioCamyT3Device.28bfaed6f8b09bd70acb.js",
+      "sha256": "726c6761ce3d1b4f160d052bab640e10c41bb499b240edc601b3de027c57dd2a",
+      "bytes": 2948,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/AudioCamyT3Device.28bfaed6f8b09bd70acb.js",
+      "fetched_at_utc": "2026-10-07T02:55:18.829458+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/AudioKrystalT3.a0f3f7cf90e20f5ead40.js",
+      "sha256": "13a6fd1f85aba56212ef155b3168d640d3c03536f8df062529a3c037995d5b28",
+      "bytes": 20630,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/AudioKrystalT3.a0f3f7cf90e20f5ead40.js",
+      "fetched_at_utc": "2026-10-07T02:55:18.911901+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "bytes": 157348,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/main.6d1e356030ef563555d4.js",
+      "fetched_at_utc": "2026-10-07T02:55:19.221178+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/onLoad.712fcafbc68d9fe01d7e.js",
+      "sha256": "70d84f73c0291a5d70e768c950912548d9949b41341d0f78d42880b0914d624e",
+      "bytes": 2732,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/onLoad.712fcafbc68d9fe01d7e.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.227625+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/orca5CalibrationEngineManager.90880b4ce36f72bf80e7.js",
+      "sha256": "2e1bb84acc8033fc6fdc59a9685c90c3901d5f0eb0b04efefd11b701256ddc85",
+      "bytes": 4585,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/orca5CalibrationEngineManager.90880b4ce36f72bf80e7.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.210617+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/philipsEngineManager.d68fc869a3ab8089b936.js",
+      "sha256": "1ead357f2f3f1950d85aafa88163296d95644cc64ec02f2434f862d7b097885f",
+      "bytes": 57066,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/philipsEngineManager.d68fc869a3ab8089b936.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.523100+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/pixart3349CalibrationEngineManager.a68db16c8829a8bde50c.js",
+      "sha256": "ebe0c90f1147e7a5d6cbf658cadfcb3abe83e6f68f8a097f1334de7aefd1a0f3",
+      "bytes": 3772,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/pixart3349CalibrationEngineManager.a68db16c8829a8bde50c.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.151683+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/pixartEngineManager.0bb3b02bd11c6cd1929a.js",
+      "sha256": "392ffe7b0532863f43db0a6850b9c76aa5172e129173e1445fa9c02601fcdc3a",
+      "bytes": 31036,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/pixartEngineManager.0bb3b02bd11c6cd1929a.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.288333+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzASRock.9ea6f530e3e142c44259.js",
+      "sha256": "9f20f34acca7649bf5d3b5867b49d6a6c494429c09edcfbe9cc74e5183953a52",
+      "bytes": 15053,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzASRock.9ea6f530e3e142c44259.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.255646+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzBLE.73521efada12195508ad.js",
+      "sha256": "f6721fdb75bafec559659894bcaf24293e1e2657cb7e86a02ae2fe18ba7b35c7",
+      "bytes": 6435,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzBLE.73521efada12195508ad.js",
+      "fetched_at_utc": "2026-10-07T02:55:20.872087+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzCamKimberly.92d455a5af199b2ec1c0.js",
+      "sha256": "5729c3498374283135f7e39849c9ad07f07aefa5ce3a8651903b8295f75fb97c",
+      "bytes": 38438,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzCamKimberly.92d455a5af199b2ec1c0.js",
+      "fetched_at_utc": "2026-10-07T02:55:21.091239+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzCamKiyo.dedcb16ec6f36d546f90.js",
+      "sha256": "49782dbe6bd74c3af40a1f40aeeed93f1b74dc94acb5c13127e5598583bc0b66",
+      "bytes": 12577,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzCamKiyo.dedcb16ec6f36d546f90.js",
+      "fetched_at_utc": "2026-10-07T02:55:21.056330+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzCamKiyoPro.b8a480ebfab6b796b92b.js",
+      "sha256": "877e5b33908077a8fb2d7f1da7ff701be9d3ef197f9b4fb6c977214b8b7393c2",
+      "bytes": 13340,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzCamKiyoPro.b8a480ebfab6b796b92b.js",
+      "fetched_at_utc": "2026-10-07T02:55:21.129515+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzCamKiyoProUltra.e4151bfcd582dbde0f47.js",
+      "sha256": "9640ad75111f9ba203920a22666324d27d8c507f2248987435ff064cd4be769d",
+      "bytes": 30856,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzCamKiyoProUltra.e4151bfcd582dbde0f47.js",
+      "fetched_at_utc": "2026-10-07T02:55:21.152125+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25AudioCamy.30af578f1b52361ace0d.js",
+      "sha256": "92007438cf17955cd66a8c90d8bce60a68eb7b1c9ba5ff4e2c75e804de0e2e10",
+      "bytes": 12571,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25AudioCamy.30af578f1b52361ace0d.js",
+      "fetched_at_utc": "2026-10-07T02:55:21.213676+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25AudioCamyT3V2.7137ad24cfbca6dd52de.js",
+      "sha256": "29045702529175b7364fb1e15ecc74f7f6967995ce633fdd0eddbeb2aef6695f",
+      "bytes": 10993,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25AudioCamyT3V2.7137ad24cfbca6dd52de.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.559082+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Ex.fcc5a89ebbfdb619f28c.js",
+      "sha256": "9f7dc48edcfe36e51198bdb03f696c6353adb3037d87dce8825d97411aed72c5",
+      "bytes": 2537,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Ex.fcc5a89ebbfdb619f28c.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.558543+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25FiverV2.2873798e95644e473657.js",
+      "sha256": "8bee687dba921d86c9ddee016ede971f34ecc50a5bcb2b798a9ba51e5f55af2e",
+      "bytes": 20986,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25FiverV2.2873798e95644e473657.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.710036+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Glitter.d0790168336e53bb6973.js",
+      "sha256": "d25cc7fc2bf8d4925cb762be39edc1c69d8e320d3cd8eba04391116a3300fe61",
+      "bytes": 6875,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Glitter.d0790168336e53bb6973.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.681512+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25GlitterWireless.4127f141b865cc1b86e0.js",
+      "sha256": "3609b1e8307647774c0a6f45452c4e422c6eb1493a6122facf168f110284b3ef",
+      "bytes": 11730,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25GlitterWireless.4127f141b865cc1b86e0.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.549828+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Legacy.1ecd00c3538ee6ddbeba.js",
+      "sha256": "1dd78c2052726bbc6d40f85be076bfdab27b863d0a5071ed4764f363534cb8fd",
+      "bytes": 4095,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Legacy.1ecd00c3538ee6ddbeba.js",
+      "fetched_at_utc": "2026-10-07T02:55:26.587720+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25LegacyNoBrightness.ad4ed8df301e367bad0f.js",
+      "sha256": "8d9ef0ac2da88e7849a5412812151464df64e6971b4879f98cd660ce320face8",
+      "bytes": 7199,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25LegacyNoBrightness.ad4ed8df301e367bad0f.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.240893+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Linker.cd043971a8d012474ed3.js",
+      "sha256": "39a33fe55e36a6d9b6c761b546a0a438936457cd5d49fdeb6b591bf8ef64ec56",
+      "bytes": 7093,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Linker.cd043971a8d012474ed3.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.202289+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "bytes": 11140,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.220280+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25LinkerUma.7e0ba03738b2a3677e16.js",
+      "sha256": "dae88921e08a0e3c186bced165f01de8cb3ba5212601de77d1d5a133985978db",
+      "bytes": 8588,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25LinkerUma.7e0ba03738b2a3677e16.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.246625+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25NoBrightness.68899a22768e1c824da1.js",
+      "sha256": "050a830f3e165b7e7a651f85f30821daf1969fdd6cc09788721a217a32c6e377",
+      "bytes": 4622,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25NoBrightness.68899a22768e1c824da1.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.337065+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Noa.0ee0e7bfd37c54479347.js",
+      "sha256": "dad4e33104fa4bc3bcc619b1df8d2ad62a9fcbce928b8552275975e2c59ce2e3",
+      "bytes": 10567,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Noa.0ee0e7bfd37c54479347.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.404387+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25NoaT3.a2950eff441837e91c6a.js",
+      "sha256": "4687d09150ad0e1714eaa8148e925fbe01f88cce40591c63be6a76c3bdfc8df3",
+      "bytes": 9717,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25NoaT3.a2950eff441837e91c6a.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.872521+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25NommoChroma.ad7a93af9382c1fd2518.js",
+      "sha256": "19eafdf3725089e5f28670fd08400f7520052e3ecd88d0023e88e1bc66d1b1bb",
+      "bytes": 5086,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25NommoChroma.ad7a93af9382c1fd2518.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.919798+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25NommoPro.3345bb92eaffdf24ddb9.js",
+      "sha256": "838a1e0a99dabadf0e1138689a677f4fe77eaa6b61c34117d5e6c9546194d1b0",
+      "bytes": 5128,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25NommoPro.3345bb92eaffdf24ddb9.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.931757+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25PWMPCFanController.a14a9165b077288b307d.js",
+      "sha256": "0b5de4fbcf6bd24d486f3e817b6580fd2c8d97cc7216123ef34bbbd34b302d69",
+      "bytes": 3386,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25PWMPCFanController.a14a9165b077288b307d.js",
+      "fetched_at_utc": "2026-10-07T02:55:27.992241+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25Sage.d662ffea0acc80636595.js",
+      "sha256": "c709a6cbd9dae13a70c404bc6ea6c9a267fab62bea20db58fbe7a733ecafd43b",
+      "bytes": 4849,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25Sage.d662ffea0acc80636595.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.042341+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice25SagePC.b11de0dad6f15bf933fe.js",
+      "sha256": "99efbaf365c6849519ef906fbe9aec912c967db95b3fb29ce6169deeef8bc856",
+      "bytes": 3506,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice25SagePC.b11de0dad6f15bf933fe.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.120350+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice30.a41c74a96773a29df2b4.js",
+      "sha256": "029836792d03601780b60a012e83f4d97bd1ce1476795cce83fb709e9280884b",
+      "bytes": 147977,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice30.a41c74a96773a29df2b4.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.910576+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDevice30Layla.8f0e970c2c64d32cf962.js",
+      "sha256": "c4ed27b0402e1cd1cb4ebdb413c3140308dffb9fd12049db0837e0e1a9ea0c8f",
+      "bytes": 4239,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDevice30Layla.8f0e970c2c64d32cf962.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.601292+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDeviceChelsea.0937dffa7180b18a1066.js",
+      "sha256": "24825193bec35041eaf58cbc87c0367c148d3d1ed2501f74b312030f02c0af39",
+      "bytes": 43021,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDeviceChelsea.0937dffa7180b18a1066.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.724535+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDeviceElsa.dc269a6f6d641ae9f7f0.js",
+      "sha256": "12fda8f0b184b14c6765156f57635876084d6ad29e89af5d5dcc17509daac23b",
+      "bytes": 30143,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDeviceElsa.dc269a6f6d641ae9f7f0.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.832191+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDeviceIoT.87d8d35b2bd53f6c2788.js",
+      "sha256": "a8ffc50fe5ac6cf268a6f5fabad374ae8ef0305a20ba1345bc907ba99831be62",
+      "bytes": 29274,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDeviceIoT.87d8d35b2bd53f6c2788.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.840039+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzDeviceKateT2.854ce747a7b4c31546ef.js",
+      "sha256": "5d3dce93e07ece15dcbd2d7c7c3be31f4d5656eed6b38c2c57607e690b065ed4",
+      "bytes": 12646,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzDeviceKateT2.854ce747a7b4c31546ef.js",
+      "fetched_at_utc": "2026-10-07T02:55:28.830096+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioAprilParser.a8c2b0fd5fe98c3ee953.js",
+      "sha256": "210134e072b86b3c510e7b4d932f6cf6c5ea0c03d7afcfdfa10ab7d64a8ed08d",
+      "bytes": 1825,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioAprilParser.a8c2b0fd5fe98c3ee953.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.357874+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioAvneraParser.9f5b13d69db1908147c1.js",
+      "sha256": "9668163274ac1fe796394b7fab2d9f04cd57a1dcc3a20e7d6234bc9919837f1a",
+      "bytes": 1270,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioAvneraParser.9f5b13d69db1908147c1.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.401937+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioBillieT1Parser.53aaa43ad5d8c2ee38bd.js",
+      "sha256": "827e74b884e695b8785d57824324537a13f0be907ad728476fb55d39a13963fd",
+      "bytes": 7953,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioBillieT1Parser.53aaa43ad5d8c2ee38bd.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.506211+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioMixerParser.1125bf081b9de4a9d5f0.js",
+      "sha256": "f71a5c7a58683f554d71f51aa8a0aa83c3aa5b465184f48a01d9afb7ee02d37c",
+      "bytes": 1898,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioMixerParser.1125bf081b9de4a9d5f0.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.496430+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioMxicMabelT1Parser.6188402d246fe5fbc0f5.js",
+      "sha256": "f219353cc085dd9d3697136f4bf28234cb4f82c7da2061f976d8a42776c7357d",
+      "bytes": 3662,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioMxicMabelT1Parser.6188402d246fe5fbc0f5.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.501840+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioMxicMabelT1_ecrParser.a871540fee29cb29b1a8.js",
+      "sha256": "3ef2a086acb289e8fe3197b18d7755c7c58f41db886289871040d2b2cd7fcd00",
+      "bytes": 3789,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioMxicMabelT1_ecrParser.a871540fee29cb29b1a8.js",
+      "fetched_at_utc": "2026-10-07T02:55:29.711857+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioMxicParser.bdd80edd6ae2ab598fb2.js",
+      "sha256": "16b3f04a3fb9d4ae21a7c3b6eed8bb56ffcc71fbc402c20dd2f54e157cd7d229",
+      "bytes": 3556,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioMxicParser.bdd80edd6ae2ab598fb2.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.042231+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioNXPParser.f0814e9121def0b8a500.js",
+      "sha256": "4d2ebd162d7d0b843003718a1fbfff3c82eabf4bd085f8e80b5aed70133efec8",
+      "bytes": 1147,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioNXPParser.f0814e9121def0b8a500.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.064376+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioOdessaT2WirelessParser.35fb027c32cd2b42c2dc.js",
+      "sha256": "0ea37b6d2a41ed5b57efc652b01389f1059db4b6f9f75ebcadec88949ee6ca9b",
+      "bytes": 1899,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioOdessaT2WirelessParser.35fb027c32cd2b42c2dc.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.169792+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsAudioValkyrieParser.9cd2effd3fe960805b5a.js",
+      "sha256": "e50cbfeae12158f784a7fd61d6c2873b6024ff559cc6e2a1bcf4750774963c80",
+      "bytes": 5090,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsAudioValkyrieParser.9cd2effd3fe960805b5a.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.305880+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsKateT2Parser.0713b9c4a4eaa795a5d4.js",
+      "sha256": "a68be396d1616d933e49214e65774be2d7267b2190446f92e56f82e559bf2273",
+      "bytes": 1435,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsKateT2Parser.0713b9c4a4eaa795a5d4.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.314338+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsNommoV2Parser.1b16212b42f1f23a4f9e.js",
+      "sha256": "2b866ef923bba91ded616316ae02b023330986f9916a1251bb1ce0054ab753b3",
+      "bytes": 985,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsNommoV2Parser.1b16212b42f1f23a4f9e.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.349361+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsPWMPCFanParser.de91a29636da333c01cb.js",
+      "sha256": "4f7e1e134a18431829afc16adb44abf771d640f62ca4f029213f4a98f27a9884",
+      "bytes": 964,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsPWMPCFanParser.de91a29636da333c01cb.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.791777+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25Controller8kParser.a8d28764225ddd170404.js",
+      "sha256": "02394a7188f6e94888826dbb016cca2dfa215887269eb154f207780cc3501ac5",
+      "bytes": 3018,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25Controller8kParser.a8d28764225ddd170404.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.819760+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25ControllerParser.b5db3c4257999e11e21d.js",
+      "sha256": "892159d5cb788fea332a7ed208e90e3872f4c78bf830cf887b44c8aa20ed9d60",
+      "bytes": 2958,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25ControllerParser.b5db3c4257999e11e21d.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.836316+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25EstherParser.29fde205d0ded72a7f79.js",
+      "sha256": "3b1c40dc11f5ac7fb6b65147beb3277e64585aeaf50386a64c85737f37b6036b",
+      "bytes": 1351,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25EstherParser.29fde205d0ded72a7f79.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.008120+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25GlitterParser.d5fc27fcdc567918e449.js",
+      "sha256": "c034f8fe00b5d670dadd4d8fc5c1e06066ce7685d1e72ff2c5fa699fc7498e92",
+      "bytes": 5099,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25GlitterParser.d5fc27fcdc567918e449.js",
+      "fetched_at_utc": "2026-10-07T02:55:30.986337+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25KeypadParser.cc2f75caaef12e23ddf6.js",
+      "sha256": "6a5135e50d029948f9780f1aa86526b09f68fc93dac7c83fa40285f0113b7c27",
+      "bytes": 8413,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25KeypadParser.cc2f75caaef12e23ddf6.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.079991+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25OledParser.5bafef3cff77e1c7f9d8.js",
+      "sha256": "c7b6c2cbab770ca37489206776507303a86e10803f322b8648103243f52c8732",
+      "bytes": 6227,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25OledParser.5bafef3cff77e1c7f9d8.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.466269+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25PSArcadeControllerParser.ff00a367787c0aebd671.js",
+      "sha256": "3b56a8f81a794daeff012ca1b75a1af569f1531eaab57c3ffe65c66ddb1eba79",
+      "bytes": 2629,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25PSArcadeControllerParser.ff00a367787c0aebd671.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.613953+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25Parser.db526eb303ecd44958d5.js",
+      "sha256": "8ee47a2727a1ecc6b3c3c685a3569091dfacc39110950ddebd1247fdd309e4b1",
+      "bytes": 7746,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25Parser.db526eb303ecd44958d5.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.536439+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol25PlayStationControllerParser.5539cbcb7f2cd5a66e5b.js",
+      "sha256": "c760c60547c61f16e098e5f75e0dd040b62143fce207797bf37b0c87da3f23dd",
+      "bytes": 3150,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol25PlayStationControllerParser.5539cbcb7f2cd5a66e5b.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.650114+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol30OledParser.c59c69b865fe4c7c1f8a.js",
+      "sha256": "2ba52e1081f665febffafe9a8a0e2bc64a1eec7026636bba4dbaf7e960bb3114",
+      "bytes": 9011,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol30OledParser.c59c69b865fe4c7c1f8a.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.674159+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol30Parser.7fc8bdcd3d7d4cb481f7.js",
+      "sha256": "01c61ec5ceef72c98d16d869b4e7dffb9ca39e13e02cad3ca3cbce11667ed163",
+      "bytes": 5282,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol30Parser.7fc8bdcd3d7d4cb481f7.js",
+      "fetched_at_utc": "2026-10-07T02:55:31.768438+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol40Parser.289ee32502d2fd4f36c0.js",
+      "sha256": "84da6a216d0e0e44e93fbb2fd412ac145388d7bf14a7da0ba3537afb393a1cc8",
+      "bytes": 8429,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol40Parser.289ee32502d2fd4f36c0.js",
+      "fetched_at_utc": "2026-10-07T02:55:32.129973+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocol40ParserEarbuds.d410f7b32dcd3de69909.js",
+      "sha256": "42279141a7d695c6e77d812f395c67a87c8634ca1d46a97a7ab5f021737a8d09",
+      "bytes": 5607,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocol40ParserEarbuds.d410f7b32dcd3de69909.js",
+      "fetched_at_utc": "2026-10-07T02:55:32.194433+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocolElsaParser.5215e65ae71f940669fe.js",
+      "sha256": "494a187a672a7d8ef6e26be414a0d9afbdc50f99e843d28ee67d5fa81fd83261",
+      "bytes": 1828,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocolElsaParser.5215e65ae71f940669fe.js",
+      "fetched_at_utc": "2026-10-07T02:55:32.258018+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzHardwareEventsProtocolLaylaParser.1307b1cb05032da4d3c4.js",
+      "sha256": "553f5454f258a556fb0c0493c8a3c5acbeb58b82f0c42ca0ef0120ffc02e9489",
+      "bytes": 1395,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzHardwareEventsProtocolLaylaParser.1307b1cb05032da4d3c4.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.468623+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/rzUSB.b989822eaf686393015c.js",
+      "sha256": "f1e9274072fd4edab01ea44e4bc91d89670811c6dd895b1305584c5d9e90c285",
+      "bytes": 7886,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/rzUSB.b989822eaf686393015c.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.294168+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/service-worker.js",
+      "sha256": "121f7bc698f8d38222da5eab1ac7d03127ad999c3ac98073e53564f87cc3ef4f",
+      "bytes": 35682,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/service-worker.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.385547+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/smartPixartEngineManager.e1a287faa9f706fd8982.js",
+      "sha256": "551ea793841cf79d7584c503697f960f1d7d494c1a2c63cf88bfa4aa538d007b",
+      "bytes": 33491,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/smartPixartEngineManager.e1a287faa9f706fd8982.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.456467+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/tools_obmChecker.2e1938207b3bf05d7f8e.js",
+      "sha256": "5edfe3a46b6e2dd51714b59dbd6599e3f9ad37606060d46ea5da94c04bbf5ba7",
+      "bytes": 2902,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/tools_obmChecker.2e1938207b3bf05d7f8e.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.316307+00:00"
+    },
+    {
+      "path": ".ref/middleware/179/translations0.3d45bb8e7ef16016c93f.js",
+      "sha256": "0b9c9a9074c39832dec23f014bc8e545a9538b29f63f9ba5e6fc157b1c6ba931",
+      "bytes": 1924,
+      "source_url": "https://apps.razer.com/synapse/products/179/mw/translations0.3d45bb8e7ef16016c93f.js",
+      "fetched_at_utc": "2026-10-07T02:55:37.362401+00:00"
+    }
+  ],
+  "timings": {
+    "SLEEP_TIME_BETWEEN_OUT": 5,
+    "SLEEP_TIME_BETWEEN_OUT_IN": 5,
+    "SLEEP_TIME_BETWEEN_IN": 5,
+    "MAX_RETRY_IN": 10,
+    "MAX_RETRY_OUT": 20
+  },
+  "receipts": [
+    {
+      "label": "main bootstrap chunks",
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 156672,
+      "end": 156716,
+      "source": "Promise.all([o.e(2520),o.e(6120),o.e(4551)])"
+    },
+    {
+      "label": "DeviceInfo",
+      "module": 21503,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 137423,
+      "end": 137866,
+      "source": "{deviceName:s,productId:179,dongleId:179,vendorId:5426,masterGuideURL:\"https://dl.razerzone.com/master-guides/RazerSynapse3/HYPERPOLLINGWIRELESSDONGLE-0000179-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/6140\",category:\"ACCESSORY\",claimInterface:0,latestFirmwareInfo:{version:\"2.0.2.0\",url:\"https://rzr.to/V0zxjI\",guide:\"https://rzr.to/c3uq4Z\",releaseDate:new Date(\"2023-11-6\").valueOf(),size:4131680,severity:\"warning\"}}"
+    },
+    {
+      "label": "j",
+      "module": 96204,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 2307821,
+      "end": 2311608,
+      "source": "(e,t=4)=>H(void 0,void 0,void 0,(function*(){var n;console.log(\"[connectRZDevice]\",e);const r=null!==(n=new URLSearchParams(location.search).get(\"containerId\"))&&void 0!==n?n:\"\",a=l.default.getFeatures(\"rzDeviceType\");v.default.runtimeData.useBle=!1;const s=yield(c={rzDevice25:(t,n)=>H(void 0,void 0,void 0,(function*(){var o,a;if(e.productId!==d.DeviceInfo.dongleId||!(0,p.Kj)()&&!(0,p.ck)()){if(e.productId===d.DeviceInfo.bleId){const{default:o}=yield t.rzDevice30();return v.default.runtimeData.useBle=!0,new o(e,d.DeviceInfo.claimInterface,null==n?void 0:n.containerId)}{const{default:o}=yield t.rzDevice25();return new o(e,d.DeviceInfo.claimInterface,n.containerId,n.sleepTimeBetweenOut,n.sleepTimeBetweenOutIn,n.sleepTimeBetweenIn,n.maxRetryIn,n.maxRetryOut,n.extraParam)}}{let s=e.productId,c=null!==(o=d.DeviceInfo.claimInterface)&&void 0!==o?o:2;if((0,p.ck)()){const{default:o}=yield t.rzDevice25(),r=new o(e,d.DeviceInfo.claimInterface,n.containerId,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN,20,20,n.extraParam);if(e.productId===d.DeviceInfo.dongleId){const e=null===(a=(0,f.N$)().isMika)||void 0===a?void 0:a.MikaInfo;r.dualLinkPrimaryPId=e.master.dongleId,r.dualLinkSecondaryPId=e.dongleId,r.category=d.DeviceInfo.category,r.isDualLink=!0,r.isMika=!0}return r.category=d.DeviceInfo.category,r}{const o=(null==n?void 0:n.duallinkDeviceType)||\"MOUSE\";if(\"MOUSE\"===o){e.master&&(s=e.master.dongleId,c=\"number\"==typeof e.master.claimInterface?e.master.claimInterface:e.master.claimInterface[s]);const{default:n}=yield t.rzDevice25DualLinkMouse(),o=new n(Object.assign(Object.assign({},e),{productId:s}),c,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN);return yield(0,p.t5)(o),o}if(\"LINKER\"===o){if(179===e.productId){const{default:n}=yield t.rzDevice25LinkerUma();return new n(e,d.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}{const{default:n}=yield t.rzDevice25Linker();return new n(e,d.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}}if(\"LINKERMULTIDEVICES\"===o){const{default:n}=yield t.rzDevice25LinkerMultiDevices();return new n(e,d.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}console.error(\"connect duallink device fail\")}}})),rzDeviceIoT:t=>H(void 0,void 0,void 0,(function*(){return new t(e,(yield(0,b.Z)()).getRzIotMgr())})),rzDevice25GlitterWireless:(t,n)=>H(void 0,void 0,void 0,(function*(){if(e.productId===d.DeviceInfo.bleId){const{default:o}=yield t.rzDevice30();return v.default.runtimeData.useBle=!0,new o(e,d.DeviceInfo.claimInterface,null==n?void 0:n.containerId)}{const{default:n}=yield t.rzDevice25GlitterWireless();return new n(e,d.DeviceInfo.claimInterface)}})),rzDevice25Sage:t=>H(void 0,void 0,void 0,(function*(){var n;const o=null===(n=(0,f.N$)().rzDeviceType)||void 0===n?void 0:n.rzDevice25Sage;return $(t,e,o)})),rzDevice25SagePC:t=>H(void 0,void 0,void 0,(function*(){var n;const o=null===(n=(0,f.N$)().rzDeviceType)||void 0===n?void 0:n.rzDevice25SagePC;return $(t,e,o)}))},H(void 0,void 0,void 0,(function*(){for(const t in W)if(a[t]){const{default:n}=yield W[t]();return c[t]?yield c[t](n,a[t]):new n(e,d.DeviceInfo.claimInterface)}})));var c;if(!s)return console.warn(\"rzDevice is\",s),null;o.razerWindow.rzDevice=s;let u=!1;for(;;)try{let e=1e3;for(let n=0;n<=t;n++){if(console.log(`%c Trying connecting device ${n}/${t}`,\"background:red; color:black; font-weight:bold;\"),u=(yield s.connectDevice()).result,u)return s;if(n===t)throw new Error(\"Reach maximum try for connecting device, reset timer\");yield(0,_._v)(e),e*=2}}catch(e){return console.error(e),null}}))"
+    },
+    {
+      "label": "o",
+      "module": 11502,
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "offset": 9921,
+      "end": 11046,
+      "source": "class o extends r.default{constructor(e,t,n=\"\",r=i.SLEEP_TIME_BETWEEN_OUT,a=i.SLEEP_TIME_BETWEEN_OUT_IN,o=i.SLEEP_TIME_BETWEEN_IN,s=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,r,a,o,s,d),this.name=\"rzDevice25LinkerUma\",this.lockName=`${this.baseClassName}-${this.containerId}`,this.isDualLink=!0,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName)}getDeviceMode(){return a(this,void 0,void 0,(function*(){const e=this.generateDefaultResult([],\"Get Device Mode\");return this.isDriverMode?(e.data=new Uint8Array([3,0]),e.jsonData={mode:3,modeEnum:\"Driver_Mode\"}):(e.data=new Uint8Array([0,0]),e.jsonData={mode:0,modeEnum:\"Normal_Mode\"}),e.status=i.STATUS_SUCCESS,e.error=\"\",e.packetSizeReturned=2,e}))}setDeviceMode(e){return a(this,void 0,void 0,(function*(){e=+e;const t=this.generateDefaultResult([],\"Set Device Mode\");return t.data=new Uint8Array,t.status=i.STATUS_SUCCESS,t.error=\"\",3===e?(this.isDriverMode=!0,t.data=new Uint8Array([3,0]),t.jsonData={mode:3,modeEnum:\"Driver_Mode\"}):(this.isDriverMode=!1,t.data=new Uint8Array([0,0]),t.jsonData={mode:0,modeEnum:\"Normal_Mode\"}),t.packetSizeReturned=2,t}))}}"
+    },
+    {
+      "label": "h.queryDualLinkInfo",
+      "module": 91818,
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "offset": 1879,
+      "end": 3098,
+      "source": "this.queryDualLinkInfo=()=>I(this,void 0,void 0,(function*(){const e=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${e} isDualLink = false, return`),!1;this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!1;try{const t=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${e} getMultipleDeviceWirelessConnectionStatusV2 r:`,t,`, jsonData: ${(null==t?void 0:t.jsonData)?JSON.stringify(t.jsonData):t}`),t.status===r.STATUS_SUCCESS&&t.jsonData){const n=t.jsonData.status.filter((e=>65535!==e.productId));return console.log(`${e} validProductStatusList: `,n),this.dualLinkSecondaryPId=n.length>0?n[0].productId:65535,console.log(`${e} dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}`),console.log(`${e} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}`,\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave\",this.isDualLinkSlave),!0}return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,t),!1}catch(t){return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,t),!1}}))"
+    },
+    {
+      "label": "h._getTransactionId",
+      "module": 91818,
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "offset": 3269,
+      "end": 3369,
+      "source": "_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),224|this.transactionId++}"
+    },
+    {
+      "label": "h.connectDevice",
+      "module": 91818,
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "offset": 3369,
+      "end": 4117,
+      "source": "connectDevice(){var e;return I(this,void 0,void 0,(function*(){if(void 0===this.device)return{result:!1,error:r.ERROR_VALUE_UNDEFINED};const t={result:!1,error:\"\"},n=c.n5,i=new Uint8Array,a=this._createDataSend(n,i);for(let n=0;n<3;n++)try{const n=[o.uM()?this.claimInterface:this.reportId,...a],i=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:n});if(t.result=null==i?void 0:i.result,t.error=null!==(e=null==i?void 0:i.errorMsg)&&void 0!==e?e:\"\",null==i?void 0:i.result)break}catch(e){d.Z.error(`${this.name}.connectDevice i: ${n}, claimInterface:${this.claimInterface}`,e),t.result=!1,t.error=e}return t}))}"
+    },
+    {
+      "label": "h.sendCommand",
+      "module": 91818,
+      "path": ".ref/middleware/179/rzDevice25LinkerMultiDevices.df5b8ac8e6685c8b24a1.js",
+      "sha256": "fa645afc747e6bc204d63b0f805599883db279e4f02a393ddeb6e1a2cc37b93a",
+      "offset": 4117,
+      "end": 7020,
+      "source": "sendCommand(e,t,n=new Uint8Array([]),i=-1,s=!0){return I(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,i,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?d.Z.printData(`${u}: ${e[0]}(${o.Cf(e[0])}), ${e[1]}(${o.Cf(e[1])}), ${e[2]}(${o.Cf(e[2])}), ${t}, packetSizeSet:${i}`):d.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${i}`),d.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});const h=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.productId});const E=this._createDataSend(e,n,i);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(E[1]&=31),h.dataSend=[...E],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:h.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>I(this,void 0,void 0,(function*(){try{for(let i=0;i<this.maxRetryOut;i++){const a=yield(0,l.NH)(n);if(a===this.reportLength){if(!s){h.status=r.STATUS_SUCCESS,h.error=\"\",h.dataHeader=E.slice(0,8),h.data=[...E.slice(8,8+E[5])];break}if(yield o._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,E,h,t),h.status===r.STATUS_SUCCESS||h.status===r.STATUS_FAIL&&!1===h.resendOutCommand){h.status===r.STATUS_FAIL&&!1===h.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${i} cmdDesc:${t}}, r:`,a);break}h.status===r.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${i} cmdDesc:${t}}, r:`,a),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else h.status=r.STATUS_FAIL,h.error=\"\"}}catch(t){h.status=r.STATUS_FAIL,t.message?h.error=t.message:h.error=t,console.warn(`${u} error: ${o.Cf(e[1])}, ${o.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(h.status===r.STATUS_FAIL)throw d.Z.error(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(h)}`),new a.$1({error:h.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:E,extraInfo:\"productId: \"+this.productId,productId:this.productId})}))))}return h}))}"
+    },
+    {
+      "label": "dc.getMultipleDeviceWirelessConnectionStatusV2",
+      "module": 7755,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 836338,
+      "end": 836447,
+      "source": "getMultipleDeviceWirelessConnectionStatusV2(){return lc(this,void 0,void 0,(function*(){return s.VO(this)}))}"
+    },
+    {
+      "label": "dc._createDataSend",
+      "module": 7755,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 815706,
+      "end": 816000,
+      "source": "_createDataSend(e,t,n){const o=new Uint8Array(90),i=this._getTransactionId();o[0]=0,o[1]=i,o[2]=0,o[3]=0,o[4]=0,o[5]=e[0],o[6]=e[1],o[7]=e[2],void 0!==n&&\"\"!==n&&-1!==n&&!isNaN(n)&&n>0&&(o[5]=n);for(let e=0;e<t.length&&e<o[5];e++)o[e+8]=t[e];const r=this._calculateChecksum(o);return o[88]=r,o}"
+    },
+    {
+      "label": "dc._calculateChecksum",
+      "module": 7755,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 815541,
+      "end": 815610,
+      "source": "_calculateChecksum(e){let t=0;for(let n=2;n<88;n++)t=e[n]^t;return t}"
+    },
+    {
+      "label": "dc._getUSBTransferInResult",
+      "module": 7755,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 817235,
+      "end": 820278,
+      "source": "_getUSBTransferInResult(e,t,n,o){return lc(this,void 0,void 0,(function*(){const r=\"getUSBTransferInResult\";n.resendOutCommand=!1;try{let s=!0;for(let c=0;c<this.maxRetryIn&&s;c++){let u;if(c>0&&(yield a._v(this.sleepTimeBetweenIn)),this.isElectron){const e={action:\"hid.getFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,protocol:\"25\",reportId:this.reportId,reportLength:this.reportLength}};u=yield(0,ic.NH)(e),u||(u=new Array(90).fill(0))}else{const e=yield this.device.controlTransferIn({requestType:\"class\",recipient:\"interface\",request:1,value:768,index:this.claimInterface},90);if(\"ok\"!==e.status){n.status=i.STATUS_FAIL,n.error=e.status;continue}u=new Uint8Array(e.data.buffer)}if(n.dataHeader=u.slice(0,8),n.rawData=[...u.slice(8)],n.data=[...u.slice(8,8+u[5])],u[1]!==t[1]){console.log(`${this.name}.${r}:commandSend:${e}, commandDesc:${o}, different transId, dataSend[1]: ${t[1]}, dataReturned[1]:${u[1]}, retry get:${s}, i:${c}`),n.resendOutCommand=!0;break}if(u[6]!==t[6]){n.resendOutCommand=!0;break}if(u[7]!==t[7]){console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, different command, dataSend[7]: ${t[7]}, dataReturned[7]:${u[7]}, retry get:${s}, i:${c}`),n.resendOutCommand=!0;break}switch(n.packetSizeReturned=u[5],u[0]){case 0:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_NEW_COMMAND,s=!1,n.resendOutCommand=!0;break;case 1:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_BUSY, retry get:${s}, i:${c}`);break;case 2:n.status=i.STATUS_SUCCESS,n.error=\"\",s=!1,n.resendOutCommand=!1;break;case 3:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_FAILED,s=!1,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_FAILED, retry get:${s}, i:${c}`);break;case 4:e===ac.at&&this.ignoreSetDeviceModeTimeoutError?(s=!1,console.log(`${this.name} workaround for setDeviceMode(DriverMode)`),n.status=i.STATUS_SUCCESS,n.error=\"\",n.resendOutCommand=!1):(s=!1,n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_TIMEOUT,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_TIMEOUT, retry get:${s}, i:${c}`));break;case 5:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED, retry get:${s}, i:${c}`);break;default:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN, retry get:${s}, i:${c}`)}}}catch(t){n.status=i.STATUS_FAIL,n.error=t.message,console.warn(`${this.name}.${r} error: ${a.Cf(e[1])}, ${a.Cf(e[2])},\\n\\t\\t\\t\\t${JSON.stringify(t)}`)}}))}"
+    },
+    {
+      "label": "VO",
+      "module": 84816,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 665026,
+      "end": 665374,
+      "source": "e=>u(void 0,void 0,void 0,(function*(){var t;const n=yield e.sendCommand(i.IZ,i.ES);n.jsonData={deviceCount:0,status:[]};const o=null!==(t=null==n?void 0:n.data[0])&&void 0!==t?t:0;let r=1;for(let e=0;e<o;++e){const e=n.data[r],t=s.U1(n.data[r+1],n.data[r+2]);n.jsonData.status.push({productId:t,status:e}),r+=3}return n.jsonData.deviceCount=o,n}))"
+    },
+    {
+      "label": "VX",
+      "module": 84816,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 659068,
+      "end": 659190,
+      "source": "e=>u(void 0,void 0,void 0,(function*(){const t=yield e.sendCommand(i.Zx,i.p2);return t.jsonData={connected:t.data[0]},t}))"
+    },
+    {
+      "label": "IZ",
+      "module": 30580,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 676194,
+      "end": 676220,
+      "source": "new Uint8Array([80,0,191])"
+    },
+    {
+      "label": "ES",
+      "module": 30580,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 676224,
+      "end": 676275,
+      "source": "\"Get Multiple Device Wireless Connection Status V2\""
+    },
+    {
+      "label": "n5",
+      "module": 30580,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 673764,
+      "end": 673789,
+      "source": "new Uint8Array([2,0,129])"
+    },
+    {
+      "label": "U1",
+      "module": 52975,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 112983,
+      "end": 113006,
+      "source": "(e,t)=>(255&e)<<8|255&t"
+    },
+    {
+      "label": "j",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1220870,
+      "end": 1221138,
+      "source": "(e=\"AvailableDevices\")=>L(void 0,void 0,void 0,(function*(){const t=`${G}/dashboard/${e}.json`;try{const e=yield fetch(t,{method:\"GET\",headers:{\"Cache-Control\":\"no-cache\"}});return yield e.json()}catch(e){console.error(\"[duallink] request\",t,\"failed\",e)}return null}))"
+    },
+    {
+      "label": "Y",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1221141,
+      "end": 1221231,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return z||(z=yield j(\"AvailableDevices\"),z||[])}))"
+    },
+    {
+      "label": "Z",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1221234,
+      "end": 1221345,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return $||($=yield j(\"DualDongleCompatibleDevices\"),$||{Devices:[]})}))"
+    },
+    {
+      "label": "he",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1231133,
+      "end": 1232753,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e;const t=g.razerWindow.rzDevice,n=yield t.getMultipleDeviceWirelessConnectionStatusV2(),{jsonData:o}=n;if(o){const t=(o.status||[]).filter((e=>65535!==e.productId&&e.productId!==v.DeviceInfo.dongleId));if(console.log(\"[duallink] bindedInfo\",t),t.length>0){const n=yield Y(),o=JSON.parse(null!==(e=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==e?e:\"[]\")||[];return yield Promise.all(t.map((e=>L(void 0,void 0,void 0,(function*(){const t=(yield ie(Object.assign(Object.assign({},e),{containerId:U})))?\"master\":\"slave\",i=Object.assign({role:t,name:{en:\"unknown-\"+e.productId},productName:{en:\"unknown\"+e.productId},editionName:{en:\"unknown\"+e.productId},category:me(),editionId:0,layoutId:0},e),r=n.find((t=>t.dongleId===e.productId));if(console.log(\"[duallink] bindInfo <==> availableDevices\",r),r){let n=o.find((e=>e.productId===r.productId));if(V()&&(n=Ie(r.productId)),console.log(\"[duallink] matched\",r,\"connectedInfo: \",n),n)return Object.assign(Object.assign(Object.assign({role:t},n),e),{productId:n.productId,dongleId:e.productId,layoutId:yield _e(n,n.productId,e.productId)});{const t=(yield Z().catch((e=>(console.error(\"[duallink] fetchDualLinkDevicesJSON failed\",e),{Devices:[]})))).Devices.find((e=>e.DeviceDonglePid===r.dongleId)),n=t&&(t.ProductInfo.find((e=>e.EID===i.editionId))||t.ProductInfo[0]);if(n){const e={en:n.Name,\"zh-cn\":n.CHSName};i.name=e,i.productName=e,i.editionName=e,i.category=t.DeviceType||i.category}return Object.assign(Object.assign(Object.assign({},i),e),{productId:r.productId,dongleId:e.productId})}}return i})))))}return t}}))"
+    },
+    {
+      "label": "Ne",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1238586,
+      "end": 1239341,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e,t;const n=yield he().catch((e=>{console.warn(\"[duallink] queryBindInfo failed\",e),setTimeout(Ne,1e3)}));if(n&&(0===(null===(e=n[0])||void 0===e?void 0:e.status)||\"\"===(null===(t=n[0])||void 0===t?void 0:t.serialNumber))&&be<5)return console.log(\"Recheck slave status ====>\",n[0].status),be++,void setTimeout((()=>L(void 0,void 0,void 0,(function*(){return yield Ne().catch((e=>{console.warn(\"[duallink] initMasterDevice failed\",e)}))}))),200*(be+1));if(console.log(\"[duallink] initMasterDevice bindedInfo ===>\",n),n&&n.length)for(const e of n){const t=e.status===x.connected;yield ye({vendorId:5426,productId:e.productId,deviceContainerId:U,dongleId:e.dongleId||e.productId},t),Ce(e.dongleId||e.productId)}}))"
+    },
+    {
+      "label": "ye",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1228849,
+      "end": 1229920,
+      "source": "(e,t=!0)=>L(void 0,void 0,void 0,(function*(){var n;const o=(yield ee(Q))||{},i=X(e);console.log(`[duallink] 🎈 addDevice ${i}`,o,e,\"saveToLocalStorage=\",t),void 0===o[i]&&(e.master={productId:v.DeviceInfo.productId,dongleId:v.DeviceInfo.dongleId||0,bleId:v.DeviceInfo.bleId||0,claimInterface:v.DeviceInfo.claimInterface},o[i]=e,t&&localStorage.setItem(Q,JSON.stringify(o)));const r=yield a.Z.getWindowStorageItem(I.rt.DEVICE_RUNTIME_DATA),s=(r?JSON.parse(r):[]).reduce(((t,{value:n})=>{const o=JSON.parse(n);if(o.deviceContainerId===U&&o.productId===e.productId)return o}));console.warn(\"slave runtime data:\",s),(null===(n=null==s?void 0:s.serialNumber)||void 0===n?void 0:n.length)>0?(console.warn(`Found slave's serial number ${s.serialNumber}`),V()?(null==e?void 0:e.productId)?Ue.add(i,s.serialNumber):console.warn(\"[duallink.addDevice] device.productId is undefined\"):H=s.serialNumber):(S.Z.onEvent(Ye(Ze)),console.warn(\"attached windowstorage listener to get slave runtime data\")),console.log(\"[duallink] 🌳 addDevice\",e,o),V()?void 0===ve[i]&&(ve[i]=o[i]):ve=o}))"
+    },
+    {
+      "label": "_e",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1230288,
+      "end": 1231129,
+      "source": "(e,t,n)=>L(void 0,void 0,void 0,(function*(){try{if(!e)return console.warn(\"[getMouseLayoutId] No slaveDevice provided.\"),0;if(\"MOUSE\"!==e.category)return console.warn(\"[getMouseLayoutId] slaveDevice is not a mouse. slaveDevice = \",e),e.layoutId||0;let o=U?yield(0,T.oP)(U,t):null;if(null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(o=U?yield(0,T.oP)(U,n):null,null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(\"function\"==typeof e.getHWModule){const{jsonData:{status:t}}=yield(0,k.v5)(e);return t||e.layoutId||0}console.warn(\"[getMouseLayoutId] getHWModule function not available on slaveDevice.\"),console.warn(\"[getMouseLayoutId] sidepadLayout not available on slaveDevice = \",e)}catch(t){return console.error(\"[getMouseLayoutId] Error retrieving mouse layout ID:\",t,\"slaveDevice = \",e),e.layoutId||0}return e.layoutId||0}))"
+    },
+    {
+      "label": "connection status enum",
+      "module": 34340,
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1220354,
+      "end": 1220441,
+      "source": "function(e){e[e.disconnected=0]=\"disconnected\",e[e.connected=1]=\"connected\"}(x||(x={}))"
+    },
+    {
+      "label": "SLEEP_TIME_BETWEEN_OUT",
+      "module": 35284,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 106850,
+      "end": 106851,
+      "source": "5"
+    },
+    {
+      "label": "SLEEP_TIME_BETWEEN_OUT_IN",
+      "module": 35284,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 106842,
+      "end": 106843,
+      "source": "5"
+    },
+    {
+      "label": "SLEEP_TIME_BETWEEN_IN",
+      "module": 35284,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 106846,
+      "end": 106847,
+      "source": "5"
+    },
+    {
+      "label": "MAX_RETRY_IN",
+      "module": 35284,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 106854,
+      "end": 106856,
+      "source": "10"
+    },
+    {
+      "label": "MAX_RETRY_OUT",
+      "module": 35284,
+      "path": ".ref/middleware/179/main.6d1e356030ef563555d4.js",
+      "sha256": "b836abc03ea2b5eaec54e8bdfc48d06d5a1bab0bcd0b38499fa1a3c97ecae429",
+      "offset": 106859,
+      "end": 106861,
+      "source": "20"
+    },
+    {
+      "label": "usb.getDevices",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 3997,
+      "end": 4709,
+      "source": "case\"usb.getDevices\":{let a;console.log(`${c} ${d.action} ==> calling url:`,e?.sender?.getURL());try{a=await this.usbGetDevicesMutex.acquire(),console.log(`${c} ${d.action} calling - after mutex`),u=await t.find(),console.log(`${c} ${d.action} usbDetect count:${u?.length}, url: ${e?.sender?.getURL()}`);for(const e of u??[])console.log(`usb.getDevices vId:${e.vendorId}, PId: ${e.productId}, name:${e.productName}, deviceContainerId:`,e.deviceContainerId,\", locationId:\",e.locationId,\", deviceAddress:\",e.deviceAddress,\", usbInstanceId:\",e.usbInstanceId,\", devicepath:\",e.devicePath)}catch(e){console.warn(`${c} ${d.action} error:`,e.message),u=[]}finally{a&&a()}return console.log(`${c} ${d.action} ==><==`),u}"
+    },
+    {
+      "label": "hid.sendFeatureReportMutex",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 10687,
+      "end": 13211,
+      "source": "case\"hid.sendFeatureReportMutex\":{let a;const t=structuredClone(d),n=this.buildDeviceKey(t.payload.deviceContainerId,t.payload.claimInterface,t.payload?.productId,t.payload?.usbInstanceId,t.payload.usagePage,t.payload.usage);let{value:i}=this.getDeviceFromDeviceMap(n,t.payload?.productId,t.payload.deviceContainerId,t.payload.claimInterface,t.payload?.usbInstanceId||\"\",t.payload.usagePage||0,t.payload.usage||0);null==i&&(i=this.getDeviceWithDeviceContainerId(t.payload.deviceContainerId,t.payload?.usbInstanceId));const u=i?.hidDevice;if(!u)return a;if(o.isQuit&&this.isSetDevicesToDefaultNoAsyncQuit&&t.payload.productId&&this.devicesDefaultCmdDataPIdList.includes(t.payload?.productId))return console.warn(`${this.name}.${c} sendFeatureReport key: ${n} ignored as app is quitting and setDevicesToDefaultNoAsync already called`,i?.payload),a;let p;\"hid.sendFeatureReportMutex\"===t.action&&(p=i?.mutex);try{if(p){l(t.payload?.productId)&&console.log(\"acquire mutex for sendFeatureReportMutex, key:\",n,\", url:\",e?.sender?.getURL()),i.mutexRelease=await p.acquire({onHoldTimeoutMutexRelease:()=>{i.mutexRelease=null,i.mutexUrl=\"\"}}),i.mutexUrl=e?.sender?.getURL(),l(t.payload?.productId)&&console.log(\"mutex acquired for sendFeatureReportMutex, key:\",n,\", url:\",e?.sender?.getURL()),i.payload=t?.payload,i.seqId++,i.seqId>=1e5&&(i.seqId=0);const a=t.payload?.sleepTimeBetweenOut??5;if(i.lastCommandSendTimeMs>0)for(;Date.now()-i.lastCommandSendTimeMs<a;)await r(2)}if(90===t.payload.dataSend.length){if(91===t.payload.reportLength||void 0===t.payload.reportLength){const o=[t.payload?.reportId??t.payload.claimInterface,...t.payload.dataSend];this.protocolLogger?.log(t.payload?.productId,t.payload.deviceContainerId,t.payload?.usbInstanceId||\"\",\"set\",o,o.length,e?.sender?.getURL()),a=await u.sendFeatureReport(o),i.lastCommandSendTimeMs=Date.now()}}else this.protocolLogger?.log(t.payload?.productId,t.payload.deviceContainerId,t.payload?.usbInstanceId||\"\",\"set\",t.payload.dataSend,t.payload.dataSend.length,e?.sender?.getURL()),a=await u.sendFeatureReport(t.payload.dataSend),i.lastCommandSendTimeMs=Date.now()}catch(a){if(a===s&&i?.mutexRelease)console.warn(`${this.name}.${c} sendFeatureReport key: ${n} e:`,a.message,\", deviceGet:\",i?.payload,\", seqId:\",i?.seqId,\",\",i?.mutexUrl),i.mutexUrl=\"\",i.mutexRelease(),i.mutexRelease=null;else{const o=e?.sender,d=!o||o.isDestroyed()?\"\":o.getURL();console.warn(`${this.name}.${c} sendFeatureReport key: ${n} e:`,a.message,\", new originalArg.payload:\",t?.payload,d)}}return a}"
+    },
+    {
+      "label": "hid.getFeatureReport",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 13211,
+      "end": 14442,
+      "source": "case\"hid.getFeatureReport\":{const a=d.payload.claimInterface||0,t=this.buildDeviceKey(d.payload.deviceContainerId,a,d.payload?.productId,d.payload?.usbInstanceId,d.payload.usagePage,d.payload.usage);let{value:o}=this.getDeviceFromDeviceMap(t,d.payload?.productId,d.payload.deviceContainerId,a,d.payload?.usbInstanceId||\"\",d.payload.usagePage||0,d.payload.usage||0);if(null==o&&(o=this.getDeviceWithDeviceContainerId(d.payload.deviceContainerId,d.payload?.usbInstanceId)),null==o)return void console.warn(`${this.name}.${c} key:${t}, device not found:`);const n=o?.hidDevice;let s;try{n&&(l(d.payload?.productId)&&console.log(\"getFeatureReport, key:\",t,\", url:\",e?.sender?.getURL(),\", mutexUrl:\",o.mutexUrl),u=await n.getFeatureReport(d.payload?.reportId?d.payload?.reportId:a,d.payload.reportLength?d.payload.reportLength:91),o.lastCommandSendTimeMs=Date.now(),this.protocolLogger?.log(d.payload?.productId,d.payload.deviceContainerId,d.payload?.usbInstanceId||\"\",\"get\",u,u.length),s=d.payload.noSlice?u:u.slice(1),l(d.payload?.productId)&&console.log(\"getFeatureReport result, key:\",t,\", res length:\",s?.length,\", mutexUrl:\",o.mutexUrl))}catch(e){console.warn(`${this.name}.${c} key:${t}, getFeatureReport e:`,e.message)}return s}"
+    }
+  ]
+}

@@ -206,7 +206,7 @@ impl MacroPage {
             .map_or(0, |e| e.record_delay)
     }
     pub(super) fn toggle_record_options(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.current.is_none() || self.tutorial != Tutorial::Complete {
+        if self.recording_busy() || self.current.is_none() || self.tutorial != Tutorial::Complete {
             return;
         }
         if self.record_ui.open {
@@ -450,7 +450,18 @@ impl MacroPage {
                             .when(!last, |v| v.border_b_1().border_color(rgb(0x5d5d5d)))
                             .child(header);
                         match index {
-                            1 => section = section.child(self.record_shortcut_control(window, cx)),
+                            1 => {
+                                section = section
+                                    .child(self.record_shortcut_control(window, cx))
+                                    .child(
+                                        div()
+                                            .id("macro-record-shortcut-unavailable")
+                                            .test_support()
+                                            .text_size(css(12.))
+                                            .text_color(rgb(0xaaaaaa))
+                                            .child("快捷键仅为本地设置；全局快捷键录制尚未连接，请使用录制/停止按钮"),
+                                    )
+                            }
                             2 => {
                                 section = section.children(
                                     group.content.iter().take(2).enumerate().map(|(i, item)| {
@@ -545,12 +556,15 @@ impl MacroPage {
                                             ("macro-record-mouse", i),
                                             &tr(&item.name),
                                             self.record_ui.mouse == i,
-                                            false,
+                                            i != 0,
                                             window,
                                             cx,
                                         )
                                         .on_click(
                                             cx.listener(move |this, _, _, cx| {
+                                                if i != 0 {
+                                                    return;
+                                                }
                                                 this.record_ui.mouse = i;
                                                 cx.notify();
                                             }),
@@ -559,6 +573,16 @@ impl MacroPage {
                                 ))
                             }
                             _ => {}
+                        }
+                        if index == 4 {
+                            section = section.child(
+                                div()
+                                    .id("macro-record-movement-unavailable")
+                                    .test_support()
+                                    .text_size(css(12.))
+                                    .text_color(rgb(0xaaaaaa))
+                                    .child("鼠标轨迹录制待接入监视器信息查询；当前可录制按键、鼠标按钮和滚轮"),
+                            );
                         }
                         section
                     }),
@@ -743,4 +767,32 @@ fn record_input(
                 .into_any_element()
         })
         .into_any_element()
+}
+
+impl MacroPage {
+    pub(super) fn recording_options(
+        &self,
+        cx: &App,
+    ) -> Result<super::recording_decode::Options, String> {
+        if self.record_ui.mouse != 0 {
+            return Err("鼠标轨迹录制尚未连接".into());
+        }
+        Ok(super::recording_decode::Options {
+            macro_type: self.current_macro_type(),
+            phase: (self.current_macro_type() == MacroType::Phased)
+                .then(|| self.active_phase().unwrap_or(0)),
+            delay_mode: self.record_delay(),
+            // Read accepted editor values too: its source 100ms debounce may
+            // still be pending when Record is pressed immediately after input.
+            fixed: source_float(&self.record_ui.fixed.read(cx).value())
+                .unwrap_or(self.record_ui.delay_time),
+            random: [
+                source_float(&self.record_ui.min.read(cx).value())
+                    .unwrap_or(self.record_ui.random[0]),
+                source_float(&self.record_ui.max.read(cx).value())
+                    .unwrap_or(self.record_ui.random[1]),
+            ],
+            next_pair: self.next_event_pair_id().ok_or("本地宏事件标识已耗尽")?,
+        })
+    }
 }

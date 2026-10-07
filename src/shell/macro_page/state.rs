@@ -29,6 +29,8 @@ impl ActionItem {
             macro_id: None,
             keyboard: None,
             mouse: None,
+            mouse_movement: None,
+            recorded_input: None,
             loop_pair_id: None,
             value,
             secondary_value: String::new(),
@@ -207,6 +209,9 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.recording_busy() {
+            return;
+        }
         if kind == EntryKind::Macro {
             self.request_action(super::unsaved::PendingAction::New, window, cx);
         } else {
@@ -219,6 +224,9 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.recording_busy() {
+            return;
+        }
         if self.next_id >= u64::MAX - 1 {
             return;
         }
@@ -260,6 +268,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn select_entry(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         if self.current != Some(id)
             && self
                 .entries
@@ -272,6 +283,9 @@ impl MacroPage {
         }
     }
     pub(super) fn select_entry_now(&mut self, id: u64, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         self.stash_current_draft();
         self.binding_menu = None;
         if let Some(entry) = self.entries.iter_mut().find(|e| e.id == id) {
@@ -299,6 +313,9 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.recording_busy() {
+            return;
+        }
         if let Some(entry) = self.entries.iter().find(|e| e.id == id) {
             let name = entry.name.clone();
             self.rename = Some(id);
@@ -348,6 +365,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn duplicate_current(&mut self, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         if let Some(id) = self.current {
             self.duplicate_entry(id, true, false, cx);
         }
@@ -359,6 +379,9 @@ impl MacroPage {
         from_tree: bool,
         cx: &mut Context<Self>,
     ) {
+        if self.recording_busy() {
+            return;
+        }
         let Some(original) = self.entries.iter().find(|e| e.id == id).cloned() else {
             return;
         };
@@ -425,6 +448,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn move_entry(&mut self, id: u64, destination: u64, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         if id == destination {
             return;
         }
@@ -460,6 +486,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn request_delete(&mut self, id: u64, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         self.deletion = Some(id);
         self.more_open = false;
         self.tree_menu = None;
@@ -467,6 +496,9 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn delete_entry(&mut self, id: u64, cx: &mut Context<Self>) {
+        if self.recording_busy() {
+            return;
+        }
         // Mn's page redirect checks the deleted item's own guid against the
         // sole macro. A folder containing that macro does not meet that test.
         let redirect = self.macro_count() == 1

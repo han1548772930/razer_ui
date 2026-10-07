@@ -41,6 +41,12 @@ pub(crate) struct ActionItem {
     pub(crate) keyboard: Option<KeyboardEvent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) mouse: Option<MouseEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) mouse_movement: Option<MouseMovement>,
+    /// Complete original callback, including movement prefix and timestamps.
+    /// Local provenance only; this does not submit events to a device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) recorded_input: Option<serde_json::Value>,
     /// Only explicitly created paired Loop rows have this local identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) loop_pair_id: Option<u64>,
@@ -68,6 +74,25 @@ pub(crate) struct MouseEvent {
     pub(crate) pair_id: Option<u64>,
     pub(crate) button: Option<u8>,
     pub(crate) state: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MouseMovement {
+    /// Current source mmtSetting: 1 absolute, 2 foreground, 3 start point.
+    pub(crate) mode: u8,
+    /// Source Nr Buffer entries; x/y are untransformed recorder coordinates,
+    /// time is milliseconds. Device coordinate encoding is deferred.
+    pub(crate) buffer: Vec<serde_json::Value>,
+    pub(crate) geometry: Option<RecordingGeometry>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RecordingGeometry {
+    pub(crate) monitors_before: serde_json::Value,
+    pub(crate) monitors_after: serde_json::Value,
+    pub(crate) screen_before: serde_json::Value,
+    pub(crate) screen_after: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -176,6 +201,24 @@ impl MacroLibraryFile {
             let mut mouse_pairs = HashMap::<u64, usize>::new();
             let mut loop_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
+                if let Some(movement) = &action.mouse_movement {
+                    if action.kind != ActionKind::Mouse
+                        || action.mouse.is_some()
+                        || !(1..=3).contains(&movement.mode)
+                        || movement.buffer.is_empty()
+                        || movement.geometry.is_none()
+                        || movement.buffer.iter().any(|point| {
+                            ["x", "y", "time"].iter().any(|field| {
+                                point
+                                    .get(field)
+                                    .and_then(serde_json::Value::as_f64)
+                                    .is_none_or(|n| !n.is_finite())
+                            }) || point["time"].as_f64().is_some_and(|time| time < 0.)
+                        })
+                    {
+                        return Err(format!("Invalid recorded mouse movement in {}", entry.id));
+                    }
+                }
                 if action.phase.is_some_and(|phase| phase > 2) {
                     return Err(format!("Invalid action phase in {}", entry.id));
                 }

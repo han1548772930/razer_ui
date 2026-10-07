@@ -330,8 +330,13 @@ impl RenderOnce for DeviceCard {
                         .child(device_state::edition(device).to_uppercase()),
                 )
                 .when(!off, |view| {
+                    let status = device_state::status(device);
                     view.child(
                         div()
+                            .id(SharedString::from(format!("{}-status", self.id)))
+                            .test_support()
+                            .role(Role::Status)
+                            .aria_label(status.clone())
                             .w(css(230.))
                             .mx_auto()
                             .text_size(css(12.))
@@ -348,11 +353,7 @@ impl RenderOnce for DeviceCard {
                             ))
                             .text_center()
                             .text_ellipsis()
-                            .child(if self.open_without_installation {
-                                String::new()
-                            } else {
-                                device_state::status(device)
-                            }),
+                            .child(status),
                     )
                 })
                 .when(xbox && category == "Controller", |view| {

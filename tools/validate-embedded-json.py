@@ -37,6 +37,70 @@ DECLARED = (
     re.compile(r"from_str::<(\w+)>"),
 )
 SKIP_TYPES = ("Value", "String", "str", "bool", "u8", "u16", "u32", "u64", "usize", "i32", "i64", "f32", "f64")
+TYPE_ALIAS = re.compile(r"\btype\s+(\w+)\s*=\s*([^;]+);")
+
+
+def check_alias_type(document, type_name, aliases, lookup, path, errors, seen=()):
+    """Validate local map aliases before looking up same-named global structs.
+
+    A feature's `type Catalog = BTreeMap<...>` must not resolve to another
+    feature's `struct Catalog`. Nested map keys and translation values are
+    checked rather than treating the alias as an unvalidated JSON document.
+    """
+    type_name = type_name.strip()
+    if type_name in aliases:
+        if type_name in seen:
+            errors.append(f"{path}: cyclic type alias `{type_name}`")
+        else:
+            check_alias_type(document, aliases[type_name], aliases, lookup, path, errors, (*seen, type_name))
+        return
+    generic = re.fullmatch(r"(\w+)\s*<(.+)>", type_name, re.S)
+    if generic:
+        outer, inner = generic.groups()
+        if outer in ("BTreeMap", "HashMap"):
+            depth = 0
+            separator = None
+            for index, char in enumerate(inner):
+                depth += (char == "<") - (char == ">")
+                if char == "," and depth == 0:
+                    separator = index
+                    break
+            if separator is None or not isinstance(document, dict):
+                errors.append(f"{path}: expected a map for `{type_name}`")
+                return
+            key_type, value_type = inner[:separator].strip(), inner[separator + 1:].strip()
+            for key, value in document.items():
+                if re.fullmatch(r"u(?:8|16|32|64)", key_type):
+                    if not re.fullmatch(r"[0-9]+", key) or int(key) >= 2 ** int(key_type[1:]):
+                        errors.append(f"{path}: invalid `{key_type}` key {key!r}")
+                elif key_type != "String":
+                    errors.append(f"{path}: unsupported map key `{key_type}`")
+                check_alias_type(value, value_type, aliases, lookup, f"{path}[{key!r}]", errors, seen)
+            return
+        if outer in ("Option", "Box"):
+            if outer != "Option" or document is not None:
+                check_alias_type(document, inner, aliases, lookup, path, errors, seen)
+            return
+        if outer == "Vec" and isinstance(document, list):
+            for index, value in enumerate(document):
+                check_alias_type(value, inner, aliases, lookup, f"{path}[{index}]", errors, seen)
+            return
+    if type_name == "String":
+        if not isinstance(document, str):
+            errors.append(f"{path}: expected a string")
+        return
+    fields = lookup(type_name)
+    if fields is None or not isinstance(document, dict):
+        errors.append(f"{path}: cannot validate `{type_name}` as an object")
+        return
+    for name, field in fields.items():
+        key = field["rename"] or name
+        if field["flatten"]:
+            errors.append(f"{path}: flattened aliases require an explicit schema")
+        elif key in document:
+            check_alias_type(document[key], field["type"], aliases, lookup, f"{path}.{key}", errors, seen)
+        elif not field["optional"]:
+            errors.append(f"{path}: missing field `{key}`")
 
 
 def rename_field(name: str, rename_all: str | None) -> str:
@@ -148,6 +212,7 @@ def main() -> int:
     for source in sorted(SRC.rglob("*.rs")):
         text = source.read_text(encoding="utf-8")
         structs = load_structs(text)
+        aliases = dict(TYPE_ALIAS.findall(text))
         for match in INCLUDE.finditer(text):
             target = (source.parent / match.group(1)).resolve()
             relative = target.relative_to(ROOT).as_posix()
@@ -172,6 +237,12 @@ def main() -> int:
                 (found.group(1) for pattern in DECLARED for found in [pattern.search(declaration)] if found),
                 None,
             )
+            if declared in aliases:
+                errors = []
+                check_alias_type(document, declared, aliases, lambda name: resolve(name, source)[1], "", errors)
+                if errors:
+                    failures.append(f"{relative}: does not satisfy local alias `{declared}` ({'; '.join(errors[:4])})")
+                continue
             resolved, fields = resolve(declared, source)
             if resolved and fields is None:
                 skipped.append(

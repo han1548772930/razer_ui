@@ -56,7 +56,11 @@ impl MacroPage {
             .child(
                 img(SharedString::from(format!(
                     "synapse/macro/{}.svg",
-                    kind.icon()
+                    if action.mouse_movement.is_some() {
+                        "mouse-movement"
+                    } else {
+                        kind.icon()
+                    }
                 )))
                 .size(css(20.))
                 .flex_shrink_0()
@@ -110,7 +114,31 @@ impl MacroPage {
                     .child(self.action_value_editor(index, kind, window, cx)),
             );
         h_flex()
-            .id(("macro-action-row", index))
+            .id((
+                if self.recording_busy() && index >= self.actions.len() {
+                    "macro-recording-row"
+                } else {
+                    "macro-action-row"
+                },
+                if self.recording_busy() && index >= self.actions.len() {
+                    self.recording.preview_offset + index - self.actions.len()
+                } else {
+                    index
+                },
+            ))
+            .test_support()
+            .aria_label(format!(
+                "{} {} {}",
+                kind.icon(),
+                action.value,
+                action
+                    .keyboard
+                    .as_ref()
+                    .and_then(|k| k.state)
+                    .or_else(|| action.mouse.as_ref().and_then(|m| m.state))
+                    .map(|s| if s % 2 == 0 { "down" } else { "up" })
+                    .unwrap_or("")
+            ))
             .relative()
             .w_full()
             .h(css(42.))

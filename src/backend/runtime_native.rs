@@ -15,6 +15,10 @@ use std::{
 
 #[path = "runtime_hid.rs"]
 mod hid;
+#[path = "runtime_macro.rs"]
+mod macro_recorder;
+#[path = "runtime_receiver.rs"]
+mod receiver;
 
 // No userdata argument exists in these APIs. The worker permits one outstanding
 // call and terminates after a timeout, so a late callback cannot satisfy a later
@@ -79,7 +83,7 @@ unsafe extern "C" fn callback3(success: bool, reason: *const c_char, value: *con
     complete(CallbackReply {
         success,
         reason: unsafe { copy_string(reason) },
-        value: Some(unsafe { copy_string(value) }),
+        value: (!value.is_null()).then(|| unsafe { copy_string(value) }),
     });
 }
 
@@ -103,6 +107,7 @@ pub(super) struct NativeRuntime {
     simple_initialized: bool,
     event_callback_installed: bool,
     shortcut_events: Receiver<Value>,
+    macro_recorder: macro_recorder::Recorder,
     poisoned: bool,
 }
 
@@ -118,6 +123,7 @@ impl NativeRuntime {
             simple_initialized: false,
             event_callback_installed: false,
             shortcut_events,
+            macro_recorder: macro_recorder::Recorder::new(),
             poisoned: false,
         }
     }
@@ -160,10 +166,8 @@ impl NativeRuntime {
             return Ok(());
         }
         if self.mapping.is_none() {
-            self.mapping = Some(ManuallyDrop::new(EngineLibrary::discover(
-                &self.paths,
-                "mapping_engine",
-            )?));
+            let path = self.paths.resolve_host_service("mapping_engine")?;
+            self.mapping = Some(ManuallyDrop::new(EngineLibrary::load(&path)?));
         }
         // mapping_engine/win/index.js: ["void",["pointer"]], Callback("void",[]).
         let initialize: Initialize = unsafe { self.mapping_symbol("mappingEngineInitialize")? };
@@ -180,10 +184,8 @@ impl NativeRuntime {
             return Ok(());
         }
         if self.simple.is_none() {
-            self.simple = Some(ManuallyDrop::new(EngineLibrary::discover(
-                &self.paths,
-                "simple_service",
-            )?));
+            let path = self.paths.resolve_host_service("simple_service")?;
+            self.simple = Some(ManuallyDrop::new(EngineLibrary::load(&path)?));
         }
         // simple_service/win/index.js: identical void(callback0) lifecycle.
         let initialize: Initialize = unsafe { self.simple_symbol("simpleServiceInitialize")? };
@@ -198,13 +200,13 @@ impl NativeRuntime {
     unsafe fn mapping_symbol<T: Copy>(&self, name: &str) -> anyhow::Result<T> {
         let library = self.mapping.as_ref().context("映射引擎未加载")?;
         unsafe { library.func(name) }
-            .with_context(|| format!("{} 缺少已验证导出 {name}", library.path().display()))
+            .with_context(|| format!("{} 缺少当前封装所需导出 {name}", library.path().display()))
     }
 
     unsafe fn simple_symbol<T: Copy>(&self, name: &str) -> anyhow::Result<T> {
         let library = self.simple.as_ref().context("音频服务未加载")?;
         unsafe { library.func(name) }
-            .with_context(|| format!("{} 缺少已验证导出 {name}", library.path().display()))
+            .with_context(|| format!("{} 缺少当前封装所需导出 {name}", library.path().display()))
     }
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
@@ -213,6 +215,14 @@ impl NativeRuntime {
         }
         match request {
             ServiceRequest::HidDevices => hid::enumerate(),
+            ServiceRequest::StartMacroRecording => self.start_macro_recording(),
+            ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
+            ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),
+            ServiceRequest::SuspendMacroMappings => self.suspend_macro_mappings(),
+            ServiceRequest::ResumeMacroMappings => self.resume_macro_mappings(),
+            ServiceRequest::ReceiverWirelessStatus { path, device_container_id } => {
+                receiver::query(&path, &device_container_id)
+            }
             ServiceRequest::SimpleVersion | ServiceRequest::AudioDevices => {
                 self.simple()?;
                 let symbol = if matches!(request, ServiceRequest::SimpleVersion) {
@@ -226,7 +236,15 @@ impl NativeRuntime {
                     .call(|| unsafe { query(callback3) })?
                     .value
                     .context("原生服务未返回结果")?;
-                Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
+                anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
+                if matches!(request, ServiceRequest::AudioDevices) {
+                    let devices: Value =
+                        serde_json::from_str(&value).context("音频设备列表不是有效 JSON")?;
+                    anyhow::ensure!(devices.is_array(), "音频设备列表不是数组");
+                    Ok(devices)
+                } else {
+                    Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
+                }
             }
             ServiceRequest::GlobalMode | ServiceRequest::GlobalShortcuts => {
                 self.mapping()?;
@@ -240,6 +258,7 @@ impl NativeRuntime {
                     .call(|| unsafe { query(callback3) })?
                     .value
                     .context("映射引擎未返回结果")?;
+                anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
                 Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
             }
             ServiceRequest::RegisterShortcut {
@@ -301,7 +320,8 @@ impl NativeRuntime {
             )),
             ServiceRequest::Shutdown => {
                 let mut errors = Vec::new();
-                if self.mapping_initialized {
+                self.shutdown_macro_recording(&mut errors);
+                if self.mapping_initialized && !self.poisoned {
                     let result = (|| {
                         let shutdown: Initialize =
                             unsafe { self.mapping_symbol("mappingEngineShutdown")? };
