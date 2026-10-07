@@ -8854,7 +8854,7 @@
   "native": [
     {
       "path": "src/shell/chroma_settings.rs",
-      "sha256": "7ebf95d62ca3582b11501a8dbbd8a6853604876946cc0b0c8094f8614235232c"
+      "sha256": "f5649a86d0800ff98e3e55b82c2021e482fe7a28baebf44ce6189e35fdef6b51"
     },
     {
       "path": "src/shell/chroma_window.rs",
@@ -8870,7 +8870,7 @@
     },
     {
       "path": "src/shell/release_notes.rs",
-      "sha256": "8e918ab0f626c1502cd663ccd9a3a9019da3e825f453b49627d9301210d8bacd"
+      "sha256": "ed91b2d62a07103e5e8d79695720133b611b6e3e2a58cc99dac04c25dff64d70"
     },
     {
       "path": "src/ui/theme.rs",

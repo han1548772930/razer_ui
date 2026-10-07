@@ -31,6 +31,11 @@ pub(crate) enum ServiceRequest {
     HidDevices,
     /// Physical USB devices, including products without a HID collection.
     UsbDevices,
+    /// A source-described query, scoped to a currently observed physical path.
+    DeviceRead {
+        target: super::device_reads::DeviceReadTarget,
+        kind: super::device_reads::DeviceReadKind,
+    },
     /// Observe global input through the current mapping-engine recorder.
     /// These requests do not submit macros or mappings to a device.
     StartMacroRecording,
@@ -181,6 +186,7 @@ impl ServiceClient {
         }
         let shutting_down = matches!(request, ServiceRequest::Shutdown);
         let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording);
+        let reading_device = matches!(request, ServiceRequest::DeviceRead { .. });
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         let mut frame = serde_json::to_vec(&RequestEnvelope { id, request })?;
@@ -206,6 +212,10 @@ impl ServiceClient {
             Duration::from_secs(25)
         } else if starting_recorder {
             Duration::from_secs(20)
+        } else if reading_device {
+            // Relay reads bracket the device query with two bounded peer
+            // observations, so the ordinary single-query limit is insufficient.
+            Duration::from_secs(35)
         } else {
             self.timeout
         };

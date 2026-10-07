@@ -210,7 +210,7 @@ impl ChromaSettings {
         if self
             .notes
             .as_ref()
-            .is_some_and(|notes| notes.read(cx).focus_if_open(window, cx))
+            .is_some_and(|notes| notes.update(cx, |notes, cx| notes.focus_if_open(window, cx)))
         {
             return;
         }

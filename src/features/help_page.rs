@@ -113,7 +113,7 @@ impl DeviceWorkspace {
             return div().into_any_element();
         };
         let serial = self.device().serial_number.clone();
-        let firmware = self.device().firmware_info.current_fw_version.clone();
+        let firmware = self.device().current_firmware_version().to_owned();
         let support_panel = surface::panel(i18n::t("SUPPORT"), cx).gap_0().child(
             v_flex()
                 .mt(surface::css(20.))

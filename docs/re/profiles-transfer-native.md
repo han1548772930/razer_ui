@@ -7,6 +7,7 @@
 - 设备关联弹层的 Import/Export 菜单打开独立 retained 弹层；保留原版 602×481、顶部 104、36/49/47 区域尺寸及原版始终为 Export Profiles 的标题条件。尺寸经过 `surface::css` 转换，颜色来自 theme。
 - Export 初选全部本地配置，排除原版特殊 GUID；逐项、全选／取消全选有独立选择状态。提交时再次验证配置 ID 存在，避免已删除目标进入后续请求。
 - Import 使用本机文件选择器，读取 `.synapse4` JSON/base64/UTF-8、稳定序列化与 MD5 校验；坏条目不会冒充有效配置。显示所选文件名、有效配置及关联宏，支持独立宏勾选；取消选择器保留已有选择，关闭／切换 Local/Cloud 使迟到结果失效。
+- 提交保留每行 `profile/listItems/isMacroSelected`，同一宏在不同配置下的选择不会因求并集而丢失；独立复核见 [同行复查](profiles-transfer-peer-review-2026-10-07.md)。
 - 兼容性根据当前 MW 逐产品身份收据判定；非 `is8kAnalogDevice` 产品按 `Da` 过滤包含 Dynamic Keystroke 的嵌套映射。独立复核修复了 JS 真值、URL-safe/base64 清洗和整数／浮点形式产品 ID 的相等语义，见 [解码器复核](profiles-transfer-codec-review-2026-10-07.md)。
 - 使用 5 张当前原始 SVG；警告在提交按钮旁，通过源码的悬浮提示显示，宏图标也保留提示。按钮透明度按 300ms 过渡。`.slide-off` 的 display:none 与 `.slide-on` 的 display:block 不被错误替换成自创高度动画。
 - Cloud 显示当前源已存在的禁用设备选择及 in-development 状态；没有制造云端目录。

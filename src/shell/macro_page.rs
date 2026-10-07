@@ -43,6 +43,7 @@ mod state;
 mod text;
 mod text_emoji;
 mod text_overlay;
+mod transfer;
 mod tree;
 mod unsaved;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial};
@@ -94,6 +95,7 @@ pub(super) struct MacroPage {
     actions_for: Option<u64>,
     actions: Vec<ActionItem>,
     selected_actions: Vec<usize>,
+    hovered_action: Option<usize>,
     saved_actions_for: Option<u64>,
     saved_actions: Vec<ActionItem>,
     undo: Vec<Vec<ActionItem>>,
@@ -109,6 +111,7 @@ pub(super) struct MacroPage {
     sort_open: bool,
     tree_menu: Option<u64>,
     tree_scrolling: bool,
+    transfer_busy: bool,
     tree_hover: Option<u64>,
     sort: Sort,
     search: Entity<InputState>,
@@ -126,6 +129,7 @@ pub(super) struct MacroPage {
     delay_max_editor: Entity<InputState>,
     randomized_open: Option<usize>,
     editing_action: Option<usize>,
+    numeric_generation: u64,
     launch_open: Option<usize>,
     choice_action: Option<usize>,
     source_viewport: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
@@ -233,6 +237,7 @@ impl MacroPage {
             }),
             cx.subscribe_in(&action_editor, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Change) {
+                    this.schedule_delay_edit(cx);
                     cx.notify();
                 }
                 if matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
@@ -270,6 +275,7 @@ impl MacroPage {
             actions_for: file.current,
             actions: saved_actions.clone(),
             selected_actions: Vec::new(),
+            hovered_action: None,
             saved_actions_for: file.current,
             saved_actions,
             undo: Vec::new(),
@@ -285,6 +291,7 @@ impl MacroPage {
             sort_open: false,
             tree_menu: None,
             tree_scrolling: false,
+            transfer_busy: false,
             tree_hover: None,
             sort: Sort::Ascending,
             search,
@@ -302,6 +309,7 @@ impl MacroPage {
             delay_max_editor,
             randomized_open: None,
             editing_action: None,
+            numeric_generation: 0,
             launch_open: None,
             choice_action: None,
             source_viewport: Default::default(),
@@ -441,6 +449,8 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
+        self.numeric_generation = self.numeric_generation.wrapping_add(1);
+        self.hovered_action = None;
         self.record_ui.close();
         self.finish_keyboard_editor();
         self.editing_action = None;
@@ -545,6 +555,7 @@ impl MacroPage {
     }
 
     fn finish_action_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.numeric_generation = self.numeric_generation.wrapping_add(1);
         let Some(index) = self.editing_action.take() else {
             return;
         };
@@ -562,12 +573,7 @@ impl MacroPage {
         }
         let raw = self.action_editor.read(cx).value().trim().to_string();
         let value = match kind {
-            ActionKind::Delay => raw
-                .parse::<f64>()
-                .ok()
-                .filter(|value| value.is_finite())
-                .map(|value| format!("{:.3}", value.clamp(0.0, 99_999.999)))
-                .unwrap_or_else(|| self.actions[index].value.clone()),
+            ActionKind::Delay => format_delay(parse_delay(&raw)),
             ActionKind::Loop => raw
                 .parse::<u32>()
                 .ok()
@@ -576,40 +582,20 @@ impl MacroPage {
             _ => raw,
         };
         let current = &self.actions[index].value;
-        if value == *current {
+        if value == *current
+            && !(kind == ActionKind::Delay && self.actions[index].state == "randomized")
+        {
             cx.notify();
             return;
         }
         self.undo.push(self.actions.clone());
         self.actions[index].value = value;
+        if kind == ActionKind::Delay {
+            self.actions[index].state = "fixed".into();
+        }
         self.sync_loop_value(index);
         self.redo.clear();
         window.blur(cx);
-        cx.notify();
-    }
-
-    pub(super) fn toggle_delay_randomized(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.recording_busy() || self.record_ui.open {
-            return;
-        }
-        let Some(item) = self.actions.get(index).cloned() else {
-            return;
-        };
-        if item.kind != ActionKind::Delay {
-            return;
-        }
-        self.undo.push(self.actions.clone());
-        self.clear_action_editors();
-        if item.state == "randomized" {
-            self.actions[index].state = "fixed".to_string();
-        } else {
-            let fixed = parse_delay(&item.value).clamp(0.0, 5.0);
-            let max = (fixed + 1.0).min(5.0);
-            self.actions[index].state = "randomized".to_string();
-            self.actions[index].number_min = fixed.to_string();
-            self.actions[index].number_max = max.max(fixed).to_string();
-        }
-        self.redo.clear();
         cx.notify();
     }
 
@@ -623,7 +609,12 @@ impl MacroPage {
         let Some(item) = self.actions.get(index).cloned() else {
             return;
         };
-        if item.kind != ActionKind::Delay || item.state != "randomized" {
+        if item.kind != ActionKind::Delay
+            || item.state != "randomized"
+            || self.record_delay() != 2
+            || self.recording_busy()
+            || self.record_ui.open
+        {
             return;
         }
         if self.editing_action.is_some() {
@@ -658,7 +649,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.randomized_open.is_none() {
+        if self.randomized_open.is_none() || self.record_delay() != 2 {
             return;
         }
         let raw_min = self.delay_min_editor.read(cx).value().to_string();
@@ -697,7 +688,11 @@ impl MacroPage {
         let Some(item) = self.actions.get(index) else {
             return;
         };
-        if item.kind != ActionKind::Delay || self.actions_for != self.current {
+        if item.kind != ActionKind::Delay
+            || item.state != "randomized"
+            || self.record_delay() != 2
+            || self.actions_for != self.current
+        {
             return;
         }
         if item.number_min != min || item.number_max != max {
@@ -866,7 +861,7 @@ fn parse_delay(value: &str) -> f64 {
 }
 
 fn format_delay(value: f64) -> String {
-    format!("{:.3}", value.clamp(0.0, 99_999.999))
+    ((value.clamp(0.0, 99_999.999) * 1000.).round() / 1000.).to_string()
 }
 
 impl Render for MacroPage {

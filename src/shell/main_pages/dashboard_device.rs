@@ -53,6 +53,21 @@ pub(super) fn status(device: &Device) -> String {
     let fields = &device.dashboard;
     if let Some(observation) = fields.connection_observation {
         use crate::model::DeviceConnectionObservation;
+        if let Some(readings) = &fields.readonly_values {
+            let has_values = readings.firmware.is_some()
+                || readings.battery_percent.is_some()
+                || readings.charging_status.is_some()
+                || readings.polling_hz.is_some()
+                || readings.dpi.is_some();
+            if has_values {
+                return if i18n::locale().eq_ignore_ascii_case("zh-cn") {
+                    "部分设备信息已读取 · 本地配置草稿"
+                } else {
+                    "Some device information read · Local settings draft"
+                }
+                .into();
+            }
+        }
         return match (observation, i18n::locale().eq_ignore_ascii_case("zh-cn")) {
             (DeviceConnectionObservation::UsbPresent, true) => "已发现 USB 设备 · 配置未读取",
             (DeviceConnectionObservation::UsbPresent, false) => {
@@ -156,8 +171,7 @@ pub(super) fn status(device: &Device) -> String {
 
 pub(super) fn power_off(device: &Device) -> bool {
     device
-        .power_status
-        .as_ref()
+        .current_power_status()
         .is_some_and(|p| p.charging_status.eq_ignore_ascii_case("off"))
 }
 
@@ -316,13 +330,13 @@ pub(super) fn observed_power(
             incorrect: false,
         };
         if eligible {
-            if let Some(power) = &device.power_status {
+            if let Some(power) = device.current_power_status() {
                 displayed.accept_power(power, fields);
             }
         }
         displayed.accept_standby(fields);
         ObservedPower {
-            previous: device.power_status.clone(),
+            previous: device.current_power_status().cloned(),
             previous_support: fields.supports_standby_mode,
             previous_state: fields.device_power_state.clone(),
             previous_hide: fields.hide_battery_icon,
@@ -331,8 +345,8 @@ pub(super) fn observed_power(
         }
     });
     state.update(cx, |state, cx| {
-        if !same_power(state.previous.as_ref(), device.power_status.as_ref()) {
-            if eligible && device.power_status.is_some() {
+        if !same_power(state.previous.as_ref(), device.current_power_status()) {
+            if eligible && device.current_power_status().is_some() {
                 if state
                     .previous
                     .as_ref()
@@ -343,11 +357,11 @@ pub(super) fn observed_power(
                     // Source setTimeout calls do not cancel earlier delays.
                     ObservedPower::timer(cx);
                 }
-                if let Some(power) = &device.power_status {
+                if let Some(power) = device.current_power_status() {
                     state.displayed.accept_power(power, fields);
                 }
             }
-            state.previous = device.power_status.clone();
+            state.previous = device.current_power_status().cloned();
         }
         // componentDidUpdate writes prop overrides after generateBatteryData,
         // then runs checkStandbyState only when its two inputs have changed.

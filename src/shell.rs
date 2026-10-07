@@ -125,6 +125,7 @@ pub struct AppShell {
     tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
     receiver_queries: BTreeMap<String, (u64, u64)>,
+    device_read_scopes: BTreeMap<String, crate::features::mouse_polling::MousePollingScope>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
     history: Vec<Location>,
@@ -235,6 +236,7 @@ impl AppShell {
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
+            device_read_scopes: BTreeMap::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
             history: vec![],
@@ -724,6 +726,17 @@ impl AppShell {
             window,
             |this, _, event: &runtime_page::DiscoveryObserved, window, cx| {
                 this.observe_discovery(&event.0, window, cx);
+                // Device queries start only after the interface observation and
+                // its profile/connection scopes have actually been installed.
+                if let Some(ready) = &event.1 {
+                    let _ = ready.send(());
+                }
+            },
+        ));
+        this.subscriptions.push(cx.subscribe(
+            &runtime,
+            |this, _, event: &runtime_page::DeviceValuesObserved, cx| {
+                this.observe_device_values(&event.0, cx);
             },
         ));
         // Enumeration is scheduled once after ownership/subscriptions are installed,

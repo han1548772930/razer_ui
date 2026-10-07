@@ -5579,11 +5579,15 @@ dependencies = [
  "libloading",
  "md5",
  "raw-window-handle",
+ "regex",
+ "roxmltree 0.21.1",
  "rust-i18n",
+ "semver",
  "serde",
  "serde_ignored",
  "serde_json",
  "tray-icon",
+ "uuid",
  "windows-sys 0.61.2",
 ]
 

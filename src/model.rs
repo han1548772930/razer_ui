@@ -251,6 +251,11 @@ pub struct DashboardDeviceMetadata {
     pub(crate) local_snapshot: bool,
     #[serde(skip)]
     pub(crate) connection_observation: Option<DeviceConnectionObservation>,
+    /// Actual read results for this connection only, never local profile data.
+    #[serde(skip)]
+    pub(crate) readonly_values: Option<crate::backend::device_reads::DeviceReadValues>,
+    #[serde(skip)]
+    pub(crate) readonly_power: Option<PowerStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_product_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -386,6 +391,7 @@ impl Device {
     pub(crate) fn begin_local_session(&mut self) {
         self.dashboard.local_snapshot = true;
         self.dashboard.connection_observation = None;
+        self.observe_read_values(None);
         self.setup_status = SetupStatus::Unknown;
         self.power_status = None;
         self.firmware_info = FirmwareInfo::default();
@@ -401,6 +407,39 @@ impl Device {
 
     pub(crate) fn observe_connection(&mut self, observation: Option<DeviceConnectionObservation>) {
         self.dashboard.connection_observation = observation;
+        if observation.is_none() {
+            self.observe_read_values(None);
+        }
+    }
+
+    pub(crate) fn observe_read_values(
+        &mut self,
+        values: Option<crate::backend::device_reads::DeviceReadValues>,
+    ) {
+        // A battery level alone cannot supply a charging state. Keep the
+        // original partial results, and expose the power UI only when both read.
+        self.dashboard.readonly_power = values.as_ref().and_then(|values| {
+            Some(PowerStatus {
+                level: i32::from(values.battery_percent?),
+                charging_status: values.charging_status.clone()?,
+            })
+        });
+        self.dashboard.readonly_values = values;
+    }
+
+    pub(crate) fn current_power_status(&self) -> Option<&PowerStatus> {
+        if self.dashboard.readonly_values.is_some() {
+            self.dashboard.readonly_power.as_ref()
+        } else {
+            self.power_status.as_ref()
+        }
+    }
+
+    pub(crate) fn current_firmware_version(&self) -> &str {
+        match &self.dashboard.readonly_values {
+            Some(values) => values.firmware.as_deref().unwrap_or(""),
+            None => &self.firmware_info.current_fw_version,
+        }
     }
 
     /// 界面显示名：优先中文，缺失时回退。
@@ -748,6 +787,29 @@ mod tests {
         assert_eq!(device.setup_status, SetupStatus::Unknown);
         assert!(device.dashboard.local_snapshot);
         assert_eq!(device.active_profile, profile_id);
+    }
+
+    #[test]
+    fn queried_values_never_change_saved_drafts_and_expire_with_connection() {
+        let mut device = measured_devices()[0].clone();
+        device.begin_local_session();
+        let saved = serde_json::to_value(&device).unwrap();
+        device.observe_read_values(Some(crate::backend::device_reads::DeviceReadValues {
+            firmware: Some("2.1.0.0".into()),
+            battery_percent: Some(47),
+            charging_status: Some("NOT_CHARGING".into()),
+            polling_hz: Some(4000),
+            dpi: Some((800, 1600)),
+            ..Default::default()
+        }));
+        assert_eq!(device.current_firmware_version(), "2.1.0.0");
+        assert_eq!(device.current_power_status().unwrap().level, 47);
+        assert_eq!(serde_json::to_value(&device).unwrap(), saved);
+        device.observe_connection(None);
+        assert!(device.current_firmware_version().is_empty());
+        assert!(device.current_power_status().is_none());
+        assert!(device.dashboard.readonly_values.is_none());
+        assert_eq!(serde_json::to_value(&device).unwrap(), saved);
     }
 
     #[test]

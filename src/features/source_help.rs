@@ -405,7 +405,7 @@ impl Render for SourceHelp {
                     ),
             );
         }
-        let firmware = &self.device.firmware_info.current_fw_version;
+        let firmware = self.device.current_firmware_version();
         if page.firmware && !firmware.is_empty() {
             let mut panel = surface::panel(i18n::t("DEVICE_HEADER"), cx)
                 .child(format!("{}: {firmware}", i18n::t("FIRMWARE_VERSION")));

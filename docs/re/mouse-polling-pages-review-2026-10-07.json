@@ -10,7 +10,7 @@
   ],
   "implementation": {
     "path": "src/features/mouse_products.rs",
-    "sha256": "541c0e54d017f8247e39ec0e951fb841899a8c7a3d78b501bd62de6aab1cd91a"
+    "sha256": "526646b16a68b470da98ba82d02236ae366e3f89da6f8e0672ce28ada9092759"
   },
   "summary": {
     "pages": 75,
@@ -4343,7 +4343,7 @@
       },
       "review": "source-subtree-reviewed-local-fix",
       "remaining": [
-        "Real rate/topology publishers; window focus/1500ms refresh; full layout/input/runtime; real discovery now publishes connection only; see mouse-226-review-2026-10-07.md."
+        "Real topology publisher; source window focus/1500ms refresh; full layout/input/runtime. Shared scoped rate/firmware consumption is wired, but current read-query coverage is independently limited to product 182; no 226 read or device success is inferred. See mouse-polling-source-model-2026-10-07.md."
       ]
     },
     {

@@ -50,12 +50,6 @@ impl MacroPage {
                             .w_full()
                             .when(empty, |v| v.opacity(0.7))
                             .child(self.action_bar(window, cx))
-                            .when(
-                                self.recording_busy()
-                                    || !self.recording.status.is_empty()
-                                    || self.recording.error.is_some(),
-                                |v| v.child(self.recording_status()),
-                            )
                             .child(self.item_editor(list_height, window, cx)),
                     )
                     .child(
@@ -116,7 +110,12 @@ impl MacroPage {
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.add_action(kind, cx);
                                     }))
-                            })),
+                            }))
+                            .when(
+                                self.recording.error.is_some()
+                                    || !self.recording_busy() && !self.recording.status.is_empty(),
+                                |palette| palette.child(self.recording_status()),
+                            ),
                     )
                     .when(self.tutorial != Tutorial::Complete, |v| {
                         v.child(self.onboarding(cx))
@@ -148,6 +147,7 @@ impl MacroPage {
         let editor_bounds = self.text_ui.editor_bounds.clone();
         v_flex()
             .id("macro-item-list")
+            .relative()
             .test_support()
             .on_prepaint(move |bounds, _, _| editor_bounds.set(bounds))
             .w_full()
@@ -180,6 +180,9 @@ impl MacroPage {
                         this.drop_actions(drag, action_count, cx)
                     })),
             )
+            .when_some(self.hovered_pair(), |list, pair| {
+                list.child(self.pairing_line(pair))
+            })
             .into_any_element()
     }
 
@@ -358,23 +361,9 @@ impl MacroPage {
         item: ActionItem,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let randomized = item.state == "randomized";
-        let mode = BaseButton::new(("macro-delay-mode", index))
-            .h(css(27.))
-            .px(css(5.))
-            .py_0()
-            .text_size(css(10.))
-            .bg(rgb(0x333333))
-            .hover(|s| s.bg(rgb(0x444444)))
-            .child(tr(if randomized {
-                "RANDOMIZE_DELAY_TILE"
-            } else {
-                "TEXT_DELAY_SETTINGS"
-            }))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                cx.stop_propagation();
-                this.toggle_delay_randomized(index, cx);
-            }));
+        // St requires both profile.delaySetting === 2 and an object Number.
+        // Changing the recording setting does not convert existing scalars.
+        let randomized = self.record_delay() == 2 && item.state == "randomized";
         let value = if randomized {
             let min = item.number_min.clone();
             let max = item.number_max.clone();
@@ -391,9 +380,9 @@ impl MacroPage {
                             .bg(rgb(0x111111))
                             .border_1()
                             .border_color(rgb(0x44d62c))
-                            .text_size(css(11.)),
+                            .text_size(css(14.)),
                     )
-                    .child(div().text_size(css(11.)).child(" - "))
+                    .child(div().text_size(css(14.)).child(" - "))
                     .child(
                         Input::new(&self.delay_max_editor)
                             .id(("macro-delay-max-input", index))
@@ -404,7 +393,7 @@ impl MacroPage {
                             .bg(rgb(0x111111))
                             .border_1()
                             .border_color(rgb(0x44d62c))
-                            .text_size(css(11.)),
+                            .text_size(css(14.)),
                     )
                     .into_any_element()
             } else {
@@ -416,7 +405,7 @@ impl MacroPage {
                             .w(css(60.))
                             .px(css(3.))
                             .py_0()
-                            .text_size(css(11.))
+                            .text_size(css(14.))
                             .justify_start()
                             .child(format!("({min}s"))
                             .on_click(cx.listener(move |this, _, window, cx| {
@@ -424,14 +413,14 @@ impl MacroPage {
                                 this.begin_delay_bound_edit(index, DelayBound::Min, window, cx);
                             })),
                     )
-                    .child(div().text_size(css(11.)).child(" - "))
+                    .child(div().text_size(css(14.)).child(" - "))
                     .child(
                         BaseButton::new(("macro-delay-max", index))
                             .h(css(27.))
                             .w(css(60.))
                             .px(css(3.))
                             .py_0()
-                            .text_size(css(11.))
+                            .text_size(css(14.))
                             .justify_start()
                             .child(format!("{max}s)"))
                             .on_click(cx.listener(move |this, _, window, cx| {
@@ -444,12 +433,19 @@ impl MacroPage {
         } else {
             BaseButton::new(("macro-delay-value", index))
                 .h(css(27.))
-                .w(css(88.))
+                .min_w(css(88.))
                 .px(css(5.))
                 .py_0()
-                .text_size(css(11.))
+                .text_size(css(14.))
                 .justify_start()
-                .child(format!("{}s", item.value))
+                .child(if item.state == "randomized" {
+                    tr("TEXT_RANDOMIZE_DELAY").replace(
+                        "{{times}}",
+                        &format!("{}s - {}s", item.number_min, item.number_max),
+                    )
+                } else {
+                    format!("{}s", item.value)
+                })
                 .on_click(cx.listener(move |this, _, window, cx| {
                     cx.stop_propagation();
                     this.begin_action_edit(index, window, cx);
@@ -458,8 +454,10 @@ impl MacroPage {
         };
         h_flex()
             .items_center()
-            .child(mode)
-            .child(div().ml(css(4.)).child(value))
+            .when(randomized, |row| {
+                row.child(div().mr(css(4.)).child(tr("RANDOMIZE_DELAY_TILE")))
+            })
+            .child(value)
             .into_any_element()
     }
 
@@ -485,7 +483,11 @@ impl MacroPage {
 
     fn action_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let record_trigger = self.record_ui.trigger_bounds.clone();
-        let selected_count = self.selected_actions.len();
+        let selected_count = if self.recording_controls_active() {
+            0
+        } else {
+            self.selected_actions.len()
+        };
         let page = cx.entity_id();
         let selection_disabled =
             self.tutorial != Tutorial::Complete || self.recording_busy() || self.record_ui.open;
@@ -697,55 +699,60 @@ impl MacroPage {
                 h_flex()
                     .flex_1()
                     .justify_end()
-                    .child(
-                        BaseButton::new("macro-undo")
-                            .group("undo")
-                            .disabled(!self.can_undo())
-                            .size(css(20.))
-                            .p_0()
-                            .mr(css(16.))
-                            .active(|s| s.opacity(0.7))
-                            .child(selection::history_icon("undo", self.can_undo()))
-                            .on_click(cx.listener(|this, _, _, cx| this.undo_action(cx))),
-                    )
-                    .child(
-                        BaseButton::new("macro-redo")
-                            .group("redo")
-                            .disabled(!self.can_redo())
-                            .size(css(20.))
-                            .p_0()
-                            .flex_1()
-                            .justify_start()
-                            .active(|s| s.opacity(0.7))
-                            .child(selection::history_icon("redo", self.can_redo()))
-                            .on_click(cx.listener(|this, _, _, cx| this.redo_action(cx))),
-                    )
-                    .child(
-                        BaseButton::new("macro-save")
-                            .disabled(!self.can_save_with_pending(cx))
-                            .opacity(if self.can_save_with_pending(cx) {
-                                1.
-                            } else {
-                                0.3
-                            })
-                            .min_w(css(100.))
-                            .h(css(27.))
-                            .mr(css(10.))
-                            .px(css(10.))
-                            .py_0()
-                            .rounded(css(3.))
-                            .border_1()
-                            .border_color(rgba(0x0000004d))
-                            .bg(rgb(0x44d62c))
-                            .text_color(rgb(0))
-                            .text_size(css(12.))
-                            .line_height(css(14.))
-                            .child(tr("TEXT_LAUNCH_SAVE"))
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.finish_pending_edits(window, cx);
-                                this.save_actions(cx)
-                            })),
-                    ),
+                    .when(self.recording_controls_active(), |row| {
+                        row.child(self.recording_mode_label())
+                    })
+                    .when(!self.recording_controls_active(), |row| {
+                        row.child(
+                            BaseButton::new("macro-undo")
+                                .group("undo")
+                                .disabled(!self.can_undo())
+                                .size(css(20.))
+                                .p_0()
+                                .mr(css(16.))
+                                .active(|s| s.opacity(0.7))
+                                .child(selection::history_icon("undo", self.can_undo()))
+                                .on_click(cx.listener(|this, _, _, cx| this.undo_action(cx))),
+                        )
+                        .child(
+                            BaseButton::new("macro-redo")
+                                .group("redo")
+                                .disabled(!self.can_redo())
+                                .size(css(20.))
+                                .p_0()
+                                .flex_1()
+                                .justify_start()
+                                .active(|s| s.opacity(0.7))
+                                .child(selection::history_icon("redo", self.can_redo()))
+                                .on_click(cx.listener(|this, _, _, cx| this.redo_action(cx))),
+                        )
+                        .child(
+                            BaseButton::new("macro-save")
+                                .disabled(!self.can_save_with_pending(cx))
+                                .opacity(if self.can_save_with_pending(cx) {
+                                    1.
+                                } else {
+                                    0.3
+                                })
+                                .min_w(css(100.))
+                                .h(css(27.))
+                                .mr(css(10.))
+                                .px(css(10.))
+                                .py_0()
+                                .rounded(css(3.))
+                                .border_1()
+                                .border_color(rgba(0x0000004d))
+                                .bg(rgb(0x44d62c))
+                                .text_color(rgb(0))
+                                .text_size(css(12.))
+                                .line_height(css(14.))
+                                .child(tr("TEXT_LAUNCH_SAVE"))
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.finish_pending_edits(window, cx);
+                                    this.save_actions(cx)
+                                })),
+                        )
+                    }),
             )
             .into_any_element()
     }

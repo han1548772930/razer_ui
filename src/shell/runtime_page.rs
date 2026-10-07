@@ -1,6 +1,7 @@
 //! Read-only connection UI. The actor owns the child process, including shutdown;
 //! no DLL, pipe operation, mutex wait or child destructor runs on the UI thread.
 use crate::{
+    backend::device_changes::{DeviceChange, DeviceChangeMonitor},
     backend::discovery::{self, DiscoverySnapshot},
     backend::runtime::{ServiceClient, ServiceRequest},
     ui::surface,
@@ -13,10 +14,14 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use serde_json::Value;
 use std::{sync::mpsc, time::Duration};
 
+#[path = "runtime_page/diagnostics.rs"]
+mod diagnostics;
+
 #[derive(Clone)]
 struct RuntimeBridge(mpsc::Sender<Command>);
+type DiscoveryProgress = async_channel::Sender<(DiscoverySnapshot, mpsc::Sender<()>)>;
 enum Command {
-    Refresh(bool, mpsc::Sender<Readings>),
+    Refresh(bool, DiscoveryProgress, mpsc::Sender<Readings>),
     Disconnect(mpsc::Sender<Result<(), String>>),
 }
 
@@ -29,11 +34,19 @@ struct Readings {
     audio: Option<Result<Value, String>>,
     discovery: Option<Result<DiscoverySnapshot, String>>,
     services_requested: bool,
+    diagnostic_report: Option<Result<std::path::PathBuf, String>>,
 }
 
 #[derive(Clone)]
-pub(super) struct DiscoveryObserved(pub(super) Result<DiscoverySnapshot, String>);
+pub(super) struct DiscoveryObserved(
+    pub(super) Result<DiscoverySnapshot, String>,
+    pub(super) Option<mpsc::Sender<()>>,
+);
 impl EventEmitter<DiscoveryObserved> for RuntimePanel {}
+/// Values follow the initial interface observation without expiring its scope.
+#[derive(Clone)]
+pub(super) struct DeviceValuesObserved(pub(super) Result<DiscoverySnapshot, String>);
+impl EventEmitter<DeviceValuesObserved> for RuntimePanel {}
 
 impl Readings {
     fn has_partial_results(&self) -> bool {
@@ -70,6 +83,15 @@ impl Readings {
             "服务连接已结束；下方保留本次读取结果。"
         } else if self.has_partial_results() {
             "读取完成，部分信息不可用。"
+        } else if self
+            .discovery
+            .as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .is_some_and(|snapshot| diagnostics::read_count(snapshot) > 0)
+        {
+            "部分设备信息已读取；完整配置尚未读取。"
+        } else if !self.services_requested {
+            "设备接口已更新；设备配置尚未读取。"
         } else {
             "服务信息已读取。"
         }
@@ -85,12 +107,13 @@ impl RuntimeBridge {
                 let mut client: Option<ServiceClient> = None;
                 while let Ok(command) = commands.recv() {
                     match command {
-                        Command::Refresh(services, reply) => {
-                            let result = match client.as_mut() {
-                                Some(client) => read_services(client, services),
+                        Command::Refresh(services, progress, reply) => {
+                            let mut result = match client.as_mut() {
+                                Some(client) => read_services(client, services, &progress),
                                 None => match ServiceClient::spawn() {
                                     Ok(mut connection) => {
-                                        let result = read_services(&mut connection, services);
+                                        let result =
+                                            read_services(&mut connection, services, &progress);
                                         client = Some(connection);
                                         result
                                     }
@@ -104,6 +127,7 @@ impl RuntimeBridge {
                                             audio: services.then(|| Err(error.clone())),
                                             discovery: Some(Err(error)),
                                             services_requested: services,
+                                            diagnostic_report: None,
                                         }
                                     }
                                 },
@@ -111,6 +135,11 @@ impl RuntimeBridge {
                             if !result.connected {
                                 client.take();
                             }
+                            result.diagnostic_report = Some(
+                                result
+                                    .write_diagnostic_report()
+                                    .map_err(|error| format!("{error:#}")),
+                            );
                             let _ = reply.send(result);
                         }
                         Command::Disconnect(reply) => {
@@ -135,10 +164,10 @@ impl RuntimeBridge {
         Ok(Self(sender))
     }
 
-    fn refresh(&self, services: bool) -> Result<Readings, String> {
+    fn refresh(&self, services: bool, progress: DiscoveryProgress) -> Result<Readings, String> {
         let (reply, response) = mpsc::channel();
         self.0
-            .send(Command::Refresh(services, reply))
+            .send(Command::Refresh(services, progress, reply))
             .map_err(|_| "服务连接已结束，请重新连接。".to_string())?;
         response
             // Each worker request already has a deadline. A fixed aggregate
@@ -158,7 +187,11 @@ impl RuntimeBridge {
     }
 }
 
-fn read_services(client: &mut ServiceClient, services: bool) -> Readings {
+fn read_services(
+    client: &mut ServiceClient,
+    services: bool,
+    progress: &DiscoveryProgress,
+) -> Readings {
     // Enumerate physical USB and HID separately before vendor services. Neither
     // enumeration's failure discards the other one's real observations.
     let usb = client
@@ -167,7 +200,20 @@ fn read_services(client: &mut ServiceClient, services: bool) -> Readings {
     let hid = client
         .request(ServiceRequest::HidDevices)
         .map_err(|error| format!("{error:#}"));
-    let discovery = discovery::discover(client, &usb, &hid).map_err(|error| format!("{error:#}"));
+    let mut discovery =
+        discovery::discover(client, &usb, &hid).map_err(|error| format!("{error:#}"));
+    if let Ok(snapshot) = &mut discovery {
+        // Publish identified interfaces before slower configuration queries.
+        // The UI captures profile/connection scope at this exact boundary.
+        let (ready, acknowledged) = mpsc::channel();
+        if progress.send_blocking((snapshot.clone(), ready)).is_ok()
+            && acknowledged.recv_timeout(Duration::from_secs(30)).is_ok()
+        {
+            discovery::read_device_values(client, &hid, snapshot);
+        } else {
+            discovery = Err("界面尚未确认本次发现，设备参数查询未开始。".into());
+        }
+    }
     let version = services.then(|| {
         client
             .request(ServiceRequest::SimpleVersion)
@@ -186,11 +232,16 @@ fn read_services(client: &mut ServiceClient, services: bool) -> Readings {
         audio,
         discovery: Some(discovery),
         services_requested: services,
+        diagnostic_report: None,
     }
 }
 
 pub(super) struct RuntimePanel {
     bridge: Option<RuntimeBridge>,
+    monitor: Option<DeviceChangeMonitor>,
+    monitor_task: Option<Task<()>>,
+    monitor_error: Option<String>,
+    pending_refresh: Option<bool>,
     busy: bool,
     readings: Readings,
     status: String,
@@ -202,6 +253,10 @@ impl RuntimePanel {
     pub(super) fn new() -> Self {
         Self {
             bridge: None,
+            monitor: None,
+            monitor_task: None,
+            monitor_error: None,
+            pending_refresh: None,
             busy: false,
             readings: Readings::default(),
             status: "尚未连接".into(),
@@ -218,36 +273,100 @@ impl RuntimePanel {
         self.refresh_queries(false, cx);
     }
 
-    fn refresh_queries(&mut self, services: bool, cx: &mut Context<Self>) {
-        if self.busy {
+    fn monitor_device_changes(&mut self, cx: &mut Context<Self>) {
+        if self.monitor.is_some() {
             return;
         }
+        match DeviceChangeMonitor::start() {
+            Ok((monitor, changes)) => {
+                self.monitor = Some(monitor);
+                self.monitor_error = None;
+                self.monitor_task = Some(cx.spawn(async move |this, cx| {
+                    while let Ok(event) = changes.recv().await {
+                        let failed = matches!(&event, DeviceChange::Failed(_));
+                        if this
+                            .update(cx, |this, cx| match event {
+                                DeviceChange::Ready | DeviceChange::Changed => {
+                                    this.refresh_queries(false, cx);
+                                }
+                                DeviceChange::Failed(error) => {
+                                    this.monitor_error = Some(error);
+                                    this.monitor = None;
+                                    cx.notify();
+                                }
+                            })
+                            .is_err()
+                            || failed
+                        {
+                            break;
+                        }
+                    }
+                }));
+            }
+            Err(error) => self.monitor_error = Some(error),
+        }
+    }
+
+    fn refresh_queries(&mut self, services: bool, cx: &mut Context<Self>) {
+        if self.busy {
+            // USB/HID arrival often occurs while enumeration is still running.
+            // Keep one follow-up scan and preserve any explicit service refresh.
+            self.pending_refresh = Some(self.pending_refresh.unwrap_or(false) || services);
+            return;
+        }
+        self.monitor_device_changes(cx);
         self.busy = true;
         self.error = None;
-        self.status = "正在读取服务信息…".into();
+        self.status = if services {
+            "正在读取设备接口与服务信息…"
+        } else {
+            "正在发现设备…"
+        }
+        .into();
         let bridge = self.bridge.clone();
+        let (progress, snapshots) = async_channel::bounded(1);
         cx.notify();
         cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_spawn(async move {
-                    let bridge = bridge.map_or_else(RuntimeBridge::start, Ok)?;
-                    let readings = bridge.refresh(services)?;
-                    Ok::<_, String>((bridge, readings))
-                })
-                .await;
+            let request = cx.background_spawn(async move {
+                let bridge = bridge.map_or_else(RuntimeBridge::start, Ok)?;
+                let readings = bridge.refresh(services, progress)?;
+                Ok::<_, String>((bridge, readings))
+            });
+            let mut identified = false;
+            // Consume progress before final completion, even if every query
+            // finishes before the UI gets its next turn.
+            while let Ok((snapshot, ready)) = snapshots.recv().await {
+                identified = true;
+                if this
+                    .update(cx, |this, cx| {
+                        cx.emit(DiscoveryObserved(Ok(snapshot), Some(ready)));
+                        this.status = "设备接口已更新，正在读取设备信息…".into();
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    return;
+                }
+            }
+            let result = request.await;
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
                 match result {
                     Ok((bridge, readings)) => {
                         if let Some(observation) = &readings.discovery {
-                            cx.emit(DiscoveryObserved(observation.clone()));
+                            match (identified, observation) {
+                                (true, Ok(snapshot)) => {
+                                    cx.emit(DeviceValuesObserved(Ok(snapshot.clone())))
+                                }
+                                _ => cx.emit(DiscoveryObserved(observation.clone(), None)),
+                            }
                         }
                         this.bridge = readings.connected.then_some(bridge);
                         this.status = readings.status().into();
                         this.readings = readings;
                     }
                     Err(error) => {
-                        cx.emit(DiscoveryObserved(Err(error.clone())));
+                        cx.emit(DiscoveryObserved(Err(error.clone()), None));
                         this.bridge = None;
                         this.readings.connected = false;
                         this.status = "连接失败；已有结果未更新。".into();
@@ -255,6 +374,9 @@ impl RuntimePanel {
                     }
                 }
                 cx.notify();
+                if let Some(services) = this.pending_refresh.take() {
+                    this.refresh_queries(services, cx);
+                }
             });
         })
         .detach();
@@ -264,22 +386,30 @@ impl RuntimePanel {
         if self.busy {
             return;
         }
-        let Some(bridge) = self.bridge.take() else {
+        if self.bridge.is_none() && self.monitor.is_none() {
             return;
-        };
+        }
+        let bridge = self.bridge.take();
+        self.monitor_task = None;
+        self.monitor = None;
+        self.monitor_error = None;
+        self.pending_refresh = None;
         self.busy = true;
         self.status = "正在断开连接…".into();
         self.error = None;
         cx.notify();
         cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(async move { bridge.disconnect() })
+                .background_spawn(
+                    async move { bridge.map_or(Ok(()), |bridge| bridge.disconnect()) },
+                )
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.finish_disconnect(result);
-                cx.emit(DiscoveryObserved(Err(
-                    "服务连接已断开，此前设备观察已过期".into()
-                )));
+                cx.emit(DiscoveryObserved(
+                    Err("服务连接已断开，此前设备观察已过期".into()),
+                    None,
+                ));
                 cx.notify();
             });
         })
@@ -308,7 +438,7 @@ impl Render for RuntimePanel {
             .w_full()
             .gap_3()
             .child(surface::note(
-                "读取本机设备接口、音频服务和版本信息。设备配置仍保存在本机。",
+                "读取设备接口和已核实的设备信息。完整配置尚未读取，界面编辑保存为本地草稿。",
                 cx,
             ))
             .child(
@@ -330,7 +460,7 @@ impl Render for RuntimePanel {
                         Button::new("runtime-disconnect")
                             .label("断开连接")
                             .outline()
-                            .disabled(self.busy || !connected)
+                            .disabled(self.busy || (!connected && self.monitor.is_none()))
                             .on_click(cx.listener(|this, _, _, cx| this.disconnect(cx))),
                     ),
             )
@@ -352,6 +482,15 @@ impl Render for RuntimePanel {
                         .child(error),
                 )
             })
+            .when_some(self.monitor_error.clone(), |this, error| {
+                this.child(
+                    div()
+                        .id("runtime-device-monitor-error")
+                        .role(Role::Status)
+                        .text_color(cx.theme().danger)
+                        .child(error),
+                )
+            })
             .when_some(self.readings.hid.as_ref(), |this, result| {
                 this.child(hid_result(result, cx))
             })
@@ -361,8 +500,9 @@ impl Render for RuntimePanel {
             .when_some(self.readings.discovery.as_ref(), |view, result| {
                 let label = match result {
                     Ok(snapshot) => format!(
-                        "识别到 {} 项产品接口或接收器关联；配置尚未读取。{}",
+                        "识别到 {} 项产品接口或接收器关联，读取 {} 项设备信息；完整配置尚未读取。{}",
                         snapshot.devices().len(),
+                        diagnostics::read_count(snapshot),
                         snapshot.errors().join("；")
                     ),
                     Err(error) => format!("产品发现失败：{error}"),
@@ -374,7 +514,13 @@ impl Render for RuntimePanel {
                         .role(Role::Status)
                         .aria_label(label.clone())
                         .child(label),
-                )
+                ).when_some(result.as_ref().ok(), |view, snapshot| {
+                    view.children(snapshot.devices().iter().filter_map(|device| {
+                        device.read_values().map(|values| {
+                            diagnostics::device_values(device.product_id(), values, cx)
+                        })
+                    }))
+                })
             })
             .when_some(self.readings.version.as_ref(), |this, result| {
                 this.child(reading("服务版本", result, cx))
@@ -397,7 +543,14 @@ impl Render for RuntimePanel {
                         })),
                 )
                 .when(self.details, |this| {
-                    this.children(
+                    this.when_some(self.readings.diagnostic_report.as_ref(), |view, report| {
+                        let label = match report {
+                            Ok(path) => format!("本次设备发现详情已记录：{}", path.display()),
+                            Err(error) => format!("设备发现详情未能记录：{error}"),
+                        };
+                        view.child(surface::note(label, cx))
+                    })
+                    .children(
                         [
                             ("USB 设备", &self.readings.usb),
                             ("HID 接口", &self.readings.hid),

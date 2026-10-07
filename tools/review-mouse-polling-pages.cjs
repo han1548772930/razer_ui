@@ -98,7 +98,7 @@ for(const product of pages.products){
   in_game_branch_in_shared_component:target.source.includes('this.props.supportInGamePollingRate')};
  row.review=product.product_id===226?'source-subtree-reviewed-local-fix':'source-subtree-reviewed-gap';
  row.remaining=product.product_id===226?
-  ['Real rate/topology publishers; window focus/1500ms refresh; full layout/input/runtime; real discovery now publishes connection only; see mouse-226-review-2026-10-07.md.']:
+  ['Real topology publisher; source window focus/1500ms refresh; full layout/input/runtime. Shared scoped rate/firmware consumption is wired, but current read-query coverage is independently limited to product 182; no 226 read or device success is inferred. See mouse-polling-source-model-2026-10-07.md.']:
   ['Native generic polling still omits source description and help.',
    'Native generic polling has no scoped connection/rate observation; connection-dependent field/title parity applies only where this product source mounts that branch.',
    'High-rate warning/link and conditional branches require this product-specific CONFIG/props review before reuse.',

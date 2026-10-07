@@ -967,6 +967,9 @@ pub struct ProfileSettings {
     pub(super) tracking: SmartTracking,
     pub(super) sensitivity: Sensitivity,
     pub(super) polling: u32,
+    /// Explicit local 182 overrides; observations never enter saved settings.
+    pub(super) polling_wired: Option<u32>,
+    pub(super) polling_wireless: Option<u32>,
     pub(super) idle_minutes: u8,
     pub(super) power_enabled: bool,
     pub(super) low_power: u8,
@@ -986,6 +989,8 @@ impl Default for ProfileSettings {
             tracking: SmartTracking::default(),
             sensitivity: Sensitivity::default(),
             polling: 1000,
+            polling_wired: None,
+            polling_wireless: None,
             idle_minutes: 5,
             power_enabled: true,
             low_power: 5,

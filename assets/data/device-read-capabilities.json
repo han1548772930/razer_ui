@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 182,
+      "source_class": "rzDevice25DualLinkMouse",
+      "direct_pids": [
+        182,
+        183
+      ],
+      "vendor_id": 5426,
+      "claim_interface": 0,
+      "report_id": 0,
+      "report_bytes": 91,
+      "transaction_prefix": 0,
+      "transaction_modulus": 31,
+      "queries": [
+        {
+          "name": "firmware",
+          "method": "getExtendedFirmwareVersion",
+          "command": [
+            4,
+            0,
+            135
+          ],
+          "payload": [],
+          "min_response_bytes": 4
+        },
+        {
+          "name": "battery",
+          "method": "getBatteryLevel",
+          "command": [
+            2,
+            7,
+            128
+          ],
+          "payload": [
+            0
+          ],
+          "min_response_bytes": 2
+        },
+        {
+          "name": "charging",
+          "method": "getChargingStatus",
+          "command": [
+            2,
+            7,
+            132
+          ],
+          "payload": [
+            0
+          ],
+          "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getUSBHighSpeedPollingRate",
+          "command": [
+            2,
+            0,
+            192
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
+        },
+        {
+          "name": "dpi",
+          "method": "getDpiLevel",
+          "command": [
+            7,
+            4,
+            133
+          ],
+          "payload": [
+            0
+          ],
+          "min_response_bytes": 7
+        }
+      ],
+      "polling_codes": {
+        "RATE_8000Hz": 1,
+        "RATE_4000Hz": 2,
+        "RATE_2000Hz": 4,
+        "RATE_1000Hz": 8,
+        "RATE_500Hz": 16,
+        "RATE_250Hz": 32,
+        "RATE_125Hz": 64
+      },
+      "charging_codes": {
+        "NoCharge_BatteryFull": 0,
+        "Charging": 1,
+        "ChargingFailed": 2,
+        "ForeignObjectDetection": 3,
+        "FastCharging": 4,
+        "FullCharging": 5,
+        "ReachChargingLimit": 6
+      },
+      "max_retry_in": 10,
+      "max_retry_out": 20,
+      "sleep_between_out_ms": 25,
+      "sleep_between_out_in_ms": 25,
+      "sleep_between_in_ms": 25
+    }
+  ]
+}

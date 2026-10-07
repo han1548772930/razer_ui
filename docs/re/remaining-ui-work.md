@@ -1,10 +1,12 @@
 # 当前剩余工作
 
+最新追加：[全范围后续批次](ui-review-followup-2026-10-07.md)。Chroma Settings、Reactive/Ripple/Starlight、2636 校准、Profiles 传输预览及两款 Raptor 六页已新增实际接入/修复；Studio 剩余五个属性根的 [独立缺口](studio-wave-wheel-pending-review-2026-10-07.md)已读到事件、布局和资源。产品完整验收仍为 0。
+
 最新续接：[2026-10-07 全范围多子任务复查](ui-review-continuation-2026-10-07.md)。已建立全部产品/页面/独立模式/应用入口队列并修复多批实际交互；USB 与 39 条直接双链查询已接代码。下文早期缺口按新报告覆盖，不把源码/静态检查等同于真实设备读取完成。
 
 更新：2026-10-07。按 [实施路线](ui-readonly-first-roadmap.md)逐项推进，完整复刻尚未完成。当天较早[续接记录](ui-continuation-2026-10-07.md)之后，179 等查询已经接线但未实机验证；配对工具后续状态和 241 完整条件仍在队列。最新多产品修复、Chroma Settings 错误路由及其他逐页缺口以上方全范围报告为准。
 
-1. 收齐 Studio Ambient、Static 的交互边界；Spectrum 时长和渐变、[Breathing/Fire 本地编辑](chroma-studio-breathing-fire-native.md)已局部接入，继续核对[弹层、光标与服务差异](chroma-studio-gradient-native.md)，并逐项接入其余 8 个属性根及共享控件，保留设备条件和临时参数语义。
+1. 收齐 Studio Ambient、Static 的交互边界；Spectrum 时长和渐变、[Breathing/Fire 本地编辑](chroma-studio-breathing-fire-native.md)及 [Reactive/Ripple/Starlight](studio-reactive-ripple-starlight-native.md)已局部接入，继续核对[弹层、光标与服务差异](chroma-studio-gradient-native.md)，并逐项接入其余 5 个属性根及共享控件，保留设备条件和临时参数语义。
 2. 补齐 Studio 分组、拖排、配置、导入导出、关联与独立模式，见 [根审计](chroma-studio-native-root.md)、[属性审计](chroma-studio-properties.md)、[图层审计](chroma-studio-layers-native.md)。
 3. 依据 [DLL 只读盘点](dll-readonly-inventory.md)核实实际 DLL 身份、导出和 ABI，补全查询、观察与 UI 消费链。静态封装证据不等于实际读取成功。
 4. 逐产品检查控件、弹层、条件、动画与独立根；[331 个产品、1419 个主导航页](native-product-coverage.md)已有部分内容，完整验收产品为 0。

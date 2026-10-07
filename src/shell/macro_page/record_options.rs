@@ -199,7 +199,7 @@ impl MacroPage {
             .map(|e| e.macro_type)
             .unwrap_or_default()
     }
-    fn record_delay(&self) -> u8 {
+    pub(super) fn record_delay(&self) -> u8 {
         self.entries
             .iter()
             .find(|e| Some(e.id) == self.current)
@@ -279,6 +279,7 @@ impl MacroPage {
         );
     }
     fn set_record_delay(&mut self, value: u8, window: &mut Window, cx: &mut Context<Self>) {
+        self.finish_randomized_range(false, window, cx);
         if let Some(entry) = self.entries.iter_mut().find(|e| Some(e.id) == self.current) {
             entry.record_delay = value;
             self.publish_library(cx);
@@ -376,7 +377,7 @@ impl MacroPage {
                 "{:.3}s",
                 self.actions()
                     .iter()
-                    .filter(|a| a.kind == ActionKind::Delay)
+                    .filter(|a| a.kind == ActionKind::Delay || a.mouse_movement.is_some())
                     .map(|a| a
                         .value
                         .parse::<f64>()
@@ -386,6 +387,38 @@ impl MacroPage {
                     .sum::<f64>()
             ),
         }
+    }
+    pub(super) fn recording_mode_label(&self) -> AnyElement {
+        let label = match self.current_macro_type() {
+            MacroType::Sequence => tr("TEXT_SEQUENCE_MACRO"),
+            MacroType::Phased => tr("TEXT_PHASED_MACRO"),
+            MacroType::Standard => match self.record_delay() {
+                1 => tr("TEXT_SECOND_DELAY")
+                    .replace("{{times}}", &self.record_ui.delay_time.to_string()),
+                2 => tr("TEXT_RANDOMIZE_DELAY").replace(
+                    "{{times}}",
+                    &format!(
+                        "{}s - {}s",
+                        self.record_ui.random[0], self.record_ui.random[1]
+                    ),
+                ),
+                3 => tr("TEXT_NO_DELAY"),
+                _ => tr("TEXT_RECORD_DELAY"),
+            },
+        };
+        v_flex()
+            .id("macro-recording-mode")
+            .text_size(css(12.))
+            .text_right()
+            .child(label)
+            .when(self.record_ui.mouse > 0, |column| {
+                column.child(tr(match self.record_ui.mouse {
+                    1 => "TEXT_ABSOLUTE_POSITION_MOUSE",
+                    2 => "TEXT_RELATIVE_POSITION_MOUSE",
+                    _ => "TEXT_MOUSE_TRACKING",
+                }))
+            })
+            .into_any_element()
     }
     pub(super) fn record_options(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let standard = self.current_macro_type() == MacroType::Standard;

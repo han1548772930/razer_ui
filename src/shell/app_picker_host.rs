@@ -44,8 +44,7 @@ impl AppShell {
                 )
                 .powered_off(
                     device
-                        .power_status
-                        .as_ref()
+                        .current_power_status()
                         .is_some_and(|power| power.charging_status.eq_ignore_ascii_case("off")),
                 )
                 .section_position(position)

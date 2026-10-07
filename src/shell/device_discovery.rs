@@ -4,7 +4,7 @@ use crate::backend::{
     discovery,
     runtime::{ServiceClient, ServiceRequest},
 };
-use crate::features::mouse_products::{MousePollingObservation, PollingConnection};
+use crate::features::mouse_polling::{MousePollingObservation, PollingConnection, PollingField};
 use crate::features::{
     ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent, ReceiverPairingObservation,
     ReceiverPeer,
@@ -58,8 +58,8 @@ impl AppShell {
                     let mut client = ServiceClient::spawn()?;
                     let result = (|| {
                         let hid = client.request(ServiceRequest::HidDevices)?;
-                        let request = discovery::receiver_request(&hid, &container, product_id)?;
-                        let value = client.request(request)?;
+                        let value =
+                            discovery::query_receiver(&mut client, &hid, &container, product_id)?;
                         discovery::pairing_payload(product_id, &value)
                     })();
                     let shutdown = client.request(ServiceRequest::Shutdown);
@@ -99,6 +99,7 @@ impl AppShell {
     ) {
         // Expire the previous observation even on failure. Absence is unknown,
         // not an invented offline reply. No profile/identity is overwritten.
+        self.device_read_scopes.clear();
         for workspace in &self.devices {
             workspace.update(cx, |workspace, cx| workspace.observe_connection(None, cx));
             observe_polling_connection(workspace, None, cx);
@@ -142,6 +143,10 @@ impl AppShell {
                 .collect();
             if let [workspace] = matches.as_slice() {
                 observe_polling_connection(workspace, observed.transport(), cx);
+                if let Some(scope) = workspace.read(cx).mouse_polling_scope(cx) {
+                    self.device_read_scopes
+                        .insert(workspace.read(cx).identity(cx), scope);
+                }
             }
         }
         self.status = if errors.is_empty() {
@@ -152,6 +157,66 @@ impl AppShell {
         } else {
             format!("设备发现部分完成：{}", errors.join("；"))
         };
+        self.sync_known_devices(cx);
+        self.sync_gamer_room(cx);
+        cx.notify();
+    }
+
+    /// Second discovery phase: parameter reads use the owner/profile captured
+    /// after the first connection observation, before those reads were issued.
+    pub(super) fn observe_device_values(
+        &mut self,
+        observation: &Result<discovery::DiscoverySnapshot, String>,
+        cx: &mut Context<Self>,
+    ) {
+        let scopes = std::mem::take(&mut self.device_read_scopes);
+        let snapshot = match observation {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                self.status = format!("设备参数读取失败：{error}；本地草稿已保留。");
+                cx.notify();
+                return;
+            }
+        };
+        for observed in snapshot.devices() {
+            let matches = self
+                .devices
+                .iter()
+                .filter(|workspace| observed.matches(workspace.read(cx).device(cx)))
+                .collect::<Vec<_>>();
+            let [workspace] = matches.as_slice() else {
+                continue;
+            };
+            let scope = scopes.get(&workspace.read(cx).identity(cx)).copied();
+            let values = observed.read_values().cloned();
+            workspace.update(cx, |workspace, cx| {
+                workspace.observe_read_values(values.clone(), cx);
+                let (Some(scope), Some(values)) = (scope, values) else {
+                    return;
+                };
+                workspace.observe_mouse_polling(
+                    scope,
+                    MousePollingObservation::FirmwareVersion(values.firmware),
+                    cx,
+                );
+                let field = match observed.transport() {
+                    Some(discovery::ObservedTransport::Wired) => Some(PollingField::Wired),
+                    Some(discovery::ObservedTransport::Dongle) => Some(PollingField::Wireless),
+                    // These source pages hide polling on BLE; no field is invented.
+                    _ => None,
+                };
+                if let (Some(field), Some(rate)) = (field, values.polling_hz) {
+                    workspace.observe_mouse_polling(
+                        scope,
+                        MousePollingObservation::Rate(field, rate),
+                        cx,
+                    );
+                }
+            });
+        }
+        if !snapshot.errors().is_empty() {
+            self.status = format!("设备参数部分读取完成：{}", snapshot.errors().join("；"));
+        }
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
         cx.notify();
@@ -184,8 +249,8 @@ impl AppShell {
                     let mut client = ServiceClient::spawn()?;
                     let result = (|| {
                         let hid = client.request(ServiceRequest::HidDevices)?;
-                        let request = discovery::receiver_request(&hid, &container, product_id)?;
-                        let value = client.request(request)?;
+                        let value =
+                            discovery::query_receiver(&mut client, &hid, &container, product_id)?;
                         discovery::receiver_peers(&value)
                     })();
                     let shutdown = client.request(ServiceRequest::Shutdown);

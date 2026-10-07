@@ -37,7 +37,7 @@ impl DeviceWorkspace {
             .child(surface::page_column(
                 v_flex()
                     .gap(surface::css(20.))
-                    .when(!self.device().use_ble, |this| {
+                    .when(self.mouse_polling_visible(), |this| {
                         this.child(self.polling_panel(cx))
                     })
                     .child(
@@ -46,8 +46,12 @@ impl DeviceWorkspace {
                         //  text-decoration:underline;text-transform:capitalize}`
                         // 与 `.external:hover{color:#44d62c}`，文字 key 为
                         // `MOUSE_PROPERTIES_HEADER` / `MOUSE_PROPERTIES_DESC`。
-                        surface::panel(
+                        surface::panel_with_control(
                             crate::i18n::t_or("MOUSE_PROPERTIES_HEADER", "鼠标属性"),
+                            surface::help_control(
+                                "mouse-properties-help",
+                                crate::i18n::t("MOUSE_PROPERTIES_TOOLTIP"),
+                            ),
                             cx,
                         )
                         .child(
@@ -55,7 +59,7 @@ impl DeviceWorkspace {
                                 .items_center()
                                 .gap(surface::css(20.))
                                 .child(
-                                    img("synapse/windows-11.svg")
+                                    img(self.mouse_windows_icon())
                                         .size(surface::css(44.))
                                         .object_fit(ObjectFit::Contain),
                                 )
@@ -95,6 +99,9 @@ impl DeviceWorkspace {
     }
 
     pub(super) fn polling_panel(&self, cx: &mut Context<Self>) -> AnyElement {
+        if self.mouse_polling_scope(cx).is_some() {
+            return self.mouse_polling_panel(cx);
+        }
         // 原版标题：`isDongle||isBle ? POLLING_RATE_WIRELESS : POLLING_RATE`
         // （`Rm.render` 的 `title` 取自 `aE.FGZ`/`aE.lGq`，本地语言包里就是
         // `HYPERPOLLING_WIRELESS` / `HYPERPOLLING`）。
@@ -461,7 +468,14 @@ impl DeviceWorkspace {
                 cx,
             )
         } else {
-            surface::panel(crate::i18n::t_or("POWER_SAVING_HEADER", "无线节能"), cx)
+            surface::panel_with_control(
+                crate::i18n::t_or("POWER_SAVING_HEADER", "无线节能"),
+                surface::help_control(
+                    "mouse-power-saving-help",
+                    crate::i18n::t("POWER_SAVING_TOOLTIP"),
+                ),
+                cx,
+            )
         };
         surface::page_columns()
             .child(surface::page_column(
@@ -492,32 +506,39 @@ impl DeviceWorkspace {
             ))
             .when(!headset, |this| {
                 this.child(surface::page_column(
-                    surface::panel(crate::i18n::t_or("LOW_POWER_MODE_HEADER", "低能耗模式"), cx)
-                        .gap(surface::css(10.))
-                        .child(surface::h1_body(
+                    surface::panel_with_control(
+                        crate::i18n::t_or("LOW_POWER_MODE_HEADER", "低能耗模式"),
+                        surface::help_control(
+                            "mouse-low-power-help",
+                            crate::i18n::t("LOW_POWER_MODE_TOOLTIP"),
+                        ),
+                        cx,
+                    )
+                    .gap(surface::css(10.))
+                    .child(surface::h1_body(
+                        crate::i18n::t_or(
+                            "LOW_POWER_MODE_DESC",
+                            "当电池电量低于以下百分比时，进入低能耗模式。",
+                        ),
+                        cx,
+                    ))
+                    .child(self.source_range(
+                        Control::LowPower,
+                        "5%",
+                        None,
+                        "100%",
+                        !self.mouse_low_power_enabled(),
+                        cx,
+                    ))
+                    .when(!self.mouse_low_power_enabled(), |this| {
+                        this.child(surface::note(
                             crate::i18n::t_or(
-                                "LOW_POWER_MODE_DESC",
-                                "当电池电量低于以下百分比时，进入低能耗模式。",
+                                "LOW_POWER_MODE_WARN",
+                                "回报率高于 1000 Hz 时无法调整此选项。",
                             ),
                             cx,
                         ))
-                        .child(self.source_range(
-                            Control::LowPower,
-                            "5%",
-                            None,
-                            "100%",
-                            state.polling > 1000,
-                            cx,
-                        ))
-                        .when(state.polling > 1000, |this| {
-                            this.child(surface::note(
-                                crate::i18n::t_or(
-                                    "LOW_POWER_MODE_WARN",
-                                    "回报率高于 1000 Hz 时无法调整此选项。",
-                                ),
-                                cx,
-                            ))
-                        }),
+                    }),
                 ))
             })
             .into_any_element()

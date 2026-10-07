@@ -448,14 +448,16 @@ impl MacroPage {
                     this.create_entry(EntryKind::Macro, window, cx)
                 })),
             )
-            // Current service file import/export paths have not yet been ported.
-            .child(super::tree::menu_action(
-                "macro-menu-import",
-                "TEXT_PROFILE_BAR_S3_DROPDOWN_IMPORT",
-                true,
-                window,
-                cx,
-            ))
+            .child(
+                super::tree::menu_action(
+                    "macro-menu-import",
+                    "TEXT_PROFILE_BAR_S3_DROPDOWN_IMPORT",
+                    self.transfer_busy || self.recording_busy(),
+                    window,
+                    cx,
+                )
+                .on_click(cx.listener(|this, _, window, cx| this.import_xml(window, cx))),
+            )
             .child(div().h(css(1.)).mx(css(6.)).my(css(4.)).bg(rgb(0x5d5d5d)))
             .child(
                 super::tree::menu_action(
@@ -484,13 +486,16 @@ impl MacroPage {
                     this.duplicate_current(cx)
                 })),
             )
-            .child(super::tree::menu_action(
-                "macro-menu-export",
-                "TEXT_PROFILE_BAR_S3_DROPDOWN_EXPORT",
-                true,
-                window,
-                cx,
-            ))
+            .child(
+                super::tree::menu_action(
+                    "macro-menu-export",
+                    "TEXT_PROFILE_BAR_S3_DROPDOWN_EXPORT",
+                    self.current.is_none() || self.transfer_busy || self.recording_busy(),
+                    window,
+                    cx,
+                )
+                .on_click(cx.listener(|this, _, window, cx| this.export_xml(window, cx))),
+            )
             .child(div().h(css(1.)).mx(css(6.)).my(css(4.)).bg(rgb(0x5d5d5d)))
             .child(
                 super::tree::menu_action(

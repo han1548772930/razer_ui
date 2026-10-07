@@ -13,8 +13,12 @@ use std::{
     },
 };
 
+#[path = "runtime_device_reads.rs"]
+mod device_reads;
 #[path = "runtime_hid.rs"]
 mod hid;
+#[path = "runtime_hid_transport.rs"]
+mod hid_transport;
 #[path = "runtime_macro.rs"]
 mod macro_recorder;
 #[path = "runtime_receiver.rs"]
@@ -218,6 +222,7 @@ impl NativeRuntime {
         match request {
             ServiceRequest::HidDevices => hid::enumerate(),
             ServiceRequest::UsbDevices => usb::enumerate(),
+            ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
             ServiceRequest::StartMacroRecording => self.start_macro_recording(),
             ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
             ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),

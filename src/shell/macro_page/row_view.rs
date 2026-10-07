@@ -177,12 +177,18 @@ impl MacroPage {
                 .inset_0(),
             )
             .hover(|s| s.border_color(rgb(0x44d62c)))
-            .on_hover(move |value, _, cx| {
+            .on_hover(cx.listener(move |this, value, _, cx| {
+                if *value {
+                    this.hovered_action = Some(index);
+                } else if this.hovered_action == Some(index) {
+                    this.hovered_action = None;
+                }
                 hover.update(cx, |hover, cx| {
                     *hover = *value;
                     cx.notify();
-                })
-            })
+                });
+                cx.notify();
+            }))
             .when(!disabled, |row| {
                 row.on_drag(dragging, |drag, offset, _, cx| {
                     cx.new(|_| ActionDragPreview {

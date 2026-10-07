@@ -77,6 +77,7 @@ pub struct DeviceWorkspace {
     /// 由历史前进/后退触发的页切换不再重复写入历史。
     pub(super) controls: Controls,
     pub(super) sensitivity_controls: super::sensitivity::SensitivityControls,
+    mouse_polling: mouse_polling_profile::State,
     pub(super) keyboard_controls: super::keyboard_controls::KeyboardControls,
     subscriptions: Vec<Subscription>,
     body_scroll: ScrollHandle,
@@ -114,6 +115,8 @@ pub struct DeviceWorkspace {
 impl EventEmitter<WorkspaceEvent> for DeviceWorkspace {}
 #[path = "mapping_editor.rs"]
 mod mapping_editor;
+#[path = "mouse_polling_profile.rs"]
+mod mouse_polling_profile;
 pub(super) use mapping_editor::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website};
 #[cfg(test)]
 #[path = "mapping_focus_tests.rs"]
@@ -130,6 +133,15 @@ mod sensitivity_tests;
 #[path = "workspace_tests.rs"]
 mod tests;
 impl DeviceWorkspace {
+    pub(crate) fn observe_read_values(
+        &mut self,
+        values: Option<crate::backend::device_reads::DeviceReadValues>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device.observe_read_values(values.clone());
+        self.saved.observe_read_values(values);
+        cx.notify();
+    }
     pub(crate) fn observe_connection(
         &mut self,
         observation: Option<crate::model::DeviceConnectionObservation>,
@@ -291,6 +303,7 @@ impl DeviceWorkspace {
             .unwrap_or(Tab::Home);
         let sensitivity_controls = super::sensitivity::SensitivityControls::new(window, cx);
         let keyboard_controls = super::keyboard_controls::KeyboardControls::new(window, cx);
+        let mouse_polling = mouse_polling_profile::State::new(device.product_id);
         let mut this = Self {
             saved: device.clone(),
             device,
@@ -316,6 +329,7 @@ impl DeviceWorkspace {
                 color2,
             },
             sensitivity_controls,
+            mouse_polling,
             keyboard_controls,
             subscriptions: vec![],
             body_scroll: ScrollHandle::default(),
@@ -462,6 +476,7 @@ impl DeviceWorkspace {
         // The raw editor belongs to the same restored profile/input. Preserve
         // its text, recording and focus, updating only its comparison baseline.
         self.device = self.saved.clone();
+        self.mouse_polling.reset_profile();
         if let Some(draft) = &mut self.mapping {
             draft.original = original;
         }
@@ -482,6 +497,7 @@ impl DeviceWorkspace {
         self.cancel_snap_capture(window, cx);
         let mapping_focused = self.mapping_focus.contains_focused(window, cx);
         self.device = self.saved.clone();
+        self.mouse_polling.reset_profile();
         self.mapping = None;
         self.mapping_recording = false;
         if mapping_focused {
@@ -744,6 +760,13 @@ impl DeviceWorkspace {
             window,
             move |this, _, event, window, cx| {
                 if let SliderEvent::Change(value) = event {
+                    if target == Control::LowPower
+                        && this.mouse_polling_scope(cx).is_some()
+                        && !this.mouse_low_power_enabled()
+                    {
+                        this.sync_controls(window, cx);
+                        return;
+                    }
                     let value = value.start();
                     this.edit(window, cx, |s| match target {
                         Control::Volume => s.volume = value.round() as u8,
@@ -769,6 +792,7 @@ impl DeviceWorkspace {
         self.controls.sliders.insert(key, state);
     }
     pub(super) fn sync_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.mouse_polling.sync_profile(&self.device.active_profile);
         let s = self.settings().clone();
         self.sensitivity_controls.sync(&s.sensitivity, window, cx);
         let mut values = vec![
@@ -1018,6 +1042,9 @@ impl DeviceWorkspace {
             }
             Continue::ResetProfile { id, bindings_only } => {
                 profile::reset_local_profile(&mut self.device, &id, bindings_only);
+                if !bindings_only && self.device.active_profile == id {
+                    self.mouse_polling.reset_profile();
+                }
             }
             Continue::Page(page) => {
                 self.page = page;

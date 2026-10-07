@@ -1,0 +1,138 @@
+[
+  {
+    "product_id": 182,
+    "device_ids": [
+      182,
+      183
+    ],
+    "pairing_dongle_id": 183,
+    "pair_identity": "strict_dongle_id",
+    "master_supports_8k_flag": false,
+    "is_dongle_hyperpolling_device": false,
+    "rates": {
+      "POLLING_RATE": [
+        125,
+        500,
+        1000
+      ],
+      "POLLING_RATE_WIRELESS": [
+        125,
+        500,
+        1000
+      ],
+      "HYPER_POLLING_RATE": [
+        125,
+        500,
+        1000,
+        2000,
+        4000
+      ],
+      "HYPER_POLLING_RATE_SUPPORT_8K": [
+        125,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ]
+    },
+    "firmware_floor": "2.0.2.0",
+    "hyper_master_ids": [
+      179,
+      164
+    ],
+    "high_rate_threshold_hz": 1000,
+    "fallback_wireless_hz": 1000,
+    "ble_visibility": "hidden",
+    "limits": null,
+    "labels": {
+      "FGZ": "POLLING_RATE_HEADER",
+      "lGq": "WIRED_POLLING_RATE_HEADER",
+      "iiK": "POLLING_RATE_V2_TOOLTIP",
+      "orU": "WIRED_POLLING_RATE_V2_TOOLTIP",
+      "rJp": "POLLING_RATE_DESC",
+      "KOq": "POLLING_RATE_WARN",
+      "Vjf": "POLLING_RATE_WARN_NOBATTERY",
+      "HkB": "LEARN_MORE",
+      "aqm": "MOUSE_PROPERTIES_HEADER",
+      "yer": "MOUSE_PROPERTIES_TOOLTIP",
+      "bSO": "POWER_SAVING_HEADER",
+      "RKF": "POWER_SAVING_TOOLTIP",
+      "zzI": "LOW_POWER_MODE_HEADER",
+      "XyT": "LOW_POWER_MODE_TOOLTIP"
+    }
+  },
+  {
+    "product_id": 226,
+    "device_ids": [
+      226,
+      227
+    ],
+    "pairing_dongle_id": 227,
+    "pair_identity": "current_device_ids",
+    "master_supports_8k_flag": true,
+    "is_dongle_hyperpolling_device": false,
+    "rates": {
+      "POLLING_RATE": [
+        125,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ],
+      "POLLING_RATE_WIRELESS": [
+        125,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ],
+      "HYPER_POLLING_RATE": [
+        125,
+        500,
+        1000,
+        2000,
+        4000
+      ],
+      "HYPER_POLLING_RATE_SUPPORT_8K": [
+        125,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ]
+    },
+    "firmware_floor": null,
+    "hyper_master_ids": [
+      179,
+      164
+    ],
+    "high_rate_threshold_hz": 1000,
+    "fallback_wireless_hz": 1000,
+    "ble_visibility": "hidden",
+    "limits": {
+      "dual_link_hz": 1000,
+      "dock_hz": 1000,
+      "dock_min_devices": 2
+    },
+    "labels": {
+      "FGZ": "POLLING_RATE_HEADER",
+      "lGq": "WIRED_POLLING_RATE_HEADER",
+      "iiK": "POLLING_RATE_V2_TOOLTIP",
+      "orU": "WIRED_POLLING_RATE_V2_TOOLTIP",
+      "rJp": "POLLING_RATE_DESC",
+      "KOq": "POLLING_RATE_WARN",
+      "Vjf": "POLLING_RATE_WARN_NOBATTERY",
+      "HkB": "LEARN_MORE",
+      "aqm": "MOUSE_PROPERTIES_HEADER",
+      "yer": "MOUSE_PROPERTIES_TOOLTIP",
+      "bSO": "POWER_SAVING_HEADER",
+      "RKF": "POWER_SAVING_TOOLTIP",
+      "zzI": "LOW_POWER_MODE_HEADER",
+      "XyT": "LOW_POWER_MODE_TOOLTIP"
+    }
+  }
+]

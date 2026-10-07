@@ -7,7 +7,7 @@ pub(super) use crate::features::macro_library::{
 impl ActionItem {
     pub(super) fn new(kind: ActionKind) -> Self {
         let value = match kind {
-            ActionKind::Delay => "0.000".to_string(),
+            ActionKind::Delay => "0".to_string(),
             ActionKind::Keyboard
             | ActionKind::Mouse
             | ActionKind::Macro
@@ -27,6 +27,7 @@ impl ActionItem {
             kind,
             phase: None,
             macro_id: None,
+            xml_macro_guid: None,
             keyboard: None,
             mouse: None,
             mouse_movement: None,
@@ -243,6 +244,8 @@ impl MacroPage {
             macro_type: Default::default(),
             active_phase: None,
             record_delay: 0,
+            xml_guid: (kind == EntryKind::Macro).then(|| uuid::Uuid::new_v4().to_string()),
+            xml_mouse_mode: 0,
         });
         if kind == EntryKind::Macro {
             self.stash_current_draft();
@@ -414,6 +417,9 @@ impl MacroPage {
                 }
             }
             entry.id = self.next_id;
+            if entry.kind == EntryKind::Macro {
+                entry.xml_guid = Some(uuid::Uuid::new_v4().to_string());
+            }
             self.next_id += 1;
             ids.insert(old, entry.id);
             entry.parent = if old == id {

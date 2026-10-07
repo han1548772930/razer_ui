@@ -35,6 +35,9 @@ pub(crate) struct ActionItem {
     /// Older display-only rows remain unassigned; names are not identities.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) macro_id: Option<u64>,
+    /// An unresolved reference read from XML, never a local ID or device read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) xml_macro_guid: Option<String>,
     /// Source-shaped key data. Missing on legacy text-only rows; text must not
     /// be interpreted as a recorded physical key or an event identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -79,6 +82,9 @@ pub(crate) struct MouseEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct MouseMovement {
+    /// File coordinates carry no live screen/monitor observation.
+    #[serde(default)]
+    pub(crate) imported_xml: bool,
     /// Current source mmtSetting: 1 absolute, 2 foreground, 3 start point.
     pub(crate) mode: u8,
     /// Source Nr Buffer entries; x/y are untransformed recorder coordinates,
@@ -133,6 +139,11 @@ pub(crate) struct Entry {
     /// macro metadata immediately, independently from the action draft.
     #[serde(default)]
     pub(crate) record_delay: u8,
+    /// Stable file interchange identity, separate from local IDs and devices.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) xml_guid: Option<String>,
+    #[serde(default)]
+    pub(crate) xml_mouse_mode: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -173,12 +184,23 @@ impl MacroLibraryFile {
             return Err("Macro next_id must be nonzero and below u64::MAX".into());
         }
         let mut entries = HashMap::with_capacity(self.entries.len());
+        let mut xml_guids = HashSet::new();
         for entry in &self.entries {
             if entry.active_phase.is_some_and(|phase| phase > 2) {
                 return Err(format!("Invalid active phase in {}", entry.id));
             }
             if entry.record_delay > 3 {
                 return Err(format!("Invalid recording delay mode in {}", entry.id));
+            }
+            if entry.xml_mouse_mode > 3 {
+                return Err(format!("Invalid XML mouse mode in {}", entry.id));
+            }
+            if let Some(id) = &entry.xml_guid {
+                let guid = uuid::Uuid::parse_str(id)
+                    .map_err(|_| format!("Invalid XML Macro GUID in {}", entry.id))?;
+                if entry.kind != EntryKind::Macro || !xml_guids.insert(guid) {
+                    return Err(format!("Non-unique XML Macro GUID in {}", entry.id));
+                }
             }
             if entry.id == 0 {
                 return Err("Macro entry IDs must be nonzero".into());
@@ -201,12 +223,17 @@ impl MacroLibraryFile {
             let mut mouse_pairs = HashMap::<u64, usize>::new();
             let mut loop_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
+                if action.xml_macro_guid.as_ref().is_some_and(|guid| {
+                    action.kind != ActionKind::Macro || uuid::Uuid::parse_str(guid).is_err()
+                }) {
+                    return Err(format!("Invalid nested XML Macro GUID in {}", entry.id));
+                }
                 if let Some(movement) = &action.mouse_movement {
                     if action.kind != ActionKind::Mouse
                         || action.mouse.is_some()
                         || !(1..=3).contains(&movement.mode)
                         || movement.buffer.is_empty()
-                        || movement.geometry.is_none()
+                        || (movement.geometry.is_none() && !movement.imported_xml)
                         || movement.buffer.iter().any(|point| {
                             ["x", "y", "time"].iter().any(|field| {
                                 point
@@ -340,6 +367,8 @@ impl MacroLibraryFile {
                     && a.macro_type == b.macro_type
                     && a.active_phase == b.active_phase
                     && a.record_delay == b.record_delay
+                    && a.xml_guid == b.xml_guid
+                    && a.xml_mouse_mode == b.xml_mouse_mode
             })
     }
 }

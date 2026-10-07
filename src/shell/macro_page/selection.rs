@@ -2,6 +2,70 @@
 use super::*;
 
 impl MacroPage {
+    pub(super) fn hovered_pair(&self) -> Option<(usize, usize)> {
+        if self.recording_busy() {
+            return None;
+        }
+        let index = self.hovered_action?;
+        let other = row_actions::counterpart(self.actions(), index)?;
+        Some((index.min(other), index.max(other)))
+    }
+
+    /// ja -> Le: hover uses 15030.cf, independent from selection highlights.
+    pub(super) fn pairing_line(&self, (start, end): (usize, usize)) -> AnyElement {
+        let height = ((end - start) * 42) as f32;
+        canvas(
+            |_, _, _| (),
+            move |bounds, _, window, _| {
+                let unit = f32::from(window.rem_size()) / 16.;
+                // Only emit visible dashes even for a long imported macro.
+                let first = ((-f32::from(bounds.top()) / unit - 5.) / 7.)
+                    .floor()
+                    .max(0.) as usize;
+                let last = ((f32::from(window.viewport_size().height - bounds.top()) / unit) / 7.)
+                    .ceil()
+                    .max(0.) as usize;
+                for n in first..=last.min((height / 7.).ceil() as usize) {
+                    let y = n as f32 * 7.;
+                    let h = (height - y).min(5.);
+                    if h > 0. {
+                        window.paint_quad(fill(
+                            Bounds::new(
+                                bounds.origin + point(px(0.), px(y * unit)),
+                                size(px(2. * unit), px(h * unit)),
+                            ),
+                            rgb(0x44d62c),
+                        ));
+                    }
+                }
+                for y in [0., height] {
+                    let mut dot = PathBuilder::fill();
+                    let center = bounds.origin + point(px(unit), px(y * unit));
+                    for n in 0..=16 {
+                        let angle = n as f32 / 16. * std::f32::consts::TAU;
+                        let p = center
+                            + point(px(angle.cos() * 2.5 * unit), px(angle.sin() * 2.5 * unit));
+                        if n == 0 {
+                            dot.move_to(p);
+                        } else {
+                            dot.line_to(p);
+                        }
+                    }
+                    dot.close();
+                    if let Ok(dot) = dot.build() {
+                        window.paint_path(dot, rgb(0x44d62c));
+                    }
+                }
+            },
+        )
+        .absolute()
+        .left(css(39.))
+        .top(css((start * 42 + 21) as f32))
+        .w(css(2.))
+        .h(css(height))
+        .into_any_element()
+    }
+
     pub(super) fn all_actions_selected(&self) -> bool {
         !self.actions().is_empty()
             && (0..self.actions().len()).all(|index| self.selected_actions.contains(&index))

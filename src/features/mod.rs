@@ -36,6 +36,7 @@ pub(crate) use source_controls::{
 };
 pub(crate) mod gamepad_products;
 pub(crate) mod keyboard_products;
+pub(crate) mod mouse_polling;
 pub(crate) mod mouse_products;
 
 /// Entry availability only; adapter completeness is audited separately.

@@ -53,6 +53,7 @@ impl MacroPage {
         if action.macro_id != Some(id) {
             self.undo.push(self.actions.clone());
             self.actions[index].macro_id = Some(id);
+            self.actions[index].xml_macro_guid = None;
             self.actions[index].value = name;
             self.redo.clear();
             // je restores the text only when its selected index changes.

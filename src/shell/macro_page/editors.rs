@@ -77,6 +77,57 @@ pub(super) fn normalize_randomized_range(
 }
 
 impl MacroPage {
+    /// St updates a numeric Delay after 150ms while the input remains open.
+    /// Invalidate on document/editor changes so a late callback cannot edit
+    /// a different row after reorder, undo, save or navigation.
+    pub(super) fn schedule_delay_edit(&mut self, cx: &mut Context<Self>) {
+        self.numeric_generation = self.numeric_generation.wrapping_add(1);
+        let Some(index) = self.editing_action else {
+            return;
+        };
+        if !self
+            .actions
+            .get(index)
+            .is_some_and(|item| item.kind == ActionKind::Delay)
+        {
+            return;
+        }
+        let raw = self.action_editor.read(cx).value().to_string();
+        if raw.is_empty() {
+            return;
+        } // St keeps the empty draft until blur.
+        let value = format_delay(parse_delay(&raw));
+        let generation = self.numeric_generation;
+        let document = self.current;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(150))
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.numeric_generation != generation
+                    || this.current != document
+                    || this.actions_for != document
+                    || this.editing_action != Some(index)
+                    || this.recording_busy()
+                {
+                    return;
+                }
+                let Some(item) = this.actions.get(index) else {
+                    return;
+                };
+                if item.kind != ActionKind::Delay || item.value == value && item.state == "fixed" {
+                    return;
+                }
+                this.undo.push(this.actions.clone());
+                this.actions[index].value = value;
+                this.actions[index].state = "fixed".into();
+                this.redo.clear();
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(super) fn numeric_value_editor(
         &self,
         index: usize,

@@ -262,5 +262,9 @@
 !/tools/prepare-chroma-settings.cjs
 !/tools/validate-chroma-settings.py
 !/tools/review-studio-reactive-ripple-starlight.cjs
-!/tools/audit-monitor-review-current.cjs
+!/tools/review-studio-pending-properties.cjs
 !/tools/review-monitor-pages.cjs
+!/tools/audit-device-changes.cjs
+!/tools/audit-mouse-read-capabilities.cjs
+!/tools/prepare-mouse-polling-model.cjs
+!/tools/audit-macro-full-page.cjs

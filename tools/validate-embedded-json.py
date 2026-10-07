@@ -162,6 +162,10 @@ def check_document(document, fields: dict, lookup, path: str, errors: list[str])
         if not nested:
             continue
         value = document[key]
+        # Serde represents Option<Struct>::None as null unless its producer
+        # elects to omit it. A defaulted non-Option struct still rejects null.
+        if value is None and re.match(r"^Option\s*<", field["type"]):
+            continue
         if isinstance(value, list):
             # A list of structs: every element must satisfy the struct.
             for index, element in enumerate(value):

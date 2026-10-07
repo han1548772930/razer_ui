@@ -67,6 +67,15 @@ impl EventEmitter<super::ReceiverPairingEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub(crate) fn observe_read_values(
+        &mut self,
+        values: Option<crate::backend::device_reads::DeviceReadValues>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device.observe_read_values(values.clone());
+        self.saved.observe_read_values(values);
+        cx.notify();
+    }
     pub(crate) fn observe_connection(
         &mut self,
         observation: Option<crate::model::DeviceConnectionObservation>,
@@ -168,7 +177,7 @@ impl SourceProductWorkspace {
     pub(crate) fn mouse_polling_scope(
         &self,
         cx: &App,
-    ) -> Option<super::mouse_products::MousePollingScope> {
+    ) -> Option<super::mouse_polling::MousePollingScope> {
         match &self.body {
             FamilyBody::Mouse(body) => body.read(cx).mouse_polling_scope(cx),
             _ => None,
@@ -176,8 +185,8 @@ impl SourceProductWorkspace {
     }
     pub(crate) fn observe_mouse_polling(
         &mut self,
-        scope: super::mouse_products::MousePollingScope,
-        observation: super::mouse_products::MousePollingObservation,
+        scope: super::mouse_polling::MousePollingScope,
+        observation: super::mouse_polling::MousePollingObservation,
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Mouse(body) = &self.body {

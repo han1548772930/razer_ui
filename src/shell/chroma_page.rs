@@ -393,8 +393,7 @@ impl ChromaPage {
                 let available = workspace.has_chroma_device_page(cx)
                     && device.setup_status == SetupStatus::Ready
                     && !device
-                        .power_status
-                        .as_ref()
+                        .current_power_status()
                         .is_some_and(|s| s.charging_status.eq_ignore_ascii_case("off"));
                 let name = device.display_name();
                 let edition = device

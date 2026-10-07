@@ -1,7 +1,6 @@
 //! Worker-only receiver observation: current interface -> source capability ->
 //! shared read protocol -> original native HID exports. No device write-back.
-#[path = "runtime_hid_transport.rs"]
-mod transport;
+use super::hid_transport as transport;
 
 use crate::backend::{
     receiver_capabilities::{ReceiverCapability, capability},
@@ -49,9 +48,9 @@ fn next_transaction(
     Ok(selected.transaction_prefix | counter)
 }
 
-struct ReceiverLock(HANDLE);
+pub(super) struct ReceiverLock(HANDLE);
 impl ReceiverLock {
-    fn acquire(container: &str) -> anyhow::Result<Self> {
+    pub(super) fn acquire(container: &str) -> anyhow::Result<Self> {
         let name: Vec<u16> = format!("Local\\RazerUi-Receiver-{}", container.to_ascii_lowercase())
             .encode_utf16()
             .chain(Some(0))
@@ -83,7 +82,7 @@ impl Drop for ReceiverLock {
     }
 }
 
-fn valid_container(value: &str) -> bool {
+pub(super) fn valid_container(value: &str) -> bool {
     let Some(inner) = value
         .strip_prefix('{')
         .and_then(|value| value.strip_suffix('}'))
@@ -134,33 +133,20 @@ fn select_target(
         .and_then(|id| u16::try_from(id).ok())
         .context("接口缺少有效产品 ID")?;
     let selected = capability(product_id).context("当前产品没有源代码核验的接收器查询能力")?;
-    let candidates: Vec<_> = interfaces
-        .iter()
-        .filter(|item| {
-            item["vendor_id"] == selected.vendor_id
-                && item["product_id"] == selected.product_id
-                && item["device_container_id"]
-                    .as_str()
-                    .is_some_and(|value| value.eq_ignore_ascii_case(container))
-                && item["claim_interface"] == selected.claim_interface
-                && item["feature_report_bytes"] == selected.report_bytes
-        })
-        .collect();
+    let target = exact[0];
     ensure!(
-        candidates.len() == 1,
-        "查询需要唯一的源匹配接口：VID {:04X}/PID {:04X}、接口 {}、{} 字节 Feature；实际候选数 {}",
+        target["vendor_id"] == selected.vendor_id
+            && target["product_id"] == selected.product_id
+            && target["device_container_id"]
+                .as_str()
+                .is_some_and(|value| value.eq_ignore_ascii_case(container))
+            && target["claim_interface"] == selected.claim_interface
+            && target["feature_report_bytes"] == selected.report_bytes,
+        "请求路径不是源匹配接口：VID {:04X}/PID {:04X}、接口 {}、{} 字节 Feature",
         selected.vendor_id,
         selected.product_id,
         selected.claim_interface,
         selected.report_bytes,
-        candidates.len()
-    );
-    let target = candidates[0];
-    ensure!(
-        target["path"]
-            .as_str()
-            .is_some_and(|value| value.eq_ignore_ascii_case(path)),
-        "请求路径与源匹配接口不一致"
     );
     ensure!(
         target["device_instance_id"]

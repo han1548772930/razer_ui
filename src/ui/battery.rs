@@ -177,10 +177,10 @@ const HIDE_BATTERY_VALUE: &[u32] = &[
 /// 设备页顶栏右侧的电量块。设备没有 `powerStatus` 时返回 `None`
 /// （原版此时 `batteryState === undefined`，整块不渲染）。
 pub(crate) fn element(device: &Device, cx: &App) -> Option<AnyElement> {
-    if !device.has_battery {
+    if !device.has_battery && device.dashboard.readonly_values.is_none() {
         return None;
     }
-    let power = device.power_status.as_ref()?;
+    let power = device.current_power_status()?;
     let level = power.level;
     let badge = badge(level, power.charging_status.as_str());
     let level = badge.level;

@@ -108,8 +108,8 @@ pub(crate) fn device_right_width(
     has_help: bool,
     window: &Window,
 ) -> f32 {
-    let battery = if device.has_battery {
-        device.power_status.as_ref().map_or(0., |power| {
+    let battery = if device.has_battery || device.dashboard.readonly_values.is_some() {
+        device.current_power_status().map_or(0., |power| {
             let text = if power.level >= 0 {
                 format!("{} %", power.level)
             } else {

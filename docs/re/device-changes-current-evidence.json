@@ -1,0 +1,40 @@
+{
+  "method": "Static Acorn AST; UTF-16 half-open offsets. No vendor JavaScript or DLL execution.",
+  "receipts": [
+    {
+      "label": "host-startMonitoring-and-add-remove-publish",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 3049,
+      "end": 3883,
+      "source": "initUSB(){const a=\"initUSB()\";if(console.log(`${a}`),t)try{t.startMonitoring(),t.on(\"add\",function(a){if(console.log(\"usb device add\",a),5426===a?.vendorId&&\"win32\"===process.platform){const{verifyRazerDeviceSecurity:e}=require(\"./modules/security\");e?.(o?.ffiSimpleService)}for(const t of e.getAllWebContents())if(!t.isDestroyed()&&!t.isCrashed()&&!m(t))try{t.send(\"nodeUSBEvent-add\",a)}catch(e){console.log(\"wc.send(nodeUSBEvent-add) error:\",e.message)}o.events.emit(\"nodeUSBEvent-add\",a),p()}),t.on(\"remove\",function(a){console.log(\"usb device remove\",a);for(const t of e.getAllWebContents())if(!t.isDestroyed()&&!t.isCrashed()&&!m(t))try{t.send(\"nodeUSBEvent-remove\",a)}catch(e){console.log(\"wc.send(nodeUSBEvent-remove) error:\",e.message)}o.events.emit(\"nodeUSBEvent-remove\",a)})}catch(e){console.log(`${a} err:${e.message}`,e)}}"
+    },
+    {
+      "label": "background-consume-nodeUSBEvent-add",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 264122,
+      "end": 264203,
+      "source": "MS.response(\"nodeUSBEvent-add\",async e=>{console.log(\"nodeUSBEvent-add\",e),t(e)})"
+    },
+    {
+      "label": "background-consume-nodeUSBEvent-remove",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 264204,
+      "end": 264438,
+      "source": "MS.response(\"nodeUSBEvent-remove\",async e=>{const t=PS();if(t){let n=kS(e,t);for(let e of n)e&&(e=BS(e),console.warn(\"🤡🤡 Remove duallink device async:\",LS(e),e),delete t[LS(e)],a(e));localStorage.setItem(ze,JSON.stringify(t))}a(e)})"
+    }
+  ],
+  "usbClass": {
+    "guid": "a5dcbf10-6530-11d2-901f-00c04fb951ed",
+    "path": ".ref/host-4.0.827/native-evidence/node_modules/rz-usb-detect/build/Release/detection.node",
+    "sha256": "2009eb2e0853c329612c53416664ab016f287d601edb9ba07dfd981e16cf6f3b"
+  },
+  "nativeAdapter": {
+    "path": "src/backend/device_changes.rs",
+    "mechanism": "Windows CM_Register_Notification for USB_DEVICE and GUID_DEVINTERFACE_HID; signals existing discovery only",
+    "lifecycle": "Owned thread registers before Ready; callback enqueues only; owner drop ends thread, unregisters then releases context",
+    "boundary": "Native Windows adaptation, not an assertion of a callable vendor C export. Does not observe radio-only peer changes or read mouse configuration."
+  }
+}

@@ -45,6 +45,10 @@ const AUDIO_OLED_RUNTIME_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/audio-oled-runtime-warning.svg",
     include_bytes!("../assets/synapse/audio-oled-runtime-warning.svg"),
 )];
+const MOUSE_POLLING_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/polling-info.svg",
+    include_bytes!("../assets/synapse/polling-info.svg"),
+)];
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
         if let Some((_, bytes)) = ASSETS
@@ -69,6 +73,7 @@ impl AssetSource for SynapseAssets {
             .chain(KEYBOARD_PROPERTIES_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
+            .chain(MOUSE_POLLING_ASSETS)
             .find(|(key, _)| *key == path)
         {
             return Ok(Some(Cow::Borrowed(bytes)));
@@ -100,6 +105,7 @@ impl AssetSource for SynapseAssets {
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
+                .chain(MOUSE_POLLING_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
                 .map(|(key, _)| SharedString::from(*key)),
         );

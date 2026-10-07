@@ -240,7 +240,7 @@ fn official_url(app: NotesApp) -> &'static str {
 }
 
 impl ReleaseNotes {
-    pub(super) fn focus_if_open(&self, window: &mut Window, cx: &App) -> bool {
+    pub(super) fn focus_if_open(&self, window: &mut Window, cx: &mut App) -> bool {
         if self.open {
             self.focus.focus(window, cx);
         }

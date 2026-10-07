@@ -26,9 +26,9 @@ mod dpi_rows;
 #[path = "mouse_226_scroll.rs"]
 mod scroll_wheel;
 pub(crate) use scroll_wheel::ScrollWheelObservation;
-#[path = "mouse_226_polling.rs"]
+#[path = "mouse_polling_view.rs"]
 mod polling;
-pub(crate) use polling::{
+use super::mouse_polling::{
     MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
 };
 #[path = "mouse_226_properties.rs"]
@@ -195,12 +195,12 @@ impl MouseProductWorkspace {
             draft_generation: 0,
             dpi_editing_observed: None,
             polling_state: polling::State::default(),
-            polling_owner: (product_id == 226).then_some(cx.entity_id()),
+            polling_owner: super::mouse_polling::source_spec(product_id).map(|_| cx.entity_id()),
             properties_icon: (product_id == 226).then(|| {
                 if crate::backend::system::is_windows_11() {
-                    "synapse/mouse-226-properties-win11.svg"
+                    "synapse/windows-11.svg"
                 } else {
-                    "synapse/mouse-226-properties-legacy.svg"
+                    "synapse/windows.svg"
                 }
             }),
             subscriptions: Vec::new(),
@@ -904,7 +904,9 @@ impl MouseProductWorkspace {
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
         if matches!(self.spec.product_id, 70 | 226) {
             let mut right = v_flex().gap_5();
-            if self.spec.product_id != 226 || self.polling_226_visible() {
+            if super::mouse_polling::source_spec(self.spec.product_id).is_none()
+                || self.source_polling_visible()
+            {
                 right = right.child(self.polling(cx));
             }
             if self.spec.product_id == 226 {
@@ -985,8 +987,8 @@ impl MouseProductWorkspace {
     }
 
     fn polling(&self, cx: &Context<Self>) -> AnyElement {
-        if self.spec.product_id == 226 {
-            return self.polling_226(cx);
+        if super::mouse_polling::source_spec(self.spec.product_id).is_some() {
+            return self.source_polling_panel(cx);
         }
         let path = self.spec.polling_path();
         let rates = self
