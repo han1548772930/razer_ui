@@ -46,9 +46,12 @@ const requirements = {
   'src/shell/main_pages.rs': ['fn local_installation_entry', 'SetupStatus::Waiting', 'SetupStatus::Downloading', 'SetupStatus::Installing', 'SetupStatus::Syncing', 'SetupStatus::InstallCanceled', 'SetupStatus::Error', 'device.dashboard.no_alive_sign != Some(true)', 'dashboard_device::can_focus(device)'],
   'src/shell/main_pages/dashboard_cards.rs': ['workspace.has_local_page(cx)', 'open_without_installation: local_installation_entry(device, supported)', 'if restart', 'Location::Device(key.clone())'],
   'src/shell/main_pages/dashboard_device.rs': ['fn can_focus', '!min_firmware(device)', '!preset_loading(device)', '!power_off(device)', 'mixer_system_check_failed', 'SetupStatus::Updating | SetupStatus::RestartRequired'],
-  'src/shell/main_pages/dashboard_device_card.rs': ['installation_gate = !self.open_without_installation', 'source_spinner && !retry && installation_gate', '!ready && installation_gate', 'fields.no_alive_sign == Some(true)', 'if self.open_without_installation'],
+  'src/shell/main_pages/dashboard_device_card.rs': ['let installation_gate = !self.open_without_installation', 'source_spinner && !retry && installation_gate', '!ready && installation_gate', 'fields.no_alive_sign == Some(true)', 'let ready = device.setup_status == SetupStatus::Ready'],
   'src/shell/app_picker.rs': ['(self.ready || self.open_without_installation)', 'open_without_installation: false', '&& !self.mixer_failed', '&& !self.powered_off'],
   'src/shell/app_picker_host.rs': ['workspace.has_local_page(cx)', '.ready(device.setup_status == SetupStatus::Ready)', '.mixer_failed(', 'super::main_pages::local_installation_entry('],
+  'src/shell.rs': ['let mut local_page_devices = std::collections::BTreeSet::new()', 'workspace.has_local_page(cx)', 'local_page_devices.insert(', 'page.sync_local_devices(&devices, local_page_devices, cx)', 'workspace.has_local_page(cx))'],
+  'src/shell/devices_modules_catalog.rs': ['local_page_devices: BTreeSet<(u32, String, String)>', 'local_page_devices: BTreeSet::new()', 'self.local_page_devices = local_page_devices'],
+  'src/shell/module_service_rows.rs': ['fn local_service_device', 'fn local_page_service_device', 'self.local_page_devices', '.contains(&identity)', '.then_some(device)', 'if let Some(device) = self.local_page_service_device(row)', 'let local = self.local_service_device(row).cloned()'],
 };
 const implementation = Object.entries(requirements).map(([path, tokens]) => {
   const source = fs.readFileSync(path, 'utf8');
@@ -62,6 +65,7 @@ const result = {method:'Current Acorn AST and native static contract checks; no 
     capability:'Retained product renderer and a non-help page; Pending and help-only source bodies do not qualify.',
     guards:'Original Dashboard can_focus plus noAliveSign != true. Updating, restart-required, firmware minimum, preset loading, console mode, mixer failure and off/standby do not gain a new local opener.',
     projection:'Card installer presentation and picker visibility only. Raw setup, firmware, battery, WDL and runtime fields remain untouched.',
+    service_catalog:'New-device Open requires an identity-matched live workspace with a retained non-help page; firmware associations retain the full local device snapshot.',
     preview:'PickerDevice defaults the separate local override to false; standalone source-state previews preserve the readiness filter.'},
   implementation};
 const output='docs/re/local-device-entrypoints-current-evidence.json', rendered=JSON.stringify(result,null,2)+'\n';

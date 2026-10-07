@@ -25,9 +25,9 @@ pub(super) enum DisplayMode {
     MultiDevicePairing,
 }
 
-/// Independent Chroma host-window icon from the current Chroma application
-/// contract. This is distinct from the Dashboard `chromaIcon` flag below.
-pub(super) const CHROMA_APP_WINDOW_ICON_PATH: &str = "ChromaApp\\window.ico";
+/// Independent Chroma host-window icon from host 4.0.827's app launcher. This
+/// is distinct from the Dashboard `chromaIcon` flag (`ChromaApp/icon.ico`).
+pub(super) const CHROMA_APP_WINDOW_ICON_PATH: &str = "ChromaApp\\chroma-app.ico";
 
 impl DisplayMode {
     /// The literal the product bundle compares `displayMode` with. The keys come
@@ -47,7 +47,7 @@ impl DisplayMode {
     /// 来源值；不拿别的图标冒充，也不在窗口上画自造图标。
     pub(super) fn icon(self) -> &'static str {
         match self {
-            Self::ChromaApp => "app_icon_path=ChromaApp\\window.ico",
+            Self::ChromaApp => "app_icon_path=ChromaApp\\icon.ico",
             Self::Macro | Self::Armory | Self::MultiDevicePairing => {
                 "app_icon_path=Synapse/icon.ico"
             }
@@ -91,8 +91,7 @@ pub(super) fn multi_device_pairing_name(identity: &WindowIdentity) -> SharedStri
     if let Some(container) = identity
         .container_id
         .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
+        .filter(|value| !value.trim().is_empty())
     {
         return format!("multi-device-pairing-{container}").into();
     }
@@ -190,6 +189,10 @@ mod tests {
             SharedString::from("multi-device-pairing-{A1}")
         );
         assert_eq!(
+            multi_device_pairing_name(&identity(Some(" {A1} "), Some(104), Some("SN1"))),
+            SharedString::from("multi-device-pairing- {A1} ")
+        );
+        assert_eq!(
             multi_device_pairing_name(&identity(Some("  "), Some(104), Some("SN1"))),
             SharedString::from("multi-device-pairing-p104-SN1")
         );
@@ -212,9 +215,9 @@ mod tests {
         assert_eq!(DisplayMode::MultiDevicePairing.key(), "multiDevicePairing");
         assert_eq!(
             DisplayMode::ChromaApp.icon(),
-            "app_icon_path=ChromaApp\\window.ico"
+            "app_icon_path=ChromaApp\\icon.ico"
         );
-        assert_eq!(CHROMA_APP_WINDOW_ICON_PATH, "ChromaApp\\window.ico");
+        assert_eq!(CHROMA_APP_WINDOW_ICON_PATH, "ChromaApp\\chroma-app.ico");
         assert_eq!(WindowPolicy::Same.flag(), "policy=3");
         assert_eq!(WindowPolicy::Different.flag(), "policy=5");
         assert_eq!(WindowPolicy::DifferentSingleProcess.flag(), "policy=7");

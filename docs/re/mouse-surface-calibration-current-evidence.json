@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "method": "Acorn static parsing of the current source, mounted root assertions and implementation validation; no vendor code execution",
+  "source": {
+    "path": ".ref/devices/70/static/js/main.8f24b6a1.js",
+    "sha256": "be0816be63fe674ea9fc106cbd55f5aabd509e1ff36aaf66e6c002d9ecd1f4b5",
+    "navigation_offset": 4932129
+  },
+  "product_id": 70,
+  "page": "TAB_CALIBRATION",
+  "components": [
+    {
+      "symbol": "rR",
+      "range": [
+        4776764,
+        4776896
+      ],
+      "sha256": "5e2526312a8c265f893ab1bdf2596879da0f7a0fe4468cf01099434cb8d38623",
+      "claims": [
+        "return(0,St.jsx)(sR,{})"
+      ]
+    },
+    {
+      "symbol": "nR",
+      "range": [
+        4762684,
+        4776410
+      ],
+      "sha256": "b6d174e038f9ba19e52b92a5e4c21a513124c162c01c79521c8a2b88251a19ec",
+      "claims": [
+        "this.props.setCalibrationSelectedProfile({guid:this.props.profiles[e].guid})",
+        "Te.DEVICE_SUPPORTED_MATS.forEach",
+        "this.props.profiles.length>1?",
+        "this.props.isShowAddSurface?",
+        "this.props.setReCalibratedMat(e)",
+        "this.props.deleteCalibrationProfile(e)"
+      ]
+    },
+    {
+      "symbol": "LS",
+      "range": [
+        4689065,
+        4690329
+      ],
+      "sha256": "685f217b21868ad7fa4c4bbff670b4ddebad047262821524dc332d746920553e",
+      "claims": [
+        "\"NONE\"===this.props.featureAccess?",
+        "min:1,max:10,step:1,value:this.props.liftOffValue",
+        "active:!this.state.usingDefaultMat"
+      ]
+    },
+    {
+      "symbol": "PS",
+      "range": [
+        4690550,
+        4692804
+      ],
+      "sha256": "4beeb7389cbf5eba12abc0efb009530f9f572f98614fb47cc9a479ff29e57824",
+      "claims": [
+        "case\"custom\":",
+        "this.props.deleteMat(this.props.guid)",
+        "\"default\"===this.props.type?\"none\":\"initial\""
+      ]
+    }
+  ],
+  "boundary": {
+    "supported_mats": "Static product catalog, not calibration.profiles",
+    "local_profile_default": {
+      "liftOffRangeValue": 3
+    },
+    "runtime_profiles": "not_read",
+    "source_selection": "calibration.selectedProfile.guid",
+    "invalid_catalog_selection": "removed_from_shared_surface_branch",
+    "remaining": [
+      "welcome",
+      "runtime_profile_cards_and_menus",
+      "add_surface_drawer",
+      "calibration_flow",
+      "lift_off_profile_count_and_feature_access_conditions"
+    ]
+  },
+  "implementation": {
+    "path": "src/features/mouse_products.rs",
+    "sha256_lf": "bc7b3f14b16a5041895586ff0ca5985d297e8fe0883e9a19956c15ba33933add"
+  },
+  "validation": {
+    "application": "not_run",
+    "tests": "not_run",
+    "vendor_javascript": "not_executed",
+    "dll": "not_loaded_or_executed",
+    "complete_page": false
+  }
+}

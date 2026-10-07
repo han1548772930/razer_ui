@@ -3,7 +3,7 @@
 use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
 use std::{
-    ffi::{CString, c_char, c_int, c_void},
+    ffi::{CStr, CString, c_char, c_int, c_void},
     fs::OpenOptions,
     io::Write as _,
     path::PathBuf,
@@ -20,6 +20,40 @@ type OpenPath = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 type SendFeature = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> c_int;
 type GetFeature = unsafe extern "C" fn(*mut c_void, *mut u8, usize) -> c_int;
 type Close = unsafe extern "C" fn(*mut c_void);
+type Enumerate = unsafe extern "C" fn(u16, u16) -> *mut HidDeviceInfo;
+type FreeEnumeration = unsafe extern "C" fn(*mut HidDeviceInfo);
+
+// The pinned AMD64 node allocates 0x50-byte records. Fields used here are
+// established by hid_enumerate's stores and hid_free_enumeration's loads.
+#[repr(C)]
+struct HidDeviceInfo {
+    path: *mut c_char,
+    vendor_id: u16,
+    product_id: u16,
+    serial_number: *mut u16,
+    release_number: u16,
+    _padding: [u8; 6],
+    manufacturer_string: *mut u16,
+    product_string: *mut u16,
+    _owned_string_0: *mut u16,
+    _owned_string_1: *mut u16,
+    usage_page: u16,
+    usage: u16,
+    interface_number: i32,
+    next: *mut HidDeviceInfo,
+}
+
+pub(super) struct EnumeratedDevice {
+    pub(super) path: String,
+    pub(super) vendor_id: u16,
+    pub(super) product_id: u16,
+    pub(super) interface_number: i32,
+    pub(super) serial_number: Option<String>,
+    pub(super) manufacturer: Option<String>,
+    pub(super) product: Option<String>,
+    pub(super) usage_page: u16,
+    pub(super) usage: u16,
+}
 
 struct NativeApi {
     _library: libloading::Library,
@@ -28,6 +62,8 @@ struct NativeApi {
     send: SendFeature,
     get: GetFeature,
     close: Close,
+    enumerate: Enumerate,
+    free_enumeration: FreeEnumeration,
 }
 
 fn native_api() -> anyhow::Result<&'static NativeApi> {
@@ -69,12 +105,14 @@ fn load_native() -> anyhow::Result<NativeApi> {
             .context("无法加载当前官方 HID 原生模块")?
             .into();
     // SAFETY: exact pinned AMD64 binary, verified C-export ABI, retained library.
-    let (open, send, get, close) = unsafe {
+    let (open, send, get, close, enumerate, free_enumeration) = unsafe {
         (
             *library.get::<OpenPath>(b"hid_open_path\0")?,
             *library.get::<SendFeature>(b"hid_send_feature_report\0")?,
             *library.get::<GetFeature>(b"hid_get_feature_report\0")?,
             *library.get::<Close>(b"hid_close\0")?,
+            *library.get::<Enumerate>(b"hid_enumerate\0")?,
+            *library.get::<FreeEnumeration>(b"hid_free_enumeration\0")?,
         )
     };
     Ok(NativeApi {
@@ -84,7 +122,64 @@ fn load_native() -> anyhow::Result<NativeApi> {
         send,
         get,
         close,
+        enumerate,
+        free_enumeration,
     })
+}
+
+unsafe fn copy_wide(value: *const u16) -> Option<String> {
+    if value.is_null() {
+        return None;
+    }
+    let mut length = 0usize;
+    while length < 4096 && unsafe { *value.add(length) } != 0 {
+        length += 1;
+    }
+    if length == 4096 {
+        return None;
+    }
+    let slice = unsafe { std::slice::from_raw_parts(value, length) };
+    Some(String::from_utf16_lossy(slice))
+}
+
+pub(super) fn enumerate() -> anyhow::Result<Vec<EnumeratedDevice>> {
+    let api = native_api()?;
+    // Zero filters request the full current HID enumeration, matching
+    // node-rz-hid's HID.devices() behavior.
+    let mut current = unsafe { (api.enumerate)(0, 0) };
+    let head = current;
+    let mut devices = Vec::new();
+    let result = (|| {
+        while !current.is_null() {
+            // SAFETY: current points into the native list until it is freed.
+            let item = unsafe { &*current };
+            ensure!(!item.path.is_null(), "原生 HID 枚举返回了空设备路径");
+            // SAFETY: hid_enumerate owns a NUL-terminated ANSI path/string.
+            let path = unsafe { CStr::from_ptr(item.path) }
+                .to_string_lossy()
+                .into_owned();
+            devices.push(EnumeratedDevice {
+                path,
+                vendor_id: item.vendor_id,
+                product_id: item.product_id,
+                interface_number: item.interface_number,
+                // SAFETY: these are native-owned UTF-16 strings, copied before
+                // hid_free_enumeration releases their storage.
+                serial_number: unsafe { copy_wide(item.serial_number) },
+                manufacturer: unsafe { copy_wide(item.manufacturer_string) },
+                product: unsafe { copy_wide(item.product_string) },
+                usage_page: item.usage_page,
+                usage: item.usage,
+            });
+            current = item.next;
+        }
+        Ok(())
+    })();
+    // SAFETY: head is the exact list returned by this library; its exported
+    // destructor frees each owned path/string/node exactly once.
+    unsafe { (api.free_enumeration)(head) };
+    result?;
+    Ok(devices)
 }
 
 pub(super) struct Device<'a> {

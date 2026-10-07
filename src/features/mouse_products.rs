@@ -1263,27 +1263,25 @@ impl MouseProductWorkspace {
         }
         surface::page_columns()
             .child(surface::page_column(
-                surface::panel(t("MOUSE_MAT_CALIBRATION_HEADER"), cx).children(
-                    self.spec
-                        .mats
-                        .iter()
-                        .filter_map(|mat| mat.get("id").and_then(Value::as_str))
-                        .map(|mat| {
-                            let mat = mat.to_owned();
-                            Button::new(SharedString::from(format!("mouse-surface-{mat}")))
-                                .label(mat.replace('_', " "))
-                                .outline()
-                                .selected(
-                                    self.draft
-                                        .pointer("/calibration/selectedSurface")
-                                        .and_then(Value::as_str)
-                                        == Some(mat.as_str()),
-                                )
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.write("/calibration/selectedSurface", json!(mat), cx)
-                                }))
-                        }),
-                ),
+                surface::panel(t("MOUSE_MAT_CALIBRATION_HEADER"), cx)
+                    .child(surface::note("尚未读取设备的表面校准配置。", cx))
+                    // DEVICE_SUPPORTED_MATS is a catalog, not calibration.profiles.
+                    // Source selection requires a runtime profile GUID.
+                    .child(
+                        v_flex().gap_2().children(
+                            self.spec
+                                .mats
+                                .iter()
+                                .filter_map(|mat| mat.get("id").and_then(Value::as_str))
+                                .map(|mat| {
+                                    div()
+                                        .id(SharedString::from(format!(
+                                            "mouse-supported-surface-{mat}"
+                                        )))
+                                        .child(mat.replace('_', " "))
+                                }),
+                        ),
+                    ),
             ))
             .into_any_element()
     }

@@ -14,7 +14,7 @@
 | Reactive | 单色、Random、三档时长；保留黑色 0，不挂 Playback | 混合选择、服务预览及共享组件边界 |
 | Ripple | 默认渐变族；Speed 1–50；Width 100–400、步长 100；Playback | 服务预览和完整窗口输入未验收 |
 | Starlight | 默认渐变、Random；Density 1–10；时长；不挂 Playback | 随机仅禁用渐变，不代表真实光效已应用 |
-| Wave | 渐变；Speed/Pause 同排；Width/Split 同排；Playback | 角度仍为旧数字/滑条表达，真实 80px 圆盘和联动待实现 |
+| Wave | 渐变；Speed/Pause 同排；Width/Split 同排；Playback；80px 角度圆盘与 0–359 数字框联动 | 拖动/窗口级释放、非主键和重布局仍需真实窗口验收 |
 | Wheel / Tidal | 各自颜色、Speed、方向组和 Playback | 中心点按钮、画布生产链与真实设备命中尚缺 |
 | Audio | 专用渐变、Low/High；Boost/Auto 同排；Decay | 混合参数和实际引擎预览尚缺 |
 
@@ -45,7 +45,7 @@ Pen/Bucket 可以在没有设备选择时编辑工作参数；Select/Move 在当
 
 ## 剩余明确缺口
 
-1. **Wave 圆盘。** 1591 的角度控件为 80px 圆盘和 0–359 数字框。角度以实际框中心两个轴各减 2px 后 atan2 求值，经 floor 取整，上方 0°、顺时针增加；指针按半径 clientWidth/2−10 并 round 定位。拖动、窗口级释放、非主键和重布局行为仍未接为该界面，不能把旧角度滑条标记为完成。
+1. **Wave 圆盘验收边界。** 当前实现已挂载 80px 圆盘和 0–359 数字框：角度以实际框中心两个轴各减 2px 后 atan2 求值，经 floor 取整，上方 0°、顺时针增加；指针按半径 clientWidth/2−10 并 round 定位。拖动、窗口级释放、非主键和重布局已有静态/test-support 覆盖，真实窗口行为仍待允许运行后验收。
 2. **Wheel/Tidal 中心点。** 属性按钮分别控制 editor.isCenterPointActive / isTidalCenterPointActive；画布按缩放/偏移换算坐标，只有范围内的有效点击才写 centerPointX/Y、centerPointX2/Y2 和 deviceWithCenterPoint。设备命中必须来自真实 device.items；没有命中为 null。按钮、坐标转换、绘制、方向图及 reset 是一条工作流，不能单独放置假成功按钮。
 3. **Generate。** 当前媒体输入、预览、替换/删除、Generate 与前后配置导航均未挂载。文件选择接受 image/*、.mp4，拖放按 image/video MIME；新媒体清历史，Generate 才加入 mediaList 并提交配置。最多五份配置、满时丢最旧；文件身份为 btoa(encodeURIComponent(JSON.stringify(path)))。当前源生成随机配置，不能标为调用 AI 服务。此项保留在 UI 范围，本轮不扩页面。
 4. **共享属性。** paramsMixed/真实能力过滤和设备选择、原生取色/屏幕区域、引擎预览与读取发布者未完整接通。FU=1677721600 的源异常 HEX/RGB 展示、HEX 大小写、非 portal 弹层边缘行为、快捷切换勾选动画、完整颜色过渡、原图光标和浏览器数字暂存/滚轮行为仍有差异。所有精确像素、缩放、辅助功能和完整窗口输入仍须在允许运行后验收。

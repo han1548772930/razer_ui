@@ -4361,7 +4361,7 @@
     },
     {
       "path": "src/features/source_controls/receiver_pairing_view.rs",
-      "sha256": "5e1d8c1d6c971d1f6e07a39c8c448a545b7a43d31d42cc5b1f76f39d5c46b98e"
+      "sha256": "042d83348bd1e6e1d632ff4fad4ac1ec8cc64de350db99ca7e03606f25eb7f42"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_state_tests.rs",
@@ -4371,7 +4371,7 @@
   "supporting_native": [
     {
       "path": "src/features/source_workspace.rs",
-      "sha256": "85b03851402f97d91eeeb79a373c48f4cf2cb1f4610a47d1ae8db6ca25a1b2bf"
+      "sha256": "6157839254945d51a31bd46234e8c34ffbce77115c4519856f8e2c84fcb2401e"
     },
     {
       "path": "src/features/source_workspace/tests.rs",

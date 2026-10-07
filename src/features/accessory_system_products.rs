@@ -1708,7 +1708,11 @@ impl AccessorySystemProductWorkspace {
                 // `STA` mounts `OTA` with `noTip`, so `.slider-container.no-tip`
                 // is 36px tall and the retained base slider only carries the
                 // drag/focus behaviour.
-                SourceSlider::new(slider, self.slider_progress(path)).enabled(enabled),
+                SourceSlider::new(slider, self.slider_progress(path))
+                    // Color RGB keeps `STA` active under the disabled ancestor;
+                    // only Gaming's disabled `STA` adds slider opacity of its own.
+                    .enabled(enabled || !dim_when_disabled)
+                    .interaction_enabled(enabled),
             );
         }
         if let Some((min, mid, max, boost)) = tags {

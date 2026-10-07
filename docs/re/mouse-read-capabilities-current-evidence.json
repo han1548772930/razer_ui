@@ -1,6 +1,16 @@
 {
   "schema_version": 1,
   "method": "Shared current rzDevice25 read methods and actual product binding/call parameters; static evidence only. No whole task runner, device-mode setter or vendor bootstrap is executable from this artifact.",
+  "native_read_retry": {
+    "host_get_feature_error": {
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 13211,
+      "end": 14442,
+      "source": "case\"hid.getFeatureReport\":{const a=d.payload.claimInterface||0,t=this.buildDeviceKey(d.payload.deviceContainerId,a,d.payload?.productId,d.payload?.usbInstanceId,d.payload.usagePage,d.payload.usage);let{value:o}=this.getDeviceFromDeviceMap(t,d.payload?.productId,d.payload.deviceContainerId,a,d.payload?.usbInstanceId||\"\",d.payload.usagePage||0,d.payload.usage||0);if(null==o&&(o=this.getDeviceWithDeviceContainerId(d.payload.deviceContainerId,d.payload?.usbInstanceId)),null==o)return void console.warn(`${this.name}.${c} key:${t}, device not found:`);const n=o?.hidDevice;let s;try{n&&(l(d.payload?.productId)&&console.log(\"getFeatureReport, key:\",t,\", url:\",e?.sender?.getURL(),\", mutexUrl:\",o.mutexUrl),u=await n.getFeatureReport(d.payload?.reportId?d.payload?.reportId:a,d.payload.reportLength?d.payload.reportLength:91),o.lastCommandSendTimeMs=Date.now(),this.protocolLogger?.log(d.payload?.productId,d.payload.deviceContainerId,d.payload?.usbInstanceId||\"\",\"get\",u,u.length),s=d.payload.noSlice?u:u.slice(1),l(d.payload?.productId)&&console.log(\"getFeatureReport result, key:\",t,\", res length:\",s?.length,\", mutexUrl:\",o.mutexUrl))}catch(e){console.warn(`${this.name}.${c} key:${t}, getFeatureReport e:`,e.message)}return s}"
+    },
+    "middleware": "Host catches native getFeatureReport errors and returns undefined; middleware substitutes an empty 90-byte response, detects the missing transaction and requests a new OUT command. The app mirrors this by ending the current IN retry loop and continuing the OUT retry loop."
+  },
   "products": [
     {
       "product_id": 182,

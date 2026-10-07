@@ -45,7 +45,7 @@ for(const productId of readProducts){
   ['firmware','getExtendedFirmwareVersion',[],4],
   ['battery','getBatteryLevel',[0],2],
   ['charging','getChargingStatus',[0],2],
-  ['polling','getUSBHighSpeedPollingRate',[1],2],
+ ['polling','getUSBHighSpeedPollingRate',[1],2],
   ['dpi','getDpiLevel',[0],7],
  ];
  for(const [name,methodName,payload,minBytes]of specs){
@@ -109,6 +109,7 @@ for(const productId of readProducts){
  exact('_calculateChecksum','_calculateChecksum(e){let t=0;for(let n=2;n<88;n++)t=e[n]^t;return t}');
  exact('DPI big endian decoder','(e,t)=>(255&e)<<8|255&t');
  includes('_createDataSend','new Uint8Array(90)','o[1]=i','o[5]=e[0],o[6]=e[1],o[7]=e[2]','o[e+8]=t[e]','o[88]=r');
+ includes('_getUSBTransferInResult','l||(l=new Array(90).fill(0))','n.resendOutCommand=!0');
  includes('wired constructor','this.reportLength=91','this.reportId=null!==(u=null==d?void 0:d.reportId)&&void 0!==u?u:0');
  includes('firmware parser/delegate','major:e.data[0],minor:e.data[1],internal:e.data[2],reserved:e.data[3]');
  includes('battery parser/delegate','batteryId:r.data[0],batteryLevel:Math.floor(r.data[1]/255*100)');
@@ -120,7 +121,15 @@ for(const productId of readProducts){
   direct_pids:[info.productId,info.dongleId],vendor_id:info.vendorId,claim_interface:info.claimInterface,report_id:0,report_bytes:91,transaction_prefix:0,transaction_modulus:31,
   min_dpi:infoField('minDPI'),max_dpi:infoField('maxDPI'),queries,polling_codes:source.literal(polling.id,polling.node),charging_codes:source.literal(charging.id,charging.node),receipts,acquisition:source.acquisition});
 }
-const report={schema_version:1,method:'Shared current rzDevice25 read methods and actual product binding/call parameters; static evidence only. No whole task runner, device-mode setter or vendor bootstrap is executable from this artifact.',products};
+const hostPath='.ref/host-4.0.827/electron/UsbRzDeviceAction.js';
+const hostText=fs.readFileSync(path.join(root,hostPath),'utf8');
+const hostStart=hostText.indexOf('case"hid.getFeatureReport"');
+const hostEnd=hostText.indexOf('case"hid.sendFeatureReportInBatch"',hostStart);
+if(hostStart<0||hostEnd<0)throw Error('Current host HID feature-read handler changed');
+const hostReceipt=hostText.slice(hostStart,hostEnd);
+if(!hostReceipt.includes('catch(e)')||!hostReceipt.includes('return s'))throw Error('Host feature-read error behavior changed');
+const hostEvidence={path:hostPath,sha256:hash(hostText),offset:Buffer.byteLength(hostText.slice(0,hostStart)),end:Buffer.byteLength(hostText.slice(0,hostEnd)),source:hostReceipt};
+const report={schema_version:1,method:'Shared current rzDevice25 read methods and actual product binding/call parameters; static evidence only. No whole task runner, device-mode setter or vendor bootstrap is executable from this artifact.',native_read_retry:{host_get_feature_error:hostEvidence,middleware:'Host catches native getFeatureReport errors and returns undefined; middleware substitutes an empty 90-byte response, detects the missing transaction and requests a new OUT command. The app mirrors this by ending the current IN retry loop and continuing the OUT retry loop.'},products};
 const file=path.join(root,'docs/re/mouse-read-capabilities-current-evidence.json'),bytes=JSON.stringify(report,null,2)+'\n';
 if(check){if(fs.readFileSync(file,'utf8')!==bytes)throw Error('Stale mouse read evidence');}else fs.writeFileSync(file,bytes);
 const runtime=products.map(p=>{
@@ -130,6 +139,6 @@ const runtime=products.map(p=>{
  // full raw u16 range, so those edit limits must not become a read capability.
  return Object.fromEntries(Object.entries({...p,...Object.fromEntries(['max_retry_in','max_retry_out','sleep_between_out_ms','sleep_between_out_in_ms','sleep_between_in_ms'].map(k=>[k,timing[k]]))}).filter(([k])=>!['device_info','factory','bootstrap','receipts','acquisition','min_dpi','max_dpi'].includes(k)));
 });
-const runtimeFile=path.join(root,'assets/data/device-read-capabilities.json'),runtimeBytes=JSON.stringify({schema_version:1,products:runtime},null,2)+'\n';
+ const runtimeFile=path.join(root,'assets/data/device-read-capabilities.json'),runtimeBytes=JSON.stringify({schema_version:1,products:runtime},null,2)+'\n';
 if(check){if(fs.readFileSync(runtimeFile,'utf8')!==runtimeBytes)throw Error('Stale device read capabilities');}else fs.writeFileSync(runtimeFile,runtimeBytes);
 console.log(JSON.stringify({products:products.length,queries:products.reduce((n,p)=>n+p.queries.length,0),receipts:products.reduce((n,p)=>n+p.receipts.length,0)}));

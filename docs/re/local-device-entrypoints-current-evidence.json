@@ -55,20 +55,21 @@
     "capability": "Retained product renderer and a non-help page; Pending and help-only source bodies do not qualify.",
     "guards": "Original Dashboard can_focus plus noAliveSign != true. Updating, restart-required, firmware minimum, preset loading, console mode, mixer failure and off/standby do not gain a new local opener.",
     "projection": "Card installer presentation and picker visibility only. Raw setup, firmware, battery, WDL and runtime fields remain untouched.",
+    "service_catalog": "New-device Open requires an identity-matched live workspace with a retained non-help page; firmware associations retain the full local device snapshot.",
     "preview": "PickerDevice defaults the separate local override to false; standalone source-state previews preserve the readiness filter."
   },
   "implementation": [
     {
       "path": "src/features/product_workspace.rs",
-      "sha256": "d84ec3b678e3832ff154e09e39b150de83db74d415d8ddca118115885efebdbc"
+      "sha256": "35ac9435e39ecdd0910c586066998d8a98f45eee7066a7f19ed34ffe325c3efc"
     },
     {
       "path": "src/features/source_workspace.rs",
-      "sha256": "68902eb0fc6e0f6886f62807091062b6893cb5debab53aaa6b8d1ceaf52edb50"
+      "sha256": "6157839254945d51a31bd46234e8c34ffbce77115c4519856f8e2c84fcb2401e"
     },
     {
       "path": "src/shell/main_pages.rs",
-      "sha256": "33e207550903ee551b0ce3e2678400ea1d3b6b93e5b9803f1b2e57a076639547"
+      "sha256": "8961da681ee32b78c280897636bb366d2d73f77816e6d3e5351a1dd5ac2d07d2"
     },
     {
       "path": "src/shell/main_pages/dashboard_cards.rs",
@@ -76,11 +77,11 @@
     },
     {
       "path": "src/shell/main_pages/dashboard_device.rs",
-      "sha256": "d0e33b13c4a9fd007d1ae904c779618f82e0bc4dda50a223a86929119d3472a1"
+      "sha256": "c37b10ef9b7540dceab51918fc197287f0d7bf3ce17f82bc1594f4a7c44ad4cd"
     },
     {
       "path": "src/shell/main_pages/dashboard_device_card.rs",
-      "sha256": "065f08975d07f3db629357bf299e76340bb88633259742f7cb61df6492fbebc1"
+      "sha256": "241548c5d8733f5eff58b9f3b01fb3b1810635470b6560c0df901b26a18c6356"
     },
     {
       "path": "src/shell/app_picker.rs",
@@ -88,7 +89,19 @@
     },
     {
       "path": "src/shell/app_picker_host.rs",
-      "sha256": "3f399145a53980fba7b2cbd98df3066debe23cb5fe7a0ece8cba3fad85a50349"
+      "sha256": "fa64ab30cc630dc65eefa05cca62842d1c4c321c2c96570a59e223c88fea50aa"
+    },
+    {
+      "path": "src/shell.rs",
+      "sha256": "719fa149bff4ba5b77230e9e742091593471f9a6c31416b0c23d22f1189cfac8"
+    },
+    {
+      "path": "src/shell/devices_modules_catalog.rs",
+      "sha256": "f949725aa6706f7f8f6e2f0410c6969695fec25c013604927b9089eec24389e5"
+    },
+    {
+      "path": "src/shell/module_service_rows.rs",
+      "sha256": "d0cc80011af9fd976ab1d5abc16d2593adfa10e344ec3c1e90b56219367e39a9"
     }
   ]
 }

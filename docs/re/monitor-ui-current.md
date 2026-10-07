@@ -4,11 +4,13 @@
 
 | 页面 | 当前实现 | 未完成 |
 | --- | --- | --- |
-| Gaming | 六预设、本地编辑转 Custom、亮度/对比度；3880 独立拥有 gamut 和扩展 Gamma 条件 | 整体 featureDisabled 容器透明度、真实预设/设置与 MW 限制发布 |
-| 3858 Color | 预设与仅 Custom 显示的 RGB 编辑 | 真实同步/可见性刷新、父与子控件禁用层级 |
+| Gaming | 六预设、本地编辑转 Custom、亮度/对比度；3880 独立拥有 gamut 和扩展 Gamma 条件；restriction 下正文与控件禁用 | 真实预设/设置与 MW 限制发布 |
+| 3858 Color | 预设与仅 Custom 显示的 RGB 编辑；父容器禁用不叠加 RGB 滑杆透明度 | 真实同步/可见性刷新 |
 | 3880 Color | 真实多选项时可选择 Color Profile，按源路径包含匹配；颜色管理链接有键盘操作及 restriction | THX/HDR 完整观察、原下拉定位/上翻/提示与禁用外观 |
 | Display | 四张原来源图标、68px 等宽按钮、PIP/PBP 和位置/尺寸；Adaptive Sync 关闭变暗，FPS 不误用 refreshRate 限制 | loading backdrop/spinner、document 范围外点取消、完整焦点与左列层级 |
 | 3880 Refresh Rate | 无 restriction 时显示胶囊/Windows 链接；没有真实选项时不以 60/120/144/165 初值假装设备支持 | supportedRefreshRate 更新与完整状态发布 |
+
+Gaming 的 restriction 同时作用于整个正文的 30% 透明度和各个本地编辑控件；brightness、contrast、overdrive、gamma、preset 与 gamut 都会禁用，3880 的非 Native gamut 另行禁用 contrast/gamma。Color Temperature 的 `STA` 没有 `disabled` 参数，因此 RGB 滑杆保留 `.on` 的完整透明度，仅继承父容器的 30% 透明度；本地禁用输入和拖动但不再将滑杆额外降至 9%。restriction 是完整运行观察状态，不能用本地 profile 操作解除。
 
 `set_monitor_runtime`接收完整快照；缺失或无效字段清除相应观察及旧 restriction。观察状态不进入本地 profile；恢复/Discard 不能解除运行限制。`pending_color_profile`和`pending_refresh_rate`仅表示未发送的选择意图，下一份完整观察清除它们，不构造设备成功。
 

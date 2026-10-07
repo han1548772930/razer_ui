@@ -79,14 +79,14 @@
         "src/features/source_controls/receiver_page_state.rs": "6f1988b839fb4f03c804de68e0e1870fc081b2403b0c534f5457e197c1b94ebe",
         "src/features/source_controls/receiver.rs": "1c8bd65a989a5c819c497f00d46feb3fdb01fb21bff707a3a43e29f4786973d1",
         "src/features/source_controls/receiver_pairing_state.rs": "c4cc5d80bbe670669bfff6502e5637bf866f3752995c009f2bde20de79365577",
-        "src/features/source_controls/receiver_pairing_view.rs": "5e1d8c1d6c971d1f6e07a39c8c448a545b7a43d31d42cc5b1f76f39d5c46b98e",
+        "src/features/source_controls/receiver_pairing_view.rs": "042d83348bd1e6e1d632ff4fad4ac1ec8cc64de350db99ca7e03606f25eb7f42",
         "src/features/source_controls/receiver_pairing_state_tests.rs": "7c685fcb1ce221c5f364f9f0fc8af466e52cbb910c8ac0d5b7a20305103040ce",
         "assets/synapse/receiver/connection-skeleton-base.svg": "4256a439c450d67934e3f189424ca4b74c508c39b691f24941d5217c22633631",
         "assets/synapse/receiver/connection-skeleton-sweep.svg": "3892ce1c6f7ebfaee4ef67c1e38bfa6ebb99c7cb107cde779fea5cf80081d679"
       },
       "evidence": {
         "docs/re/receiver-current-evidence.json": "dd1e6207f9ebceccfe9f24e3f67143fb6da8ce389bc34a6e49e5c1d5c82a88e1",
-        "docs/re/receiver-pairing-current-evidence.json": "580eff38156435b47124d797e123d7d46da9354a418a23a0c469275b961040ba"
+        "docs/re/receiver-pairing-current-evidence.json": "e7826cd2e1647ac88664cfbd8e606a6326625bcf93a53c12aa685205137537dd"
       },
       "checks": [
         "node tools/audit-receiver-current.cjs --check",
@@ -110,10 +110,10 @@
       "behavior": "完整缺席为离线，部分缺席为未知，部分查询中已确认的在线身份仍可导航；按精确工作区身份避免同型号歧义",
       "contract": "docs/re/receiver-ui-current.md",
       "implementation": {
-        "src/shell/device_discovery.rs": "a6c09d1d77e0829e99ae43864eb143f841ef983d75ca7396798f9ebf2391d794",
-        "src/shell.rs": "e223a1aca14e0821c93263a58d458bbebf0084e1e652e690222488ef0a4c4c67",
-        "src/features/product_workspace.rs": "74e7a7877da0e8e0908fa66fac322d2c76193f7be0deb473c6fd9dbc9112ee6e",
-        "src/features/source_workspace.rs": "85b03851402f97d91eeeb79a373c48f4cf2cb1f4610a47d1ae8db6ca25a1b2bf",
+        "src/shell/device_discovery.rs": "acab0c0406e33160ebe0415e939e8be0133a51e65c632aca8d015d62f731a14e",
+        "src/shell.rs": "fa665f0f0b5e63e9f2d3d992bb09dcba415a858a412aa221525a167040418cf0",
+        "src/features/product_workspace.rs": "35ac9435e39ecdd0910c586066998d8a98f45eee7066a7f19ed34ffe325c3efc",
+        "src/features/source_workspace.rs": "6157839254945d51a31bd46234e8c34ffbce77115c4519856f8e2c84fcb2401e",
         "src/features/source_controls/receiver_page_state.rs": "6f1988b839fb4f03c804de68e0e1870fc081b2403b0c534f5457e197c1b94ebe",
         "src/features/source_controls/receiver_page_state_tests.rs": "90a1dee3a6e978c3f156698789adfaba54d75872b123b43e177218106e0ba3ed"
       },
@@ -124,7 +124,7 @@
       "checks": [
         "node tools/audit-receiver-connect-events.cjs --check"
       ],
-      "remaining": "增量绑定查询向产品工作区的发布未接完；不把 query status 当硬件通知",
+      "remaining": "164/241 的绑定查询未接全局 peer 发布；不把 query status 当硬件通知；本机连接尚未确认",
       "state": "implemented_static_checked",
       "runtime_validation": "not_run",
       "source_inputs": {
@@ -143,7 +143,7 @@
       "behavior": "接收器结果使用当前身份/描述目录；首个已核实 peer 状态零触发能力数据指定的有限独立重查",
       "contract": "docs/re/receiver-ui-current.md",
       "implementation": {
-        "src/backend/discovery.rs": "7bd65fd078a8798c73e96bdeb8688449da7b2ae960fe92dc562163cc42794426",
+        "src/backend/discovery.rs": "14da32442bf7e4f482dd6d8af53e73487b8283ca3f307f921e8f1dd83af2d1c1",
         "src/backend/receiver_capabilities.rs": "fd44ca75dcb5ac7ffcabc41a10bf4a9bd1b6d35efc5ea32edc4b2d34e1cfbac6",
         "src/backend/receiver_catalog.rs": "ce8162705494dc5acfe265e3a2dbd0e4e26fe040a53b888d1b11a10c613898be",
         "src/backend/receiver_peer_catalog.json": "cb8252dc39dcfd95e283f5a15b48e9d8b8dd8b85a397931d0e53be23431d4557",
@@ -717,11 +717,12 @@
     },
     {
       "id": "studio-source-properties",
-      "behavior": "Audio 保留小数并正确排列 Auto；Wave Pause 秒显示/毫秒存储，Speed/Pause 与 Width/Split 同行；方向组使用当前图标且点击选中半边仍翻转",
+      "behavior": "Audio 保留小数并正确排列 Auto；Wave Pause 秒显示/毫秒存储，Speed/Pause 与 Width/Split 同行，角度圆盘与数字框联动；方向组使用当前图标且点击选中半边仍翻转",
       "contract": "docs/re/studio-properties-current.md",
       "implementation": {
-        "src/features/chroma_studio_properties.rs": "3ed990e62ac814ded7c59cdf6290ed745f2b497555f95d0c4d9b7cd678f563a8",
-        "src/features/chroma_studio_numeric.rs": "0f94cb33262e2e4f9c8e56ea91b8d9c1e76898d1b76f88887cdf9132b7ad384e",
+        "src/features/chroma_studio_properties.rs": "9f817ec0d2584b3439938f8a8fd88ec9ffe8ab1ac4d386c8199fd838920430fb",
+        "src/features/chroma_studio_numeric.rs": "67dd4b85a86303860c336145c3323c06b00a7ba2fb09e641ff2f37f1c1d370b4",
+        "src/features/chroma_studio_angle.rs": "ea2b3bb556a508d339d313960fd24a465d1470680b8678efa64fc32e238bdf9a",
         "src/features/chroma_studio_data.json": "33b1f0ac2ed035e2a86abf28b7f618da35d9f980844297cf1bce97ebe8ca0323",
         "assets/synapse/chroma-studio-clockwise-black.svg": "b4cae5a8b60e0f14e3a714fa1e9bc10e83b6ce8f84217a8975b13db51b269d4c",
         "assets/synapse/chroma-studio-clockwise-gray.svg": "d20dce70213de80a43fa1717a100f2b223d43cdf96d4bb1a090c44edaea9fc8e",
@@ -739,7 +740,7 @@
         "node tools/review-studio-properties-current.cjs --check",
         "node tools/prepare-chroma-studio.cjs --check"
       ],
-      "remaining": "Wave 角度圆盘、Wheel/Tidal 中心点、Generate 与真实 LED/服务状态未完成",
+      "remaining": "Wave 圆盘真实窗口验收；Wheel/Tidal 中心点、Generate 与真实 LED/服务状态未完成",
       "state": "implemented_static_checked",
       "runtime_validation": "not_run",
       "source_inputs": {

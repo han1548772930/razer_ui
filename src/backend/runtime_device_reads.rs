@@ -187,7 +187,15 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
                 deadline()?;
                 let mut report = vec![0; cap.report_bytes];
                 report[0] = cap.report_id;
-                let count = device.get_feature(&mut report)?;
+                let count = match device.get_feature(&mut report) {
+                    Ok(count) => count,
+                    Err(error) => {
+                        // The current host turns a failed getFeatureReport into
+                        // an empty response; middleware retries with a new OUT.
+                        last_error = format!("{error:#}");
+                        break;
+                    }
+                };
                 deadline()?;
                 ensure!(count == cap.report_bytes, "设备查询返回长度不匹配：{count}");
                 match device_reads::decode_report(&report, cap, command, transaction)? {

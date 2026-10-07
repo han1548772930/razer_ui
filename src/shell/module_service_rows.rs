@@ -301,6 +301,17 @@ impl ModuleCatalog {
                 }
         })
     }
+    fn local_page_service_device(&self, row: &Record) -> Option<&Device> {
+        let device = self.local_service_device(row)?;
+        let identity = (
+            device.product_id,
+            device.serial_number.clone(),
+            device.device_container_id.clone(),
+        );
+        self.local_page_devices
+            .contains(&identity)
+            .then_some(device)
+    }
     fn toggle_service_details(&mut self, key: String, cx: &mut Context<Self>) {
         if !self.expanded.remove(&key) {
             self.expanded.insert(key);
@@ -392,7 +403,7 @@ impl ModuleCatalog {
             .into_any_element()
     }
     fn install_service_action(&self, row: &Record, cx: &mut Context<Self>) -> AnyElement {
-        if let Some(device) = self.local_service_device(row) {
+        if let Some(device) = self.local_page_service_device(row) {
             let container = device.device_container_id.clone();
             return module_action(
                 SharedString::from(format!("open-{}", service::identity(row))),

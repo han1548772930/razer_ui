@@ -146,6 +146,8 @@ pub(crate) struct SourceSlider {
     tip: Option<SharedString>,
     /// `.slider-container.on`: 100% opacity and pointer events, else `.3` and none.
     enabled: bool,
+    /// An ancestor may block input while leaving `.slider-container.on` intact.
+    interaction_enabled: bool,
 }
 impl SourceSlider {
     pub(crate) fn new(state: &Entity<SliderState>, progress: f32) -> Self {
@@ -154,6 +156,7 @@ impl SourceSlider {
             progress: progress.clamp(0., 1.),
             tip: None,
             enabled: true,
+            interaction_enabled: true,
         }
     }
     pub(crate) fn tip(mut self, tip: Option<impl Into<SharedString>>) -> Self {
@@ -164,11 +167,16 @@ impl SourceSlider {
         self.enabled = enabled;
         self
     }
+    pub(crate) fn interaction_enabled(mut self, enabled: bool) -> Self {
+        self.interaction_enabled = enabled;
+        self
+    }
 }
 impl RenderOnce for SourceSlider {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let progress = self.progress;
         let tip = self.tip;
+        let interaction_enabled = self.enabled && self.interaction_enabled;
         let opacity = surface::fade_opacity(
             ("source-slider-opacity", self.state.entity_id()),
             if self.enabled { 1. } else { 0.3 },
@@ -181,7 +189,7 @@ impl RenderOnce for SourceSlider {
         // so it renders at 30% opacity and drops the pointer handlers that
         // mirror the source's `pointer-events:none`.
         let mut container = BaseSlider::new(&self.state)
-            .disabled(!self.enabled)
+            .disabled(!interaction_enabled)
             .relative()
             .w_full()
             .h(surface::css(if tip.is_some() { 64. } else { 36. }))
@@ -254,7 +262,7 @@ impl RenderOnce for SourceSlider {
         // pointer-state colors.
         container.child(
             SliderTrack::new(&self.state)
-                .disabled(!self.enabled)
+                .disabled(!interaction_enabled)
                 .absolute()
                 .bottom(surface::css(20.))
                 .w_full()
@@ -266,7 +274,7 @@ impl RenderOnce for SourceSlider {
                         .right(surface::css(8.))
                         .h_full()
                         .child(
-                            source_thumb(&self.state, self.enabled, window, cx)
+                            source_thumb(&self.state, interaction_enabled, window, cx)
                                 .absolute()
                                 .left(relative(progress))
                                 .ml(surface::css(-8.))

@@ -407,9 +407,9 @@ mod current_angle_tests {
     use gpui_kit::component::Root;
     use gpui_kit::test::TestWindowExt;
     use gpui_kit::{
-        App, AppContext, Bounds, Entity, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-        NavigationDirection, Pixels, Point, Subscription, TestAppContext, Window, WindowHandle,
-        point, px, size,
+        App, AppContext, Bounds, Entity, InputEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
+        MouseUpEvent, NavigationDirection, Pixels, Point, Subscription, TestAppContext, Window,
+        WindowHandle, point, px, size,
     };
     use std::{cell::RefCell, rc::Rc};
 

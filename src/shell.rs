@@ -522,8 +522,9 @@ impl AppShell {
                 service_pages::ModuleCatalogEvent::OpenDevice(container) => {
                     let key = this.devices.iter().find_map(|workspace| {
                         let workspace = workspace.read(cx);
-                        (workspace.device(cx).device_container_id == *container)
-                            .then(|| workspace.identity(cx))
+                        (workspace.device(cx).device_container_id == *container
+                            && workspace.has_local_page(cx))
+                        .then(|| workspace.identity(cx))
                     });
                     if let Some(key) = key {
                         this.navigate(Location::Device(key), window, cx);
@@ -917,15 +918,25 @@ impl AppShell {
     }
 
     fn sync_gamer_room(&self, cx: &mut Context<Self>) {
-        let devices = self
-            .devices
-            .iter()
-            .map(|workspace| workspace.read(cx).snapshot(cx))
-            .collect::<Vec<_>>();
+        let mut devices = Vec::with_capacity(self.devices.len());
+        let mut local_page_devices = std::collections::BTreeSet::new();
+        for entity in &self.devices {
+            let workspace = entity.read(cx);
+            let device = workspace.snapshot(cx);
+            if workspace.has_local_page(cx) {
+                local_page_devices.insert((
+                    device.product_id,
+                    device.serial_number.clone(),
+                    device.device_container_id.clone(),
+                ));
+            }
+            devices.push(device);
+        }
         self.gamer_room
             .update(cx, |page, cx| page.sync_devices(&devices, cx));
-        self.module_catalog
-            .update(cx, |page, cx| page.sync_local_devices(&devices, cx));
+        self.module_catalog.update(cx, |page, cx| {
+            page.sync_local_devices(&devices, local_page_devices, cx)
+        });
     }
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);

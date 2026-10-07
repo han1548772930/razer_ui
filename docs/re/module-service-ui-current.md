@@ -8,7 +8,7 @@
 
 Available Modules 使用本页 `ne` 的五成员及顺序：Alexa、Macro、linkedGames、Feedback、Armory。十语言名称、Macro/Alexa 介绍和静态大小来自当前源；零大小显示 `< 1 MB`。Armory 使用已观察特性选择 Workshop/Exchange 标题和图标；未知时保留 hook 初始 Workshop 显示，不当作服务返回。Feedback 的 host beta 同样是可选观察。
 
-已实现的本地模块直接打开。真实安装 phase 可显示，但不阻断本地页面。新设备行只打开身份匹配且已存在的本地产品工作区。页面没有额外“Razer 应用”按钮；发现软件入口属于独立 `rz-app-menu` 页脚，目标 `https://razer.com/pc/software`。
+已实现的本地模块直接打开。真实安装 phase 可显示，但不阻断本地页面。新设备行只打开身份匹配且已有非帮助页 renderer 的本地产品工作区；导航登记、Pending 或仅帮助页不作为 Open 能力。Shell 单独传入完整设备身份的页面能力集合，点击后再次检查 `has_local_page`，完整设备快照仍供固件关联使用。页面没有额外“Razer 应用”按钮；发现软件入口属于独立 `rz-app-menu` 页脚，目标 `https://razer.com/pc/software`。
 
 ## 快照与投影
 
@@ -42,5 +42,6 @@ Available Modules 使用本页 `ne` 的五成员及顺序：Alexa、Macro、link
 - [源记录、移除和分类 SVG](module-service-current-evidence.json)：`audit-module-service.cjs`。
 - [行状态、进度与固件](module-service-rows-current-evidence.json)：`audit-module-service-rows.cjs`。
 - [缺失媒体的离线核对](shortcuts-service-media-offline-recovery.json)：`recover-shortcuts-service-media.cjs`。负面结果不表示资源已恢复。
+- [本地设备入口能力](local-device-entrypoints-current-evidence.json)：`audit-local-device-entrypoints.cjs`，包括 New Devices 的实际页面能力与固件关联边界。
 
 JSON 中的 AST/CSS/资源事实保留；取证时 native 文件哈希不构成整个页面的运行验收。维护检查限于静态解析、资源校验、格式及允许的全目标类型检查。

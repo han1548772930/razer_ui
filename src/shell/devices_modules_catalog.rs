@@ -177,6 +177,7 @@ pub(super) struct ModuleCatalog {
     service_snapshot: Option<ModuleServiceSnapshot>,
     service_groups: Option<service::ServiceGroups>,
     local_devices: Vec<Device>,
+    local_page_devices: BTreeSet<(u32, String, String)>,
     removal: Option<String>,
     clear_settings: bool,
     removal_focus: FocusHandle,
@@ -207,6 +208,7 @@ impl ModuleCatalog {
             service_snapshot: snapshot,
             service_groups: groups,
             local_devices: Vec::new(),
+            local_page_devices: BTreeSet::new(),
             removal: None,
             clear_settings: false,
             removal_focus: cx.focus_handle(),
@@ -219,8 +221,14 @@ impl ModuleCatalog {
     pub(super) fn service_snapshot(&self) -> Option<ModuleServiceSnapshot> {
         self.service_snapshot.clone()
     }
-    pub(super) fn sync_local_devices(&mut self, devices: &[Device], cx: &mut Context<Self>) {
+    pub(super) fn sync_local_devices(
+        &mut self,
+        devices: &[Device],
+        local_page_devices: BTreeSet<(u32, String, String)>,
+        cx: &mut Context<Self>,
+    ) {
         self.local_devices = devices.to_vec();
+        self.local_page_devices = local_page_devices;
         cx.notify();
     }
     /// Explicit UI samples: no installer transport or device mutation is involved.
