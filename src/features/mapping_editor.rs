@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 
 const PREFIX: &str = "local-mapping:v1:";
 
+include!("mapping_macro.rs");
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Assignment {
@@ -33,6 +35,13 @@ enum Assignment {
         x: u32,
         y: u32,
         independent: bool,
+    },
+    Macro {
+        /// Persistent local library identity, never a native macro GUID.
+        macro_id: u64,
+        name: String,
+        playback: String,
+        repeat_count: u32,
     },
     Multimedia {
         action: String,
@@ -158,6 +167,12 @@ impl Category {
                 x: 800,
                 y: 800,
                 independent: false,
+            },
+            Self::Macro => Assignment::Macro {
+                macro_id: 0,
+                name: String::new(),
+                playback: "Once".into(),
+                repeat_count: 2,
             },
             Self::Multimedia => Assignment::Multimedia {
                 action: "VolumeDown".into(),
@@ -322,6 +337,7 @@ impl Assignment {
             Self::Keyboard { .. } => Category::Keyboard,
             Self::Mouse { .. } => Category::Mouse,
             Self::Sensitivity { .. } => Category::Sensitivity,
+            Self::Macro { .. } => Category::Macro,
             Self::Multimedia { .. } => Category::Multimedia,
             Self::Windows { .. } => Category::Windows,
             Self::Brightness { .. } => Category::Brightness,
@@ -774,6 +790,12 @@ impl DeviceWorkspace {
                 .map(|(_, label)| i18n::t(label))
                 .unwrap_or_else(|| action.clone()),
             Assignment::Text { text } => text.clone(),
+            Assignment::Macro { macro_id, name, .. } => self
+                .mapping_macro
+                .catalog
+                .iter()
+                .find(|entry| entry.id == *macro_id)
+                .map_or_else(|| name.clone(), |entry| entry.name.clone()),
             Assignment::Launch { target, .. } => target.clone(),
             Assignment::Profile { action } => self
                 .device
@@ -975,6 +997,7 @@ impl DeviceWorkspace {
             return Some("Turbo 速度须为每秒 1–20 次。");
         }
         match &action {
+            Assignment::Macro { .. } => return self.mapping_macro_error(&action),
             Assignment::Keyboard { key, modifiers, .. } => {
                 if !valid_key(key) {
                     return Some("请录制按键，或从按键组中选择一个按键。");
@@ -1103,13 +1126,19 @@ impl DeviceWorkspace {
         }
         self.mapping_expanded = false;
         self.mapping_recording = false;
-        if self.mapping_action().and_then(|a| a.category()) != Some(category) {
+        if self.mapping_action().and_then(|a| a.category()) != Some(category)
+            || category == Category::Macro
+                && matches!(self.mapping_action(), Some(Assignment::Unavailable { .. }))
+        {
             if category == Category::Keyboard {
                 self.mapping_key_group = "record".into();
                 self.mapping_optional_modifiers.clear();
                 self.mapping_modifiers_enabled = false;
             }
             let mut initial = category.initial();
+            if category == Category::Macro {
+                self.initialize_macro_assignment(&mut initial);
+            }
             let clutch_supported = self
                 .mapping_options(&initial)
                 .iter()
@@ -1120,6 +1149,7 @@ impl DeviceWorkspace {
                 *action = "DPI_Up".into();
             }
             self.update_mapping(cx, |action| *action = initial);
+            self.reset_mapping_macro_repeat(window, cx);
         }
         self.sync_mapping_controls(window, cx);
         cx.notify();
@@ -1187,6 +1217,7 @@ impl DeviceWorkspace {
         self.mapping_modifiers_enabled = !self.mapping_optional_modifiers.is_empty();
         self.mapping_recording = false;
         self.mapping_expanded = false;
+        self.reset_mapping_macro_repeat(window, cx);
         self.sync_mapping_controls(window, cx);
         window.focus(&self.mapping_focus, cx);
     }
@@ -1194,6 +1225,7 @@ impl DeviceWorkspace {
         let Some(action) = self.mapping_action() else {
             return;
         };
+        self.sync_mapping_macro_controls(window, cx);
         let items = self.mapping_options(&action);
         let selected = if let Assignment::Keyboard { key, modifiers, .. } = &action
             && self.mapping_key_group == "symbols"
@@ -1275,6 +1307,7 @@ impl DeviceWorkspace {
         }
     }
     pub(super) fn install_mapping_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.install_mapping_macro_controls(window, cx);
         self.subscriptions.push(cx.subscribe_in(
             &self.controls.mapping,
             window,
@@ -1902,9 +1935,12 @@ impl DeviceWorkspace {
                         );
                 }
             }
+            Assignment::Macro { .. } => {
+                body = body.child(self.render_mapping_macro(cx));
+            }
             Assignment::Unavailable { category, .. } => {
                 let reason = match category.as_str() {
-                    "macro" => "宏列表需要原生宏服务，当前不可用。",
+                    "macro" => "此旧宏映射没有本地文档身份，请重新选择宏。",
                     "interdevice" => "跨设备映射需要原生设备服务，当前不可用。",
                     "lighting" => "灯光映射需要 Chroma 应用和配置资源，当前不可用。",
                     _ => "现有映射格式尚未支持；关闭可保留原值。",
@@ -2161,3 +2197,7 @@ impl DeviceWorkspace {
 #[cfg(test)]
 #[path = "mapping_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "mapping_macro_tests.rs"]
+mod macro_tests;

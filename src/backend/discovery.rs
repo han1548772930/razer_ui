@@ -13,6 +13,12 @@ use std::collections::{BTreeMap, BTreeSet};
 #[path = "discovery_startup_tests.rs"]
 mod startup_tests;
 
+#[path = "discovery_receiver_projection.rs"]
+mod receiver_projection;
+pub(crate) use receiver_projection::{
+    ReceiverQueryProjection, pairing_payload, project_receiver_query,
+};
+
 #[derive(Clone, Copy)]
 pub(crate) enum ObservedTransport {
     Wired,
@@ -36,6 +42,15 @@ pub(crate) struct ObservedDevice {
 impl ObservedDevice {
     pub(crate) fn product_id(&self) -> u32 {
         self.product_id
+    }
+    pub(crate) fn container(&self) -> &str {
+        &self.container
+    }
+    pub(crate) fn physical_product_id(&self) -> u32 {
+        self.physical_product_id
+    }
+    pub(crate) fn peer_product_id(&self) -> Option<u32> {
+        self.peer_product_id
     }
     pub(crate) fn read_values(&self) -> Option<&super::device_reads::DeviceReadValues> {
         self.read_values.as_ref()
@@ -304,52 +319,6 @@ pub(crate) fn receiver_peers(value: &Value) -> anyhow::Result<Vec<(u32, u8)>> {
         .collect()
 }
 
-/// Minimal DUALLINK_BIND_INFO from real query rows plus source catalog identity.
-/// Edition/layout/serial are omitted because this query does not return them.
-pub(crate) fn pairing_payload(receiver_pid: u32, value: &Value) -> anyhow::Result<Value> {
-    let capability = u16::try_from(receiver_pid)
-        .ok()
-        .and_then(super::receiver_capabilities::capability)
-        .context("接收器查询能力未核实")?;
-    let mut rows = Vec::new();
-    let mut seen = BTreeSet::new();
-    for (raw_pid, status) in receiver_peers(value)? {
-        if raw_pid == 65535 || raw_pid == receiver_pid || !seen.insert(raw_pid) {
-            continue;
-        }
-        let IdentityLookup::Unique(identity) =
-            device_identity::lookup_receiver_peer(raw_pid, capability.peer_match_product_id)
-        else {
-            anyhow::bail!("配对查询 PID {raw_pid} 无法唯一映射当前产品");
-        };
-        let product =
-            crate::product::registered(identity.product_id).context("配对产品尚无本地页面")?;
-        let categories = product.categories();
-        let description = super::receiver_catalog::description(raw_pid);
-        let category = if let Some(description) = description {
-            description.category()
-        } else if categories.contains(&"MOUSE") {
-            "MOUSE"
-        } else if categories.contains(&"KEYBOARD") {
-            "KEYBOARD"
-        } else {
-            anyhow::bail!("配对 PID {raw_pid} 的产品类别不适用于底座页面")
-        };
-        ensure!(
-            matches!(category, "MOUSE" | "KEYBOARD"),
-            "配对设备类别不适用于此页面"
-        );
-        let product_name = description
-            .map(|description| serde_json::json!(description.product_name()))
-            .unwrap_or_else(|| serde_json::json!({"en":product.name()}));
-        rows.push(
-            serde_json::json!({"productId":identity.product_id,"dongleId":raw_pid,
-            "status":status,"category":category,"productName":product_name}),
-        );
-    }
-    Ok(Value::Array(rows))
-}
-
 pub(crate) fn discover(
     client: &mut ServiceClient,
     usb: &Result<Value, String>,
@@ -466,12 +435,13 @@ pub(crate) fn discover(
                 candidates.len()
             ));
         }
-        let Some(capability) = u16::try_from(pid)
+        if u16::try_from(pid)
             .ok()
             .and_then(super::receiver_capabilities::capability)
-        else {
+            .is_none()
+        {
             continue;
-        };
+        }
         let result = hid
             .as_ref()
             .map_err(|error| anyhow::anyhow!(error.clone()))
@@ -482,50 +452,13 @@ pub(crate) fn discover(
                     std::thread::sleep,
                 )
             })
-            .and_then(|value| receiver_peers(&value));
+            .and_then(|value| project_receiver_query(pid, &container, &value));
         match result {
-            Ok(peers) => {
-                let mut seen = BTreeSet::new();
-                for (raw_pid, status) in peers {
-                    // A mouse's own dongle PID identifies its wireless peer;
-                    // only a standalone receiver's self row is not a product.
-                    let own_dongle =
-                        matches!(&identity, IdentityLookup::Unique(identity) if identity.is_dongle);
-                    if raw_pid == 65535 || (raw_pid == pid && !own_dongle) || !seen.insert(raw_pid)
-                    {
-                        continue;
-                    }
-                    let mapped = match device_identity::lookup_receiver_peer(
-                        raw_pid,
-                        capability.peer_match_product_id,
-                    ) {
-                        IdentityLookup::Unique(identity) => identity.product_id,
-                        IdentityLookup::Unmatched { .. } => {
-                            snapshot
-                                .errors
-                                .push(format!("查询返回 PID {raw_pid}，官方目录无对应产品"));
-                            continue;
-                        }
-                        IdentityLookup::Ambiguous { candidates, .. } => {
-                            snapshot.errors.push(format!(
-                                "查询 PID {raw_pid} 对应 {} 个产品，尚需身份读取消除歧义",
-                                candidates.len()
-                            ));
-                            continue;
-                        }
-                    };
-                    snapshot.insert(ObservedDevice {
-                        product_id: mapped,
-                        real_product_id: raw_pid,
-                        physical_product_id: pid,
-                        peer_product_id: Some(raw_pid),
-                        read_values: None,
-                        container: container.clone(),
-                        serial: String::new(),
-                        use_ble: false,
-                        transport: Some(ObservedTransport::Dongle),
-                        connection: DeviceConnectionObservation::ReceiverPeer(status),
-                    });
+            Ok(projection) => {
+                let peers = projection.into_snapshot();
+                snapshot.errors.extend(peers.errors);
+                for observed in peers.devices {
+                    snapshot.insert(observed);
                 }
             }
             Err(error) => snapshot

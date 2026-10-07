@@ -77,14 +77,14 @@ impl SourceControls {
         &mut self,
         observation: ReceiverPairingObservation,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if self.spec.product_id != 179 {
-            return;
+            return false;
         }
         if self.receiver.page.observe(&observation) {
             self.sync_receiver_page_retry(cx);
             cx.notify();
-            return;
+            return true;
         }
         let (changed, event) = self.receiver.pairing.observe(observation.clone());
         if let Some(event) = event {
@@ -96,6 +96,7 @@ impl SourceControls {
             self.sync_receiver_success_close(cx);
             cx.notify();
         }
+        changed
     }
     fn sync_receiver_success_close(&mut self, cx: &mut Context<Self>) {
         let ticket = self.receiver.pairing.success_close();

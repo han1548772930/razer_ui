@@ -126,6 +126,9 @@ pub struct AppShell {
     receiver_queries: BTreeMap<String, (u64, u64)>,
     receiver_devices: BTreeMap<String, (u32, u32)>,
     receiver_devices_complete: bool,
+    discovery_revision: u64,
+    device_observations: Vec<crate::backend::discovery::ObservedDevice>,
+    device_value_owners: std::collections::BTreeSet<String>,
     device_read_scopes: BTreeMap<String, crate::features::mouse_polling::MousePollingScope>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
@@ -237,6 +240,9 @@ impl AppShell {
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
+            discovery_revision: 0,
+            device_observations: Vec::new(),
+            device_value_owners: std::collections::BTreeSet::new(),
             receiver_devices: BTreeMap::new(),
             receiver_devices_complete: false,
             device_read_scopes: BTreeMap::new(),
@@ -600,6 +606,11 @@ impl AppShell {
                 this.shortcuts.update(cx, |shortcuts, cx| {
                     shortcuts.set_macro_library(&snapshot, window, cx)
                 });
+                for workspace in &this.devices {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.set_mapping_macro_library(&snapshot, window, cx)
+                    });
+                }
                 if this.macro_library.read(cx).pending() {
                     this.save_auxiliary_preferences(cx);
                 }
@@ -757,6 +768,10 @@ impl AppShell {
         }
         let entity =
             cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
+        let macros = self.macro_library.read(cx).snapshot();
+        entity.update(cx, |workspace, cx| {
+            workspace.set_mapping_macro_library(&macros, window, cx)
+        });
         self.subscriptions.push(cx.subscribe_in(
             &entity,
             window,
@@ -795,6 +810,9 @@ impl AppShell {
                     this.open_chroma_window(cx);
                 }
                 WorkspaceEvent::OpenStudio => this.open_chroma_studio(cx),
+                WorkspaceEvent::OpenMacro => {
+                    this.open_module_tab(service_pages::ModulePage::Macro, window, cx)
+                }
                 WorkspaceEvent::OpenDevice {
                     product_id,
                     edition_id,
@@ -839,8 +857,8 @@ impl AppShell {
         self.subscriptions.push(cx.subscribe_in(
             &entity,
             window,
-            |this, entity, event: &crate::features::ReceiverPairingEvent, _, cx| {
-                this.query_receiver_pairing(entity.clone(), event, cx);
+            |this, entity, event: &crate::features::ReceiverPairingEvent, window, cx| {
+                this.query_receiver_pairing(entity.clone(), event, window, cx);
             },
         ));
         self.subscriptions.push(cx.subscribe_in(

@@ -112,18 +112,20 @@ impl SourceProductWorkspace {
         &mut self,
         observation: super::ReceiverPairingObservation,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if self.device.product_id != 179 {
-            return;
+            return false;
         }
         if let FamilyBody::Controls(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.observe_receiver_pairing(observation, cx)
-            });
+            })
         } else if let Some(body) = &self.supplement {
             body.update(cx, |body, cx| {
                 body.observe_receiver_pairing(observation, cx)
-            });
+            })
+        } else {
+            false
         }
     }
     pub(crate) fn observe_receiver_devices(

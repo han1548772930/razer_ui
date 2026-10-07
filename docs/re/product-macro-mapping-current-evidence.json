@@ -1,0 +1,561 @@
+{
+  "schema_version": 1,
+  "method": "Manifest-selected module-local Acorn AST and CSS; no vendor code execution",
+  "products": [
+    {
+      "product_id": 182,
+      "manifest": {
+        "path": ".ref/devices/182/asset-manifest.json",
+        "sha256": "3b10a13f94ab33fd41b0918cedd818ee2871dd9a23a35776cc5b3642f0248424"
+      },
+      "component": {
+        "path": ".ref/devices/182/static/js/MapMacro.9b7af0a1.chunk.js",
+        "sha256": "49e92a159798795a587368241e5ab5811ea0f59272ba0b03b5d93eea45fd8fea",
+        "offset": 908,
+        "end": 9020,
+        "source": "class P extends s.Component{constructor(t){super(t),this.getPlayBackSet=()=>{var t;const e=(y.DeviceInfo||{}).singleProfileDevice,a=this.state,i=a.selectedMacro,s=a.macroSet,o=(null===s||void 0===s?void 0:s[i])||{};if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE)return g;if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED)return B;if(d.cJ.includes(this.props.activeButton.inputID)||[\"DKM_SB_210\",\"DKM_AI_PROMPT\",\"DKM_SB_03\"].includes(this.props.activeButton.inputID)&&e)return k;return u.LL4.includes(this.props.activeButton.inputID)&&u.pVC.includes(null===(t=y.DeviceInfo)||void 0===t?void 0:t.productId)||this.props.isGlobalShortcut?f.filter(t=>![\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content)):f},this.assignDefaultValues=()=>{let t=d.GW(this.props);if(void 0===this.props.activeButton||void 0===this.props.activeButton[\"\".concat(t,\"Group\")])return;\"MACRO\"===this.props.activeButton[t]?this.assignValues(this.props.activeButton[\"\".concat(t,\"Group\")]):this.setState({selectedOption:0})},this.assignValues=t=>{let e=this.state.macroSet.findIndex(e=>e.guid===t.guid),a=this.state.playBackSet.findIndex(e=>e.id.toLowerCase()===t.macroPlaybackOption.toLowerCase());this.setState({selectedMacro:e,selectedPlayback:a<0?0:a,playbackTimes:parseInt(t.repeatCount)})},this.changeMacro=t=>{const e=this.props.macroList;this.setState({selectedMacro:t},()=>this.props.enableSave(!0,!0,(0,h.Xq)(e[t])))},this.changePlayback=t=>{this.setState({selectedPlayback:t},()=>{var t,e;const a=this.state,i=a.playBackSet,s=a.selectedPlayback,o=u.lYZ.includes(null===(t=i[s])||void 0===t?void 0:t.content),c=null===(e=this.props.activeButton)||void 0===e?void 0:e.isRequireSynapse;this.props.enableSave(!0,!0,o||c)})},this.changeTimes=t=>{this.setState({playbackTimes:t},()=>{var t,e;if(!this.props.macroAvailable)return;const a=this.state,i=a.playBackSet,s=a.selectedPlayback,o=u.lYZ.includes(null===(t=i[s])||void 0===t?void 0:t.content),c=null===(e=this.props.activeButton)||void 0===e?void 0:e.isRequireSynapse;this.props.enableSave(!0,!0,o||c)})},this.getMappingData=()=>{let t=this.state.macroSet[this.state.selectedMacro],e=this.state.playBackSet[this.state.selectedPlayback].content;return{name:t.name,guid:t.guid,macroPlaybackOption:d.nV(e),repeatCount:e===r.i_6?this.state.playbackTimes:2}},this.saveMapping=()=>{console.log(\"saveMapping: macro\");let t=[],e=d.rq(this.props.activeButton,\"\".concat(u.pHV),this.props.isHyperShiftOn,!0);return e.macroGroup=this.getMappingData(),console.log(e),t.push(e),t},this.getTabInfo=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";try{const e=await v.A.getWindowServiceClients();return JSON.parse(e).find(e=>t===e.windowName)}catch(e){return null}},this.openMacro=async()=>{if(\"function\"!==typeof v.A.activateWindowServiceClient)return;await this.getTabInfo(\"macro\")?v.A.activateWindowServiceClient(\"\".concat(u.BDG)):(window.open(\"/synapse/macro/\",u.BDG,\"policy=3,tab_visible=1\"),setTimeout(()=>{v.A.activateWindowServiceClient(\"\".concat(u.BDG))},100))};let e=this.props.macroList;0===e.length&&e.push({name:\" \"});let a=f;e[0].macroPlaybackOption===u.CKm.SYNAPSE.SEQUENCE&&(a=g),e[0].macroPlaybackOption===u.CKm.SYNAPSE.PHASED&&(a=B),this.props.isGlobalShortcut&&(a=f.filter(t=>\"Queue\"!==t.id)),this.state={selectedMacro:0,selectedPlayback:0,playbackTimes:2,macroAvailable:this.props.macroAvailable,macroSet:e,playBackSet:a}}componentDidMount(){var t;this.props.activeButton&&this.setState({playBackSet:this.getPlayBackSet()}),this.assignDefaultValues(),this.props.setSaveMapRef(this.saveMapping);const e=this.props.macroList,a=this.state.selectedMacro;let i=(0,h.Xq)(e[a]);null!==(t=this.props.activeButton)&&void 0!==t&&t.isRequireSynapse&&(i=!0),this.props.enableSave((()=>{var t,e,i;const s=null===(t=this.props.activeButton)||void 0===t?void 0:t.assignmentValue,o=this.state.macroSet[a];return!(!o||m()(null===o||void 0===o||null===(e=o.name)||void 0===e?void 0:e.trim()))&&(!(null!==(i=this.props.activeButton)&&void 0!==i&&i.isMapped)||o.name!==s&&o.name.trim())})(),!1,i)}componentDidUpdate(t,e){if(t.activeButton!==this.props.activeButton&&void 0!==this.props.activeButton){var a;this.setState({playBackSet:this.getPlayBackSet()},()=>{this.assignDefaultValues()});const t=this.props.macroList,i=this.state.selectedMacro;let s=(0,h.Xq)(t[i]);null!==(a=this.props.activeButton)&&void 0!==a&&a.isRequireSynapse&&(s=!0),this.props.enableSave(this.state.selectedMacro!==e.selectedMacro,!1,s)}if(t.macroList!==this.props.macroList){let t=this.props.macroList.length<=this.state.selectedMacro?0:this.state.selectedMacro,e=[...this.props.macroList];0===e.length&&e.push({name:\" \"}),this.setState({macroSet:e,macroAvailable:this.props.macroAvailable,selectedMacro:t},()=>{void 0!==t?this.props.enableSave(this.state.macroAvailable,!1,(0,h.Xq)(e[t])):this.props.close()})}if(this.state.selectedMacro!==e.selectedMacro){var i,s;const t=this.state.selectedMacro;if(void 0===t)return;const e=this.props.macroList;this.props.enableSave(this.state.macroAvailable,!1,(0,h.Xq)(e[t])),(null===(i=e[this.state.selectedMacro])||void 0===i?void 0:i.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE?this.setState({playBackSet:g,selectedPlayback:0}):(null===(s=e[this.state.selectedMacro])||void 0===s?void 0:s.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED?this.setState({playBackSet:B,selectedPlayback:0}):this.setState({playBackSet:f})}const o=this.props.macroList[this.state.selectedMacro],c=t.macroList.find(t=>(null===t||void 0===t?void 0:t.guid)===(null===o||void 0===o?void 0:o.guid))||{};if((null===o||void 0===o?void 0:o.macroPlaybackOption)!==(null===c||void 0===c?void 0:c.macroPlaybackOption)&&((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.AX$.SYNAPSE.SEQUENCE?this.setState({playBackSet:g,selectedPlayback:0}):this.setState({playBackSet:f})),this.state.playBackSet===f&&e.playBackSet!==this.state.playBackSet){var l,n;if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE)return void this.setState({playBackSet:g,selectedPlayback:0});if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED)return void this.setState({playBackSet:B,selectedPlayback:0});let t=f;this.props.activeButton&&[\"ScrollUp\",\"ScrollDown\"].includes(this.props.activeButton.inputID)&&(t=this.state.playBackSet.filter(t=>![\"TOGGLE_CONTINUOUS_PLAYBACK\",\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content)));(u.LL4.includes(null===(l=this.props.activeButton)||void 0===l?void 0:l.inputID)&&u.pVC.includes(null===(n=y.DeviceInfo)||void 0===n?void 0:n.productId)||this.props.isGlobalShortcut)&&(t=this.state.playBackSet.filter(t=>![\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content))),this.setState({playBackSet:t})}}render(){return(0,b.jsxs)(\"div\",{children:[(0,b.jsx)(l.A,{dataSet:(0,h.eh)(this.state.macroSet,\"Name\",!0),value:this.state.selectedMacro,selectOption:this.changeMacro}),(0,b.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"5px\",opacity:\"\".concat(this.state.macroAvailable?\"1\":\"0.3\")},children:(0,b.jsx)(p.A,{text:r.Oih})}),(0,b.jsx)(l.A,{dataSet:this.state.playBackSet,value:this.state.selectedPlayback,selectOption:this.changePlayback,extraStyle:{zIndex:101},disable:!this.state.macroAvailable,extraClass:\"map-macro__playback-options\"}),1===this.state.selectedPlayback?(0,b.jsxs)(\"div\",{children:[(0,b.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"5px\"},children:(0,b.jsx)(p.A,{text:r.lAq})}),(0,b.jsx)(n.A,{value:this.state.playbackTimes,setParentState:this.changeTimes,active:!0,maxLength:2,maxValue:99,minValue:1,allowDecimals:!1,stepValue:1,extraClass:\"custom-keymapping-stepper\",allowLiveUpdate:!0})]}):null,this.state.macroAvailable?null:(0,b.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"20px\"},children:(0,b.jsx)(p.A,{text:r.iiW})}),this.props.isMacroInstalled&&(0,b.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",textDecoration:\"underline\",marginBottom:\"20px\",cursor:\"pointer\"},onClick:this.openMacro,children:(0,b.jsx)(p.A,{text:r.jxF})})]})}}"
+      },
+      "routes": [
+        {
+          "path": ".ref/devices/182/static/js/5107.48fb3f50.chunk.js",
+          "sha256": "233ec8857a0e9bcc00da93e2294bcac28a9d0bf70c78ef68c54522d0b0583e59",
+          "offset": 18456,
+          "end": 18490,
+          "source": "()=>i.e(8997).then(i.bind(i,2508))"
+        }
+      ],
+      "name_sort": {
+        "sort": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 192130,
+          "end": 192502,
+          "source": "(e,E,a)=>{if(\"Date\"===E)return e.sort((e,E)=>a?e.date-E.date:E.date-e.date);if(\"Name\"===E){let E=[-1,1];a&&(E=[1,-1]),e.sort((e,t)=>{const _=(e.name||\"\").toLowerCase(),i=(t.name||\"\").toLowerCase();let o=s.indexOf(_[0]),n=s.indexOf(_[1]),T=s.indexOf(i[0]),I=s.indexOf(i[1]);return o===T?n===I||-1===n||-1===I?r(_,i,E):a?I-n:n-I:-1===o||-1===T?r(_,i,E):a?o-T:T-o})}return e}"
+        },
+        "rank": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 192043,
+          "end": 192096,
+          "source": "\"*!@_.()#^&%-=+01234567989abcdefghijklmnopqrstuvwxyz\""
+        },
+        "fallback": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 192099,
+          "end": 192127,
+          "source": "(e,E,a)=>e>E?a[0]:e<E?a[1]:0"
+        }
+      },
+      "exports": {
+        "9267/gJ": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4143671,
+          "end": 4143899,
+          "source": "[{id:\"Once\",content:\"PLAY_ONCE\"},{id:\"NTimes\",content:\"PLAY_MULTIPLE_TIMES\"},{id:\"ContinuousToggle\",content:\"TOGGLE_CONTINUOUS_PLAYBACK\"},{id:\"ContinuousHeld\",content:\"PLAY_WHILE_KEY_PRESSED\"},{id:\"Queue\",content:\"MACRO_QUEUE\"}]",
+          "value": [
+            {
+              "id": "Once",
+              "content": "PLAY_ONCE"
+            },
+            {
+              "id": "NTimes",
+              "content": "PLAY_MULTIPLE_TIMES"
+            },
+            {
+              "id": "ContinuousToggle",
+              "content": "TOGGLE_CONTINUOUS_PLAYBACK"
+            },
+            {
+              "id": "ContinuousHeld",
+              "content": "PLAY_WHILE_KEY_PRESSED"
+            },
+            {
+              "id": "Queue",
+              "content": "MACRO_QUEUE"
+            }
+          ]
+        },
+        "9267/kL": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4143903,
+          "end": 4144015,
+          "source": "[{id:\"Once\",content:\"PLAY_ONCE\"},{id:\"NTimes\",content:\"PLAY_MULTIPLE_TIMES\"},{id:\"Queue\",content:\"MACRO_QUEUE\"}]",
+          "value": [
+            {
+              "id": "Once",
+              "content": "PLAY_ONCE"
+            },
+            {
+              "id": "NTimes",
+              "content": "PLAY_MULTIPLE_TIMES"
+            },
+            {
+              "id": "Queue",
+              "content": "MACRO_QUEUE"
+            }
+          ]
+        },
+        "9267/cv": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4143583,
+          "end": 4143625,
+          "source": "[{id:\"Sequence\",content:\"SEQUENCE_MACRO\"}]",
+          "value": [
+            {
+              "id": "Sequence",
+              "content": "SEQUENCE_MACRO"
+            }
+          ]
+        },
+        "9267/kJ": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4143629,
+          "end": 4143667,
+          "source": "[{id:\"Phased\",content:\"PHASED_MACRO\"}]",
+          "value": [
+            {
+              "id": "Phased",
+              "content": "PHASED_MACRO"
+            }
+          ]
+        },
+        "9267/cJ": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4144019,
+          "end": 4144044,
+          "source": "[\"ScrollUp\",\"ScrollDown\"]",
+          "value": [
+            "ScrollUp",
+            "ScrollDown"
+          ]
+        },
+        "9937/LL4": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4189755,
+          "end": 4189768,
+          "source": "[\"DKM_SB_03\"]",
+          "value": [
+            "DKM_SB_03"
+          ]
+        },
+        "9937/pVC": {
+          "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+          "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+          "offset": 4189772,
+          "end": 4189777,
+          "source": "[222]",
+          "value": [
+            222
+          ]
+        }
+      },
+      "device_info": {
+        "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+        "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+        "single_profile_device": false
+      },
+      "css": [
+        {
+          "path": ".ref/devices/182/static/css/main.48c20423.css",
+          "sha256": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e",
+          "rules": [
+            {
+              "offset": 148188,
+              "selector": ".key-config .stepper.custom-keymapping-stepper",
+              "conditions": [],
+              "declarations": "border:1px solid #5d5d5d",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 148260,
+              "selector": ".key-config .stepper.custom-keymapping-stepper:hover",
+              "conditions": [],
+              "declarations": "border:1px solid #44d62c",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #44d62c",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 148338,
+              "selector": ".key-config .stepper.custom-keymapping-stepper input",
+              "conditions": [],
+              "declarations": "background-color:initial;text-align:left;text-align:initial;width:90%",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "initial",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "left",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "initial",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90%",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 148461,
+              "selector": ".key-config .stepper.custom-keymapping-stepper .icon.spinner",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;visibility:initial",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "initial",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 153252,
+              "selector": ".map-macro__playback-options .s3-options",
+              "conditions": [],
+              "declarations": "width:100%",
+              "properties": [
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 653,
+      "manifest": {
+        "path": ".ref/devices/653/asset-manifest.json",
+        "sha256": "b98c184695c5c6c3568b00108181a7b022751502dc83402d413ecb6e37b2dc30"
+      },
+      "component": {
+        "path": ".ref/devices/653/static/js/MapMacro.375a317e.chunk.js",
+        "sha256": "e9d2fdb67e3b314eba65751a9e063f05f34307d5d55ee67a633363b1f5b1a954",
+        "offset": 933,
+        "end": 9045,
+        "source": "class P extends s.Component{constructor(t){super(t),this.getPlayBackSet=()=>{var t;const e=(b.DeviceInfo||{}).singleProfileDevice,a=this.state,i=a.selectedMacro,s=a.macroSet,o=(null===s||void 0===s?void 0:s[i])||{};if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE)return g;if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED)return B;if(d.cJ.includes(this.props.activeButton.inputID)||[\"DKM_SB_210\",\"DKM_AI_PROMPT\",\"DKM_SB_03\"].includes(this.props.activeButton.inputID)&&e)return k;return u.LL4.includes(this.props.activeButton.inputID)&&u.pVC.includes(null===(t=b.DeviceInfo)||void 0===t?void 0:t.productId)||this.props.isGlobalShortcut?f.filter(t=>![\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content)):f},this.assignDefaultValues=()=>{let t=d.GW(this.props);if(void 0===this.props.activeButton||void 0===this.props.activeButton[\"\".concat(t,\"Group\")])return;\"MACRO\"===this.props.activeButton[t]?this.assignValues(this.props.activeButton[\"\".concat(t,\"Group\")]):this.setState({selectedOption:0})},this.assignValues=t=>{let e=this.state.macroSet.findIndex(e=>e.guid===t.guid),a=this.state.playBackSet.findIndex(e=>e.id.toLowerCase()===t.macroPlaybackOption.toLowerCase());this.setState({selectedMacro:e,selectedPlayback:a<0?0:a,playbackTimes:parseInt(t.repeatCount)})},this.changeMacro=t=>{const e=this.props.macroList;this.setState({selectedMacro:t},()=>this.props.enableSave(!0,!0,(0,h.Xq)(e[t])))},this.changePlayback=t=>{this.setState({selectedPlayback:t},()=>{var t,e;const a=this.state,i=a.playBackSet,s=a.selectedPlayback,o=u.lYZ.includes(null===(t=i[s])||void 0===t?void 0:t.content),c=null===(e=this.props.activeButton)||void 0===e?void 0:e.isRequireSynapse;this.props.enableSave(!0,!0,o||c)})},this.changeTimes=t=>{this.setState({playbackTimes:t},()=>{var t,e;if(!this.props.macroAvailable)return;const a=this.state,i=a.playBackSet,s=a.selectedPlayback,o=u.lYZ.includes(null===(t=i[s])||void 0===t?void 0:t.content),c=null===(e=this.props.activeButton)||void 0===e?void 0:e.isRequireSynapse;this.props.enableSave(!0,!0,o||c)})},this.getMappingData=()=>{let t=this.state.macroSet[this.state.selectedMacro],e=this.state.playBackSet[this.state.selectedPlayback].content;return{name:t.name,guid:t.guid,macroPlaybackOption:d.nV(e),repeatCount:e===r.i_6?this.state.playbackTimes:2}},this.saveMapping=()=>{console.log(\"saveMapping: macro\");let t=[],e=d.rq(this.props.activeButton,\"\".concat(u.pHV),this.props.isHyperShiftOn,!0);return e.macroGroup=this.getMappingData(),console.log(e),t.push(e),t},this.getTabInfo=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";try{const e=await v.A.getWindowServiceClients();return JSON.parse(e).find(e=>t===e.windowName)}catch(e){return null}},this.openMacro=async()=>{if(\"function\"!==typeof v.A.activateWindowServiceClient)return;await this.getTabInfo(\"macro\")?v.A.activateWindowServiceClient(\"\".concat(u.BDG)):(window.open(\"/synapse/macro/\",u.BDG,\"policy=3,tab_visible=1\"),setTimeout(()=>{v.A.activateWindowServiceClient(\"\".concat(u.BDG))},100))};let e=this.props.macroList;0===e.length&&e.push({name:\" \"});let a=f;e[0].macroPlaybackOption===u.CKm.SYNAPSE.SEQUENCE&&(a=g),e[0].macroPlaybackOption===u.CKm.SYNAPSE.PHASED&&(a=B),this.props.isGlobalShortcut&&(a=f.filter(t=>\"Queue\"!==t.id)),this.state={selectedMacro:0,selectedPlayback:0,playbackTimes:2,macroAvailable:this.props.macroAvailable,macroSet:e,playBackSet:a}}componentDidMount(){var t;this.props.activeButton&&this.setState({playBackSet:this.getPlayBackSet()}),this.assignDefaultValues(),this.props.setSaveMapRef(this.saveMapping);const e=this.props.macroList,a=this.state.selectedMacro;let i=(0,h.Xq)(e[a]);null!==(t=this.props.activeButton)&&void 0!==t&&t.isRequireSynapse&&(i=!0),this.props.enableSave((()=>{var t,e,i;const s=null===(t=this.props.activeButton)||void 0===t?void 0:t.assignmentValue,o=this.state.macroSet[a];return!(!o||m()(null===o||void 0===o||null===(e=o.name)||void 0===e?void 0:e.trim()))&&(!(null!==(i=this.props.activeButton)&&void 0!==i&&i.isMapped)||o.name!==s&&o.name.trim())})(),!1,i)}componentDidUpdate(t,e){if(t.activeButton!==this.props.activeButton&&void 0!==this.props.activeButton){var a;this.setState({playBackSet:this.getPlayBackSet()},()=>{this.assignDefaultValues()});const t=this.props.macroList,i=this.state.selectedMacro;let s=(0,h.Xq)(t[i]);null!==(a=this.props.activeButton)&&void 0!==a&&a.isRequireSynapse&&(s=!0),this.props.enableSave(this.state.selectedMacro!==e.selectedMacro,!1,s)}if(t.macroList!==this.props.macroList){let t=this.props.macroList.length<=this.state.selectedMacro?0:this.state.selectedMacro,e=[...this.props.macroList];0===e.length&&e.push({name:\" \"}),this.setState({macroSet:e,macroAvailable:this.props.macroAvailable,selectedMacro:t},()=>{void 0!==t?this.props.enableSave(this.state.macroAvailable,!1,(0,h.Xq)(e[t])):this.props.close()})}if(this.state.selectedMacro!==e.selectedMacro){var i,s;const t=this.state.selectedMacro;if(void 0===t)return;const e=this.props.macroList;this.props.enableSave(this.state.macroAvailable,!1,(0,h.Xq)(e[t])),(null===(i=e[this.state.selectedMacro])||void 0===i?void 0:i.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE?this.setState({playBackSet:g,selectedPlayback:0}):(null===(s=e[this.state.selectedMacro])||void 0===s?void 0:s.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED?this.setState({playBackSet:B,selectedPlayback:0}):this.setState({playBackSet:f})}const o=this.props.macroList[this.state.selectedMacro],c=t.macroList.find(t=>(null===t||void 0===t?void 0:t.guid)===(null===o||void 0===o?void 0:o.guid))||{};if((null===o||void 0===o?void 0:o.macroPlaybackOption)!==(null===c||void 0===c?void 0:c.macroPlaybackOption)&&((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.AX$.SYNAPSE.SEQUENCE?this.setState({playBackSet:g,selectedPlayback:0}):this.setState({playBackSet:f})),this.state.playBackSet===f&&e.playBackSet!==this.state.playBackSet){var l,n;if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.SEQUENCE)return void this.setState({playBackSet:g,selectedPlayback:0});if((null===o||void 0===o?void 0:o.macroPlaybackOption)===u.CKm.SYNAPSE.PHASED)return void this.setState({playBackSet:B,selectedPlayback:0});let t=f;this.props.activeButton&&[\"ScrollUp\",\"ScrollDown\"].includes(this.props.activeButton.inputID)&&(t=this.state.playBackSet.filter(t=>![\"TOGGLE_CONTINUOUS_PLAYBACK\",\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content)));(u.LL4.includes(null===(l=this.props.activeButton)||void 0===l?void 0:l.inputID)&&u.pVC.includes(null===(n=b.DeviceInfo)||void 0===n?void 0:n.productId)||this.props.isGlobalShortcut)&&(t=this.state.playBackSet.filter(t=>![\"PLAY_WHILE_KEY_PRESSED\"].includes(t.content))),this.setState({playBackSet:t})}}render(){return(0,y.jsxs)(\"div\",{children:[(0,y.jsx)(l.A,{dataSet:(0,h.eh)(this.state.macroSet,\"Name\",!0),value:this.state.selectedMacro,selectOption:this.changeMacro}),(0,y.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"5px\",opacity:\"\".concat(this.state.macroAvailable?\"1\":\"0.3\")},children:(0,y.jsx)(p.A,{text:r.Oih})}),(0,y.jsx)(l.A,{dataSet:this.state.playBackSet,value:this.state.selectedPlayback,selectOption:this.changePlayback,extraStyle:{zIndex:101},disable:!this.state.macroAvailable,extraClass:\"map-macro__playback-options\"}),1===this.state.selectedPlayback?(0,y.jsxs)(\"div\",{children:[(0,y.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"5px\"},children:(0,y.jsx)(p.A,{text:r.lAq})}),(0,y.jsx)(n.A,{value:this.state.playbackTimes,setParentState:this.changeTimes,active:!0,maxLength:2,maxValue:99,minValue:1,allowDecimals:!1,stepValue:1,extraClass:\"custom-keymapping-stepper\",allowLiveUpdate:!0})]}):null,this.state.macroAvailable?null:(0,y.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",marginBottom:\"20px\"},children:(0,y.jsx)(p.A,{text:r.iiW})}),this.props.isMacroInstalled&&(0,y.jsx)(\"div\",{style:{fontSize:\"14px\",color:\"#ccc\",lineHeight:\"17px\",textDecoration:\"underline\",marginBottom:\"20px\",cursor:\"pointer\"},onClick:this.openMacro,children:(0,y.jsx)(p.A,{text:r.jxF})})]})}}"
+      },
+      "routes": [
+        {
+          "path": ".ref/devices/653/static/js/3241.69d3018d.chunk.js",
+          "sha256": "6bfdf2f7c3273822e1ab40d93dc500850d74bc26632b438dbbe1e5c6c168ee77",
+          "offset": 16432,
+          "end": 16467,
+          "source": "()=>i.e(8997).then(i.bind(i,82508))"
+        }
+      ],
+      "name_sort": {
+        "sort": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 227162,
+          "end": 227534,
+          "source": "(e,t,n)=>{if(\"Date\"===t)return e.sort((e,t)=>n?e.date-t.date:t.date-e.date);if(\"Name\"===t){let t=[-1,1];n&&(t=[1,-1]),e.sort((e,a)=>{const E=(e.name||\"\").toLowerCase(),o=(a.name||\"\").toLowerCase();let i=_.indexOf(E[0]),s=_.indexOf(E[1]),I=_.indexOf(o[0]),T=_.indexOf(o[1]);return i===I?s===T||-1===s||-1===T?r(E,o,t):n?T-s:s-T:-1===i||-1===I?r(E,o,t):n?i-I:I-i})}return e}"
+        },
+        "rank": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 227075,
+          "end": 227128,
+          "source": "\"*!@_.()#^&%-=+01234567989abcdefghijklmnopqrstuvwxyz\""
+        },
+        "fallback": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 227131,
+          "end": 227159,
+          "source": "(e,t,n)=>e>t?n[0]:e<t?n[1]:0"
+        }
+      },
+      "exports": {
+        "29267/gJ": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 850045,
+          "end": 850273,
+          "source": "[{id:\"Once\",content:\"PLAY_ONCE\"},{id:\"NTimes\",content:\"PLAY_MULTIPLE_TIMES\"},{id:\"ContinuousToggle\",content:\"TOGGLE_CONTINUOUS_PLAYBACK\"},{id:\"ContinuousHeld\",content:\"PLAY_WHILE_KEY_PRESSED\"},{id:\"Queue\",content:\"MACRO_QUEUE\"}]",
+          "value": [
+            {
+              "id": "Once",
+              "content": "PLAY_ONCE"
+            },
+            {
+              "id": "NTimes",
+              "content": "PLAY_MULTIPLE_TIMES"
+            },
+            {
+              "id": "ContinuousToggle",
+              "content": "TOGGLE_CONTINUOUS_PLAYBACK"
+            },
+            {
+              "id": "ContinuousHeld",
+              "content": "PLAY_WHILE_KEY_PRESSED"
+            },
+            {
+              "id": "Queue",
+              "content": "MACRO_QUEUE"
+            }
+          ]
+        },
+        "29267/kL": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 850277,
+          "end": 850389,
+          "source": "[{id:\"Once\",content:\"PLAY_ONCE\"},{id:\"NTimes\",content:\"PLAY_MULTIPLE_TIMES\"},{id:\"Queue\",content:\"MACRO_QUEUE\"}]",
+          "value": [
+            {
+              "id": "Once",
+              "content": "PLAY_ONCE"
+            },
+            {
+              "id": "NTimes",
+              "content": "PLAY_MULTIPLE_TIMES"
+            },
+            {
+              "id": "Queue",
+              "content": "MACRO_QUEUE"
+            }
+          ]
+        },
+        "29267/cv": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 849957,
+          "end": 849999,
+          "source": "[{id:\"Sequence\",content:\"SEQUENCE_MACRO\"}]",
+          "value": [
+            {
+              "id": "Sequence",
+              "content": "SEQUENCE_MACRO"
+            }
+          ]
+        },
+        "29267/kJ": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 850003,
+          "end": 850041,
+          "source": "[{id:\"Phased\",content:\"PHASED_MACRO\"}]",
+          "value": [
+            {
+              "id": "Phased",
+              "content": "PHASED_MACRO"
+            }
+          ]
+        },
+        "29267/cJ": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 850393,
+          "end": 850418,
+          "source": "[\"ScrollUp\",\"ScrollDown\"]",
+          "value": [
+            "ScrollUp",
+            "ScrollDown"
+          ]
+        },
+        "69937/LL4": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 6435385,
+          "end": 6435398,
+          "source": "[\"DKM_SB_03\"]",
+          "value": [
+            "DKM_SB_03"
+          ]
+        },
+        "69937/pVC": {
+          "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+          "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+          "offset": 6435402,
+          "end": 6435407,
+          "source": "[222]",
+          "value": [
+            222
+          ]
+        }
+      },
+      "device_info": {
+        "path": ".ref/devices/653/static/js/main.7b71cce5.js",
+        "sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+        "single_profile_device": false
+      },
+      "css": [
+        {
+          "path": ".ref/devices/653/static/css/main.5425442a.css",
+          "sha256": "87289ab38f2c6ee8008c5e65c9e3ecc826ecf442665c46d0495548f97703e10a",
+          "rules": [
+            {
+              "offset": 114902,
+              "selector": ".key-config .stepper.custom-keymapping-stepper",
+              "conditions": [],
+              "declarations": "border:1px solid #5d5d5d",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 114974,
+              "selector": ".key-config .stepper.custom-keymapping-stepper:hover",
+              "conditions": [],
+              "declarations": "border:1px solid #44d62c",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #44d62c",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 115052,
+              "selector": ".key-config .stepper.custom-keymapping-stepper input",
+              "conditions": [],
+              "declarations": "text-align:left;text-align:initial;width:90%",
+              "properties": [
+                {
+                  "property": "text-align",
+                  "value": "left",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "initial",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "90%",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 119264,
+              "selector": ".map-macro__playback-options .s3-options",
+              "conditions": [],
+              "declarations": "width:100%",
+              "properties": [
+                {
+                  "property": "width",
+                  "value": "100%",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 477443,
+              "selector": ".key-config .stepper.custom-keymapping-stepper",
+              "conditions": [],
+              "declarations": "border:1px solid #5d5d5d!important",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #5d5d5d",
+                  "important": true
+                }
+              ]
+            },
+            {
+              "offset": 477525,
+              "selector": ".key-config .stepper.custom-keymapping-stepper:hover",
+              "conditions": [],
+              "declarations": "border:1px solid #44d62c!important",
+              "properties": [
+                {
+                  "property": "border",
+                  "value": "1px solid #44d62c",
+                  "important": true
+                }
+              ]
+            },
+            {
+              "offset": 477613,
+              "selector": ".key-config .stepper.custom-keymapping-stepper input",
+              "conditions": [],
+              "declarations": "background-color:initial",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "initial",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 477691,
+              "selector": ".key-config .stepper.custom-keymapping-stepper .icon.spinner",
+              "conditions": [],
+              "declarations": "opacity:1;visibility:visible;visibility:initial",
+              "properties": [
+                {
+                  "property": "opacity",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "visibility",
+                  "value": "initial",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "local_identity": "macro_id is a local MacroLibrary entry identity, never a native guid",
+  "source_limitations": [
+    "Component update uses stale indices and can lose restricted playback sets; local adaptation preserves document identity and reapplies current input eligibility.",
+    "The source AX$.SYNAPSE.SEQUENCE typo is not adopted; local MacroType chooses the independently verified final playback set."
+  ]
+}

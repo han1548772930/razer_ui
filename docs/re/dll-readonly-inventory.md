@@ -40,7 +40,9 @@
 
 `begin_local_session` 使旧 runtime 观察/遥测失效，保留本地 profile 与设备草稿。启动空存储或读取错误不填充固定已测设备。发现结果、字段结果、工作区身份和连接代际必须一致；过期结果不得覆盖新会话或本地编辑。
 
-父卡消费 `ReceiverDevicesObservation { connected, complete }`：partial 中已知在线设备仍可导航，partial 缺席是未知，complete 缺席才确认不在线。导航目标必须唯一且来自真实工作区，重复 PID/edition 不能去重后冒充唯一。具体 UI 见 [接收器当前契约](receiver-ui-current.md)。**接收器父卡后续单次 Bindings 查询向全局发现/新增产品工作区的增量发布仍未完成**；启动发现已有查询不能替代这条持续状态链，不能声称全部鼠标发现问题已解决。
+`discovery::project_receiver_query` 是启动及后续接收器查询共用的纯投影，返回 `ReceiverQueryProjection` 的 devices/errors 与独立 pairing_payload。它验证响应所属接收器及数量，将 raw PID/status 映射为同一真实容器的 ObservedDevice；真实路径的查询前后验证仍在 worker。未知/歧义身份保留 partial 错误及其他已知设备，重复归一身份不能选择最后一条覆盖。固件、edition、serial 和 ready 不在此查询中补造；[当前投影证据](receiver-query-projection-current-evidence.json)记录源条件及静态边界。
+
+父卡消费 `ReceiverDevicesObservation { connected, complete }`：partial 中已知在线设备仍可导航，partial 缺席是未知，complete 缺席才确认不在线。导航目标必须唯一且来自真实工作区，重复 PID/edition 不能去重后冒充唯一。179 后续 Bindings 查询已接入按 receiver container/物理 PID 限定的增量设备发布；Shell 核对 owner、entity、请求代际和 discovery revision，先由 feature 接受再发布。此路径不代表 164/241 增量接线、完整参数重读或全部鼠标发现已经完成；具体边界见 [接收器当前契约](receiver-ui-current.md)。
 
 ## 当前 wrapper 声明
 

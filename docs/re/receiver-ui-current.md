@@ -73,13 +73,21 @@ Indicator 编辑和保存属于本地草稿，不等于设备设置保存。打�
 
 PID 在线判断与绑定确认是不同条件：待确认转已确认仍要求绑定 payload 的 PID + edition 与实际设备精确匹配。缺 edition 的查询结果可以指向唯一实际页面，但不能借导航的 edition 补写 binding 元数据。断开或未知时保留既有的真实绑定显示。
 
-鼠标导航到 Performance，键盘导航到 Customize。读取到的从设备必须经当前官方目录映射、保留真实接收器 container 关联后，才能新增或更新产品工作区。启动发现已有接收器查询；父卡后续单次 Bindings 查询向全局发现/新增产品工作区的增量发布仍未完成，不能声称全部鼠标发现问题已解决。`34340/he/Ne → host` 的发布行为是静态依据，不能通过执行其 localStorage 写入流程来实现只读观察。
+鼠标导航到 Performance，键盘导航到 Customize。179 父卡/工具的后续 Bindings 查询已将当前目录映射后的真实从设备增量发布到产品工作区；保留接收器 container 和物理 PID，只替换该接收器的 peer 观察，不清空其他接口。此接线限于 179，不能扩称 164/241 或全部鼠标发现均完成。`34340/he/Ne → host` 的发布行为是静态依据，不执行其 localStorage 写入流程。
+
+Shell 在发起和返回时核对真实 owner、非 PREVIEW/DEMO、容器、物理 PID、工作区实体与身份；还核对请求代际和全局 discovery revision。关闭/取消、owner 失效或新发现使旧结果无效。先把 Bindings/读取失败交给 feature，只有 feature 接受才发布全局设备，避免连接更新触发新查询而使当前结果过期。
+
+成功空列表清除该接收器关联；查询失败使该范围的旧观察过期为未知，partial 身份错误保留已知 peer 并将缺席保持未知。真实导航只接受唯一、非样例的工作区；歧义不能借相同 PID/edition 绕过。增量新增工作区不会凭连接查询补造参数，也尚未自动衔接完整 Firmware/Battery 等字段重读；这些仍需各自读取生命周期。
 
 ## 查询与生命周期
 
 自动父卡查询必须满足：真实 USB/HID 连接观察、合法非零且带花括号的 UUID、非 PREVIEW/DEMO 身份、工作区激活、当前为 Customize。激活、连接观察和切页都重新判定；本地缓存身份不能单独启用读取。
 
 父卡与工具共用全局唯一请求代际。打开工具会暂停父卡请求/重试，关闭后只有符合读取条件才恢复。离开页面、停用或取消后，迟到响应不能覆盖当前状态。
+
+后端 `project_receiver_query(receiver_pid, container, &raw)` 将同一真实查询纯投影为设备观察和配对描述，启动发现也使用此入口。它核对查询名、VID/物理 PID、接口、report 长度、非零带括号容器及条目数量，并要求实际 path/instance 字段存在；真正的接口唯一性与查询前后身份校验仍由 native worker 执行。原始 Value 不被修改。
+
+投影保留同一接收器 container、physical_product_id、raw peer PID 与全部原始 status，不补 edition/layout/serial/profile/ready/telemetry。sentinel 与独立接收器自身行不生成设备；产品自己的 dongle PID 可按当前目录表示其无线设备。未知/歧义目录项或多个 raw PID 归一到同一产品时，保留错误及其他确定设备，不用插入顺序选状态。配对名称/类别转换失败与设备观察分开，不能把 partial 当成功空全量。源 AST、目录对照和回归源码见 [纯投影证据](receiver-query-projection-current-evidence.json)；`ye` 的存储写入/运行监听仍不执行。
 
 待确认且已确认在线时，最多安排 30 次延迟 1 秒的父卡重读；未知或离线不能维持此重试链。错误显示明确失败和 Retry，成功空数组清除绑定。源 `Te` 忽略空数组，本实现明确区分成功无绑定与读取失败，避免把旧绑定当作当前成功结果。
 
@@ -97,4 +105,4 @@ native 模块的 ABI、隔离 worker、严格报文验证与调用范围统一�
 
 `receiver_page_state_tests.rs` 覆盖部分发现保留在线导航、缺席未知与完整缺席离线、精确 edition 确认、重复 owner 歧义、有限重试、过期结果，以及实际父卡挂载。`receiver_pairing_state_tests.rs` 覆盖结果代际、操作种类、未发送意图、失败恢复和成功关闭。`source_workspace/tests.rs` 覆盖自动读取身份守卫。
 
-允许的验证为静态工具、资源/XML/JSON 校验、格式化及 `cargo check --locked --all-targets`。维护命令为 `audit-receiver-pairing-current.cjs --check`、`audit-receiver-current.cjs --check`、`audit-receiver-connect-events.cjs --check`、`audit-receiver-publishing-review.cjs --check`。本项目约束禁止运行应用、测试、下载 JavaScript、安装器或 DLL；测试源码仅编译。字体、焦点、命中、动画与 DPI 的运行视觉验收仍未完成，不能据静态通过声称实际读取运行成功或整个接收器完成。
+允许的验证为静态工具、资源/XML/JSON 校验、格式化及 `cargo check --locked --all-targets`。维护命令为 `audit-receiver-pairing-current.cjs --check`、`audit-receiver-current.cjs --check`、`audit-receiver-connect-events.cjs --check`、`audit-receiver-publishing-review.cjs --check`、`audit-receiver-query-projection.cjs --check`。纯投影与 Shell 范围替换另有独立回归源码，仅编译；本项目约束禁止运行应用、测试、下载 JavaScript、安装器或 DLL。字体、焦点、命中、动画与 DPI 的运行视觉验收仍未完成，不能据静态通过声称实际读取运行成功或整个接收器完成。

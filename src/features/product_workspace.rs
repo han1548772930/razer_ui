@@ -98,6 +98,18 @@ impl EventEmitter<super::ReceiverDeviceRequested> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    pub(crate) fn set_mapping_macro_library(
+        &mut self,
+        file: &super::macro_library::MacroLibraryFile,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.set_mapping_macro_library(file, window, cx)
+            });
+        }
+    }
     pub(crate) fn observe_read_values(
         &mut self,
         values: Option<crate::backend::device_reads::DeviceReadValues>,
@@ -129,11 +141,13 @@ impl ProductWorkspace {
         &mut self,
         observation: super::ReceiverPairingObservation,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.observe_receiver_pairing(observation, cx)
-            });
+            })
+        } else {
+            false
         }
     }
     pub(crate) fn observe_receiver_devices(
@@ -330,6 +344,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
                     WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
+                    WorkspaceEvent::OpenMacro => WorkspaceEvent::OpenMacro,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }
@@ -360,6 +375,7 @@ impl ProductWorkspace {
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
                     WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
+                    WorkspaceEvent::OpenMacro => WorkspaceEvent::OpenMacro,
                     WorkspaceEvent::PairingRequested(device) => {
                         WorkspaceEvent::PairingRequested(device.clone())
                     }

@@ -65,6 +65,8 @@ Key Binds 使用当前 `ProductWorkspace` 设备/配置实体与观察订阅。�
 
 当前 `macro_input_catalogs.json` 按能力选择 PhysicalGroups 或 PreparedKeyboardLayout，运行模块不按产品号硬编码分支。已核实的鼠标物理 groupList 保留 8 个输入和 LeftClick 禁用，770×340 图与锚点；已核实键盘按真实 layout/形状处理，未知 layout 不借另一产品目录。其余产品使用已有目录回退，不因此计作 174 个 macro 根逐项完成。专用播放表单保留轮滚限制、1–99 次数和默认 2；其他产品独有条件仍待审计。
 
+182/653 的通用 DeviceWorkspace 映射编辑器也已接共享本地宏库：选择普通/Sequence/Phased 宏、按输入限制播放方式、编辑 1–99 次数，经既有 Save/Cancel 保存本地 profile 映射。Shell 向新建工作区注入并广播同一宏库；删除目标保留失效 ID，不能静默换绑，重命名/类型观察不直接改写已存映射。其持久 `macro_id` 与此处 Key Binds 的会话关联分开，未建立两表双向同步，均不冒充服务 GUID。具体路由、交互与静态来源见 [映射编辑器](09-mapping-editor.md)。
+
 ## 剩余项
 
 - 长列表虚拟化、Phased 分组配对线、Le 200ms 虚线动画、200ms leading/trailing 选择/复制防抖。
@@ -90,6 +92,7 @@ Key Binds 使用当前 `ProductWorkspace` 设备/配置实体与观察订阅。�
 | 选择/行操作/Phased | [selection](macro-selection-current-evidence.json)、[row actions](macro-row-actions-current-evidence.json)、[phased](macro-phased-current-evidence.json) | `audit-macro-selection.cjs`、`audit-macro-row-actions.cjs`、`audit-macro-phased.cjs` |
 | 录制设置/事件/当前 host ABI | [options](macro-record-options-current-evidence.json)、[recording](macro-recording-current-evidence.json) | `audit-macro-record-options.cjs`、`audit-macro-recording-current.cjs` |
 | 绑定/能力输入目录 | [bindings](macro-bindings-current-evidence.json) | `audit-macro-bindings.cjs` |
+| 通用产品 Macro 映射 | [product mapping](product-macro-mapping-current-evidence.json) | `audit-product-macro-mapping.cjs` |
 | 嵌套/共享库/快捷键映射 | [shared contract](shortcuts-macro-current-contract.json)、[快捷键契约](shortcuts-macro-current-contract.md) | `audit-shortcuts-macro-contract.cjs` |
 | 应用窗口/语言/资源 | [app](macro-app-current-audit.json)、[chrome](macro-app-chrome-audit.json)、[UI extraction](macro-app-ui-audit.json)、[locale](macro-locale-source.json) | `audit-macro-app.cjs`、`audit-macro-app-chrome.cjs`、`extract-macro-locales.cjs`、`prepare-macro-assets.py` |
 

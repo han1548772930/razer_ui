@@ -28,6 +28,8 @@ pub enum WorkspaceEvent {
     OpenChroma,
     /// Open the independent Studio editor, not Chroma Dashboard.
     OpenStudio,
+    /// Open the shared local Macro editor without claiming service execution.
+    OpenMacro,
     PairingRequested(crate::model::Device),
     /// 164/241 配对页：源 `Es(peer, devices)` 命中应用设备列表时，配对文案里的设备名
     /// 渲染成 `.deviceNameLink` 可点链接，点击切到该设备的工作区（`z(e)`）。
@@ -89,6 +91,7 @@ pub struct DeviceWorkspace {
     mapping_recording: bool,
     mapping_modifiers_enabled: bool,
     mapping_optional_modifiers: Vec<String>,
+    mapping_macro: mapping_editor::MacroMappingState,
     mapping_focus: FocusHandle,
     mapping_return_focus: Option<FocusHandle>,
     workspace_focus: FocusHandle,
@@ -341,6 +344,7 @@ impl DeviceWorkspace {
             mapping_recording: false,
             mapping_modifiers_enabled: false,
             mapping_optional_modifiers: vec![],
+            mapping_macro: mapping_editor::MacroMappingState::new(window, cx),
             mapping_focus: cx.focus_handle().tab_stop(true),
             mapping_return_focus: None,
             workspace_focus: cx.focus_handle(),

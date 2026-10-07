@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "playback": {
+    "standard": [
+      {
+        "id": "Once",
+        "content": "PLAY_ONCE"
+      },
+      {
+        "id": "NTimes",
+        "content": "PLAY_MULTIPLE_TIMES"
+      },
+      {
+        "id": "ContinuousToggle",
+        "content": "TOGGLE_CONTINUOUS_PLAYBACK"
+      },
+      {
+        "id": "ContinuousHeld",
+        "content": "PLAY_WHILE_KEY_PRESSED"
+      },
+      {
+        "id": "Queue",
+        "content": "MACRO_QUEUE"
+      }
+    ],
+    "wheel": [
+      {
+        "id": "Once",
+        "content": "PLAY_ONCE"
+      },
+      {
+        "id": "NTimes",
+        "content": "PLAY_MULTIPLE_TIMES"
+      },
+      {
+        "id": "Queue",
+        "content": "MACRO_QUEUE"
+      }
+    ],
+    "sequence": [
+      {
+        "id": "Sequence",
+        "content": "SEQUENCE_MACRO"
+      }
+    ],
+    "phased": [
+      {
+        "id": "Phased",
+        "content": "PHASED_MACRO"
+      }
+    ]
+  },
+  "products": [
+    {
+      "product_id": 182,
+      "wheel_inputs": [
+        "ScrollUp",
+        "ScrollDown"
+      ],
+      "no_held_inputs": [],
+      "input_aliases": {
+        "CycleUpSensitivityStages": "DKM_SB_03"
+      }
+    },
+    {
+      "product_id": 653,
+      "wheel_inputs": [
+        "ScrollUp",
+        "ScrollDown"
+      ],
+      "no_held_inputs": [],
+      "input_aliases": {}
+    }
+  ]
+}

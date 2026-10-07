@@ -590,15 +590,21 @@ impl Render for StudioNumeric {
                     .test_support()
                     .flex()
                     .items_end()
-                    .when(self.field != NumericField::WavePause, |view| {
-                        view.mb(surface::css(10.))
-                    })
+                    .when(
+                        !matches!(
+                            self.field,
+                            NumericField::WavePause | NumericField::WaveAngle
+                        ),
+                        |view| view.mb(surface::css(10.)),
+                    )
                     .child(
                         div()
                             .flex()
                             .flex_col()
                             .flex_1()
-                            .child(div().mb(surface::css(6.)).child(title.clone()))
+                            .when(self.field != NumericField::WaveAngle, |view| {
+                                view.child(div().mb(surface::css(6.)).child(title.clone()))
+                            })
                             .child(
                                 div()
                                     .id(format!("studio-{}-input", self.field.id()))
@@ -687,21 +693,33 @@ impl Render for StudioNumeric {
                         )
                     }),
             )
-            .when(self.field != NumericField::WavePause, |view| {
-                view.child(
-                    super::super::studio_slider::StudioSlider::new(&self.slider, self.enabled)
-                        .label(title),
-                )
-            })
-            .when(self.field != NumericField::WavePause, |view| {
-                view.child(
-                    div()
-                        .flex()
-                        .justify_between()
-                        .mt(surface::css(3.))
-                        .child(min.to_string())
-                        .child(max.to_string()),
-                )
-            })
+            .when(
+                !matches!(
+                    self.field,
+                    NumericField::WavePause | NumericField::WaveAngle
+                ),
+                |view| {
+                    view.child(
+                        super::super::studio_slider::StudioSlider::new(&self.slider, self.enabled)
+                            .label(title),
+                    )
+                },
+            )
+            .when(
+                !matches!(
+                    self.field,
+                    NumericField::WavePause | NumericField::WaveAngle
+                ),
+                |view| {
+                    view.child(
+                        div()
+                            .flex()
+                            .justify_between()
+                            .mt(surface::css(3.))
+                            .child(min.to_string())
+                            .child(max.to_string()),
+                    )
+                },
+            )
     }
 }

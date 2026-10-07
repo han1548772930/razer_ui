@@ -11,6 +11,9 @@ use gpui_kit::component::slider::SliderState;
 #[path = "chroma_studio_numeric.rs"]
 mod numeric;
 use numeric::{NumericChanged, NumericField, NumericToggleChanged, StudioNumeric};
+#[path = "chroma_studio_angle.rs"]
+mod angle;
+use angle::{AngleChanged, StudioAngle};
 
 pub(super) struct StudioPropertiesChanged {
     pub(super) layer_id: u64,
@@ -113,6 +116,7 @@ pub(super) struct StudioProperties {
     colors: Option<[Entity<StudioColorDropdown>; 2]>,
     playback: Option<Entity<StudioPlayback>>,
     numeric: Option<[Entity<StudioNumeric>; 11]>,
+    angle: Option<Entity<StudioAngle>>,
     control_revision: u64,
     editor_subscriptions: Vec<Subscription>,
     window: Option<AnyWindowHandle>,
@@ -209,6 +213,7 @@ impl StudioProperties {
             colors: None,
             playback: None,
             numeric: None,
+            angle: None,
             control_revision: 0,
             editor_subscriptions: Vec::new(),
             window: None,
@@ -450,6 +455,13 @@ impl StudioProperties {
                         } else {
                             event.value
                         });
+                        if event.field == NumericField::WaveAngle {
+                            if let Some(angle) = &this.angle {
+                                angle.update(cx, |angle, cx| {
+                                    angle.edit_from_numeric(event.value, event.revision, cx);
+                                });
+                            }
+                        }
                         if this.params[event.field.field()] != value {
                             this.params[event.field.field()] = value;
                             this.publish(cx);
@@ -459,6 +471,33 @@ impl StudioProperties {
                 },
             ));
         }
+        let angle = cx.new(|cx| StudioAngle::new(numeric[6].clone(), window, cx));
+        self.editor_subscriptions.push(cx.subscribe(
+            &angle,
+            |this, _, event: &AngleChanged, cx| {
+                if !this.enabled()
+                    || event.revision != this.control_revision
+                    || !this
+                        .current
+                        .as_ref()
+                        .is_some_and(|(_, name)| name == "wave")
+                {
+                    return;
+                }
+                let changed = this.params["angle"].as_f64() != Some(event.value);
+                this.params["angle"] = event.value.into();
+                if changed {
+                    this.refresh_numeric(cx);
+                }
+                // Source HZ receives afterChange separately. With no engine provider,
+                // both paths update working parameters only; release still publishes.
+                if changed || event.after_change {
+                    this.publish(cx);
+                    cx.notify();
+                }
+            },
+        ));
+        self.angle = Some(angle);
         numeric[3].update(cx, |editor, _| editor.set_companion(numeric[5].clone()));
         for editor in [&numeric[4], &numeric[9]] {
             self.editor_subscriptions.push(cx.subscribe(
@@ -648,6 +687,7 @@ impl StudioProperties {
     }
 
     fn refresh_numeric(&self, cx: &mut Context<Self>) {
+        self.refresh_angle(cx);
         let (Some(editors), Some(handle)) = (self.numeric.clone(), self.window) else {
             return;
         };
@@ -703,6 +743,23 @@ impl StudioProperties {
                 }
             });
         });
+    }
+
+    fn refresh_angle(&self, cx: &mut Context<Self>) {
+        if let Some(angle) = &self.angle {
+            angle.update(cx, |angle, cx| {
+                angle.configure(
+                    self.params["angle"].as_f64().unwrap_or(0.),
+                    self.enabled()
+                        && self
+                            .current
+                            .as_ref()
+                            .is_some_and(|(_, name)| name == "wave"),
+                    self.control_revision,
+                    cx,
+                );
+            });
+        }
     }
 
     pub(super) fn reset(&mut self, cx: &mut Context<Self>) {
@@ -1080,11 +1137,7 @@ impl StudioProperties {
                             .mt(surface::css(10.))
                             .children(self.numeric.as_ref().map(|editors| editors[4].clone())),
                     )
-                    .child(
-                        div()
-                            .mt(surface::css(10.))
-                            .children(self.numeric.as_ref().map(|editors| editors[6].clone())),
-                    ),
+                    .child(div().mt(surface::css(10.)).children(self.angle.clone())),
             )
             .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
             .child(section().children(self.playback.clone()))
