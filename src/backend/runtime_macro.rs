@@ -22,8 +22,11 @@ static EVENTS: OnceLock<SyncSender<Value>> = OnceLock::new();
 static OVERFLOW: AtomicBool = AtomicBool::new(false);
 
 fn received_at_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default()
-        .as_millis().min(u64::MAX as u128) as u64
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
 }
 
 fn emit(value: Value) {
@@ -36,12 +39,16 @@ fn emit(value: Value) {
 }
 
 unsafe extern "C" fn started(mode: *const c_char, event_type: i32, time_tick: u64) {
-    emit(json!({"kind":"started", "mode":unsafe { copy_string(mode) },
-        "event_type":event_type, "time_tick":time_tick, "received_at_ms":received_at_ms()}));
+    emit(
+        json!({"kind":"started", "mode":unsafe { copy_string(mode) },
+        "event_type":event_type, "time_tick":time_tick, "received_at_ms":received_at_ms()}),
+    );
 }
 unsafe extern "C" fn stopped(mode: *const c_char, event_type: i32, time_tick: u64) {
-    emit(json!({"kind":"stopped", "mode":unsafe { copy_string(mode) },
-        "event_type":event_type, "time_tick":time_tick, "received_at_ms":received_at_ms()}));
+    emit(
+        json!({"kind":"stopped", "mode":unsafe { copy_string(mode) },
+        "event_type":event_type, "time_tick":time_tick, "received_at_ms":received_at_ms()}),
+    );
 }
 unsafe extern "C" fn item(event_type: i32, value: *const c_char, time_tick: u64) {
     let received_at_ms = received_at_ms();
@@ -68,7 +75,12 @@ impl Recorder {
     pub(super) fn new() -> Self {
         let (sender, events) = mpsc::sync_channel(4096);
         let _ = EVENTS.set(sender);
-        Self { events, registered:false, recording:false, mappings_suspended:false }
+        Self {
+            events,
+            registered: false,
+            recording: false,
+            mappings_suspended: false,
+        }
     }
 
     pub(super) fn events(&mut self) -> Value {
@@ -106,11 +118,15 @@ impl NativeRuntime {
     pub(super) fn start_macro_recording(&mut self) -> anyhow::Result<Value> {
         anyhow::ensure!(!self.macro_recorder.recording, "当前会话已有宏录制正在进行");
         self.mapping()?;
-        anyhow::ensure!(!self.macro_recorder.registered, "请结束当前录制会话后重新开始");
+        anyhow::ensure!(
+            !self.macro_recorder.registered,
+            "请结束当前录制会话后重新开始"
+        );
         let register: Operation = unsafe { self.mapping_symbol("registerMacroRecorderEvent")? };
         self.call(|| unsafe { register(callback2) })?;
         self.macro_recorder.registered = true;
-        let install: SetCallbacks = unsafe { self.mapping_symbol("setMacroRecorderEventCallback")? };
+        let install: SetCallbacks =
+            unsafe { self.mapping_symbol("setMacroRecorderEventCallback")? };
         self.call(|| unsafe { install(started, stopped, item, callback2) })?;
         let start: Start = unsafe { self.mapping_symbol("startMacroRecording")? };
         self.call(|| unsafe { start(c"kSoftware".as_ptr(), callback2) })?;
@@ -145,7 +161,8 @@ impl NativeRuntime {
         }
         if self.macro_recorder.registered && !self.poisoned {
             let result = (|| {
-                let unregister: Operation = unsafe { self.mapping_symbol("unregisterMacroRecorderEvent")? };
+                let unregister: Operation =
+                    unsafe { self.mapping_symbol("unregisterMacroRecorderEvent")? };
                 self.call(|| unsafe { unregister(callback2) })
             })();
             match result {

@@ -37,6 +37,12 @@ fn data() -> &'static Data {
 }
 
 impl AudioProductWorkspace {
+    pub(crate) fn pod_editor_dirty(&self, cx: &App) -> bool {
+        self.pod_audio_editor
+            .as_ref()
+            .is_some_and(|(_, editor)| editor.read(cx).changed)
+    }
+
     pub(crate) fn observe_pod_runtime_devices(
         &mut self,
         devices: Vec<RuntimeAudioDevice>,

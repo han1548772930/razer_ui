@@ -394,6 +394,7 @@ impl SettingsPage {
             )
     }
     fn synapse(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let startup = self.values.startup_draft.unwrap_or_default();
         h_flex()
             .items_start()
             .flex_wrap()
@@ -409,8 +410,15 @@ impl SettingsPage {
                                 .child(
                                     Checkbox::new("settings-auto-start")
                                         .label(i18n::t("START_SYNAPSE"))
-                                        .checked(false)
-                                        .disabled(true),
+                                        .checked(startup.auto_start)
+                                        .on_click(cx.listener(|this, checked, _, cx| {
+                                            let draft = this
+                                                .values
+                                                .startup_draft
+                                                .get_or_insert_with(Default::default);
+                                            draft.auto_start = *checked;
+                                            this.changed(cx);
+                                        })),
                                 )
                                 .child(
                                     v_flex()
@@ -444,9 +452,30 @@ impl SettingsPage {
                                         .child(
                                             Checkbox::new("settings-start-minimized")
                                                 .label(i18n::t("MINIMIZE_SYSTRAY"))
-                                                .checked(false)
-                                                .disabled(true),
+                                                .checked(startup.start_minimized)
+                                                .disabled(!startup.auto_start)
+                                                .on_click(cx.listener(|this, checked, _, cx| {
+                                                    if !this.values.startup_draft.unwrap_or_default().auto_start {
+                                                        return;
+                                                    }
+                                                    let draft = this
+                                                        .values
+                                                        .startup_draft
+                                                        .get_or_insert_with(Default::default);
+                                                    draft.start_minimized = *checked;
+                                                    this.changed(cx);
+                                                })),
                                         ),
+                                )
+                                .child(
+                                    div()
+                                        .id("settings-startup-local-note")
+                                        .test_support()
+                                        .mt(surface::css(10.))
+                                        .text_size(surface::css(12.))
+                                        .text_color(theme::SettingsColors::tree_note())
+                                        .aria_label("自动启动为本地设置草稿；系统状态未读取，尚未应用到宿主")
+                                        .child("自动启动为本地设置草稿；系统状态未读取，尚未应用到宿主"),
                                 ),
                         ),
                     )

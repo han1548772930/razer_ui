@@ -26,6 +26,13 @@ mod dpi_rows;
 #[path = "mouse_226_scroll.rs"]
 mod scroll_wheel;
 pub(crate) use scroll_wheel::ScrollWheelObservation;
+#[path = "mouse_226_polling.rs"]
+mod polling;
+pub(crate) use polling::{
+    MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
+};
+#[path = "mouse_226_properties.rs"]
+mod properties;
 
 #[derive(Deserialize)]
 pub(crate) struct MouseProductSpec {
@@ -158,6 +165,9 @@ pub(crate) struct MouseProductWorkspace {
     dpi_dragged_row: Option<usize>,
     draft_generation: u64,
     dpi_editing_observed: Option<bool>,
+    polling_state: polling::State,
+    polling_owner: Option<EntityId>,
+    properties_icon: Option<&'static str>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
     scroll: ScrollHandle,
@@ -184,6 +194,15 @@ impl MouseProductWorkspace {
             dpi_dragged_row: None,
             draft_generation: 0,
             dpi_editing_observed: None,
+            polling_state: polling::State::default(),
+            polling_owner: (product_id == 226).then_some(cx.entity_id()),
+            properties_icon: (product_id == 226).then(|| {
+                if crate::backend::system::is_windows_11() {
+                    "synapse/mouse-226-properties-win11.svg"
+                } else {
+                    "synapse/mouse-226-properties-legacy.svg"
+                }
+            }),
             subscriptions: Vec::new(),
             syncing: false,
             scroll: ScrollHandle::new(),
@@ -208,6 +227,7 @@ impl MouseProductWorkspace {
             ));
             this.scroll_editor = Some(editor);
             this.draft[scroll_wheel::LOCAL_FIELDS] = json!([]);
+            this.draft[polling::LOCAL_FIELDS] = json!([]);
         }
         this
     }
@@ -285,6 +305,7 @@ impl MouseProductWorkspace {
             );
         }
         self.mapping_input = None;
+        self.restore_polling(value);
         if let Some(editor) = &self.scroll_editor {
             editor.update(cx, |editor, cx| {
                 editor.restore(
@@ -882,7 +903,13 @@ impl MouseProductWorkspace {
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
         if matches!(self.spec.product_id, 70 | 226) {
-            let mut right = v_flex().gap_5().child(self.polling(cx));
+            let mut right = v_flex().gap_5();
+            if self.spec.product_id != 226 || self.polling_226_visible() {
+                right = right.child(self.polling(cx));
+            }
+            if self.spec.product_id == 226 {
+                right = right.child(self.mouse_properties(cx));
+            }
             if self.spec.performance_power {
                 right = right.child(self.power(cx));
             }
@@ -958,6 +985,9 @@ impl MouseProductWorkspace {
     }
 
     fn polling(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 226 {
+            return self.polling_226(cx);
+        }
         let path = self.spec.polling_path();
         let rates = self
             .spec

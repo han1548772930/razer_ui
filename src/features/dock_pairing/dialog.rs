@@ -20,6 +20,7 @@ pub(super) struct DockDialog {
 }
 pub(super) struct DockDialogClosed;
 impl EventEmitter<DockDialogClosed> for DockDialog {}
+impl EventEmitter<DockPairingEvent> for DockDialog {}
 impl DockDialog {
     pub(super) fn open(
         spec: &'static Spec,
@@ -55,6 +56,8 @@ impl DockDialog {
             return;
         }
         self.open = false;
+        let event = self.state.cancel();
+        cx.emit(event);
         self.last_request = None;
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
@@ -76,21 +79,54 @@ impl DockDialog {
             .find(|c| c.status == Status::ConfirmUnpair)
         {
             channel.status = Status::Paired;
+            let event = self.state.cancel();
+            cx.emit(event);
             cx.notify();
             return;
         }
         self.close(window, cx);
     }
     fn request(&mut self, kind: &str, payload: serde_json::Value, cx: &mut Context<Self>) -> bool {
-        if !self.preview {
-            self.alert = Some("配对服务暂不可用，请稍后重试。".into());
-            cx.notify();
+        self.alert = None;
+        self.last_request = Some((kind.into(), payload.clone()));
+        let event = self.state.request(kind, payload);
+        if self.preview {
+            // Explicit fixtures may show their requested progress immediately.
+            self.state.pending = None;
+        } else {
+            cx.emit(event);
+        }
+        cx.notify();
+        self.preview
+    }
+    pub(super) fn begin_read(&mut self, cx: &mut Context<Self>) {
+        self.request("DUALLINK_BIND_INFO", serde_json::json!({}), cx);
+    }
+    pub(super) fn observe_pairing(
+        &mut self,
+        observation: DockPairingObservation,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.open || self.preview {
             return false;
         }
-        self.alert = None;
-        self.last_request = Some((kind.into(), payload));
-        cx.notify();
-        true
+        let (changed, event, error) = self.state.observe(observation, self.spec.dual());
+        if changed {
+            self.alert = error;
+            if let Some(event) = event {
+                cx.emit(event);
+            }
+            cx.notify();
+        }
+        changed
+    }
+    fn discard_intent(&mut self, cx: &mut Context<Self>) {
+        if self.state.pending.is_some() {
+            let event = self.state.cancel();
+            self.last_request = None;
+            cx.emit(event);
+            cx.notify();
+        }
     }
     fn scan(&mut self, lane: Lane, cx: &mut Context<Self>) {
         if !self.state.modifiable(lane, self.spec.dual())
@@ -161,7 +197,8 @@ impl DockDialog {
         pending
     }
     fn bind(&mut self, peer: Peer, lane: Lane, cx: &mut Context<Self>) {
-        let payload = serde_json::json!({"mode":1,"device":{"productId":peer.product_id,"dongleId":peer.dongle_id,"category":peer.lane.key(),"editionId":peer.edition,"layoutId":peer.layout,"productName":{"en":peer.name}}});
+        let device = peer.payload.unwrap_or_else(|| serde_json::json!({"productId":peer.product_id,"dongleId":peer.dongle_id,"category":peer.lane.key(),"editionId":peer.edition,"layoutId":peer.layout,"productName":{"en":peer.name}}));
+        let payload = serde_json::json!({"mode":1,"device":device});
         if self.request("DUALLINK_BIND_DEVICE", payload, cx) {
             self.state.channel_mut(lane).status = Status::Pairing;
         }
@@ -185,6 +222,10 @@ impl DockDialog {
         let dual = self.spec.dual();
         let enabled = self.state.modifiable(lane, dual);
         let mut card = v_flex()
+            .id((ElementId::from("dock-pairing-channel"), lane.key()))
+            .test_support()
+            .role(Role::Group)
+            .aria_label(self.spec.text(lane.key()))
             .w(surface::css(if dual { 250. } else { 510. }))
             .h(surface::css(210.))
             .flex_shrink_0()
@@ -247,6 +288,8 @@ impl DockDialog {
                                     .on_click(cx.listener(
                                         move |this, _, _, cx| {
                                             this.state.channel_mut(lane).status = Status::Paired;
+                                            let event = this.state.cancel();
+                                            cx.emit(event);
                                             cx.notify();
                                         },
                                     )),
@@ -335,9 +378,7 @@ impl DockDialog {
                 .as_ref()
                 .filter(|_| status != Status::Unpairing)
             {
-                if let Some(path) =
-                    crate::resources::dashboard_image(peer.product_id, peer.edition, peer.layout)
-                {
+                if let Some(path) = peer_image(peer) {
                     image = image.child(
                         img(path)
                             .absolute()
@@ -488,6 +529,10 @@ impl DockDialog {
             .all(|c| c.status == Status::Loading)
         {
             return v_flex()
+                .id("dock-pairing-loading")
+                .test_support()
+                .role(Role::Status)
+                .aria_label(self.spec.text("LOADING"))
                 .min_h(surface::css(220.))
                 .items_center()
                 .justify_center()
@@ -497,9 +542,23 @@ impl DockDialog {
                         img(self.spec.asset("icon-progress_spinner")).size(surface::css(26.)),
                     )
                 })
+                .child(
+                    command(
+                        "dock-retry-loading",
+                        self.spec.text("RETRY"),
+                        false,
+                        false,
+                        cx,
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| this.begin_read(cx))),
+                )
                 .into_any_element();
         }
         let mut body = v_flex()
+            .id("dock-pairing-content")
+            .test_support()
+            .role(Role::Group)
+            .aria_label(self.spec.text("PAIRING_UTILITY"))
             .w_full()
             .min_h(surface::css(if dual { 0. } else { 685. }))
             .items_center()
@@ -714,7 +773,46 @@ impl DockDialog {
             );
         }
         body.when_some(self.alert.clone(), |v, a| {
-            v.child(surface::note(a, cx).mt(surface::css(20.)))
+            v.child(
+                h_flex()
+                    .mt(surface::css(20.))
+                    .gap(surface::css(10.))
+                    .child(surface::note(a, cx))
+                    .child(
+                        command("dock-retry-read", self.spec.text("RETRY"), false, false, cx)
+                            .on_click(cx.listener(|this, _, _, cx| this.begin_read(cx))),
+                    ),
+            )
+        })
+        .when_some(self.state.pending.as_ref(), |view, pending| {
+            let reading = pending.kind() == "DUALLINK_BIND_INFO";
+            let message = if reading {
+                "等待配对信息读取结果。"
+            } else {
+                "已准备配对操作请求，尚未发送到设备。"
+            };
+            view.child(
+                h_flex()
+                    .id("dock-local-intent")
+                    .test_support()
+                    .role(Role::Status)
+                    .aria_label(message)
+                    .mt(surface::css(20.))
+                    .gap(surface::css(10.))
+                    .child(message)
+                    .when(!reading, |row| {
+                        row.child(
+                            command(
+                                "dock-discard-intent",
+                                self.spec.text("CANCEL"),
+                                false,
+                                false,
+                                cx,
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| this.discard_intent(cx))),
+                        )
+                    }),
+            )
         })
         .into_any_element()
     }
@@ -727,6 +825,8 @@ impl Render for DockDialog {
         let height = (window.viewport_size().height - window.rem_size() * (100. / 16.)).max(px(0.));
         let panel = v_flex()
             .id("dock-pairing-modal")
+            .test_support()
+            .role(Role::Dialog)
             .occlude()
             .w(surface::css(850.))
             .max_w_full()

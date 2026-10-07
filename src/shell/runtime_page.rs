@@ -1,8 +1,8 @@
 //! Read-only connection UI. The actor owns the child process, including shutdown;
 //! no DLL, pipe operation, mutex wait or child destructor runs on the UI thread.
 use crate::{
-    backend::runtime::{ServiceClient, ServiceRequest},
     backend::discovery::{self, DiscoverySnapshot},
+    backend::runtime::{ServiceClient, ServiceRequest},
     ui::surface,
 };
 use gpui_kit::component::{
@@ -23,6 +23,7 @@ enum Command {
 #[derive(Default)]
 struct Readings {
     connected: bool,
+    usb: Option<Result<Value, String>>,
     hid: Option<Result<Value, String>>,
     version: Option<Result<Value, String>>,
     audio: Option<Result<Value, String>>,
@@ -36,26 +37,31 @@ impl EventEmitter<DiscoveryObserved> for RuntimePanel {}
 
 impl Readings {
     fn has_partial_results(&self) -> bool {
-        let required = if self.services_requested || self.version.is_some() || self.audio.is_some() {
-            vec![&self.hid, &self.version, &self.audio]
-        } else { vec![&self.hid] };
-        required
-            .iter()
-            .any(|result| !matches!(result, Some(Ok(_))))
+        let required = if self.services_requested || self.version.is_some() || self.audio.is_some()
+        {
+            vec![&self.usb, &self.hid, &self.version, &self.audio]
+        } else {
+            vec![&self.usb, &self.hid]
+        };
+        required.iter().any(|result| !matches!(result, Some(Ok(_))))
             || self.discovery.as_ref().is_some_and(|result| match result {
-                Ok(snapshot) => !snapshot.errors().is_empty(), Err(_) => true,
+                Ok(snapshot) => !snapshot.errors().is_empty(),
+                Err(_) => true,
             })
-            || self
-                .hid
-                .as_ref()
-                .and_then(|result| result.as_ref().ok())
-                .is_some_and(|value| {
-                    value.get("interfaces").and_then(Value::as_array).is_none()
-                        || value.get("complete") == Some(&Value::Bool(false))
-                        || value
-                            .get("failures")
-                            .and_then(Value::as_array)
-                            .is_some_and(|failures| !failures.is_empty())
+            || [(&self.usb, "devices"), (&self.hid, "interfaces")]
+                .iter()
+                .any(|(result, key)| {
+                    result
+                        .as_ref()
+                        .and_then(|result| result.as_ref().ok())
+                        .is_some_and(|value| {
+                            value.get(*key).and_then(Value::as_array).is_none()
+                                || value.get("complete") != Some(&Value::Bool(true))
+                                || value
+                                    .get("failures")
+                                    .and_then(Value::as_array)
+                                    .is_some_and(|failures| !failures.is_empty())
+                        })
                 })
     }
 
@@ -92,8 +98,9 @@ impl RuntimeBridge {
                                         let error = format!("{error:#}");
                                         Readings {
                                             connected: false,
+                                            usb: Some(Err(error.clone())),
                                             hid: Some(Err(error.clone())),
-                                            version: Some(Err(error.clone())),
+                                            version: services.then(|| Err(error.clone())),
                                             audio: services.then(|| Err(error.clone())),
                                             discovery: Some(Err(error)),
                                             services_requested: services,
@@ -134,7 +141,9 @@ impl RuntimeBridge {
             .send(Command::Refresh(services, reply))
             .map_err(|_| "服务连接已结束，请重新连接。".to_string())?;
         response
-            .recv_timeout(Duration::from_secs(55))
+            // Each worker request already has a deadline. A fixed aggregate
+            // timeout discarded valid results when several receivers existed.
+            .recv()
             .map_err(|error| format!("服务读取未完成：{error}"))
     }
 
@@ -150,17 +159,28 @@ impl RuntimeBridge {
 }
 
 fn read_services(client: &mut ServiceClient, services: bool) -> Readings {
-    // Read HID first so a vendor initialization error cannot hide a successful
-    // metadata enumeration. Every failure stays associated with its own query.
-    let hid = client.request(ServiceRequest::HidDevices).map_err(|error| format!("{error:#}"));
-    let discovery = match &hid {
-        Ok(hid) => discovery::discover(client, hid).map_err(|error| format!("{error:#}")),
-        Err(error) => Err(error.clone()),
-    };
-    let version = services.then(|| client.request(ServiceRequest::SimpleVersion).map_err(|error| format!("{error:#}")));
-    let audio = services.then(|| client.request(ServiceRequest::AudioDevices).map_err(|error| format!("{error:#}")));
+    // Enumerate physical USB and HID separately before vendor services. Neither
+    // enumeration's failure discards the other one's real observations.
+    let usb = client
+        .request(ServiceRequest::UsbDevices)
+        .map_err(|error| format!("{error:#}"));
+    let hid = client
+        .request(ServiceRequest::HidDevices)
+        .map_err(|error| format!("{error:#}"));
+    let discovery = discovery::discover(client, &usb, &hid).map_err(|error| format!("{error:#}"));
+    let version = services.then(|| {
+        client
+            .request(ServiceRequest::SimpleVersion)
+            .map_err(|error| format!("{error:#}"))
+    });
+    let audio = services.then(|| {
+        client
+            .request(ServiceRequest::AudioDevices)
+            .map_err(|error| format!("{error:#}"))
+    });
     Readings {
         connected: !client.is_stopped(),
+        usb: Some(usb),
         hid: Some(hid),
         version,
         audio,
@@ -257,7 +277,9 @@ impl RuntimePanel {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.finish_disconnect(result);
-                cx.emit(DiscoveryObserved(Err("服务连接已断开，此前设备观察已过期".into())));
+                cx.emit(DiscoveryObserved(Err(
+                    "服务连接已断开，此前设备观察已过期".into()
+                )));
                 cx.notify();
             });
         })
@@ -333,14 +355,26 @@ impl Render for RuntimePanel {
             .when_some(self.readings.hid.as_ref(), |this, result| {
                 this.child(hid_result(result, cx))
             })
+            .when_some(self.readings.usb.as_ref(), |this, result| {
+                this.child(usb_result(result, cx))
+            })
             .when_some(self.readings.discovery.as_ref(), |view, result| {
                 let label = match result {
-                    Ok(snapshot) => format!("识别到 {} 项产品接口或接收器关联；配置尚未读取。{}",
-                        snapshot.devices().len(), snapshot.errors().join("；")),
+                    Ok(snapshot) => format!(
+                        "识别到 {} 项产品接口或接收器关联；配置尚未读取。{}",
+                        snapshot.devices().len(),
+                        snapshot.errors().join("；")
+                    ),
                     Err(error) => format!("产品发现失败：{error}"),
                 };
-                view.child(div().id("runtime-discovery-status").test_support().role(Role::Status)
-                    .aria_label(label.clone()).child(label))
+                view.child(
+                    div()
+                        .id("runtime-discovery-status")
+                        .test_support()
+                        .role(Role::Status)
+                        .aria_label(label.clone())
+                        .child(label),
+                )
             })
             .when_some(self.readings.version.as_ref(), |this, result| {
                 this.child(reading("服务版本", result, cx))
@@ -365,7 +399,8 @@ impl Render for RuntimePanel {
                 .when(self.details, |this| {
                     this.children(
                         [
-                            ("设备接口", &self.readings.hid),
+                            ("USB 设备", &self.readings.usb),
+                            ("HID 接口", &self.readings.hid),
                             ("版本", &self.readings.version),
                             ("音频", &self.readings.audio),
                         ]
@@ -425,11 +460,17 @@ fn hid_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
         .get("failures")
         .and_then(Value::as_array)
         .map_or(0, Vec::len);
-    let incomplete = value.get("complete") == Some(&Value::Bool(false));
+    let incomplete = value.get("complete") != Some(&Value::Bool(true));
     let summary = if incomplete {
-        format!("部分接口读取完成：已读取到 {} 个 Razer 设备接口，枚举未完成。", interfaces.len())
+        format!(
+            "部分接口读取完成：已读取到 {} 个 Razer 设备接口，枚举未完成。",
+            interfaces.len()
+        )
     } else {
-        format!("读取到 {} 个 Razer 设备接口；同一设备可能包含多个接口。", interfaces.len())
+        format!(
+            "读取到 {} 个 Razer 设备接口；同一设备可能包含多个接口。",
+            interfaces.len()
+        )
     };
     v_flex()
         .gap_2()
@@ -463,7 +504,10 @@ fn hid_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
                 .map(|value| format!("{value:04X}"))
                 .unwrap_or_else(|| "未知".into());
             v_flex()
-                .id(SharedString::from(format!("runtime-hid-{}", item["path"].as_str().unwrap_or("missing-path"))))
+                .id(SharedString::from(format!(
+                    "runtime-hid-{}",
+                    item["path"].as_str().unwrap_or("missing-path")
+                )))
                 .test_support()
                 .role(Role::ListItem)
                 .aria_label(format!("{product} · USB {vid}:{pid} · {serial}"))
@@ -482,6 +526,38 @@ fn hid_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
                     .child(format!("另有 {failures} 项接口读取错误，详情可展开查看。")),
             )
         })
+        .into_any_element()
+}
+
+fn usb_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
+    let summary = match result {
+        Err(error) => format!("USB 设备枚举失败：{error}"),
+        Ok(value) => match value["devices"].as_array() {
+            None => "USB 设备响应格式无法识别。".into(),
+            Some(devices) => {
+                let count = devices
+                    .iter()
+                    .filter(|item| item["vendor_id"] == 5426)
+                    .count();
+                let failures = value["failures"].as_array().map_or(0, Vec::len);
+                let state = if value["complete"] == true {
+                    "枚举已结束"
+                } else {
+                    "枚举未完成"
+                };
+                format!(
+                    "发现 {count} 项 Razer USB 设备；{state}，{failures} 项读取错误。配置尚未读取。"
+                )
+            }
+        },
+    };
+    div()
+        .id("runtime-usb-summary")
+        .test_support()
+        .role(Role::Status)
+        .aria_label(summary.clone())
+        .when(result.is_err(), |this| this.text_color(cx.theme().danger))
+        .child(summary)
         .into_any_element()
 }
 
@@ -563,6 +639,7 @@ mod tests {
                 let mut panel = RuntimePanel::new();
                 panel.readings = Readings {
                     connected: true,
+                    usb: Some(Ok(json!({"devices":[{"vendor_id":5426,"product_id":3592}],"failures":[],"complete":true}))),
                     hid: Some(Ok(json!({"interfaces":[],"failures":[],"complete":false}))),
                     ..Readings::default()
                 };
@@ -586,6 +663,13 @@ mod tests {
                     .label()
                     .unwrap()
                     .contains("枚举未完成")
+            );
+            assert!(
+                window
+                    .find("runtime-usb-summary")
+                    .label()
+                    .unwrap()
+                    .contains("发现 1 项")
             );
             assert_eq!(window.find("runtime-disconnect").disabled(), Some(true));
         })

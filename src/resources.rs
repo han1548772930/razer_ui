@@ -17,6 +17,8 @@ const TRAY_ACCOUNT_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/tray-account-embedded.rs");
 const SETTINGS_WINDOW_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/settings-window-embedded.rs");
+const CHROMA_SETTINGS_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/chroma-settings-embedded.rs");
 const CHROMA_STUDIO_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/chroma-studio-embedded.rs");
 const CHROMA_STUDIO_COLOR_ASSETS: &[(&str, &[u8])] =
@@ -24,6 +26,12 @@ const CHROMA_STUDIO_COLOR_ASSETS: &[(&str, &[u8])] =
 const KITSUNE_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/kitsune-embedded.rs");
 const GAMEPAD_DIALOG_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/gamepad-2636-embedded.rs");
+const GAMEPAD_CALIBRATION_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/gamepad-2636-calibration-embedded.rs");
+const PROFILES_TRANSFER_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/profiles-transfer-embedded.rs");
+const MONITOR_INPUT_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/monitor-input-embedded.rs");
 const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/stream-mixer-embedded.rs");
 const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/snap-tap-embedded.rs");
@@ -48,10 +56,14 @@ impl AssetSource for SynapseAssets {
             .chain(AUDIO_OLED_SYSTEM_ASSETS)
             .chain(TRAY_ACCOUNT_ASSETS)
             .chain(SETTINGS_WINDOW_ASSETS)
+            .chain(CHROMA_SETTINGS_ASSETS)
             .chain(CHROMA_STUDIO_ASSETS)
             .chain(CHROMA_STUDIO_COLOR_ASSETS)
             .chain(KITSUNE_ASSETS)
             .chain(GAMEPAD_DIALOG_ASSETS)
+            .chain(GAMEPAD_CALIBRATION_ASSETS)
+            .chain(PROFILES_TRANSFER_ASSETS)
+            .chain(MONITOR_INPUT_ASSETS)
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
@@ -75,10 +87,14 @@ impl AssetSource for SynapseAssets {
                 .chain(AUDIO_OLED_SYSTEM_ASSETS)
                 .chain(TRAY_ACCOUNT_ASSETS)
                 .chain(SETTINGS_WINDOW_ASSETS)
+                .chain(CHROMA_SETTINGS_ASSETS)
                 .chain(CHROMA_STUDIO_ASSETS)
                 .chain(CHROMA_STUDIO_COLOR_ASSETS)
                 .chain(KITSUNE_ASSETS)
                 .chain(GAMEPAD_DIALOG_ASSETS)
+                .chain(GAMEPAD_CALIBRATION_ASSETS)
+                .chain(PROFILES_TRANSFER_ASSETS)
+                .chain(MONITOR_INPUT_ASSETS)
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)

@@ -4231,7 +4231,9 @@
       "source_sha256": "fd73937ad105c0288e60ba6e4fff09670cceae5e94f151fc0603b0d2f6111885",
       "output": "assets/synapse/receiver/uma-pairing.png",
       "sha256": "ca9dc03bf8992164959ea91310aff033f6e58e1ee383441c3fd859a750707fa1",
-      "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
+      "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize",
+      "width": 975,
+      "height": 750
     }
   ],
   "native": [
@@ -4241,15 +4243,15 @@
     },
     {
       "path": "src/features/source_controls/receiver_pairing_state.rs",
-      "sha256": "cf85ca851363a813ec99c469450a654d51f3bbc7d6c84a6a7512c6a71bc87786"
+      "sha256": "482da6c64a355357fbca20f180fec14babc4d27507e7b6344569dadb194a9ca9"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_view.rs",
-      "sha256": "f7c43ef11b86944e98025c3b7ffc7f2160bba5799fcbc2afe236ab6463edad56"
+      "sha256": "f5fe4c6e9490a4459ddc4d1d5bce8ab69a96751912dd917132397e1f3e7a2122"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_state_tests.rs",
-      "sha256": "d6f28927eda44adc36aedf243a78e39a7075926dc8d24bd0d9af88ce32f000c5"
+      "sha256": "2c1ec59c9472f659b398f7ca37b4705100e41e17bbfaf5f98538676da8199fb2"
     }
   ],
   "test_support_ids": [

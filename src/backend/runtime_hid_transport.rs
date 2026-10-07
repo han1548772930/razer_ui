@@ -104,7 +104,7 @@ pub(super) fn open(path: &str) -> anyhow::Result<Device<'static>> {
     // SAFETY: the worker validated this current SetupAPI path before calling;
     // a NUL-terminated string is passed to the verified C ABI.
     let raw = unsafe { (api.open)(c_path.as_ptr()) };
-    ensure!(!raw.is_null(), "?? HID ??????????");
+    ensure!(!raw.is_null(), "原生 HID 无法打开设备接口");
     Ok(Device { raw, api })
 }
 
@@ -112,7 +112,7 @@ impl Device<'_> {
     pub(super) fn send_feature(&self, report: &[u8]) -> anyhow::Result<usize> {
         // SAFETY: live opaque handle, valid immutable buffer and exact length.
         let count = unsafe { (self.api.send)(self.raw, report.as_ptr(), report.len()) };
-        ensure!(count >= 0, "?? HID ?? Feature ????? {count}?");
+        ensure!(count >= 0, "原生 HID 发送 Feature 查询失败（返回 {count}）");
         Ok(count as usize)
     }
 
@@ -120,7 +120,7 @@ impl Device<'_> {
         // SAFETY: live opaque handle, exclusive mutable buffer and exact length.
         // The pinned export returns actual transferred bytes plus ReportID.
         let count = unsafe { (self.api.get)(self.raw, report.as_mut_ptr(), report.len()) };
-        ensure!(count >= 0, "?? HID ?? Feature ????? {count}?");
+        ensure!(count >= 0, "原生 HID 读取 Feature 响应失败（返回 {count}）");
         Ok(count as usize)
     }
 

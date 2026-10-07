@@ -10,6 +10,68 @@ use super::{
     input_source_step, source_product, supports_page, valid_percent_draft,
 };
 
+// Compile-checked only; application/test execution is prohibited in this audit.
+#[gpui_kit::test]
+fn monitor_observations_clear_on_disconnect_and_do_not_enter_profiles(
+    cx: &mut gpui_kit::TestAppContext,
+) {
+    use gpui_kit::{AppContext, component::Root, px, size};
+    use serde_json::json;
+    cx.update(gpui_kit::init);
+    let mut view = None;
+    let handle = cx.open_window(size(px(1100.), px(800.)), |window, cx| {
+        let body = cx.new(|cx| super::AccessorySystemProductWorkspace::new(3880, window, cx));
+        view = Some(body.clone());
+        Root::new(body, window, cx)
+    });
+    let view = view.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        view.update(cx, |body, cx| {
+            let initial = body.snapshot();
+            assert!(body.supported_refresh_rates.is_empty());
+            assert_eq!(body.selected_refresh_rate, None);
+            body.set_monitor_runtime(
+                Some(&json!({
+                    "colorProfiles": ["Standard.icm", "Cinema.icm"],
+                    "selectedColorProfile": "C:/Color/Standard.icm",
+                    "supportedRefreshRate": [165, 60, 60],
+                    "selectedRefreshRate": 165,
+                    "uiRestraint": {"refreshRate": "Restricted"}
+                })),
+                window,
+                cx,
+            );
+            assert_eq!(body.supported_refresh_rates, vec![60, 165]);
+            assert_eq!(body.selected_refresh_rate, Some(165));
+            assert_eq!(body.selected_color_profile, "C:/Color/Standard.icm");
+            assert!(body.restricted("refreshRate"));
+            body.restore(
+                Some(&json!({"uiRestraint": {"refreshRate": ""}})),
+                window,
+                cx,
+            );
+            assert!(body.restricted("refreshRate"));
+            assert_eq!(body.restriction_reason("refreshRate"), Some("Restricted"));
+            // Current nSA/HSA FPS widgets do not consume refreshRate restraint.
+            assert!(body.allowed("/refeshRateCounter/isEnabled"));
+            body.pending_refresh_rate = Some(60);
+            body.pending_color_profile = Some("Cinema.icm".into());
+            assert_eq!(body.selected_refresh_rate, Some(165));
+            assert_eq!(body.snapshot(), initial);
+            body.set_monitor_runtime(None, window, cx);
+            assert!(body.color_profiles.is_empty());
+            assert!(body.selected_color_profile.is_empty());
+            assert!(body.supported_refresh_rates.is_empty());
+            assert_eq!(body.selected_refresh_rate, None);
+            assert_eq!(body.pending_refresh_rate, None);
+            assert_eq!(body.pending_color_profile, None);
+            assert!(!body.restricted("refreshRate"));
+            assert_eq!(body.snapshot(), initial);
+        });
+    })
+    .unwrap();
+}
+
 #[test]
 fn color_presets_match_the_gm_enum() {
     // `Object.entries(GM)` order, with the labels `KAA["SCARLETT_"+name]` resolves to.

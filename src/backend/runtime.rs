@@ -29,6 +29,8 @@ pub(crate) enum ServiceRequest {
     SimpleVersion,
     AudioDevices,
     HidDevices,
+    /// Physical USB devices, including products without a HID collection.
+    UsbDevices,
     /// Observe global input through the current mapping-engine recorder.
     /// These requests do not submit macros or mappings to a device.
     StartMacroRecording,

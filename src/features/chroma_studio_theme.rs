@@ -15,6 +15,9 @@ impl Colors {
     pub(super) fn spinner_hover() -> Hsla {
         rgba(0xffffff1a).into()
     }
+    pub(super) fn spinner_pressed() -> Hsla {
+        rgba(0x0000001a).into()
+    }
     pub(super) fn menu_hover() -> Hsla {
         rgb(0x1a1a1a).into()
     }

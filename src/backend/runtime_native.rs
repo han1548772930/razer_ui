@@ -19,6 +19,8 @@ mod hid;
 mod macro_recorder;
 #[path = "runtime_receiver.rs"]
 mod receiver;
+#[path = "runtime_usb.rs"]
+mod usb;
 
 // No userdata argument exists in these APIs. The worker permits one outstanding
 // call and terminates after a timeout, so a late callback cannot satisfy a later
@@ -215,14 +217,16 @@ impl NativeRuntime {
         }
         match request {
             ServiceRequest::HidDevices => hid::enumerate(),
+            ServiceRequest::UsbDevices => usb::enumerate(),
             ServiceRequest::StartMacroRecording => self.start_macro_recording(),
             ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
             ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),
             ServiceRequest::SuspendMacroMappings => self.suspend_macro_mappings(),
             ServiceRequest::ResumeMacroMappings => self.resume_macro_mappings(),
-            ServiceRequest::ReceiverWirelessStatus { path, device_container_id } => {
-                receiver::query(&path, &device_container_id)
-            }
+            ServiceRequest::ReceiverWirelessStatus {
+                path,
+                device_container_id,
+            } => receiver::query(&path, &device_container_id),
             ServiceRequest::SimpleVersion | ServiceRequest::AudioDevices => {
                 self.simple()?;
                 let symbol = if matches!(request, ServiceRequest::SimpleVersion) {

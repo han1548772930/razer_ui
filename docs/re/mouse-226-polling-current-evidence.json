@@ -1,0 +1,704 @@
+{
+  "product_id": 226,
+  "method": "Current AST/CSS and resource byte parsing only; UTF-16 half-open ranges",
+  "manifest": {
+    "path": ".ref/devices/226/asset-manifest.json",
+    "sha256": "d3112f2e93e99a6b12a514307f53918e944fee599c3ea92ae3cd0e2f9b11a5e2"
+  },
+  "config": {
+    "productId": 226,
+    "dongleId": 227,
+    "bleId": 228,
+    "supportBluetoothPollingRate": false,
+    "dualLinkPollingRateLimitHz": 1000
+  },
+  "receipts": [
+    {
+      "symbol": "wi",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 183668,
+      "end": 183979,
+      "source": "class wi extends m.Component{render(){const e=!this.props.isBle||!0===z.DeviceInfo.supportBluetoothPollingRate;return(0,w.jsxs)(Qe.A,{children:[(0,w.jsx)(et.A,{direction:\"left\",children:(0,w.jsx)(ys,{})}),(0,w.jsxs)(et.A,{direction:\"right\",children:[e&&(0,w.jsx)(Xs,{}),(0,w.jsx)(yi,{}),(0,w.jsx)(ei,{})]})]})}}"
+    },
+    {
+      "symbol": "Ri",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 183988,
+      "end": 183990,
+      "source": "wi"
+    },
+    {
+      "symbol": "zs",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157662,
+      "end": 165209,
+      "source": "class zs extends m.Component{constructor(e){var t;super(e),t=this,this.state={hyperPollingRateData:Gs,maxPollingRateHz:null,pollingRateLimitSource:null},this.isPollingRateBleSupported=()=>{var e,t;return null===(e=null===(t=z.DeviceInfo)||void 0===t?void 0:t.supportBluetoothPollingRate)||void 0===e||e},this.isPollingRateBleMode=()=>this.props.isBle&&this.isPollingRateBleSupported(),this.getPollingRateMode=()=>this.isPollingRateBleMode()?\"ble\":this.props.isDongle||this.props.isBle?\"wireless\":\"wired\",this.getPollingRateStateKey=()=>{const e=this.getPollingRateMode();return\"ble\"===e?\"pollingRateBle\":\"wireless\"===e?\"pollingRateWireless\":\"pollingRate\"},this.getSelectedPollingRate=()=>this.props[this.getPollingRateStateKey()],this.getSetPollingRateAction=()=>{const e=this.getPollingRateMode();return\"ble\"===e?this.props.setPollingRateBle:\"wireless\"===e?this.props.setPollingRateWireless:this.props.setPollingRate},this.getPollingRateData=()=>{const e=this.getPollingRateMode();return\"ble\"===e&&Ws?Ws:\"wireless\"===e&&Fs?Fs:Gs},this.getDualLinkDeviceList=()=>{try{const e=JSON.parse(localStorage.getItem(\"duallink-devices\")||\"{}\");return Object.values(e||{})}catch(e){return console.error(\"Failed to parse duallink-devices\",e),[]}},this.getDualLinkPollingRateLimitHz=()=>{var e;const t=Number(null===(e=z.DeviceInfo)||void 0===e?void 0:e.dualLinkPollingRateLimitHz);return Number.isFinite(t)&&t>0?t:null},this.isCurrentDevice=e=>{var t,s;const i=[null===(t=z.DeviceInfo)||void 0===t?void 0:t.productId,null===(s=z.DeviceInfo)||void 0===s?void 0:s.dongleId].filter(e=>void 0!==e&&null!==e),a=[null===e||void 0===e?void 0:e.productId,null===e||void 0===e?void 0:e.dongleId].filter(e=>void 0!==e&&null!==e);return i.some(e=>a.some(t=>String(e)===String(t)))},this.getCurrentDualLinkInfo=function(){return(arguments.length>0&&void 0!==arguments[0]?arguments[0]:t.getDualLinkDeviceList()).find(e=>{var s;const i=null!==(s=null===e||void 0===e?void 0:e.slave)&&void 0!==s?s:e,a=null===e||void 0===e?void 0:e.master;return t.isCurrentDevice(i)||t.isCurrentDevice(a)})},this.applyPollingRateLimit=(e,t)=>{const s=Fs||Gs;this.props.pollingRateWireless>e&&this.props.setPollingRateWireless(e),this.setState({hyperPollingRateData:s,maxPollingRateHz:e,pollingRateLimitSource:t})},this.applyMultiDeviceDockPollingCap=()=>{this.applyPollingRateLimit(1e3,$s)},this.applyDualLinkPollingCap=e=>{this.applyPollingRateLimit(e,Ys)},this.clearPollingRateLimit=()=>{null==this.state.maxPollingRateHz&&null==this.state.pollingRateLimitSource||this.setState({maxPollingRateHz:null,pollingRateLimitSource:null})},this.isPollingRateDisabledByLimit=e=>{const{maxPollingRateHz:t}=this.state;return null!=t&&Number(e)>t},this.handleDuallinkDevicesChange=()=>{const e=localStorage.getItem(\"duallink-devices\")||\"{}\";e!==this.lastDuallinkSnapshot&&(this.lastDuallinkSnapshot=e,this.checkAndUpdateHyperPollingRateList())},this.checkIfPairedWithHyperPollingDevice=function(){var e,s;let i=arguments.length>0&&void 0!==arguments[0]?arguments[0]:t.getDualLinkDeviceList();const a=t.getCurrentDualLinkInfo(i),n={isDuallink:!1,connectedToHyperPollingMasterDevice:!1};if(!a)return n;n.isDuallink=!0;const o=[T.zrS,T.WgN],r=!0===(null===(e=a.master)||void 0===e?void 0:e.supports8KHzPollingRate);return n.connectedToHyperPollingMasterDevice=o.includes(null===(s=a.master)||void 0===s?void 0:s.productId)||r,n},this.checkAndUpdateHyperPollingRateList=async()=>{var e;const t=this.getDualLinkDeviceList(),s=this.getCurrentDualLinkInfo(t),{isDuallink:i,connectedToHyperPollingMasterDevice:a}=this.checkIfPairedWithHyperPollingDevice(t);let n=!1;!0===(null===s||void 0===s||null===(e=s.master)||void 0===e?void 0:e.supports8KHzPollingRate)&&({shouldCapTo1K:n}=Ls(s,t,this.props.isDongle));const o=\"KEYBOARD\"===z.DeviceInfo.category,r=i&&a;if(n)return void this.applyMultiDeviceDockPollingCap();const l=this.getDualLinkPollingRateLimitHz();if(this.props.isDongle&&i&&!a&&null!=l)this.applyDualLinkPollingCap(l);else{if(this.clearPollingRateLimit(),o&&r)return this.setState({hyperPollingRateData:Zs}),void console.log(\"*** KB supports HyperPolling through DualLink\",this.state.hyperPollingRateData);if(ks&&(this.props.isDongle&&!i&&Hs||r&&this.props.isDongle)){await this.checkFor8KSupport()?this.setState({hyperPollingRateData:Bs}):this.setState({hyperPollingRateData:Zs})}}},this.checkFor8KSupport=async()=>{const e=await x.A.getWindowStorageItem(E.R9.DEVICE_RUNTIME_DATA).then(e=>{var t;const s=null!==(t=JSON.parse(e))&&void 0!==t?t:[];for(const i of s){const e=JSON.parse(i.value);if(z.DeviceInfo.productId===e.productId&&e.firmwareInfo)return e.firmwareInfo.currentFWVersion}});if(e){return!(0,N.U5)(ks,e)}return!1},this.onClickPollingRateButton=e=>{this.isPollingRateDisabledByLimit(e)||(\"KEYBOARD\"===z.DeviceInfo.category&&(0,Vs.rE)({rate:e}),\"GAMEPAD\"===z.DeviceInfo.category&&(0,Us.kr)({rate:e}),this.getSetPollingRateAction()(e))},this.checkActivePollingRateValue=e=>this.getSelectedPollingRate()===+e,this.lastDuallinkSnapshot=\"\"}componentDidMount(){this.setState({hyperPollingRateData:this.getPollingRateData()}),this.lastDuallinkSnapshot=localStorage.getItem(\"duallink-devices\")||\"{}\",this.checkAndUpdateHyperPollingRateList(),window.addEventListener(\"focus\",this.handleDuallinkDevicesChange),this.multiDeviceDockPollingInterval=setInterval(this.handleDuallinkDevicesChange,1500)}componentWillUnmount(){window.removeEventListener(\"focus\",this.handleDuallinkDevicesChange),clearInterval(this.multiDeviceDockPollingInterval)}componentDidUpdate(e){const{isDongle:t,isBle:s}=this.props;e.isDongle===t&&e.isBle===s||(this.setState({hyperPollingRateData:this.getPollingRateData()}),this.checkAndUpdateHyperPollingRateList())}render(){let e=this.state.hyperPollingRateData;this.props.supportColor&&(e=e.map(e=>({...e,color:T.v9s[parseInt(e.content)]})));const{category:t}=this.props,s=this.getSelectedPollingRate(),i=this.isPollingRateBleMode(),a=null!=this.state.maxPollingRateHz,n=this.state.pollingRateLimitSource===$s,o=\"KEYBOARD\"===z.DeviceInfo.category?O.Ngj:O.H_3,r=n?o:O.kcN;return(0,w.jsxs)(tt.A,{title:this.props.isDongle||this.props.isBle?O.FGZ:O.lGq,tips:this.props.supportButtonCombination?O.$Sb:this.props.isDongle||this.props.isBle?O.iiK:O.orU,children:[(0,w.jsx)(\"div\",{className:\"h1-body\",children:(0,w.jsx)(W.A,{text:\"GAMEPAD\"!==z.DeviceInfo.category?O.rJp:O.PDD})}),(0,w.jsx)(\"div\",{className:\"polling-btn-set\",children:(e||[]).map((s,i)=>(0,w.jsx)(Ps,{onClickPollingRateButton:this.onClickPollingRateButton,value:s,active:this.checkActivePollingRateValue(s.content)||1===e.length,disabled:this.isPollingRateDisabledByLimit(s.content),category:null!==t&&void 0!==t?t:\"\",configWidth:this.props.configWidth},i))}),i?(0,w.jsxs)(\"div\",{className:\"polling-ble-info\",children:[(0,w.jsx)(\"span\",{className:\"polling-ble-info-icon\",\"aria-hidden\":\"true\"}),(0,w.jsx)(W.A,{text:O.TIu})]}):null,a?(0,w.jsxs)(\"div\",{className:\"polling-dock-limit-info\",children:[(0,w.jsx)(\"span\",{className:\"polling-dock-limit-info-icon\",\"aria-hidden\":\"true\"}),(0,w.jsx)(W.A,{text:r})]}):null,(0,w.jsx)(\"div\",{className:\"polling-warn\",children:!a&&s>1e3?(0,w.jsxs)(\"div\",{children:[this.props.isDongle||this.props.isBle?(0,w.jsx)(W.A,{text:O.KOq}):(0,w.jsx)(W.A,{text:O.Vjf}),(0,w.jsxs)(Pt.A,{className:\"polling-learn-more\",href:\"https://www.razer.com/technology/razer-hyperpolling#best-practices-tips\",children:[(0,w.jsx)(W.A,{text:O.HkB}),(0,w.jsx)(\"div\",{className:\"external-link-icon\"})]})]}):\"\"}),this.props.supportInGamePollingRate?(0,w.jsx)(Ts,{devicePollingRate:e,category:t}):null]})}}"
+    },
+    {
+      "symbol": "Xs",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 165218,
+      "end": 165578,
+      "source": "(0,S.connect)(e=>({isDongle:e.deviceReducer.isDongle,isBle:e.deviceReducer.isBle,pollingRate:e.pollingRate.pollingRate,pollingRateWireless:e.pollingRate.pollingRateWireless,pollingRateBle:e.pollingRate.pollingRateBle,selectedProfile:e.profileReducer.profiles.find(t=>{let{guid:s}=t;return e.profileReducer.selectedProfileGuid===s})}),e=>(0,v.zH)({...r},e))(zs)"
+    },
+    {
+      "symbol": "Ps",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 155472,
+      "end": 155946,
+      "source": "e=>{let{active:t,value:s,category:i,onClickPollingRateButton:a,configWidth:n,disabled:o=!1}=e;return(0,w.jsxs)(\"div\",{className:`${\"KEYBOARD\"===i?\"customize-polling-rate-button keyboard-btn-size\":\"customize-polling-rate-button\"}  ${t?\"active\":\"\"} ${n?\"configWidth\":\"\"} ${o?\"disabled\":\"\"}`,onClick:()=>{t||o||a(parseInt(s.content))},children:[s.color&&(0,w.jsx)(\"span\",{style:{backgroundColor:s.color},className:\"customize-polling-rate-button-color\"}),parseInt(s.content)]})}"
+    },
+    {
+      "symbol": "js",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 156917,
+      "end": 157013,
+      "source": "e=>[null===e||void 0===e?void 0:e.productId,null===e||void 0===e?void 0:e.dongleId].filter(e=>e)"
+    },
+    {
+      "symbol": "Ls",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157017,
+      "end": 157399,
+      "source": "(e,t,s)=>{var i;if(!(!0===(null===e||void 0===e||null===(i=e.master)||void 0===i?void 0:i.supports8KHzPollingRate)))return{isMultiDeviceDock:!1,shouldCapTo1K:!1};const a=t.filter(t=>((e,t)=>{const s=null===e||void 0===e?void 0:e.master;if(!s||!t)return!1;const i=js(t),a=js(s);return i.some(e=>a.includes(e))})(t,e.master));return{isMultiDeviceDock:!0,shouldCapTo1K:s&&a.length>=2}}"
+    },
+    {
+      "symbol": "$s",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157630,
+      "end": 157647,
+      "source": "\"multiDeviceDock\""
+    },
+    {
+      "symbol": "Ys",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157651,
+      "end": 157661,
+      "source": "\"dualLink\""
+    },
+    {
+      "symbol": "polling configuration bindings",
+      "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "offset": 157431,
+      "end": 157626,
+      "source": "{POLLING_RATE_8K_FW_VERSION:ks,isDongleHyperpollingDevice:Hs,HYPER_POLLING_RATE_SUPPORT_8K:Bs,HYPER_POLLING_RATE:Zs,POLLING_RATE:Gs,POLLING_RATE_WIRELESS:Fs,POLLING_RATE_BLUETOOTH:Ws}=({}={...z})"
+    },
+    {
+      "symbol": "CONFIG",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 54515,
+      "end": 68130,
+      "source": "(e,t,n)=>{\"use strict\";n.r(t),n.d(t,{ACTIVEPROFILE:()=>h,BUTTON_LIST:()=>K,CHROMA_OBJECT:()=>P,DEFAULTMAPPINGS:()=>R,DEFAULTPROFILE:()=>M,DEFAULT_FIRMWARE_MAPPINGS:()=>g,DEVICE_NAME:()=>C,DEVICE_SUPPORTED_MATS:()=>B,DKMKEYS:()=>L,DeviceInfo:()=>f,EMPTY_GUID:()=>N,FIRMWARE_REPORT_IDS:()=>V,HYPER_POLLING_RATE:()=>H,HYPER_POLLING_RATE_SUPPORT_8K:()=>F,POLLING_RATE:()=>b,POLLING_RATE_BLUETOOTH:()=>W,POLLING_RATE_WIRELESS:()=>w,QUICK_EFFECTS:()=>D,SYNAPSE_NOT_REQUIRED_FUNCTIONS:()=>k,generateDefaultProfile:()=>Y,getDefaultAssignment:()=>G,getDefaultMapping:()=>m,getDefaultMappings:()=>y,getDefaultProfile:()=>v,useDongleId:()=>U});var i={};n.r(i),n.d(i,{manualCalibrationLiftMode:()=>l,manualCalibrationLiftToTrackTable:()=>u,manualCalibrationSurfaceDistanceTable:()=>d,manualCalibrationTrackToLiftScalingTable:()=>O,presetCalibrationLiftMode:()=>c,presetCalibrationLiftToTrackTable:()=>T,presetCalibrationSurfaceDistanceTable:()=>p,presetCalibrationTrackToLiftScalingTable:()=>I,smartTrackingLiftCutOffTable:()=>_,smartTrackingLiftHysteresTable:()=>E,smartTrackingLiftMode:()=>s});var o=n(4693),a=n(1867),r=n(9937);const s={0:1,1:2},_={1:0,2:1,3:2},E={1:0,2:1,3:2},c={0:3,1:4},l={0:5,1:6},p={1:new Uint8Array([52,48,3,8,10,5,15,15]),2:new Uint8Array([47,48,8,8,10,5,15,13]),3:new Uint8Array([42,48,11,8,11,5,15,10]),4:new Uint8Array([37,48,14,8,14,5,15,10]),5:new Uint8Array([32,48,17,8,17,5,15,10]),6:new Uint8Array([27,48,19,8,19,5,15,8]),7:new Uint8Array([22,56,23,8,23,0,14,8]),8:new Uint8Array([17,56,26,8,26,0,14,8]),9:new Uint8Array([12,56,29,8,29,0,14,8]),10:new Uint8Array([7,56,32,8,32,0,14,8])},T={1:new Uint8Array([47,48,3,10,15]),2:new Uint8Array([43,48,6,10,13]),3:new Uint8Array([39,48,9,10,10]),4:new Uint8Array([35,48,12,12,10]),5:new Uint8Array([31,48,15,15,10]),6:new Uint8Array([27,48,18,18,8]),7:new Uint8Array([23,56,21,21,8]),8:new Uint8Array([19,56,24,24,8]),9:new Uint8Array([15,56,27,27,8]),10:new Uint8Array([10,56,30,30,8])},I={1:new Uint8Array([47,48,3,136,10,5,15,15]),2:new Uint8Array([43,48,6,136,10,15,15,13]),3:new Uint8Array([39,48,9,136,10,15,15,10]),4:new Uint8Array([35,48,12,136,12,15,15,10]),5:new Uint8Array([31,48,15,136,15,15,15,10]),6:new Uint8Array([27,48,18,136,18,15,15,8]),7:new Uint8Array([23,56,21,136,21,0,14,8]),8:new Uint8Array([19,56,24,136,24,0,14,8]),9:new Uint8Array([15,56,27,136,27,0,14,8]),10:new Uint8Array([10,56,30,136,30,0,14,8])},A=e=>{switch(e){case 1:return 15;case 2:return 13;case 3:case 4:case 5:return 10;default:return 8}},d=(e,t,n)=>{let i=new Uint8Array(8);const o=(t-8)/10;var a=e-1,r=n+3*a;return i[0]=10===e&&t-a*o>10?10:t-a*o,i[1]=e>6?56:48,i[2]=r,i[3]=8,i[4]=r<10?10:r,i[5]=e>6?5:0,i[6]=e>6?15:14,i[7]=A(e),i},u=(e,t,n)=>{let i=new Uint8Array(5);const o=(t-8)/10;var a=e-1,r=n+3*a;return i[0]=10===e&&t-a*o>10?10:t-a*o,i[1]=e>6?56:48,i[2]=r,i[3]=r<10?10:r,i[4]=A(e),i},O=(e,t,n)=>{let i=new Uint8Array(8);const o=(t-8)/10;var a=e-1,r=n+3*a;return i[0]=10===e&&t-a*o>10?10:t-a*o,i[1]=e>6?56:48,i[2]=r,i[3]=8,i[4]=r<10?10:r,i[5]=1===e?5:e>6?0:15,i[6]=e>6?15:14,i[7]=A(e),i};var S=n(3254);const D=[{name:o.ncy,id:S.AoV.Audio_Meter_Effect},{name:o.xkP,id:S.AoV.Breathing_Effect},{name:o.ZKq,id:S.AoV.Fire_Effect},{name:o.ckz,id:S.AoV.Reactive_Effect},{name:o.k9y,id:S.AoV.Spectrum_Effect},{name:o.fYY,id:S.AoV.Starlight_Effect},{name:o.DU0,id:S.AoV.Static_Effect},{name:o.wrM,id:S.AoV.Wave_Effect}],C=\"Razer Basilisk V4 Pro\",N=\"00000000-0000-0000-0000-000000000000\",R=[{outputType:`${r.Ir9}`,isHyperShift:!1,inputType:\"MouseInput\",inputID:\"RepeatScrollLeft\",mouseGroup:{mouseAssignment:\"RepeatScrollUp\"}},{outputType:`${r.Ir9}`,isHyperShift:!1,inputType:\"MouseInput\",inputID:\"RepeatScrollRight\",mouseGroup:{mouseAssignment:\"RepeatScrollDown\"}},{outputType:`${r.cv$}`,isHyperShift:!1,inputType:\"DKMInput\",inputID:\"DKM_M_01\",sensitivityGroup:{sensitivityAssignment:\"DPI_Up\",independent:!1,x:800,y:800}},{outputType:`${r.cv$}`,isHyperShift:!1,inputType:\"DKMInput\",inputID:\"DKM_M_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Down\",independent:!1,x:800,y:800}},{outputType:`${r.cv$}`,isHyperShift:!1,inputType:\"DKMInput\",inputID:\"DKM_SB_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Clutch\",independent:!1,x:800,y:800}},{outputType:`${r.V_P}`,isHyperShift:!1,inputType:\"DKMInput\",inputID:\"DKM_SB_01\",profileNavigationGroup:{profileNavigationAssignment:\"CycleUp\"}},{outputType:`${r.cv$}`,isHyperShift:!0,inputType:\"DKMInput\",inputID:\"DKM_M_01\",sensitivityGroup:{sensitivityAssignment:\"DPI_Up\",independent:!1,x:800,y:800}},{outputType:`${r.cv$}`,isHyperShift:!0,inputType:\"DKMInput\",inputID:\"DKM_M_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Down\",independent:!1,x:800,y:800}},{outputType:`${r.cv$}`,isHyperShift:!0,inputType:\"DKMInput\",inputID:\"DKM_SB_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Clutch\",independent:!1,x:800,y:800}},{outputType:`${r.V_P}`,isHyperShift:!0,inputType:\"DKMInput\",inputID:\"DKM_SB_01\",profileNavigationGroup:{profileNavigationAssignment:\"CycleUp\"}}],y=()=>[...R],L=[{inputID:\"DKM_M_01\",buttonKey:\"SensitivityStageUp\",key:32},{inputID:\"DKM_M_02\",buttonKey:\"SensitivityStageDown\",key:33},{inputID:\"DKM_SB_01\",buttonKey:\"CycleUpProfile\",key:80},{inputID:\"DKM_SB_02\",buttonKey:\"SensitivityClutch\",key:81}],g=[],M={guid:\"\",name:\" \",dpi:{x:1800,y:1800},brightness:{isEnabled:!0,value:70},switchOffLighting:{isDisplayOn:!1,isIdleEnabled:!1,idleMinutes:1},scrollWheel:{accelerationEnabled:!1,accelerationLevel:0,smartReelEnabled:!1,smartReelLevel:0,scrollMode:\"FreeSpin\",disabledModes:[]},dynamicSensitivity:{state:0,mode:0,customSensorAccelerations:[],points:[],templateId:0},rotation:{isEnabled:!0,value:0},quickEffects:{selectedEffectId:3},ledPowerSettings:{idleState:1,ileStateValue:60},powerSavingValue:7,lowBatteryEffects:5,mappings:[],dpiStages:{stages:[{x:400,y:400,independent:!1,visible:!0},{x:800,y:800,independent:!1,visible:!0},{x:1600,y:1600,independent:!1,visible:!0},{x:3200,y:3200,independent:!1,visible:!0},{x:6400,y:6400,independent:!1,visible:!0}],active:2,enable:!0,count:5},pollingRate:1e3,pollingRateWireless:1e3,pollingRateBle:133},f={deviceName:C,productId:226,dongleId:227,bleId:228,vendorId:5426,masterGuideURL:\"https://dl.razer.com/master-guides/RazerSynapse4/BASILISKV4PRO-00000226-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/21064\",minDPI:100,maxDPI:5e4,dpiStep:1,supportXYDPI:!0,supportBluetoothPollingRate:!1,sensorData:i,category:\"MOUSE\",supportBatteryStateEvent:!0,WAVE_DIRECTION:\"CWCCW\",isOBMDevice:!0,extendSupportMappings:{mouseGroup:[\"RepeatScrollLeft\",\"RepeatScrollRight\",\"RepeatScrollUp\",\"RepeatScrollDown\"]},OBMSlots:4,OBMSpecs:{hasHardwareProfileSwitch:!0,noFirmwareInputId:[],supportedFeature:{brightness:!0,dpi:!0,pollingRate:!1},supportedMappings:{disableGroup:!0,hyperShiftGroup:!0,keyboardGroup:!0,mouseGroup:[\"RepeatScrollLeft\",\"RepeatScrollRight\",\"RepeatScrollUp\",\"RepeatScrollDown\",\"ScrollUp\",\"ScrollDown\"],macroGroup:!0,multimediaGroup:!0,sensitivityGroup:[\"DPI_Clutch\",\"DPI_CycleUp\",\"DPI_CycleDown\",\"DPI_Up\",\"DPI_Down\"]}},isWDLSupported:!0,supportScrollModeToggle:!0,isSensitivitySliderWithGrid:!0,supportPerfect180:!0,allowTurboOnCycleUpSensitivityStages:!0,dualLinkPollingRateLimitHz:1e3,useProductDongleImg:!0},P={category:f.category.toLowerCase(),vendorId:f.vendorId},h=\"1\",v=()=>{let e=JSON.parse(JSON.stringify(M));return e.name=C+\"-Default\",e.guid=a.gZ(),e},m=e=>({isHyperShift:e.isHyperShift}),U=!0,G=e=>{if(e.startsWith(\"Sensitivity\"))return\"SENSITIVITY\";switch(e){case\"CycleUpSensitivityStages\":return\"SENSITIVITY\";case\"CycleUpProfile\":return\"SWITCH PROFILE\";default:return\"MOUSE\"}},b=[{content:\"125\"},{content:\"500\"},{content:\"1000\"},{content:\"2000\"},{content:\"4000\"},{content:\"8000\"}],w=[{content:\"125\"},{content:\"500\"},{content:\"1000\"},{content:\"2000\"},{content:\"4000\"},{content:\"8000\"}],W=[{content:\"133\"},{content:\"500\"},{content:\"1000\"},{content:\"2000\"},{content:\"2667\"}],H=[{content:\"125\"},{content:\"500\"},{content:\"1000\"},{content:\"2000\"},{content:\"4000\"}],F=[{content:\"125\"},{content:\"500\"},{content:\"1000\"},{content:\"2000\"},{content:\"4000\"},{content:\"8000\"}],B=[{id:\"Acari\"},{id:\"Destructor2\"},{id:\"Firefly_Hard\"},{id:\"Firefly_Cloth\"},{id:\"FireflyV2\"},{id:\"Gigantus\"},{id:\"GigantusV2\"},{id:\"Goliathus_Chroma\"},{id:\"Goliathus_Mobile\"},{id:\"Goliathus_Control\"},{id:\"Goliathus_Speed\"},{id:\"Invicta_Speed\"},{id:\"Invicta_Control\"},{id:\"Kabuto\"},{id:\"Manticor\"},{id:\"Megasoma2\"},{id:\"Sphex\"},{id:\"SphexV2\"},{id:\"Vespula_Speed\"},{id:\"Vespula_Control\"},{id:\"VespulaV2_Cloth\"},{id:\"VespulaV2_Hard\"},{id:\"Custom\"}],V={4:\"razerKeyReportID\",5:\"hardwareEventReportID\"},Y=e=>{const t=a.gZ(),n=window.computerName?`${window.computerName}-Default`:\"Default\";return{version:1,vendorId:5426,productId:e,editionId:0,category:\"MOUSE\",name:\"Razer Basilisk V4 Pro\",reportIDs:{4:\"razerKeyReportID\",5:\"hardwareEventReportID\"},profiles:[{...M,guid:t,name:n}],activeProfile:t,powerSavingValue:7,lowPowerMode:30,calibration:{calibrationTrackingMode:!1,smartTracking:{isAsymmetric:!1,trackingDistance:3,liftOffDistance:13,landingDistance:12},surfaceTracking:{isAsymmetric:!1,surfaceDistance:5,liftOffDistance:5,landingDistance:3},profiles:[],selectedProfile:{type:\"default\"}}}},K=[{inputID:\"LeftClick\",inputType:\"MouseInput\",mouseInput:\"LeftClick\",mouseGroup:{mouseAssignment:\"Click\"},outputType:\"mouseGroup\"},{inputID:\"RightClick\",inputType:\"MouseInput\",mouseInput:\"RightClick\",mouseGroup:{mouseAssignment:\"Menu\"},outputType:\"mouseGroup\"},{inputID:\"ScrollButton\",inputType:\"MouseInput\",mouseInput:\"ScrollButton\",mouseGroup:{mouseAssignment:\"ScrollClick\"},outputType:\"mouseGroup\"},{inputID:\"DKM_M_01\",inputType:\"DKMInput\",dkmInput:\"DKM_M_01\",sensitivityGroup:{sensitivityAssignment:\"DPI_Up\"},outputType:\"sensitivityGroup\"},{inputID:\"DKM_M_02\",inputType:\"DKMInput\",dkmInput:\"DKM_M_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Down\"},outputType:\"sensitivityGroup\"},{inputID:\"ScrollUp\",inputType:\"MouseInput\",mouseInput:\"ScrollUp\",mouseGroup:{mouseAssignment:\"ScrollUp\"},outputType:\"mouseGroup\"},{inputID:\"ScrollDown\",inputType:\"MouseInput\",mouseInput:\"ScrollDown\",mouseGroup:{mouseAssignment:\"ScrollDown\"},outputType:\"mouseGroup\"},{inputID:\"Button4\",inputType:\"MouseInput\",mouseInput:\"Button4\",mouseGroup:{mouseAssignment:\"Previous\"},outputType:\"mouseGroup\"},{inputID:\"Button5\",inputType:\"MouseInput\",mouseInput:\"Button5\",mouseGroup:{mouseAssignment:\"Next\"},outputType:\"mouseGroup\"},{inputID:\"ScrollLeft\",inputType:\"MouseInput\",mouseInput:\"ScrollLeft\",mouseGroup:{mouseAssignment:\"ScrollLeft\",turboMode:{isTurbo:!0,keysPerSecond:7}},outputType:\"mouseGroup\"},{inputID:\"ScrollRight\",inputType:\"MouseInput\",mouseInput:\"ScrollRight\",mouseGroup:{mouseAssignment:\"ScrollRight\",turboMode:{isTurbo:!0,keysPerSecond:7}},outputType:\"mouseGroup\"},{inputID:\"DKM_SB_01\",inputType:\"DKMInput\",dkmInput:\"DKM_SB_01\",sensitivityGroup:{profileNavigationAssignment:\"CycleUp\"},outputType:\"profileNavigationGroup\"},{inputID:\"DKM_SB_02\",inputType:\"DKMInput\",dkmInput:\"DKM_SB_02\",profileNavigationGroup:{sensitivityAssignment:\"DPI_Clutch\"},outputType:\"sensitivityGroup\"},{inputID:\"LeftClick\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"LeftClick\",mouseGroup:{mouseAssignment:\"Click\"},outputType:\"mouseGroup\"},{inputID:\"RightClick\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"RightClick\",mouseGroup:{mouseAssignment:\"Menu\"},outputType:\"mouseGroup\"},{inputID:\"ScrollButton\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"ScrollButton\",mouseGroup:{mouseAssignment:\"ScrollClick\"},outputType:\"mouseGroup\"},{inputID:\"DKM_M_01\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_M_01\",sensitivityGroup:{sensitivityAssignment:\"DPI_Up\"},outputType:\"sensitivityGroup\"},{inputID:\"DKM_M_02\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_M_02\",sensitivityGroup:{sensitivityAssignment:\"DPI_Down\"},outputType:\"sensitivityGroup\"},{inputID:\"ScrollUp\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"ScrollUp\",mouseGroup:{mouseAssignment:\"ScrollUp\"},outputType:\"mouseGroup\"},{inputID:\"ScrollDown\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"ScrollDown\",mouseGroup:{mouseAssignment:\"ScrollDown\"},outputType:\"mouseGroup\"},{inputID:\"DKM_M_03\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_M_03\",mouseGroup:{mouseAssignment:\"Previous\"},outputType:\"mouseGroup\"},{inputID:\"DKM_M_04\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_M_04\",mouseGroup:{mouseAssignment:\"Next\"},outputType:\"mouseGroup\"},{inputID:\"Button4\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"Button4\",mouseGroup:{mouseAssignment:\"Previous\"},outputType:\"mouseGroup\"},{inputID:\"Button5\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"Button5\",mouseGroup:{mouseAssignment:\"Next\"},outputType:\"mouseGroup\"},{inputID:\"ScrollLeft\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"ScrollLeft\",mouseGroup:{mouseAssignment:\"ScrollDown\",turboMode:{isTurbo:!0,keysPerSecond:7}},outputType:\"mouseGroup\"},{inputID:\"ScrollRight\",inputType:\"MouseInput\",isHyperShift:!0,mouseInput:\"ScrollRight\",mouseGroup:{mouseAssignment:\"ScrollUp\",turboMode:{isTurbo:!0,keysPerSecond:7}},outputType:\"mouseGroup\"},{inputID:\"DKM_SB_01\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_SB_01\",profileNavigationGroup:{profileNavigationAssignment:\"CycleUp\"},outputType:\"profileNavigationGroup\"},{inputID:\"DKM_SB_02\",inputType:\"DKMInput\",isHyperShift:!0,dkmInput:\"DKM_SB_02\",profileNavigationGroup:{sensitivityAssignment:\"DPI_Clutch\"},outputType:\"sensitivityGroup\"}],k=[\"SENSITIVITY_CLUTCH\",\"SENSITIVITY_STAGE_UP\",\"SENSITIVITY_STAGE_DOWN\",\"CYCLE_DOWN_SENSITIVITY\",\"CYCLE_UP_SENSITIVITY\",\"REPEAT_SCROLL_UP\",\"REPEAT_SCROLL_DOWN\",\"REPEAT_SCROLL_LEFT\",\"REPEAT_SCROLL_RIGHT\",\"SCROLL_UP\",\"SCROLL_DOWN\"]}"
+    },
+    {
+      "symbol": "label:FGZ",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272263,
+      "end": 272284,
+      "source": "\"POLLING_RATE_HEADER\""
+    },
+    {
+      "symbol": "label:lGq",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272288,
+      "end": 272315,
+      "source": "\"WIRED_POLLING_RATE_HEADER\""
+    },
+    {
+      "symbol": "label:iiK",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272599,
+      "end": 272624,
+      "source": "\"POLLING_RATE_V2_TOOLTIP\""
+    },
+    {
+      "symbol": "label:orU",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272628,
+      "end": 272659,
+      "source": "\"WIRED_POLLING_RATE_V2_TOOLTIP\""
+    },
+    {
+      "symbol": "label:rJp",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272319,
+      "end": 272338,
+      "source": "\"POLLING_RATE_DESC\""
+    },
+    {
+      "symbol": "label:H_3",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272460,
+      "end": 272506,
+      "source": "\"POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE\""
+    },
+    {
+      "symbol": "label:kcN",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272563,
+      "end": 272595,
+      "source": "\"POLLING_RATE_DUAL_LINK_LIMITED\""
+    },
+    {
+      "symbol": "label:KOq",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272371,
+      "end": 272390,
+      "source": "\"POLLING_RATE_WARN\""
+    },
+    {
+      "symbol": "label:Vjf",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 272394,
+      "end": 272423,
+      "source": "\"POLLING_RATE_WARN_NOBATTERY\""
+    },
+    {
+      "symbol": "label:HkB",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 270279,
+      "end": 270291,
+      "source": "\"LEARN_MORE\""
+    },
+    {
+      "symbol": "deviceReducer defaults",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 144484,
+      "end": 145556,
+      "source": "S={productId:null===I||void 0===I||null===(s=I.DeviceInfo)||void 0===s?void 0:s.productId,category:null===I||void 0===I||null===(_=I.DeviceInfo)||void 0===_?void 0:_.category,subCategory:null===I||void 0===I||null===(E=I.DeviceInfo)||void 0===E?void 0:E.subCategory,masterGuide:null===I||void 0===I||null===(c=I.DeviceInfo)||void 0===c?void 0:c.masterGuideURL,supportPage:null===I||void 0===I||null===(l=I.DeviceInfo)||void 0===l?void 0:l.supportPage,productName:{en:\"\",\"zh-cn\":\"\"},deviceName:{en:\"\",\"zh-cn\":\"\"},editionId:0,layoutId:0,sidepadLayout:3,sidepadConnected:!1,serialNumber:\"\",wristrestConnected:!1,externalPowerConnected:!1,isBle:!1,isDongle:!1,isHyperPollingPaired:!1,isInHighSpeedPollingRate:!1,currentFWVersion:null,firmwareDetails:null,newFWVersion:null,currentBIOSVersion:null,currentECVersion:null,currentVBIOSVersion:null,newBIOSVersion:null,newECVersion:null,newVBIOSVersion:null,pairedInfo:[],isDualLinkWarning:!1,cancelPairing:!1,continuePairing:!1,isWindowsMode:!0,vendorId:null===I||void 0===I||null===(p=I.DeviceInfo)||void 0===p?void 0:p.vendorId}"
+    },
+    {
+      "symbol": "polling reducer",
+      "path": ".ref/devices/226/static/js/main.08f95762.js",
+      "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "offset": 175149,
+      "end": 176968,
+      "source": "Ne=function(e,t){if(\"undefined\"===typeof e)return Ce;switch(De(t,e,\"pollingRateReducer\"),t.type){case C.QF$:{var n;let i={...e,pollingRate:t.payload};const o=new h(\"ON_POLLING_RATE\",void 0,{pollingRate:t.payload});null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_POLLING_RATE\",timerTick:void 0,payload:{pollingRate:t.payload}});return i=N(i,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),i}case C.Ag9:return{...e,pollingRate:t.payload};case C.nFY:return N(e,t.payload);case C.Sn4:return R(e,t);case C.ry0:return y(e,t);case C.B6W:return L(e,t);case C.Ty0:return g(e,t);case C.rDe:return M(e,t);case C.VL0:return f(e,t);case ue.hi:{var i;let n={...e,pollingRateWireless:t.payload};const o=new h(\"ON_POLLING_RATE\",void 0,{pollingRateWireless:t.payload});null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_POLLING_RATE\",timerTick:void 0,payload:{pollingRateWireless:t.payload}});return n=N(n,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),n}case ue.RA:return{...e,pollingRateWireless:t.payload};case ue.A4:return N(e,t.payload);case ue.x$:return R(e,t);case ue.Ul:return y(e,t);case ue.yR:return L(e,t);case ue.GG:return g(e,t);case ue.iD:return M(e,t);case ue.uY:return f(e,t);case Oe.M:{var o;let n={...e,pollingRateBle:t.payload};const i=new h(\"ON_POLLING_RATE\",void 0,{pollingRateBle:t.payload});null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_POLLING_RATE\",timerTick:void 0,payload:{pollingRateBle:t.payload}});return n=N(n,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),n}case Oe.a:return{...e,pollingRateBle:t.payload};default:return e}}"
+    },
+    {
+      "symbol": "runtimeData publisher",
+      "path": ".ref/middleware/226/7846.b84800eaaf18ff1145e5.js",
+      "sha256": "dcc50b174ef63fa3f12cab2a3c9fde22fc288ee6c20d213bc8e30c38b80eaa80",
+      "offset": 1147369,
+      "end": 1153138,
+      "source": "function*(){var e,t,n,r,s,c,d,u,p,v,f,y;let g=m.A.runtimeData;if(null===(e=m.A.runtimeData)||void 0===e?void 0:e.subDevices){const e=m.A.runtimeData.subDevices.find(e=>e.isShownOnUI);e&&(g=e)}k.A.getConfig().debug&&console.log(\"%c[%s]\",\"color: #fa0;\",\"runtimeData\",g);const{isObm:h,isBattery:I,isSidePanel:S,isComboDevice:T,isAudio:A,calibrationInterfaces:C,isLightingKit:M,usesExternalPowerSupply:N,supportIndicatorLed:w,isHyperBoostFan:P,serialNumberBasedProfileStorage:L}=(0,R.i)();if(P&&(yield(0,Z.$M)()),g.isExternalBatt&&(0,z.a)({type:\"MW_EXTERNAL_POWER_STATUS\",payload:g.isExternalBatt}),g.firmwareInfo&&(0,z.a)({type:o.Px.SET_FIRMWARE_INFO,payload:Object.assign({},g.firmwareInfo)}),m.A.volume&&(0,z.a)({type:i.UuD,payload:m.A.volume}),m.A.micVolume){const{rzDeviceType:e}=k.A.injector.featuresList;(0,z.a)({type:i.GZW,payload:{micVolume:m.A.micVolume}}),(null==e?void 0:e.AudioKrystalT3)&&(0,z.a)({type:a.MW_UPDATE_MIC_TO_UI,payload:m.A.micVolume})}(0,z.a)({type:i.Cu1,payload:null===(t=m.A.macro)||void 0===t?void 0:t.macroList}),(0,z.a)({type:i.z1v,payload:null===(n=m.A.macro)||void 0===n?void 0:n.currentMacro}),(0,z.a)({type:o.Px.SET_SERIAL_NUMBER,payload:g.serialNumber}),(0,z.a)({type:o.Px.SET_EDITION_AND_LAYOUT_ID,payload:{editionId:g.editionId,layoutId:0}}),w&&(0,z.a)({type:i.tI2,payload:null!==(r=m.A.indicatorLedStatus)&&void 0!==r?r:1}),(0,O.g2)()&&(0,z.a)({type:o.Px.IS_HYPER_POLLING_PAIRED,payload:!0});const U=D.jf.rzDevice;if(U&&(U.productId===E.DeviceInfo.dongleId||(0,le._)())&&(0,z.a)({type:o.Px.MW_IS_DONGLE_DEVICE,payload:!0}),(0,V.aL)()){const e=(yield(0,K.A)()).activeStreamMixerWindowName;(0,X.xP)(!!e&&e!==window.name)}switch(m.A.runtimeData.setupStatus){case l.Dh.READY:{const e=[];try{const t=yield(0,ie.d8)();(null==t?void 0:t.dimLighting)&&e.push({type:i.GeC,payload:{isEnabled:null!==(c=null===(s=t.dimLighting)||void 0===s?void 0:s.isEnabled)&&void 0!==c&&c,value:null!==(u=null===(d=t.dimLighting)||void 0===d?void 0:d.value)&&void 0!==u?u:0}})}catch(e){console.warn(...ue,\"dimLighting to UI failed\",e)}if(e.push({type:o.Px.MW_IS_BLE,payload:g.useBle}),e.push({type:i.TY$,payload:!m.A.isOTFSEnabled},{type:i.oLB,payload:D.jf.deviceLockHeld||D.jf.macroRecorderExclusiveHeld},{type:i.Vn6,payload:m.A.installedModules}),h&&m.A.obm&&e.push({type:i.N_y,payload:{profiles:m.A.obm.profiles,macros:m.A.obm.macros,availableMemory:m.A.obm.availableMemory,maxMemory:m.A.obm.maxMemory}},{type:i.XAX,payload:m.A.obm.initCompleted}),T&&(e.push({type:o.Px.SET_IS_MOUSE,payload:g.isMouseConnected}),e.push({type:o.Px.SET_IS_MAT_PLUGGED,payload:g.isMatPlugged}),e.push({type:i.w3t,payload:m.A.powerIndicator})),M&&e.push({type:o.xd.MW_SET_LIGHT_STRIPS,payload:m.A.lightStrips}),g.ports&&(e.push({type:i.Kxj,payload:yield(0,O.l3)()}),g.maxLedSupported&&e.push({type:i.eVH,payload:g.maxLedSupported}),m.A.runtimeData.connectionStatus&&e.push({type:o.E0.MW_CHANGE_CONNECTION_MODE,payload:m.A.runtimeData.connectionStatus}),\"boolean\"==typeof m.A.runtimeData.isPowerOn&&e.push({type:o.E0.MW_CHANGE_ARGB_CONTROLLER_POWER_STATUS,payload:m.A.runtimeData.isPowerOn}),m.A.isProtectionModeEnabled)){const{MW_CHANGE_ARGB_CONTROLLER_ERROR_STATUS:t,ARGB_CONTROLLER_ERROR_STATUS:n}=o.E0;e.push({type:t,payload:n.PROTECTION_MODE_ACTIVE})}if(e.push({type:H.c9,payload:g.restartRequired||!1},{type:o.AF.d,payload:l.Dh.READY},{type:i.TF0,payload:m.A.validDevices}),(null===(p=null===m.A||void 0===m.A?void 0:m.A.lightingEffects)||void 0===p?void 0:p.canSyncQuickEffect)&&e.push({type:i.Ktf,payload:m.A.lightingEffects.canSyncQuickEffect}),\"boolean\"==typeof m.A.isLeftHandMode&&e.push({type:i.uSO,payload:m.A.isLeftHandMode}),I&&g.powerStatus){if(null===(v=I.yes)||void 0===v?void 0:v.alwaysReadPowerSavingFromDevice){const t=yield(0,Z.kp)();e.push({type:i.WDf,payload:t})}e.push({type:i.H0k,payload:g.powerStatus})}if(e.push({type:o.NA.kf,payload:m.A.updateData}),S&&e.push({type:i.Ot5,payload:m.A.thumbModule},{type:b.SET_SIDEPAD_LAYOUT,payload:null===(f=m.A.thumbModule)||void 0===f?void 0:f.jsonData.status}),((null==A?void 0:A.nommoPro)||(null==A?void 0:A.nommoChroma))&&m.A.volume&&e.push({type:i.UuD,payload:m.A.volume}),(null==A?void 0:A.nommoChroma)&&e.push({type:i.xc8,payload:m.A.preset}),(null==A?void 0:A.nommoPro)&&e.push({type:i.aog,payload:m.A.inputSource},{type:i.AZI,payload:m.A.bassBoost},{type:i.Btt,payload:m.A.audioEnhancement}),null==C?void 0:C.philipsCalibrationEngine){const t=D.jf.rzDevice;e.push({type:i.OGD,payload:\"philips\"}),t&&t.productId===E.DeviceInfo.dongleId&&e.push({type:i.yf2,payload:!1})}if(N&&e.push({type:o.Px.MW_EXTERNAL_POWER_STATUS,payload:g.externalPowerSupplyStatus}),L)try{const t=yield(0,ie.d8)(),n=re.A.getProfiles(t),o=re.A.getActiveProfile(t);e.push({type:i.Bj5,payload:{profiles:null==n?void 0:n.map(e=>({guid:e.guid,name:e.name})),selectedProfileGuid:null==o?void 0:o.guid}})}catch(e){console.error(\"[!] serialNumberBasedProfileStorage profile data to ui:\",e)}yield(0,_.KS)();const t=yield se.RzGenericFeatureManager.getInstance().getRuntimeData(e);(0,z.a)(t);const{rzDeviceType:n}=k.A.injector.featuresList;(null==n?void 0:n.rzCamKimberly)&&(0,z.a)({type:\"MW_UPDATE_GPU_DEVICE_NAME\",payload:m.A.GPUDeviceName});break}case l.Dh.SYNCING:(0,z.a)([{type:o.AF.d,payload:l.Dh.SYNCING}]);break;case l.Dh.INSTALL_CANCELED:{const e=[{type:o.NA.si,payload:m.A.installData},{type:o.AF.d,payload:l.Dh.INSTALL_CANCELED},{type:o.NA.TM,payload:\"canceled\"}];(0,z.a)(e);break}default:{const e=[{type:o.Px.SET_EDITION_AND_LAYOUT_ID,payload:{editionId:g.editionId,layoutId:0}},{type:o.AF.d,payload:g.setupStatus},{type:o.NA.si,payload:m.A.installData},{type:o.NA.TM,payload:m.A.runtimeData.setupStatus}];S&&e.push({type:b.SET_SIDEPAD_LAYOUT,payload:null===(y=m.A.thumbModule)||void 0===y?void 0:y.jsonData.status}),(0,z.a)(e)}}}"
+    },
+    {
+      "symbol": "OTFS publisher",
+      "path": ".ref/middleware/226/7846.b84800eaaf18ff1145e5.js",
+      "sha256": "dcc50b174ef63fa3f12cab2a3c9fde22fc288ee6c20d213bc8e30c38b80eaa80",
+      "offset": 1253428,
+      "end": 1254207,
+      "source": "function*(){n&&(yield(e=>lt(void 0,void 0,void 0,function*(){const t=yield(0,H.L7)();if(t){const n=(0,H.oy)(t),o=JSON.parse(JSON.stringify(n.mappings)),i=o.filter(e=>\"sensitivityGroup\"===e.outputType);if(e&&!Tt){Tt=o;let e=JSON.parse(JSON.stringify(i)),t=Dt({inputType:\"MouseInput\",inputID:\"ScrollUp\"},\"DPI_Value_Up\");e=e.concat(t),t=Dt({inputType:\"MouseInput\",inputID:\"ScrollDown\"},\"DPI_Value_Down\"),e=e.concat(t),yield At(n,e,!0)}else yield At(n,Tt,!1),Tt=null}}))(t)),(0,we.Q)({type:I.E$n,payload:{timertick:e,actionType:\"taskMakerHandleOTFSOnOffTaskMaker\",value:{isOTFSEnabled:t}}}),(0,we.Q)({type:I.GmY,payload:{timertick:e}}),d.A.isOTFSEnabled=t,t?(0,we.Q)({type:I.TY$,payload:!1}):(yield(0,O.ww)(E.wI.CONTAINER_ID,\"cycling-sensitivity\"),(0,we.Q)({type:I.TY$,payload:!0}))}"
+    },
+    {
+      "symbol": "connection identity",
+      "path": ".ref/middleware/226/7846.b84800eaaf18ff1145e5.js",
+      "sha256": "dcc50b174ef63fa3f12cab2a3c9fde22fc288ee6c20d213bc8e30c38b80eaa80",
+      "offset": 2112911,
+      "end": 2115014,
+      "source": "function*(){var o,a;if(e.productId!==u.DeviceInfo.dongleId||!(0,p.R4)()&&!(0,p.R0)()){if(e.productId===u.DeviceInfo.bleId){const{default:o}=yield t.rzDevice30();return f.A.runtimeData.useBle=!0,new o(e,u.DeviceInfo.claimInterface,null==n?void 0:n.containerId)}{const{default:o}=yield t.rzDevice25();return new o(e,u.DeviceInfo.claimInterface,n.containerId,n.sleepTimeBetweenOut,n.sleepTimeBetweenOutIn,n.sleepTimeBetweenIn,n.maxRetryIn,n.maxRetryOut,n.extraParam)}}{let s=e.productId,l=null!==(o=u.DeviceInfo.claimInterface)&&void 0!==o?o:2;if((0,p.R0)()){const{default:o}=yield t.rzDevice25(),r=new o(e,u.DeviceInfo.claimInterface,n.containerId,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN,20,20,n.extraParam);if(e.productId===u.DeviceInfo.dongleId){const e=null===(a=(0,v.i)().isMika)||void 0===a?void 0:a.MikaInfo;r.dualLinkPrimaryPId=e.master.dongleId,r.dualLinkSecondaryPId=e.dongleId,r.category=u.DeviceInfo.category,r.isDualLink=!0,r.isMika=!0}return r.category=u.DeviceInfo.category,r}{const o=(null==n?void 0:n.duallinkDeviceType)||\"MOUSE\";if(\"MOUSE\"===o){e.master&&(s=e.master.dongleId,l=\"number\"==typeof e.master.claimInterface?e.master.claimInterface:e.master.claimInterface[s]);const{default:n}=yield t.rzDevice25DualLinkMouse(),o=new n(Object.assign(Object.assign({},e),{productId:s}),l,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN);return yield(0,p.FR)(o),o}if(\"LINKER\"===o){if(179===e.productId){const{default:n}=yield t.rzDevice25LinkerUma();return new n(e,u.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}{const{default:n}=yield t.rzDevice25Linker();return new n(e,u.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}}if(\"LINKERMULTIDEVICES\"===o){const{default:n}=yield t.rzDevice25LinkerMultiDevices();return new n(e,u.DeviceInfo.claimInterface,r,5*i.SLEEP_TIME_BETWEEN_OUT,5*i.SLEEP_TIME_BETWEEN_OUT_IN,5*i.SLEEP_TIME_BETWEEN_IN)}console.error(\"connect duallink device fail\")}}}"
+    },
+    {
+      "symbol": "polling getter",
+      "path": ".ref/middleware/226/7846.b84800eaaf18ff1145e5.js",
+      "sha256": "dcc50b174ef63fa3f12cab2a3c9fde22fc288ee6c20d213bc8e30c38b80eaa80",
+      "offset": 2129961,
+      "end": 2130302,
+      "source": "function*(){var t;const n=o.jf.rzDevice,{isObm:i}=(0,v.i)();let r;try{r=(0,m.g2)()?yield n.getUSBHighSpeedPollingRate(e):i&&(null===(t=i.yes)||void 0===t?void 0:t.pollingRate)?yield n.getProfilePollingRate(e):yield n.getPollingRate()}catch(e){return console.error(\"Device fail to get polling rate , error\",e),0}return r.jsonData.pollingRate}"
+    }
+  ],
+  "labels": {
+    "FGZ": "POLLING_RATE_HEADER",
+    "lGq": "WIRED_POLLING_RATE_HEADER",
+    "iiK": "POLLING_RATE_V2_TOOLTIP",
+    "orU": "WIRED_POLLING_RATE_V2_TOOLTIP",
+    "rJp": "POLLING_RATE_DESC",
+    "H_3": "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE",
+    "kcN": "POLLING_RATE_DUAL_LINK_LIMITED",
+    "KOq": "POLLING_RATE_WARN",
+    "Vjf": "POLLING_RATE_WARN_NOBATTERY",
+    "HkB": "LEARN_MORE"
+  },
+  "css": [
+    {
+      "path": ".ref/devices/226/static/css/main.c2099849.css",
+      "sha256": "68bc9ccdc21fe548330106b3a27beb5049be06f55939e5950677b220f52703df",
+      "rules": [
+        {
+          "offset": 78027,
+          "selector": ".h1-body",
+          "conditions": [],
+          "declarations": "color:#ccc;margin-bottom:10px",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/226/static/css/8355.f94d4299.chunk.css",
+      "sha256": "ec3c1904f52ffa472fbcaca33ec514681ce2ea2d329279205c0c36ade329c53a",
+      "rules": [
+        {
+          "offset": 24768,
+          "selector": ".polling-btn-set",
+          "conditions": [],
+          "declarations": "display:flex;flex-wrap:wrap;gap:10px 10px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "flex-wrap",
+              "value": "wrap",
+              "important": false
+            },
+            {
+              "property": "gap",
+              "value": "10px 10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25109,
+          "selector": ".customize-polling-rate-button",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#222;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;display:flex;font-size:14px;height:27px;justify-content:center;text-transform:uppercase;width:72px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#222",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "72px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25334,
+          "selector": ".customize-polling-rate-button.configWidth",
+          "conditions": [],
+          "declarations": "min-width:90px",
+          "properties": [
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25392,
+          "selector": ".customize-polling-rate-button-color",
+          "conditions": [],
+          "declarations": "border-radius:50%;height:6px;margin-right:4px;width:6px",
+          "properties": [
+            {
+              "property": "border-radius",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "6px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "4px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "6px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25485,
+          "selector": ".customize-polling-rate-button.active,.customize-polling-rate-button:hover",
+          "conditions": [],
+          "declarations": "border-color:#44d62c",
+          "properties": [
+            {
+              "property": "border-color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25581,
+          "selector": ".customize-polling-rate-button.disabled",
+          "conditions": [],
+          "declarations": "cursor:default;opacity:.4;pointer-events:none",
+          "properties": [
+            {
+              "property": "cursor",
+              "value": "default",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".4",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25738,
+          "selector": ".polling-warn",
+          "conditions": [],
+          "declarations": "margin-top:10px;opacity:.7",
+          "properties": [
+            {
+              "property": "margin-top",
+              "value": "10px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": ".7",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25779,
+          "selector": ".polling-dock-limit-info",
+          "conditions": [],
+          "declarations": "align-items:flex-start;color:#999;display:flex;font-size:14px;line-height:17px;margin-top:15px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "flex-start",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#999",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "15px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 25899,
+          "selector": ".polling-dock-limit-info-icon",
+          "conditions": [],
+          "declarations": "background-image:url(../../static/media/info-icon.769264c1.svg);background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-block;flex:0 0 auto;height:20px;margin-right:5px;width:20px",
+          "properties": [
+            {
+              "property": "background-image",
+              "value": "url(../../static/media/info-icon.769264c1.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-block",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "margin-right",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26679,
+          "selector": ".polling-learn-more",
+          "conditions": [],
+          "declarations": "align-items:center;cursor:pointer;display:inline-flex;padding-left:5px;text-decoration:underline",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "text-decoration",
+              "value": "underline",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26796,
+          "selector": ".polling-learn-more img",
+          "conditions": [],
+          "declarations": "height:16px;margin-left:2px;width:16px",
+          "properties": [
+            {
+              "property": "height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "2px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "16px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 26859,
+          "selector": ".external-link-icon",
+          "conditions": [],
+          "declarations": "background:url(../../static/media/icon_external_link.48227e72.svg);background-position:50%;background-repeat:no-repeat;background-size:contain;display:inline-flex;height:16px;margin-left:5px;vertical-align:top;width:16px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "url(../../static/media/icon_external_link.48227e72.svg)",
+              "important": false
+            },
+            {
+              "property": "background-position",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "background-repeat",
+              "value": "no-repeat",
+              "important": false
+            },
+            {
+              "property": "background-size",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "inline-flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "vertical-align",
+              "value": "top",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "16px",
+              "important": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "source": ".ref/devices/226/static/media/info-icon.769264c1.svg",
+      "output": "assets/synapse/mouse-226-polling-info.svg",
+      "sha256": "0e8f5d9d322ac12af2ffa96160e700253ffbaae77aa3d4b8e037a67b7e7d423b"
+    },
+    {
+      "source": ".ref/devices/226/static/media/icon_external_link.48227e72.svg",
+      "output": "assets/synapse/mouse-226-polling-external.svg",
+      "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8"
+    }
+  ],
+  "locale": [
+    {
+      "path": "locales/en.json",
+      "sha256": "277f4798ba888d10b0d550306b5ef7c822666167e1c7158a1cd79bb106bbb39b",
+      "labels": {
+        "POLLING_RATE_HEADER": "POLLING RATE",
+        "WIRED_POLLING_RATE_HEADER": "WIRED POLLING RATE",
+        "POLLING_RATE_V2_TOOLTIP": "Adjust the frequency at which the device will report back to the PC. Higher frequencies increase overall responsiveness and reduce input latency, but consume more energy and reduce battery life (if applicable).\n \nThe list of available frequencies depend on  the connection type and operating system.",
+        "WIRED_POLLING_RATE_V2_TOOLTIP": "Adjust the frequency at which the device will report back to the PC. Higher frequencies increase overall responsiveness and reduce input latency.\n \nThe list of available frequencies depend on the connection type and operating system.",
+        "POLLING_RATE_DESC": "The frequency (Hz) at which your device sends data to your computer.",
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": "Polling rate limited to 1,000 Hz — your Razer Mouse Dock Pro is paired to both your mouse and keyboard. Unpair the keyboard to restore up to 8,000 Hz.",
+        "POLLING_RATE_DUAL_LINK_LIMITED": "The maximum polling rate has been reduced because of limitations in the current connection type.",
+        "POLLING_RATE_WARN": "Higher polling rates will result in reduced battery life and higher CPU usage which may impact frame rates.",
+        "POLLING_RATE_WARN_NOBATTERY": "Higher polling rates will result in higher CPU usage, which may impact frame rates.",
+        "LEARN_MORE": "Learn More"
+      }
+    },
+    {
+      "path": "locales/zh-CN.json",
+      "sha256": "a9fd3b00a6f2b3ae206a1d7a861ada68df48ddc8a6882c5a73ecc843b22d3547",
+      "labels": {
+        "POLLING_RATE_HEADER": "轮询率",
+        "WIRED_POLLING_RATE_HEADER": "有线轮询率",
+        "POLLING_RATE_V2_TOOLTIP": "调整设备向电脑回送报告的频率。 如果频率更高，则整体响应速度更高、输入延迟更低，但同时，消耗的能量更多、电池续航时间更短（如果适用）。\n \n可用的频率取决于连接类型和操作系统。",
+        "WIRED_POLLING_RATE_V2_TOOLTIP": "调整设备向电脑回送报告的频率。更高的频率可提高整体响应速度并减少输入延迟。\n \n可用频率列表取决于连接类型和操作系统。",
+        "POLLING_RATE_DESC": "数据在一秒内的更新频率 (Hz)。",
+        "POLLING_RATE_MULTI_DEVICE_DOCK_LIMITED_MOUSE": null,
+        "POLLING_RATE_DUAL_LINK_LIMITED": "由于当前连接类型的限制，最大轮询率已经降低。",
+        "POLLING_RATE_WARN": "轮询率越高，CPU 占用率越高，因此可能会影响帧率。",
+        "POLLING_RATE_WARN_NOBATTERY": "更高的轮询率会导致更高的CPU使用率，从而可能影响帧率。",
+        "LEARN_MORE": "了解详情"
+      }
+    }
+  ]
+}

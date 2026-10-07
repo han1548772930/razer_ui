@@ -47,6 +47,7 @@ pub(crate) fn open_preview(window: &mut Window, cx: &mut App) {
         preview: true,
         alert: None,
         modal: None,
+        modal_subscriptions: Vec::new(),
         known_devices: Vec::new(),
     });
     let preview = cx.new(|cx| {
@@ -211,9 +212,10 @@ fn peer(lane: Lane, id: &str) -> Peer {
         name: format!("Sample {} {id}", lane.key()),
         product_id: 0,
         dongle_id: None,
-        edition: 0,
-        layout: 0,
+        edition: Some(0),
+        layout: Some(0),
         lane,
+        payload: None,
     }
 }
 fn sample(id: &str, dual: bool) -> PairingState {

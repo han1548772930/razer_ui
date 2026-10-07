@@ -11,7 +11,18 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 mod tests;
 
 pub(super) fn open(window: &mut Window, cx: &mut App) -> Entity<ReleaseNotes> {
+    open_for(NotesApp::Synapse, window, cx)
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum NotesApp {
+    Synapse,
+    Chroma,
+}
+
+pub(super) fn open_for(app: NotesApp, window: &mut Window, cx: &mut App) -> Entity<ReleaseNotes> {
     let view = cx.new(|cx| ReleaseNotes {
+        app,
         open: true,
         preview: None,
         focus: cx.focus_handle(),
@@ -24,6 +35,7 @@ pub(super) fn open(window: &mut Window, cx: &mut App) -> Entity<ReleaseNotes> {
 }
 
 pub(super) struct ReleaseNotes {
+    app: NotesApp,
     open: bool,
     preview: Option<Vec<NotesSection>>,
     focus: FocusHandle,
@@ -217,16 +229,23 @@ fn example_first_post() -> String {
     }).collect::<Vec<_>>().join("<hr />")
 }
 
-fn official_url() -> &'static str {
+fn official_url(app: NotesApp) -> &'static str {
     // Ie: rzr.to/{synapse|chroma}-{win|mac}-{prod|beta}-patch-notes.
-    if cfg!(target_os = "macos") {
-        "https://rzr.to/synapse-mac-prod-patch-notes"
-    } else {
-        "https://rzr.to/synapse-win-prod-patch-notes"
+    match (app, cfg!(target_os = "macos")) {
+        (NotesApp::Synapse, true) => "https://rzr.to/synapse-mac-prod-patch-notes",
+        (NotesApp::Synapse, false) => "https://rzr.to/synapse-win-prod-patch-notes",
+        (NotesApp::Chroma, true) => "https://rzr.to/chroma-mac-prod-patch-notes",
+        (NotesApp::Chroma, false) => "https://rzr.to/chroma-win-prod-patch-notes",
     }
 }
 
 impl ReleaseNotes {
+    pub(super) fn focus_if_open(&self, window: &mut Window, cx: &App) -> bool {
+        if self.open {
+            self.focus.focus(window, cx);
+        }
+        self.open
+    }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open = false;
         self.preview = None;
@@ -272,7 +291,10 @@ impl ReleaseNotes {
                 .child(if self.preview.is_some() {
                     "示例内容不代表已安装版本或真实发行记录。"
                 } else {
-                    "尚未读取已安装的 Synapse 版本和对应发布说明。可通过下方官方链接查看发布记录。"
+                    match self.app {
+                        NotesApp::Synapse => "尚未读取已安装的 Synapse 版本和对应发布说明。可通过下方官方链接查看发布记录。",
+                        NotesApp::Chroma => "尚未读取已安装的 Chroma 版本和对应发布说明。可通过下方官方链接查看发布记录。",
+                    }
                 })
                 .child(BaseButton::new("release-notes-preview")
                     .self_start()
@@ -379,7 +401,7 @@ impl Render for ReleaseNotes {
                     .border_color(cx.theme().border)
                     .child(
                         Link::new("release-notes-official")
-                            .href(official_url())
+                            .href(official_url(self.app))
                             .open_with(|url, _, _, cx| cx.open_url(url))
                             .flex()
                             .items_center()

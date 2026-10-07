@@ -87,15 +87,9 @@ impl SourceControls {
                 state.confirm_unpair();
                 None
             }
-            Action::CancelUnpair => {
-                state.cancel_unpair();
-                None
-            }
+            Action::CancelUnpair => state.cancel_unpair(),
             Action::Unbind => state.unbind(),
-            Action::DiscardIntent => {
-                state.cancel_pending();
-                None
-            }
+            Action::DiscardIntent => state.cancel_pending(),
         };
         if let Some(event) = event {
             cx.emit(event);

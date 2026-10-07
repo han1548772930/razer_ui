@@ -1,6 +1,59 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Current Profiles 43/Ia CSS; see profiles-transfer-current-evidence.json.
+pub(crate) struct ProfilesTransferColors;
+impl ProfilesTransferColors {
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn chrome() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x515151).into()
+    }
+    pub(crate) fn input_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn title() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn selected() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn browse_hover() -> Hsla {
+        rgb(0x44c62d).into()
+    }
+    pub(crate) fn selected_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub(crate) fn button_text() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn secondary_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub(crate) fn error() -> Hsla {
+        rgb(0xfd4949).into()
+    }
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn backdrop() -> Hsla {
+        rgba(0x000000b3).into()
+    }
+    pub(crate) fn button_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
+}
+
 /// 1382 MapAudio inline declarations and shared radio CSS.
 pub(crate) struct ControlPodAudioColors;
 impl ControlPodAudioColors {
@@ -62,6 +115,9 @@ impl GamepadDialogColors {
     }
     pub(crate) fn primary() -> Hsla {
         rgb(0x44d62c).into()
+    }
+    pub(crate) fn primary_text() -> Hsla {
+        rgb(0x000000).into()
     }
     pub(crate) fn primary_border() -> Hsla {
         rgba(0x0000004d).into()
@@ -989,5 +1045,46 @@ impl DpiColors {
     }
     pub(crate) fn text() -> Hsla {
         rgb(0xcccccc).into()
+    }
+}
+/// Current Chroma Settings 75.e743878a.css palette; independent of OS theme.
+
+pub(crate) struct ChromaSettingsColors;
+impl ChromaSettingsColors {
+    pub(crate) fn background() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub(crate) fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub(crate) fn secondary() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub(crate) fn note() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub(crate) fn selected() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn checkbox_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+    pub(crate) fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn hover() -> Hsla {
+        rgb(0x2d2d2d).into()
+    }
+    pub(crate) fn help() -> Hsla {
+        rgb(0x4a4a4a).into()
+    }
+    pub(crate) fn help_hover() -> Hsla {
+        rgba(0xffffff4d).into()
+    }
+    pub(crate) fn tooltip() -> Hsla {
+        rgb(0x000000).into()
     }
 }

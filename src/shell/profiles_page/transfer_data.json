@@ -1,0 +1,2502 @@
+{
+  "labels": {
+    "ov8": "TEXT_EXPORT_PROFILES",
+    "s2B": "TEXT_LOCAL",
+    "GCq": "TEXT_CLOUD",
+    "M88": "BROWSE_FOR_PROFILES",
+    "mYs": "COMPATIBLE_CLOUD_PROFILES",
+    "mcz": "DISABLED_FEATURE_DESC",
+    "c2H": "TEXT_SELECT_ALL_PROFILES",
+    "$w6": "TEXT_DESELECT_ALL_PROFILES",
+    "QN3": "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+    "bOp": "CANCEL",
+    "yE7": "IMPORT",
+    "l1q": "EXPORT",
+    "BXZ": "IMPORT_EXPORT_MODAL_TIP",
+    "u4O": "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+    "v3x": "IMPORT_EXPORT_MODAL_EMPTY_PROFILE"
+  },
+  "targets": {
+    "70": {
+      "deviceName": "Razer Mamba Elite",
+      "productId": 70,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "80": {
+      "deviceName": "Razer Naga Hex V2",
+      "productId": 80,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "83": {
+      "deviceName": "Razer Naga Chroma",
+      "productId": 83,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "89": {
+      "deviceName": "Razer Lancehead",
+      "productId": 89,
+      "dongleId": 90,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "92": {
+      "deviceName": "Razer Deathadder Elite",
+      "productId": 92,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "96": {
+      "deviceName": "Razer Lancehead TE",
+      "productId": 96,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "98": {
+      "deviceName": "Razer Atheris",
+      "productId": 98,
+      "dongleId": 98,
+      "bleId": 97,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "99": {
+      "deviceName": "Razer Jugan",
+      "productId": 99,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "100": {
+      "deviceName": "Razer Basilisk",
+      "productId": 100,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "101": {
+      "deviceName": "Razer Basilisk Essential",
+      "productId": 101,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "103": {
+      "deviceName": "RAZER NAGA TRINITY",
+      "productId": 103,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "104": {
+      "deviceName": "Razer Mamba Hyperflux",
+      "productId": 104,
+      "dongleId": 105,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEPLUSMAT"
+    },
+    "105": {
+      "deviceName": "Razer Mamba Hyperflux",
+      "productId": 104,
+      "dongleId": 105,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEPLUSMAT"
+    },
+    "106": {
+      "deviceName": "D.VA Razer Abyssus Elite",
+      "productId": 106,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "107": {
+      "deviceName": "Razer Abyssus Essential",
+      "productId": 107,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "108": {
+      "deviceName": "Razer Mamba Elite",
+      "productId": 108,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "110": {
+      "deviceName": "Razer DeathAdder Essential",
+      "productId": 110,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "112": {
+      "deviceName": "Razer Lancehead Wireless",
+      "productId": 112,
+      "dongleId": 111,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "113": {
+      "productId": 113,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "115": {
+      "deviceName": "Razer Mamaba Wireless",
+      "productId": 115,
+      "dongleId": 114,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "116": {
+      "productId": 116,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "117": {
+      "deviceName": "Razer Turret Mouse Xbox One Edition",
+      "productId": 117,
+      "dongleId": 2308,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "120": {
+      "deviceName": "Razer Viper",
+      "productId": 120,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "122": {
+      "deviceName": "Razer Viper Ultimate",
+      "productId": 122,
+      "dongleId": 123,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "124": {
+      "deviceName": "Razer DeathAdder V2 Pro",
+      "productId": 124,
+      "dongleId": 125,
+      "bleId": 142,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "126": {
+      "deviceName": "Razer Mouse Dock",
+      "productId": 126,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "128": {
+      "deviceName": "Razer Pro Click",
+      "productId": 128,
+      "dongleId": 119,
+      "bleId": 118,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "131": {
+      "deviceName": "Razer Basilisk X Hyperspeed",
+      "productId": 131,
+      "dongleId": 131,
+      "bleId": 130,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "132": {
+      "deviceName": "RAZER DEATHADDER V2",
+      "productId": 132,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "133": {
+      "deviceName": "Razer Basilisk V2",
+      "productId": 133,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "134": {
+      "deviceName": "Razer Basilisk Ultimate",
+      "productId": 134,
+      "dongleId": 136,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "138": {
+      "deviceName": "Razer Viper Mini",
+      "productId": 138,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "140": {
+      "deviceName": "Razer Deathadder V2 Mini",
+      "productId": 140,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "141": {
+      "deviceName": "RAZER NAGA LEFT-HANDED EDITION",
+      "productId": 141,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "143": {
+      "deviceName": "Razer Naga Pro",
+      "productId": 143,
+      "dongleId": 144,
+      "bleId": 146,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "145": {
+      "deviceName": "Razer Viper 8Khz",
+      "productId": 145,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "147": {
+      "deviceName": "Razer Naga Classic Edition",
+      "productId": 147,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "148": {
+      "deviceName": "Razer Orochi V2",
+      "productId": 148,
+      "dongleId": 148,
+      "bleId": 149,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "150": {
+      "deviceName": "RAZER NAGA X",
+      "productId": 150,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "152": {
+      "deviceName": "Razer DeathAdder Essential",
+      "productId": 152,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "153": {
+      "deviceName": "Razer Basilisk V3",
+      "productId": 153,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "154": {
+      "deviceName": "Razer Pro Click Mini",
+      "productId": 154,
+      "dongleId": 154,
+      "bleId": 155,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "156": {
+      "deviceName": "Razer DeathAdder V2 X Hyperspeed",
+      "productId": 156,
+      "dongleId": 156,
+      "bleId": 157,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "158": {
+      "deviceName": "Razer Viper Mini Signature Edition",
+      "productId": 158,
+      "dongleId": 159,
+      "bleId": 0,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "161": {
+      "deviceName": "Razer Deathadder V2 Lite",
+      "productId": 161,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "163": {
+      "deviceName": "Razer Cobra",
+      "productId": 163,
+      "vendorId": 5426,
+      "category": "MOUSE"
+    },
+    "164": {
+      "deviceName": "Razer Mouse Dock Pro",
+      "productId": 164,
+      "dongleId": 164,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "165": {
+      "deviceName": "Razer VIPER V2 PRO",
+      "productId": 165,
+      "dongleId": 166,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "167": {
+      "deviceName": "Razer Naga V2 Pro",
+      "productId": 167,
+      "dongleId": 168,
+      "bleId": 169,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "170": {
+      "deviceName": "Razer Basilisk V3 Pro",
+      "productId": 170,
+      "dongleId": 171,
+      "bleId": 172,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "175": {
+      "deviceName": "Razer Cobra Pro",
+      "productId": 175,
+      "dongleId": 176,
+      "bleId": 177,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "178": {
+      "deviceName": "Razer DeathAdder V3",
+      "productId": 178,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "179": {
+      "deviceName": "Razer HyperPolling Wireless Dongle",
+      "productId": 179,
+      "dongleId": 179,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "180": {
+      "deviceName": "Razer Naga V2 Hyperspeed",
+      "productId": 180,
+      "dongleId": 180,
+      "bleId": 181,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "182": {
+      "deviceName": "Razer DeathAdder V3 Pro",
+      "productId": 182,
+      "dongleId": 183,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "184": {
+      "deviceName": "Razer Viper V3 HyperSpeed",
+      "productId": 184,
+      "dongleId": 184,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "185": {
+      "deviceName": "Razer Basilisk V3 X Hyperspeed",
+      "productId": 185,
+      "dongleId": 185,
+      "bleId": 186,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "190": {
+      "deviceName": "Razer DeathAdder V4 Pro",
+      "productId": 190,
+      "dongleId": 191,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "192": {
+      "deviceName": "Razer Viper V3 Pro",
+      "productId": 192,
+      "dongleId": 193,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "194": {
+      "deviceName": "Razer DeathAdder V3 Pro Hyperpolling Technology",
+      "productId": 194,
+      "dongleId": 195,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "196": {
+      "deviceName": "Razer DeathAdder V3 HyperSpeed",
+      "productId": 196,
+      "dongleId": 197,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "199": {
+      "deviceName": "Eden",
+      "productId": 199,
+      "dongleId": 200,
+      "bleId": 201,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "203": {
+      "deviceName": "Razer Basilisk V3 35K",
+      "productId": 203,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "204": {
+      "deviceName": "Razer Basilisk V3 Pro 35K",
+      "productId": 204,
+      "dongleId": 205,
+      "bleId": 206,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "207": {
+      "deviceName": "Razer HyperFlux V2",
+      "productId": 207,
+      "dongleId": 207,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "208": {
+      "deviceName": "evelynRefresh",
+      "productId": 208,
+      "dongleId": 209,
+      "bleId": 210,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "211": {
+      "deviceName": "Mira",
+      "productId": 211,
+      "dongleId": 212,
+      "bleId": 213,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "214": {
+      "deviceName": "Razer Basilisk V3 Pro 35K Phantom Green Edition",
+      "productId": 214,
+      "dongleId": 215,
+      "bleId": 216,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "218": {
+      "deviceName": "Razer Cobra HyperSpeed",
+      "productId": 218,
+      "dongleId": 219,
+      "bleId": 220,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "221": {
+      "deviceName": "Razer Krakoff",
+      "productId": 221,
+      "dongleId": 221,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "222": {
+      "deviceName": "Razer Viper V3 Pro SE",
+      "productId": 222,
+      "dongleId": 223,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "224": {
+      "deviceName": "Razer Orochi V2",
+      "productId": 224,
+      "dongleId": 224,
+      "bleId": 225,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "226": {
+      "deviceName": "Razer Basilisk V4 Pro",
+      "productId": 226,
+      "dongleId": 227,
+      "bleId": 228,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "229": {
+      "deviceName": "Razer Viper V4 Pro",
+      "productId": 229,
+      "dongleId": 230,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "231": {
+      "deviceName": "Razer Naga V3 Pro",
+      "productId": 231,
+      "dongleId": 232,
+      "bleId": 233,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "235": {
+      "deviceName": "Razer Basilisk V4 HyperSpeed",
+      "productId": 235,
+      "dongleId": 234,
+      "bleId": 236,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "239": {
+      "deviceName": "Razer DeathAdder V4 Pro Carbon Fiber Edition",
+      "productId": 239,
+      "dongleId": 240,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "MOUSE"
+    },
+    "241": {
+      "deviceName": "Razer Mouse Dock V2 Pro",
+      "productId": 241,
+      "dongleId": 241,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "ACCESSORY"
+    },
+    "515": {
+      "deviceName": "Razer BlackWidow Chroma",
+      "productId": 515,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "521": {
+      "deviceName": "Razer BlackWidow TE Chroma",
+      "productId": 521,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "529": {
+      "deviceName": "Razer BlackWidow Chroma Overwatch",
+      "productId": 529,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "534": {
+      "deviceName": "Razer BlackWidow X Chroma",
+      "productId": 534,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "542": {
+      "deviceName": "Razer Ornata Chroma",
+      "productId": 542,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "545": {
+      "deviceName": "Razer BlackWidow Chroma V2",
+      "productId": 545,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "550": {
+      "deviceName": "Razer Huntsman Elite",
+      "productId": 550,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "551": {
+      "deviceName": "Razer Huntsman",
+      "productId": 551,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "552": {
+      "deviceName": "Razer BlackWidow Elite",
+      "productId": 552,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "554": {
+      "deviceName": "Razer Cynosa Chroma",
+      "productId": 554,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "555": {
+      "deviceName": "Razer Tartarus V2",
+      "productId": 555,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYPAD"
+    },
+    "556": {
+      "deviceName": "Razer Cynosa Chroma Pro",
+      "productId": 556,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "563": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 563,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "564": {
+      "deviceName": "Razer Blade Pro 17",
+      "productId": 564,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "565": {
+      "deviceName": "Razer BlackWidow Lite",
+      "productId": 565,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "567": {
+      "deviceName": "Razer BlackWidow Essential",
+      "productId": 567,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "569": {
+      "deviceName": "Razer Blade Stealth 13",
+      "productId": 569,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "570": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 570,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "571": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 571,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "574": {
+      "deviceName": "Turret Keyboard Xbox One Edition",
+      "productId": 574,
+      "dongleId": 2308,
+      "vendorId": 5426,
+      "claimInterface": {
+        "574": 2,
+        "2308": 0
+      },
+      "category": "KEYBOARD"
+    },
+    "575": {
+      "deviceName": "Razer Cynosa Lite",
+      "productId": 575,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "576": {
+      "deviceName": "Razer Blade 15 Mercury White",
+      "productId": 576,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "577": {
+      "deviceName": "Razer BlackWidow",
+      "productId": 577,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "579": {
+      "deviceName": "Razer Huntsman Tournament Edition",
+      "productId": 579,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "580": {
+      "deviceName": "Tartarus Pro",
+      "productId": 580,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYPAD"
+    },
+    "581": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 581,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "582": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 582,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "585": {
+      "deviceName": "Razer Pro Type",
+      "productId": 585,
+      "dongleId": 585,
+      "bleId": 584,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "KEYBOARD"
+    },
+    "586": {
+      "deviceName": "Razer Blade Stealth 13",
+      "productId": 586,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "587": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 587,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "588": {
+      "deviceName": "Razer Blade Pro 17",
+      "productId": 588,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "589": {
+      "deviceName": "Razer Blade 15 Studio Edition",
+      "productId": 589,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "590": {
+      "deviceName": "Razer BlackWidow Chroma V3",
+      "productId": 590,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "591": {
+      "deviceName": "Razer BlackWidow X: Tenkeyless",
+      "productId": 591,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "592": {
+      "deviceName": "Razer Huntsman Essential",
+      "productId": 592,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "593": {
+      "deviceName": "Razer Pokémon Pikachu Limited Edition Backlit Keyboard",
+      "productId": 593,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "594": {
+      "deviceName": "Razer Blade Stealth 13 Base Model",
+      "productId": 594,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "595": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 595,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "597": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 597,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "598": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 598,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "599": {
+      "deviceName": "Razer Huntsman Mini",
+      "productId": 599,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "600": {
+      "deviceName": "Razer BlackWidow V3 Mini HyperSpeed",
+      "productId": 600,
+      "dongleId": 625,
+      "bleId": 626,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "601": {
+      "deviceName": "Razer Blade Stealth 13",
+      "productId": 601,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "602": {
+      "deviceName": "BlackWidow V3 Pro",
+      "productId": 602,
+      "dongleId": 604,
+      "bleId": 603,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "605": {
+      "deviceName": "Razer Ornata V2",
+      "productId": 605,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "606": {
+      "deviceName": "Razer Cynosa V2",
+      "productId": 606,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "614": {
+      "deviceName": "Razer Huntsman V2 Analog",
+      "productId": 614,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "616": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 616,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "617": {
+      "deviceName": "Razer Huntsman Mini",
+      "productId": 617,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "618": {
+      "deviceName": "Razer Book 13",
+      "productId": 618,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "619": {
+      "deviceName": "Razer Huntsman V2 Tenkeyless",
+      "productId": 619,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "620": {
+      "deviceName": "Razer Huntsman V2",
+      "productId": 620,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "621": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 621,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "622": {
+      "deviceName": "Razer Blade Pro 17",
+      "productId": 622,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "623": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 623,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "624": {
+      "deviceName": "Razer Blade 14",
+      "productId": 624,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "630": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 630,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "631": {
+      "deviceName": "Razer Pro Type Ultra",
+      "productId": 631,
+      "dongleId": 635,
+      "bleId": 632,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "633": {
+      "deviceName": "Razer Blade 17",
+      "productId": 633,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "634": {
+      "deviceName": "Razer Blade 15 Base Model",
+      "productId": 634,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "642": {
+      "deviceName": "Razer Huntsman V3 Pro Mini",
+      "productId": 642,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "647": {
+      "deviceName": "Razer BlackWidow V4",
+      "productId": 647,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "650": {
+      "deviceName": "Razer Blade 15 Advanced Model",
+      "productId": 650,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "651": {
+      "deviceName": "Razer Blade 17",
+      "productId": 651,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "652": {
+      "deviceName": "Razer Blade 14 ",
+      "productId": 652,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "653": {
+      "deviceName": "Blackwidow V4 Pro",
+      "productId": 653,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "654": {
+      "deviceName": "Razer Cynosa Pro",
+      "productId": 654,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "655": {
+      "deviceName": "Razer Ornata V3",
+      "productId": 655,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "658": {
+      "deviceName": "Razer DeathStalker V2 Pro",
+      "productId": 658,
+      "dongleId": 656,
+      "bleId": 657,
+      "vendorId": 5426,
+      "claimInterface": {
+        "656": 2,
+        "657": 3,
+        "658": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "659": {
+      "deviceName": "Razer BlackWidow V4 X",
+      "productId": 659,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "660": {
+      "deviceName": "Razer Ornata V3 X",
+      "productId": 660,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "661": {
+      "deviceName": "Razer DeathStalker V2",
+      "productId": 661,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "664": {
+      "deviceName": "Razer DeathStalker V2 Pro Tenkeyless",
+      "productId": 664,
+      "dongleId": 662,
+      "bleId": 663,
+      "vendorId": 5426,
+      "claimInterface": {
+        "662": 2,
+        "663": 3,
+        "664": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "669": {
+      "deviceName": "Razer Blade 14 ",
+      "productId": 669,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "670": {
+      "deviceName": "Razer Blade 15",
+      "productId": 670,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "671": {
+      "deviceName": "Razer Blade 16",
+      "productId": 671,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "672": {
+      "deviceName": "Razer Blade 18",
+      "productId": 672,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "673": {
+      "deviceName": "Razer Ornata V3",
+      "productId": 673,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "674": {
+      "deviceName": "Razer Ornata V3 X",
+      "productId": 674,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "675": {
+      "deviceName": "Razer Ornata V3 Tenkeyless",
+      "productId": 675,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "677": {
+      "deviceName": "Razer BlackWidow V4 75%",
+      "productId": 677,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "678": {
+      "deviceName": "Razer Huntsman V3 Pro",
+      "productId": 678,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "679": {
+      "deviceName": "Razer Huntsman V3 Pro Tenkeyless",
+      "productId": 679,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "688": {
+      "deviceName": "Razer Huntsman V3 Pro Mini",
+      "productId": 688,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "689": {
+      "deviceName": "Razer Huntsman V3 X Tenkeyless",
+      "productId": 689,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "691": {
+      "deviceName": "Blackwidow V4 Pro 75%",
+      "productId": 691,
+      "dongleId": 692,
+      "bleId": 693,
+      "vendorId": 5426,
+      "claimInterface": {
+        "691": 3,
+        "692": 2
+      },
+      "category": "KEYBOARD"
+    },
+    "694": {
+      "deviceName": "Razer Blade 14 ",
+      "productId": 694,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "695": {
+      "deviceName": "Razer Blade 16",
+      "productId": 695,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "696": {
+      "deviceName": "Razer Blade 18",
+      "productId": 696,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "697": {
+      "deviceName": "Razer BlackWidow V4 Mini HyperSpeed",
+      "productId": 697,
+      "dongleId": 698,
+      "bleId": 699,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "708": {
+      "deviceName": "Razer Pro Type Ergo",
+      "productId": 708,
+      "dongleId": 706,
+      "bleId": 707,
+      "vendorId": 5426,
+      "claimInterface": {
+        "706": 2,
+        "707": 3,
+        "708": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "709": {
+      "deviceName": "Razer Blade 14",
+      "productId": 709,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "710": {
+      "deviceName": "Razer Blade 16",
+      "productId": 710,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "711": {
+      "deviceName": "Razer Blade 18",
+      "productId": 711,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "716": {
+      "deviceName": "Razer BlackWidow V4 Low-profile HyperSpeed",
+      "productId": 716,
+      "dongleId": 713,
+      "bleId": 714,
+      "vendorId": 5426,
+      "claimInterface": {
+        "713": 2,
+        "714": 3,
+        "716": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "717": {
+      "deviceName": "Razer Joro",
+      "productId": 717,
+      "dongleId": 730,
+      "bleId": 718,
+      "vendorId": 5426,
+      "claimInterface": {
+        "717": 3,
+        "718": 3,
+        "730": 2
+      },
+      "category": "KEYBOARD"
+    },
+    "719": {
+      "deviceName": "Razer Huntsman V3 Pro 8KHz",
+      "productId": 719,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "720": {
+      "deviceName": "Razer Huntsman V3 Pro Tenkeyless 8KHZ",
+      "productId": 720,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "721": {
+      "deviceName": "Razer Huntsman V3 Pro Mini 8KHz",
+      "productId": 721,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "724": {
+      "deviceName": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed",
+      "productId": 724,
+      "dongleId": 722,
+      "bleId": 723,
+      "vendorId": 5426,
+      "claimInterface": {
+        "722": 2,
+        "723": 3,
+        "724": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "727": {
+      "deviceName": "Razer BlackWidow V4 Tenkeyless Hyperspeed",
+      "productId": 727,
+      "dongleId": 725,
+      "bleId": 726,
+      "vendorId": 5426,
+      "claimInterface": {
+        "725": 2,
+        "726": 3,
+        "727": 3
+      },
+      "category": "KEYBOARD"
+    },
+    "728": {
+      "deviceName": "Razer Huntsman Signature Edition",
+      "productId": 728,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "736": {
+      "deviceName": "Razer Blade 16",
+      "productId": 736,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "737": {
+      "deviceName": "Razer Blade 18",
+      "productId": 737,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "SYSTEM"
+    },
+    "739": {
+      "deviceName": "Razer Reclusa X Mini 65%",
+      "productId": 739,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "740": {
+      "deviceName": "Razer Huntsman V3 HE Magnetic Mini 65% 8KHz",
+      "productId": 740,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "741": {
+      "deviceName": "Razer Huntsman V3 Tenkeyless 8KHZ",
+      "productId": 741,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "742": {
+      "deviceName": "RAZER HUNTSMAN V3 PRO LOW-PROFILE TENKEYLESS 8KHZ",
+      "productId": 742,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "746": {
+      "deviceName": "Razer Huntsman V3 HE Magnetic Tenkeyless 8KHz",
+      "productId": 746,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "747": {
+      "deviceName": "Tartarus V2 Pro",
+      "productId": 747,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYPAD"
+    },
+    "752": {
+      "deviceName": "Razer BlackWidow V4 75% XBOX 25 Anniversary Edition ",
+      "productId": 752,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "KEYBOARD"
+    },
+    "769": {
+      "productId": 769,
+      "vendorId": 5426,
+      "category": "HUE"
+    },
+    "777": {
+      "deviceName": "RAZER KRAKEN BT SANRIO LIMITED EDITION",
+      "productId": 777,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "778": {
+      "productId": 778,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "780": {
+      "deviceName": "Razer Key Light Chroma",
+      "productId": 780,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "781": {
+      "deviceName": "Razer Aether Lamp Pro",
+      "productId": 781,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "782": {
+      "deviceName": "Razer Aether Lamp",
+      "productId": 782,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "783": {
+      "deviceName": "Razer Aether Light Bulb",
+      "productId": 783,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "784": {
+      "deviceName": "Razer Aether Light Strip",
+      "productId": 784,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "790": {
+      "deviceName": "RAZER AETHER MONITOR LIGHT BAR",
+      "productId": 790,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "791": {
+      "deviceName": "Razer Aether Standing Light Bars",
+      "productId": 791,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "IOT"
+    },
+    "1303": {
+      "deviceName": "Razer Nommo Chroma",
+      "productId": 1303,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "AUDIO"
+    },
+    "1304": {
+      "deviceName": "Razer Nommo Pro",
+      "productId": 1304,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "AUDIO"
+    },
+    "1306": {
+      "deviceName": "Razer Nari Ultimate",
+      "productId": 1306,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1308": {
+      "deviceName": "Razer Nari",
+      "productId": 1308,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1310": {
+      "deviceName": "Razer Nari Essential",
+      "productId": 1310,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1312": {
+      "deviceName": "RAZER USB AUDIO CONTROLLER",
+      "productId": 1312,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1313": {
+      "deviceName": "Razer Kraken Kitty Edition",
+      "productId": 1313,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1318": {
+      "deviceName": "Razer Kraken X USB",
+      "productId": 1318,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": {
+        "unresolved_expression": "i.Su.AUDIO"
+      }
+    },
+    "1319": {
+      "deviceName": "Razer Kraken Ultimate",
+      "productId": 1319,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1320": {
+      "deviceName": "Razer BlackShark V2 Pro",
+      "productId": 1320,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1321": {
+      "deviceName": "Razer USB Sound Card",
+      "productId": 1321,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1325": {
+      "deviceName": "Razer Kraken V3 Pro",
+      "productId": 1325,
+      "dongleId": 1324,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1328": {
+      "deviceName": "Razer Kraken BT Kitty Edition",
+      "productId": 1328,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1330": {
+      "deviceName": "Razer Leviathan V2",
+      "productId": 1330,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "AUDIO"
+    },
+    "1331": {
+      "deviceName": "Razer Kraken V3 HyperSense",
+      "productId": 1331,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1332": {
+      "deviceName": "RAZER KRAKEN BT - HELLO KITTY AND FRIENDS EDITION",
+      "productId": 1332,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1335": {
+      "deviceName": "Razer Kraken V3 X",
+      "productId": 1335,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1337": {
+      "deviceName": "Razer Barracuda Pro",
+      "productId": 1337,
+      "dongleId": 1338,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1339": {
+      "deviceName": "Razer Barracuda 2.4",
+      "productId": 1339,
+      "dongleId": 1340,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1342": {
+      "deviceName": "Razer Audio Mixer",
+      "productId": 1342,
+      "vendorId": 5426,
+      "claimInterface": 6,
+      "category": "AUDIO"
+    },
+    "1346": {
+      "deviceName": "Razer Seiren V2 Pro",
+      "productId": 1346,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "BROADCASTER"
+    },
+    "1347": {
+      "deviceName": "Razer Seiren V2 X",
+      "productId": 1347,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "BROADCASTER"
+    },
+    "1352": {
+      "deviceName": "Razer Leviathan V2 Pro",
+      "productId": 1352,
+      "bleId": 1368,
+      "vendorId": 5426,
+      "claimInterface": 4,
+      "category": "AUDIO"
+    },
+    "1353": {
+      "deviceName": "Razer Kraken V3",
+      "productId": 1353,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1354": {
+      "deviceName": "Razer Leviathan V2 X",
+      "productId": 1354,
+      "bleId": 1369,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1364": {
+      "deviceName": "Razer Kraken Kitty V2 Pro",
+      "productId": 1364,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1365": {
+      "deviceName": "Razer BlackShark V2 Pro",
+      "productId": 1365,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1370": {
+      "deviceName": "Razer Nommo V2 Pro",
+      "productId": 1370,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1372": {
+      "deviceName": "RAZER NOMMO V2",
+      "productId": 1372,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1374": {
+      "deviceName": "Razer Nommo V2 X",
+      "productId": 1374,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1376": {
+      "deviceName": "Razer Kraken Kitty V2",
+      "productId": 1376,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1378": {
+      "deviceName": "Razer Kraken Kitty V2 BT Quartz Edition",
+      "productId": 1378,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1382": {
+      "deviceName": "Razer WIRELESS CONTROL POD",
+      "productId": 1382,
+      "bleId": 1382,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "1383": {
+      "deviceName": "Razer Kraken V4 Pro",
+      "productId": 1383,
+      "dongleId": 1384,
+      "vendorId": 5426,
+      "claimInterface": {
+        "1383": 5,
+        "1384": 4
+      },
+      "category": "AUDIO"
+    },
+    "1386": {
+      "deviceName": "Razer Seiren V3 Mini",
+      "productId": 1386,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "BROADCASTER"
+    },
+    "1387": {
+      "deviceName": "Razer Kraken V4",
+      "productId": 1387,
+      "dongleId": 1388,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1389": {
+      "deviceName": "Razer Kraken V4 X",
+      "productId": 1389,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1390": {
+      "deviceName": "Razer BlackShark V2 Hyperspeed",
+      "productId": 1390,
+      "dongleId": 1381,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1391": {
+      "deviceName": "Razer Seiren V3 Chroma",
+      "productId": 1391,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "BROADCASTER"
+    },
+    "1392": {
+      "deviceName": "Clio",
+      "productId": 1392,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1396": {
+      "deviceName": "Razer Barracuda X Chroma",
+      "productId": 1396,
+      "dongleId": 1396,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1398": {
+      "deviceName": "BlackShark V3 Pro",
+      "productId": 1398,
+      "dongleId": 1399,
+      "bleId": 1397,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1401": {
+      "deviceName": "BlackShark V3",
+      "productId": 1401,
+      "dongleId": 1402,
+      "bleId": 1400,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1404": {
+      "deviceName": "BlackShark V3 X",
+      "productId": 1404,
+      "dongleId": 1405,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1406": {
+      "deviceName": "Razer Kraken V2 BT Hello Kitty and Friends Edition",
+      "productId": 1406,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1407": {
+      "deviceName": "Razer | Sanrio Characters Limited Edition Wireless Headset",
+      "productId": 1407,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1411": {
+      "deviceName": "Razer Barracuda Pro",
+      "productId": 1411,
+      "dongleId": 1411,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1412": {
+      "deviceName": "Razer Barracuda 2.4",
+      "productId": 1412,
+      "dongleId": 1412,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1415": {
+      "deviceName": "Razer Kraken Kitty V3 Pro",
+      "productId": 1415,
+      "dongleId": 1416,
+      "bleId": 1417,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "1420": {
+      "deviceName": "Razer Hammerhead V3",
+      "productId": 1420,
+      "dongleId": 1420,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1422": {
+      "deviceName": "Razer Seiren V3 Pro",
+      "productId": 1422,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "BROADCASTER"
+    },
+    "1427": {
+      "deviceName": "Razer Barracuda V2 Pro",
+      "productId": 1427,
+      "dongleId": 1426,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "1439": {
+      "deviceName": "Razer Kraken V4 X Sensa HD Haptics",
+      "productId": 1439,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1442": {
+      "deviceName": "Razer Carol T2",
+      "productId": 1442,
+      "dongleId": 1442,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1443": {
+      "deviceName": "Razer Leviathan V2",
+      "productId": 1443,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1446": {
+      "deviceName": "Razer Seiren V3 Chroma 32-Bit DSP",
+      "productId": 1446,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "BROADCASTER"
+    },
+    "1453": {
+      "deviceName": "Razer Mako X",
+      "productId": 1453,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1462": {
+      "deviceName": "Razer Kraken Kitty V3",
+      "productId": 1462,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "1465": {
+      "deviceName": "Razer Hammerhead V3 Chroma",
+      "productId": 1465,
+      "dongleId": 0,
+      "bleId": 0,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "2594": {
+      "deviceName": "Razer Turret Mouse Gears Of War 5 Edition",
+      "productId": 2594,
+      "dongleId": 2593,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    },
+    "2595": {
+      "deviceName": "Turret Keyboard Gears Of War 5 Edition",
+      "productId": 2595,
+      "dongleId": 2593,
+      "vendorId": 5426,
+      "claimInterface": {
+        "2593": 0,
+        "2595": 2
+      },
+      "category": "KEYBOARD"
+    },
+    "2596": {
+      "deviceName": "RAZER BLACKWIDOW V3 TENKEYLESS",
+      "productId": 2596,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "KEYBOARD"
+    },
+    "2629": {
+      "deviceName": "Razer Wolverine V3 Tournament Edition",
+      "productId": 2629,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2636": {
+      "deviceName": "Razer Wolverine V3 Pro",
+      "productId": 2636,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2638": {
+      "deviceName": "BlackShark V3 Pro XBOX",
+      "productId": 2638,
+      "dongleId": 2645,
+      "bleId": 2639,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "2641": {
+      "deviceName": "BlackShark V3 XBOX",
+      "productId": 2641,
+      "dongleId": 2648,
+      "bleId": 2642,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "2644": {
+      "deviceName": "BlackShark V3 X Xbox",
+      "productId": 2644,
+      "dongleId": 2651,
+      "bleId": 2646,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "2647": {
+      "deviceName": "Razer Wolverine V3 Pro PC",
+      "productId": 2647,
+      "dongleId": 2649,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2650": {
+      "deviceName": "Razer Wolverine V3 TE PC",
+      "productId": 2650,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2657": {
+      "deviceName": "Razer Hammerhead V3 HyperSpeed",
+      "productId": 2657,
+      "dongleId": 2657,
+      "bleId": 2658,
+      "vendorId": 5426,
+      "claimInterface": 3,
+      "category": "AUDIO"
+    },
+    "2660": {
+      "deviceName": "Razer Hammerhead V3 X Hyperspeed",
+      "productId": 2660,
+      "dongleId": 2660,
+      "bleId": 2661,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "2664": {
+      "deviceName": "Razer Hammerhead V3 X Hyperspeed for Xbox",
+      "productId": 2664,
+      "dongleId": 2664,
+      "bleId": 2661,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "2668": {
+      "deviceName": "Razer Hammerhead V3 X Hyperspeed",
+      "productId": 2668,
+      "dongleId": 2668,
+      "bleId": 2669,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "2676": {
+      "deviceName": "Razer Wolverine V4 Pro",
+      "productId": 2676,
+      "dongleId": 2680,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2684": {
+      "deviceName": "Razer Wolverine V4 Tournament Edition",
+      "productId": 2684,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "2689": {
+      "deviceName": "Razer Hammerhead V3 X Hyperspeed Kuromi Edition",
+      "productId": 2689,
+      "dongleId": 2689,
+      "bleId": 2690,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "3072": {
+      "deviceName": "Razer Firefly Hard Edition",
+      "productId": 3072,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3073": {
+      "deviceName": "Razer Goliathus Chroma",
+      "productId": 3073,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3074": {
+      "deviceName": "Razer Goliathus Extended Chroma",
+      "productId": 3074,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3076": {
+      "deviceName": "Razer Firefly V2",
+      "productId": 3076,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3077": {
+      "deviceName": "Razer Strider Chroma",
+      "productId": 3077,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3078": {
+      "deviceName": "Razer Goliathus Chroma 3XL",
+      "productId": 3078,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3080": {
+      "deviceName": "Razer Firefly V2 Pro",
+      "productId": 3080,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSEMAT"
+    },
+    "3331": {
+      "deviceName": "Razer RipSaw HD",
+      "productId": 3331,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3334": {
+      "deviceName": "Razer Stream Controller",
+      "productId": 3334,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "BROADCASTER"
+    },
+    "3337": {
+      "deviceName": "Razer Stream Controller X",
+      "productId": 3337,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "BROADCASTER"
+    },
+    "3587": {
+      "deviceName": "Razer Kiyo",
+      "productId": 3587,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3589": {
+      "deviceName": "Razer Kiyo Pro",
+      "productId": 3589,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3590": {
+      "deviceName": "Razer Kiyo X",
+      "productId": 3590,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3592": {
+      "deviceName": "Razer Kiyo Pro Ultra",
+      "productId": 3592,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3594": {
+      "deviceName": "Razer Kiyo V2 Pro",
+      "productId": 3594,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3595": {
+      "deviceName": "Razer Kiyo V2",
+      "productId": 3595,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3596": {
+      "deviceName": "Razer Kiyo V2 X",
+      "productId": 3596,
+      "vendorId": 5426,
+      "category": "BROADCASTER"
+    },
+    "3848": {
+      "deviceName": "Razer Base Statiom Chroma",
+      "productId": 3848,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3849": {
+      "deviceName": "Razer Chroma HDK",
+      "productId": 3849,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "ACCESSORY"
+    },
+    "3853": {
+      "deviceName": "Razer Laptop Stand Chroma",
+      "productId": 3853,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3858": {
+      "deviceName": "Razer Raptor 27",
+      "productId": 3858,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MONITOR"
+    },
+    "3859": {
+      "deviceName": "Lian Li 011 Dynamic",
+      "productId": 3859,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "CASE"
+    },
+    "3863": {
+      "deviceName": "Razer Tomahawk ATX",
+      "productId": 3863,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "CASE"
+    },
+    "3866": {
+      "deviceName": "Razer Core X Chroma",
+      "productId": 3866,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "EGPU"
+    },
+    "3867": {
+      "deviceName": "Razer Seiren Emote",
+      "productId": 3867,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "BROADCASTER"
+    },
+    "3869": {
+      "deviceName": "Razer Bungee V3 Chroma",
+      "productId": 3869,
+      "vendorId": 5426,
+      "category": "ACCESSORY"
+    },
+    "3871": {
+      "productId": 3871,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3872": {
+      "deviceName": "Razer Base Statiom V2 Chroma",
+      "productId": 3872,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3873": {
+      "deviceName": "Razer Thunderbolt 4 Dock Chroma",
+      "productId": 3873,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3878": {
+      "deviceName": "Razer Chroma Charging Pad 10W Fast Wireless Charger",
+      "productId": 3878,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3879": {
+      "deviceName": "Tomahawk Gaming Desktop",
+      "productId": 3879,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "CASE"
+    },
+    "3880": {
+      "deviceName": "Razer Raptor 27 (165Hz)",
+      "productId": 3880,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MONITOR"
+    },
+    "3883": {
+      "deviceName": "Razer Laptop Stand V2 Chroma",
+      "productId": 3883,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3884": {
+      "productId": 3884,
+      "dongleId": 3884,
+      "bleId": 3885,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3893": {
+      "productId": 3893,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3894": {
+      "deviceName": "Razer Head Cushion Chroma",
+      "productId": 3894,
+      "bleId": 3894,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3900": {
+      "deviceName": "Razer PWM PC Fan Controller",
+      "productId": 3900,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3907": {
+      "productId": 3907,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3909": {
+      "deviceName": "Razer Freyja",
+      "productId": 3909,
+      "dongleId": 3909,
+      "bleId": 3910,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3921": {
+      "deviceName": "Razer Core X V2",
+      "productId": 3921,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "EGPU"
+    },
+    "3922": {
+      "deviceName": "Razer Thunderbolt 5 Dock Chroma",
+      "productId": 3922,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3929": {
+      "deviceName": "Razer Monitor Stand Chroma",
+      "productId": 3929,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3932": {
+      "deviceName": "Razer Handheld Dock Chroma",
+      "productId": 3932,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3940": {
+      "productId": 3940,
+      "dongleId": 3940,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "3942": {
+      "deviceName": "Razer Soma Pro",
+      "productId": 3942,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "CHAIR"
+    },
+    "3946": {
+      "deviceName": "Razer Base Station V3 Chroma",
+      "productId": 3946,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "ACCESSORY"
+    },
+    "3949": {
+      "deviceName": "Razer Soma Sensa HD Haptics",
+      "productId": 3949,
+      "dongleId": 3949,
+      "bleId": 3950,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "ACCESSORY"
+    },
+    "4115": {
+      "deviceName": "Razer Kitsune",
+      "productId": 4115,
+      "vendorId": 5426,
+      "claimInterface": 2,
+      "category": "GAMEPAD"
+    },
+    "4124": {
+      "deviceName": "BlackShark V3 Pro PS",
+      "productId": 4124,
+      "dongleId": 4123,
+      "bleId": 4125,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "4126": {
+      "deviceName": "BlackShark V3 PS",
+      "productId": 4126,
+      "dongleId": 4126,
+      "bleId": 4128,
+      "vendorId": 5426,
+      "claimInterface": 5,
+      "category": "AUDIO"
+    },
+    "4130": {
+      "deviceName": "BlackShark V3 X PS",
+      "productId": 4130,
+      "dongleId": 4129,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "AUDIO"
+    },
+    "4133": {
+      "deviceName": "Razer Wolverine V3 Pro Playstation",
+      "productId": 4133,
+      "dongleId": 4135,
+      "bleId": 4136,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "4144": {
+      "deviceName": "Razer Raiju V3 Pro Signature Edition",
+      "productId": 4144,
+      "dongleId": 4146,
+      "bleId": 4147,
+      "vendorId": 5426,
+      "claimInterface": 1,
+      "category": "GAMEPAD"
+    },
+    "45066": {
+      "deviceName": "Razer Basilisk V3 Pro 35K - Xbox 25 Anniversary Edition",
+      "productId": 45066,
+      "dongleId": 45067,
+      "bleId": 45068,
+      "vendorId": 5426,
+      "claimInterface": 0,
+      "category": "MOUSE"
+    }
+  }
+}

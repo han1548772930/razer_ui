@@ -40,9 +40,11 @@ pub(super) struct Peer {
     pub(super) name: String,
     pub(super) product_id: u32,
     pub(super) dongle_id: Option<u32>,
-    pub(super) edition: u32,
-    pub(super) layout: u32,
+    pub(super) edition: Option<u32>,
+    pub(super) layout: Option<u32>,
     pub(super) lane: Lane,
+    /// Exact middleware candidate payload; preview fixtures leave this absent.
+    pub(super) payload: Option<serde_json::Value>,
 }
 #[derive(Clone, Default)]
 pub(super) struct Channel {
@@ -62,6 +64,8 @@ impl Channel {
 #[derive(Clone, Default)]
 pub(super) struct PairingState {
     pub(super) channels: [Channel; 2],
+    pub(super) pending: Option<super::DockPairingEvent>,
+    pub(super) active: Option<super::DockPairingEvent>,
 }
 impl PairingState {
     pub(super) fn channel(&self, lane: Lane) -> &Channel {
@@ -71,7 +75,7 @@ impl PairingState {
         &mut self.channels[lane.ix()]
     }
     pub(super) fn modifiable(&self, lane: Lane, dual: bool) -> bool {
-        !dual || !self.channels[1 - lane.ix()].blocks_other()
+        self.pending.is_none() && (!dual || !self.channels[1 - lane.ix()].blocks_other())
     }
     pub(super) fn peers(&self) -> Vec<&Peer> {
         self.channels
@@ -95,8 +99,7 @@ impl PairingState {
     }
     pub(super) fn unpair_payload(&self, lane: Lane, dual: bool) -> Option<serde_json::Value> {
         let peer = self.channel(lane).peer.as_ref()?;
-        let mut payload =
-            serde_json::json!({"productId":peer.dongle_id.unwrap_or(peer.product_id)});
+        let mut payload = serde_json::json!({"productId":peer.dongle_id.filter(|id| *id != 0).unwrap_or(peer.product_id)});
         if dual {
             payload["category"] = serde_json::json!(lane.key());
         }

@@ -16,6 +16,9 @@ use serde_json::{Value, json};
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
 
 use crate::{i18n::t, ui::surface};
+#[path = "gamepad_calibration.rs"]
+mod calibration;
+pub(crate) use calibration::state::{CalibrationIntent, CalibrationObservation};
 #[path = "gamepad_deadzone_dialog.rs"]
 mod deadzone_dialog;
 #[path = "kitsune.rs"]
@@ -130,6 +133,7 @@ struct RangePointer {
 
 pub(crate) struct GamepadProductWorkspace {
     layout_id: u32,
+    edition_id: u32,
     spec: &'static GamepadProductSpec,
     range_drags: BTreeMap<String, RangeDrag>,
     page: String,
@@ -139,6 +143,9 @@ pub(crate) struct GamepadProductWorkspace {
     low_deadzone: Option<(String, Value)>,
     previous_deadzones: BTreeMap<String, Value>,
     deadzone_dialog: Option<deadzone_dialog::DialogState>,
+    calibration_state: calibration::state::CalibrationState,
+    calibration_dialog: Option<calibration::CalibrationDialog>,
+    calibration_bounds: Rc<Cell<Bounds<Pixels>>>,
     thumbstick_bounds: Rc<Cell<Bounds<Pixels>>>,
     sliders: BTreeMap<String, Entity<SliderState>>,
     subscriptions: Vec<Subscription>,
@@ -147,6 +154,7 @@ pub(crate) struct GamepadProductWorkspace {
 
 impl EventEmitter<GamepadProductChanged> for GamepadProductWorkspace {}
 impl EventEmitter<GamepadCalibrationRequested> for GamepadProductWorkspace {}
+impl EventEmitter<CalibrationIntent> for GamepadProductWorkspace {}
 
 impl GamepadProductWorkspace {
     pub(crate) fn new(
@@ -158,6 +166,7 @@ impl GamepadProductWorkspace {
         let spec = source_product(pid).expect("audited gamepad product");
         let mut this = Self {
             layout_id,
+            edition_id: 0,
             spec,
             range_drags: BTreeMap::new(),
             page: "TAB_CUSTOMIZE".into(),
@@ -167,6 +176,9 @@ impl GamepadProductWorkspace {
             low_deadzone: None,
             previous_deadzones: BTreeMap::new(),
             deadzone_dialog: None,
+            calibration_state: Default::default(),
+            calibration_dialog: None,
+            calibration_bounds: Rc::new(Cell::new(Bounds::default())),
             thumbstick_bounds: Rc::new(Cell::new(Bounds::default())),
             sliders: BTreeMap::new(),
             subscriptions: Vec::new(),
@@ -211,6 +223,9 @@ impl GamepadProductWorkspace {
     pub(crate) fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
             self.cancel_range_edits(cx);
+            if self.page == "TAB_CALIBRATION" {
+                self.leave_calibration(window, cx);
+            }
             // 2636's mounted thumbstick component initializes prevLeft/Right
             // once on entry. Continue does not replace these rollback values.
             if self.spec.product_id == 2636 && key == "THUMBSTICKS" {
@@ -240,6 +255,7 @@ impl GamepadProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         self.cancel_range_edits(cx);
+        self.leave_calibration(window, cx);
         self.draft = json!({"profile": self.spec.profile, "controller": self.spec.controller});
         if let Some(saved) =
             saved.filter(|v| v["profile"].is_object() && v["controller"].is_object())
@@ -1456,7 +1472,10 @@ impl GamepadProductWorkspace {
         .into_any_element()
     }
 
-    fn calibration(&self, cx: &Context<Self>) -> AnyElement {
+    fn calibration(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if self.spec.product_id == 2636 {
+            return self.render_calibration(window, cx);
+        }
         surface::panel(t("TAB_CALIBRATION"), cx)
             .child(surface::note(t("CALIBRATION_STEP0"), cx))
             .child(
@@ -1491,13 +1510,16 @@ impl Render for GamepadProductWorkspace {
             "THUMBSTICKS" => self.thumbsticks(cx),
             "TAB_LIGHTING" => self.lighting(window, cx),
             "TAB_POWER" => self.power(cx),
-            "TAB_CALIBRATION" => self.calibration(cx),
+            "TAB_CALIBRATION" => self.calibration(window, cx),
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
         };
         super::product_surface::body()
             .child(content)
             .when(self.deadzone_dialog.is_some(), |body| {
                 body.child(self.render_deadzone_dialog(window, cx))
+            })
+            .when(self.calibration_dialog.is_some(), |body| {
+                body.child(self.render_calibration_error(window, cx))
             })
     }
 }

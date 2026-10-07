@@ -153,6 +153,35 @@ impl DeviceWorkspace {
             cx.notify();
         }
     }
+    pub(super) fn change_profile_collection(
+        &mut self,
+        action: super::product_workspace::ProfileCollectionAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        let active = self.device.active_profile.clone();
+        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+            && self.mapping_dirty()
+        {
+            return Err("当前配置仍有未提交的按键编辑，请先保存或取消该编辑".into());
+        }
+        let target = super::product_workspace::edit_profile_collection(
+            &mut self.device,
+            &self.saved,
+            action,
+        )?;
+        self.refresh_profile_choices(window, cx);
+        if active != self.device.active_profile {
+            self.cancel_snap_capture(window, cx);
+            self.profile_rename = None;
+            self.mapping = None;
+            self.mapping_recording = false;
+            self.customize_drawer.source_input = None;
+            self.sync_controls(window, cx);
+        }
+        self.changed(cx);
+        Ok(target)
+    }
     pub fn new(
         mut device: Device,
         intro_seen: bool,

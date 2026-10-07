@@ -16,6 +16,7 @@ pub(super) struct PlaybackSource {
 pub(super) struct PlaybackChanged(pub(super) Value);
 impl EventEmitter<PlaybackChanged> for StudioPlayback {}
 pub(super) struct StudioPlayback {
+    effect: String,
     start: String,
     end: String,
     cycles: i64,
@@ -67,6 +68,7 @@ impl StudioPlayback {
             }),
         ];
         Self {
+            effect: String::new(),
             start: String::new(),
             end: String::new(),
             cycles: -1,
@@ -86,13 +88,16 @@ impl StudioPlayback {
     }
     pub(super) fn configure(
         &mut self,
+        effect: &str,
         params: &Value,
         enabled: bool,
         mounted: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !mounted {
+        let remount = self.effect != effect;
+        self.effect = effect.into();
+        if !mounted || remount {
             self.remembered = None;
         }
         self.mounted = mounted;
@@ -101,12 +106,14 @@ impl StudioPlayback {
         self.end = params["playbackEnd"].as_str().unwrap_or("").into();
         self.cycles = params["cycles"].as_i64().unwrap_or(-1);
         self.write_input(window, cx);
-        if !self.enabled {
+        if !self.enabled || remount {
             self.start_dropdown
                 .update(cx, |s, cx| s.set_open(false, cx));
             self.end_dropdown.update(cx, |s, cx| s.set_open(false, cx));
             self.repeat = None;
             self.held = false;
+            self.repeated = false;
+            self.suppress_click = false;
         }
         cx.notify();
     }

@@ -60,6 +60,7 @@ pub(crate) mod chroma_product;
 pub(crate) mod chroma_studio;
 pub(crate) mod display_mode_roots;
 pub(crate) mod dock_pairing;
+pub(crate) use dock_pairing::{DockPairingEvent, DockPairingObservation};
 pub(crate) mod hue;
 pub(crate) mod wired_argb;
 pub(crate) mod wireless_argb;

@@ -45,6 +45,8 @@ pub(super) struct SourceHelp {
     copied_serial: bool,
     view_more: bool,
     copy_task: Option<Task<()>>,
+    reset_generation: u64,
+    pending_reset: bool,
 }
 impl SourceHelp {
     pub(super) fn new(device: Device, _: &mut Context<Self>) -> Self {
@@ -54,6 +56,8 @@ impl SourceHelp {
             copied_serial: false,
             view_more: false,
             copy_task: None,
+            reset_generation: 0,
+            pending_reset: false,
         }
     }
     pub(super) fn set_device(&mut self, device: &Device, cx: &mut Context<Self>) {
@@ -63,6 +67,8 @@ impl SourceHelp {
             self.copy_task = None;
             self.copied_serial = false;
             self.view_more = false;
+            self.reset_generation = self.reset_generation.wrapping_add(1);
+            self.pending_reset = false;
         }
         if self.device.product_id != device.product_id {
             self.page_offset = None;
@@ -74,6 +80,8 @@ impl SourceHelp {
         if self.page_offset != Some(offset) {
             self.page_offset = Some(offset);
             self.view_more = false;
+            self.reset_generation = self.reset_generation.wrapping_add(1);
+            self.pending_reset = false;
             cx.notify();
         }
     }
@@ -110,6 +118,12 @@ impl SourceHelp {
         if !page.reset && !(page.oled_reset && !self.device.use_ble) {
             return;
         }
+        if self.pending_reset {
+            return;
+        }
+        // These current Help classes' confirmDel emits ON_RESET_DEVICE.
+        // Other reset variants (OBM/OLED/firmware) remain separately audited.
+        let local_reset = matches!(self.device.product_id, 164 | 179 | 241);
         let title = self.device.display_name();
         let message = if page.oled_reset && !self.device.use_ble {
             i18n::t(&page.reset_title)
@@ -127,11 +141,31 @@ impl SourceHelp {
                 "FACTORY_RESET_MSG_NO_OBM_DEVICE"
             })
         };
+        self.reset_generation = self.reset_generation.wrapping_add(1);
+        let generation = self.reset_generation;
+        let owner = cx.weak_entity();
         window.open_dialog(cx, move |dialog, _, cx| {
             dialog
                 .title(title.clone())
                 .child(message.clone())
-                .child(surface::note("设备服务未连接，无法恢复设备出厂设置。", cx))
+                .child(surface::note(
+                    if local_reset {
+                        "确认后将保留本地重置请求，尚未发送到设备。"
+                    } else {
+                        "设备服务未连接，无法恢复设备出厂设置。"
+                    },
+                    cx,
+                ))
+                .on_close({
+                    let owner = owner.clone();
+                    move |_, _, cx| {
+                        let _ = owner.update(cx, |view, _| {
+                            if view.reset_generation == generation {
+                                view.reset_generation = view.reset_generation.wrapping_add(1);
+                            }
+                        });
+                    }
+                })
                 .footer(
                     h_flex()
                         .justify_end()
@@ -139,12 +173,43 @@ impl SourceHelp {
                         .child(
                             Button::new("source-help-reset-cancel")
                                 .label(i18n::t("CANCEL"))
-                                .on_click(|_, window, cx| window.close_dialog(cx)),
+                                .on_click({
+                                    let owner = owner.clone();
+                                    move |_, window, cx| {
+                                        let _ = owner.update(cx, |view, _| {
+                                            if view.reset_generation == generation {
+                                                view.reset_generation =
+                                                    view.reset_generation.wrapping_add(1);
+                                            }
+                                        });
+                                        window.close_dialog(cx);
+                                    }
+                                }),
                         )
                         .child(
                             Button::new("source-help-reset-confirm")
                                 .label(i18n::t("RESET"))
-                                .disabled(true),
+                                .disabled(!local_reset)
+                                .on_click({
+                                    let owner = owner.clone();
+                                    move |_, window, cx| {
+                                        let accepted = owner
+                                            .update(cx, |view, cx| {
+                                                if !local_reset
+                                                    || view.reset_generation != generation
+                                                {
+                                                    return false;
+                                                }
+                                                view.pending_reset = true;
+                                                cx.notify();
+                                                true
+                                            })
+                                            .unwrap_or(false);
+                                        if accepted {
+                                            window.close_dialog(cx);
+                                        }
+                                    }
+                                }),
                         ),
                 )
         });
@@ -279,12 +344,43 @@ impl Render for SourceHelp {
                 surface::panel(i18n::t("FACTORY_RESET"), cx)
                     .child(i18n::t(&page.reset_title))
                     .child(
-                        help_button("source-help-reset", i18n::t("RESET"), false, cx)
-                            .self_start()
-                            .on_click(
-                                cx.listener(|this, _, window, cx| this.show_reset(window, cx)),
-                            ),
-                    ),
+                        help_button(
+                            "source-help-reset",
+                            i18n::t("RESET"),
+                            self.pending_reset,
+                            cx,
+                        )
+                        .self_start()
+                        .on_click(cx.listener(|this, _, window, cx| this.show_reset(window, cx))),
+                    )
+                    .when(self.pending_reset, |panel| {
+                        panel.child(
+                            v_flex()
+                                .id("source-help-reset-local-intent")
+                                .test_support()
+                                .role(Role::Status)
+                                .aria_label("重置请求尚未发送到设备。")
+                                .gap(surface::css(10.))
+                                .child("已准备重置请求，尚未发送到设备。")
+                                .child(
+                                    help_button(
+                                        "source-help-reset-discard",
+                                        i18n::t("CANCEL"),
+                                        false,
+                                        cx,
+                                    )
+                                    .self_start()
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
+                                            this.pending_reset = false;
+                                            this.reset_generation =
+                                                this.reset_generation.wrapping_add(1);
+                                            cx.notify();
+                                        },
+                                    )),
+                                ),
+                        )
+                    }),
             );
         }
         let serial = self.device.serial_number.clone();

@@ -26,6 +26,9 @@ pub(crate) struct ReceiverCapability {
     pub(crate) sleep_between_out_ms: u64,
     pub(crate) sleep_between_out_in_ms: u64,
     pub(crate) sleep_between_in_ms: u64,
+    /// Keyboard middleware accepts productId as well as scalar dongleId;
+    /// mouse/linker middleware uses scalar dongleId only.
+    pub(crate) peer_match_product_id: bool,
     pub(crate) source_class: String,
     pub(crate) evidence_path: String,
 }

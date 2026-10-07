@@ -24,6 +24,23 @@ pub(crate) enum TrayDoubleClickAction {
     ShowMenu,
 }
 
+/// Local startup intent only; neither field is an observed host/OS setting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub(crate) struct LocalStartupDraft {
+    pub(crate) auto_start: bool,
+    pub(crate) start_minimized: bool,
+}
+impl Default for LocalStartupDraft {
+    fn default() -> Self {
+        // Current Settings Ks initializes both editors to true before queries.
+        Self {
+            auto_start: true,
+            start_minimized: true,
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct CustomColors {
     colors: CustomColorSlots,
@@ -89,6 +106,9 @@ pub(crate) const RECOMMENDATION_CATEGORIES: &[(&str, &str)] = &[
 pub(crate) struct AppPreferences {
     /// None represents an older workspace: current source defaults to showMenu.
     pub(crate) systray_double_click: Option<TrayDoubleClickAction>,
+    /// None means no local startup choice has been saved, not disabled in Windows.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) startup_draft: Option<LocalStartupDraft>,
     pub(crate) language: String,
     pub(crate) notifications: bool,
     pub(crate) recommendations: bool,
@@ -106,6 +126,7 @@ impl Default for AppPreferences {
     fn default() -> Self {
         Self {
             systray_double_click: None,
+            startup_draft: None,
             language: "zh-CN".into(),
             notifications: true,
             recommendations: true,

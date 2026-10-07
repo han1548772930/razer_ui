@@ -22,6 +22,7 @@ use std::time::Duration;
 
 mod controls;
 mod devices;
+mod transfer;
 
 const FILTER_KEYS: [&str; 3] = ["ALL_GAMES", "LINKED_GAMES", "REMOVED_GAMES"];
 const SORT_KEYS: [&str; 4] = ["NAME_A_TO_Z", "NAME_Z_TO_A", "LAST_PLAYED", "MOST_PLAYED"];
@@ -124,6 +125,11 @@ impl ProfilesPage {
             .map(|device| cx.observe(device, |_, _, cx| cx.notify()))
             .collect();
         self.devices = devices;
+        if let Some(dialog) = &self.device_dialog {
+            dialog.update(cx, |dialog, cx| {
+                dialog.set_devices(self.devices.clone(), cx)
+            });
+        }
         cx.notify();
     }
 

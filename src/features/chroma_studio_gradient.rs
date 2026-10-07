@@ -1,9 +1,23 @@
-//! Current Spectrum 8552:b and shared gradient selector 3690/99/1592.
+//! Current shared gradient selector 3690/99/1592, with effect-specific limits.
 use super::studio_color::{StudioColor, StudioColorEvent, checkered};
 use super::studio_gradient_data::{Stop, bar, pack, sample, serialize};
 use super::*;
 use gpui_kit::base::Popover;
 use std::{cell::Cell, rc::Rc, time::Duration};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum GradientKind {
+    Spectrum,
+    Default,
+}
+impl GradientKind {
+    fn definition(self) -> &'static GradientDefinition {
+        &source().gradients[match self {
+            Self::Spectrum => "spectrum",
+            Self::Default => "default",
+        }]
+    }
+}
 
 pub(super) struct GradientChanged {
     pub(super) stops: Value,
@@ -12,6 +26,9 @@ pub(super) struct GradientChanged {
 impl EventEmitter<GradientChanged> for StudioGradient {}
 
 pub(super) struct StudioGradient {
+    effect: String,
+    kind: GradientKind,
+    hidden: bool,
     stops: Vec<Stop>,
     custom: bool,
     custom_cache: Option<Vec<Stop>>,
@@ -90,6 +107,9 @@ impl StudioGradient {
             }),
         ];
         Self {
+            effect: String::new(),
+            kind: GradientKind::Spectrum,
+            hidden: false,
             stops: Vec::new(),
             custom: false,
             custom_cache: None,
@@ -109,13 +129,22 @@ impl StudioGradient {
 
     pub(super) fn configure(
         &mut self,
+        effect: &str,
+        kind: GradientKind,
         value: &Value,
         custom: bool,
         enabled: bool,
+        hidden: bool,
         replace: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.effect != effect || self.kind != kind {
+            self.set_open(false, window, cx);
+        }
+        self.effect = effect.into();
+        self.kind = kind;
+        self.hidden = hidden;
         self.enabled = enabled;
         if replace {
             self.stops.clear();
@@ -206,7 +235,7 @@ impl StudioGradient {
             return;
         }
         if let Some(index) = index {
-            self.stops = source().gradients["spectrum"].presets[index]
+            self.stops = self.kind.definition().presets[index]
                 .iter()
                 .map(|point| {
                     let id = self.next_id;
@@ -231,7 +260,7 @@ impl StudioGradient {
     fn add(&mut self, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
         if !self.enabled
             || self.stops.is_empty()
-            || self.stops.len() >= source().gradients["spectrum"].max_stops
+            || self.stops.len() >= self.kind.definition().max_stops
         {
             return;
         }
@@ -255,7 +284,7 @@ impl StudioGradient {
     }
 
     fn remove(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.enabled || self.stops.len() <= source().gradients["spectrum"].min_stops {
+        if !self.enabled || self.stops.len() <= self.kind.definition().min_stops {
             return;
         }
         self.stops.retain(|stop| Some(stop.id) != self.selected);
@@ -320,7 +349,7 @@ impl StudioGradient {
     }
 
     fn editor(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
-        let definition = &source().gradients["spectrum"];
+        let definition = self.kind.definition();
         let mut patterns: Vec<_> = definition
             .presets
             .iter()
@@ -562,6 +591,13 @@ impl Render for StudioGradient {
         let body = self.editor(window, cx);
         let owner = cx.weak_entity();
         let revealed = self.revealed;
+        let swatch_opacity = surface::fade_opacity(
+            "studio-gradient-swatch",
+            if self.hidden { 0. } else { 1. },
+            100,
+            window,
+            cx,
+        );
         let trigger = BaseButton::new("studio-gradient-trigger")
             .accessibility_label("Gradient Selector")
             .disabled(!self.enabled)
@@ -587,11 +623,16 @@ impl Render for StudioGradient {
                     .border_color(Colors::gradient_border())
                     .rounded(surface::css(3.))
                     .overflow_hidden()
+                    .opacity(swatch_opacity)
                     .child(Self::strip(self.stops.clone())),
             );
         Popover::new("studio-gradient-popover")
             .w_full()
-            .mb(surface::css(10.))
+            .mb(surface::css(if self.effect == "starlight" {
+                10.
+            } else {
+                0.
+            }))
             .anchor(Anchor::TopLeft)
             .offset(surface::css(2.).to_pixels(window.rem_size()))
             .open(self.open)

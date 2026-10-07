@@ -371,11 +371,13 @@ impl MacroPage {
                                         .hover(|s| s.bg(rgba(0xffffff1a)).rounded(css(5.)))
                                         .on_click(
                                             cx.listener(move |this, _, window, cx| {
+                                                if this.recording_busy() {
+                                                    return;
+                                                }
                                                 this.set_active_phase(Some(phase as u8), cx);
-                                                window.push_notification(
-                                                    "宏录制服务尚未连接；已选择阶段，未开始录制。",
-                                                    cx,
-                                                );
+                                                // Current Ka selects this phase and
+                                                // invokes xa.changeRecording.
+                                                this.toggle_recording(window, cx);
                                             }),
                                         ),
                                     )

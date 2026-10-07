@@ -416,8 +416,8 @@
                 ],
                 "source": {
                   "path": ".ref/devices/164/static/js/main.458d4103.js",
-                  "offset": 4401008,
-                  "end": 4405977
+                  "offset": 4381892,
+                  "end": 4388540
                 }
               }
             ]
@@ -429,7 +429,6 @@
   },
   {
     "product_id": 179,
-    "layout": "accessory",
     "profile": {
       "guid": "",
       "name": "",
@@ -448,8 +447,8 @@
                 "kind": "options",
                 "key": "179:indicator-mode",
                 "label": "INDICATOR_LED",
-                "renderer": "indicator-radio",
                 "path": "/runtime/indicatorLedStatus",
+                "renderer": "indicator-radio",
                 "options": [
                   {
                     "label": "CONNECTION_STATUS",
@@ -479,7 +478,8 @@
         ]
       }
     ],
-    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6140"
+    "support": "https://mysupport.razer.com/app/answers/detail/a_id/6140",
+    "layout": "accessory"
   },
   {
     "product_id": 207,
@@ -706,8 +706,8 @@
                 ],
                 "source": {
                   "path": ".ref/devices/241/static/js/main.899712fe.js",
-                  "offset": 475924,
-                  "end": 480879
+                  "offset": 457853,
+                  "end": 464479
                 }
               }
             ]

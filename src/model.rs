@@ -308,9 +308,10 @@ pub struct DashboardDeviceMetadata {
     pub controller_mode_variant: Option<String>,
 }
 
-/// Session-only evidence. Neither variant means profiles/firmware are loaded.
+/// Session-only evidence. No variant means profiles/firmware are loaded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DeviceConnectionObservation {
+    UsbPresent,
     HidPresent,
     ReceiverPeer(u8),
 }

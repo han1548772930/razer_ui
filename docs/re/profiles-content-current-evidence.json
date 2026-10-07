@@ -10825,11 +10825,11 @@
   "native": [
     {
       "path": "src/shell/profiles_page.rs",
-      "sha256": "a845321842d863c4db8629578b760a61e124b0f3ceaefcaa83e2e1b4b6d089da"
+      "sha256": "db99e1c7a006a61622f9c8cae3573d222d6e12284128581e23721d2d584667aa"
     },
     {
       "path": "src/shell/profiles_page/devices.rs",
-      "sha256": "c7522b3aac88120060ebe0aa74ec2f0300e5ccd86c8424beaefeafbffa9c1416"
+      "sha256": "b724afe11fde1f8bfec34ca7bdcd5a4124f4a4a9f20a6e72fe5227e40be9d1cc"
     },
     {
       "path": "src/shell/profiles_page/controls.rs",
@@ -10837,7 +10837,7 @@
     },
     {
       "path": "src/ui/source_tooltip.rs",
-      "sha256": "1e3a287ee9080755420200e2591c286e0b302c8c811af49a0f0f65a334f18bb9"
+      "sha256": "9cc4be280efbac9b203de1a85124a2b8ec3050d303db51928370782eb783f34e"
     }
   ],
   "verified_changes": [
@@ -10846,6 +10846,8 @@
     "Games clear-search collapses; Add clear-search keeps its input; filter/order clicks do not dismiss an empty input",
     "Add mounts only program rows: removed unmatched empty-message content and unforwarded goBack control",
     "Profile dropdown changes local assignment target without selecting a hardware profile",
+    "Add/Duplicate/Delete mutate only the local collection; Delete requires confirmation, last-profile protection and uncommitted-editor guards in the owning workspace",
+    "DeviceGames observes live profile identities and labels and preserves a valid independent selection; removed targets cancel pending rename/delete",
     "Rename 32 UTF-16 limit and source case-sensitive uniqueness; source ECMAScript outer trim",
     "Linked add footer block alignment/#ccc and 200ms border; check-box source bars/colors/states; popup close/more/menu transitions",
     "Profiles toolbar source tooltip position +15/+30, immediate visibility; current icon bytes unchanged"
@@ -10856,7 +10858,7 @@
     "DeviceGames intermediate viewport auto/shrink-to-fit width is still a native adaptation; minimum/media bounds audited",
     "Shared SynapseSelect has source sizing and menu data but instantaneous hover border; no shared dropdown edits in this batch",
     "Native 32-unit validator rejects an overlong edit; browser maxlength may truncate a paste. Product metadata applies its own final whitespace trim.",
-    "Profile menu import/export/add/duplicate/delete stay unavailable pending service payloads; source window-blur and exact focus/keyboard parity need follow-up",
+    "Profile menu import/export now mounts local selection and decoded preview UI; product conversion/application and official file output remain unfinished (profiles-transfer-current-evidence.json). Source window-blur, deletion popup overflow adjustment and exact focus/keyboard parity need follow-up",
     "No game catalog, program rows, cover art, missing-game state, IOT subdevice or editionName service result is invented",
     "Games selected-game detail/cover-art flows are source-receipted historically but not implemented by the current native page",
     "Known local game data lacks timing fields, so Last Played/Most Played cannot synthesize an ordering"

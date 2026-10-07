@@ -1,6 +1,6 @@
 {
   "method": "Acorn literal extraction and current mounted component receipts; vendor JavaScript never executed",
-  "generator_sha256": "2ac2cc9ca16c67f01a860fb3a06104ca3b38643ff4094771d5065d93e406bb64",
+  "generator_sha256": "4877dba1269a67b3d06627ea1b1399b25304c5def48c32c9580e235e576a7533",
   "products": [
     {
       "product_id": 164,
@@ -343,7 +343,8 @@
         "hIF": "TAB_PERFORMANCE",
         "yWF": "SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION",
         "kTs": "UNPAIRING_COMPLETE",
-        "T8n": "PAIRING_COMPLETE"
+        "T8n": "PAIRING_COMPLETE",
+        "szJ": "ENABLE_LAUNCH_PARING_UTILITY_INFO"
       },
       "locale_receipts": [
         {

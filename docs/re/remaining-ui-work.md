@@ -1,6 +1,8 @@
 # 当前剩余工作
 
-更新：2026-10-07。按 [实施路线](ui-readonly-first-roadmap.md)逐项推进，完整复刻尚未完成。最新批次见 [续接记录](ui-continuation-2026-10-07.md)：接收器/底座、预览名称及手柄扳机局部修复已静态验证；179 实际自动发现、配对工具后续状态和 241 完整条件仍在队列。
+最新续接：[2026-10-07 全范围多子任务复查](ui-review-continuation-2026-10-07.md)。已建立全部产品/页面/独立模式/应用入口队列并修复多批实际交互；USB 与 39 条直接双链查询已接代码。下文早期缺口按新报告覆盖，不把源码/静态检查等同于真实设备读取完成。
+
+更新：2026-10-07。按 [实施路线](ui-readonly-first-roadmap.md)逐项推进，完整复刻尚未完成。当天较早[续接记录](ui-continuation-2026-10-07.md)之后，179 等查询已经接线但未实机验证；配对工具后续状态和 241 完整条件仍在队列。最新多产品修复、Chroma Settings 错误路由及其他逐页缺口以上方全范围报告为准。
 
 1. 收齐 Studio Ambient、Static 的交互边界；Spectrum 时长和渐变、[Breathing/Fire 本地编辑](chroma-studio-breathing-fire-native.md)已局部接入，继续核对[弹层、光标与服务差异](chroma-studio-gradient-native.md)，并逐项接入其余 8 个属性根及共享控件，保留设备条件和临时参数语义。
 2. 补齐 Studio 分组、拖排、配置、导入导出、关联与独立模式，见 [根审计](chroma-studio-native-root.md)、[属性审计](chroma-studio-properties.md)、[图层审计](chroma-studio-layers-native.md)。

@@ -92,7 +92,12 @@ for (const product of evidence.products) {
         }
       }
       const effects = product.config.QUICK_EFFECTS;
-      const effectProof = components.find(c => c.source.includes('deviceQuickEffect') && c.source.includes('selectedEffect'));
+      // 164/241 mount the ordinary quick-effects branch without portComponent.
+      // The trace also contains the inactive port branch; first match is not a
+      // valid implementation receipt for these two independently reviewed roots.
+      const effectProof = [164,241].includes(pid)
+        ? components.find(c => c.source.includes('this.handleDefaultWaveDirection=') && c.source.includes('deviceQuickEffect'))
+        : components.find(c => c.source.includes('deviceQuickEffect') && c.source.includes('selectedEffect'));
       if (effectProof && effects?.length && profile.quickEffects?.selectedEffectId !== undefined && effects.every(e => typeof e.name === 'string' && Number.isInteger(e.id))) {
         const s = section(key, 'QUICK_EFFECTS');
         add(s, 'select', 'quick-effect', 'QUICK_EFFECTS', '/quickEffects/selectedEffectId', effectProof, {options: effects.map(e => ({label: e.name, value: e.id}))});
@@ -109,7 +114,13 @@ for (const product of evidence.products) {
       if (!labels.every(label => typeof label === 'string')) throw Error('Missing indicator labels');
       const s = section(key, 'INDICATOR_LED');
       s.description = 'INDICATOR_LED_DESC';
-      add(s, 'options', 'indicator-mode', 'INDICATOR_LED', binding, indicator, {options: labels.map((label, ix) => ({label, value: Number(match[ix+1])}))});
+      const current = JSON.parse(read('docs/re/receiver-current-evidence.json'));
+      const mounted = current.components.OE, source = read(mounted.path);
+      if(hash(source)!==mounted.sha256 || source.slice(mounted.offset,mounted.end)!==mounted.source)throw Error('Changed current indicator descriptions');
+      const descriptions = ['q2H','JhZ','q0f'].map(key=>current.labels[key]);
+      if(!descriptions.every(value=>typeof value==='string'))throw Error('Missing current indicator descriptions');
+      record.layout = 'accessory';
+      add(s, 'options', 'indicator-mode', 'INDICATOR_LED', binding, indicator, {renderer:'indicator-radio', options: labels.map((label, ix) => ({label, value: Number(match[ix+1]), description:descriptions[ix]}))});
       initialSources.push({field: 'indicator modes', path: enumSource.path, offset: match.index, end: match.index + match[0].length, kind: 'literal source enum'});
     }
     if (pid === 207 && key === 'TAB_CUSTOMIZE') {

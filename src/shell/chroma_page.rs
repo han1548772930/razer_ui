@@ -90,14 +90,13 @@ impl Preferences {
             .and_then(|s| serde_json::from_slice(&s).ok())
             .unwrap_or_default()
     }
-    fn save(&self) {
+    fn save(&self) -> Result<(), String> {
         let path = Self::path();
         if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
         }
-        if let Ok(bytes) = serde_json::to_vec(self) {
-            let _ = std::fs::write(path, bytes);
-        }
+        let bytes = serde_json::to_vec(self).map_err(|error| error.to_string())?;
+        std::fs::write(path, bytes).map_err(|error| error.to_string())
     }
 }
 pub(super) struct ChromaPage {
@@ -105,6 +104,7 @@ pub(super) struct ChromaPage {
     history: Vec<ChromaTab>,
     history_index: usize,
     preferences: Preferences,
+    persistence_error: Option<String>,
     devices: Vec<Entity<ProductWorkspace>>,
     device_subscriptions: Vec<Subscription>,
     search: Entity<InputState>,
@@ -137,7 +137,7 @@ impl ChromaPage {
                         .iter()
                         .position(|v| v == value)
                         .unwrap_or(0);
-                    this.preferences.save();
+                    this.save_preferences(cx);
                     cx.notify();
                 }
             }),
@@ -147,6 +147,7 @@ impl ChromaPage {
             history: vec![ChromaTab::Dashboard],
             history_index: 0,
             preferences,
+            persistence_error: None,
             devices: Vec::new(),
             device_subscriptions: Vec::new(),
             search,
@@ -157,6 +158,18 @@ impl ChromaPage {
             dialog_return_focus: None,
             _subscriptions: subscriptions,
         }
+    }
+    fn save_preferences(&mut self, cx: &mut Context<Self>) {
+        self.persistence_error = self.preferences.save().err();
+        cx.notify();
+    }
+    pub(super) fn reset_tutorials(&mut self, cx: &mut Context<Self>) {
+        self.preferences.introduction = true;
+        self.preferences.onboard = true;
+        self.save_preferences(cx);
+    }
+    pub(super) fn introduction_enabled(&self) -> bool {
+        self.preferences.introduction
     }
     fn filter_choices() -> Vec<String> {
         [
@@ -333,7 +346,7 @@ impl ChromaPage {
                                 if !this.preferences.collapsed.remove(key) {
                                     this.preferences.collapsed.insert(key.into());
                                 }
-                                this.preferences.save();
+                                this.save_preferences(cx);
                                 cx.notify();
                             })),
                     )
@@ -360,7 +373,7 @@ impl ChromaPage {
             "CHROMA_SOURCE.",
             cx.listener(|this, _, _, cx| {
                 this.preferences.introduction = false;
-                this.preferences.save();
+                this.save_preferences(cx);
                 cx.notify();
             }),
             cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenTour(TourKind::Synapse))),
@@ -786,7 +799,7 @@ impl ChromaPage {
                     )
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.preferences.onboard = false;
-                        this.preferences.save();
+                        this.save_preferences(cx);
                         cx.notify();
                     })),
             );
@@ -832,7 +845,7 @@ impl ChromaPage {
                             .checked(self.preferences.auto_prioritize)
                             .on_change(cx.listener(|this, value, _, cx| {
                                 this.preferences.auto_prioritize = *value;
-                                this.preferences.save();
+                                this.save_preferences(cx);
                                 cx.notify();
                             })),
                     )
@@ -857,7 +870,7 @@ impl ChromaPage {
                                     .checked(self.preferences.show_disabled)
                                     .on_change(cx.listener(|this, value, _, cx| {
                                         this.preferences.show_disabled = *value;
-                                        this.preferences.save();
+                                        this.save_preferences(cx);
                                         cx.notify();
                                     })),
                             ),
@@ -1147,6 +1160,30 @@ impl Render for ChromaPage {
             }))
             .child(self.toolbar(cx))
             .child(self.navigation(cx))
+            .when_some(self.persistence_error.clone(), |view, error| {
+                view.child(
+                    h_flex()
+                        .id("chroma-preferences-error")
+                        .test_support()
+                        .aria_label(format!("本地偏好保存失败：{error}"))
+                        .px(css(20.))
+                        .py(css(8.))
+                        .gap(css(12.))
+                        .text_size(css(12.))
+                        .text_color(rgb(0xfd4949))
+                        .child(
+                            div()
+                                .flex_1()
+                                .child(format!("本地偏好保存失败，更改仍保留在本次会话：{error}")),
+                        )
+                        .child(
+                            BaseButton::new("chroma-preferences-retry")
+                                .accessibility_label("重试保存本地偏好")
+                                .child("重试保存")
+                                .on_click(cx.listener(|this, _, _, cx| this.save_preferences(cx))),
+                        ),
+                )
+            })
             .child(
                 div()
                     .id("chroma-page-scroll")

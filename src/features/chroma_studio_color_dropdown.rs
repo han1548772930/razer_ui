@@ -6,6 +6,7 @@ use super::*;
 pub(super) struct ColorDropdownChanged(pub(super) Option<u32>);
 impl EventEmitter<ColorDropdownChanged> for StudioColorDropdown {}
 pub(super) struct StudioColorDropdown {
+    effect: String,
     value: Option<u32>,
     color: Entity<StudioColor>,
     dropdown: Entity<DropdownState>,
@@ -36,6 +37,7 @@ impl StudioColorDropdown {
             }),
         ];
         Self {
+            effect: String::new(),
             value: None,
             color,
             dropdown,
@@ -47,6 +49,7 @@ impl StudioColorDropdown {
     }
     pub(super) fn configure(
         &mut self,
+        effect: &str,
         value: Option<u32>,
         enabled: bool,
         hidden: bool,
@@ -54,9 +57,11 @@ impl StudioColorDropdown {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let remount = self.effect != effect;
+        self.effect = effect.into();
         self.enabled = enabled;
         self.hidden = hidden;
-        if !enabled {
+        if !enabled || remount {
             self.dropdown
                 .update(cx, |state, cx| state.set_open(false, cx));
         }

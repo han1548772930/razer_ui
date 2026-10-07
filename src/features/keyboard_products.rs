@@ -18,6 +18,8 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod actuation;
 #[path = "keyboard_calibration.rs"]
 mod calibration;
+#[path = "keyboard_gaming_rows.rs"]
+mod gaming_rows;
 #[path = "keyboard_properties.rs"]
 mod properties;
 #[path = "keyboard_snap_tap.rs"]
@@ -800,6 +802,10 @@ impl KeyboardProductWorkspace {
     fn gaming_mode(&self, cx: &Context<Self>) -> AnyElement {
         let state = self.draft["gamingMode"]["state"].as_u64().unwrap_or(0);
         let enabled = state != 0;
+        let windows_disabled = self.draft["gamingMode"]["isWindowsKeyDisabled"]
+            .as_bool()
+            .unwrap_or(false);
+        let rows = gaming_rows::for_product(self.spec.product_id);
         let in_game = state == 2
             || self.draft["gamingMode"]["enableInGame"]
                 .as_bool()
@@ -841,14 +847,13 @@ impl KeyboardProductWorkspace {
             .child(
                 Checkbox::new("keyboard-game-mode-windows")
                     .label(t("DISABLE_WINDOWS_KEY"))
-                    .checked(enabled)
+                    .checked(windows_disabled)
                     .disabled(true),
             )
             .children(
-                // Current 515 $l mounts DA without isSystem. NA shows Menu
-                // only when KEY_APPLICATION exists, mirroring the same
-                // isWindowsKeyDisabled prop; it is never independently editable.
-                (self.spec.product_id == 515
+                // Each allowlisted product's current parent chain and Menu
+                // branch were checked independently; isSystem isn't assumed.
+                (rows.is_some_and(|rows| rows.menu)
                     && self
                         .spec
                         .keys
@@ -857,19 +862,14 @@ impl KeyboardProductWorkspace {
                 .then(|| {
                     Checkbox::new("keyboard-game-mode-menu")
                         .label(t("DISABLE_MENU_KEY"))
-                        .checked(
-                            self.draft["gamingMode"]["isWindowsKeyDisabled"]
-                                .as_bool()
-                                .unwrap_or(false),
-                        )
+                        .checked(windows_disabled)
                         .disabled(true)
                 }),
             )
             .children(
-                // Current 716 Gaming Mode: T is derived from the button list;
-                // the read-only Copilot row mirrors isWindowsKeyDisabled.
-                // Other products require their own mounted-source audit.
-                (self.spec.product_id == 716
+                // The source keys and explicit read-only branch are checked
+                // per product, including the separate 717 and 724 parents.
+                (rows.is_some_and(|rows| rows.copilot)
                     && self
                         .spec
                         .keys
@@ -878,11 +878,7 @@ impl KeyboardProductWorkspace {
                 .then(|| {
                     Checkbox::new("keyboard-game-mode-copilot")
                         .label(t("DISABLE_COPILOT_KEY"))
-                        .checked(
-                            self.draft["gamingMode"]["isWindowsKeyDisabled"]
-                                .as_bool()
-                                .unwrap_or(false),
-                        )
+                        .checked(windows_disabled)
                         .disabled(true)
                 }),
             )

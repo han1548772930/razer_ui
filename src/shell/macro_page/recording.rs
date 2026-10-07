@@ -24,6 +24,7 @@ pub(super) struct RecordingUi {
     generation: u64,
     command: Option<mpsc::Sender<Command>>,
     document: Option<u64>,
+    cancelled: bool,
 }
 impl MacroPage {
     pub(in crate::shell) fn recording_busy(&self) -> bool {
@@ -78,6 +79,7 @@ impl MacroPage {
         self.recording.preview = self.actions.clone();
         self.recording.preview_offset = 0;
         self.recording.document = self.current;
+        self.recording.cancelled = false;
         self.recording.generation = self.recording.generation.wrapping_add(1);
         let generation = self.recording.generation;
         let delay = self
@@ -128,6 +130,8 @@ impl MacroPage {
             Ok(options) => options,
             Err(error) => {
                 self.recording.stage = Stage::Idle;
+                self.recording.preview.clear();
+                self.recording.status = "无法开始录制，未更改草稿".into();
                 self.recording.error = Some(error);
                 cx.notify();
                 return;
@@ -137,6 +141,8 @@ impl MacroPage {
             Ok(session) => session,
             Err(error) => {
                 self.recording.stage = Stage::Idle;
+                self.recording.preview.clear();
+                self.recording.status = "无法开始录制，未更改草稿".into();
                 self.recording.error = Some(error);
                 cx.notify();
                 return;
@@ -177,6 +183,9 @@ impl MacroPage {
                                 this.recording.stage = Stage::Idle;
                                 this.recording.preview.clear();
                                 match result {
+                                    Ok(_) if this.recording.cancelled => {
+                                        this.recording.status = "录制已取消，未更改草稿".into()
+                                    }
                                     Ok(Some(actions))
                                         if this.recording.document == this.current
                                             && this.actions_for == this.current =>
@@ -216,14 +225,30 @@ impl MacroPage {
                     .is_err()
                     || finished
                 {
-                    break;
+                    return;
                 }
             }
+            // An actor that exits without Finished cannot leave the editor
+            // permanently locked or commit its partial preview as a draft.
+            let _ = this.update(cx, |this, cx| {
+                if this.recording.generation == generation && this.recording.command.is_some() {
+                    this.recording.command = None;
+                    this.recording.stage = Stage::Idle;
+                    this.recording.preview.clear();
+                    this.recording.status = "录制连接中断，未更改草稿".into();
+                    this.recording.error =
+                        Some("录制线程未返回完成结果；无法确认原生会话清理状态".into());
+                    cx.notify();
+                }
+            });
         })
         .detach();
     }
     /// Called by shell close/navigation. Actor shutdown stays on its thread.
     pub(in crate::shell) fn cancel_recording(&mut self, cx: &mut Context<Self>) {
+        // Cancellation remains authoritative even if the actor has already
+        // stopped and is restoring mappings before delivering Finished.
+        self.recording.cancelled = true;
         if let Some(sender) = &self.recording.command {
             let _ = sender.send(Command::Cancel);
             self.recording.stage = Stage::Stopping;
@@ -231,6 +256,7 @@ impl MacroPage {
         } else {
             self.recording.generation = self.recording.generation.wrapping_add(1);
             self.recording.stage = Stage::Idle;
+            self.recording.preview.clear();
             self.recording.status = "录制已取消，未更改草稿".into();
         }
         cx.notify();

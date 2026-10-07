@@ -235,6 +235,20 @@ impl MacroPage {
         );
         div()
             .id("macro-record-shortcut")
+            .test_support()
+            .aria_label(format!(
+                "本地录制快捷键：{}；{}",
+                if empty {
+                    tr("TEXT_SHORTCUT_CONTENT")
+                } else {
+                    ui.display()
+                },
+                if listening {
+                    "正在捕获"
+                } else {
+                    "未捕获"
+                }
+            ))
             .relative()
             .w_full()
             .min_h(css(27.))
@@ -276,6 +290,8 @@ impl MacroPage {
                 field.child(
                     div()
                         .id("macro-record-shortcut-clear")
+                        .test_support()
+                        .aria_label("清除本地录制快捷键")
                         .absolute()
                         .right_0()
                         .top_0()

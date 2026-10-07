@@ -1,0 +1,783 @@
+{
+  "date": "2026-10-07",
+  "method": "Manifest-scoped Acorn parsing and exact current source hashes. Native render/lifecycle review is documented separately; source parsing alone is not UI completion.",
+  "settings": {
+    "Ks": {
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 80204,
+      "end": 81361,
+      "source": "function(){const e=(0,o.useState)(!0),t=(0,ne.A)(e,2),n=t[0],s=t[1],a=(0,o.useState)(!0),i=(0,ne.A)(a,2),r=i[0],l=i[1];let c=ce.C39;const d=(0,o.useCallback)(async()=>{const e=await RazerApp.getAppAutoStart(c);s(e)},[c]),p=(0,o.useCallback)(()=>{let e=RazerApp.getMinimizedOnStartUp(c);console.log(\"minimizedOnStartup\",e),console.log(\"razerAppData\",RazerApp.getAppData()),void 0!==e&&l(e)},[c]);return(0,o.useEffect)(()=>{d(),p()},[p,d]),(0,Y.jsx)(me,{title:le.euL,hasSwitch:!1,children:(0,Y.jsx)(\"div\",{className:\"setting-block\",children:(0,Y.jsxs)(\"div\",{className:\"tree-checkbox\",children:[(0,Y.jsx)(On,{id:\"autoStart\",name:le.NPP,onCheck:()=>{const e=!n;Nn({label:e?\"enable\":\"disable\",minimizeToSystray:r?\"enable\":\"disable\"}),RazerApp.setAppAutoStart(c,e),s(e),Ys()(Xs,2e3)()},active:n}),(0,Y.jsxs)(\"div\",{className:\"child-content\",children:[(0,Y.jsx)(\"div\",{className:\"note\",children:(0,Y.jsx)(re.A,{text:le.km2})}),(0,Y.jsx)(On,{id:\"minimizedOnStartup\",name:le.ZN8,onCheck:()=>{const e=!r;Nn({label:e?\"enable\":\"disable\",minimizeToSystray:e?\"enable\":\"disable\"}),RazerApp.setMinimizedOnStartUp(c,e),l(e),Ys()(Xs,2e3)()},active:r,disabled:!n})]})]})})})}"
+    },
+    "ho": {
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 215189,
+      "end": 215412,
+      "source": "()=>(0,Y.jsxs)($,{children:[(0,Y.jsxs)(te,{direction:\"left\",children:[(0,Y.jsx)(Ks,{}),(0,Y.jsx)(bn,{}),(0,Y.jsx)(Ia,{})]}),(0,Y.jsxs)(te,{direction:\"right\",children:[(0,Y.jsx)(Un,{}),(0,Y.jsx)(Ta,{}),(0,Y.jsx)(ia,{})]})]})"
+    },
+    "uo": {
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 215416,
+      "end": 215565,
+      "source": "()=>(0,Y.jsxs)($,{children:[(0,Y.jsx)(te,{direction:\"left\",children:(0,Y.jsx)(Te,{})}),(0,Y.jsx)(te,{direction:\"right\",children:(0,Y.jsx)(Fs,{})})]})"
+    }
+  },
+  "profiles": {
+    "Ba": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 197107,
+      "end": 199676,
+      "source": "class Ba extends l.Component{constructor(e){super(e),this.loadPageName=()=>{const e=this.props.t(r.L$3);document.title=e.toLocaleUpperCase()},this.addNavigationToStorage=()=>{this.setState(e=>({tabNavigation:[...e.tabNavigation,this.state.active_view],currentTabNavigation:e.tabNavigation.length}))},this.changeView=e=>{this.view=e,this.props.isMappingChanged?console.log(\"mapping changed\",this.view,this.state.active_view):this.updateView()},this.updateView=()=>{if(this.view===this.state.active_view)return;const e=this.state,t=e.tabNavigation,s=e.currentTabNavigation;s+1!==t.length&&t.splice(s+1),this.setState({active_view:this.view},()=>{this.addNavigationToStorage(),this.props.changeSelectedTab(this.view)})},this.navigateBack=()=>{this.view=this.state.tabNavigation[this.state.currentTabNavigation-1],this.currentTabNavigation=this.state.currentTabNavigation-1,this.props.isMappingChanged?this.setDisplaySaveAlert(this.updateNavigationView):this.updateNavigationView()},this.navigateForward=()=>{this.view=this.state.tabNavigation[this.state.currentTabNavigation+1],this.currentTabNavigation=this.state.currentTabNavigation+1,this.props.isMappingChanged?this.setDisplaySaveAlert(this.updateNavigationView):this.updateNavigationView()},this.updateNavigationView=()=>{this.setState({currentTabNavigation:this.currentTabNavigation,active_view:this.view},()=>{this.props.changeSelectedTab(this.state.active_view)})},this.renderView=e=>{let t=this.state.nav.find(e=>e.name===this.state.active_view).component;return c().cloneElement(t,{renderNavbar:e})},this.renderNavbar=()=>(0,p.jsx)(zn,{navs:this.state.nav,activeView:this.state.active_view,changeView:this.changeView,currentTabNavigation:this.state.currentTabNavigation});let t=[{id:1,name:r.ey1,component:(0,p.jsx)(re,{})},{id:2,name:r.db_,component:(0,p.jsx)(Ga,{})}];const s=JSON.parse(sessionStorage.getItem(\"\".concat(S.sJv,\"_dashboard\")))||[],i=JSON.parse(sessionStorage.getItem(\"\".concat(S.XPM,\"_dashboard\")))||0,n=s[i]||t[0].name;this.state={nav:t,active_view:n,tabNavigation:s,currentTabNavigation:i,showLinkedGame:!1}}componentDidMount(){this.addNavigationToStorage(),this.loadPageName()}componentDidUpdate(e){e.lang!==this.props.lang&&this.loadPageName()}render(){return(0,p.jsxs)(ce,{children:[(0,p.jsx)(Xt,{tabNavigations:this.state.tabNavigation,title:this.props.t(r.L$3),navigateBack:this.navigateBack,navigateForward:this.navigateForward,currentTabNavigation:this.state.currentTabNavigation}),(0,p.jsx)(u,{extraClass:\"no-scroll razer-profiles\",children:this.renderView(this.renderNavbar())})]})}}"
+    },
+    "oe": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 21322,
+      "end": 27167,
+      "source": "class oe extends l.Component{constructor(e){var t;super(e),t=this,this._handleShowGames=()=>{let e=this.sortGameList(this.filterGameList(this.state.filterType));return e=e.filter(e=>-1!==e.name.toLowerCase().indexOf(this.state.searchKey)),e},this.closeAddGame=()=>{this.setState({addGameOpen:!1})},this.openAddGame=()=>{this.setState({addGameOpen:!0})},this.clickedGameTile=e=>{this.props.selectedGameData(e)},this.addNewApp=e=>{console.log(\"addNewApp\",e);for(const t of e)this.props.addGame(t.path)},this.removeGameSelected=()=>{this.props.selectedGameData(null)},this.onSearch=function(){let e=(arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\").toLowerCase().trim(),s=t.filterGameList(t.state.filterType).filter(t=>t.name.toLowerCase().indexOf(e)>-1);s=t.sortGameList(s),t.setState({filtered:s,searchKey:e})},this.onFilter=e=>{this.setState({filterType:e})},this.onSort=e=>{this.setState({sortType:e})},this.onRefresh=()=>{this.props.initiateGameScan(),this.props.setSyncing(!0)},this.filterGameList=e=>{switch(e){case 0:default:return this.props.gameList;case 1:{let e=[];return this.props.linkedGames&&this.props.linkedGames.forEach(t=>{let s=t.devices.find(e=>e.isVisible),i=this.props.gameList.findIndex(e=>e.id===t.gameID);-1!==i&&t.devices.length&&s&&e.push(this.props.gameList[i])}),e}case 2:return this.props.removedGames}},this.sortGameList=e=>{let t=JSON.parse(JSON.stringify(e))||[];return t.sort((e,t)=>{switch(this.state.sortMode[this.state.sortType].key){case se:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s<i)return-1;if(s>i)return 1;if(s===i)return 0}break;case ie:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case ne:{let s=new Date(O()(e,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\")),i=new Date(O()(t,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\"));if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case ae:{let s=O()(e,\"gameSettings.ATT_UserTotalGameplayCount\",0);return O()(t,\"gameSettings.ATT_UserTotalGameplayCount\",0)-s}default:return}return!1}),t},this.filterLinkedDeviceByGameID=e=>{let t=[];if(!this.state.linkedGames)return;let s=this.state.linkedGames.find(t=>t.gameID===e);return s&&s.devices&&(t=s.devices.filter(e=>e.isVisible)),t},this.state={addGameOpen:!1,gameList:this.props.gameList||[],linkedGames:this.translateDevicesName(this.props.linkedGames||[]),filtered:[],filterType:0,sortType:0,searchKey:\"\",sortMode:[{name:r.HyJ,key:\"ASCENDING\"},{name:r.H9v,key:\"DESCENDING\"},{name:r.LdO,key:\"LAST_PLAYED\"},{name:r.w9W,key:\"MOST_PLAYED\"}]}}translateDevicesName(e){const t=JSON.parse(window.localStorage.getItem(\"connectedDeviceInfo\")||\"[]\");return null!==e&&void 0!==e&&e.length?e.map(e=>(e.devices=e.devices.map(e=>{if(\"chroma-studio\"===e.pid)e.name=\"zh-cn\"===this.props.lang.toLowerCase()?\"幻彩控制室 (CHROMA STUDIO)\":\"CHROMA STUDIO\";else{const s=t.find(t=>t.productId===e.pid);if(!s)return e;const i=Object.keys(s.productName).find(e=>e.toLowerCase()===this.props.lang.toLowerCase());e.name=s.productName[i||\"en\"]}return(0,n.A)({},e)}),e)):[]}componentDidMount(){let e=this._handleShowGames();this.setState({filtered:e,gameList:this.props.gameList,linkedGames:this.translateDevicesName(this.props.linkedGames)})}componentDidUpdate(e,t){let s=this._handleShowGames();if(t.sortType===this.state.sortType&&t.filterType===this.state.filterType||this.setState({filtered:s}),JSON.stringify(this.props.gameList)!==JSON.stringify(this.state.gameList)&&(this.props.removedGames.forEach(e=>{this.props.deleteGame(e.id,{isLocal:e.isLocalGameList,isMissing:e.isMissing},!0)}),this.setState({filtered:s,gameList:this.props.gameList})),this.props.linkedGames!==e.linkedGames&&this.setState({filtered:s,linkedGames:this.translateDevicesName(this.props.linkedGames)}),this.props.lang!==e.lang&&this.setState({linkedGames:this.translateDevicesName(this.props.linkedGames)}),JSON.stringify(this.props.gameList)!==JSON.stringify(e.gameList)&&this.props.linkedGames.length){let t=[];e.gameList.forEach(e=>{let s=!1;this.props.gameList.forEach(t=>{e.id===t.id&&(s=!0)}),s||t.push(e)}),t.length&&t.forEach(e=>{this.props.deleteGame(e.id,{},!0)})}}render(){let e=\"content-wrapper\";return this.state.addGameOpen?e+=\" add-game-popup-showing\":this.props.gameSelected&&(e+=\" device-linked-showing\"),(0,p.jsxs)(\"div\",{className:\"profiles-link-games\",children:[(0,p.jsx)(ee.A,{renderNavbar:this.props.renderNavbar,add:this.openAddGame,search:this.onSearch,filter:this.onFilter,refresh:this.onRefresh,isSyncing:this.props.isSyncing,addGameOpen:this.state.addGameOpen,sort:this.onSort,sortMode:this.state.sortMode}),(0,p.jsxs)(\"div\",{className:e,children:[(0,p.jsx)(H.A,{dropEnd:this.addNewApp,children:(0,p.jsxs)(\"div\",{className:\"list-box\",children:[this.state.filtered.map(e=>(0,p.jsx)(Q,{game:e,onChoose:()=>{2===this.state.filterType?this.openAddGame():this.clickedGameTile(e)},linkedDevices:this.filterLinkedDeviceByGameID(e.id),deleteGame:()=>this.props.deleteGame(e.gameSignature,{isLocal:e.isLocalGameList,isMissing:e.isMissing}),isRemovedGame:2===this.state.filterType},e.id)),2!==this.state.filterType&&(0,p.jsxs)(\"div\",{className:\"game-tile add-new \".concat(this.props.isSyncing?\"disabled\":\"\"),onClick:this.openAddGame,children:[(0,p.jsx)(\"div\",{className:\"game-body\",children:(0,p.jsx)(\"div\",{className:\"plus-icon\"})}),(0,p.jsx)(\"div\",{className:\"game-footer\",children:(0,p.jsxs)(\"label\",{children:[(0,p.jsx)(M.A,{text:r.rVC}),\" \",(0,p.jsx)(M.A,{text:r.YNT}),(0,p.jsx)(\"br\",{}),(0,p.jsx)(M.A,{text:r.CpJ})]})})]},\"add-new\")]})}),this.props.gameSelected&&(0,p.jsx)(F,{isOpen:!0,close:this.removeGameSelected}),(0,p.jsx)(te.wi,{$name:this.state.addGameOpen.toString(),children:{true:(0,p.jsx)(te.kg,{lazy:()=>Promise.resolve().then(s.bind(s,3137)),show:this.state.addGameOpen,close:this.closeAddGame})}})]})]})}}"
+    },
+    "Ga": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 195566,
+      "end": 197106,
+      "source": "e=>{let t=e.renderNavbar;const s=(0,d.useSelector)(e=>e.profileLinkedGamesReducer).devices,i=(0,d.useSelector)(e=>e.linkedGamesReducer),a=i.gameSelected,o=i.linkedGames,r=(0,l.useState)(!1),c=(0,E.A)(r,2),h=c[0],u=c[1],m=(0,l.useState)({devicePID:null,serialNumber:null}),v=(0,E.A)(m,2),g=v[0],S=v[1],f=e=>{u(!0),S(e)};return(0,p.jsxs)(\"div\",{className:\"listDevices_wrapper\",children:[t,(0,p.jsx)(\"div\",{className:\"content-wrapper\",children:(0,p.jsx)(\"div\",{className:\"linked-device-list\",children:(0,p.jsx)(\"div\",{className:\"list-device\",children:(0,p.jsx)(p.Fragment,{children:(()=>{let e=null;return!!s&&s.map(t=>{let s=!1;const i=t.activeProfile,r=t.profiles,l=t.subDevices,c=t.category;let d=o&&o.find(e=>e.gameID===(null===a||void 0===a?void 0:a.id));const h=(l||[]).find(e=>e.isShownOnUI);if(d&&(e=d.devices.find(e=>{let s;return s=h&&\"IOT\"===c?e.pid===h.productId:e.serialNumber?e.serialNumber===t.serialNumber:!e.deviceContainerId||e.deviceContainerId===t.deviceContainerId,e.pid===t.productId&&s}),e&&(s=!0)),h&&\"IOT\"===c){const e=t.src,i=t.srcSet,o=t.category,r=t.subCategory,l=t.name,c=t.editionName;return(0,p.jsx)($n,{active:s,deviceInfo:(0,n.A)((0,n.A)({},h),{},{src:e,srcSet:i,category:o,subCategory:r,name:l,editionName:c}),selectedGame:null===a||void 0===a?void 0:a.id,openPopup:f},h.serialNumber)}return!(!i||!r)&&(0,p.jsx)($n,{active:s,deviceInfo:t,selectedGame:null===a||void 0===a?void 0:a.id,openPopup:f},t.serialNumber)})})()})})})}),h&&(0,p.jsx)(Ua,{setOpen:u,devicePid:g.devicePID,serialNumber:g.serialNumber})]})}"
+    },
+    "$n": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 140836,
+      "end": 142489,
+      "source": "e=>{var t,s,i,n,a,o;let r=e.deviceInfo,c=e.openPopup;const h=(0,l.useState)([]),u=(0,E.A)(h,2),m=u[0],v=u[1],g=(0,d.useSelector)(e=>e.languageReducer).lang,S=(0,d.useSelector)(e=>e.linkedGamesReducer),f=S.linkedGames,D=S.gameList;(0,l.useEffect)(()=>(f.forEach(e=>{if(void 0!==e.devices.find(e=>e.pid===r.productId)){let t=D.find(t=>t.id===e.gameID);v(e=>[...e,t])}}),()=>v([])),[f]);return(0,p.jsxs)(\"div\",{onClick:()=>{(0,Ht.updateDeviceInfo)(r),c({devicePID:r.productId,serialNumber:r.serialNumber})},className:\"device-tile\",children:[(0,p.jsx)(\"div\",{className:\"device-image  \".concat(\"chromastudio\"===r.type?\"chromastudio\":\"\".concat(r.category)),style:{backgroundImage:\"url(\".concat(r.src)}}),(0,p.jsxs)(\"div\",{className:\"device-info\",children:[(0,p.jsx)(\"div\",{className:\"device-name\",children:null===(t=(null===r||void 0===r||null===(s=r.name)||void 0===s?void 0:s[g.toLowerCase()])||(null===r||void 0===r||null===(i=r.name)||void 0===i?void 0:i.en)||\"\")||void 0===t?void 0:t.toUpperCase()}),(0,p.jsx)(\"div\",{className:\"device-edition\",children:null===(n=(null===r||void 0===r||null===(a=r.editionName)||void 0===a?void 0:a[g.toLowerCase()])||(null===r||void 0===r||null===(o=r.editionName)||void 0===o?void 0:o.en)||\"\")||void 0===n?void 0:n.toUpperCase()}),(0,p.jsx)(\"div\",{className:\"device-icon\",children:0!==m.length?(0,p.jsxs)(\"div\",{className:\"linked-games\",children:[m.map((e,t)=>t>3&&m.length>5||!e?(0,p.jsx)(p.Fragment,{}):(0,p.jsx)(\"img\",{src:\"Microsoft Solitaire Collection\"!==e.name?e.icon:Zn,style:{width:\"20px\",paddingRight:\"6px\",opacity:e.isMissing?.3:1},alt:\"\"},e.id)),m.length>5?(0,p.jsx)(\"img\",{src:Xn,alt:\"\"}):\"\"]}):\"\"})]})]})}"
+    },
+    "Ua": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 186302,
+      "end": 195556,
+      "source": "(0,d.connect)(e=>({isSyncing:e.linkedGamesReducer.isSyncing,gameList:e.linkedGamesReducer.gameList,removedGames:e.linkedGamesReducer.removedGames,profilesLikedGame:JSON.parse(JSON.stringify(e.linkedGamesReducer.linkedGames)),lang:e.languageReducer.lang}),e=>(0,_.zH)((0,n.A)((0,n.A)({},v),{},{initiateGameScan:g.initiateGameScan}),e))((0,$t.A)(e=>{var t,s,i,a;let o=e.isSyncing,c=e.gameList,h=e.profilesLikedGame,u=e.devicePid,m=e.lang,v=(e.setGameList,e.updateProfileLikedGame),g=e.addGame,f=e.setOpen,_=e.serialNumber,N=e.removedGames;const y=(0,d.useSelector)(e=>e.profileLinkedGamesReducer).devices,A=(0,l.useMemo)(()=>{const e=y.find(e=>e.productId===u&&e.serialNumber===_);return JSON.parse(JSON.stringify(e))},[y]);A.profiles.some(e=>\"General\"===e.name)&&A.profiles.some(e=>\"Factory Default\"===e.name)&&(A.profiles=A.profiles.filter(e=>\"Factory Default\"!==e.name));const w=(0,l.useState)(\"none\"),I=(0,E.A)(w,2),b=I[0],C=I[1],T=(0,l.useState)({showLinkedGames:!0,backFromAddApp:!1,gameList:c||[],linkedGames:h||[],filtered:[],filterType:Ca,sortType:Ra,searchKey:\"\",deviceData:{},activeProfileIndex:0,selectedProfileGuid:\"\",renameActive:!1,delActive:!1}),R=(0,E.A)(T,2),P=R[0],L=R[1],j=(0,l.useRef)(!1);(0,l.useEffect)(()=>{W(),F()},[]),(0,l.useEffect)(()=>{if(!A)return;const e=A.subCategory,t=A.category,s=A.activeProfile,i=A.name,a=A.profiles,o=A.productId,r=A.deviceContainerId,l=A.serialNumber,c=j.current?{profile:(a||[]).find(e=>e.guid===P.selectedProfileGuid)||{},activeProfileIndex:P.activeProfileIndex}:{profile:(a||[]).find(e=>e.guid===s)||{},activeProfileIndex:(a||[]).findIndex(e=>e.guid===A.activeProfile)},d=c.profile,p=c.activeProfileIndex,h=xe.A.get(\"synapse_\".concat(o));a.forEach(e=>{var t;const s=null===h||void 0===h||null===(t=h.profiles)||void 0===t?void 0:t.find(t=>t.guid===e.guid);var i,n;s&&(e.macrosMapping=null!==(i=null===(n=s.mappings)||void 0===n?void 0:n.filter(e=>{var t,s;return e.outputType===S.pHV||(null===(t=e.mapping)||void 0===t||null===(s=t[0])||void 0===s?void 0:s.outputType)===S.pHV}))&&void 0!==i?i:[])}),L(c=>(0,n.A)((0,n.A)({},c),{},{deviceData:{category:t,subCategory:e,name:i[m],pid:o,profileID:s,profileName:d.name,deviceContainerId:r,profiles:a,serialNumber:l,showNormalProfileMenu:Ht.DeviceInfo.showNormalProfileMenu},activeProfileIndex:p}))},[null===A||void 0===A?void 0:A.profiles]),(0,l.useEffect)(()=>{L(e=>(0,n.A)((0,n.A)({},e),{},{renameActive:!1})),j.current=!1},[null===A||void 0===A||null===(t=A.profiles)||void 0===t||null===(s=t[null===P||void 0===P?void 0:P.activeProfileIndex])||void 0===s?void 0:s.name]),(0,l.useEffect)(()=>{if(!A)return;let e=U();L(t=>(0,n.A)((0,n.A)({},t),{},{filtered:e})),x()(c,P.gameList)||(console.log(\"update gamelist in linkedgames popup\",P.gameList),L(t=>(0,n.A)((0,n.A)({},t),{},{gameList:P.gameList,filtered:e}))),P.profilesLikedGame!==P.linkedGames&&L(t=>(0,n.A)((0,n.A)({},t),{},{linkedGames:P.profilesLikedGame,filtered:e}))},[P.sortType,P.filterType,c]),(0,l.useEffect)(()=>{!A||P.activeProfileIndex<0||L(e=>{const t=A.profiles[P.activeProfileIndex],s=t.guid,i=t.name;return(0,n.A)((0,n.A)({},e),{},{deviceData:(0,n.A)((0,n.A)({},e.deviceData),{},{profileID:s,profileName:i}),selectedProfileGuid:s})})},[P.activeProfileIndex]);const U=()=>{let e=G(z(P.filterType));return e=e.filter(e=>-1!==e.name.toLowerCase().indexOf(P.searchKey)),e},G=e=>{let t=e||[];return t.sort((e,t)=>{switch(P.sortType){case Ra:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s<i)return-1;if(s>i)return 1;if(s===i)return 0}break;case Pa:{let s=e.name.toLowerCase(),i=t.name.toLowerCase();if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case ka:{let s=new Date(O()(e,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\")),i=new Date(O()(t,\"gameSettings.ATT_UserLastInteractTime\",\"0001-01-01T00:00:00\"));if(s>i)return-1;if(s<i)return 1;if(s===i)return 0}break;case La:{let s=O()(e,\"gameSettings.ATT_UserTotalGameplayCount\",0);return O()(t,\"gameSettings.ATT_UserTotalGameplayCount\",0)-s}default:return}}),t},B=()=>{L(e=>(0,n.A)((0,n.A)({},e),{},{showLinkedGames:!0,backFromAddApp:!0}))},W=async()=>{let e},F=()=>{let e=xe.A.get(\"\".concat(S.Mz),!1);v(e||[])},K=()=>{L(e=>(0,n.A)((0,n.A)({},e),{},{showLinkedGames:!1}))},z=e=>{switch(e){case Ca:return c;case Ta:{let e=[];return h.forEach(t=>{let s=t.devices.find(e=>e.isVisible),i=c.findIndex(e=>e.id===t.gameID);-1!==i&&t.devices.length&&s&&e.push(c[i])}),e}case Oa:return N;default:return c}},Y=e=>{L(t=>(0,n.A)((0,n.A)({},t),{},{activeProfileIndex:e}))},J=e=>{void 0===P.selectedProfileGuid&&e!==r.gjU||q(e)},q=e=>{switch(e){case r.gjU:(()=>{const e=Ge(),t=e?\"\".concat(e,\"-Default\"):\"Default\";let s={newProfile:{name:(0,pe.AM)(A.profiles,t),guid:(0,k.uuidv4)()}};const i=A.productId,n=A.category,a=A.deviceContainerId;ja({productId:i,category:n,deviceContainerId:a,payload:s,type:\"ON_ADD_PROFILE\"})})();break;case r.yE7:C(\"import\");break;case r.Pie:$();break;case r.mjN:Z();break;case r.l1q:C(\"export\");break;case r.SJi:setTimeout(()=>{L(e=>(0,n.A)((0,n.A)({},e),{},{delActive:!0}))},100)}},Z=()=>{const e=P.activeProfileIndex,t=P.deviceData,s=t.pid,i=t.deviceContainerId,n=t.category,a=t.profiles,o=a[e],r=o.name,l=o.guid;let c={newProfile:{name:(0,pe.d9)(a,r),guid:(0,k.uuidv4)()},sourceProfileGuid:l};ja({productId:s,category:n,deviceContainerId:i,payload:c,type:\"ON_DUPLICATE_PROFILE\"})},X=async e=>{const t=P.activeProfileIndex,s=P.deviceData,i=s.pid,a=s.deviceContainerId,o=s.category,r=s.profiles;if(r.length-1<0)return;const l=r[r.length-1],c=r[t].guid;if(L(e=>(0,n.A)((0,n.A)({},e),{},{delActive:!1})),!e)return;ja({productId:i,category:o,deviceContainerId:a,payload:{deletedGUID:c,newSelectedProfileGUID:l},type:\"ON_DELETE_PROFILE\"})},$=()=>{L(e=>(0,n.A)((0,n.A)({},e),{},{renameActive:!0}))},Q=e=>{const t=P.activeProfileIndex,s=P.deviceData,i=s.pid,a=s.deviceContainerId,o=s.category,r=s.profiles;e=e.trim();const l=(0,pe.$B)(r,e);if(!e||!e.replace(/\\s/g,\"\").length||!l)return void L(e=>(0,n.A)((0,n.A)({},e),{},{renameActive:!1}));const c=r[t].guid;if(l){const s={newName:e,renameProfileGUID:c};j.current=!0,A.profiles[t].name=e,ja({productId:i,category:o,deviceContainerId:a,payload:s,type:\"ON_RENAME_PROFILE\"})}},te={dropEnd:e=>{for(const t of e)g(t.path)},children:(()=>{let e=P.filtered.map(e=>{let t=(e=>{let t=null,s=h.find(t=>t.gameID===e);if(s&&Array.isArray(s.devices)){let e=s.devices.find(e=>e.pid===P.deviceData.pid&&e.serialNumber===P.deviceData.serialNumber&&e.isVisible);e&&(t=e)}return{linkedProfile:t,linkedDevices:s?s.devices:[]}})(e.id),s=t.linkedProfile,i=t.linkedDevices;return(0,p.jsx)(ea.A,{game:(0,n.A)((0,n.A)({},e),{},{linkedDevice:[]}),linkedProfile:s,linkedDevices:i,deviceData:P.deviceData},e.id)});return e.push((0,p.jsxs)(\"div\",{className:\"linked-game-tile add-new \".concat(o?\"disabled\":\"\"),onClick:K,children:[(0,p.jsx)(\"div\",{className:\"game-body\",children:(0,p.jsx)(\"div\",{className:\"plus-icon\"})}),(0,p.jsx)(\"div\",{className:\"game-footer\",children:(0,p.jsxs)(\"label\",{children:[(0,p.jsx)(M.A,{text:r.rVC}),\" \",(0,p.jsx)(M.A,{text:r.YNT}),(0,p.jsx)(\"br\",{}),(0,p.jsx)(M.A,{text:r.CpJ})]})})]},\"add-new\")),(0,p.jsx)(\"div\",{className:\"list-box\",children:e})})()},se=(null===A||void 0===A||null===(i=A.productName)||void 0===i?void 0:i[m.toLowerCase()])||(null===A||void 0===A||null===(a=A.productName)||void 0===a?void 0:a.en)||\"\";return(0,p.jsxs)(\"div\",{className:\"device_to_linked_game\",children:[(0,p.jsx)(Qn.default,{show:!P.showLinkedGames,close:B,goBack:B,extraClass:\"no-popup\"}),(0,p.jsxs)(V.A,{show:P.showLinkedGames,name:\"LINKED GAMES TO \".concat(se),onClose:()=>{f(!1),L(e=>(0,n.A)((0,n.A)({},e),{},{showLinkedGames:!1}))},extraClass:\"glow \".concat(P.backFromAddApp?\"no-popup\":\"\"),children:[(0,p.jsx)(ee.A,{add:K,filter:e=>{L(t=>(0,n.A)((0,n.A)({},t),{},{filterType:e}))},sort:e=>{L(t=>(0,n.A)((0,n.A)({},t),{},{sortType:e}))},isClosed:!0,isSyncing:o,renderProfileBar:(()=>{var e,t;const s=\"GAMEPAD\"===A.category&&\"ARCADE_CONTROLLER\"===!A.subCategory?ba:xa;return(0,p.jsxs)(\"div\",{className:\"profile-bar\",children:[P.renameActive?(0,p.jsx)(sa,{name:\"profile\",maxLength:32,value:P.deviceData.profileName,active:P.renameActive,sendToParent:Q}):(0,p.jsx)(D.A,{allowOneItem:!0,dataSet:null===A||void 0===A?void 0:A.profiles,value:P.activeProfileIndex,selectOption:Y,name:\"deviceProfileList\",wrapperH:window.innerHeight,extraClass:1!==(null===A||void 0===A||null===(e=A.profiles)||void 0===e?void 0:e.length)||null!==A&&void 0!==A&&null!==(t=A.profiles)&&void 0!==t&&t.id?\"\":\"disabled\"}),(0,p.jsxs)(\"div\",{className:\"dots-menu\",style:{position:\"relative\"},children:[(0,p.jsx)(ds,{menu:s,toggleClass:\"dots3 hover-border\",menuClass:\"profile-act\",menuClick:J}),(0,p.jsx)(na,{active:P.delActive,confirmDel:X,title:r.rlv,deleteMsg:r.Gfw})]})]})})()}),(0,p.jsx)(H.A,(0,n.A)({},te)),\"none\"!==b&&(0,p.jsx)(Ia,{IEMode:b,dataProfiles:P.deviceData.profiles,handleImportProfiles:(e,t,s)=>{const i=A.productId,n=A.deviceContainerId,a=A.category;if(\"import\"===b){ja({productId:i,category:a,deviceContainerId:n,payload:{selectedProfileData:e,selectedMacroData:[],isCloud:t,fileType:s},type:\"ON_IMPORT_PROFILE\"})}if(\"export\"===b){ja({productId:i,category:a,deviceContainerId:n,payload:{selectedProfiles:e},type:\"ON_EXPORT_PROFILE\"})}},close:()=>{C(\"none\")}})]})]})}))"
+    },
+    "ia": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 143749,
+      "end": 146200,
+      "source": "class ia extends l.Component{constructor(e){super(e),this.mouseClick=e=>{!this.delAlert.current.contains(e.target)&&this.state.active&&(console.log(e.target),this.props.confirmDel(!1))},this.confirmDel=e=>{e.stopPropagation(),this.props.confirmDel(!0)};const t=this.props.active;this.state={active:t,isOverflow:!1},this.delAlert=c().createRef(),this.timer1,this.timer2}componentDidMount(){this.delAlert.current&&this.props.active&&(this.timer1=setTimeout(()=>{const e=this.delAlert.current,t=document.querySelector(\".body-wrapper\");if(!e||!t)return;const s=e.getBoundingClientRect(),i=window.innerHeight,n=s.bottom-i;if(n>0){const e=document.querySelector(\".help-component\");if(e){const t=e.clientHeight+s.height;e.style.height=\"\".concat(t,\"px\")}t.scrollBy({top:n+20,behavior:\"smooth\"}),this.setState({isOverflow:!0})}},50)),this.props.needExtraHeight&&(this.timer2=setTimeout(()=>{const e=this.delAlert.current,t=document.querySelector(\".body-wrapper\");if(!e||!t)return;const s=document.querySelector(\".help-component\");let i=e.clientHeight-30-10;if(s){const e=s.clientHeight+i;s.style.height=\"\".concat(e,\"px\")}},100)),window.addEventListener(\"click\",this.mouseClick)}componentWillUnmount(){if(window.removeEventListener(\"click\",this.mouseClick),this.state.isOverflow){const e=document.querySelector(\".help-component\"),t=this.delAlert.current;if(!t||!e)return;const s=t.getBoundingClientRect(),i=e.clientHeight-s.height;e.style.height=\"\".concat(i,\"px\")}clearTimeout(this.timer1),clearTimeout(this.timer2)}componentDidUpdate(e){const t=this.props.active;if(t!==e.active&&(this.setState({active:t}),t&&this.props.needExtraHeight)){const e=document.querySelector(\".body-wrapper\"),t=document.querySelector(\".help-component\");if(!e||!t)return;e.scrollBy({top:t.clientHeight,behavior:\"smooth\"})}}render(){const e=this.confirmDel;return(0,p.jsxs)(\"div\",{className:\"flex alert profile-del del-alert-roboto \".concat(this.state.active?\"show\":\"\",\" \").concat(this.props.className?this.props.className:\"\"),ref:this.delAlert,style:this.props.style||{},children:[(0,p.jsx)(\"div\",{className:\"del-title-normal\",children:(0,p.jsx)(M.A,{text:this.props.title})}),(0,p.jsxs)(\"div\",{className:\"body-text t-center\",children:[this.props.deleteMsg&&(0,p.jsx)(M.A,{text:this.props.deleteMsg}),this.props.children?this.props.children:null]}),(0,p.jsx)(\"div\",{className:\"thx-btn\",onClick:e,children:(0,p.jsx)(M.A,{text:this.props.buttonName?this.props.buttonName:r.t20})})]})}}"
+    },
+    "xa": {
+      "path": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+      "sha256": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+      "offset": 185614,
+      "end": 185743,
+      "source": "[{action:r.gjU},{action:r.yE7},{action:\"divider\"},{action:r.Pie},{action:r.mjN},{action:r.l1q},{action:\"divider\"},{action:r.SJi}]"
+    },
+    "1867/AM": {
+      "path": ".ref/applications/synapse/profiles/static/js/main.776df2b1.js",
+      "sha256": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2",
+      "offset": 389087,
+      "end": 389254,
+      "source": "(t,e)=>{let n=e;for(let a=1;a<=100;++a){if(\"Keymap\"===e&&(n=\"\".concat(e,\" \").concat(a)),-1===t.findIndex(t=>t.name===n))return n;n=\"\".concat(e,\" \").concat(a)}return n}"
+    },
+    "1867/d9": {
+      "path": ".ref/applications/synapse/profiles/static/js/main.776df2b1.js",
+      "sha256": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2",
+      "offset": 389257,
+      "end": 389885,
+      "source": "(t,e)=>{let n=\"\",a=/^\\d+$/,o=e;if(/\\((.*?)\\)/.test(e)&&e.endsWith(\")\")){const t=e.lastIndexOf(\"(\"),n=e.substr(t+1,e.length-1-t-1);\" \"===e.substr(t-1,1)&&a.test(n)&&(o=e.slice(0,t).trim())}if(-1===t.findIndex(t=>t.name&&t.name===o||t.content&&t.content===o))return o;let r=t.filter(t=>t.name&&t.name.startsWith(o)&&t.name.endsWith(\")\")||t.content&&t.content.startsWith(o)&&t.content.endsWith(\")\"));if(void 0===r)return\"\".concat(o,\" (1)\");for(let i=1;i<=r.length;i++){if(n=\"\".concat(o,\" (\").concat(i,\")\"),-1===r.findIndex(t=>t.name&&t.name===n||t.content&&t.content===n))return n}return n=\"\".concat(o,\" (\").concat(r.length+1,\")\")}"
+    }
+  },
+  "dashboard": {
+    "path": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+    "sha256": "9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6",
+    "offset": 136979,
+    "end": 145923
+  },
+  "studio": {
+    "ambient": {
+      "module": 1958,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/958.e77237aa.chunk.js",
+      "sha256": "8a7a6dc82fe37b24b9ac1ec88a7d8e974a0b52e04504f9a8d2b09a3247252ed4",
+      "offset": 551,
+      "end": 5533
+    },
+    "static": {
+      "module": 3181,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/435.fba6194a.chunk.js",
+      "sha256": "b5ad313bb0b7b2a1231add549855ec52fe9185b832b4b89b6740f22ec6cd68c3",
+      "offset": 551,
+      "end": 1614
+    },
+    "spectrum": {
+      "module": 8552,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/820.c393c8b8.chunk.js",
+      "sha256": "1179031f38c7bf389721a4421456258d71d78714bf45a6777a1cc3078e6350a0",
+      "offset": 8869,
+      "end": 11072
+    },
+    "breathing": {
+      "module": 2777,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/679.0781b947.chunk.js",
+      "sha256": "4e8cd7e37da3ed3305db88044b31e407ab2a280f384fe1a1059779cd89311b29",
+      "offset": 5031,
+      "end": 7831
+    },
+    "fire": {
+      "module": 5591,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/941.5700335c.chunk.js",
+      "sha256": "0b5f811aeb1c5e949c95c098c9270fd6b0ee7f7467e13dced41e62aa97a18909",
+      "offset": 1061,
+      "end": 2931
+    },
+    "reactive": {
+      "module": 7518,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/42.02817760.chunk.js",
+      "sha256": "70ecc5ccdd8ae3ff20b3f16913cc87f607ab6e39ec20af7f436cc67ce9b4ccf4",
+      "offset": 2630,
+      "end": 5043
+    },
+    "ripple": {
+      "module": 5305,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/255.55c55ae1.chunk.js",
+      "sha256": "5db8f9a76b5ee2642f93aa149cfe46198b67795cf32c19e903b038ce270649fb",
+      "offset": 10512,
+      "end": 13704
+    },
+    "starlight": {
+      "module": 6548,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/813.7628f9a2.chunk.js",
+      "sha256": "9079f051b72a356bc1a351acd15eb6c9e4f6e5c9d5cfcbc2e35ec430161f1e86",
+      "offset": 12070,
+      "end": 15310
+    },
+    "wave": {
+      "module": 1591,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/285.bbf66b46.chunk.js",
+      "sha256": "26d485a43d4d4e36f0c071c0cf5af0d384be9d637b76812a592dab37e7c3cab6",
+      "offset": 1352,
+      "end": 7586
+    },
+    "wheel": {
+      "module": 8379,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/729.84fd7088.chunk.js",
+      "sha256": "d7198c17fae7ad5dd636d708d557ed58d16fc4be4863d683db16c860ae80bd31",
+      "offset": 13101,
+      "end": 16602
+    },
+    "tidal": {
+      "module": 8154,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/510.7368f605.chunk.js",
+      "sha256": "99fcc304753fa8077200bc51bc390248905b6e500e0dc55a6d4098a6da3588b3",
+      "offset": 6863,
+      "end": 10898
+    },
+    "audio": {
+      "module": 9120,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/412.2045a1a6.chunk.js",
+      "sha256": "cef576f5951f1a0e41ed3e62bb1cc0efc2c06b993635efd9a1a0fa8e101f88fc",
+      "offset": 10524,
+      "end": 14224
+    },
+    "chroma-generate": {
+      "module": 2474,
+      "path": ".ref/applications/synapse/chroma-studio/static/js/474.2374fc9f.chunk.js",
+      "sha256": "bd45fd9c8a23c692850c57bf4e95f73cae42d3fa968fbb061ba4efac02b00a5a",
+      "offset": 551,
+      "end": 7585
+    }
+  },
+  "chroma_toolbar": {
+    "Ks": {
+      "path": ".ref/applications/chroma-app/dashboard/static/js/6883.9a0692ae.chunk.js",
+      "sha256": "cb2dccd827d7de81d3b7d774f267ca6e4ec57f057f40e51c8f3ac1e116039567",
+      "offset": 123179,
+      "end": 130136,
+      "source": "class Ks extends n.Component{constructor(e){super(e),this.getHeader=e=>{switch(e){case\"dashboard\":return c.DASHBOARD_HEADER;case\"modules\":return c.DEVICES_AND_MODULES_HEADER;case\"chroma-apps\":return c.CHROMA_APPS}},this.openChromaStudioTab=()=>{zs.A.userOpen(Js.A8)},this.openSensaHDTab=()=>{zs.A.userOpen(Js.QI)},this.openIntroductionTourTab=async()=>{if(await ee.A.checkWindowExist(l.zWF))zs.A.focusTab({windowName:l.zWF});else{const e=Js.aZ.find(e=>e.windowName===l.zWF);e&&zs.A.userOpen(e)}},this.openAudioVisualizerTab=()=>{zs.A.userOpen(Js.Q4)},this.openArmoryTab=async function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=await Y.A.getTabInfo(Js.pr.windowName),s=e.replace(/(?:^|&)source=[^&]*/g,\"\").replace(/^&+|&+$/g,\"\"),a=`${Js.pr.url}?source=chromaApp${s?`&${s}`:\"\"}`;t&&t.window&&t.window.name===window.name?await Y.A.focusTab(Js.pr.windowName):window.open(a,Js.pr.windowName,`${Js.pr.openParam},shouldFocus=1`)},this.handleParameterAction=()=>{const e=u.A.get(\"shareProfileModalOpen\");switch(new URLSearchParams(window.location.search).get(\"action\")){case\"focus-chroma-studio\":this.openChromaStudioTab();break;case\"focus-module-installer\":this.timeOutOpenChromaStudio=setTimeout(this.openChromaStudioTab,3500);break;case l.A0g:e||setTimeout(()=>{this.openIntroductionTourTab()},1e3);break;case c.LAUNCH_SENSA_MODULE:setTimeout(()=>{this.openSensaHDTab()},1e3)}window.history.replaceState(window.history.state,document.title,window.location.pathname)},this.handleGlobalBC=e=>{const{action:t,payload:s}=e.detail;if(\"synapseChangeView\"===t){const e=this.getHeader(s);this.changeView(e),Y.A.focusTab(l.HqM),\"function\"===typeof ee.A.setBrowserVisible&&ee.A.setBrowserVisible(!0)}\"navigateDeviceAndModuleViewChromaApp\"===t&&this.changeView(c.DEVICES_AND_MODULES_HEADER)},this.addNavigationToStorage=()=>{this.setState(e=>({tabNavigation:[...e.tabNavigation,this.state.active_view],currentTabNavigation:e.tabNavigation.length}),()=>console.log(this.state.tabNavigation))},this.setDisplaySaveAlertRef=e=>{this.setDisplaySaveAlert=e},this.changeView=e=>{if(this.view=e,this.props.isMappingChanged)return console.log(this.view,this.state.active_view),void this.setDisplaySaveAlert(this.updateView);this.updateView()},this.updateView=()=>{if(console.log(this.view,this.state.active_view),this.view===this.state.active_view)return;const{tabNavigation:e,currentTabNavigation:t}=this.state;t+1!==e.length&&e.splice(t+1),this.setState({active_view:this.view},()=>{this.props.changeSelectedTab(this.view),this.addNavigationToStorage()})},this.navigateBack=()=>{if(this.view=this.state.tabNavigation[this.state.currentTabNavigation-1],this.currentTabNavigation=this.state.currentTabNavigation-1,this.props.isMappingChanged)return console.log(this.view,this.state.active_view),void this.setDisplaySaveAlert(this.updateNavigationView);this.updateNavigationView()},this.navigateForward=()=>{if(this.view=this.state.tabNavigation[this.state.currentTabNavigation+1],this.currentTabNavigation=this.state.currentTabNavigation+1,this.props.isMappingChanged)return console.log(this.view,this.state.active_view),void this.setDisplaySaveAlert(this.updateNavigationView);this.updateNavigationView()},this.updateNavigationView=()=>{this.setState({currentTabNavigation:this.currentTabNavigation,active_view:this.view,displayProfileBar:this.view!==c.TAB_CALIBRATION},()=>{console.log(this.state.tabNavigation),console.log(this.state.currentTabNavigation)})},this.renderView=()=>{let e=this.state.nav.find(e=>e.name===this.state.active_view);return console.log(e),e.component},this.openBackgroundModal=()=>{this.state.active_view===c.DASHBOARD_HEADER&&this.setState({isShowWallpaperModal:!0})},this.closeBackgroundModal=()=>{this.setState({isShowWallpaperModal:!1})};var t=[{id:1,name:c.DASHBOARD_HEADER},{id:2,name:c.DEVICES_AND_MODULES_HEADER},{id:3,name:c.CHROMA_APPS}];const s=JSON.parse(sessionStorage.getItem(`${l.sJv}_dashboard`))||[],a=JSON.parse(sessionStorage.getItem(`${l.XPM}_dashboard`))||0,n=s[a]||t[0].name;this.state={nav:t,active_view:n,tabNavigation:s,currentTabNavigation:a,isShowWallpaperModal:!1},this.observerHeaderAvatar=null,this.timeOutOpenChromaStudio=null}componentDidMount(){sessionStorage.getItem(`${l.sJv}_dashboard`)&&sessionStorage.getItem(`${l.XPM}_dashboard`)||this.addNavigationToStorage(),this.handleParameterAction(),RazerApp.on(\"broadcastMessage\",e=>{let{action:t,payload:s}=e;if(\"synapseChangeView\"===t){const e=this.getHeader(s);this.changeView(e),Y.A.focusTab(l.HqM),\"function\"===typeof ee.A.setBrowserVisible&&ee.A.setBrowserVisible(!0)}else\"chromaConnectChangeView\"===t&&\"chroma-studio\"===s&&this.openChromaStudioTab();B._onBroadcastMessage({action:t,payload:s})}),ee.A.getApiElectron().response(\"tab-message\",e=>{const{action:t,windowName:s,subTab:a}=e||{};if(\"focusSubTab\"===t&&s===l.HqM&&a===c.CHROMA_APPS&&this.changeView(a),\"focusSubTab\"===t&&s===l.HqM&&a===c.LAUNCH_CHROMA_STUDIO&&this.openChromaStudioTab(),\"focusSubTab\"===t&&s===l.HqM&&a===c.LAUNCH_INTRODUCTION_TOUR&&this.openIntroductionTourTab(),\"focusSubTab\"===t&&s===l.HqM&&a===c.LAUNCH_SENSA_MODULE&&this.openSensaHDTab(),\"focusSubTab\"===t&&s===l.HqM&&a===c.LAUNCH_AUDIO_VISUALIZER&&this.openAudioVisualizerTab(),\"focusSubTab\"===t&&s===l.HqM){const e=(a||\"\").split(\"?\"),t=e.length>0?e[0]:\"\",s=e.length>1?e[1]:\"\";\"LAUNCH_ARMORY\"===t&&this.openArmoryTab(s)}}),window.addEventListener(Is.A.GLOBAL_MESSAGE,this.handleGlobalBC)}componentDidUpdate(e){this.props.selectedTab&&this.props.selectedTab!==e.selectedTab&&this.changeView(this.props.selectedTab)}componentWillUnmount(){this.observerHeaderAvatar&&this.observerHeaderAvatar.disconnect(),this.timeOutOpenChromaStudio&&clearTimeout(this.timeOutOpenChromaStudio),window.removeEventListener(Is.A.GLOBAL_MESSAGE,this.handleGlobalBC)}render(){return(0,d.jsxs)(J,{children:[(0,d.jsx)(Et,{}),(0,d.jsx)(Bs,{currentApp:\"chroma-app\",tabNavigations:this.state.tabNavigation,title:(0,d.jsx)(\"div\",{className:\"title\",children:\"RAZER CHROMA\"}),navigateBack:this.navigateBack,navigateForward:this.navigateForward,currentTabNavigation:this.state.currentTabNavigation,isDashboard:!0,callback:()=>{}}),(0,d.jsx)(it,{navs:this.state.nav,activeView:this.state.active_view,changeView:this.changeView,currentTabNavigation:this.state.currentTabNavigation,displayProfileBar:!1,hasBattery:!1,showSettings:!1,hasTHXWarning:!1,hasOBM:!1,showHelp:!1}),(0,d.jsx)(N,{view:this.state.active_view,isShowWallpaperModal:this.state.isShowWallpaperModal,closeBackgroundModal:this.closeBackgroundModal}),(0,d.jsx)(h,{extraClass:\"no-name-bar hide-scorll-bar\",children:(0,d.jsx)($,{children:(0,d.jsx)($e.wi,{$name:this.state.active_view,children:{[c.DASHBOARD_HEADER]:(0,d.jsx)($e.kg,{lazy:()=>s.e(9700).then(s.bind(s,62296))}),[c.CHROMA_APPS]:(0,d.jsx)($e.kg,{lazy:()=>s.e(461).then(s.bind(s,77778))}),[c.DEVICES_AND_MODULES_HEADER]:(0,d.jsx)($e.kg,{lazy:()=>s.e(6570).then(s.bind(s,40554))})}})})}),(0,d.jsx)(ot,{show:!0})]})}}"
+    },
+    "Bs": {
+      "path": ".ref/applications/chroma-app/dashboard/static/js/6883.9a0692ae.chunk.js",
+      "sha256": "cb2dccd827d7de81d3b7d774f267ca6e4ec57f057f40e51c8f3ac1e116039567",
+      "offset": 122852,
+      "end": 123126,
+      "source": "(0,o.connect)(e=>{var t;return{isOnline:null===(t=e.connection)||void 0===t?void 0:t.isOnline,showLinkedGames:e.linkedGamesReducer&&e.linkedGamesReducer.showLinkedGames,hasUnsavedChanges:e.profileReducer&&e.profileReducer.hasUnsavedChanges,lang:e.languageReducer.lang}})(Fs)"
+    },
+    "Fs": {
+      "path": ".ref/applications/chroma-app/dashboard/static/js/6883.9a0692ae.chunk.js",
+      "sha256": "cb2dccd827d7de81d3b7d774f267ca6e4ec57f057f40e51c8f3ac1e116039567",
+      "offset": 118948,
+      "end": 122730,
+      "source": "class Fs extends n.Component{constructor(e){super(e),this.renderTitle=()=>this.props.title?\"Dashboard\"===this.props.title?(0,d.jsx)(\"div\",{className:\"img-razer-wordmark\"}):this.props.title:null,this.clickSetting=async()=>{if(\"function\"===typeof this.props.openSetting)return void this.props.openSetting();let e={name:\"settings-synapse\",url:\"/synapse/settings/\"};\"chroma-app\"===this.props.currentApp&&(e={name:\"settings-chroma\",url:\"/chroma-app/settings/\"}),(0,Bt._P)(e.url,e.name,Bt.ZP.sameWindow,Bt.ZP.autoFocus)},this.refresh=()=>{this.props.handleCustomRefresh?this.props.handleCustomRefresh():((0,ae.EP)(!0),u.A.set(l.HEU,!1),this.props.hasUnsavedChanges||window.location.reload())},this.checkDevicePage=()=>window.location.href.includes(\"products\"),this.state={showOffline:!1,showProfileMigration:!1}}componentDidMount(){const e=u.A.get(l.PkL);if(this.setState({showProfileMigration:!(!1===e)}),window.addEventListener(\"storage\",e=>{\"isOnline\"===e.key?this.setState({showOffline:\"false\"===e.newValue}):e.key===l.PkL&&this.setState({showProfileMigration:!(\"false\"===e.newValue)})}),\"undefined\"!==typeof this.props.isOnline)return void this.setState({showOffline:!this.props.isOnline});const t=u.A.get(\"isOnline\");this.setState({showOffline:!1===t}),window.addEventListener(\"beforeunload\",()=>{document.querySelector(\"body\").style.display=\"none\"})}componentDidUpdate(e){const{currentTabNavigation:t,tabNavigations:s,isDashboard:a}=this.props;if(e.currentTabNavigation!==t||e.tabNavigations!==s){let e=l.sJv,n=l.XPM;a&&(e=`${e}_dashboard`,n=`${n}_dashboard`),sessionStorage.setItem(e,JSON.stringify(s)),sessionStorage.setItem(n,JSON.stringify(t))}\"undefined\"!==typeof this.props.isOnline&&this.props.isOnline!==e.isOnline&&this.setState({showOffline:!this.props.isOnline})}render(){var e;const{currentTabNavigation:t,tabNavigations:s,ariaRole:a,isRefreshDisable:n}=this.props;return(0,d.jsxs)(\"div\",{className:\"toolbar flex \"+(this.props.showLinkedGames?\"disabled\":\"\"),children:[(0,d.jsxs)(\"div\",{role:a,className:\"navigation\",children:[(0,d.jsx)(\"div\",{className:\"arrow back \"+(s.length>0&&t>0?\"\":\"disabled\"),onClick:this.props.navigateBack,tooltip:(0,ne.JN)(c.BACK,{_lang:this.props.lang}),role:\"button\",\"aria-disabled\":!(s.length>0&&t>0),\"aria-roledescription\":\"navigate backward\"}),(0,d.jsx)(\"div\",{className:\"arrow forward \"+(s.length>0&&t<s.length-1?\"\":\"disabled\"),onClick:this.props.navigateForward,tooltip:(0,ne.JN)(c.FORWARD,{_lang:this.props.lang}),role:\"button\",\"aria-disabled\":!(s.length>0&&t<s.length-1),\"aria-roledescription\":\"navigate forward\"}),(0,d.jsx)(\"div\",{\"aria-roledescription\":\"reload page\",role:\"button\",className:\"arrow icon-refresh \"+(n?\"disabled\":\"\"),onClick:this.refresh,tooltip:(0,ne.JN)(c.REFRESH,{_lang:this.props.lang})})]}),(0,d.jsx)(\"div\",{className:\"title\",children:this.renderTitle()}),(0,d.jsxs)(\"div\",{className:\"right\",children:[\"chroma-app\"===this.props.currentApp&&(0,d.jsx)(Vs,{}),(0,d.jsx)(bs,{}),(0,d.jsx)(Wt,{ariaAttributes:{ariaLabel:\"Update Latest Synapse Version\"},ariaRole:\"button\"}),this.state.showOffline&&(0,d.jsx)(bt,{}),(0,d.jsx)(kt,{}),(0,d.jsx)(Ns,{}),this.props.isSupportResetOLED&&(0,d.jsx)(Gs,{title:this.props.title}),this.props.isShowProfileMigrationIcon&&(0,d.jsx)(Zs,{}),(0,d.jsx)(Ot,{currentApp:this.props.currentApp}),(0,d.jsx)(\"div\",{className:\"setting\",onClick:this.clickSetting,tooltip:null===(e=(0,ne.JN)(c.SETTINGS_HEADER,{_lang:this.props.lang}))||void 0===e?void 0:e.toLowerCase(),role:\"button\",\"aria-label\":\"go to setting page\"}),(0,d.jsxs)(ps,{appName:this.props.currentApp,children:[(0,d.jsx)(gs,{openFeedback:this.props.openFeedback,currentApp:this.props.currentApp,exitApp:this.props.exitApp,callback:this.props.callback}),(0,d.jsx)(hs,{})]})]}),this.props.showOfflineWarning?(0,d.jsx)(Rs,{}):null]})}}"
+    }
+  },
+  "feedback": {
+    "module": 4496,
+    "methods": {
+      "getCategoryById": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 120322,
+        "end": 120732,
+        "source": "getCategoryById(e){switch(e){case ds.FEEDBACK_FEATURE_TAB:return(0,ne.jsx)(ce,{text:\"TEXT_FEEDBACK_W_FEATURE_REQUEST\"});case ds.REPORT_BUG_TAB:return(0,ne.jsx)(ce,{text:$});case ds.CUSTOMER_SUPPORT:return(0,ne.jsxs)(ne.Fragment,{children:[(0,ne.jsx)(ce,{text:\"TEXT_CUSTOMER_SUPPORT\"}),\"/\",(0,ne.jsx)(ce,{text:$})]});case ds.PRIVACY_ENQUIRE:return(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES\"});default:return\"\"}}"
+      },
+      "renderPrivacyEnquiry": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 120732,
+        "end": 121548,
+        "source": "renderPrivacyEnquiry(){const e=()=>{RazerApp.openInDefaultBrowser(W.to)};if(this.state.category===ds.PRIVACY_ENQUIRE)return(0,ne.jsxs)(\"div\",{className:\"bug-bounty privacy-enquire\",children:[(0,ne.jsx)(\"div\",{className:\"title\",children:(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRY_TITLE\"})}),(0,ne.jsxs)(\"div\",{className:\"description\",children:[(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION\"}),(0,ne.jsx)(\"div\",{className:\"note\",dangerouslySetInnerHTML:{__html:D(\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION_2\",{a:'<a id=\"btnPrivacyPolicy\" onClick=\"openPrivacyPolicy()\" rel=\"noopener noreferrer\">',aEnd:\"</a>\"})}}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_PRIVACY_ENQUIRES_DESCRIPTION_3\"})})]}),(0,ne.jsx)(bn,{onClick:e,className:\"btn-green\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_CONTACT_US\"})})]})}"
+      },
+      "renderSubmittingForm": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 121548,
+        "end": 122569,
+        "source": "renderSubmittingForm(){const e=()=>{this.setState({withLogs:!1},()=>{this.onSubmit(),this.setState({showLogRequestForm:!1})})},t=()=>{this.setState({withLogs:!0},()=>{this.onSubmit(),this.setState({showLogRequestForm:!1})})},n=()=>{this.setState({showLogRequestForm:!1})};if(this.state.showLogRequestForm)return(0,ne.jsxs)(\"div\",{className:\"submitting-form-wrapper\",children:[(0,ne.jsx)(\"div\",{className:\"background\",onClick:n}),(0,ne.jsxs)(\"div\",{className:\"submitting-form\",children:[(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM\"})}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_1\"})}),(0,ne.jsx)(\"div\",{children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_2\"})}),(0,ne.jsxs)(\"div\",{className:\"actions\",children:[(0,ne.jsx)(bn,{onClick:e,className:\"btn btn-gray\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_ACTION_1\"})}),(0,ne.jsx)(bn,{onClick:t,className:\"btn-green\",disabled:!1,children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMITTING_FORM_ACTION_2\"})})]})]})]})}"
+      },
+      "render": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 122569,
+        "end": 122818,
+        "source": "render(){const e=this.props.lang;return(0,ne.jsxs)(\"div\",{className:\"feedback-container\",children:[this.renderToolbar(),(0,ne.jsxs)(oe,{ref:this.feedback,className:\"page-feedback \".concat(e),children:[this.renderMainPage(),this.renderFooter()]})]})}"
+      },
+      "categoryOnClick": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 104985,
+        "end": 105244,
+        "source": "e=>{this.toggleDropdown(\"showCategoryDropdown\",!1);const t={category:e};e!==ds.CUSTOMER_SUPPORT&&\"\"===this.state.email?t.errorEmail=!1:e===ds.CUSTOMER_SUPPORT&&this.state.email.length>0&&(t.errorEmail=!gn(this.state.email)),this.setState(t,this.enableSubmit)}"
+      },
+      "inputOnChange": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 105493,
+        "end": 105770,
+        "source": "e=>{let t=e.target;\"title\"===t.name?this.setState({[t.name]:t.value.length>50?this.state[t.name]||\"\":t.value},this.enableSubmit):this.setState((0,c.A)({[t.name]:\"checkbox\"!==t.type?t.value:t.checked},\"email\"===t.name&&t.value?{errorEmail:!gn(t.value)}:null),this.enableSubmit)}"
+      },
+      "emailOnBlur": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 105788,
+        "end": 105954,
+        "source": "e=>{let t=e.target,n=!1,s=this.state.email;\"email\"===t.name&&(s=t.value),(this.state.category===ds.CUSTOMER_SUPPORT||s)&&(n=!s||!gn(s)),this.setState({errorEmail:n})}"
+      },
+      "enableSubmit": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 105973,
+        "end": 106202,
+        "source": "()=>{const e=this.state,t=e.appName,n=e.category,s=e.email,o=e.title,a=e.description;this.setState({isSubmitEnabled:t&&n&&(!s||gn(s))&&!hn(o)&&!hn(a)&&(this.state.category!==ds.CUSTOMER_SUPPORT||!0!==this.state.isGuest||gn(s))})}"
+      },
+      "onSubmit": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 106268,
+        "end": 106966,
+        "source": "()=>{if(this.state.isSubmitting)return;\"activeElement\"in document&&document.activeElement.blur(),this.setState({isSubmitting:!0,error:\"\"});const e=this.state,t=e.appName,n=e.category,s=e.email,o=e.title,a=e.description,i=e.device,r=e.withLogs,c=e.synapseDevices;let l=\"\";const d={productId:0,productName:D(q)},p=0!==i?c.find(e=>e.productId===i):d;\"string\"===typeof(null===p||void 0===p?void 0:p.productName)&&(l=p.productName),\"object\"===typeof(null===p||void 0===p?void 0:p.productName)&&(l=p.productName.en),Jn({appName:t,category:n,email:s,title:o,description:a,device:i,withLogs:r,deviceName:l}).then(e=>{let t=e.error;t?this.setState({error:t,isSubmitting:!1}):this.setState({isSuccess:!0})})}"
+      },
+      "isCheckLogNeeded": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 107457,
+        "end": 107511,
+        "source": "e=>[ds.REPORT_BUG_TAB,ds.CUSTOMER_SUPPORT].includes(e)"
+      },
+      "handleBeforeSubmit": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 107536,
+        "end": 107753,
+        "source": "()=>{!this.state.withLogs&&this.isCheckLogNeeded(this.state.category)?this.setState({showLogRequestForm:!0}):this.isCheckLogNeeded(this.state.category)?this.onSubmit():this.setState({withLogs:!1},()=>this.onSubmit())}"
+      },
+      "renderEmail": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 111389,
+        "end": 112178,
+        "source": "()=>{const e=this.state,t=e.isGuest,n=e.email,s=e.category,o=(this.props.lang,(a=D(this.state.category===ds.CUSTOMER_SUPPORT?\"TEXT_REQUIRE\":\"TEXT_OPTIONAL\")).charAt(0).toUpperCase()+a.slice(1));var a;const i=D(\"TEXT_EMAIL\")+\" (\"+o+\")\";return!1!==t&&s!==ds.PRIVACY_ENQUIRE?(0,ne.jsxs)(ne.Fragment,{children:[(0,ne.jsx)(\"div\",{className:(r={\"input-container\":!0,email:!0,error:this.state.errorEmail},Object.entries(r).filter(e=>(0,w.A)(e,2)[1]).map(e=>(0,w.A)(e,1)[0]).join(\" \")),children:(0,ne.jsx)(Sn,{onChange:this.inputOnChange,onBlur:this.emailOnBlur,value:n,name:\"email\",type:\"email\",placeholder:i,maxLength:W.lR,spellCheck:\"false\",autoComplete:\"off\"})}),this.state.errorEmail?(0,ne.jsx)(\"div\",{className:\"error-desc\",children:\"Please enter a valid email address\"}):null]}):null;var r}"
+      },
+      "renderForm": {
+        "path": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+        "sha256": "95ac5ba42de8699251bc2dea7c99d993306a7ae7d9ee188a5f29b97f82ce7a5f",
+        "offset": 112195,
+        "end": 113604,
+        "source": "()=>{const e=this.inputOnChange,t=this.state,n=t.title,o=t.description,a=t.isSubmitEnabled,i=t.isSubmitting;this.props.lang;return(0,ne.jsxs)(s.Fragment,{children:[i?(0,ne.jsx)(\"div\",{className:\"form\",children:(0,ne.jsxs)(\"div\",{className:\"wrapper\",children:[(0,ne.jsx)(\"div\",{className:\"icon loading\"}),(0,ne.jsx)(\"div\",{className:\"description\",children:(0,ne.jsx)(ce,{text:\"TEXT_SENDING_FEEDBACK_D\"})})]})}):(0,ne.jsxs)(s.Fragment,{children:[this.renderApps(),this.renderEmail(),this.renderSynapseDevices(),this.renderPrivacyEnquiry(),this.renderSubmittingForm(),(0,ne.jsx)(\"div\",{className:\"input-container\",children:(0,ne.jsx)(Sn,{onBlur:this.emailOnBlur,onChange:e,value:n,name:\"title\",type:\"text\",placeholder:D(\"TEXT_SUBJECT\"),maxLength:W.lR,spellCheck:\"false\",autoComplete:\"off\"})}),(0,ne.jsx)(\"div\",{className:\"input-container\",children:(0,ne.jsx)(_n,{onBlur:this.emailOnBlur,onChange:e,value:o,name:\"description\",placeholder:D(\"TEXT_DETAIL_YOUR_FEEDBACK\"),maxLength:W.rI,spellCheck:\"false\",autoComplete:\"off\"})}),(0,ne.jsxs)(\"div\",{className:\"count-text\",children:[o&&o.length||0,\" / \",W.rI]}),this.renderSendLogCheckBox()]}),(0,ne.jsx)(\"div\",{className:[\"btns\",(this.isCheckLogNeeded(this.state.category),\"\"),this.state.isSubmitting?\"hide\":\"\"].join(\" \"),children:(0,ne.jsx)(bn,{onClick:this.handleBeforeSubmit,className:\"btn-green\",disabled:!a||i,children:(0,ne.jsx)(ce,{text:\"TEXT_SUBMIT\"})})})]})}"
+      }
+    },
+    "categories": {
+      "FEEDBACK_FEATURE_TAB": 1,
+      "CUSTOMER_SUPPORT": 3,
+      "PRIVACY_ENQUIRE": 4
+    }
+  },
+  "endpoints": [
+    {
+      "route": "/alisha/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/alisha/index.html",
+          "sha256": "74d23a67711cc37e7b34ed79320339454f0f40de38bd4a87ca59156cf40afb24"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/alisha/manifest.json",
+          "sha256": "68d645c6be8efd79b21802ed1e2dbda5ef088f90d5eb225203db9f8ddf8261f0"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/alisha/asset-manifest.json",
+          "sha256": "a5cb3d90554731827f92526a001dc9b8f167ea71e81d479038f03b73b2b1e7f7"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/background-manager/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/background-manager/index.html",
+          "sha256": "0eb6ec04500f6b06bc4741d436d8be5f9d02b6f5b7caa738cd4f5e2c6b24b9ab"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/background-manager/manifest.json",
+          "sha256": "cb348013bbd76b61cd1f433c7b660597cf11aac59944eec71efeefa43b2cb48d"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/background-manager/asset-manifest.json",
+          "sha256": "6e6b24e72d58de6aa165f40df626d8ea9dbe6e391444a38b24d4bd7c6f96d849"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/chroma-app/dashboard/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/chroma-app/dashboard/index.html",
+          "sha256": "d7869d53d675a3c49e10d2fbd83d4a9e0ac15cc2093dc76bf3bd946a54e68332"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/chroma-app/dashboard/manifest.json",
+          "sha256": "0c296ca87fff61c1472a4820944a672f84046e49a3fb3bd53f8928d700724a1f"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/chroma-app/dashboard/asset-manifest.json",
+          "sha256": "6ef65f426d2f63f9fbd02d6304949c26e2214ae487b98eb5c85ff03702aa5fda"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/chroma-app/settings/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/chroma-app/settings/index.html",
+          "sha256": "17cfc70bc85e34d9901762d70d1d159f0d430c289878e69563b97ea12ce4ea58"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/chroma-app/settings/manifest.json",
+          "sha256": "a88123c5c17b1331cce6062bec5c1b5c4c8ebb1613a9040e7d8720afbff410b1"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/chroma-app/settings/asset-manifest.json",
+          "sha256": "4874b54004ee4e011c058a37def601427379d3f93792291ede78ade216dd6d2d"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/cortex/",
+      "recorded_html_status": 404,
+      "current_files": {
+        "index.html": null,
+        "manifest.json": null,
+        "asset-manifest.json": null
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/feedback/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/feedback/index.html",
+          "sha256": "b9e4f6c7c4e5f1f95861738db0cf249740990acd8563b10112845c0da1b0ef05"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/feedback/manifest.json",
+          "sha256": "df36266fd40ce9c0fac21be6c20ca9ed3ccf97c1f9dd522ac4090b3610194365"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/feedback/asset-manifest.json",
+          "sha256": "ee198348cf297ad68f02d0a27542f6e51f489ad35ca77ef5f64e1c47567b737f"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/natalie/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/natalie/index.html",
+          "sha256": "e80e8ff87a16306e6f88959d1b191c0fc7cca3fda3e191db02beb2d804dca529"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/natalie/manifest.json",
+          "sha256": "cefb2c380644c37431c7c292c98d1efda7d26a288c223b7508261d75f7da7192"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/natalie/asset-manifest.json",
+          "sha256": "7c3e5c4c507b6b87ce37215c5194c87f2aaf724c50c6a8d1b3b78f380727c1ce"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/profile-migration/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/profile-migration/index.html",
+          "sha256": "4940a3970501942bde26889edb0e9070137a2321a03dacd7adc47f719ea25e9e"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/profile-migration/manifest.json",
+          "sha256": "0edaaec494f397fd76c370c6795223f7af75249e054fa31a59be0e193b09ae62"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/profile-migration/asset-manifest.json",
+          "sha256": "a2c59640da40755536dc3ca147939ffe28a842ea81dbabb3869255df77e450de"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/rz-app-menu/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/rz-app-menu/index.html",
+          "sha256": "03eaa0df93e93890f2e6ebaa448fb62b0fa4e9d92573b71d7dfb2565ea281768"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/rz-app-menu/manifest.json",
+          "sha256": "f5269eb63e4e74ebf320c99a9e42c60dd66e878d9cb77dfd882a2b1daa1445f1"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/rz-app-menu/asset-manifest.json",
+          "sha256": "77af850850b68eb03be8634767e8fa0edc5b7ac104e23f5fa77aeb3ec2c64262"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/rz-user-profile-menu/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/rz-user-profile-menu/index.html",
+          "sha256": "16891d7255757a9e30802c4732d3f03c49af0029a1856a437e40b53e7b39c792"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/rz-user-profile-menu/manifest.json",
+          "sha256": "3a613bdcf0b559fcbbb2bd319e85a564438acf13c5e3e5dc0148fd8425391736"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/rz-user-profile-menu/asset-manifest.json",
+          "sha256": "659aaa7543cfe41d02329a741725bf5b306bc8741c292bf7c1eb80ff0d56edc2"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/settings/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/settings/index.html",
+          "sha256": "86538b53c32b32334dbb7d4f73e00fd9788bf4a27644a3039ad1ee24fb7fa55e"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/settings/manifest.json",
+          "sha256": "e74da0e10580cd21e53eb348e2d965caaf0247c674a54673c2bd7a91fe061b01"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/settings/asset-manifest.json",
+          "sha256": "21ab9657bad4cda156e453142f54a2ebf604814047214e273c7c621723f26b34"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/sophie-lite/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/sophie-lite/index.html",
+          "sha256": "6f9bf58a574166e4371c0ba7ff474c028369ea682a19f5e3f9708c907107f4d8"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/sophie-lite/manifest.json",
+          "sha256": "00a2b4ae78149c8bd2481cf5fa8aa9ff545e33cb8592aa09f9eaf05bbaee7480"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/sophie-lite/asset-manifest.json",
+          "sha256": "bc4e5371596d66f59e01d1e0bd64db0dd6970a2daaf909e2c5778a7d5146d066"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/sophie/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/sophie/index.html",
+          "sha256": "48de9aa720d172759ec3a2ea430d3e3a308aece2412be283daba6456511ca477"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/sophie/manifest.json",
+          "sha256": "617685dfffa09017a9d72d680912ecf3d411363d0617f6ff7bf9399b6db63cba"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/sophie/asset-manifest.json",
+          "sha256": "5b1026ec761781112cd5c4e70df82aac06464ddc7d57f77381d27055a5c0823a"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/",
+      "recorded_html_status": 404,
+      "current_files": {
+        "index.html": null,
+        "manifest.json": null,
+        "asset-manifest.json": null
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/alexa/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/alexa/index.html",
+          "sha256": "bc51b9bdee528cd2c9a55c2e4dbf1f9e0680104712ec4f326ff65744f48e74de"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/alexa/manifest.json",
+          "sha256": "53e431c2653b17360b7f0f127ca9a52ce676de5e23d29250124ca09eae446f04"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/alexa/asset-manifest.json",
+          "sha256": "895bba650efd869414ac46d0d003b3ff3ae14ecb62cb0fa7fed167a45d994c01"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/armory/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/armory/index.html",
+          "sha256": "0859e0421dca0ffc98011a92663eb206646fbec803be1f13e605b7dc918e95b7"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/armory/manifest.json",
+          "sha256": "0affd4c8b8e1ae056eb7e6823e83e6614bdc440aab95d474e4903a292477123f"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/armory/asset-manifest.json",
+          "sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/chroma-studio/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/chroma-studio/index.html",
+          "sha256": "e1699cd32976bd16e39963d6cf4ef7d8af74d5f02e7bd062cc5005ef9617f214"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/chroma-studio/manifest.json",
+          "sha256": "3477bcf5d4477c070f9ed9d47a83295b0fcf227d1c5be31b26427d75a7315dc8"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/chroma-studio/asset-manifest.json",
+          "sha256": "80aa60655a1922f26dd280cd17b2f471d0dab9b95c095142c3143e352a6a03d1"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/dashboard/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/dashboard/index.html",
+          "sha256": "5aaaaade8bec7ca72c4f3f8d1f2e971998f6d05ecc2943f1dea3452d21787a25"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/dashboard/manifest.json",
+          "sha256": "edf8fe27b5278326d15d91595ead50c8ecef9a757f713d5983f4046d9846fffe"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/dashboard/asset-manifest.json",
+          "sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/introduction-tour/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/introduction-tour/index.html",
+          "sha256": "5af7852676353e90875ec0bdf36787e324256a955197503fc6bb4a17ddf37214"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/introduction-tour/manifest.json",
+          "sha256": "e9e8f2520c2a32b0452239e340ce241926407cc0c0395433e9ecc74e0d3a2e0c"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/introduction-tour/asset-manifest.json",
+          "sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/macro/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/macro/index.html",
+          "sha256": "5129baf81b2fff8a2a093ebd855f5e6d740d6f00ed3e5bf1db556cb1cd410cfe"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/macro/manifest.json",
+          "sha256": "f52a065985dc10e0ce494769a4d5ab04f4698d474e7cbb8926b9b6c4741ec696"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/macro/asset-manifest.json",
+          "sha256": "42c5f5a3f8dae356016443302d15926ce1746aa3e8aa7fce2afbc43596382884"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/profiles/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/profiles/index.html",
+          "sha256": "ef65eb04d6622c64c6e9e530a604ffbc1946c9dab5058366031c2358a27c854b"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/profiles/manifest.json",
+          "sha256": "735aab165caa6b1ca2e5366972f8ff12beb423108c4c5b8e9d5dc2f9c48d8c64"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/profiles/asset-manifest.json",
+          "sha256": "e3c1bb337ac0fe27d4e1fc0445614db613d150988110763c8d1e97553fbe7ca6"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/settings/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/settings/index.html",
+          "sha256": "aa62ae01aa0a0f4dd7de32db8bdff4a4d25b8ae42b7d837000bd640d9ffaef6a"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/settings/manifest.json",
+          "sha256": "e8b27061a686cca1e824a2bae93c9e0a18e8ad3ffb25bbe8cd54ac84c42dd2ed"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/settings/asset-manifest.json",
+          "sha256": "191455d3d4a040e3501a3c480ea2acd171f99043bc86e586ac8c2bb33f32fe72"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/synapse/update-fw/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/synapse/update-fw/index.html",
+          "sha256": "2da7c0bc38f762dc382cc5aaf0b94f35853586b939733fe2d80756ed82732349"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/synapse/update-fw/manifest.json",
+          "sha256": "f2622cfdd2542285e8e2717f0349352474dbcf4c6940b02662f1f2431ccee6f2"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/synapse/update-fw/asset-manifest.json",
+          "sha256": "b9f4c0cf32d27f504e561f764c78e6a04130498df5c0daf0297e1ff8cc984911"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    },
+    {
+      "route": "/systray/systrayv2/",
+      "recorded_html_status": 200,
+      "current_files": {
+        "index.html": {
+          "path": ".ref/applications/systray/systrayv2/index.html",
+          "sha256": "e15b31bb10a029dfee48281e1cb66051f101273c1cebed0927a491e2f2e9e12c"
+        },
+        "manifest.json": {
+          "path": ".ref/applications/systray/systrayv2/manifest.json",
+          "sha256": "d7e7b79a75d845bfd0ed0136932e17ba1b116fc8716a0c43596a8843921a6a04"
+        },
+        "asset-manifest.json": {
+          "path": ".ref/applications/systray/systrayv2/asset-manifest.json",
+          "sha256": "61ee57bcc40a28bd007239168ed66c042e6a0e7093b0b15fe3d6a4c6dc36a9dc"
+        }
+      },
+      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+    }
+  ],
+  "native": {
+    "src/preferences.rs": "fdf9d07b1b93e60926568ec21fcd8006fbee3516b8f50df5f8d9de4c9d674a90",
+    "src/shell/settings_page.rs": "9c6c1e02162c380fa8e3c7a4e400f516dc2f10e81e7d3d39e9aec9a0ebf16088",
+    "src/shell/settings_window.rs": "6b2893029465e711b6463aeeb20725c121c00983c33d25d09c8f77a6e8487bf5",
+    "src/shell/settings_systray_action.rs": "a431d82f43fef30aafdce6aa5736ba61621199249d9e3d96f904b9fe839da79f",
+    "src/shell/profiles_page.rs": "db99e1c7a006a61622f9c8cae3573d222d6e12284128581e23721d2d584667aa",
+    "src/shell/profiles_page/devices.rs": "b724afe11fde1f8bfec34ca7bdcd5a4124f4a4a9f20a6e72fe5227e40be9d1cc",
+    "src/features/profile_collection.rs": "d5b9b5afc93778eee69d5e3c36ce9d4aa4d83fe62cfa13075765758b4dc2ffac",
+    "src/features/product_workspace.rs": "e24d75cc5e22f4ec9eeb504d437f85b95ec27bcd666b66d27d548db6495d1fbf",
+    "src/features/workspace.rs": "ad469bdf971b6660b7cac3b43434a5ab1bb9e09bba92cbcd48a9b25157836b4e",
+    "src/features/source_workspace.rs": "2a6530f462ecc527c5229aae92a67bf1dc00d6dc333968c70650ac8fdca6a3b5",
+    "src/features/control_pod_audio.rs": "1d5ebcb597a7569c68e262337a7e38ae4c2f945c5c849fa08f6323ed4382a7ee",
+    "src/shell/chroma_page.rs": "cb340826df85620ced80790e553b6f413c031fb0e8393aaa98e4ee613dcde5ca",
+    "src/features/chroma_studio.rs": "f04ba8aa0fb67bf234d720747540b8b6c2cd6cd35eebf07ea80c6f05007f0080",
+    "src/features/chroma_studio_properties.rs": "9a47a2c40b1afd35b70ba01d9772ac2fcfba2329281dc2ae2d7bd8ad54fcf92f",
+    "src/shell/feedback_page.rs": "95fa4fab6be3e2370640436d95b1f13b9d08dbe0fe5714058acd7b4d611d1a53",
+    "src/shell/chroma_window.rs": "6e06ff883762cc2fba10d2990c9af712104975ed82d77bc3bbc1b677a7936a8d"
+  },
+  "reviewed_fixes": [
+    "Settings startup controls keep a separate optional local draft; source default values and dependent disabled state are preserved without a host/OS query or write claim.",
+    "Open DeviceGames follows all supplied workspaces, retains previously observed local games and incorporates new known associations.",
+    "Linked Games filters by an actual association on any supplied device; deleted profile IDs are not valid assignment targets.",
+    "Profile Add/Duplicate/Delete edit the local collection, preserving the independent assignment target and opaque copied settings; Delete requires delayed source-style confirmation.",
+    "The live profile dropdown refreshes IDs and labels while retaining a valid assignment target; removed targets cancel pending rename/delete.",
+    "Active-profile deletion refuses uncommitted mouse mapping or 1382 audio editor changes before a local restore can discard them.",
+    "Chroma local preference save errors are displayed with retry while the current session edits remain available; writes are not claimed atomic."
+  ],
+  "pending": "See public-ui-review-2026-10-07.md. A validated source receipt, existing route or shared editor does not complete a page or device review."
+}

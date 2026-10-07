@@ -17,13 +17,18 @@ for(const pid of [164,241]){
   const part=parse(labelFile);let labelModule;walk(part.ast,n=>{if(n.type==='Property'&&n.key.value===4693)labelModule=n.value;});
   const bindings=new Map(), exports=new Map();
   walk(labelModule,n=>{if(n.type==='VariableDeclarator')bindings.set(n.id.name,n.init);if(n.type==='CallExpression'&&n.callee.property?.name==='d'&&n.arguments[1]?.type==='ObjectExpression')for(const p of n.arguments[1].properties)exports.set(p.key.name??p.key.value,p.value.body);});
-  const exportKeys=pid===164?['UVv','Ts4','p5h','CEh','Qkp','VYK','f9h','EXM','A4y','JWw']:['CfR','FY7','VYK','Lps','M9m','hIF','yWF','kTs','T8n'];
+  const exportKeys=pid===164?['UVv','Ts4','p5h','CEh','Qkp','VYK','f9h','EXM','A4y','JWw']:['CfR','FY7','VYK','Lps','M9m','hIF','yWF','kTs','T8n','szJ'];
   const labels=Object.fromEntries(exportKeys.map(key=>{const n=bindings.get(exports.get(key)?.name);if(!n)throw Error('Missing '+key);return[key,literal(n)];}));
   const componentPath=pid===164?receipt.source_files[0].path:files.find(p=>p.includes('/914.'));
   const component=parse(componentPath),states=[];
   walk(component.ast,n=>{if(n.type==='VariableDeclarator'&&n.id.name===(pid===164?'J':'Ge')&&n.start<(pid===164?55000:10000)&&n.init?.type==='ObjectExpression')states.push(literal(n.init));});
   if(states.length!==1)throw Error('Ambiguous dock state enum');
   const page=receipt.pages[0],config=page.components.find(c=>c.offset===(pid===164?72173:54400)).jsx.find(x=>x.props.deviceInfo)?.props.deviceInfo;
+  // This native config field names each product's own source label export.
+  // 241 deliberately spells PARING differently; retaining it also brings its
+  // ten locale values into the generated key set below.
+  config.launchUtilityInfoKey=labels[pid===164?'JWw':'szJ'];
+  if(config.launchUtilityInfoKey!==(pid===164?'ENABLE_LAUNCH_PAIRING_UTILITY_INFO':'ENABLE_LAUNCH_PARING_UTILITY_INFO'))throw Error('Changed launch utility label');
   const css=[];
   for(const f of fs.readdirSync(path.join(root,`.ref/devices/${pid}/static/css`)).filter(f=>f.endsWith('.css'))){const p=`.ref/devices/${pid}/static/css/${f}`,s=read(p);const rules=s.split('}').filter(r=>{const selector=r.split('{')[0];return pid===164?/HyperPollingWireless_|hyperpolling-device-content|Dialog_(backDrop|modal|header)|\.nospecificdevice|\.img-text \.multipairing|MultiDevicePairing_/.test(selector):/Duallink_|duallink-device-content|modal_(backDrop|modal|header|close)|HyperPollingWirelessMouseDock_|\.nospecificdevice.*duallink/.test(selector);}).map(r=>r+'}');if(rules.length)css.push({path:p,sha256:hash(s),rules});}
   const manifestPath=`.ref/devices/${pid}/asset-manifest.json`,manifest=JSON.parse(read(manifestPath));

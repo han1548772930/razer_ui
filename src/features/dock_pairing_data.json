@@ -552,7 +552,8 @@
       "hIF": "TAB_PERFORMANCE",
       "yWF": "SEAMLESS_AUTO_PAIRING_PAIRED_DESCRIPTION",
       "kTs": "UNPAIRING_COMPLETE",
-      "T8n": "PAIRING_COMPLETE"
+      "T8n": "PAIRING_COMPLETE",
+      "szJ": "ENABLE_LAUNCH_PARING_UTILITY_INFO"
     },
     "states": {
       "LOADING": 0,
@@ -652,6 +653,7 @@
         "DUALLINK_NOTE_THREE": "Entferne den Adapter des Geräts, falls es mit dem System verbunden ist.",
         "DUALLINK_NOTE_TWO": "Bitte achte darauf, dass das Gerät nicht per USB verbunden ist.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Gerät Gefunden",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Wenn du den Kopplungsassistenten öffnest, achte bitte darauf, dass dein Gerät nicht mit einem anderen Adapter oder Dock gekoppelt und per 2,4 GHz verbunden ist.",
         "FW_UPDATE_MESSAGE": "Ein neues Firmware-Update ist verfügbar, um diese Einstellung zu aktivieren.",
         "FW_UPDATE_REQUIRED": "Firmware-Update erforderlich",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Achte darauf, dass dein Gerät auf HyperSpeed (2,4 G) gesetzt ist.",
@@ -683,8 +685,7 @@
         "UNPAIRING_COMPLETE": "Die Kopplung deines Geräts wurde aufgehoben.",
         "UNPAIRING_FAILED": "Entkopplung fehlgeschlagen",
         "UNPAIR_CONFIRM_TEXT": "Dieses Gerät wird von diesem HyperSpeed-Adapter entfernt.",
-        "VIEW_COMPATIBLE_DEVICES": "Kompatible Geräte anzeigen",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Wenn du den Kopplungsassistenten öffnest, achte bitte darauf, dass dein Gerät nicht mit einem anderen Adapter oder Dock gekoppelt und per 2,4 GHz verbunden ist."
+        "VIEW_COMPATIBLE_DEVICES": "Kompatible Geräte anzeigen"
       },
       "en": {
         "ADD": "Add",
@@ -697,6 +698,7 @@
         "DUALLINK_NOTE_THREE": "Remove the device dongle if it is connected to the system.",
         "DUALLINK_NOTE_TWO": "Ensure the device is not connected via USB.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Device Found",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "To launch the pairing utility, ensure the device is not paired to another dongle or dock, and is connected in 2.4GHz mode.",
         "FW_UPDATE_MESSAGE": "A new firmware update is available to enable this setting.",
         "FW_UPDATE_REQUIRED": "Firmware update required",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Ensure the device is set to HyperSpeed mode (2.4GHz)",
@@ -728,8 +730,7 @@
         "UNPAIRING_COMPLETE": "Your device has been unpaired",
         "UNPAIRING_FAILED": "Unpairing Failed",
         "UNPAIR_CONFIRM_TEXT": "Device will be removed from this HyperSpeed dongle.",
-        "VIEW_COMPATIBLE_DEVICES": "View Compatible Devices",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "To launch the pairing utility, ensure the device is not paired to another dongle or dock, and is connected in 2.4GHz mode."
+        "VIEW_COMPATIBLE_DEVICES": "View Compatible Devices"
       },
       "es": {
         "ADD": "Añadir",
@@ -742,6 +743,7 @@
         "DUALLINK_NOTE_THREE": "Quita el dongle del dispositivo si está conectado al sistema.",
         "DUALLINK_NOTE_TWO": "Asegúrate de que el dispositivo no esté conectado mediante USB.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Se Ha Encontrado Un Dispositivo",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para iniciar la herramienta de sincronización, asegúrate de que el dispositivo no esté sincronizado con otro dongle ni base y de que esté conectado en modo 2,4 GHz.",
         "FW_UPDATE_MESSAGE": "Hay disponible una nueva actualización de firmware para habilitar este ajuste.",
         "FW_UPDATE_REQUIRED": "Actualización de firmware necesaria",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Comprueba que el dispositivo esté configurado en el modo HyperSpeed (2,4 G).",
@@ -773,8 +775,7 @@
         "UNPAIRING_COMPLETE": "Se ha desincronizado tu dispositivo.",
         "UNPAIRING_FAILED": "No se ha podido desincronizar",
         "UNPAIR_CONFIRM_TEXT": "Se quitará el dispositivo de este dongle de HyperSpeed",
-        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatibles",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para iniciar la herramienta de sincronización, asegúrate de que el dispositivo no esté sincronizado con otro dongle ni base y de que esté conectado en modo 2,4 GHz."
+        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatibles"
       },
       "fr": {
         "ADD": "Ajouter",
@@ -787,6 +788,7 @@
         "DUALLINK_NOTE_THREE": "Retirez le dongle du périphérique s’il est connecté au système.",
         "DUALLINK_NOTE_TWO": "Assurez-vous que l’appareil n’est pas connecté via USB.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Appareil Trouvé",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Pour lancer l’utilitaire de synchronisation, veuillez vous assurer que l’appareil n’est pas synchronisé à un autre dongle ou à une autre station, et qu’il est connecté en mode 2,4 GHz.",
         "FW_UPDATE_MESSAGE": "Une nouvelle mise à jour du firmware est disponible pour activer ce paramètre.",
         "FW_UPDATE_REQUIRED": "Mise à jour du firmware requise",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Assurez-vous que l’appareil est réglé sur le mode HyperSpeed (2,4 G)",
@@ -818,8 +820,7 @@
         "UNPAIRING_COMPLETE": "Votre périphérique a été désynchronisé.",
         "UNPAIRING_FAILED": "Échec de la désynchronisation",
         "UNPAIR_CONFIRM_TEXT": "L’appareil sera supprimé de ce dongle HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Voir les appareils compatibles",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Pour lancer l’utilitaire de synchronisation, veuillez vous assurer que l’appareil n’est pas synchronisé à un autre dongle ou à une autre station, et qu’il est connecté en mode 2,4 GHz."
+        "VIEW_COMPATIBLE_DEVICES": "Voir les appareils compatibles"
       },
       "ja": {
         "ADD": "追加",
@@ -832,6 +833,7 @@
         "DUALLINK_NOTE_THREE": "デバイスのドングルがシステムに接続されている場合はこれを取り外します。",
         "DUALLINK_NOTE_TWO": "デバイスが USB で接続されていないことを確認してください。",
         "DUALLINK_SCAN_DEVICE_FOUND": "デバイスが見つかりました",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "ペアリングユーティリティを起動するには、デバイスが他のドングルやドックとペアリングされていないこと、および 2.4GHz モードで接続されていることを確認してください。",
         "FW_UPDATE_MESSAGE": "この設定を有効にするための新しいファームウェアアップデートが利用できます。",
         "FW_UPDATE_REQUIRED": "ファームウェアの更新が必要です",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "デバイスが HyperSpeed モード (2.4G) に設定されていることを確認してください。",
@@ -863,8 +865,7 @@
         "UNPAIRING_COMPLETE": "デバイスのペアリングが解除されました。",
         "UNPAIRING_FAILED": "ペアリング解除の失敗",
         "UNPAIR_CONFIRM_TEXT": "デバイスはこの HyperSpeed ドングルから削除されます。",
-        "VIEW_COMPATIBLE_DEVICES": "対応デバイスを表示",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "ペアリングユーティリティを起動するには、デバイスが他のドングルやドックとペアリングされていないこと、および 2.4GHz モードで接続されていることを確認してください。"
+        "VIEW_COMPATIBLE_DEVICES": "対応デバイスを表示"
       },
       "kr": {
         "ADD": "추가",
@@ -877,6 +878,7 @@
         "DUALLINK_NOTE_THREE": "기기의 동글이 시스템에 연결되어 있는 경우 분리하십시오.",
         "DUALLINK_NOTE_TWO": "기기가 USB를 통해 연결되어 있지는 않은지 확인하세요.",
         "DUALLINK_SCAN_DEVICE_FOUND": "기기가 발견됨",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "페어링 유틸리티를 실행하려면 기기가 다른 동글 또는 도크에 페어링되어 있지 않은지, 2.4GHz 모드로 연결되어 있는지 확인합니다.",
         "FW_UPDATE_MESSAGE": "이 설정을 활성화하기 위해 새 펌웨어 업데이트를 이용할 수 있습니다.",
         "FW_UPDATE_REQUIRED": "펌웨어 업데이트 필요",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "기기가 HyperSpeed 모드(2.4G)로 설정되었는지 확인하십시오.",
@@ -908,8 +910,7 @@
         "UNPAIRING_COMPLETE": "기기의 페어링이 해제되었습니다.",
         "UNPAIRING_FAILED": "페이링 해제 실패",
         "UNPAIR_CONFIRM_TEXT": "기기가 이 HyperSpeed 동글에서 지워집니다.",
-        "VIEW_COMPATIBLE_DEVICES": "호환 가능한 기기 보기",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "페어링 유틸리티를 실행하려면 기기가 다른 동글 또는 도크에 페어링되어 있지 않은지, 2.4GHz 모드로 연결되어 있는지 확인합니다."
+        "VIEW_COMPATIBLE_DEVICES": "호환 가능한 기기 보기"
       },
       "pt-BR": {
         "ADD": "Adicionar",
@@ -922,6 +923,7 @@
         "DUALLINK_NOTE_THREE": "Remova o dongle do dispositivo, se ele estiver conectado ao sistema.",
         "DUALLINK_NOTE_TWO": "Assegure-se de que o dispositivo não está conectado por USB.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Dispositivo Encontrado",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para abrir o utilitário de emparelhamento, assegure-se de que o dispositivo não está emparelhado a outro dongle ou base e que está conectado no modo 2,4 GHz.",
         "FW_UPDATE_MESSAGE": "Está disponível uma nova atualização de firmware para habilitar esta configuração.",
         "FW_UPDATE_REQUIRED": "Atualização de firmware obrigatória",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Assegure-se de que o dispositivo está definido no modo HyperSpeed (2,4G)",
@@ -953,8 +955,7 @@
         "UNPAIRING_COMPLETE": "Seu dispositivo foi desemparelhado.",
         "UNPAIRING_FAILED": "Falha ao desemparelhar",
         "UNPAIR_CONFIRM_TEXT": "O dispositivo será removido deste dongle HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatíveis",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Para abrir o utilitário de emparelhamento, assegure-se de que o dispositivo não está emparelhado a outro dongle ou base e que está conectado no modo 2,4 GHz."
+        "VIEW_COMPATIBLE_DEVICES": "Ver dispositivos compatíveis"
       },
       "ru": {
         "ADD": "Добавить",
@@ -967,6 +968,7 @@
         "DUALLINK_NOTE_THREE": "Извлеките донгл устройства, если он подключен к системе.",
         "DUALLINK_NOTE_TWO": "Убедитесь, что устройство не подключено через USB-порт.",
         "DUALLINK_SCAN_DEVICE_FOUND": "Устройство Найдено",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Чтобы запустить средство сопряжения, убедитесь, что устройство не сопряжено с другим донглом или зарядной станцией и находится в режиме 2,4 ГГц.",
         "FW_UPDATE_MESSAGE": "Доступно обновление прошивки, позволяющее включить этот параметр.",
         "FW_UPDATE_REQUIRED": "Требуется обновление прошивки",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "Убедитесь, что устройство находится в режиме HyperSpeed (2,4 ГГц)",
@@ -998,8 +1000,7 @@
         "UNPAIRING_COMPLETE": "Сопряжение устройства отменено.",
         "UNPAIRING_FAILED": "Сбой отмены сопряжения",
         "UNPAIR_CONFIRM_TEXT": "Устройство будет удалено из памяти этого донгла HyperSpeed.",
-        "VIEW_COMPATIBLE_DEVICES": "Просмотреть список совместимых устройства",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "Чтобы запустить средство сопряжения, убедитесь, что устройство не сопряжено с другим донглом или зарядной станцией и находится в режиме 2,4 ГГц."
+        "VIEW_COMPATIBLE_DEVICES": "Просмотреть список совместимых устройства"
       },
       "zh-CN": {
         "ADD": "添加",
@@ -1012,6 +1013,7 @@
         "DUALLINK_NOTE_THREE": "如果系统连接了设备的接收器，请将其拔出。",
         "DUALLINK_NOTE_TWO": "确保设备不是通过 USB 连接。",
         "DUALLINK_SCAN_DEVICE_FOUND": "发现设备",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "要启动配对实用程序，请确保设备未与其他接收器或扩展坞配对，并且以 2.4GHz 模式连接。",
         "FW_UPDATE_MESSAGE": "有新的固件更新可用于启用此设置。",
         "FW_UPDATE_REQUIRED": "需要更新固件",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "确保设备设置为 HyperSpeed 模式 (2.4G)",
@@ -1043,8 +1045,7 @@
         "UNPAIRING_COMPLETE": "您的设备已经解除绑定",
         "UNPAIRING_FAILED": "取消配对失败",
         "UNPAIR_CONFIRM_TEXT": "设备将从此 HyperSpeed 接收器上移除。",
-        "VIEW_COMPATIBLE_DEVICES": "查看兼容设备",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "要启动配对实用程序，请确保设备未与其他接收器或扩展坞配对，并且以 2.4GHz 模式连接。"
+        "VIEW_COMPATIBLE_DEVICES": "查看兼容设备"
       },
       "zh-TW": {
         "ADD": "新增",
@@ -1057,6 +1058,7 @@
         "DUALLINK_NOTE_THREE": "如果已將裝置的傳輸器連接至系統，請移除傳輸器。",
         "DUALLINK_NOTE_TWO": "請確定裝置並非透過 USB 連線",
         "DUALLINK_SCAN_DEVICE_FOUND": "找到裝置",
+        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "如果要啟動配對公用程式，請確保裝置並未與其他傳輸器或裝置配對，且是以 2.4GHz 模式連接。",
         "FW_UPDATE_MESSAGE": "已有新的可用韌體更新，可讓你啟用此設定。",
         "FW_UPDATE_REQUIRED": "需要更新韌體",
         "HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE": "請確定已將裝置設為 HyperSpeed 模式 (2.4G)",
@@ -1088,8 +1090,7 @@
         "UNPAIRING_COMPLETE": "您的裝置已經解除綁定",
         "UNPAIRING_FAILED": "取消配對失敗",
         "UNPAIR_CONFIRM_TEXT": "將會從此 HyperSpeed 傳輸器移除裝置。",
-        "VIEW_COMPATIBLE_DEVICES": "檢視相容裝置",
-        "ENABLE_LAUNCH_PARING_UTILITY_INFO": "如果要啟動配對公用程式，請確保裝置並未與其他傳輸器或裝置配對，且是以 2.4GHz 模式連接。"
+        "VIEW_COMPATIBLE_DEVICES": "檢視相容裝置"
       }
     }
   }

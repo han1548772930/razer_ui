@@ -3936,11 +3936,11 @@
   "implementation": [
     {
       "path": "src/shell/main_pages/dashboard_device_card.rs",
-      "sha256": "065f08975d07f3db629357bf299e76340bb88633259742f7cb61df6492fbebc1"
+      "sha256": "241548c5d8733f5eff58b9f3b01fb3b1810635470b6560c0df901b26a18c6356"
     },
     {
       "path": "src/shell/main_pages/dashboard_device.rs",
-      "sha256": "d0e33b13c4a9fd007d1ae904c779618f82e0bc4dda50a223a86929119d3472a1"
+      "sha256": "608e8259eb413781314791b9bb29a1378d2d622c3a903587d1c6bd0f28d42dbc"
     },
     {
       "path": "src/shell/main_pages/dashboard_cards.rs",

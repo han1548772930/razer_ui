@@ -1,0 +1,2258 @@
+{
+  "product_id": 2636,
+  "source": {
+    "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+    "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a"
+  },
+  "receipts": [
+    {
+      "symbol": "controllerCalibrationReducer",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6077292,
+      "end": 6078449,
+      "source": "function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:nn,t=arguments.length>1?arguments[1]:void 0;if(\"undefined\"===typeof e)return nn;switch(t.type){case St.MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS:return{...e,step:t.payload.step,stepDesc:t.payload.stepDesc,isStepValid:t.payload.isStepValid};case St.SET_THUMBSTICK_CALIBRATION:return{...e,calibration:{...e.calibration,...1===e.partId&&{leftThumbX:10*t.payload.x,leftThumbY:-10*t.payload.y},...2===e.partId&&{rightThumbX:10*t.payload.x,rightThumbY:-10*t.payload.y}}};case St.ON_SET_CONTROLLER_CALIBRATION:{var a;let n={...e,step:\"start\"==t.payload.action?1:0,action:t.payload.action,partId:t.payload.partId};const i={action:t.payload.action,partId:t.payload.partId},o=new Ja(\"ON_SET_CONTROLLER_CALIBRATION\",void 0,i);null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET_CONTROLLER_CALIBRATION\",timerTick:o.stateMachineEvent.timerTick,payload:i});return n=de(n,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),n}case St.MW_SET_CONTROLLER_CALIBRATION_TO_UI:return de(e,t.payload);default:return e}}"
+    },
+    {
+      "symbol": "Qh",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6659201,
+      "end": 6659293,
+      "source": "()=>{const[e,t]=(0,g.useState)(!1);return(0,g.useEffect)(()=>{e||t(!0)},[]),{initialized:e}}"
+    },
+    {
+      "symbol": "Jh",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6659297,
+      "end": 6659300,
+      "source": "4.5"
+    },
+    {
+      "symbol": "eM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6659304,
+      "end": 6659308,
+      "source": "-1e3"
+    },
+    {
+      "symbol": "tM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6659312,
+      "end": 6659315,
+      "source": "1e3"
+    },
+    {
+      "symbol": "aM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6659319,
+      "end": 6661258,
+      "source": "e=>{let{thumbStickXData:t,thumbStickYData:a}=e;const n=(0,g.useRef)(null),i=(0,g.useRef)(null),{initialized:o}=Qh(),r=(0,v.useDispatch)(),s=(0,mP.A)(\"synapse\",window.name),[E,_]=(0,g.useState)(0),[T,l]=(0,g.useState)(0),I=(0,g.useRef)({x:81,y:81});(0,g.useEffect)(()=>{r((0,pP.pZ)(s))},[s,r]),(0,g.useEffect)(()=>(r((0,pP.pZ)(!0)),()=>{r((0,pP.pZ)(!1))}),[r]),(0,g.useEffect)(()=>{(()=>{let e=i.current;if(!e)return;let t=e.getContext(\"2d\");if(!t)return;const a=e.width/2,n=e.height/2;t.clearRect(0,0,162,162),t.beginPath(),t.lineWidth=2,t.strokeStyle=\"#707070\",t.arc(a,n,78,0,2*Math.PI),t.stroke(),t.beginPath(),t.arc(a,n,5,0,2*Math.PI),t.fillStyle=\"#44d62c\",t.strokeStyle=\"#44d62c\",t.fill()})(),A()},[]);const A=()=>{let e=n.current;if(!e)return;let t=e.getContext(\"2d\");if(!t)return;const a=e.width,i=e.height,o=a/2,r=i/2;t.clearRect(0,0,a,i),t.beginPath(),t.lineWidth=2,t.fillStyle=\"#44d62c\",t.strokeStyle=\"#44d62c\",t.moveTo(I.current.x,I.current.y),t.lineTo(o,r),t.stroke(),t.beginPath(),t.lineWidth=1,t.arc(I.current.x,I.current.y,5,0*Math.PI,2*Math.PI),t.fillStyle=\"#44d62c\",t.strokeStyle=\"#44d62c\",t.fill()};return(0,g.useEffect)(()=>{const e=n.current;if(!e||!o)return;const i=e.width/2,r=e.height/2;let s=0,E=0;s=(t-eM)/2e3*153+Jh,E=(a-eM)/2e3*153+Jh,0===s&&(s=81),0===E&&(E=81);if(Math.sqrt((s-i)**2+(E-r)**2)>78){const e=Math.atan2(E-r,s-i),t=i+78*Math.cos(e),a=r+78*Math.sin(e);I.current={x:t,y:a}}else I.current={x:s,y:E};const T=100*-a/tM;_(100*t/tM),l(T),A()},[t,a]),(0,li.jsxs)(li.Fragment,{children:[(0,li.jsxs)(\"div\",{className:\"joystick-simulator\",children:[(0,li.jsx)(\"canvas\",{id:\"bg-chart\",ref:i,width:162,height:162}),(0,li.jsx)(\"canvas\",{id:\"chart\",ref:n,width:162,height:162})]}),(0,li.jsxs)(\"div\",{className:\"thumbstick-value\",children:[(0,li.jsxs)(\"div\",{className:\"valueX\",children:[\"X: \",0===E?0:E.toFixed(1),\"%\"]}),(0,li.jsxs)(\"div\",{className:\"valueY\",children:[\"Y: \",T>0&&T<.05?0:T.toFixed(1),\"%\"]})]})]})}"
+    },
+    {
+      "symbol": "zM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6677999,
+      "end": 6683783,
+      "source": "e=>{let t=\"activeStep\",a=\"pendingStep\";return(0,li.jsx)(li.Fragment,{children:(0,li.jsxs)(\"svg\",{width:\"601\",height:\"21\",viewBox:\"0 0 601 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:[(0,li.jsx)(\"circle\",{cx:\"160\",cy:\"10\",r:\"10\",className:e.steps>=1.5?t:a}),(0,li.jsx)(\"path\",{d:\"M161.046 4.99219V15H159.781V6.57129L157.231 7.50098V6.35938L160.848 4.99219H161.046Z\",fill:\"black\"}),(0,li.jsx)(\"line\",{x1:\"175\",y1:\"9.5\",x2:\"215\",y2:\"9.5\",strokeDasharray:\"2 2\",className:e.steps>=2?t:a}),(0,li.jsx)(\"circle\",{cx:\"230.25\",cy:\"10\",r:\"10\",className:e.steps>=2.5?t:a}),(0,li.jsx)(\"path\",{d:\"M233.411 13.4609V14.5H226.896V13.5908L230.157 9.96094C230.558 9.51432 230.868 9.13607 231.087 8.82617C231.31 8.51172 231.465 8.23145 231.552 7.98535C231.643 7.7347 231.688 7.47949 231.688 7.21973C231.688 6.8916 231.62 6.59538 231.483 6.33105C231.351 6.06217 231.155 5.84798 230.896 5.68848C230.636 5.52897 230.321 5.44922 229.952 5.44922C229.51 5.44922 229.141 5.53581 228.845 5.70898C228.553 5.8776 228.334 6.11458 228.188 6.41992C228.043 6.72526 227.97 7.07617 227.97 7.47266H226.705C226.705 6.91211 226.828 6.39941 227.074 5.93457C227.32 5.46973 227.685 5.10059 228.168 4.82715C228.651 4.54915 229.246 4.41016 229.952 4.41016C230.581 4.41016 231.119 4.52181 231.565 4.74512C232.012 4.96387 232.354 5.27376 232.591 5.6748C232.832 6.07129 232.953 6.53613 232.953 7.06934C232.953 7.361 232.903 7.65723 232.803 7.95801C232.707 8.25423 232.573 8.55046 232.399 8.84668C232.231 9.1429 232.033 9.43457 231.805 9.72168C231.581 10.0088 231.342 10.2913 231.087 10.5693L228.421 13.4609H233.411Z\",fill:\"black\"}),(0,li.jsx)(\"line\",{x1:\"245.25\",y1:\"9.5\",x2:\"285.25\",y2:\"9.5\",strokeDasharray:\"2 2\",className:e.steps>=3?t:a}),(0,li.jsx)(\"circle\",{cx:\"300.5\",cy:\"10\",r:\"10\",className:e.steps>=3.5?t:a}),(0,li.jsx)(\"path\",{d:\"M298.985 8.90137H299.888C300.33 8.90137 300.694 8.82845 300.981 8.68262C301.273 8.53223 301.49 8.32943 301.631 8.07422C301.777 7.81445 301.85 7.52279 301.85 7.19922C301.85 6.81641 301.786 6.49512 301.658 6.23535C301.531 5.97559 301.339 5.77962 301.084 5.64746C300.829 5.5153 300.505 5.44922 300.113 5.44922C299.758 5.44922 299.443 5.51986 299.17 5.66113C298.901 5.79785 298.689 5.99382 298.534 6.24902C298.384 6.50423 298.309 6.80501 298.309 7.15137H297.044C297.044 6.64551 297.172 6.18522 297.427 5.77051C297.682 5.35579 298.04 5.02539 298.5 4.7793C298.965 4.5332 299.503 4.41016 300.113 4.41016C300.715 4.41016 301.241 4.51725 301.692 4.73145C302.144 4.94108 302.494 5.25553 302.745 5.6748C302.996 6.08952 303.121 6.60677 303.121 7.22656C303.121 7.47721 303.062 7.74609 302.943 8.0332C302.829 8.31576 302.649 8.58008 302.403 8.82617C302.162 9.07227 301.847 9.27507 301.46 9.43457C301.073 9.58952 300.608 9.66699 300.065 9.66699H298.985V8.90137ZM298.985 9.94043V9.18164H300.065C300.699 9.18164 301.223 9.25684 301.638 9.40723C302.052 9.55762 302.378 9.75814 302.615 10.0088C302.857 10.2594 303.025 10.5352 303.121 10.8359C303.221 11.1322 303.271 11.4284 303.271 11.7246C303.271 12.1895 303.192 12.6019 303.032 12.9619C302.877 13.3219 302.656 13.6273 302.369 13.8779C302.087 14.1286 301.754 14.3177 301.371 14.4453C300.988 14.5729 300.571 14.6367 300.12 14.6367C299.687 14.6367 299.279 14.5752 298.896 14.4521C298.518 14.3291 298.183 14.1514 297.892 13.9189C297.6 13.682 297.372 13.3926 297.208 13.0508C297.044 12.7044 296.962 12.3102 296.962 11.8682H298.227C298.227 12.2145 298.302 12.5176 298.452 12.7773C298.607 13.0371 298.826 13.2399 299.108 13.3857C299.396 13.527 299.733 13.5977 300.12 13.5977C300.507 13.5977 300.84 13.5316 301.118 13.3994C301.401 13.2627 301.617 13.0576 301.768 12.7842C301.923 12.5107 302 12.1667 302 11.752C302 11.3372 301.913 10.9977 301.74 10.7334C301.567 10.4645 301.321 10.2663 301.002 10.1387C300.688 10.0065 300.316 9.94043 299.888 9.94043H298.985Z\",fill:\"black\"}),(0,li.jsx)(\"line\",{x1:\"315.5\",y1:\"9.5\",x2:\"355.5\",y2:\"9.5\",strokeDasharray:\"2 2\",className:e.steps>=4?t:a}),(0,li.jsx)(\"circle\",{cx:\"370.75\",cy:\"10\",r:\"10\",className:e.steps>=4.5?t:a}),(0,li.jsx)(\"path\",{d:\"M374.116 11.1504V12.1895H366.925V11.4443L371.382 4.54688H372.414L371.307 6.54297L368.36 11.1504H374.116ZM372.729 4.54688V14.5H371.464V4.54688H372.729Z\",fill:\"black\"}),(0,li.jsx)(\"line\",{x1:\"385.75\",y1:\"9.5\",x2:\"425.75\",y2:\"9.5\",strokeDasharray:\"2 2\",className:e.steps>=5?t:a}),(0,li.jsx)(\"circle\",{cx:\"441\",cy:\"10\",r:\"10\",className:e.steps>=5.5?t:a}),(0,li.jsx)(\"path\",{d:\"M439.239 9.7627L438.228 9.50293L438.727 4.54688H443.833V5.71582H439.8L439.499 8.42285C439.681 8.31803 439.911 8.22005 440.189 8.12891C440.472 8.03776 440.796 7.99219 441.16 7.99219C441.62 7.99219 442.033 8.07194 442.397 8.23145C442.762 8.38639 443.072 8.6097 443.327 8.90137C443.587 9.19303 443.785 9.54395 443.922 9.9541C444.059 10.3643 444.127 10.8223 444.127 11.3281C444.127 11.8066 444.061 12.2464 443.929 12.6475C443.801 13.0485 443.607 13.3994 443.348 13.7002C443.088 13.9964 442.76 14.2266 442.363 14.3906C441.971 14.5547 441.509 14.6367 440.976 14.6367C440.575 14.6367 440.194 14.582 439.834 14.4727C439.479 14.3587 439.16 14.1878 438.877 13.96C438.599 13.7275 438.371 13.4404 438.193 13.0986C438.02 12.7523 437.911 12.3467 437.865 11.8818H439.068C439.123 12.2555 439.232 12.57 439.396 12.8252C439.561 13.0804 439.775 13.2741 440.039 13.4062C440.308 13.5339 440.62 13.5977 440.976 13.5977C441.276 13.5977 441.543 13.5452 441.775 13.4404C442.008 13.3356 442.204 13.1852 442.363 12.9893C442.523 12.7933 442.644 12.5563 442.726 12.2783C442.812 12.0003 442.855 11.6882 442.855 11.3418C442.855 11.0273 442.812 10.7357 442.726 10.4668C442.639 10.1979 442.509 9.96322 442.336 9.7627C442.167 9.56217 441.96 9.40723 441.714 9.29785C441.468 9.18392 441.185 9.12695 440.866 9.12695C440.442 9.12695 440.121 9.18392 439.902 9.29785C439.688 9.41178 439.467 9.56673 439.239 9.7627Z\",fill:\"black\"})]})})}"
+    },
+    {
+      "symbol": "xM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6683787,
+      "end": 6686705,
+      "source": "e=>{let{thumbStickXData:t,thumbStickYData:a,step:n,rotationCount:i,handleRotationCount:o}=e;const r=(0,g.useRef)(null),s=(0,g.useRef)(null),{initialized:E}=Qh(),_=(0,v.useDispatch)(),T=(0,mP.A)(\"synapse\",window.name),[l,I]=(0,g.useState)(0),[A,d]=(0,g.useState)(0),c=(0,g.useRef)({x:75,y:75}),O=(0,g.useRef)({lastAngle:null,accumulatedAngle:0}),S=4.5,u=-1e3,R=1e3,N=73,D=150;(0,g.useEffect)(()=>(_((0,pP.pZ)(T)),()=>{_((0,pP.pZ)(!1))}),[T,_]),(0,g.useEffect)(()=>{C(),L()},[]),(0,g.useEffect)(()=>{const e=r.current;if(!e||!E)return;const s=e.width/2,_=e.height/2;let T=0,l=0;T=(t-u)/2e3*141+S,l=(a-u)/2e3*141+S,0===T&&(T=75),0===l&&(l=75);const A=T-s,D=l-_,m=Math.sqrt(A**2+D**2);if(m>N){const e=Math.atan2(D,A),t=s+N*Math.cos(e),a=_+N*Math.sin(e);c.current={x:t,y:a}}else c.current={x:T,y:l};const P=100*-a/R;if(I(100*t/R),d(P),m>=68.5?C(\"white\"):C(),L(),5===n&&i<3&&m>=62.05){const e=Math.atan2(D,A);if(null!==O.current.lastAngle){let t=p(e-O.current.lastAngle);O.current.accumulatedAngle+=t,Math.abs(O.current.accumulatedAngle)>=2*Math.PI&&(o(Math.min(i+1,3)),O.current.accumulatedAngle=0)}O.current.lastAngle=e}},[t,a,n]),(0,g.useEffect)(()=>{O.current.lastAngle=null,O.current.accumulatedAngle=0,o(0)},[n]);const C=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"#707070\",t=s.current;if(!t)return;let a=t.getContext(\"2d\");if(!a)return;const i=t.width/2,o=t.height/2;a.clearRect(0,0,D,150),a.beginPath(),a.lineWidth=2,a.strokeStyle=e,a.fillStyle=\"rgba(31, 31, 31, 0.5)\",a.arc(i,o,N,0,2*Math.PI),a.stroke(),a.fill();if(a.beginPath(),n<=4){const e=a.createLinearGradient(i-3,o,i-3+75,o);e.addColorStop(0,\"rgba(85, 85, 85, 0)\"),e.addColorStop(1,\"rgba(85, 85, 85, 1)\"),a.fillStyle=e,a.roundRect(i-2,o-5.5,75,11,4),a.fill()}else{const e=1.5*Math.PI,t=2*Math.PI,n=68,r=a.createLinearGradient(i,o-n,i+n,o);r.addColorStop(0,\"rgba(85, 85, 85, 0)\"),r.addColorStop(1,\"rgba(85, 85, 85, 1)\"),a.arc(i,o,n,e,t),a.strokeStyle=r,a.lineWidth=10,a.lineCap=\"round\",a.stroke()}a.beginPath(),a.arc(i,o,3,0,2*Math.PI),a.fillStyle=\"rgba(187, 187, 187, 1)\",a.strokeStyle=\"rgba(187, 187, 187, 1)\",a.fill()},L=()=>{let e=r.current;if(!e)return;let t=e.getContext(\"2d\");if(!t)return;const a=e.width,n=e.height;t.clearRect(0,0,a,n),t.beginPath(),t.lineWidth=1,t.arc(c.current.x,c.current.y,5,0*Math.PI,2*Math.PI),t.fillStyle=\"#44d62c\",t.strokeStyle=\"#44d62c\",t.fill()},p=e=>(e>Math.PI&&(e-=2*Math.PI),e<-Math.PI&&(e+=2*Math.PI),e);return(0,li.jsx)(li.Fragment,{children:(0,li.jsxs)(\"div\",{className:\"thumbstick-calibration-simulator\",children:[(0,li.jsx)(\"canvas\",{id:\"bg-chart\",ref:s,width:D,height:150,style:(()=>{switch(n){case 1:default:return{};case 2:return{transform:\"rotate(90deg)\"};case 3:return{transform:\"rotate(180deg)\"};case 4:return{transform:\"rotate(-90deg)\"}}})()}),(0,li.jsx)(\"canvas\",{id:\"chart\",ref:r,width:D,height:150}),5===n&&(0,li.jsxs)(\"div\",{className:\"rotate-count\",children:[i,\"/3\"]})]})})}"
+    },
+    {
+      "symbol": "$M",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6686715,
+      "end": 6687144,
+      "source": "function(e){const{width:t,height:a,d:n,transformX:i,transformY:o,fill:r,transformG_X:s,transformG_Y:E,click:_}=e;return(0,li.jsx)(\"svg\",{xmlns:\"http://www.w3.org/2000/svg\",xmlnsXlink:\"http://www.w3.org/1999/xlink\",width:t,height:a,fill:r||\"#ccc\",viewBox:`0 0 ${t||30} ${a||30}`,onClick:_,children:(0,li.jsx)(\"g\",{transform:`translate(${s||0} ${E||0})`,children:(0,li.jsx)(\"path\",{d:n,transform:`translate(${i||0} ${o||0})`})})})}"
+    },
+    {
+      "symbol": "jM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6687154,
+      "end": 6687438,
+      "source": "function(){return(0,li.jsx)($M,{d:\"M9.16.48.15,15.49A.992.992,0,0,0,.98,17H19.02a1,1,0,0,0,.84-1.51L10.84.48A.975.975,0,0,0,9.16.48Zm1.82,13.53H9.02V12.02h1.96v1.99Zm0-3.98H9.02V6.05a.98.98,0,1,1,1.96,0Z\",width:20,height:20,transformX:-.04,transformY:2,fill:\"rgba(253, 134, 17, 1)\"})}"
+    },
+    {
+      "symbol": "XM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6687442,
+      "end": 6692782,
+      "source": "()=>{const e=(0,v.useSelector)(e=>e.deviceReducer.productId),t=(0,v.useSelector)(e=>e.deviceReducer.editionId),n=(0,v.useSelector)(e=>e.customizeReducer.gamepadTester),i=(0,v.useSelector)(e=>e.controllerCalibrationReducer.step),o=(0,v.useSelector)(e=>e.controllerCalibrationReducer.partId),[r,s]=(0,g.useState)(null),E=(0,v.useDispatch)(),_=re.DeviceInfo.isPlaystationController,T=(0,v.useSelector)(e=>e.controllerCalibrationReducer.isStepValid),[l,I]=(0,g.useState)(0),A=async()=>{try{const t=await a(52927)(`./${e}_0/img_prods/0-3x.png`);s(t.default)}catch(t){console.log(t)}};(0,g.useEffect)(()=>{(async()=>{try{const n=await a(71461)(`./${e}_${t}/img_prods/0-3x.png`);s(n.default)}catch(n){A()}})()},[]);const d=e=>{O(\"start\",e)},c=()=>{O(\"stop\",o)},O=(e,t)=>{E(((e,t)=>async a=>{a({type:St.ON_SET_CONTROLLER_CALIBRATION,payload:{action:e,partId:t}})})(e,t))},S=(0,g.useCallback)(()=>(0,li.jsx)(\"svg\",{width:38,height:38,viewBox:\"-1 -1 38 38\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:(0,li.jsxs)(\"g\",{children:[(0,li.jsx)(\"circle\",{cx:\"19\",cy:\"15\",r:\"15\",fill:\"#44D62C\",fillOpacity:\"0.2\",shapeRendering:\"crispEdges\"}),(0,li.jsx)(\"circle\",{cx:\"19\",cy:\"15\",r:\"14.5\",stroke:\"#2EB717\",shapeRendering:\"crispEdges\"})]})}),[]),u=(0,g.useCallback)(()=>(0,li.jsx)(\"svg\",{width:\"64\",height:\"29\",viewBox:\"0 0 64 29\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:(0,li.jsx)(\"path\",{d:\"M18.5709 7.17398C30.422 0.973981 44.4011 0.669753 52.0409 0C56.7366 0 61.6373 4.78395 63.5006 7.17593C63.9665 7.55864 62.0006 8.41699 59.5008 8.41699C54.752 8.41699 42.2503 10.2711 30.0007 14.417C19.793 17.8718 5.71369 24.9703 0.123589 28.4147C0.0304184 27.0752 -0.100014 24.1092 0.123589 22.961C0.347191 21.8129 1.3348 19.995 1.80064 19.2295C2.45282 17.7944 6.71993 13.374 18.5709 7.17398Z\",fill:\"#44D62C\",fillOpacity:\"0.3\"})}),[]),R=(0,g.useCallback)(()=>{switch(i){case 0:return(0,li.jsx)(Ti.A,{text:He.Kr7});case 1:return(0,li.jsx)(Ti.A,{text:He.dqO});case 2:return(0,li.jsx)(Ti.A,{text:He.YHw});case 3:return(0,li.jsx)(Ti.A,{text:He.R5i});case 4:return(0,li.jsx)(Ti.A,{text:He.Kx$});case 5:return(0,li.jsx)(Ti.A,{text:He.gEn});case 6:return}},[i]),N=(0,g.useCallback)(()=>{switch(i){case 0:return(0,li.jsxs)(li.Fragment,{children:[(0,li.jsx)(\"button\",{className:\"button\",onClick:()=>d(1),children:(0,li.jsx)(Ti.A,{text:He.$JN})}),(0,li.jsx)(\"button\",{className:\"button\",onClick:()=>d(2),children:(0,li.jsx)(Ti.A,{text:He.MKQ})})]});case 1:case 2:case 3:case 4:return(0,li.jsx)(\"button\",{className:\"btnCancel uppercase\",onClick:()=>c(),children:(0,li.jsx)(Ti.A,{text:He.bOp})});case 5:return T&&3===l?(0,li.jsx)(\"button\",{className:\"btnPrimary\",onClick:()=>c(),children:(0,li.jsx)(Ti.A,{text:He.DHM})}):(0,li.jsx)(\"button\",{className:\"btnCancel uppercase\",onClick:()=>c(),children:(0,li.jsx)(Ti.A,{text:He.bOp})});case 6:return(0,li.jsx)(\"button\",{className:\"btnPrimary\",onClick:()=>c(),children:(0,li.jsx)(Ti.A,{text:He.DHM})})}},[i,l,T]);return(0,li.jsxs)(li.Fragment,{children:[-1===i&&(0,li.jsx)(\"div\",{className:\"popup-overlay\",children:(0,li.jsxs)(\"div\",{className:\"popup-content\",children:[(0,li.jsxs)(\"div\",{className:\"header-warning\",children:[(0,li.jsx)(\"div\",{className:\"calibration-warning-icon\",children:(0,li.jsx)(jM,{})}),(0,li.jsx)(\"span\",{className:\"popupTitle\",children:(0,li.jsx)(Ti.A,{text:He.w2s})})]}),(0,li.jsx)(\"div\",{className:\"popup-description\",children:(0,li.jsx)(Ti.A,{text:He.KPZ})}),(0,li.jsx)(\"button\",{className:\"btnCancel uppercase\",onClick:c,children:(0,li.jsx)(Ti.A,{text:He.bOp})}),(0,li.jsx)(\"button\",{className:\"btnPrimary\",onClick:()=>{O(\"start\",o)},children:(0,li.jsx)(Ti.A,{text:He.AGU})})]})}),(0,li.jsxs)(\"div\",{className:\"calibration-wrapper-v2\",children:[(0,li.jsx)(\"div\",{className:\"step-indicator\",style:{visibility:i>=1?\"visible\":\"hidden\"},children:(0,li.jsx)(zM,{steps:i+1})}),(0,li.jsx)(\"div\",{className:\"calibration-title\",children:(0,li.jsx)(Ti.A,{text:i<1?He.YmC:6===i||5===i&&T&&3===l?He.Jvl:\"\"})}),(0,li.jsx)(\"br\",{}),(0,li.jsxs)(\"div\",{className:\"calibration-area\",children:[(0,li.jsx)(\"div\",{className:\"thumbstick-simulator\",style:{visibility:0==i?\"visible\":\"hidden\"},children:(0,li.jsx)(aM,{thumbStickXData:n.leftThumbX,thumbStickYData:n.leftThumbY})}),(0,li.jsxs)(\"div\",{className:\"prodImage-container\",children:[(0,li.jsx)(\"img\",{className:\"prodImage-calibration img-nodrag\",src:r}),(()=>{const e=1===o?n.leftThumbX:n.rightThumbX,t=1===o?n.leftThumbY:n.rightThumbY;switch(i){case 0:return(0,li.jsxs)(li.Fragment,{children:[(0,li.jsx)(\"div\",{className:\"left-thumbstick-overlay \"+(_?\"ps-ctrl\":\"\"),children:S()}),(0,li.jsx)(\"div\",{className:\"right-thumbstick-overlay \"+(_?\"ps-ctrl\":\"\"),children:S()})]});case 1:case 2:case 3:case 4:case 5:return T&&5!==i?(0,li.jsx)(\"div\",{className:\"lb-overlay \"+(_?\"ps-ctrl\":\"\"),children:u()}):(0,li.jsx)(\"div\",{className:`joystick-direction-overlay-${o} ${_?\"ps-ctrl\":\"\"}`,children:(0,li.jsx)(xM,{thumbStickXData:e,thumbStickYData:t,step:i,rotationCount:l,handleRotationCount:e=>I(e)})});default:return null}})()]}),(0,li.jsx)(\"div\",{className:\"thumbstick-simulator\",style:{visibility:0==i?\"visible\":\"hidden\"},children:(0,li.jsx)(aM,{thumbStickXData:n.rightThumbX,thumbStickYData:n.rightThumbY})})]}),(0,li.jsx)(\"div\",{className:\"calibration-description\",children:R()}),(0,li.jsx)(\"div\",{className:\"calibration-footer\",children:N()})]})]})}"
+    },
+    {
+      "symbol": "ZM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6692783,
+      "end": 6692872,
+      "source": "class ZM extends g.Component{render(){return(0,li.jsx)(y_,{children:(0,li.jsx)(XM,{})})}}"
+    },
+    {
+      "symbol": "qM",
+      "path": ".ref/devices/2636/static/js/main.82d8a835.js",
+      "sha256": "a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a",
+      "offset": 6692881,
+      "end": 6692883,
+      "source": "ZM"
+    }
+  ],
+  "labels": {
+    "Kr7": "CALIBRATION_STEP0",
+    "dqO": "CALIBRATION_STEP1",
+    "YHw": "CALIBRATION_STEP2",
+    "R5i": "CALIBRATION_STEP3",
+    "Kx$": "CALIBRATION_STEP4",
+    "gEn": "CALIBRATION_V2_STEP5",
+    "$JN": "CALIBBRTION_LEFT_THUMBSITCK",
+    "MKQ": "CALIBBRTION_RIGHT_THUMBSITCK",
+    "bOp": "CANCEL",
+    "DHM": "DONE",
+    "w2s": "CALIBRATION_ERROR",
+    "KPZ": "CALIBRATION_ERROR_DESC",
+    "AGU": "CALIBRATION_RECALIBRATE",
+    "YmC": "CALIBRATION_TITLE",
+    "Jvl": "CALIBRATION_SUCCESS"
+  },
+  "css": [
+    {
+      "path": ".ref/devices/2636/static/css/main.3d9eb3d1.css",
+      "sha256": "726c9570155ac2adaf8a39a012181e805f77c919e8e86b1ea1128d791a13d1d2",
+      "rules": [
+        {
+          "offset": 173935,
+          "selector": ".reset-oled-download .download-popup .download-popup-content",
+          "conditions": [],
+          "declarations": "font-size:14px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 202716,
+          "selector": ".calibration-body",
+          "conditions": [],
+          "declarations": "margin:auto;max-width:600px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "600px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 284698,
+          "selector": ".joystick",
+          "conditions": [],
+          "declarations": "display:flex;flex-direction:column;margin-bottom:10px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "flex-direction",
+              "value": "column",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 284762,
+          "selector": ".joystick .dropdown-area",
+          "conditions": [],
+          "declarations": "margin-left:30px!important;width:180px!important",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "30px",
+              "important": true
+            },
+            {
+              "property": "width",
+              "value": "180px",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 367260,
+          "selector": ".MonitoringDashboard_popupTitle__F0h6n",
+          "conditions": [],
+          "declarations": "color:#5d5d5d;font-family:RazerF5,sans-serif;font-size:16px;font-weight:400;margin:0;text-align:center",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#5d5d5d",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451066,
+          "selector": ".joystick-simulator",
+          "conditions": [],
+          "declarations": "height:160px;position:relative",
+          "properties": [
+            {
+              "property": "height",
+              "value": "160px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451117,
+          "selector": ".joystick-simulator #bg-chart",
+          "conditions": [],
+          "declarations": "position:absolute",
+          "properties": [
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451165,
+          "selector": ".joystick-simulator #chart",
+          "conditions": [],
+          "declarations": "position:relative",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451210,
+          "selector": ".joystick-simulator #rotate-Chart",
+          "conditions": [],
+          "declarations": "position:absolute",
+          "properties": [
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451262,
+          "selector": ".thumbstick-value",
+          "conditions": [],
+          "declarations": "font-size:14px;gap:20px;margin-top:20px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "gap",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "margin-top",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 451320,
+          "selector": ".alert-backdrop,.thumbstick-value",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:center",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 455448,
+          "selector": ".sensitivity-container .config-wrapper .config-item.center .joystick-highlight",
+          "conditions": [],
+          "declarations": "position:absolute;z-index:2",
+          "properties": [
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "2",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 455555,
+          "selector": ".sensitivity-container .config-wrapper .config-item.center .joystick-highlight.left",
+          "conditions": [],
+          "declarations": "left:107px;top:69px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "107px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "69px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 455659,
+          "selector": ".sensitivity-container .config-wrapper .config-item.center .joystick-highlight.left.ps-controller",
+          "conditions": [],
+          "declarations": "left:155px;top:110px;width:38px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "155px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "38px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 455789,
+          "selector": ".sensitivity-container .config-wrapper .config-item.center .joystick-highlight.right",
+          "conditions": [],
+          "declarations": "left:265px;top:126px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "265px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "126px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 455895,
+          "selector": ".sensitivity-container .config-wrapper .config-item.center .joystick-highlight.right.ps-controller",
+          "conditions": [],
+          "declarations": "left:266px;top:110px;width:38px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "266px",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "38px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 459832,
+          "selector": ".calibration-wrapper-v2",
+          "conditions": [],
+          "declarations": "text-align:center",
+          "properties": [
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 459874,
+          "selector": ".calibration-wrapper-v2 .calibration-title",
+          "conditions": [],
+          "declarations": "color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;min-height:22px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "22px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460018,
+          "selector": ".calibration-wrapper-v2 .step-indicator",
+          "conditions": [],
+          "declarations": "margin:10px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460070,
+          "selector": ".calibration-wrapper-v2 .step-indicator .pendingStep",
+          "conditions": [],
+          "declarations": "fill:#707070;stroke:#707070",
+          "properties": [
+            {
+              "property": "fill",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "stroke",
+              "value": "#707070",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460151,
+          "selector": ".calibration-wrapper-v2 .step-indicator .activeStep",
+          "conditions": [],
+          "declarations": "fill:#44d62c;stroke:#44d62c",
+          "properties": [
+            {
+              "property": "fill",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "stroke",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460231,
+          "selector": ".calibration-wrapper-v2 .calibration-area",
+          "conditions": [],
+          "declarations": "display:flex;flex-direction:row;margin:11px 30px 30px 23px;min-width:850px",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "flex-direction",
+              "value": "row",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "11px 30px 30px 23px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "850px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460348,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container",
+          "conditions": [],
+          "declarations": "display:grid;margin:auto;width:fit-content",
+          "properties": [
+            {
+              "property": "display",
+              "value": "grid",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "fit-content",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 460454,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .prodImage-calibration",
+          "conditions": [],
+          "declarations": "grid-area:1/1/2/2;max-width:372px!important",
+          "properties": [
+            {
+              "property": "grid-area",
+              "value": "1/1/2/2",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "372px",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 460584,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-1,.calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-2,.calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-rotate-overlay-1,.calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-rotate-overlay-2,.calibration-wrapper-v2 .calibration-area .prodImage-container .left-thumbstick-overlay,.calibration-wrapper-v2 .calibration-area .prodImage-container .right-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "grid-area:1/1/2/2;z-index:2",
+          "properties": [
+            {
+              "property": "grid-area",
+              "value": "1/1/2/2",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "2",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461155,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-1",
+          "conditions": [],
+          "declarations": "padding-right:204.5px;padding-top:11px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "204.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "11px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461287,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-1.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:110px;padding-top:50px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "50px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461425,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-2",
+          "conditions": [],
+          "declarations": "padding-left:110px;padding-top:68px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "68px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461554,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .joystick-direction-overlay-2.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:0;padding-top:50px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "50px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461688,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .left-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "padding-right:208.5px;padding-top:69px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "208.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "69px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461815,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .left-thumbstick-overlay.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:112.5px;padding-top:108px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "112.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "108px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 461951,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .right-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "padding-left:108px;padding-top:126px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "108px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "126px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462077,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .right-thumbstick-overlay.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:0;padding-top:108px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "108px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462208,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .lb-overlay",
+          "conditions": [],
+          "declarations": "grid-area:1/1/2/2;padding-left:56px;padding-top:5px;text-align:left;z-index:2",
+          "properties": [
+            {
+              "property": "grid-area",
+              "value": "1/1/2/2",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "56px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "2",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462361,
+          "selector": ".calibration-wrapper-v2 .calibration-area .prodImage-container .lb-overlay.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-left:49px;padding-top:2px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "49px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "2px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462478,
+          "selector": ".calibration-wrapper-v2 .calibration-description",
+          "conditions": [],
+          "declarations": "font-size:14px;margin:auto;min-height:44px;width:460px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "44px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "460px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462582,
+          "selector": ".calibration-wrapper-v2 .thumbstick-simulator",
+          "conditions": [],
+          "declarations": "margin:auto auto -38.5px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "auto auto -38.5px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462653,
+          "selector": ".calibration-wrapper-v2 .calibration-footer",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:center",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462733,
+          "selector": ".calibration-wrapper-v2 .calibration-footer .button",
+          "conditions": [],
+          "declarations": "background:#0000;border:1px solid #ccc;border-radius:3px;color:#ccc;font-size:12px;height:27px;margin:10px 5px 0;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #ccc",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 462913,
+          "selector": ".calibration-wrapper-v2 .calibration-footer .button:hover",
+          "conditions": [],
+          "declarations": "background:rgba(0,0,0,.929);cursor:pointer",
+          "properties": [
+            {
+              "property": "background",
+              "value": "rgba(0,0,0,.929)",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463038,
+          "selector": ".calibration-area",
+          "conditions": [
+            "@media(max-width:850px)"
+          ],
+          "declarations": "transform:scale(.8)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.8)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463101,
+          "selector": ".calibration-area",
+          "conditions": [
+            "@media(max-width:650px)"
+          ],
+          "declarations": "transform:scale(.6)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.6)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463164,
+          "selector": ".calibration-area",
+          "conditions": [
+            "@media(max-width:400px)"
+          ],
+          "declarations": "transform:scale(.5)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.5)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463284,
+          "selector": ".calibration-title",
+          "conditions": [],
+          "declarations": "color:#44d62c;font-family:RazerF5,sans-serif;font-size:16px;min-height:22px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "22px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463404,
+          "selector": ".calibration-description",
+          "conditions": [],
+          "declarations": "font-size:14px;margin:auto;min-height:44px;width:460px",
+          "properties": [
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "min-height",
+              "value": "44px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "460px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463484,
+          "selector": ".calibration-description.ps-ctrl",
+          "conditions": [],
+          "declarations": "width:600px",
+          "properties": [
+            {
+              "property": "width",
+              "value": "600px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463529,
+          "selector": ".calibration-instructions-wrapper",
+          "conditions": [],
+          "declarations": "background:#2b2b2b;border-radius:5px;font-size:14px;margin:auto;padding:20px 40px;text-align:left",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#2b2b2b",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "20px 40px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463661,
+          "selector": ".calibration-instructions-wrapper.calibration-title",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463727,
+          "selector": ".calibration-instructions-wrapper .calibration-instructions ol",
+          "conditions": [],
+          "declarations": "line-height:1.5;padding-left:20px",
+          "properties": [
+            {
+              "property": "line-height",
+              "value": "1.5",
+              "important": false
+            },
+            {
+              "property": "padding-left",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463824,
+          "selector": ".calibration-wrapper",
+          "conditions": [],
+          "declarations": "text-align:center",
+          "properties": [
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 463863,
+          "selector": ".calibration-test-area",
+          "conditions": [],
+          "declarations": "display:flex;font-family:Roboto;font-size:14px;font-weight:400;line-height:17px;margin:11px 30px 30px 23px;min-width:850px;text-align:center;-webkit-text-decoration-skip-ink:none;text-decoration-skip-ink:none;text-underline-position:from-font",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "11px 30px 30px 23px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "850px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "-webkit-text-decoration-skip-ink",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "text-decoration-skip-ink",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "text-underline-position",
+              "value": "from-font",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464129,
+          "selector": ".prodImage-calibration",
+          "conditions": [],
+          "declarations": "grid-area:1/1/2/2;max-width:372px!important",
+          "properties": [
+            {
+              "property": "grid-area",
+              "value": "1/1/2/2",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "372px",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 464220,
+          "selector": ".calibration-test-area",
+          "conditions": [
+            "@media(max-width:850px)"
+          ],
+          "declarations": "transform:scale(.8)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.8)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464288,
+          "selector": ".calibration-test-area",
+          "conditions": [
+            "@media(max-width:650px)"
+          ],
+          "declarations": "transform:scale(.6)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.6)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464356,
+          "selector": ".calibration-test-area",
+          "conditions": [
+            "@media(max-width:400px)"
+          ],
+          "declarations": "transform:scale(.5)",
+          "properties": [
+            {
+              "property": "transform",
+              "value": "scale(.5)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464400,
+          "selector": ".joystick-direction-overlay-1,.joystick-direction-overlay-2,.joystick-rotate-overlay-1,.joystick-rotate-overlay-2,.left-bumper-overlay,.left-thumbstick-overlay,.right-bumper-overlay,.right-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "grid-area:1/1/2/2;z-index:2",
+          "properties": [
+            {
+              "property": "grid-area",
+              "value": "1/1/2/2",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "2",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464636,
+          "selector": ".left-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "padding-right:208.5px;padding-top:69px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "208.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "69px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464700,
+          "selector": ".left-thumbstick-overlay.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:112px;padding-top:110px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "112px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "110px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464771,
+          "selector": ".right-thumbstick-overlay",
+          "conditions": [],
+          "declarations": "padding-left:108px;padding-top:126px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "108px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "126px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 464834,
+          "selector": ".right-thumbstick-overlay.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-left:110px;padding-top:110px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "110px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465024,
+          "selector": ".joystick-direction-overlay-2",
+          "conditions": [],
+          "declarations": "padding-left:110px;padding-top:93px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "93px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465090,
+          "selector": ".joystick-direction-overlay-2.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-top:75px",
+          "properties": [
+            {
+              "property": "padding-top",
+              "value": "75px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465145,
+          "selector": ".joystick-direction-overlay-1",
+          "conditions": [],
+          "declarations": "padding-right:205.5px;padding-top:36px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "205.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "36px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465214,
+          "selector": ".joystick-direction-overlay-1.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:110px;padding-top:75px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "75px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465289,
+          "selector": ".joystick-rotate-overlay-1",
+          "conditions": [],
+          "declarations": "padding-right:205.5px;padding-top:29px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "205.5px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "29px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465355,
+          "selector": ".joystick-rotate-overlay-1.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-right:112px;padding-top:67px",
+          "properties": [
+            {
+              "property": "padding-right",
+              "value": "112px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "67px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465427,
+          "selector": ".joystick-rotate-overlay-2",
+          "conditions": [],
+          "declarations": "padding-left:110px;padding-top:86px",
+          "properties": [
+            {
+              "property": "padding-left",
+              "value": "110px",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "86px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465490,
+          "selector": ".joystick-rotate-overlay-2.ps-ctrl",
+          "conditions": [],
+          "declarations": "padding-top:67px",
+          "properties": [
+            {
+              "property": "padding-top",
+              "value": "67px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465728,
+          "selector": ".calibration-footer .button",
+          "conditions": [],
+          "declarations": "background:#0000;border:1px solid #ccc;border-radius:3px;color:#ccc;font-size:12px;height:27px;margin:10px 5px 0;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#0000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #ccc",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465884,
+          "selector": ".calibration-footer .button:hover",
+          "conditions": [],
+          "declarations": "background:rgba(0,0,0,.929);cursor:pointer",
+          "properties": [
+            {
+              "property": "background",
+              "value": "rgba(0,0,0,.929)",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 465961,
+          "selector": ".btnCancel",
+          "conditions": [],
+          "declarations": "background:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466144,
+          "selector": ".btnCancel.uppercase",
+          "conditions": [],
+          "declarations": "text-transform:uppercase",
+          "properties": [
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466190,
+          "selector": ".btnPrimary",
+          "conditions": [],
+          "declarations": "background:#44d62c;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#000;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466374,
+          "selector": ".btnPrimary.uppercase",
+          "conditions": [],
+          "declarations": "text-transform:uppercase",
+          "properties": [
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466421,
+          "selector": ".calibration-footer .btn",
+          "conditions": [],
+          "declarations": "margin:10px 5px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "10px 5px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466462,
+          "selector": ".popup-overlay",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:center;left:0;padding-top:100px;position:fixed;width:100%;z-index:1000",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding-top",
+              "value": "100px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "fixed",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "1000",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466577,
+          "selector": ".popup-content",
+          "conditions": [],
+          "declarations": "background:#111;border:1px solid #fd8611;border-radius:3px;box-shadow:0 5px 15px #0000004d;color:#fff;padding:20px 30px;text-align:center;width:400px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #fd8611",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "box-shadow",
+              "value": "0 5px 15px #0000004d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "20px 30px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "400px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466742,
+          "selector": ".popupTitle",
+          "conditions": [],
+          "declarations": "color:#fd8611;font-family:RazerF5;font-size:16px;line-height:15.87px;vertical-align:middle",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#fd8611",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "15.87px",
+              "important": false
+            },
+            {
+              "property": "vertical-align",
+              "value": "middle",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466845,
+          "selector": ".popup-description,.popupTitle",
+          "conditions": [],
+          "declarations": "font-weight:400;text-align:center",
+          "properties": [
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 466910,
+          "selector": ".popup-description",
+          "conditions": [],
+          "declarations": "color:#ccc;font-family:Roboto;font-size:14px;line-height:17px;margin:5px 0;-webkit-text-decoration-skip-ink:none;text-decoration-skip-ink:none;text-underline-position:from-font",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "17px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "5px 0",
+              "important": false
+            },
+            {
+              "property": "-webkit-text-decoration-skip-ink",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "text-decoration-skip-ink",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "text-underline-position",
+              "value": "from-font",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467236,
+          "selector": ".calibration-warning-icon",
+          "conditions": [],
+          "declarations": "display:inline;margin:0 10px;vertical-align:top",
+          "properties": [
+            {
+              "property": "display",
+              "value": "inline",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px",
+              "important": false
+            },
+            {
+              "property": "vertical-align",
+              "value": "top",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467310,
+          "selector": ".step-indicator",
+          "conditions": [],
+          "declarations": "margin:10px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467338,
+          "selector": ".thumbstick-simulator",
+          "conditions": [],
+          "declarations": "margin:auto auto -38.5px",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "auto auto -38.5px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467385,
+          "selector": ".prodImage-container",
+          "conditions": [],
+          "declarations": "display:grid;margin:auto;width:fit-content",
+          "properties": [
+            {
+              "property": "display",
+              "value": "grid",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "fit-content",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467449,
+          "selector": ".calibration-footer",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:center",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467576,
+          "selector": ".thumbstick-calibration-simulator",
+          "conditions": [],
+          "declarations": "height:157px;position:relative",
+          "properties": [
+            {
+              "property": "height",
+              "value": "157px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467641,
+          "selector": ".thumbstick-calibration-simulator #bg-chart",
+          "conditions": [],
+          "declarations": "position:absolute",
+          "properties": [
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467703,
+          "selector": ".thumbstick-calibration-simulator #chart",
+          "conditions": [],
+          "declarations": "position:relative",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 467762,
+          "selector": ".thumbstick-calibration-simulator .rotate-count",
+          "conditions": [],
+          "declarations": "color:#fff;font-size:14px;font-weight:400;position:absolute;right:50%;top:100%;transform:translateX(50%)",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "font-weight",
+              "value": "400",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateX(50%)",
+              "important": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "middleware": [
+    {
+      "symbol": "module:66118",
+      "path": ".ref/middleware/2636/main.f0ca95429464cd09cbdb.js",
+      "sha256": "0c7025476edef60774e61e4ca93c5a80192f79979040c61f828af7b52616549f",
+      "offset": 1288991,
+      "end": 1313631,
+      "source": "(e,t,n)=>{\"use strict\";n.d(t,{ev:()=>h,Ay:()=>A});var o,i,r,a,s=n(69427),l=n(76912),c=n(47399),u=n(70035);!function(e){e.Idle=\"idle\",e.InProgress=\"inProgress\"}(o||(o={})),function(e){e[e.None=0]=\"None\",e[e.LeftJoystick=1]=\"LeftJoystick\",e[e.RightJoystick=2]=\"RightJoystick\",e[e.LeftTrigger=3]=\"LeftTrigger\",e[e.RightTrigger=4]=\"RightTrigger\"}(i||(i={})),function(e){e[e.Step_None=0]=\"Step_None\",e[e.Step_CenterPoint_1=1]=\"Step_CenterPoint_1\",e[e.Step_CenterPoint_2=2]=\"Step_CenterPoint_2\",e[e.Step_CenterPoint_3=3]=\"Step_CenterPoint_3\",e[e.Step_CenterPoint_4=4]=\"Step_CenterPoint_4\",e[e.Step_Rotate=5]=\"Step_Rotate\",e[e.Step_Complete=6]=\"Step_Complete\"}(r||(r={})),function(e){e[e.Step_Error=-1]=\"Step_Error\",e[e.Step_None=0]=\"Step_None\",e[e.Step_1_Right=1]=\"Step_1_Right\",e[e.Step_2_Down=2]=\"Step_2_Down\",e[e.Step_3_Left=3]=\"Step_3_Left\",e[e.Step_4_Up=4]=\"Step_4_Up\",e[e.Step_5_Rotate=5]=\"Step_5_Rotate\",e[e.Step_6_Complete=6]=\"Step_6_Complete\"}(a||(a={}));var d=n(83207),p=function(e,t,n,o){return new(n||(n=Promise))((function(i,r){function a(e){try{l(o.next(e))}catch(e){r(e)}}function s(e){try{l(o.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?i(e.value):(t=e.value,t instanceof n?t:new n((function(e){e(t)}))).then(a,s)}l((o=o.apply(e,t||[])).next())}))};const f=()=>p(void 0,void 0,void 0,(function*(){const e=u.jf.rzDevice;try{const t=yield e.getAnalogInputRawDataAll();return null==t?void 0:t.jsonData}catch(e){}})),v={[i.LeftJoystick]:d.By.Left_Joystick,[i.RightJoystick]:d.By.Right_Joystick,[i.LeftTrigger]:d.By.Left_Trigger,[i.RightTrigger]:d.By.Right_Trigger};var y=function(e,t,n,o){return new(n||(n=Promise))((function(i,r){function a(e){try{l(o.next(e))}catch(e){r(e)}}function s(e){try{l(o.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?i(e.value):(t=e.value,t instanceof n?t:new n((function(e){e(t)}))).then(a,s)}l((o=o.apply(e,t||[])).next())}))};class g{constructor(){var e,t,n,a,l,c,u;this.state=o.Idle,this.step=r.Step_None,this.partId=i.None,this.CenterPoints=[],this.BoundaryPoints={xMin:0,xMax:0,yMin:0,yMax:0},this.UserMovementPoints={xMin:0,xMax:0,yMin:0,yMax:0,x:0,y:0},this.isValidUserMovement=!0,this.calibrationParams={Range:null!==(e=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.Range)&&void 0!==e?e:{min:0,max:4096},IdealCenterPoint:null!==(t=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.IdealCenterPoint)&&void 0!==t?t:{x:2048,y:2048},DeadzoneRatio:null!==(n=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.DeadzoneRatio)&&void 0!==n?n:3,AllowedDeviationPercent:null!==(a=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.AllowedDeviationPercent)&&void 0!==a?a:9,BoundaryTolerance:null!==(l=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.BoundaryTolerance)&&void 0!==l?l:12,ValidityThreshold:null!==(c=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.ValidityThreshold)&&void 0!==c?c:.35,CenterPointThreshold:null!==(u=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.CenterPointThreshold)&&void 0!==u?u:.1}}start(e){this.reset(),this.state=o.InProgress,this.partId=e,(()=>y(this,void 0,void 0,(function*(){yield this.prepareNextStep()})))().then((()=>{console.log(\"[ControllerCalibrationHandler] Calibration started\",(0,l.np)(i,e),(0,l.np)(r,this.step))}))}next(){return y(this,void 0,void 0,(function*(){this.state!==o.Idle&&(yield this.processCurrentStep(),yield this.prepareNextStep(),console.log(`[ControllerCalibrationHandler] Next step: ${(0,l.np)(r,this.step)}`))}))}complete(){return y(this,void 0,void 0,(function*(){this.stopBoundaryPointsTimer(),this.stopUserMovementTimer();try{yield this.processCalibrationData(),this.validateCapturedCalibrationData(),this.updateUI(a.Step_6_Complete)}catch(e){console.error(`[ControllerCalibrationHandler] ${e}`),this.updateUI(a.Step_Error,\"Calibration failed\")}this.stop()}))}stop(){this.reset(),console.log(\"[ControllerCalibrationHandler] Calibration stopped\")}reset(){this.state=o.Idle,this.step=r.Step_None,this.partId=i.None,this.CenterPoints=[],this.resetBoundaryPoints(),this.stopBoundaryPointsTimer(),this.resetUserMovementPoints(),this.stopUserMovementTimer(),this.isValidUserMovement=!0}processCurrentStep(){return y(this,void 0,void 0,(function*(){switch(this.step){case r.Step_None:break;case r.Step_CenterPoint_1:case r.Step_CenterPoint_2:case r.Step_CenterPoint_3:case r.Step_CenterPoint_4:this.stopUserMovementTimer(),this.validateUserMovementPoints(),this.resetUserMovementPoints(),yield this.getCenterPointReading(),console.log(`[ControllerCalibrationHandler] Processing Step: ${(0,l.np)(r,this.step)}`);break;case r.Step_Rotate:this.stopBoundaryPointsTimer(),this.validateUserMovementPoints(),console.log(`[ControllerCalibrationHandler] processing ${this.step}`);break;default:this.stop()}}))}prepareNextStep(){return y(this,void 0,void 0,(function*(){if(this.step=this.step+1,this.step===r.Step_Complete&&(yield this.complete()),this.state===o.InProgress)switch(this.step){case r.Step_CenterPoint_1:this.updateUI(a.Step_1_Right),this.startUserMovementTimer();break;case r.Step_CenterPoint_2:this.updateUI(a.Step_2_Down),this.startUserMovementTimer();break;case r.Step_CenterPoint_3:this.updateUI(a.Step_3_Left),this.startUserMovementTimer();break;case r.Step_CenterPoint_4:this.updateUI(a.Step_4_Up),this.startUserMovementTimer();break;case r.Step_Rotate:this.updateUI(a.Step_5_Rotate),this.stopUserMovementTimer(),this.startBoundaryPointsTimer();break;default:this.stopUserMovementTimer(),this.stopBoundaryPointsTimer()}}))}getCenterPointReading(){return y(this,void 0,void 0,(function*(){const e=yield f();if(e){if(this.partId===i.LeftJoystick){const{Lx:t,Ly:n}=e;this.CenterPoints.push({x:t,y:n})}else if(this.partId===i.RightJoystick){const{Rx:t,Ry:n}=e;this.CenterPoints.push({x:t,y:n})}console.debug(`[ControllerCalibrationHandler] getCenterPointReading: ${this.partId}: ${JSON.stringify(e)}`)}}))}getBoundaryPoints(){return y(this,void 0,void 0,(function*(){this.step===r.Step_Rotate?(yield this.getBoundaryPointReading(),this.startBoundaryPointsTimer()):console.log(\"[ControllerCalibrationHandler] boundary timer stopped\")}))}getBoundaryPointReading(){return y(this,void 0,void 0,(function*(){const e=yield f();if(e){if(this.partId===i.LeftJoystick){const{Lx:t,Ly:n}=e;this.BoundaryPoints.xMin=t<this.BoundaryPoints.xMin?t:this.BoundaryPoints.xMin,this.BoundaryPoints.xMax=t>this.BoundaryPoints.xMax?t:this.BoundaryPoints.xMax,this.BoundaryPoints.yMin=n<this.BoundaryPoints.yMin?n:this.BoundaryPoints.yMin,this.BoundaryPoints.yMax=n>this.BoundaryPoints.yMax?n:this.BoundaryPoints.yMax}else if(this.partId===i.RightJoystick){const{Rx:t,Ry:n}=e;this.BoundaryPoints.xMin=t<this.BoundaryPoints.xMin?t:this.BoundaryPoints.xMin,this.BoundaryPoints.xMax=t>this.BoundaryPoints.xMax?t:this.BoundaryPoints.xMax,this.BoundaryPoints.yMin=n<this.BoundaryPoints.yMin?n:this.BoundaryPoints.yMin,this.BoundaryPoints.yMax=n>this.BoundaryPoints.yMax?n:this.BoundaryPoints.yMax}console.debug(`[ControllerCalibrationHandler] getBoundaryPointReading: ${this.partId}: ${JSON.stringify(this.BoundaryPoints)}`)}}))}processCalibrationData(){return y(this,void 0,void 0,(function*(){if(!this.isValidUserMovement)throw new Error(\"User movement invalid\");const e={status:!0,error:\"\",calibrationData:{centerPoint:Object.assign({},this.calibrationParams.IdealCenterPoint),boundary:{xMin:this.calibrationParams.Range.min,xMax:this.calibrationParams.Range.max,yMin:this.calibrationParams.Range.min,yMax:this.calibrationParams.Range.max}}};if(this.computeCenterPoint(e),e.status&&this.computeBoundaryPoints(e),!e.status)throw new Error(e.error);const t=yield(n=this.partId,o=e.calibrationData,p(void 0,void 0,void 0,(function*(){const e=u.jf.rzDevice;try{const t={LxMin:n===i.LeftJoystick?o.boundary.xMin:void 0,LyMin:n===i.LeftJoystick?o.boundary.yMin:void 0,LxMid:n===i.LeftJoystick?o.centerPoint.x:void 0,LyMid:n===i.LeftJoystick?o.centerPoint.y:void 0,LxMax:n===i.LeftJoystick?o.boundary.xMax:void 0,LyMax:n===i.LeftJoystick?o.boundary.yMax:void 0,RxMin:n===i.RightJoystick?o.boundary.xMin:void 0,RyMin:n===i.RightJoystick?o.boundary.yMin:void 0,RxMid:n===i.RightJoystick?o.centerPoint.x:void 0,RyMid:n===i.RightJoystick?o.centerPoint.y:void 0,RxMax:n===i.RightJoystick?o.boundary.xMax:void 0,RyMax:n===i.RightJoystick?o.boundary.yMax:void 0,LtMin:n===i.LeftTrigger?o.boundary.xMin:void 0,LtMax:n===i.LeftTrigger?o.boundary.xMax:void 0,RtMin:n===i.RightTrigger?o.boundary.xMin:void 0,RtMax:n===i.RightTrigger?o.boundary.xMax:void 0},r=yield null==e?void 0:e.setAnalogInputCalibrationDataAll(v[n],t);console.log(`[saveControllerCalibrationData] ${r}`)}catch(e){return console.error(`[saveControllerCalibrationData] Failed to save calibration data: ${e}`),!1}return!0})));var n,o;if(!t)throw new Error(\"Command Failed\")}))}computeCenterPoint(e){const t={x:this.CenterPoints.reduce(((e,t)=>e+t.x),0)/this.CenterPoints.length,y:this.CenterPoints.reduce(((e,t)=>e+t.y),0)/this.CenterPoints.length},n=this.calibrationParams.DeadzoneRatio/100*this.calibrationParams.IdealCenterPoint.x,o=this.calibrationParams.DeadzoneRatio/100*this.calibrationParams.IdealCenterPoint.y;for(const i of this.CenterPoints){const r=Math.abs(t.x-i.x),a=Math.abs(t.y-i.y);if(r>n||a>o)return e.status=!1,void(e.error=\"Center point validation failed - points too far from average\")}e.calibrationData.centerPoint=t}computeBoundaryPoints(e){const{centerPoint:t}=e.calibrationData,n=t.x-this.BoundaryPoints.xMin,o=this.BoundaryPoints.xMax-t.x,i=t.y-this.BoundaryPoints.yMin,r=this.BoundaryPoints.yMax-t.y,a={xMin:t.x-n*(1-this.calibrationParams.BoundaryTolerance/100),xMax:t.x+o*(1-this.calibrationParams.BoundaryTolerance/100),yMin:t.y-i*(1-this.calibrationParams.BoundaryTolerance/100),yMax:t.y+r*(1-this.calibrationParams.BoundaryTolerance/100)};e.calibrationData.boundary=a}validateCapturedCalibrationData(){4!==this.CenterPoints.length&&console.warn(`[ControllerCalibrationHandler] Insufficient center points captured: ${this.CenterPoints.length}`);const e=this.calibrationParams.AllowedDeviationPercent/100*this.calibrationParams.Range.max,t=this.calibrationParams.AllowedDeviationPercent/100*this.calibrationParams.Range.max;for(const n of this.CenterPoints){const o=Math.abs(this.calibrationParams.IdealCenterPoint.x-n.x),i=Math.abs(this.calibrationParams.IdealCenterPoint.y-n.y);o>e&&console.warn(`[ControllerCalibrationHandler] x-axis deviation too high: ${o} for point: ${n}`),i>t&&console.warn(`[ControllerCalibrationHandler] y-axis deviation too high: ${i} for point: ${n}`)}}updateUI(e,t=void 0){const n={step:e,stepDesc:(0,l.np)(a,e),error:\"\"};e===a.Step_Error&&t&&(n.error=t),(0,c.Q)({type:\"MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS\",payload:n},!0)}startBoundaryPointsTimer(){this.boundaryTimerId=setTimeout(this.getBoundaryPoints.bind(this),h)}resetBoundaryPoints(){this.BoundaryPoints={xMin:this.calibrationParams.IdealCenterPoint.x,xMax:this.calibrationParams.IdealCenterPoint.x,yMin:this.calibrationParams.IdealCenterPoint.y,yMax:this.calibrationParams.IdealCenterPoint.y}}stopBoundaryPointsTimer(){this.boundaryTimerId&&(clearTimeout(this.boundaryTimerId),this.boundaryTimerId=void 0)}startUserMovementTimer(){this.userMovementTimerId=setTimeout(this.getUserMovementPoints.bind(this),h)}resetUserMovementPoints(){this.UserMovementPoints={xMin:this.calibrationParams.IdealCenterPoint.x,xMax:this.calibrationParams.IdealCenterPoint.x,yMin:this.calibrationParams.IdealCenterPoint.y,yMax:this.calibrationParams.IdealCenterPoint.y,x:0,y:0}}getUserMovementPoints(){return y(this,void 0,void 0,(function*(){if(this.step!==r.Step_CenterPoint_1&&this.step!==r.Step_CenterPoint_2&&this.step!==r.Step_CenterPoint_3&&this.step!==r.Step_CenterPoint_4)return;const e=yield f();if(e)if(this.partId===i.LeftJoystick){const{Lx:t,Ly:n}=e;this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax}else if(this.partId===i.RightJoystick){const{Rx:t,Ry:n}=e;this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax}this.startUserMovementTimer()}))}stopUserMovementTimer(){this.userMovementTimerId&&(clearTimeout(this.userMovementTimerId),this.userMovementTimerId=void 0)}validateUserMovementPoints(){switch(this.step){case r.Step_CenterPoint_1:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMax>e;this.isValidUserMovement=this.isValidUserMovement&&t,console.log(`[validateUserMovementPoints] xMax: ${this.UserMovementPoints.xMax}, threshold: ${e}, stepValidity: ${t} --\\x3e ${this.isValidUserMovement}`);break}case r.Step_CenterPoint_2:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMin<e;this.isValidUserMovement=this.isValidUserMovement&&t,console.log(`[validateUserMovementPoints] yMin: ${this.UserMovementPoints.yMin}, threshold: ${e}, stepValidity: ${t} --\\x3e ${this.isValidUserMovement}`);break}case r.Step_CenterPoint_3:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMin<e;this.isValidUserMovement=this.isValidUserMovement&&t,console.log(`[validateUserMovementPoints] xMin: ${this.UserMovementPoints.xMin}, threshold: ${e}, stepValidity: ${t} --\\x3e ${this.isValidUserMovement}`);break}case r.Step_CenterPoint_4:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMax>e;this.isValidUserMovement=this.isValidUserMovement&&t,console.log(`[validateUserMovementPoints] yMax: ${this.UserMovementPoints.yMax}, threshold: ${e}, stepValidity: ${t} --\\x3e ${this.isValidUserMovement}`);break}case r.Step_Rotate:{const e=this.calibrationParams.Range.min+this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,n=this.BoundaryPoints.xMin<e&&this.BoundaryPoints.xMax>t&&this.BoundaryPoints.yMin<e&&this.BoundaryPoints.yMax>t;this.isValidUserMovement=this.isValidUserMovement&&n,console.log(`[validateUserMovementPoints] boundaryPoints: ${JSON.stringify(this.BoundaryPoints)}, minThreshold: ${e}, maxThreshold: ${t}, stepValidity: ${n} --\\x3e ${this.isValidUserMovement}`);break}}}convertMwToUiStep(e){switch(e){case r.Step_None:return a.Step_None;case r.Step_CenterPoint_1:return a.Step_1_Right;case r.Step_CenterPoint_2:return a.Step_2_Down;case r.Step_CenterPoint_3:return a.Step_3_Left;case r.Step_CenterPoint_4:return a.Step_4_Up;case r.Step_Rotate:return a.Step_5_Rotate;case r.Step_Complete:return a.Step_6_Complete;default:return a.Step_None}}}var _=n(13205),E=function(e,t,n,o){return new(n||(n=Promise))((function(i,r){function a(e){try{l(o.next(e))}catch(e){r(e)}}function s(e){try{l(o.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?i(e.value):(t=e.value,t instanceof n?t:new n((function(e){e(t)}))).then(a,s)}l((o=o.apply(e,t||[])).next())}))};const m=\"CalibrationUserMovement\";class I extends g{constructor(){super(...arguments),this.isStepValid=!1,this.THROTTLE_TIME=33,this.lastMovementUpdateTime=0,this.movementUpdateTimer=null,this.actualCenterPoint={x:this.calibrationParams.IdealCenterPoint.x,y:this.calibrationParams.IdealCenterPoint.y}}start(e){return E(this,void 0,void 0,(function*(){this.reset(),this.state=o.InProgress,this.partId=e,(()=>E(this,void 0,void 0,(function*(){const e=yield f();if(e){const t=this.calibrationParams.Range.max*this.calibrationParams.CenterPointThreshold;this.partId===i.LeftJoystick?(this.actualCenterPoint.x=Math.abs(e.Lx-this.calibrationParams.IdealCenterPoint.x)>t?this.calibrationParams.IdealCenterPoint.x:e.Lx,this.actualCenterPoint.y=Math.abs(e.Ly-this.calibrationParams.IdealCenterPoint.y)>t?this.calibrationParams.IdealCenterPoint.y:e.Ly):this.partId===i.RightJoystick&&(this.actualCenterPoint.x=Math.abs(e.Rx-this.calibrationParams.IdealCenterPoint.x)>t?this.calibrationParams.IdealCenterPoint.x:e.Rx,this.actualCenterPoint.y=Math.abs(e.Ry-this.calibrationParams.IdealCenterPoint.y)>t?this.calibrationParams.IdealCenterPoint.y:e.Ry)}yield this.prepareNextStep()})))().then((()=>{console.log(\"[ControllerCalibrationHandler] Calibration started\",(0,l.np)(i,e),(0,l.np)(r,this.step),this.isValidUserMovement)}))}))}next(){return E(this,void 0,void 0,(function*(){this.state!==o.Idle&&this.isStepValid&&(this.stopUserMovementTimer(),this.resetUserMovementPoints(),yield this.processCurrentStep(),yield this.prepareNextStep(),console.log(`[ControllerCalibrationHandler] Next step: ${(0,l.np)(r,this.step)}`))}))}complete(){const e=Object.create(null,{complete:{get:()=>super.complete}});return E(this,void 0,void 0,(function*(){e.complete.call(this),yield this.removeMovementWindowStorage()}))}reset(){super.reset(),this.isStepValid=!1,this.lastMovementUpdateTime=0,this.movementUpdateTimer=null,this.removeMovementWindowStorage(),this.isValidUserMovement=!1}processCurrentStep(){return E(this,void 0,void 0,(function*(){switch(console.log(\"[ControllerCalibrationHandler] Processing Step:\",(0,l.np)(r,this.step),\"isValidUserMovement:\",this.isValidUserMovement,\"isStepValid:\",this.isStepValid),this.step){case r.Step_None:break;case r.Step_CenterPoint_1:case r.Step_CenterPoint_2:case r.Step_CenterPoint_3:case r.Step_CenterPoint_4:case r.Step_Rotate:yield this.getCenterPointReading();break;default:this.stop()}}))}prepareNextStep(){return E(this,void 0,void 0,(function*(){if(this.step=this.step+1,this.step===r.Step_Complete&&(yield this.complete()),this.state===o.InProgress){this.isStepValid=!1,this.isValidUserMovement=!1;const e=this.convertMwToUiStep(this.step);this.updateUI(e),this.startUserMovementTimer()}}))}updateUI(e,t=void 0){const n={step:e,stepDesc:(0,l.np)(a,e),isStepValid:this.isStepValid,error:\"\"};e===a.Step_Error&&t&&(n.error=t),(0,c.Q)({type:\"MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS\",payload:n},!0)}getUserMovementPoints(){return E(this,void 0,void 0,(function*(){if(this.step===r.Step_None||this.step===r.Step_Complete)return;const e=yield f();if(e)if(this.partId===i.LeftJoystick){const{Lx:t,Ly:n}=e;this.isValidADCData({x:t,y:n})&&(this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax,this.UserMovementPoints.x=t,this.UserMovementPoints.y=n)}else if(this.partId===i.RightJoystick){const{Rx:t,Ry:n}=e;this.isValidADCData({x:t,y:n})&&(this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax,this.UserMovementPoints.x=t,this.UserMovementPoints.y=n)}this.validateUserMovementPoints(),yield this.checkUpdateMovementToWindowStorage(),this.startUserMovementTimer()}))}isValidADCData({x:e,y:t}){return e>this.calibrationParams.Range.min&&e<this.calibrationParams.Range.max&&t>this.calibrationParams.Range.min&&t<this.calibrationParams.Range.max}validateUserMovementPoints(){const e=this.isStepValid;switch(this.step){case r.Step_CenterPoint_1:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMax>e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_2:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMin<e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_3:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMin<e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_4:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMax>e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_Rotate:{const e=this.calibrationParams.Range.min+this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,n=this.UserMovementPoints.xMin<e&&this.UserMovementPoints.xMax>t&&this.UserMovementPoints.yMin<e&&this.UserMovementPoints.yMax>t;n&&(this.BoundaryPoints.xMin=this.UserMovementPoints.xMin<this.BoundaryPoints.xMin?this.UserMovementPoints.xMin:this.BoundaryPoints.xMin,this.BoundaryPoints.xMax=this.UserMovementPoints.xMax>this.BoundaryPoints.xMax?this.UserMovementPoints.xMax:this.BoundaryPoints.xMax,this.BoundaryPoints.yMin=this.UserMovementPoints.yMin<this.BoundaryPoints.yMin?this.UserMovementPoints.yMin:this.BoundaryPoints.yMin,this.BoundaryPoints.yMax=this.UserMovementPoints.yMax>this.BoundaryPoints.yMax?this.UserMovementPoints.yMax:this.BoundaryPoints.yMax),this.isValidUserMovement=this.isValidUserMovement||n,this.isStepValid=this.isStepValid||this.isValidUserMovement;break}}if(!e&&this.isStepValid){const e=this.convertMwToUiStep(this.step);this.updateUI(e)}}checkUpdateMovementToWindowStorage(){return E(this,void 0,void 0,(function*(){const e=Date.now()-this.lastMovementUpdateTime>=this.THROTTLE_TIME;this.movementUpdateTimer&&(clearTimeout(this.movementUpdateTimer),this.movementUpdateTimer=null),e?yield this.updateMovementToWindowStorage():this.movementUpdateTimer=setTimeout((()=>E(this,void 0,void 0,(function*(){this.lastMovementUpdateTime=Date.now(),yield this.updateMovementToWindowStorage()}))),this.THROTTLE_TIME)}))}updateMovementToWindowStorage(){return E(this,void 0,void 0,(function*(){const e=(this.calibrationParams.Range.max-this.calibrationParams.IdealCenterPoint.x)*(1-this.calibrationParams.ValidityThreshold);let t=Math.round((this.UserMovementPoints.x-this.actualCenterPoint.x)/e*100),n=Math.round((this.UserMovementPoints.y-this.actualCenterPoint.y)/e*100);t>=100?t=100:t<=-100&&(t=-100),n>=100?n=100:n<=-100&&(n=-100),Math.abs(t)<this.calibrationParams.CenterPointThreshold&&Math.abs(n)<this.calibrationParams.CenterPointThreshold&&(t=0,n=0);const o={x:t,y:n};yield _.A.setWindowStorageItem(m,JSON.stringify(o))}))}removeMovementWindowStorage(){return E(this,void 0,void 0,(function*(){yield _.A.removeWindowStorageItem(m)}))}isMovementWithinCenterPointThreshold(){const e=this.calibrationParams.Range.max*this.calibrationParams.CenterPointThreshold;return Math.abs(this.UserMovementPoints.x-this.actualCenterPoint.x)<=e&&Math.abs(this.UserMovementPoints.y-this.actualCenterPoint.y)<=e}}const h=10,A=class{static getCalibrationHandler(){var e;if(this.instance)return this.instance;switch(null!==(e=null===s.ControllerCalibrationParams||void 0===s.ControllerCalibrationParams?void 0:s.ControllerCalibrationParams.Version)&&void 0!==e?e:2){case 1:this.instance=new g;break;case 2:this.instance=new I;break;default:this.instance=void 0}return this.instance}}.getCalibrationHandler()}"
+    },
+    {
+      "path": ".ref/middleware/2636/main.f0ca95429464cd09cbdb.js",
+      "sha256": "0c7025476edef60774e61e4ca93c5a80192f79979040c61f828af7b52616549f",
+      "offset": 1304955,
+      "end": 1313238,
+      "source": "class I extends g{constructor(){super(...arguments),this.isStepValid=!1,this.THROTTLE_TIME=33,this.lastMovementUpdateTime=0,this.movementUpdateTimer=null,this.actualCenterPoint={x:this.calibrationParams.IdealCenterPoint.x,y:this.calibrationParams.IdealCenterPoint.y}}start(e){return E(this,void 0,void 0,(function*(){this.reset(),this.state=o.InProgress,this.partId=e,(()=>E(this,void 0,void 0,(function*(){const e=yield f();if(e){const t=this.calibrationParams.Range.max*this.calibrationParams.CenterPointThreshold;this.partId===i.LeftJoystick?(this.actualCenterPoint.x=Math.abs(e.Lx-this.calibrationParams.IdealCenterPoint.x)>t?this.calibrationParams.IdealCenterPoint.x:e.Lx,this.actualCenterPoint.y=Math.abs(e.Ly-this.calibrationParams.IdealCenterPoint.y)>t?this.calibrationParams.IdealCenterPoint.y:e.Ly):this.partId===i.RightJoystick&&(this.actualCenterPoint.x=Math.abs(e.Rx-this.calibrationParams.IdealCenterPoint.x)>t?this.calibrationParams.IdealCenterPoint.x:e.Rx,this.actualCenterPoint.y=Math.abs(e.Ry-this.calibrationParams.IdealCenterPoint.y)>t?this.calibrationParams.IdealCenterPoint.y:e.Ry)}yield this.prepareNextStep()})))().then((()=>{console.log(\"[ControllerCalibrationHandler] Calibration started\",(0,l.np)(i,e),(0,l.np)(r,this.step),this.isValidUserMovement)}))}))}next(){return E(this,void 0,void 0,(function*(){this.state!==o.Idle&&this.isStepValid&&(this.stopUserMovementTimer(),this.resetUserMovementPoints(),yield this.processCurrentStep(),yield this.prepareNextStep(),console.log(`[ControllerCalibrationHandler] Next step: ${(0,l.np)(r,this.step)}`))}))}complete(){const e=Object.create(null,{complete:{get:()=>super.complete}});return E(this,void 0,void 0,(function*(){e.complete.call(this),yield this.removeMovementWindowStorage()}))}reset(){super.reset(),this.isStepValid=!1,this.lastMovementUpdateTime=0,this.movementUpdateTimer=null,this.removeMovementWindowStorage(),this.isValidUserMovement=!1}processCurrentStep(){return E(this,void 0,void 0,(function*(){switch(console.log(\"[ControllerCalibrationHandler] Processing Step:\",(0,l.np)(r,this.step),\"isValidUserMovement:\",this.isValidUserMovement,\"isStepValid:\",this.isStepValid),this.step){case r.Step_None:break;case r.Step_CenterPoint_1:case r.Step_CenterPoint_2:case r.Step_CenterPoint_3:case r.Step_CenterPoint_4:case r.Step_Rotate:yield this.getCenterPointReading();break;default:this.stop()}}))}prepareNextStep(){return E(this,void 0,void 0,(function*(){if(this.step=this.step+1,this.step===r.Step_Complete&&(yield this.complete()),this.state===o.InProgress){this.isStepValid=!1,this.isValidUserMovement=!1;const e=this.convertMwToUiStep(this.step);this.updateUI(e),this.startUserMovementTimer()}}))}updateUI(e,t=void 0){const n={step:e,stepDesc:(0,l.np)(a,e),isStepValid:this.isStepValid,error:\"\"};e===a.Step_Error&&t&&(n.error=t),(0,c.Q)({type:\"MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS\",payload:n},!0)}getUserMovementPoints(){return E(this,void 0,void 0,(function*(){if(this.step===r.Step_None||this.step===r.Step_Complete)return;const e=yield f();if(e)if(this.partId===i.LeftJoystick){const{Lx:t,Ly:n}=e;this.isValidADCData({x:t,y:n})&&(this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax,this.UserMovementPoints.x=t,this.UserMovementPoints.y=n)}else if(this.partId===i.RightJoystick){const{Rx:t,Ry:n}=e;this.isValidADCData({x:t,y:n})&&(this.UserMovementPoints.xMin=t<this.UserMovementPoints.xMin?t:this.UserMovementPoints.xMin,this.UserMovementPoints.xMax=t>this.UserMovementPoints.xMax?t:this.UserMovementPoints.xMax,this.UserMovementPoints.yMin=n<this.UserMovementPoints.yMin?n:this.UserMovementPoints.yMin,this.UserMovementPoints.yMax=n>this.UserMovementPoints.yMax?n:this.UserMovementPoints.yMax,this.UserMovementPoints.x=t,this.UserMovementPoints.y=n)}this.validateUserMovementPoints(),yield this.checkUpdateMovementToWindowStorage(),this.startUserMovementTimer()}))}isValidADCData({x:e,y:t}){return e>this.calibrationParams.Range.min&&e<this.calibrationParams.Range.max&&t>this.calibrationParams.Range.min&&t<this.calibrationParams.Range.max}validateUserMovementPoints(){const e=this.isStepValid;switch(this.step){case r.Step_CenterPoint_1:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMax>e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_2:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMin<e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_3:{const e=this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.xMin<e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_CenterPoint_4:{const e=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.UserMovementPoints.yMax>e;this.isValidUserMovement=this.isValidUserMovement||t,this.isStepValid=this.isStepValid||this.isValidUserMovement&&this.isMovementWithinCenterPointThreshold();break}case r.Step_Rotate:{const e=this.calibrationParams.Range.min+this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,t=this.calibrationParams.Range.max-this.calibrationParams.ValidityThreshold*this.calibrationParams.Range.max,n=this.UserMovementPoints.xMin<e&&this.UserMovementPoints.xMax>t&&this.UserMovementPoints.yMin<e&&this.UserMovementPoints.yMax>t;n&&(this.BoundaryPoints.xMin=this.UserMovementPoints.xMin<this.BoundaryPoints.xMin?this.UserMovementPoints.xMin:this.BoundaryPoints.xMin,this.BoundaryPoints.xMax=this.UserMovementPoints.xMax>this.BoundaryPoints.xMax?this.UserMovementPoints.xMax:this.BoundaryPoints.xMax,this.BoundaryPoints.yMin=this.UserMovementPoints.yMin<this.BoundaryPoints.yMin?this.UserMovementPoints.yMin:this.BoundaryPoints.yMin,this.BoundaryPoints.yMax=this.UserMovementPoints.yMax>this.BoundaryPoints.yMax?this.UserMovementPoints.yMax:this.BoundaryPoints.yMax),this.isValidUserMovement=this.isValidUserMovement||n,this.isStepValid=this.isStepValid||this.isValidUserMovement;break}}if(!e&&this.isStepValid){const e=this.convertMwToUiStep(this.step);this.updateUI(e)}}checkUpdateMovementToWindowStorage(){return E(this,void 0,void 0,(function*(){const e=Date.now()-this.lastMovementUpdateTime>=this.THROTTLE_TIME;this.movementUpdateTimer&&(clearTimeout(this.movementUpdateTimer),this.movementUpdateTimer=null),e?yield this.updateMovementToWindowStorage():this.movementUpdateTimer=setTimeout((()=>E(this,void 0,void 0,(function*(){this.lastMovementUpdateTime=Date.now(),yield this.updateMovementToWindowStorage()}))),this.THROTTLE_TIME)}))}updateMovementToWindowStorage(){return E(this,void 0,void 0,(function*(){const e=(this.calibrationParams.Range.max-this.calibrationParams.IdealCenterPoint.x)*(1-this.calibrationParams.ValidityThreshold);let t=Math.round((this.UserMovementPoints.x-this.actualCenterPoint.x)/e*100),n=Math.round((this.UserMovementPoints.y-this.actualCenterPoint.y)/e*100);t>=100?t=100:t<=-100&&(t=-100),n>=100?n=100:n<=-100&&(n=-100),Math.abs(t)<this.calibrationParams.CenterPointThreshold&&Math.abs(n)<this.calibrationParams.CenterPointThreshold&&(t=0,n=0);const o={x:t,y:n};yield _.A.setWindowStorageItem(m,JSON.stringify(o))}))}removeMovementWindowStorage(){return E(this,void 0,void 0,(function*(){yield _.A.removeWindowStorageItem(m)}))}isMovementWithinCenterPointThreshold(){const e=this.calibrationParams.Range.max*this.calibrationParams.CenterPointThreshold;return Math.abs(this.UserMovementPoints.x-this.actualCenterPoint.x)<=e&&Math.abs(this.UserMovementPoints.y-this.actualCenterPoint.y)<=e}}"
+    },
+    {
+      "path": ".ref/middleware/2636/main.f0ca95429464cd09cbdb.js",
+      "sha256": "0c7025476edef60774e61e4ca93c5a80192f79979040c61f828af7b52616549f",
+      "offset": 1385864,
+      "end": 1386713,
+      "source": "ON_SET_CONTROLLER_CALIBRATION:{controllerCalibration:class{constructor(){this.featureKey=\"controllerCalibration\",this.storageKey=void 0,this.protocolFunctionParameters={brightness:{classId:\"classId\",controlId:\"controlId\",calibrationData:\"calibrationData\"}},this.storageParameters=void 0,this.customHandler=(...e)=>c(this,void 0,void 0,(function*(){const e=s.c.getCurrentEvent(),{timerTick:t,from:n,payload:{action:o,partId:i}}=e;yield this.taskMakerControllerCalibration(t,n,o,i)})),this.taskMakerControllerCalibration=(e,t,n,o)=>c(this,void 0,void 0,(function*(){try{\"start\"===n?null===a.Ay||void 0===a.Ay||a.Ay.start(o):null===a.Ay||void 0===a.Ay||a.Ay.stop()}catch(e){console.error(e)}(0,l.Q)({type:\"MW_SET_CONTROLLER_CALIBRATION_TO_UI\",payload:{timertick:e,actionType:\"taskMakerControllerCalibration\",status:\"completed\",value:{action:n}}})}))}}}"
+    }
+  ],
+  "assets": [
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-1.svg",
+      "sha256": "5309d6d2e383dde443d4b02d63840ed0577484ad58495cdca10d73db04e27267",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-2.svg",
+      "sha256": "b0a98715fd51078b030059d7297ef7e2afaa2932b9f039db5222c95a09321fa8",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-3.svg",
+      "sha256": "b197181f6d870f8358059750bf2030d3787967fc89620862c95734fdef2b6d88",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-4.svg",
+      "sha256": "81f51336af74624619cb86bf760c28fafa744780f9c48befbdfe05e6f1ee13eb",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-5.svg",
+      "sha256": "4626407e4c87bb810baa75a7755d1d7d27dde52606bb5f5bf9ee3c0ebceb224f",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-steps-6.svg",
+      "sha256": "4626407e4c87bb810baa75a7755d1d7d27dde52606bb5f5bf9ee3c0ebceb224f",
+      "symbol": "zM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-thumbstick.svg",
+      "sha256": "d7c70525cfe5278c50203d33c2e46085bf4f358afa351dc1a45badf77b139166",
+      "symbol": "XM.S"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-bumper.svg",
+      "sha256": "d759627f8e4bbd32078c87fd879d3f9bec87c58a9e8b850e8483ca35af7331fc",
+      "symbol": "XM.u"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-warning.svg",
+      "sha256": "8a53ae423bd24866b26049d992e47d0bf0ceafe1193fe397783833b82832f2a7",
+      "symbol": "jM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-simulator.svg",
+      "sha256": "019d98aad50c5c8ef55e31b2a02b8b014cda00c19c192f132f9057b23d9782eb",
+      "symbol": "aM"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-1-rest.svg",
+      "sha256": "2fc4e786c57aa3a5c7184d6a2c6e60ccaa55c25187594a7a5d080603d97027a3",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-1-edge.svg",
+      "sha256": "80108ea5ef82a4218be3781c71b861f87b041cd73c31c6b327fe88956a3fb4f6",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-2-rest.svg",
+      "sha256": "4200512d0250fab95a133f270267c7c396d56f8681bd2db7cda5f0a78ea8b355",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-2-edge.svg",
+      "sha256": "ab588dccb34d02f9e3ece23cc88f200a8a73eb85aabf9a5e124e9c18f9b38094",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-3-rest.svg",
+      "sha256": "0f2617ed52d2805685fb14e07e8ed99dc30ad700898dc291ffd3d08a581ea949",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-3-edge.svg",
+      "sha256": "e1f1804418ae7299d7d6f263d507dc4f4965bba76524b6364ac8375128a7990d",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-4-rest.svg",
+      "sha256": "7efb932834721b00d0fc012212e8b9ad27827c2a0207e7556a7d675d059bd8c3",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-4-edge.svg",
+      "sha256": "56b1ea8b1b284a54d109561ba1e339a9271c7317e21f7165aa7e165d165aaf5a",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-5-rest.svg",
+      "sha256": "52560e99c44fc472f7edf1fe2120e51b502ddf395cab0fc677deadecccdf127f",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-direction-5-edge.svg",
+      "sha256": "d0eb88c5ee76a2e66f5763c124706b5cceeff4281aa3c44f79de68d5f6e7115d",
+      "symbol": "xM.C"
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-edition-0.png",
+      "sha256": "3c60495970a8ebb2a4d787b92e33d1d09a6cdfca3608890dd45a1c7a47bba89b",
+      "source": ".ref/devices/2636/static/media/0-3x.12d19936.avif",
+      "source_sha256": "a3e9de876d596c66f980497383742bbaf69625d2af05640199481a15f73d5b35",
+      "url": "https://apps.razer.com/synapse/products/2636/ui/static/media/0-3x.12d19936.avif",
+      "module": {
+        "path": ".ref/devices/2636/static/js/2726.5fc95003.chunk.js",
+        "sha256": "ce2cd269bd46dcb10b2b487d645a744ce7f1224b5f4d5c2f74f8a24ca0f3d074",
+        "offset": 555,
+        "end": 613,
+        "source": "(e,d,n)=>{e.exports=n.p+\"static/media/0-3x.12d19936.avif\"}"
+      },
+      "edition": 0
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-edition-128.png",
+      "sha256": "68d85dd786de45d1b669c3517e11a099e6e7919a8872a9b2f777a9367c548738",
+      "source": ".ref/devices/2636/static/media/0-3x.05e41989.avif",
+      "source_sha256": "e35dbd31f5dfec80376e5e7e051aab18d85dbb54158cfdd692e939af8f495bfb",
+      "url": "https://apps.razer.com/synapse/products/2636/ui/static/media/0-3x.05e41989.avif",
+      "module": {
+        "path": ".ref/devices/2636/static/js/9171.bb0f5559.chunk.js",
+        "sha256": "4bb2f09a2318ab725e8feea5c9f86e0b6ccbade3947c7cfbd76405a65cc4207c",
+        "offset": 555,
+        "end": 613,
+        "source": "(e,n,a)=>{e.exports=a.p+\"static/media/0-3x.05e41989.avif\"}"
+      },
+      "edition": 128
+    },
+    {
+      "output": "assets/synapse/gamepad-2636-calibration-edition-129.png",
+      "sha256": "23570a69fd7f67b39f3254497a96a9767f6c8df4a7c7d6c1384a2a8bb590665b",
+      "source": ".ref/devices/2636/static/media/0-3x.de66435c.avif",
+      "source_sha256": "1313518a905be0d25d2f5af790faa29e9f41c04064a7d37c5ac267e411a9de56",
+      "url": "https://apps.razer.com/synapse/products/2636/ui/static/media/0-3x.de66435c.avif",
+      "module": {
+        "path": ".ref/devices/2636/static/js/3932.4f5585f8.chunk.js",
+        "sha256": "f1815f742fdb9271d647c733b4f6a9d9baf90f5cfe0b99d25736a256910f9c39",
+        "offset": 555,
+        "end": 613,
+        "source": "(e,n,d)=>{e.exports=d.p+\"static/media/0-3x.de66435c.avif\"}"
+      },
+      "edition": 129
+    }
+  ]
+}

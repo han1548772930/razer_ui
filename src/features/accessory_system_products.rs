@@ -66,6 +66,12 @@ pub(crate) struct AccessorySystemProductChanged;
 /// `width:fit-content` — with `.active{background-color:#222;border-color:#44d62c}`
 /// and the shared `.btn` `color:#fff`/`:active{opacity:.6}`.
 fn source_button(id: impl Into<ElementId>, label: String, active: bool) -> BaseButton {
+    source_button_body(id, active)
+        .accessibility_label(label.clone())
+        .child(label.to_uppercase())
+}
+
+fn source_button_body(id: impl Into<ElementId>, active: bool) -> BaseButton {
     BaseButton::new(id)
         .flex()
         .items_center()
@@ -85,7 +91,6 @@ fn source_button(id: impl Into<ElementId>, label: String, active: bool) -> BaseB
         .text_size(surface::css(12.))
         .text_color(rgb(0xffffff))
         .active(|style| style.opacity(0.6))
-        .child(label.to_uppercase())
 }
 
 pub(crate) struct AccessorySystemProductWorkspace {
@@ -113,10 +118,16 @@ pub(crate) struct AccessorySystemProductWorkspace {
     /// profile snapshot; the source receives them through MW update events.
     color_profiles: Vec<String>,
     selected_color_profile: String,
-    /// `jSA` 的 `supportedRefreshRate`/`selectedRefreshRate`：同样是运行时观测，
-    /// 源用 `useState(60)` 与 `[{60,120,144,165} Hz]` 作初值，收到 MW 事件后替换。
+    /// Service restrictions must survive local profile restore/discard.
+    monitor_restraint: Value,
+    system_command_error: Option<String>,
+    /// Local service intentions stay separate from observations and snapshots.
+    pending_color_profile: Option<String>,
+    /// `jSA` replaces its initial options on mount with the reducer's actual
+    /// `supportedRefreshRate`; an empty observation must stay empty.
     supported_refresh_rates: Vec<i64>,
-    selected_refresh_rate: i64,
+    selected_refresh_rate: Option<i64>,
+    pending_refresh_rate: Option<i64>,
     /// `SSA` primary-input-source prompt: the source waiting for confirmation.
     /// The source's `shouldAskAgainValue` starts true, so the first change asks.
     pending_input_source: Option<i64>,
@@ -341,8 +352,12 @@ impl AccessorySystemProductWorkspace {
             color_profile,
             color_profiles: Vec::new(),
             selected_color_profile: String::new(),
+            monitor_restraint: json!({}),
+            system_command_error: None,
+            pending_color_profile: None,
             supported_refresh_rates: Vec::new(),
-            selected_refresh_rate: 60,
+            selected_refresh_rate: None,
+            pending_refresh_rate: None,
             pending_input_source: None,
             ask_again: true,
             corex_graph: corex_fan::GraphInteraction::new(cx),
@@ -468,16 +483,20 @@ impl AccessorySystemProductWorkspace {
     /// data. The current source reducer receives a flat payload with
     /// `colorProfiles: string[]`, `selectedColorProfile: string`,
     /// `supportedRefreshRate: number[]` and `selectedRefreshRate: number`;
-    /// unknown shapes are ignored so a stale cache cannot manufacture options.
+    /// This is a complete snapshot, not a partial update. Missing/invalid data
+    /// clears observations and local service intentions, including on disconnect.
     pub(crate) fn set_monitor_runtime(
         &mut self,
         runtime: Option<&Value>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(runtime) = runtime else {
-            return;
-        };
+        let runtime = runtime.unwrap_or(&Value::Null);
+        self.monitor_restraint = runtime
+            .get("uiRestraint")
+            .filter(|value| value.is_object())
+            .cloned()
+            .unwrap_or_else(|| json!({}));
         let profiles = runtime
             .get("colorProfiles")
             .and_then(Value::as_array)
@@ -493,11 +512,12 @@ impl AccessorySystemProductWorkspace {
         let selected = runtime
             .get("selectedColorProfile")
             .and_then(Value::as_str)
-            .filter(|value| profiles.iter().any(|profile| profile == value))
             .unwrap_or_default()
             .to_owned();
         self.color_profiles = profiles;
         self.selected_color_profile = selected;
+        self.pending_color_profile = None;
+        self.pending_refresh_rate = None;
         // `jSA` 的 `supportedRefreshRate`（升序后 `text:"<n> Hz"`）与
         // `selectedRefreshRate`。
         self.supported_refresh_rates = runtime
@@ -514,9 +534,10 @@ impl AccessorySystemProductWorkspace {
                 rates
             })
             .unwrap_or_default();
-        if let Some(rate) = runtime.get("selectedRefreshRate").and_then(Value::as_i64) {
-            self.selected_refresh_rate = rate;
-        }
+        self.selected_refresh_rate = runtime
+            .get("selectedRefreshRate")
+            .and_then(Value::as_i64)
+            .filter(|rate| self.supported_refresh_rates.contains(rate));
         let items = if self.color_profiles.is_empty() {
             vec![Choice::new("", "")]
         } else {
@@ -525,11 +546,19 @@ impl AccessorySystemProductWorkspace {
                 .map(|profile| Choice::new(profile, profile))
                 .collect()
         };
-        let selected = self.selected_color_profile.clone();
+        // `RSA` uses the first profile contained by the selected service path,
+        // rather than requiring equality (the service may report a full path).
+        let selected = self
+            .color_profiles
+            .iter()
+            .find(|profile| self.selected_color_profile.contains(profile.as_str()))
+            .cloned();
         self.color_profile.update(cx, |state, cx| {
             state.set_items(items, window, cx);
-            if !selected.is_empty() {
+            if let Some(selected) = selected {
                 state.set_selected_value(&selected, window, cx);
+            } else {
+                state.set_selected_index(None, window, cx);
             }
         });
         cx.notify();
@@ -542,13 +571,13 @@ impl AccessorySystemProductWorkspace {
             window,
             |this, state, event, window, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event
+                    && !this.restricted("colorProfiles")
+                    && this.color_profiles.len() > 1
                     && this.color_profiles.iter().any(|profile| profile == value)
                 {
                     // The original dispatches `setMonitorColorProfile` here.
-                    // Keep the selected value as a runtime request for the
-                    // service boundary; it is intentionally excluded from
-                    // local profile snapshots.
-                    this.selected_color_profile = value.to_owned();
+                    // Retain only an unsent local intention, never a device read.
+                    this.pending_color_profile = Some(value.to_owned());
                     let value = value.clone();
                     state.update(cx, |state, cx| state.set_selected_value(&value, window, cx));
                     cx.notify();
@@ -563,6 +592,7 @@ impl AccessorySystemProductWorkspace {
             // The source's prompt lives in the page component, so leaving the page
             // drops a request that was still waiting for confirmation.
             self.pending_input_source = None;
+            self.system_command_error = None;
             self.page = key.into();
             cx.notify();
         }
@@ -591,8 +621,8 @@ impl AccessorySystemProductWorkspace {
                 self.restore_corex(saved);
             }
         }
-        // Saved profiles from older previews may contain the telemetry field;
-        // restore only the source default until a live service supplies it.
+        // Saved profiles from older previews may contain telemetry. Runtime
+        // restrictions live separately and survive profile restore/discard.
         if let Some(initial) = self.spec.initial.get("uiRestraint") {
             self.draft["uiRestraint"] = initial.clone();
         } else if let Some(object) = self.draft.as_object_mut() {
@@ -892,7 +922,7 @@ impl AccessorySystemProductWorkspace {
     /// an absent entry means that no device restriction has been observed, so
     /// the preview must not invent one.
     fn restricted(&self, feature: &str) -> bool {
-        let Some(value) = self.draft.pointer(&format!("/uiRestraint/{feature}")) else {
+        let Some(value) = self.monitor_restraint.get(feature) else {
             return false;
         };
         match value {
@@ -904,8 +934,8 @@ impl AccessorySystemProductWorkspace {
     }
 
     fn restriction_reason(&self, feature: &str) -> Option<&str> {
-        self.draft
-            .pointer(&format!("/uiRestraint/{feature}"))
+        self.monitor_restraint
+            .get(feature)
             .and_then(Value::as_str)
             .filter(|reason| !reason.is_empty())
     }
@@ -1084,8 +1114,6 @@ impl AccessorySystemProductWorkspace {
             "color"
         } else if path.starts_with("/thxCinema/") {
             "thxCinema"
-        } else if path.starts_with("/refeshRateCounter/") {
-            "refreshRate"
         } else {
             ""
         };
@@ -1691,13 +1719,7 @@ impl AccessorySystemProductWorkspace {
     /// 后两者裹在透明 Fragment 里，Fragment 不产生 DOM 节点，因此三段同样各占 20px）。
     fn refresh_rate_widget(&self, cx: &Context<Self>) -> AnyElement {
         let enabled = !self.restricted("refreshRate");
-        let rates = if self.supported_refresh_rates.is_empty() {
-            // 源的 `useState([{text:"60 Hz",id:60,value:60},120,144,165])` 初值，
-            // 收到 `supportedRefreshRate` 后由 effect 覆盖。
-            vec![60, 120, 144, 165]
-        } else {
-            self.supported_refresh_rates.clone()
-        };
+        let rates = self.supported_refresh_rates.clone();
         let paragraph = |text: String| {
             div()
                 .font_family("Roboto")
@@ -1706,7 +1728,7 @@ impl AccessorySystemProductWorkspace {
                 .child(text)
                 .into_any_element()
         };
-        let selected = self.selected_refresh_rate;
+        let selected = self.pending_refresh_rate.or(self.selected_refresh_rate);
         // `.PillsSelectBox_pillsContainer__E5ZcB{background-color:#111;border:1px solid
         //  #5d5d5d;border-radius:18px;display:flex;gap:5px;height:36px;padding:5px;
         //  width:fit-content}` + `:hover{border-color:#44d62c}`。`width:fit-content`
@@ -1726,14 +1748,15 @@ impl AccessorySystemProductWorkspace {
                     style.border_color(rgb(0x44d62c))
                 })
                 .children(rates.into_iter().map(|rate| {
-                    let active = rate == selected;
+                    let active = Some(rate) == selected;
                     // `.PillsSelectBox_pillButton__-CgIZ{background-color:#0000;
                     //  border:0;border-radius:13px;color:#ccc;cursor:pointer;font-size:14px;
                     //  height:26px;line-height:16px;padding:5px 10px;text-align:center}`，
                     //  `.PillsSelectBox_active__kObeU{background-color:#44d62c;color:#111}`；
                     //  源没有给胶囊写 `:hover`/`:active`。
-                    div()
-                        .id(SharedString::from(format!("accessory-refresh-rate-{rate}")))
+                    BaseButton::new(SharedString::from(format!("accessory-refresh-rate-{rate}")))
+                        .accessibility_label(format!("{rate} Hz"))
+                        .disabled(!enabled)
                         .h(surface::css(26.))
                         .px(surface::css(10.))
                         .py(surface::css(5.))
@@ -1750,11 +1773,12 @@ impl AccessorySystemProductWorkspace {
                         })
                         .when(enabled, |pill| pill.cursor_pointer())
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            if enabled {
-                                // 源的 `onOptionClick` 先 `setSelected(id)`（乐观更新），
-                                // 再 dispatch `changeMonitorRefreshRate(value)`；本地与色彩
-                                // 配置文件一样保留运行时观测值，服务动作留在边界外。
-                                this.selected_refresh_rate = rate;
+                            if !this.restricted("refreshRate")
+                                && this.supported_refresh_rates.contains(&rate)
+                            {
+                                // `jSA` optimistically selects before dispatch.
+                                // Keep that appearance as an unsent intention.
+                                this.pending_refresh_rate = Some(rate);
                                 cx.notify();
                             }
                         }))
@@ -1774,19 +1798,37 @@ impl AccessorySystemProductWorkspace {
             .line_height(surface::css(17.))
             .child(before)
             .child(
-                div()
-                    .id("accessory-display-settings")
+                BaseButton::new("accessory-display-settings")
+                    .accessibility_label(t("WINDOW_DISPLAY_SETTINGS"))
+                    .disabled(!enabled)
                     .underline()
                     .cursor_pointer()
-                    .on_click(cx.listener(|_, _, _, _| {
-                        if let Err(error) = system::open_display_settings() {
-                            eprintln!("open display settings failed: {error}");
-                        }
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.system_command_error = system::open_display_settings()
+                            .err()
+                            .map(|error| format!("无法打开 Windows 显示设置：{error}"));
+                        cx.notify();
                     }))
                     .child(t("WINDOW_DISPLAY_SETTINGS")),
             )
             .child(after)
             .into_any_element();
+        let mut content = vec![paragraph(t("PERFORMANCE_LAPTOP_SCREEN_GUIDE"))];
+        // `jSA` omits the entire fragment when there is a disabled reason.
+        if enabled {
+            if !self.supported_refresh_rates.is_empty() {
+                content.push(pills.into_any_element());
+            } else {
+                content.push(surface::note("尚未读取显示器支持的刷新率。", cx).into_any_element());
+            }
+            content.push(dialog);
+            if self.pending_refresh_rate.is_some() {
+                content.push(
+                    surface::note("刷新率选择仅保留在本地，尚未发送到设备。", cx)
+                        .into_any_element(),
+                );
+            }
+        }
         surface::panel_with_control(
             t("REFRESH_RATE_HEADER"),
             self.help_control(
@@ -1798,14 +1840,7 @@ impl AccessorySystemProductWorkspace {
         )
         .child(self.restriction_line("refreshRate", cx))
         // `.widgetContent[.featureDisabled]`：`opacity:.3;pointer-events:none`。
-        .child(
-            surface::widget_content([
-                paragraph(t("PERFORMANCE_LAPTOP_SCREEN_GUIDE")),
-                pills.into_any_element(),
-                dialog,
-            ])
-            .opacity(if enabled { 1. } else { 0.3 }),
-        )
+        .child(surface::widget_content(content).opacity(if enabled { 1. } else { 0.3 }))
         .into_any_element()
     }
 
@@ -2117,10 +2152,41 @@ impl AccessorySystemProductWorkspace {
     /// 配置时用一条空选项兜底）与 `.img-text .external` 外链
     /// （`PERFORMANCE_EXTERNAL_DISPLAY_COLOR_MANAGER`，点击拉起 Windows 颜色管理）。
     fn color_profile_widget(&self, cx: &Context<Self>) -> AnyElement {
+        let restricted = self.restricted("colorProfiles");
         let select = Select::new(&self.color_profile)
-            .disabled(true || self.restricted("colorProfiles"))
+            .disabled(restricted || self.color_profiles.len() <= 1)
             .w(surface::css(360.));
-        surface::panel_with_control(
+        let show_select = self.color_profiles.is_empty()
+            || self.pending_color_profile.is_some()
+            || self
+                .color_profiles
+                .iter()
+                .any(|profile| self.selected_color_profile.contains(profile.as_str()));
+        let content = v_flex()
+            .when(restricted, |view| view.opacity(0.3))
+            .when(show_select, |view| view.child(select))
+            .child(
+                // `.external` inherits the container's pointer-events:none.
+                BaseButton::new("accessory-color-management-link")
+                    .accessibility_label(t("PERFORMANCE_EXTERNAL_DISPLAY_COLOR_MANAGER"))
+                    .disabled(restricted)
+                    .self_start()
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(44.))
+                    .text_color(rgb(0xcccccc))
+                    .underline()
+                    .hover(|style| style.text_color(rgb(0x44d62c)))
+                    .active(|style| style.opacity(0.7))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.system_command_error = system::open_color_management()
+                            .err()
+                            .map(|error| format!("无法打开 Windows 颜色管理：{error}"));
+                        cx.notify();
+                    }))
+                    .child(t("PERFORMANCE_EXTERNAL_DISPLAY_COLOR_MANAGER")),
+            );
+        let mut panel = surface::panel_with_control(
             t("PERFORMANCE_MODE_SCREEN_COLOR_PROFILE_HEADER"),
             self.help_control(
                 "accessory-color-profile-help",
@@ -2130,26 +2196,14 @@ impl AccessorySystemProductWorkspace {
             cx,
         )
         .child(self.restriction_line("colorProfiles", cx))
-        .child(select)
-        .child(
-            // `.img-text .external{color:#ccc;font-size:14px;line-height:44px;
-            //  text-decoration:underline;text-transform:capitalize}` 与
-            // `:hover{color:#44d62c}`、`:active{opacity:.7}`。
-            div()
-                .id("accessory-color-management-link")
-                .font_family("Roboto")
-                .text_size(surface::css(14.))
-                .line_height(surface::css(44.))
-                .text_color(rgb(0xcccccc))
-                .underline()
-                .hover(|style| style.text_color(rgb(0x44d62c)))
-                .active(|style| style.opacity(0.7))
-                .on_click(|_, _, _| {
-                    let _ = system::open_color_management();
-                })
-                .child(t("PERFORMANCE_EXTERNAL_DISPLAY_COLOR_MANAGER")),
-        )
-        .into_any_element()
+        .child(content);
+        if self.pending_color_profile.is_some() {
+            panel = panel.child(surface::note(
+                "色彩配置选择仅保留在本地，尚未发送到设备。",
+                cx,
+            ));
+        }
+        panel.into_any_element()
     }
 
     /// `COLOR_PAGE_COLUMNS` 的标题键对应的组件。
@@ -2189,12 +2243,8 @@ impl AccessorySystemProductWorkspace {
     /// 12px uppercase, `padding:7px 16px 6px`, `margin:0`, `width:fit-content`,
     /// and `.active{background-color:#222;border-color:#44d62c}`.
     ///
-    /// Each button carries an `<img>` (`height:20px;width:40px`) from the bundle:
-    /// `icon_hdmi.7df743db.svg`, `icon_displayport.c7f9208d.svg`,
-    /// `icon_usb_typec.169c5217.svg` and the Auto icon from module 6370. Those
-    /// files are missing from the fetched `.ref/devices/3858/static/` tree (it has
-    /// only `css/` and `js/`), so the buttons render label-only: the artwork is
-    /// recorded as unavailable rather than invented.
+    /// Source-specific 68px buttons stack a 40x20 original icon above the label.
+    /// Current assets are prepared by `tools/review-monitor-pages.cjs`.
     fn input_source_group(&self, cx: &Context<Self>) -> AnyElement {
         let current = self.number("/inputSource");
         h_flex()
@@ -2202,10 +2252,31 @@ impl AccessorySystemProductWorkspace {
             .gap(surface::css(20.))
             .children(INPUT_SOURCES.map(|(id, key)| {
                 let active = current == id;
-                source_button(
+                let icon = match id {
+                    0 => "synapse/monitor-icon_refresh.80aa16c3.svg",
+                    17 => "synapse/monitor-icon_hdmi.7df743db.svg",
+                    15 => "synapse/monitor-icon_displayport.c7f9208d.svg",
+                    _ => "synapse/monitor-icon_usb_typec.169c5217.svg",
+                };
+                source_button_body(
                     SharedString::from(format!("accessory-input-source-{id}")),
-                    t(key),
                     active,
+                )
+                .accessibility_label(t(key))
+                .flex_1()
+                .flex_col()
+                .justify_center()
+                .gap(surface::css(4.))
+                .h(surface::css(68.))
+                .px_0()
+                .py(surface::css(15.))
+                .child(img(icon).w(surface::css(40.)).h(surface::css(20.)))
+                .child(
+                    div()
+                        .text_color(rgb(0xcccccc))
+                        .line_height(surface::css(14.))
+                        .text_center()
+                        .child(t(key).to_uppercase()),
                 )
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.request_input_source(id, window, cx);
@@ -2407,7 +2478,9 @@ impl AccessorySystemProductWorkspace {
             .font_family("Roboto")
             .text_size(surface::css(14.))
             .line_height(surface::css(17.))
-            .when(adaptive_restricted, |text| text.opacity(0.3))
+            .when(adaptive_restricted || !adaptive_enabled, |text| {
+                text.opacity(0.3)
+            })
             .child(t("FREE_SYNC_MSG"))
             .into_any_element()]));
         // `jXh`（FPS_COUNTER_HEADER）：`hasSwitch:!0`、`active:isEnabled`；
@@ -2735,7 +2808,11 @@ impl Render for AccessorySystemProductWorkspace {
             }
             _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
         };
-        super::product_surface::body().child(content)
+        super::product_surface::body()
+            .child(content)
+            .when_some(self.system_command_error.clone(), |body, error| {
+                body.child(surface::note(error, cx))
+            })
     }
 }
 

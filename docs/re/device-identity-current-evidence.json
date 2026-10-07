@@ -1,0 +1,69 @@
+{
+  "method": "Acorn AST only; USB/HID/BLE/IoT/monitor sources kept distinct; no vendor execution",
+  "receipts": [
+    {
+      "name": "HD",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 415488,
+      "end": 415560,
+      "source": "function HD(e,t){return null!=e&&(Array.isArray(e)?e.includes(t):e===t)}"
+    },
+    {
+      "name": "_checkUSBDetail",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 407392,
+      "end": 411144,
+      "source": "_checkUSBDetail=async e=>{const t=\"_checkUSBDetail()\",{productId:a,deviceContainerId:n,baseProductId:r}=e,o={productId:a,deviceContainerId:n,type:\"unknown\"},s=this.available.find(e=>e.productId===a||HD(e.dongleId,a)||HD(e.bleId,a)||e.repId===a||HD(e.xBoxId,a)||HD(e.wiredId,a)||e.productId===r);console.log(`[DeviceDetector] classify start pid:${a} container:${n}`);const i=await this.getManifestName(s?function(e,t){for(const a in e){const n=e[a];if(Array.isArray(n)?n.includes(t):n===t)return\"productId\"===a?t:e.productId}return e.productId}(s,a):a);if(1325===a)return console.log(`${this.constructor.name}.${t} return EARLY_IGNORE_PID productId:${a}`),[o];if(VD(a,this.inDevelopment)){console.log(`${this.constructor.name}.${t} inDevelopment match productId:${a}`);const n=this.inDevelopment.find(e=>e.productId===a);return o.type=\"inDevelopment\",n&&n.productName?o.productName=n.productName:o.baseProductName=e.productName,console.log(`${this.constructor.name}.${t} return IN_DEVELOPMENT productId:${a}`),[o]}if(this.windowVersion===je||1===this.systemOS){if(e.serialNumber){const t=this.available.find(t=>t.monitorPortIds&&t.monitorPortIds.includes(e.productId));if(t){const r={productId:t.repId||t.productId,realProductId:e.dongleId||a,deviceContainerId:n,serialNumber:e.serialNumber,baseProductName:i||e.productName,isMonitor:!0,type:\"available\"};return console.log(`[DeviceDetector] monitor available repId:${r?.productId} realPid:${r?.realProductId}`),[r]}return console.log(`[DeviceDetector] monitor no-match pid:${a}`),[]}const t=this.available.filter(e=>e.productId===a||HD(e.dongleId,a)||HD(e.bleId,a)||e.repId===a||HD(e.xBoxId,a)||HD(e.wiredId,a)||e.psModeIds?.includes(a));if(t.length>=1){const r={productId:a,realProductId:e.dongleId||a,deviceContainerId:n,type:\"available\",baseProductName:i||e.productName};if(1===t.length)return t[0].monitorPortIds?(console.log(`[DeviceDetector] single monitorPortIds unsupported pid:${a}`),[o]):(t[0].isNotChromaDevice&&(r.isNotChromaDevice=t[0].isNotChromaDevice),t[0].xBoxId&&(r.isXBox=HD(t[0].xBoxId,r.realProductId)),t[0].psModeIds?.length&&(r.isPlaystation=t[0].psModeIds?.includes(r.realProductId)),r.productId=t[0].repId||t[0].productId,r.isDongle=HD(t[0].dongleId,r.realProductId),r.isBle=HD(t[0].bleId,r.realProductId),console.warn(\"_checkUSBDetail\",[r],e),console.log(`[DeviceDetector] available single repId:${r?.productId} realPid:${r?.realProductId}`),[r]);if(t.length>1)return console.warn(\"CHECK DONGLE\",e),t.map(({productId:t,repId:a,isNotChromaDevice:r})=>{const o={productId:a||t,deviceContainerId:n,type:\"available\",realProductId:e.productId,baseProductName:i||e.productName,isDongle:!0};return r&&(o.isNotChromaDevice=!0),console.log(`[DeviceDetector] available multi repId:${o?.productId} realPid:${o?.realProductId}`),o})}}let c=this.synapse2Device.find(e=>e.productId===a);return c&&c.productName?(o.type=\"synapse2\",o.productName=c.productName,console.log(`[DeviceDetector] synapse2 unsupported pid:${a}`),[o]):this.windowVersion!==je&&(c=this.windows10.find(e=>e.productId===a||HD(e.dongleId,a)),c&&c.productName)?(o.type=\"windows10\",o.productName=c.productName,console.log(`[DeviceDetector] windows10 unsupported pid:${a}`),[o]):this.windowVersion===We&&(c=this.windows8.find(e=>e.productId===a||HD(e.dongleId,a)),c&&c.productName)?(o.type=\"windows8\",o.productName=c.productName,console.log(`[DeviceDetector] windows8 unsupported pid:${a}`),[o]):(VD(a,this.xboxController)&&(o.type=\"xboxController\",o.productName=this.xboxController.find(e=>e.productId===a)?.productName),VD(a,this.xboxHeadset)&&(o.type=\"xboxHeadset\",o.productName=this.xboxHeadset.find(e=>e.productId===a)?.productName),console.log(`[DeviceDetector] unsupported type:${o?.type} pid:${o?.productId}`),[o])};"
+    },
+    {
+      "name": "checkAllRzDevice",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 413901,
+      "end": 414329,
+      "source": "checkAllRzDevice=async()=>{const e=(await Promise.all([this.rzUSB.getRazerDevices(),this.rzBLE.getDevices(),this.rzIOT.getDevices(),(async()=>(await this.rzMonitor.init(),this.rzMonitor.getDevices()))()])).flat().filter(Boolean);console.log(\"allRazerDevices\",e),zD&&(zD=!1),e.forEach(e=>{this.onUSBConnected(e,zD)}),zD&&(zD=!1),console.log(`[DeviceDetector] enumerated:${e.length} supportedLen:${this.supportedDevice.length}`)};"
+    },
+    {
+      "name": "getRazerDevices",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 269397,
+      "end": 270830,
+      "source": "async getRazerDevices(){const e=\"getRazerDevices\";if(this.isElectron)try{const t={action:\"usb.getDevices\"},a=await Bt(t);if(void 0!==a){const t=a.findIndex(e=>9934===e.vendorId&&418===e.productId);if(-1!==t){const e=a[t];e.vendorId=5426,e.productId=778;await this.isSupportASRock()||a.splice(t,1)}this.devices=a.filter(e=>5426===e.vendorId);const n=PS();n&&(console.warn(\"🤡🤡 Patch duallinked devices\"),this.devices=this.devices.reduce((e,t)=>{e.push(t);let a=kS(t,n);for(let n of a)n&&(n=BS(n),console.warn(\"🤡🤡 duallinked device master, slave:\",{master:t,slaveDevice:n}),e.push(n));return e},[])),console.log(`${this.name}.${e}, usb devices:`,this.devices),this.devices.forEach(t=>{console.log(`${this.name}.${e}, productName: ${t.productName}, productId: ${t.productId}, 0x${t.productId.toString(16)}, containerId: ${t.deviceContainerId}`)})}await Ht.getHidDevices()}catch(t){console.error(`${this.name}.${e} e:${t.message}, e:`,t),this.devices=[]}else try{const t=await navigator.usb.getDevices();console.log(\"rzAppEngine usb.getDevices allDevices\",t),void 0!==t&&(this.devices=t.filter(e=>5426===e.vendorId),this.devices.forEach(t=>{m.log(`${this.name}.${e}, productName: ${t.productName}, productId: ${t.productId}, 0x${t.productId.toString(16)}, containerId: ${t.deviceContainerId}`)}))}catch(a){m.error(`${this.name}.${e}`,a),this.devices=[]}for(const n of this.devices)await this._getMonitorInfo(n,!0);return this.devices}"
+    },
+    {
+      "name": "getHidDevices",
+      "path": ".ref/host-4.0.827/source-evidence/background-current-source.js",
+      "sha256": "382ad87a9715c6417bac9d9f89a0a557521eaed4ed56a2512bc50c2d449b77c0",
+      "offset": 20299,
+      "end": 20486,
+      "source": "getHidDevices=async()=>{try{const e={action:\"hid.getDevices\"};this.hidDevices=await Bt(e)}catch(e){console.error(`${this.name}.getHidDevices() e:${e.message}, e:`,e),this.hidDevices=[]}};"
+    },
+    {
+      "name": "usb.getDevices",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 3997,
+      "end": 4709,
+      "source": "case\"usb.getDevices\":{let a;console.log(`${c} ${d.action} ==> calling url:`,e?.sender?.getURL());try{a=await this.usbGetDevicesMutex.acquire(),console.log(`${c} ${d.action} calling - after mutex`),u=await t.find(),console.log(`${c} ${d.action} usbDetect count:${u?.length}, url: ${e?.sender?.getURL()}`);for(const e of u??[])console.log(`usb.getDevices vId:${e.vendorId}, PId: ${e.productId}, name:${e.productName}, deviceContainerId:`,e.deviceContainerId,\", locationId:\",e.locationId,\", deviceAddress:\",e.deviceAddress,\", usbInstanceId:\",e.usbInstanceId,\", devicepath:\",e.devicePath)}catch(e){console.warn(`${c} ${d.action} error:`,e.message),u=[]}finally{a&&a()}return console.log(`${c} ${d.action} ==><==`),u}"
+    },
+    {
+      "name": "hid.getDevices",
+      "path": ".ref/host-4.0.827/electron/UsbRzDeviceAction.js",
+      "sha256": "bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816",
+      "offset": 4744,
+      "end": 5486,
+      "source": "case\"hid.getDevices\":{let t;console.log(`${c} ${d.action} ==> calling, url:`,e?.sender?.getURL());try{t=await this.hidGetDevicesMutex.acquire(),console.log(`${c} ${d.action} calling after mutex, url:`,e?.sender?.getURL()),u=await new Promise((t,o)=>{try{console.log(`${c} ${d.action} promise ==> calling, url:`,e?.sender?.getURL());const o=a.devices();console.log(`${c} ${d.action} promise ==><== HID.devices count:${o?.length}, url:`,e?.sender?.getURL()),t(o)}catch(e){console.warn(`${c} ${d.action} HID.devices() error:`,e.message),o(e instanceof Error?e:new Error(String(e)))}})}catch(e){console.warn(`${c} ${d.action} ==><== error:`,e.message),u=[]}finally{t&&t()}return console.log(`${c} ${d.action} ==><==, url:`,e?.sender?.getURL()),u}"
+    },
+    {
+      "name": "find",
+      "path": ".ref/host-4.0.827/native-evidence/node_modules/rz-usb-detect/index.js",
+      "sha256": "7f3cf107e7f245bcff44b0d34d94b5ccd16e8d2469b15ad97d35e3c3cb8df1aa",
+      "offset": 617,
+      "end": 1568,
+      "source": "detector.find = function(vid, pid, callback) {\n\t\t// Suss out the optional parameters\n\t\tif(isFunction(vid) && !pid && !callback) {\n\t\t\tcallback = vid;\n\t\t\tvid = undefined;\n\t\t} else if(isFunction(pid) && !callback) {\n\t\t\tcallback = pid;\n\t\t\tpid = undefined;\n\t\t}\n\n\t\treturn new Promise(function(resolve, reject) {\n\t\t\t// Assemble the optional args into something we can use with `apply`\n\t\t\tvar args = [];\n\t\t\tif(vid) {\n\t\t\t\targs = args.concat(vid);\n\t\t\t}\n\t\t\tif(pid) {\n\t\t\t\targs = args.concat(pid);\n\t\t\t}\n\n\t\t\t// Tack on our own callback that takes care of things\n\t\t\targs = args.concat(function(err, devices) {\n\n\t\t\t\t// We call the callback if they passed one\n\t\t\t\tif(callback) {\n\t\t\t\t\tcallback.call(callback, err, devices);\n\t\t\t\t}\n\n\t\t\t\t// But also do the promise stuff\n\t\t\t\tif(err) {\n\t\t\t\t\treject(err);\n\t\t\t\t\treturn;\n\t\t\t\t}\n\t\t\t\tresolve(devices);\n\t\t\t});\n\n\t\t\t// Fire off the `find` function that actually does all of the work\n\t\t\tdetection.find.apply(detection, args);\n\t\t});\n\t}"
+    }
+  ]
+}

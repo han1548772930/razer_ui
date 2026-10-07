@@ -31,6 +31,7 @@ mod armory_page;
 mod chroma_page;
 mod chroma_studio_window;
 mod chroma_window;
+mod device_discovery;
 mod display_window;
 mod feedback_page;
 mod firmware_update;
@@ -46,7 +47,6 @@ mod profile_migration;
 mod profiles_page;
 mod release_notes;
 mod runtime_page;
-mod device_discovery;
 mod service_pages;
 mod settings_page;
 mod settings_systray_action;
@@ -719,10 +719,13 @@ impl AppShell {
             false
         });
         this.install_tray(window, cx);
-        this.subscriptions.push(cx.subscribe_in(&runtime, window,
+        this.subscriptions.push(cx.subscribe_in(
+            &runtime,
+            window,
             |this, _, event: &runtime_page::DiscoveryObserved, window, cx| {
                 this.observe_discovery(&event.0, window, cx);
-            }));
+            },
+        ));
         // Enumeration is scheduled once after ownership/subscriptions are installed,
         // never from render. Startup does not initialize unrelated audio/mapping APIs.
         runtime.update(cx, |runtime, cx| runtime.discover_devices(cx));
@@ -817,10 +820,20 @@ impl AppShell {
             self.host_tabs
                 .open(host_tabs::HostTab::Device(entity.read(cx).identity(cx)), cx);
         }
-        self.subscriptions.push(cx.subscribe_in(&entity, window,
+        self.subscriptions.push(cx.subscribe_in(
+            &entity,
+            window,
             |this, entity, event: &crate::features::ReceiverPairingEvent, _, cx| {
                 this.query_receiver_pairing(entity.clone(), event, cx);
-            }));
+            },
+        ));
+        self.subscriptions.push(cx.subscribe_in(
+            &entity,
+            window,
+            |this, entity, event: &crate::features::DockPairingEvent, _, cx| {
+                this.query_dock_pairing(entity.clone(), event, cx);
+            },
+        ));
         self.devices.push(entity);
         if let Some(page) = &self.profiles_page {
             page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
@@ -1649,12 +1662,13 @@ impl AppShell {
         if let Some(page) = self.macro_page.clone() {
             if page.read(cx).recording_busy() {
                 if self.macro_exit_wait.is_none() {
-                    self.macro_exit_wait = Some(cx.observe_in(&page, window, |this, page, window, cx| {
-                        if !page.read(cx).recording_busy() {
-                            this.macro_exit_wait = None;
-                            this.request_exit(window, cx);
-                        }
-                    }));
+                    self.macro_exit_wait =
+                        Some(cx.observe_in(&page, window, |this, page, window, cx| {
+                            if !page.read(cx).recording_busy() {
+                                this.macro_exit_wait = None;
+                                this.request_exit(window, cx);
+                            }
+                        }));
                 }
                 page.update(cx, |page, cx| page.cancel_recording(cx));
                 self.status = "正在结束宏录制并恢复临时映射状态…".into();

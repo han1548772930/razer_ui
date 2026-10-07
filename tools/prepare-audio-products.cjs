@@ -115,15 +115,24 @@ for(const p of evidence){
     const enabled=typeof value.isEnabled==='boolean'?base+'/isEnabled':null;
     if(enabled)controls.push({path:enabled,label:title,kind:'toggle'});
     if(field==='switchOffLighting'){
+     // Read each product's actual checkbox/slider gates. A stored idle value
+     // does not prove it remains editable when the parent brightness is off.
+     const offJsx=pg.components.flatMap(c=>c.jsx);
+     const brightnessPath=locate('brightness');
+     const brightnessGate=brightnessPath && offJsx.some(j=>
+       j.props.id==='checkDisplay' && j.expressions.disabled==='!this.props.brightnessOn')
+       ? brightnessPath+'/isEnabled':null;
      // Current 1303 Wm / 1304 sp render only checkDisplay. Their stored idle
      // fields are preserved by the event payload but do not mount another row.
      // audit-product-content-current.cjs independently parses both components.
      const displayOnly=[1303,1304].includes(p.product_id);
-     if(typeof value.isDisplayOn==='boolean')controls.push({path:base+'/isDisplayOn',label:'SWITCH_OFF_LIGHTING_DISPLAY_OFF',kind:'toggle',...(displayOnly?{enabled_by:locate('brightness')+'/isEnabled'}:{})});
-     if(!displayOnly&&typeof value.isIdleEnabled==='boolean')controls.push({path:base+'/isIdleEnabled',label:'SWITCH_OFF_LIGHTING_IDLE',kind:'toggle'});
+     if(typeof value.isDisplayOn==='boolean')controls.push({path:base+'/isDisplayOn',label:'SWITCH_OFF_LIGHTING_DISPLAY_OFF',kind:'toggle',...((brightnessGate||displayOnly)?{enabled_by:brightnessGate??locate('brightness')+'/isEnabled'}:{})});
+     const idleBrightnessGate=brightnessGate && offJsx.some(j=>j.props.id==='checkIdle'&&j.expressions.disabled==='!this.props.brightnessOn');
+     if(!displayOnly&&typeof value.isIdleEnabled==='boolean')controls.push({path:base+'/isIdleEnabled',label:'SWITCH_OFF_LIGHTING_IDLE',kind:'toggle',...(idleBrightnessGate?{enabled_by:brightnessGate}:{})});
      // Idle timing requires the actual mounted input bounds, not a family default.
      const slider=pg.components.flatMap(c=>c.jsx).find(j=>j.expressions.value?.includes('idleMinutes')&&number(j.props.min)&&number(j.props.max));
-     if(slider&&number(value.idleMinutes))controls.push({path:base+'/idleMinutes',label:'MINUTES',kind:'slider',min:slider.props.min,max:slider.props.max,step:slider.props.step??1,enabled_by:base+'/isIdleEnabled'});
+     const sliderBrightnessGate=brightnessGate && slider?.expressions.active==='this.props.switchOffLighting.isIdleEnabled&&this.props.brightnessOn';
+     if(slider&&number(value.idleMinutes))controls.push({path:base+'/idleMinutes',label:'MINUTES',kind:'slider',min:slider.props.min,max:slider.props.max,step:slider.props.step??1,enabled_by:base+'/isIdleEnabled',...(sliderBrightnessGate?{enabled_all:[brightnessGate]}:{})});
     }else if(number(value.value)){
      const power=configs.POWER_SAVING_VALUE_FROM_PRODUCT_INFO;
      if(field==='powerSaving'&&Array.isArray(power)&&power.length&&power.every(v=>number(v.value))){controls.push({path:base+'/value',label:title,kind:'select',options:power.map(v=>({label:String(v.value)+' min',value:v.value})),enabled_by:enabled});}

@@ -392,6 +392,8 @@ impl MacroPage {
         let height = f32::from(window.viewport_size().height / window.rem_size()) * 16.;
         div()
             .id("macro-record-settings")
+            .test_support()
+            .aria_label("宏录制设置")
             .absolute()
             .right_0()
             .top(css(28.))
@@ -437,6 +439,8 @@ impl MacroPage {
                         if index == 0 {
                             header = header.child(
                                 surface::select(&self.record_ui.start)
+                                    .id("macro-record-start-delay")
+                                    .accessibility_label(tr(&group.header.name))
                                     .items(start_options())
                                     .mx(css(10.))
                                     .w(css(50.)),
@@ -604,6 +608,16 @@ impl MacroPage {
             .sample(window, cx)
             .progress;
         BaseButton::new(id)
+            .selected(selected)
+            .accessibility_label(format!(
+                "{}；{}",
+                if label.is_empty() {
+                    "固定录制延迟".into()
+                } else {
+                    label.to_owned()
+                },
+                if selected { "已选择" } else { "未选择" }
+            ))
             .when(!label.is_empty(), |v| v.w_full())
             .h(css(40.))
             .py(css(10.))
@@ -730,6 +744,16 @@ fn record_input(
 ) -> AnyElement {
     div()
         .id((ElementId::from(id), "frame"))
+        .test_support()
+        .aria_label(format!(
+            "{id}：{}；{}",
+            state.read(cx).value(),
+            if disabled {
+                "不可编辑"
+            } else {
+                "可编辑"
+            }
+        ))
         .w(css(70.))
         .h(css(27.))
         .mr(css(5.))
@@ -777,21 +801,35 @@ impl MacroPage {
         if self.record_ui.mouse != 0 {
             return Err("鼠标轨迹录制尚未连接".into());
         }
+        // Read accepted editor values too: the source 100ms debounce may
+        // still be pending when Record is pressed immediately after input.
+        let fixed = source_float(&self.record_ui.fixed.read(cx).value())
+            .unwrap_or(self.record_ui.delay_time);
+        let random = [
+            source_float(&self.record_ui.min.read(cx).value()).unwrap_or(self.record_ui.random[0]),
+            source_float(&self.record_ui.max.read(cx).value()).unwrap_or(self.record_ui.random[1]),
+        ];
+        let delay_mode = self.record_delay();
+        if self.current_macro_type() == MacroType::Standard {
+            if delay_mode == 1 && (!fixed.is_finite() || fixed < 0.) {
+                return Err("固定录制延迟必须为非负数".into());
+            }
+            if delay_mode == 2
+                && (!random
+                    .iter()
+                    .all(|value| value.is_finite() && (0. ..=5.).contains(value))
+                    || random[0] > random[1])
+            {
+                return Err("随机录制延迟必须在 0–5 秒内，且最小值不能大于最大值".into());
+            }
+        }
         Ok(super::recording_decode::Options {
             macro_type: self.current_macro_type(),
             phase: (self.current_macro_type() == MacroType::Phased)
                 .then(|| self.active_phase().unwrap_or(0)),
-            delay_mode: self.record_delay(),
-            // Read accepted editor values too: its source 100ms debounce may
-            // still be pending when Record is pressed immediately after input.
-            fixed: source_float(&self.record_ui.fixed.read(cx).value())
-                .unwrap_or(self.record_ui.delay_time),
-            random: [
-                source_float(&self.record_ui.min.read(cx).value())
-                    .unwrap_or(self.record_ui.random[0]),
-                source_float(&self.record_ui.max.read(cx).value())
-                    .unwrap_or(self.record_ui.random[1]),
-            ],
+            delay_mode,
+            fixed,
+            random,
             next_pair: self.next_event_pair_id().ok_or("本地宏事件标识已耗尽")?,
         })
     }

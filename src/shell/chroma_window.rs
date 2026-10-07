@@ -4,7 +4,7 @@
 //! the Synapse host tab strip. Dashboard and Studio are separate roots in
 //! the current host's Chroma subtab manager.
 use super::{
-    AppShell, Location, Tab,
+    AppShell, Location,
     chroma_page::{ChromaPage, ChromaPageEvent},
     chroma_studio_window::StudioSession,
     display_window::{CHROMA_APP_WINDOW_ICON_PATH, DisplayMode},
@@ -13,14 +13,57 @@ use super::{
 use crate::features::ProductWorkspace;
 use crate::ui::{surface::css, theme::HostColors};
 use gpui_kit::{component::*, *};
+#[path = "chroma_settings.rs"]
+mod settings;
+use settings::{ChromaSettings, SettingsAction};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChromaTab {
+    Dashboard,
+    Studio,
+    Settings,
+    Migration,
+}
+impl ChromaTab {
+    fn id(self) -> &'static str {
+        match self {
+            Self::Dashboard => "chroma-app",
+            Self::Studio => "chroma-studio",
+            Self::Settings => "settings-chroma",
+            Self::Migration => "chroma-app-syn3-profile-migration",
+        }
+    }
+    fn title(self) -> String {
+        match self {
+            Self::Dashboard => "CHROMA".into(),
+            Self::Studio => crate::i18n::t("CHROMA_STUDIO"),
+            Self::Settings => settings::text("SETTINGS_HEADER"),
+            Self::Migration => settings::text("PROFILE_MIGRATION"),
+        }
+    }
+    fn icon(self) -> &'static str {
+        match self {
+            Self::Dashboard => "synapse/host-app-chroma.svg",
+            Self::Studio => "synapse/host-chroma-studio-favicon.svg",
+            Self::Settings => "synapse/settings.svg",
+            Self::Migration => "synapse/migration-favicon.svg",
+        }
+    }
+}
 
 pub(super) struct ChromaWindow {
     page: Entity<ChromaPage>,
     studio: Option<Entity<StudioSession>>,
-    active_studio: bool,
+    settings: Option<Entity<ChromaSettings>>,
+    migration: Option<Entity<super::profile_migration::MigrationPage>>,
+    migration_focus: FocusHandle,
+    active: ChromaTab,
+    settings_return: ChromaTab,
     window: AnyWindowHandle,
     owner: WeakEntity<AppShell>,
     page_subscription: Option<Subscription>,
+    settings_subscription: Option<Subscription>,
+    settings_observer: Option<Subscription>,
 }
 
 impl ChromaWindow {
@@ -40,22 +83,31 @@ impl ChromaWindow {
         let mut this = Self {
             page,
             studio: None,
-            active_studio: false,
+            settings: None,
+            migration: None,
+            migration_focus: cx.focus_handle(),
+            active: ChromaTab::Dashboard,
+            settings_return: ChromaTab::Dashboard,
             window: window.window_handle(),
             owner,
             page_subscription: None,
+            settings_subscription: None,
+            settings_observer: None,
         };
         this.bind_window(window, cx);
         this
     }
     pub(super) fn bind_window(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.window = window.window_handle();
+        if let Some(settings) = &self.settings {
+            settings.update(cx, |settings, cx| settings.bind_window(window, cx));
+        }
         let owner = self.owner.clone();
         // Host navigation uses the shell's main-window handle, never
         // subscribe_in's retained association (ensure_window uses or_insert).
         self.page_subscription = Some(cx.subscribe(
             &self.page,
-            move |_, _, event: &ChromaPageEvent, cx| match event {
+            move |this, _, event: &ChromaPageEvent, cx| match event {
                 ChromaPageEvent::OpenStudio => {
                     let owner = owner.clone();
                     cx.defer(move |cx| {
@@ -63,18 +115,11 @@ impl ChromaWindow {
                     });
                 }
                 ChromaPageEvent::OpenSettings => {
-                    let Ok(handle) = owner.update(cx, |shell, _| shell.main_window) else {
-                        return;
-                    };
-                    let owner = owner.clone();
+                    let handle = this.window;
+                    let target = cx.entity().downgrade();
                     cx.defer(move |cx| {
                         let _ = handle.update(cx, |_, window, cx| {
-                            #[cfg(target_os = "windows")]
-                            super::tray::native::show(window);
-                            window.activate_window();
-                            let _ = owner.update(cx, |shell, cx| {
-                                shell.navigate(Location::Main(Tab::Setting), window, cx)
-                            });
+                            let _ = target.update(cx, |this, cx| this.open_settings(window, cx));
                         });
                     });
                 }
@@ -100,7 +145,7 @@ impl ChromaWindow {
     }
     pub(super) fn open_studio(&mut self, studio: Entity<StudioSession>, cx: &mut Context<Self>) {
         self.studio = Some(studio.clone());
-        self.active_studio = true;
+        self.active = ChromaTab::Studio;
         let handle = self.window;
         cx.defer(move |cx| {
             let _ = handle.update(cx, |_, window, cx| {
@@ -109,19 +154,103 @@ impl ChromaWindow {
         });
         cx.notify();
     }
-    fn tab(&self, studio: bool, window: &Window, cx: &mut Context<Self>) -> AnyElement {
-        let label = if studio {
-            crate::i18n::t("CHROMA_STUDIO")
-        } else {
-            "CHROMA".into()
+    fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.active != ChromaTab::Settings {
+            self.settings_return = self.active;
         }
-        .to_uppercase();
-        let active = self.active_studio == studio;
-        let id = if studio {
-            "chroma-studio"
-        } else {
-            "chroma-app"
-        };
+        if self.settings.is_none() {
+            let Ok(locale) = self.owner.update(cx, |shell, _| shell.settings.clone()) else {
+                return;
+            };
+            let dashboard = self.page.clone();
+            let page = cx.new(|cx| ChromaSettings::new(locale, dashboard, window, cx));
+            self.settings_subscription = Some(cx.subscribe(&page, |this, _, action, cx| {
+                match action {
+                    SettingsAction::ResetTutorials => {
+                        this.page.update(cx, |page, cx| page.reset_tutorials(cx))
+                    }
+                    SettingsAction::OpenMigration => {
+                        if this.migration.is_none() {
+                            // Current migration OD receives app only for its toolbar;
+                            // scanner state is isolated in this Chroma-owned instance.
+                            this.migration = Some(cx.new(|cx| {
+                                super::profile_migration::MigrationPage::new_for(
+                                    super::profile_migration::MigrationApp::Chroma,
+                                    cx,
+                                )
+                            }));
+                        }
+                        this.active = ChromaTab::Migration;
+                        let focus = this.migration_focus.clone();
+                        let handle = this.window;
+                        cx.defer(move |cx| {
+                            let _ = handle.update(cx, |_, window, cx| focus.focus(window, cx));
+                        });
+                        cx.notify();
+                    }
+                }
+            }));
+            self.settings_observer = Some(cx.observe(&page, |_, _, cx| cx.notify()));
+            self.settings = Some(page);
+        }
+        self.select_tab(ChromaTab::Settings, window, cx);
+    }
+    fn select_tab(&mut self, tab: ChromaTab, window: &mut Window, cx: &mut Context<Self>) {
+        self.active = tab;
+        match tab {
+            ChromaTab::Dashboard => self.page.update(cx, |p, cx| p.focus(window, cx)),
+            ChromaTab::Studio => {
+                if let Some(p) = &self.studio {
+                    p.update(cx, |p, cx| p.focus(window, cx));
+                }
+            }
+            ChromaTab::Settings => {
+                if let Some(p) = &self.settings {
+                    p.update(cx, |p, cx| p.focus(window, cx));
+                }
+            }
+            ChromaTab::Migration => self.migration_focus.focus(window, cx),
+        }
+        cx.notify();
+    }
+    fn close_tab(&mut self, tab: ChromaTab, window: &mut Window, cx: &mut Context<Self>) {
+        match tab {
+            ChromaTab::Settings => {
+                if self
+                    .settings
+                    .as_ref()
+                    .is_some_and(|p| !p.update(cx, |p, cx| p.can_close(cx)))
+                {
+                    self.select_tab(ChromaTab::Settings, window, cx);
+                    return;
+                }
+                self.settings = None;
+                self.settings_subscription = None;
+                self.settings_observer = None;
+            }
+            ChromaTab::Migration => self.migration = None,
+            ChromaTab::Studio => self.studio = None,
+            ChromaTab::Dashboard => return,
+        }
+        if self.active == tab {
+            let next = match (tab, self.settings_return) {
+                (ChromaTab::Settings, ChromaTab::Studio) if self.studio.is_some() => {
+                    ChromaTab::Studio
+                }
+                (ChromaTab::Settings, ChromaTab::Migration) if self.migration.is_some() => {
+                    ChromaTab::Migration
+                }
+                (ChromaTab::Migration, _) if self.settings.is_some() => ChromaTab::Settings,
+                _ => ChromaTab::Dashboard,
+            };
+            self.select_tab(next, window, cx);
+        }
+        cx.notify();
+    }
+    fn tab(&self, tab: ChromaTab, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        let label = tab.title().to_uppercase();
+        let active = self.active == tab;
+        let id = tab.id();
         let mut frame = host_tabs::tab_frame(id.into(), active)
             .w(css(host_tabs::tab_width(&label, window)))
             .child(
@@ -147,31 +276,15 @@ impl ChromaWindow {
                         HostColors::inactive_text()
                     })
                     .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
-                    .child(
-                        img(if studio {
-                            "synapse/host-chroma-studio-favicon.svg"
-                        } else {
-                            "synapse/host-app-chroma.svg"
-                        })
-                        .size(css(20.))
-                        .flex_shrink_0(),
-                    )
+                    .child(img(tab.icon()).size(css(20.)).flex_shrink_0())
                     .child(div().ml(css(10.)).text_ellipsis().child(label))
                     .on_click(cx.listener(move |this, _, window, cx| {
-                        this.active_studio = studio;
-                        if studio {
-                            if let Some(studio) = this.studio.clone() {
-                                studio.update(cx, |studio, cx| studio.focus(window, cx));
-                            }
-                        } else {
-                            this.page.update(cx, |page, cx| page.focus(window, cx));
-                        }
-                        cx.notify();
+                        this.select_tab(tab, window, cx);
                     })),
             );
-        if studio {
+        if tab != ChromaTab::Dashboard {
             frame = frame.child(
-                gpui_kit::base::Button::new("close-chroma-studio-tab")
+                gpui_kit::base::Button::new(SharedString::from(format!("close-{}-tab", tab.id())))
                     .accessibility_label(crate::i18n::t("CLOSE"))
                     .absolute()
                     .right(css(5.))
@@ -188,11 +301,8 @@ impl ChromaWindow {
                         })
                         .size_full(),
                     )
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.studio = None;
-                        this.active_studio = false;
-                        this.page.update(cx, |page, cx| page.focus(window, cx));
-                        cx.notify();
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.close_tab(tab, window, cx);
                     })),
             );
         }
@@ -204,11 +314,21 @@ impl Render for ChromaWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut bar = host_tabs::titlebar_frame(false)
             .child(div().w(css(8.)))
-            .child(self.tab(false, window, cx));
+            .child(self.tab(ChromaTab::Dashboard, window, cx));
         if self.studio.is_some() {
             bar = bar
                 .child(div().w(css(4.)))
-                .child(self.tab(true, window, cx));
+                .child(self.tab(ChromaTab::Studio, window, cx));
+        }
+        if self.settings.is_some() {
+            bar = bar
+                .child(div().w(css(4.)))
+                .child(self.tab(ChromaTab::Settings, window, cx));
+        }
+        if self.migration.is_some() {
+            bar = bar
+                .child(div().w(css(4.)))
+                .child(self.tab(ChromaTab::Migration, window, cx));
         }
         bar = bar
             .child(div().flex_1())
@@ -229,14 +349,20 @@ impl Render for ChromaWindow {
                 host_tabs::window_button("chroma-close", "synapse/host-close.svg", "Close")
                     .on_click(|_, window, _| window.remove_window()),
             );
-        let root = if self.active_studio {
-            self.studio
-                .as_ref()
-                .map(|studio| studio.clone().into_any_element())
-                .unwrap_or_else(|| self.page.clone().into_any_element())
-        } else {
-            self.page.clone().into_any_element()
-        };
+        let root = match self.active {
+            ChromaTab::Dashboard => None,
+            ChromaTab::Studio => self.studio.as_ref().map(|p| p.clone().into_any_element()),
+            ChromaTab::Settings => self.settings.as_ref().map(|p| p.clone().into_any_element()),
+            ChromaTab::Migration => self.migration.as_ref().map(|p| {
+                div()
+                    .id("chroma-migration")
+                    .track_focus(&self.migration_focus)
+                    .size_full()
+                    .child(p.clone())
+                    .into_any_element()
+            }),
+        }
+        .unwrap_or_else(|| self.page.clone().into_any_element());
         v_flex()
             .id(SharedString::from(format!(
                 "display-mode-{}",

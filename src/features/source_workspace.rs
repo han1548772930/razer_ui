@@ -64,6 +64,7 @@ pub(crate) struct SourceProductWorkspace {
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
 impl EventEmitter<super::ReceiverPairingEvent> for SourceProductWorkspace {}
+impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
     pub(crate) fn observe_connection(
@@ -94,13 +95,63 @@ impl SourceProductWorkspace {
             });
         }
     }
+    pub(crate) fn observe_dock_pairing(
+        &mut self,
+        observation: super::DockPairingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(dock) = &self.dock_pairing {
+            dock.update(cx, |dock, cx| dock.observe_pairing(observation, cx));
+        }
+    }
     pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.active = active;
         self.sync_mouse_active(window, cx);
         if !active {
             if let FamilyBody::Gamepad(body) = &self.body {
-                body.update(cx, |body, cx| body.cancel_range_edits(cx));
+                body.update(cx, |body, cx| {
+                    body.cancel_range_edits(cx);
+                    body.leave_calibration(window, cx);
+                });
             }
+        }
+    }
+
+    pub(crate) fn calibration_generation(&self, cx: &App) -> Option<u64> {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.read(cx).calibration_generation(),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn calibration_intent(
+        &self,
+        cx: &App,
+    ) -> Option<super::gamepad_products::CalibrationIntent> {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.read(cx).calibration_intent().cloned(),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn observe_calibration(
+        &mut self,
+        observation: super::gamepad_products::CalibrationObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.active
+            || self
+                .current_page()
+                .is_none_or(|page| page.kind().key() != "TAB_CALIBRATION")
+        {
+            return false;
+        }
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.observe_calibration(observation, window, cx)
+            }),
+            _ => false,
         }
     }
 
@@ -111,6 +162,28 @@ impl SourceProductWorkspace {
                     .current_page()
                     .is_some_and(|page| page.role() != ProductPageRole::Help);
             body.update(cx, |body, cx| body.set_active(active, window, cx));
+        }
+    }
+
+    pub(crate) fn mouse_polling_scope(
+        &self,
+        cx: &App,
+    ) -> Option<super::mouse_products::MousePollingScope> {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.read(cx).mouse_polling_scope(cx),
+            _ => None,
+        }
+    }
+    pub(crate) fn observe_mouse_polling(
+        &mut self,
+        scope: super::mouse_products::MousePollingScope,
+        observation: super::mouse_products::MousePollingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_mouse_polling(scope, observation, cx)
+            });
         }
     }
 
@@ -173,6 +246,20 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.observe_stream_mixer(observation, window, cx)
             });
+        }
+    }
+
+    /// Complete current monitor-service snapshot, independent from profiles.
+    pub(crate) fn observe_monitor_runtime(
+        &mut self,
+        runtime: Option<&Value>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if matches!(self.device.product_id, 3858 | 3880) {
+            if let FamilyBody::AccessorySystem(body) = &self.body {
+                body.update(cx, |body, cx| body.set_monitor_runtime(runtime, window, cx));
+            }
         }
     }
     /// Reserved for the current host's observed validDevices stream, never preview data.
@@ -303,6 +390,49 @@ impl SourceProductWorkspace {
             cx.emit(WorkspaceEvent::Changed);
             cx.notify();
         }
+    }
+    pub(super) fn change_profile_collection(
+        &mut self,
+        action: super::product_workspace::ProfileCollectionAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        let active = self.device.active_profile.clone();
+        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+            && let FamilyBody::Audio(body) = &self.body
+            && body.read(cx).pod_editor_dirty(cx)
+        {
+            return Err("请先保存或取消当前音频编辑，再删除活动配置文件".into());
+        }
+        let target = super::product_workspace::edit_profile_collection(
+            &mut self.device,
+            &self.saved,
+            action,
+        )?;
+        self.refresh_profile_choices(window, cx);
+        if active != self.device.active_profile {
+            self.dismiss_profile_dialog(window, cx);
+            let factory_default_profile = self
+                .device
+                .profiles
+                .iter()
+                .find(|profile| profile.id == self.device.active_profile)
+                .is_some_and(|profile| {
+                    super::keyboard_products::is_factory_profile(
+                        self.device.product_id,
+                        &profile.guid,
+                    )
+                });
+            if let FamilyBody::Keyboard(body) = &self.body {
+                body.update(cx, |keyboard, cx| {
+                    keyboard.set_factory_default_profile(factory_default_profile, window, cx)
+                });
+            }
+            self.restore_active(window, cx);
+        }
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+        Ok(target)
     }
     pub(crate) fn keyboard_preview_page(
         &self,
@@ -506,6 +636,7 @@ impl SourceProductWorkspace {
                     cx,
                 )
             });
+            body.update(cx, |body, cx| body.set_edition_id(device.edition_id, cx));
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self, body, _: &super::gamepad_products::GamepadProductChanged, cx| {
@@ -725,6 +856,11 @@ impl SourceProductWorkspace {
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));
         if let Some(dock) = &dock_pairing {
+            subscriptions.push(
+                cx.subscribe(dock, |_, _, event: &super::DockPairingEvent, cx| {
+                    cx.emit(event.clone())
+                }),
+            );
             // 源配对文案里的设备名在命中应用设备列表时可点，点击切到该设备工作区。
             subscriptions.push(cx.subscribe(
                 dock,
@@ -1150,9 +1286,10 @@ impl SourceProductWorkspace {
                 FamilyBody::Keyboard(body) => {
                     body.update(cx, |body, cx| body.leave_snap_tap(window, cx))
                 }
-                FamilyBody::Gamepad(body) => {
-                    body.update(cx, |body, cx| body.cancel_range_edits(cx))
-                }
+                FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                    body.cancel_range_edits(cx);
+                    body.leave_calibration(window, cx);
+                }),
                 _ => {}
             }
             self.help.update(cx, |help, cx| {

@@ -1,5 +1,5 @@
 //! The dedicated actor owns ServiceClient, its pipe, DLL worker and shutdown.
-//! UI cancellation only drops a sender. No blocking native work runs on GPUI.
+//! UI cancellation sends a command or drops its sender. No native work runs on GPUI.
 use super::ActionItem;
 use super::recording_decode::{Decoder, Options};
 use crate::backend::runtime::{ServiceClient, ServiceRequest};
@@ -77,14 +77,7 @@ fn record(
     let mut item_count = 0usize;
     let mut bytes = 0usize;
     loop {
-        match input.try_recv() {
-            Ok(Command::Stop) => stop_requested = true,
-            Ok(Command::Cancel) | Err(mpsc::TryRecvError::Disconnected) => {
-                stop_requested = true;
-                cancelled = true;
-            }
-            Err(mpsc::TryRecvError::Empty) => {}
-        }
+        drain_commands(input, &mut stop_requested, &mut cancelled);
         if started && stop_requested && !stopping {
             query(client, ServiceRequest::StopMacroRecording)?;
             stopping = true;
@@ -151,6 +144,9 @@ fn record(
                     if !started || event["mode"] != "kSoftware" {
                         return Err("收到不匹配的录制 stopped 事件".into());
                     }
+                    // Cancel may have arrived while this blocking event
+                    // request was in flight, including behind a queued Stop.
+                    drain_commands(input, &mut stop_requested, &mut cancelled);
                     let result = if cancelled {
                         Ok(None)
                     } else {
@@ -193,6 +189,28 @@ fn record(
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
             }
+        }
+    }
+}
+
+fn drain_commands(
+    input: &mpsc::Receiver<Command>,
+    stop_requested: &mut bool,
+    cancelled: &mut bool,
+) {
+    loop {
+        match input.try_recv() {
+            Ok(Command::Stop) => *stop_requested = true,
+            Ok(Command::Cancel) => {
+                *stop_requested = true;
+                *cancelled = true;
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                *stop_requested = true;
+                *cancelled = true;
+                return;
+            }
+            Err(mpsc::TryRecvError::Empty) => return,
         }
     }
 }

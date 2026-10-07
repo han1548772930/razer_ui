@@ -5,7 +5,6 @@ use super::*;
 use crate::{model::LocalizedText, resources, ui::surface::css};
 use gpui_kit::component::input::InputEvent;
 use gpui_kit::component::select::{SelectEvent, SelectItem};
-use gpui_kit::component::tooltip::Tooltip;
 
 fn device_text(value: &LocalizedText) -> String {
     value
@@ -125,7 +124,16 @@ pub(super) struct DeviceGamesDialog {
     name: Entity<InputState>,
     renaming: bool,
     menu_open: bool,
+    delete_request: Option<(String, String)>,
+    delete_task: Option<Task<()>>,
+    collection_error: Option<String>,
+    collection_status: String,
+    transfer: Option<Entity<super::transfer::ProfileTransfer>>,
+    transfer_subscription: Option<Subscription>,
+    transfer_intent: Option<super::transfer::TransferIntent>,
     games: Vec<KnownGame>,
+    devices: Vec<Entity<ProductWorkspace>>,
+    device_subscriptions: Vec<Subscription>,
     add_dialog: Option<Entity<AddGameDialog>>,
     back_from_add: bool,
     _subscriptions: Vec<Subscription>,
@@ -143,6 +151,7 @@ impl DeviceGamesDialog {
         let index = options
             .iter()
             .position(|p| p.value() == &device.active_profile)
+            .or_else(|| (!options.is_empty()).then_some(0))
             .map(IndexPath::new);
         let profile = cx.new(|cx| SelectState::new(options, index, window, cx));
         let filter = cx
@@ -167,11 +176,15 @@ impl DeviceGamesDialog {
             }
         }
         let subscriptions = vec![
-            cx.observe(&workspace, |_, _, cx| cx.notify()),
-            cx.subscribe_in(&profile, window, |_: &mut Self, _, event, _, cx| {
+            cx.observe_in(&workspace, window, |this: &mut Self, _, window, cx| {
+                this.sync_profile_choices(window, cx);
+            }),
+            cx.subscribe_in(&profile, window, |this: &mut Self, _, event, _, cx| {
                 if let SelectEvent::Confirm(Some(_)) = event {
                     // Ua/Y changes the assignment target only. It does not
                     // activate a hardware profile when browsing this list.
+                    this.delete_request = None;
+                    this.delete_task = None;
                     cx.notify();
                 }
             }),
@@ -188,7 +201,7 @@ impl DeviceGamesDialog {
         let focus = cx.focus_handle();
         let return_focus = window.focused(cx);
         focus.focus(window, cx);
-        Self {
+        let mut dialog = Self {
             open: true,
             focus,
             return_focus,
@@ -199,15 +212,109 @@ impl DeviceGamesDialog {
             name,
             renaming: false,
             menu_open: false,
+            delete_request: None,
+            delete_task: None,
+            collection_error: None,
+            collection_status: String::new(),
+            transfer: None,
+            transfer_subscription: None,
+            transfer_intent: None,
             games,
+            devices: Vec::new(),
+            device_subscriptions: Vec::new(),
             add_dialog: None,
             back_from_add: false,
             _subscriptions: subscriptions,
+        };
+        dialog.set_devices(devices.to_vec(), cx);
+        dialog
+    }
+
+    pub(super) fn set_devices(
+        &mut self,
+        devices: Vec<Entity<ProductWorkspace>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.device_subscriptions = devices
+            .iter()
+            .map(|device| cx.observe(device, |this, _, cx| this.refresh_known_games(cx)))
+            .collect();
+        self.devices = devices;
+        self.refresh_known_games(cx);
+    }
+
+    fn refresh_known_games(&mut self, cx: &mut Context<Self>) {
+        // Ua observes the current game catalog. This local adapter only knows
+        // explicit profile associations: retain previously observed games when
+        // they are unlinked, and incorporate later associations from every
+        // currently supplied workspace without inventing an installed catalog.
+        for entity in &self.devices {
+            let owner = entity.read(cx);
+            for profile in &owner.device(cx).profiles {
+                for (name, executable) in owner.profile_linked_games(&profile.id, cx) {
+                    if let Some(game) = self
+                        .games
+                        .iter_mut()
+                        .find(|game| game_key(&game.executable) == game_key(&executable))
+                    {
+                        game.name = name;
+                    } else {
+                        self.games.push(KnownGame { name, executable });
+                    }
+                }
+            }
         }
+        cx.notify();
     }
 
     fn selected_profile(&self, cx: &App) -> Option<String> {
-        self.profile.read(cx).selected_value().cloned()
+        let id = self.profile.read(cx).selected_value()?;
+        self.workspace
+            .read(cx)
+            .device(cx)
+            .profiles
+            .iter()
+            .any(|profile| &profile.id == id)
+            .then(|| id.clone())
+    }
+
+    fn sync_profile_choices(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let device = self.workspace.read(cx).device(cx);
+        let options = profile_choices(device);
+        let previous = self.profile.read(cx).selected_value().cloned();
+        let retained = previous
+            .as_ref()
+            .filter(|id| options.iter().any(|option| option.value() == *id));
+        let selected = retained.cloned().or_else(|| {
+            options
+                .iter()
+                .find(|option| option.value() == &device.active_profile)
+                .or_else(|| options.first())
+                .map(|option| option.value().clone())
+        });
+        if retained.is_none() {
+            // Never submit a name or delayed deletion against a replacement ID.
+            self.renaming = false;
+            self.delete_request = None;
+            self.delete_task = None;
+        }
+        if let Some((id, name)) = &mut self.delete_request {
+            if let Some(profile) = device.profiles.iter().find(|profile| &profile.id == id) {
+                *name = profile.name.clone();
+            } else {
+                self.delete_request = None;
+                self.delete_task = None;
+            }
+        }
+        self.profile.update(cx, |state, cx| {
+            state.set_items(options, window, cx);
+            if let Some(id) = selected {
+                state.set_selected_value(&id, window, cx);
+            } else {
+                state.set_selected_index(None, window, cx);
+            }
+        });
+        cx.notify();
     }
 
     fn begin_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -260,6 +367,12 @@ impl DeviceGamesDialog {
         cx.notify();
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(transfer) = self.transfer.take() {
+            transfer.update(cx, |transfer, cx| transfer.dismiss(cx));
+        }
+        self.transfer_subscription = None;
+        self.delete_task = None;
+        self.delete_request = None;
         self.open = false;
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
@@ -267,6 +380,8 @@ impl DeviceGamesDialog {
         cx.notify();
     }
     fn open_add(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.delete_request = None;
+        self.delete_task = None;
         let add = cx.new(|cx| {
             let mut dialog = AddGameDialog::new(window, cx);
             dialog.from_device = true;
@@ -280,9 +395,195 @@ impl DeviceGamesDialog {
         cx.notify();
     }
 
+    fn profile_action(&mut self, action: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.menu_open = false;
+        self.delete_request = None;
+        self.delete_task = None;
+        self.collection_error = None;
+        if matches!(action, "IMPORT" | "EXPORT") {
+            let mode = if action == "IMPORT" {
+                super::transfer::Mode::Import
+            } else {
+                super::transfer::Mode::Export
+            };
+            let device = self.workspace.read(cx).device(cx);
+            let pid = device.product_id;
+            let name = device_text(&device.product_name);
+            let profiles = device.profiles.clone();
+            let transfer = cx.new(|cx| {
+                super::transfer::ProfileTransfer::new(mode, pid, name, profiles, window, cx)
+            });
+            self.transfer_subscription = Some(cx.subscribe_in(
+                &transfer,
+                window,
+                |this, _, event: &super::transfer::Closed, window, cx| {
+                    if let Some(intent) = event.0.clone() {
+                        match intent.validate(&this.workspace.read(cx).device(cx).profiles) {
+                            Ok(()) => {
+                                this.collection_status = intent.description();
+                                this.transfer_intent = Some(intent);
+                            }
+                            Err(error) => this.collection_error = Some(error),
+                        }
+                    }
+                    this.transfer = None;
+                    this.transfer_subscription = None;
+                    this.focus.focus(window, cx);
+                    cx.notify();
+                },
+            ));
+            self.transfer = Some(transfer);
+            cx.notify();
+            return;
+        }
+        if action == "RENAME" {
+            self.begin_rename(window, cx);
+            return;
+        }
+        let selected = self.selected_profile(cx);
+        if action == "DELETE" {
+            let Some(id) = selected else { return };
+            let Some(name) = self
+                .workspace
+                .read(cx)
+                .device(cx)
+                .profiles
+                .iter()
+                .find(|profile| profile.id == id)
+                .map(|profile| profile.name.clone())
+            else {
+                return;
+            };
+            // Current Ua waits 100ms after dismissing the more menu.
+            self.delete_task = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(100))
+                    .await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.open && this.selected_profile(cx).as_ref() == Some(&id) {
+                        this.delete_request = Some((id, name));
+                        cx.notify();
+                    }
+                });
+            }));
+            cx.notify();
+            return;
+        }
+        let result = self.workspace.update(cx, |workspace, cx| match action {
+            "ADD" => workspace.add_local_profile(window, cx),
+            "DUPLICATE" => selected
+                .as_deref()
+                .ok_or_else(|| "未选择有效配置文件".to_string())
+                .and_then(|id| workspace.duplicate_local_profile(id, window, cx)),
+            _ => Err("此配置操作尚未接入".into()),
+        });
+        self.finish_collection_change(result, window, cx);
+    }
+
+    fn finish_collection_change(
+        &mut self,
+        result: Result<String, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match result {
+            Ok(id) => {
+                let options = profile_choices(self.workspace.read(cx).device(cx));
+                self.profile.update(cx, |state, cx| {
+                    state.set_items(options, window, cx);
+                    state.set_selected_value(&id, window, cx);
+                });
+                self.collection_status = "配置更改保留为本地草稿；关闭此弹层后可通过顶部未保存配置入口保存，尚未写入设备".into();
+                self.collection_error = None;
+            }
+            Err(error) => self.collection_error = Some(error),
+        }
+        cx.notify();
+    }
+
+    fn confirm_profile_delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((id, _)) = self.delete_request.take() else {
+            return;
+        };
+        self.delete_task = None;
+        let result = self.workspace.update(cx, |workspace, cx| {
+            workspace.delete_local_profile(&id, window, cx)
+        });
+        self.finish_collection_change(result, window, cx);
+    }
+
+    fn delete_confirmation(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let (_, name) = self.delete_request.as_ref()?;
+        let opacity = Presence::new("profiles-delete-opacity", true)
+            .transition(Transition::new(Duration::from_millis(300)).easing(Easing::Linear))
+            .sample(window, cx)
+            .progress;
+        Some(
+            deferred(
+                v_flex()
+                    .id("profiles-profile-delete-confirmation")
+                    .test_support()
+                    .aria_label(format!("{}：{name}", i18n::t("DELETE_PROFILE_TITLE")))
+                    .absolute()
+                    .left(css(250.))
+                    .top(css(42.))
+                    .w(css(300.))
+                    .p(css(20.))
+                    .items_center()
+                    .occlude()
+                    .bg(rgb(0x111111))
+                    .border_1()
+                    .border_color(rgb(0xfd4949))
+                    .rounded(css(3.))
+                    .opacity(opacity)
+                    .text_center()
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.delete_request = None;
+                            this.delete_task = None;
+                            cx.notify();
+                        }),
+                    )
+                    .child(
+                        div()
+                            .mb(css(10.))
+                            .text_color(rgb(0xfd4949))
+                            .child(i18n::t("DELETE_PROFILE_TITLE").to_uppercase()),
+                    )
+                    .child(div().mb(css(10.)).child(i18n::t("DELETE_PROFILE_MSG")))
+                    .child(
+                        BaseButton::new("profiles-profile-delete-confirm")
+                            .accessibility_label(format!("{} {name}", i18n::t("DELETE")))
+                            .min_w(css(90.))
+                            .h(css(27.))
+                            .px(css(5.))
+                            .py(css(4.))
+                            .bg(rgb(0xfd4949))
+                            .text_color(rgb(0x111111))
+                            .border_1()
+                            .border_color(rgba(0x0000004d))
+                            .text_size(css(12.))
+                            .line_height(css(14.))
+                            .child(i18n::t("DELETE"))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.confirm_profile_delete(window, cx)
+                            })),
+                    ),
+            )
+            .with_priority(250)
+            .into_any_element(),
+        )
+    }
+
     fn more_menu(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let owner = cx.entity().downgrade();
         let selected = self.selected_profile(cx).is_some();
+        let can_delete = self.workspace.read(cx).device(cx).profiles.len() > 1;
         let trigger = controls::more_button(self.menu_open, window, cx);
         gpui_kit::base::Popover::new("profiles-device-actions")
             .anchor(Anchor::TopLeft)
@@ -290,6 +591,10 @@ impl DeviceGamesDialog {
             .trigger_with(move |_, _, _| trigger.into_any_element())
             .on_open_change(cx.listener(|this, open: &bool, _, cx| {
                 this.menu_open = *open;
+                if *open {
+                    this.delete_request = None;
+                    this.delete_task = None;
+                }
                 cx.notify();
             }))
             .content(move |_, window, cx| {
@@ -317,15 +622,13 @@ impl DeviceGamesDialog {
                         continue;
                     }
                     let owner = owner.clone();
-                    // Service commands remain unavailable until their payloads
-                    // are implemented for every product; rename preserves them.
-                    let unavailable = key != "RENAME";
+                    let disabled = (key != "ADD" && !selected) || (key == "DELETE" && !can_delete);
                     let pointer = controls::pointer(
                         (ElementId::from("profiles-profile-menu"), key).into(),
                         window,
                         cx,
                     );
-                    let hovered = pointer.read(cx).hovered && selected && !unavailable;
+                    let hovered = pointer.read(cx).hovered && !disabled;
                     let background = motion::transition(
                         (ElementId::from("profiles-profile-menu-bg"), key),
                         Hsla::from(rgba(if hovered { 0xffffff1a } else { 0x00000000 })),
@@ -340,19 +643,13 @@ impl DeviceGamesDialog {
                             .py(css(5.))
                             .line_height(css(17.))
                             .justify_start()
-                            .disabled(!selected || unavailable)
-                            .when(unavailable, |button| {
-                                button.tooltip(|window, cx| {
-                                    Tooltip::new("Profile service unavailable").build(window, cx)
-                                })
-                            })
+                            .disabled(disabled)
                             .styles(|style| style.disabled(|s| s.opacity(0.3)))
                             .bg(background)
                             .child(i18n::t(key))
                             .on_click(move |_, window, cx| {
                                 let _ = owner.update(cx, |this, cx| {
-                                    this.menu_open = false;
-                                    this.begin_rename(window, cx);
+                                    this.profile_action(key, window, cx);
                                 });
                             }),
                     );
@@ -431,6 +728,7 @@ impl DeviceGamesDialog {
                     .child(self.more_menu(window, cx)),
             )
             .child(right)
+            .children(self.delete_confirmation(window, cx))
             .into_any_element()
     }
 
@@ -557,16 +855,32 @@ impl DeviceGamesDialog {
     }
 
     fn game_tiles(&self, window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let removed = self
+        let filter = self
             .filter
             .read(cx)
             .selected_value()
-            .is_some_and(|value| value == "REMOVED_GAMES");
-        let mut games = if removed {
+            .cloned()
+            .unwrap_or_default();
+        let mut games = if filter == "REMOVED_GAMES" {
             Vec::new()
         } else {
             self.games.clone()
         };
+        if filter == "LINKED_GAMES" {
+            // Ua/z uses any visible linked device, not just the selected
+            // assignment target. Local workspaces supply only known links.
+            games.retain(|game| {
+                self.devices.iter().any(|entity| {
+                    let owner = entity.read(cx);
+                    owner.device(cx).profiles.iter().any(|profile| {
+                        owner
+                            .profile_linked_games(&profile.id, cx)
+                            .iter()
+                            .any(|(_, path)| game_key(path) == game_key(&game.executable))
+                    })
+                })
+            });
+        }
         let sort = self
             .sort
             .read(cx)
@@ -665,6 +979,16 @@ impl Render for DeviceGamesDialog {
             .popup(
                 v_flex()
                     .id("profiles-device-games-dialog")
+                    .test_support()
+                    .aria_label(title.clone())
+                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+                        if event.keystroke.key == "escape" && this.delete_request.is_some() {
+                            this.delete_request = None;
+                            this.delete_task = None;
+                            cx.stop_propagation();
+                            cx.notify();
+                        }
+                    }))
                     .absolute()
                     .left((viewport.width - width) / 2.)
                     .top(start_top + (target_top - start_top) * progress)
@@ -712,6 +1036,41 @@ impl Render for DeviceGamesDialog {
                             .pl(css(25.))
                             .pb(css(42.))
                             .child(self.toolbar(window, cx))
+                            .when(!self.collection_status.is_empty(), |view| {
+                                view.child(
+                                    div()
+                                        .id("profiles-local-draft-status")
+                                        .test_support()
+                                        .text_size(css(12.))
+                                        .child(self.collection_status.clone()),
+                                )
+                            })
+                            .when_some(self.collection_error.clone(), |view, error| {
+                                view.child(
+                                    div()
+                                        .id("profiles-local-draft-error")
+                                        .test_support()
+                                        .aria_label(error.clone())
+                                        .text_size(css(12.))
+                                        .text_color(rgb(0xfd4949))
+                                        .child(error),
+                                )
+                            })
+                            .when(self.transfer_intent.is_some(), |view| {
+                                view.child(
+                                    BaseButton::new("profiles-transfer-revoke")
+                                        .child(if i18n::locale().starts_with("zh") {
+                                            "撤销尚未应用的传输请求"
+                                        } else {
+                                            "Revoke unapplied transfer request"
+                                        })
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.transfer_intent = None;
+                                            this.collection_status.clear();
+                                            cx.notify();
+                                        })),
+                                )
+                            })
                             .child(
                                 div()
                                     .id("profiles-device-games-scroll")
@@ -728,7 +1087,8 @@ impl Render for DeviceGamesDialog {
                                             .children(self.game_tiles(window, cx)),
                                     ),
                             ),
-                    ),
+                    )
+                    .children(self.transfer.clone()),
             )
             .into_any_element()
     }

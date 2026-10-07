@@ -3,11 +3,14 @@
 use super::studio_color::{StudioColor, StudioColorEvent};
 use super::studio_color_dropdown::{ColorDropdownChanged, StudioColorDropdown};
 use super::studio_duration::{DurationChanged, StudioDuration};
-use super::studio_gradient::{GradientChanged, StudioGradient};
+use super::studio_gradient::{GradientChanged, GradientKind, StudioGradient};
 use super::studio_playback::{PlaybackChanged, StudioPlayback};
 use super::*;
 use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use gpui_kit::component::slider::SliderState;
+#[path = "chroma_studio_numeric.rs"]
+mod numeric;
+use numeric::{NumericChanged, NumericField, StudioNumeric};
 
 pub(super) struct StudioProperties {
     current: Option<(u64, String)>,
@@ -21,6 +24,8 @@ pub(super) struct StudioProperties {
     gradient_subscription: Option<Subscription>,
     colors: Option<[Entity<StudioColorDropdown>; 2]>,
     playback: Option<Entity<StudioPlayback>>,
+    numeric: Option<[Entity<StudioNumeric>; 3]>,
+    control_revision: u64,
     editor_subscriptions: Vec<Subscription>,
     window: Option<AnyWindowHandle>,
     _subscriptions: Vec<Subscription>,
@@ -38,7 +43,12 @@ impl StudioProperties {
                 let value = this
                     .current
                     .as_ref()
-                    .filter(|(_, name)| matches!(name.as_str(), "spectrum" | "breathing"))
+                    .filter(|(_, name)| {
+                        matches!(
+                            name.as_str(),
+                            "spectrum" | "breathing" | "reactive" | "starlight"
+                        )
+                    })
                     .and_then(|(_, name)| {
                         source().effects.iter().find(|effect| &effect.name == name)
                     })
@@ -98,6 +108,8 @@ impl StudioProperties {
             gradient_subscription: None,
             colors: None,
             playback: None,
+            numeric: None,
+            control_revision: 0,
             editor_subscriptions: Vec::new(),
             window: None,
             _subscriptions: subscriptions,
@@ -144,7 +156,7 @@ impl StudioProperties {
                 name,
                 index,
                 self.enabled(),
-                matches!(name, "spectrum" | "breathing"),
+                matches!(name, "spectrum" | "breathing" | "reactive" | "starlight"),
                 cx,
             );
         });
@@ -195,9 +207,15 @@ impl StudioProperties {
         gradient.update(cx, |gradient, cx| {
             gradient.restore_cache(cache);
             gradient.configure(
+                self.current
+                    .as_ref()
+                    .map(|(_, name)| name.as_str())
+                    .unwrap_or(""),
+                self.gradient_kind(),
                 &self.params["colorStops"],
                 self.params["colorStopsCustom"] == true,
-                self.enabled(),
+                self.gradient_enabled(),
+                self.gradient_hidden(),
                 true,
                 window,
                 cx,
@@ -206,12 +224,7 @@ impl StudioProperties {
         self.gradient_subscription = Some(cx.subscribe(
             &gradient,
             |this, _, event: &GradientChanged, cx| {
-                if this.enabled()
-                    && this
-                        .current
-                        .as_ref()
-                        .is_some_and(|(_, name)| name == "spectrum")
-                {
+                if this.gradient_enabled() {
                     this.params["colorStops"] = event.stops.clone();
                     this.params["colorStopsCustom"] = event.custom.into();
                     cx.notify();
@@ -232,8 +245,10 @@ impl StudioProperties {
                         .map(|(_, name)| name.as_str())
                         .unwrap_or("");
                     if !this.enabled()
-                        || !matches!(name, "breathing" | "fire")
-                        || (name == "breathing" && this.params["randomColor"] == true)
+                        || !matches!(name, "breathing" | "fire" | "reactive")
+                        || (name == "reactive" && index != 0)
+                        || (matches!(name, "breathing" | "reactive")
+                            && this.params["randomColor"] == true)
                     {
                         return;
                     }
@@ -268,7 +283,7 @@ impl StudioProperties {
                     && this
                         .current
                         .as_ref()
-                        .is_some_and(|(_, name)| name == "breathing")
+                        .is_some_and(|(_, name)| matches!(name.as_str(), "breathing" | "ripple"))
                 {
                     if let (Some(params), Some(patch)) =
                         (this.params.as_object_mut(), event.0.as_object())
@@ -280,9 +295,37 @@ impl StudioProperties {
             },
         ));
         self.playback = Some(playback);
+        let numeric = [
+            NumericField::RippleSpeed,
+            NumericField::RippleWidth,
+            NumericField::StarlightDensity,
+        ]
+        .map(|field| cx.new(|cx| StudioNumeric::new(field, window, cx)));
+        for editor in &numeric {
+            self.editor_subscriptions.push(cx.subscribe(
+                editor,
+                |this, _, event: &NumericChanged, cx| {
+                    if this.enabled()
+                        && event.revision == this.control_revision
+                        && this
+                            .current
+                            .as_ref()
+                            .is_some_and(|(_, name)| name == event.field.effect())
+                    {
+                        let value = Value::from(event.value);
+                        if this.params[event.field.field()] != value {
+                            this.params[event.field.field()] = value;
+                            cx.notify();
+                        }
+                    }
+                },
+            ));
+        }
+        self.numeric = Some(numeric);
         self.window = Some(handle);
         self.refresh_pairs(true, cx);
         self.refresh_playback(cx);
+        self.refresh_numeric(cx);
         cx.notify();
     }
 
@@ -295,19 +338,30 @@ impl StudioProperties {
             .as_ref()
             .map(|(_, name)| name.as_str())
             .unwrap_or("");
-        let hidden = name == "breathing" && self.params["randomColor"] == true;
-        let enabled = self.enabled() && matches!(name, "breathing" | "fire") && !hidden;
+        let hidden = matches!(name, "breathing" | "reactive") && self.params["randomColor"] == true;
+        let enabled =
+            self.enabled() && matches!(name, "breathing" | "fire" | "reactive") && !hidden;
+        let reactive = name == "reactive";
+        let effect = name.to_owned();
         let values = ["color", "color2"].map(|field| {
             self.params[field]
                 .as_u64()
                 .and_then(|value| u32::try_from(value).ok())
-                .filter(|value| *value != source().empty_color)
+                .filter(|value| reactive || *value != source().empty_color)
         });
         cx.defer(move |cx| {
             let _ = handle.update(cx, |_, window, cx| {
-                for (color, value) in colors.iter().zip(values) {
+                for (index, (color, value)) in colors.iter().zip(values).enumerate() {
                     color.update(cx, |color, cx| {
-                        color.configure(value, enabled, hidden, replace, window, cx)
+                        color.configure(
+                            &effect,
+                            value,
+                            enabled && (!reactive || index == 0),
+                            hidden,
+                            replace,
+                            window,
+                            cx,
+                        )
                     });
                 }
             });
@@ -319,15 +373,20 @@ impl StudioProperties {
             return;
         };
         let params = self.params.clone();
+        let effect = self
+            .current
+            .as_ref()
+            .map(|(_, name)| name.clone())
+            .unwrap_or_default();
         let enabled = self.enabled();
         let mounted = self
             .current
             .as_ref()
-            .is_some_and(|(_, name)| name == "breathing");
+            .is_some_and(|(_, name)| matches!(name.as_str(), "breathing" | "ripple"));
         cx.defer(move |cx| {
             let _ = handle.update(cx, |_, window, cx| {
                 playback.update(cx, |playback, cx| {
-                    playback.configure(&params, enabled, mounted, window, cx)
+                    playback.configure(&effect, &params, enabled, mounted, window, cx)
                 })
             });
         });
@@ -339,15 +398,28 @@ impl StudioProperties {
         if let (Some(gradient), Some(handle)) = (self.gradient.clone(), self.window) {
             let value = self.params["colorStops"].clone();
             let custom = self.params["colorStopsCustom"] == true;
-            let enabled = self.enabled()
-                && self
-                    .current
-                    .as_ref()
-                    .is_some_and(|(_, name)| name == "spectrum");
+            let enabled = self.gradient_enabled();
+            let hidden = self.gradient_hidden();
+            let kind = self.gradient_kind();
+            let effect = self
+                .current
+                .as_ref()
+                .map(|(_, name)| name.clone())
+                .unwrap_or_default();
             cx.defer(move |cx| {
                 let _ = handle.update(cx, |_, window, cx| {
                     gradient.update(cx, |gradient, cx| {
-                        gradient.configure(&value, custom, enabled, replace_value, window, cx);
+                        gradient.configure(
+                            &effect,
+                            kind,
+                            &value,
+                            custom,
+                            enabled,
+                            hidden,
+                            replace_value,
+                            window,
+                            cx,
+                        );
                     })
                 });
             });
@@ -371,6 +443,66 @@ impl StudioProperties {
         });
     }
 
+    fn gradient_kind(&self) -> GradientKind {
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|(_, name)| name == "spectrum")
+        {
+            GradientKind::Spectrum
+        } else {
+            GradientKind::Default
+        }
+    }
+
+    fn gradient_hidden(&self) -> bool {
+        self.current
+            .as_ref()
+            .is_some_and(|(_, name)| name == "starlight")
+            && self.params["randomColor"] == true
+    }
+
+    fn gradient_enabled(&self) -> bool {
+        self.enabled()
+            && !self.gradient_hidden()
+            && self.current.as_ref().is_some_and(|(_, name)| {
+                matches!(name.as_str(), "spectrum" | "ripple" | "starlight")
+            })
+    }
+
+    fn refresh_numeric(&self, cx: &mut Context<Self>) {
+        let (Some(editors), Some(handle)) = (self.numeric.clone(), self.window) else {
+            return;
+        };
+        let params = self.params.clone();
+        let effect = self
+            .current
+            .as_ref()
+            .map(|(_, name)| name.clone())
+            .unwrap_or_default();
+        let enabled = self.enabled();
+        let revision = self.control_revision;
+        cx.defer(move |cx| {
+            let _ = handle.update(cx, |_, window, cx| {
+                for (editor, field) in editors.iter().zip([
+                    NumericField::RippleSpeed,
+                    NumericField::RippleWidth,
+                    NumericField::StarlightDensity,
+                ]) {
+                    editor.update(cx, |editor, cx| {
+                        editor.configure(
+                            params[field.field()].as_f64().unwrap_or(0.),
+                            enabled && effect == field.effect(),
+                            revision,
+                            window,
+                            cx,
+                        )
+                    });
+                }
+            });
+        });
+    }
+
     pub(super) fn reset(&mut self, cx: &mut Context<Self>) {
         if !self.enabled() {
             return;
@@ -380,6 +512,7 @@ impl StudioProperties {
             .as_ref()
             .and_then(|(_, name)| source().effects.iter().find(|effect| &effect.name == name))
         {
+            self.control_revision = self.control_revision.wrapping_add(1);
             if let (Some(params), Some(defaults)) =
                 (self.params.as_object_mut(), effect.paint_params.as_object())
             {
@@ -392,6 +525,7 @@ impl StudioProperties {
             });
             self.refresh_color(true, cx);
             self.refresh_duration(cx);
+            self.refresh_numeric(cx);
             cx.notify();
         }
     }
@@ -410,6 +544,7 @@ impl StudioProperties {
                     || matches!(tool.as_str(), "select" | "move")));
         self.current = current;
         self.tool = tool;
+        self.control_revision = self.control_revision.wrapping_add(1);
         if reset {
             let defaults = self
                 .current
@@ -438,6 +573,7 @@ impl StudioProperties {
         }
         self.refresh_color(reset, cx);
         self.refresh_duration(cx);
+        self.refresh_numeric(cx);
         cx.notify();
     }
 
@@ -567,6 +703,114 @@ impl StudioProperties {
             .into_any_element()
     }
 
+    fn reactive(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.weak_entity();
+        let revision = self.control_revision;
+        let random = super::studio_checkbox::checkbox(
+            "studio-reactive-random",
+            self.params["randomColor"] == true,
+            self.enabled(),
+            label("RANDOM"),
+            window,
+            cx,
+        )
+        .on_change(move |state, _, _, cx| {
+            let _ = owner.update(cx, |this, cx| {
+                if this.enabled()
+                    && this.control_revision == revision
+                    && this
+                        .current
+                        .as_ref()
+                        .is_some_and(|(_, name)| name == "reactive")
+                {
+                    this.params["randomColor"] =
+                        (state == gpui_kit::base::CheckboxState::Checked).into();
+                    this.refresh_pairs(false, cx);
+                    cx.notify();
+                }
+            });
+        });
+        div()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_REACTIVE_COLOR"))
+            .child(
+                section().child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(surface::css(10.))
+                        .children(self.colors.as_ref().map(|colors| colors[0].clone()))
+                        .child(random),
+                ),
+            )
+            .child(self.subtitle("PROPERTIES", "TEXT_REACTIVE_PROPERTIES"))
+            .child(section().child(self.duration.clone()))
+            .into_any_element()
+    }
+
+    fn ripple(&self) -> AnyElement {
+        div()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_RIPPLE_COLOR"))
+            .child(section().children(self.gradient.clone()))
+            .child(self.subtitle("PROPERTIES", "TEXT_RIPPLE_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[0].clone()))
+                    .child(
+                        div()
+                            .mt(surface::css(10.))
+                            .children(self.numeric.as_ref().map(|editors| editors[1].clone())),
+                    ),
+            )
+            .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
+            .child(section().children(self.playback.clone()))
+            .into_any_element()
+    }
+
+    fn starlight(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.weak_entity();
+        let revision = self.control_revision;
+        let random = super::studio_checkbox::checkbox(
+            "studio-starlight-random",
+            self.params["randomColor"] == true,
+            self.enabled(),
+            label("RANDOM"),
+            window,
+            cx,
+        )
+        .on_change(move |state, _, _, cx| {
+            let _ = owner.update(cx, |this, cx| {
+                if this.enabled()
+                    && this.control_revision == revision
+                    && this
+                        .current
+                        .as_ref()
+                        .is_some_and(|(_, name)| name == "starlight")
+                {
+                    this.params["randomColor"] =
+                        (state == gpui_kit::base::CheckboxState::Checked).into();
+                    this.refresh_color(false, cx);
+                    cx.notify();
+                }
+            });
+        });
+        div()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_STARLIGHT_COLOR"))
+            .child(section().children(self.gradient.clone()).child(random))
+            .child(self.subtitle("PROPERTIES", "TEXT_STARLIGHT_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[2].clone()))
+                    .child(div().mt(surface::css(10.)).child(self.duration.clone())),
+            )
+            .into_any_element()
+    }
+
     fn ambient(&self, cx: &mut Context<Self>) -> AnyElement {
         let enabled = self.enabled();
         let region = self.params["screen"].as_str().unwrap_or("");
@@ -687,6 +931,9 @@ impl Render for StudioProperties {
         let content = match self.current.as_ref().map(|(_, name)| name.as_str()) {
             Some("breathing") => self.paired_colors(true, window, cx),
             Some("fire") => self.paired_colors(false, window, cx),
+            Some("reactive") => self.reactive(window, cx),
+            Some("ripple") => self.ripple(),
+            Some("starlight") => self.starlight(window, cx),
             Some("ambient") => self.ambient(cx),
             Some("static") => div()
                 .flex()

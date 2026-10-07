@@ -54,15 +54,28 @@ pub(super) fn status(device: &Device) -> String {
     if let Some(observation) = fields.connection_observation {
         use crate::model::DeviceConnectionObservation;
         return match (observation, i18n::locale().eq_ignore_ascii_case("zh-cn")) {
+            (DeviceConnectionObservation::UsbPresent, true) => "已发现 USB 设备 · 配置未读取",
+            (DeviceConnectionObservation::UsbPresent, false) => {
+                "USB device found · Settings not read"
+            }
             (DeviceConnectionObservation::HidPresent, true) => "已发现 HID 接口 · 配置未读取",
             (DeviceConnectionObservation::ReceiverPeer(1), true) => "接收器报告在线 · 配置未读取",
             (DeviceConnectionObservation::ReceiverPeer(0), true) => "接收器报告离线 · 本地配置",
             (DeviceConnectionObservation::ReceiverPeer(_), true) => "接收器关联 · 连接状态未知",
-            (DeviceConnectionObservation::HidPresent, false) => "HID interface found · Settings not read",
-            (DeviceConnectionObservation::ReceiverPeer(1), false) => "Receiver reports online · Settings not read",
-            (DeviceConnectionObservation::ReceiverPeer(0), false) => "Receiver reports offline · Local settings",
-            (DeviceConnectionObservation::ReceiverPeer(_), false) => "Receiver binding · Connection state unknown",
-        }.into();
+            (DeviceConnectionObservation::HidPresent, false) => {
+                "HID interface found · Settings not read"
+            }
+            (DeviceConnectionObservation::ReceiverPeer(1), false) => {
+                "Receiver reports online · Settings not read"
+            }
+            (DeviceConnectionObservation::ReceiverPeer(0), false) => {
+                "Receiver reports offline · Local settings"
+            }
+            (DeviceConnectionObservation::ReceiverPeer(_), false) => {
+                "Receiver binding · Connection state unknown"
+            }
+        }
+        .into();
     }
     if fields.local_snapshot {
         return if i18n::locale().eq_ignore_ascii_case("zh-cn") {

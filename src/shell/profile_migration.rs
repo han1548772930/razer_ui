@@ -250,7 +250,14 @@ impl MigrationSelection {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum MigrationApp {
+    Synapse,
+    Chroma,
+}
+
 pub(super) struct MigrationPage {
+    app: MigrationApp,
     scenarios: Option<Entity<SelectState<Vec<Choice>>>>,
     scenario: String,
     groups: Vec<MigrationGroup>,
@@ -265,9 +272,13 @@ pub(super) struct MigrationPage {
 }
 impl MigrationPage {
     pub(super) fn new(cx: &mut Context<Self>) -> Self {
+        Self::new_for(MigrationApp::Synapse, cx)
+    }
+    pub(super) fn new_for(app: MigrationApp, cx: &mut Context<Self>) -> Self {
         // An unread scanner result is not the source's confirmed empty result.
         // The standalone page exposes no test controls or fabricated records.
         Self {
+            app,
             scenarios: None,
             scenario: "unknown".into(),
             groups: vec![],
@@ -1076,6 +1087,21 @@ impl Render for MigrationPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let preview = self.scenarios.is_some();
         v_flex()
+            .id(match self.app {
+                MigrationApp::Synapse => "synapse-profile-migration-root",
+                MigrationApp::Chroma => "chroma-app-profile-migration-root",
+            })
+            .when(self.app == MigrationApp::Chroma && !preview, |view| {
+                view.child(
+                    h_flex()
+                        .h(surface::css(40.))
+                        .flex_shrink_0()
+                        .justify_center()
+                        .bg(crate::ui::theme::ChromaSettingsColors::background())
+                        .text_color(crate::ui::theme::ChromaSettingsColors::secondary())
+                        .child(i18n::t("PROFILE_MIGRATION").to_uppercase()),
+                )
+            })
             .when(!preview, |view| view.size_full())
             .when(preview, |view| view.gap(surface::css(12.)))
             .text_size(surface::css(14.))

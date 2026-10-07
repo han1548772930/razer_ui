@@ -11,9 +11,11 @@ use serde::Deserialize;
 use std::{collections::BTreeMap, sync::OnceLock};
 
 mod dialog;
+mod observation;
 mod preview;
 mod state;
 use dialog::DockDialog;
+pub(crate) use observation::{DockPairingEvent, DockPairingObservation};
 pub(crate) use preview::open_preview;
 use state::{Lane, PairingState, Peer, Status};
 
@@ -79,6 +81,7 @@ pub(crate) struct DockPairing {
     preview: bool,
     alert: Option<String>,
     modal: Option<Entity<DockDialog>>,
+    modal_subscriptions: Vec<Subscription>,
 }
 struct PreviewDialogRequested;
 impl EventEmitter<PreviewDialogRequested> for DockPairing {}
@@ -91,6 +94,7 @@ pub(crate) struct DeviceLinkRequested {
     pub(crate) edition_id: u32,
 }
 impl EventEmitter<DeviceLinkRequested> for DockPairing {}
+impl EventEmitter<DockPairingEvent> for DockPairing {}
 impl DockPairing {
     pub(crate) fn new(device: &Device) -> Self {
         Self {
@@ -109,6 +113,7 @@ impl DockPairing {
             preview: false,
             alert: None,
             modal: None,
+            modal_subscriptions: Vec::new(),
         }
     }
     /// 刷新应用设备列表（数量或成员变化才通知）。
@@ -126,6 +131,25 @@ impl DockPairing {
         self.alert = None;
         cx.notify();
     }
+    pub(crate) fn observe_pairing(
+        &mut self,
+        observation: DockPairingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(modal) = &self.modal {
+            let observed = modal.update(cx, |view, cx| {
+                view.observe_pairing(observation, cx)
+                    .then(|| view.state.clone())
+            });
+            if let Some(mut state) = observed {
+                // Only the dialog owns local intents; the parent displays peers.
+                state.pending = None;
+                state.active = None;
+                self.state = state;
+                cx.notify();
+            }
+        }
+    }
     fn open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.multi_pairing {
             if self.dongle {
@@ -139,7 +163,7 @@ impl DockPairing {
             return;
         }
         self.dismiss(window, cx);
-        self.modal = Some(DockDialog::open(
+        let modal = DockDialog::open(
             self.spec,
             self.edition,
             self.layout,
@@ -148,7 +172,13 @@ impl DockPairing {
             self.preview,
             window,
             cx,
-        ));
+        );
+        self.modal_subscriptions =
+            vec![cx.subscribe(&modal, |_, _, event: &DockPairingEvent, cx| {
+                cx.emit(event.clone());
+            })];
+        modal.update(cx, |view, cx| view.begin_read(cx));
+        self.modal = Some(modal);
         cx.notify();
     }
     fn page(&self, cx: &Context<Self>) -> AnyElement {
@@ -221,7 +251,9 @@ impl DockPairing {
                     let target = self.known_devices.iter().copied().find(|(pid, edition)| {
                         peer.product_id != 0
                             && *pid == peer.product_id
-                            && (peer.edition == 0 || *edition == peer.edition)
+                            && peer
+                                .edition
+                                .is_none_or(|value| value == 0 || *edition == value)
                     });
                     let linked = target.is_some();
                     let name = SharedString::from(peer.name.clone());
@@ -397,6 +429,18 @@ impl Render for DockPairing {
             .child(self.page(cx))
             .children(self.modal.clone())
     }
+}
+fn peer_image(peer: &Peer) -> Option<&'static str> {
+    let identity = (peer.product_id, peer.edition?, peer.layout?);
+    const IMAGES: &[(u32, u32, u32, &str)] = include!("../../assets/synapse/dashboard-images.rs");
+    const ARMORY: &[(u32, u32, u32, &str)] =
+        include!("../../assets/synapse/armory-dashboard-images.rs");
+    IMAGES
+        .iter()
+        .chain(ARMORY)
+        .find_map(|&(pid, edition, layout, asset)| {
+            ((pid, edition, layout) == identity).then_some(asset)
+        })
 }
 fn command(
     id: impl Into<ElementId>,

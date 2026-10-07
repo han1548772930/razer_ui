@@ -72,7 +72,9 @@ impl ReceiverPeer {
             &self.product_name
         };
         names
-            .get(locale)
+            .iter()
+            .find(|(language, _)| language.eq_ignore_ascii_case(locale))
+            .map(|(_, name)| name)
             .or_else(|| names.get("en"))
             .cloned()
             .unwrap_or_else(|| format!("PID {}", self.product_id))
@@ -106,6 +108,7 @@ pub(crate) enum ReceiverPairingIntent {
 }
 #[derive(Clone, Debug)]
 pub(crate) struct ReceiverPairingEvent {
+    // Operation generation, including local cancellation; not just modal lifetime.
     session: u64,
     intent: ReceiverPairingIntent,
 }
@@ -220,6 +223,8 @@ pub(super) struct PairingState {
     pub(super) selected: usize,
     pub(super) firmware_version: Option<String>,
     pub(super) pending: Option<ReceiverPairingIntent>,
+    // Retained after a publisher acknowledges progress, until its final result.
+    active: Option<ReceiverPairingIntent>,
     pub(super) failure: Option<ReceiverOperation>,
 }
 impl PairingState {
@@ -227,7 +232,7 @@ impl PairingState {
         self.open
     }
     pub(super) fn open(&mut self) -> ReceiverPairingEvent {
-        let session = self.session.wrapping_add(1);
+        let session = self.session;
         *self = Self {
             session,
             open: true,
@@ -237,15 +242,22 @@ impl PairingState {
     }
     pub(super) fn close(&mut self) -> ReceiverPairingEvent {
         self.open = false;
+        self.invalidate()
+    }
+    fn invalidate(&mut self) -> ReceiverPairingEvent {
+        self.session = self.session.wrapping_add(1);
         self.pending = None;
+        self.active = None;
         ReceiverPairingEvent {
             session: self.session,
             intent: ReceiverPairingIntent::Cancel,
         }
     }
     fn request(&mut self, intent: ReceiverPairingIntent) -> ReceiverPairingEvent {
+        self.session = self.session.wrapping_add(1);
         self.failure = None;
         self.pending = Some(intent.clone());
+        self.active = Some(intent.clone());
         ReceiverPairingEvent {
             session: self.session,
             intent,
@@ -308,11 +320,12 @@ impl PairingState {
             self.status = Status::ConfirmUnpair;
         }
     }
-    pub(super) fn cancel_unpair(&mut self) {
+    pub(super) fn cancel_unpair(&mut self) -> Option<ReceiverPairingEvent> {
         if self.open && self.status == Status::ConfirmUnpair {
-            self.pending = None;
             self.status = Status::Paired;
+            return Some(self.invalidate());
         }
+        None
     }
     pub(super) fn unbind(&mut self) -> Option<ReceiverPairingEvent> {
         if !self.open || self.status != Status::ConfirmUnpair || self.pending.is_some() {
@@ -321,9 +334,9 @@ impl PairingState {
         let id = self.bound.first()?.unbind_product_id();
         Some(self.request(ReceiverPairingIntent::Unbind(id)))
     }
-    pub(super) fn cancel_pending(&mut self) {
+    pub(super) fn cancel_pending(&mut self) -> Option<ReceiverPairingEvent> {
         // Only the local, unacknowledged intent is removed. No device response.
-        self.pending = None;
+        (self.open && self.pending.is_some()).then(|| self.invalidate())
     }
     pub(super) fn observe(
         &mut self,
@@ -332,12 +345,34 @@ impl PairingState {
         if !self.open || observation.session != self.session {
             return (false, None);
         }
+        // A generation also has an operation type. A delayed or duplicate result
+        // cannot overwrite a newer request or trigger automatic binding again.
+        let expected = match &observation.update {
+            Update::Bindings(_) => Some(ReceiverOperation::Bindings),
+            Update::Scanned(_) => Some(ReceiverOperation::Scan),
+            Update::Bound(_) => Some(ReceiverOperation::Bind),
+            Update::Unbound => Some(ReceiverOperation::Unbind),
+            Update::Failed(operation) => Some(*operation),
+            Update::FirmwareVersion(_) | Update::Progress(_) => None,
+        };
+        let active = match self.active.as_ref() {
+            Some(ReceiverPairingIntent::QueryBindings) => Some(ReceiverOperation::Bindings),
+            Some(ReceiverPairingIntent::Scan(_)) => Some(ReceiverOperation::Scan),
+            Some(ReceiverPairingIntent::Bind(_)) => Some(ReceiverOperation::Bind),
+            Some(ReceiverPairingIntent::Unbind(_)) => Some(ReceiverOperation::Unbind),
+            _ => None,
+        };
+        if expected.is_some() && expected != active {
+            return (false, None);
+        }
         match observation.update {
             Update::FirmwareVersion(version) => self.firmware_version = version,
             Update::Bindings(peers) => {
                 self.failure = None;
                 self.pending = None;
+                self.active = None;
                 self.candidates.clear();
+                self.selected = 0;
                 self.category = peers.first().and_then(ReceiverPeer::category);
                 self.status = if peers.is_empty() {
                     Status::Ready
@@ -348,12 +383,14 @@ impl PairingState {
             }
             Update::Scanned(peers) => {
                 self.failure = None;
-                if let Some(ReceiverPairingIntent::Scan(category)) = self.pending.as_ref() {
+                if let Some(ReceiverPairingIntent::Scan(category)) = self.active.as_ref() {
                     self.category = Some(*category);
                 }
                 self.pending = None;
+                self.active = None;
                 self.status = Status::Scanned;
                 self.candidates = peers;
+                self.selected = self.selected.min(self.candidates.len().saturating_sub(1));
                 // se automatically requests binding for exactly one real candidate.
                 // Keep the request local until the publisher acknowledges it.
                 if self.candidates.len() == 1 {
@@ -364,6 +401,7 @@ impl PairingState {
             Update::Bound(peer) => {
                 self.failure = None;
                 self.pending = None;
+                self.active = None;
                 self.category = peer.category;
                 self.bound = vec![peer];
                 self.selected = 0;
@@ -372,12 +410,14 @@ impl PairingState {
             Update::Unbound => {
                 self.failure = None;
                 self.pending = None;
+                self.active = None;
                 self.bound.clear();
                 self.status = Status::Unpaired;
             }
             Update::Failed(operation) => {
                 self.failure = Some(operation);
                 self.pending = None;
+                self.active = None;
                 self.status = match operation {
                     ReceiverOperation::Bindings => {
                         self.bound.clear();
@@ -394,7 +434,7 @@ impl PairingState {
                 };
             }
             Update::Progress(progress) => {
-                let accepted = match (progress, self.pending.as_ref()) {
+                let accepted = match (progress, self.active.as_ref()) {
                     (
                         ReceiverProgress::Scanning(category),
                         Some(ReceiverPairingIntent::Scan(expected)),

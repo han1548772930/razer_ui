@@ -182,17 +182,18 @@ pub(crate) fn lookup(raw_pid: u32) -> IdentityLookup {
 
 /// Current 34340/he: dongleId === queried productId. Preserve all candidates
 /// rather than silently selecting Array.find's first row or filtering siblings.
-pub(crate) fn lookup_receiver_peer(raw_pid: u32) -> IdentityLookup {
+pub(crate) fn lookup_receiver_peer(raw_pid: u32, match_product_id: bool) -> IdentityLookup {
     classify(
         raw_pid,
         catalog()
             .iter()
             .enumerate()
             .filter(|(_, entry)| {
-                entry
-                    .dongle_id
-                    .as_ref()
-                    .is_some_and(|ids| ids.scalar_equals(raw_pid))
+                (match_product_id && entry.product_id == raw_pid)
+                    || entry
+                        .dongle_id
+                        .as_ref()
+                        .is_some_and(|ids| ids.scalar_equals(raw_pid))
             })
             .map(|(index, entry)| {
                 let mut identity = entry.identity(raw_pid, index);

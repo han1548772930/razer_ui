@@ -9,6 +9,12 @@ use super::{
 use crate::{model::Device, nav::Tab};
 use gpui_kit::*;
 
+#[path = "profile_collection.rs"]
+mod profile_collection;
+pub(super) use profile_collection::{
+    Action as ProfileCollectionAction, edit as edit_profile_collection,
+};
+
 enum Body {
     Existing(Entity<DeviceWorkspace>),
     Source(Entity<SourceProductWorkspace>),
@@ -78,10 +84,12 @@ pub(crate) struct ProductWorkspace {
     _subscription: Subscription,
     _oled_subscription: Option<Subscription>,
     _receiver_subscription: Option<Subscription>,
+    _dock_subscription: Option<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for ProductWorkspace {}
 impl EventEmitter<super::ReceiverPairingEvent> for ProductWorkspace {}
+impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
     pub(crate) fn observe_connection(
@@ -110,9 +118,42 @@ impl ProductWorkspace {
             });
         }
     }
+    pub(crate) fn observe_dock_pairing(
+        &mut self,
+        observation: super::DockPairingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_dock_pairing(observation, cx));
+        }
+    }
     pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.set_active(active, window, cx));
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn mouse_polling_scope(
+        &self,
+        cx: &App,
+    ) -> Option<super::mouse_products::MousePollingScope> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).mouse_polling_scope(cx),
+            _ => None,
+        }
+    }
+    #[allow(dead_code)]
+    pub(crate) fn observe_mouse_polling(
+        &mut self,
+        scope: super::mouse_products::MousePollingScope,
+        observation: super::mouse_products::MousePollingObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_mouse_polling(scope, observation, cx)
+            });
         }
     }
 
@@ -164,6 +205,42 @@ impl ProductWorkspace {
             });
         }
     }
+
+    /// Current calibration query scope; no query is started by reading this ID.
+    #[allow(dead_code)]
+    pub(crate) fn calibration_generation(&self, cx: &App) -> Option<u64> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).calibration_generation(cx),
+            _ => None,
+        }
+    }
+
+    /// Local UI request only; never a device acknowledgement or a write call.
+    #[allow(dead_code)]
+    pub(crate) fn calibration_intent(
+        &self,
+        cx: &App,
+    ) -> Option<super::gamepad_products::CalibrationIntent> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).calibration_intent(cx),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn observe_calibration(
+        &mut self,
+        observation: super::gamepad_products::CalibrationObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.observe_calibration(observation, window, cx)
+            }),
+            _ => false,
+        }
+    }
     /// Dedicated Stream Mixer MW observations; never substitute generic audio enumeration.
     #[allow(dead_code)]
     pub(crate) fn observe_stream_mixer(
@@ -190,6 +267,21 @@ impl ProductWorkspace {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.observe_oled_runtime(observation, window, cx)
+            });
+        }
+    }
+
+    /// Read-only adapter boundary; no monitor-service publisher is synthesized.
+    #[allow(dead_code)]
+    pub(crate) fn observe_monitor_runtime(
+        &mut self,
+        runtime: Option<&serde_json::Value>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_monitor_runtime(runtime, window, cx)
             });
         }
     }
@@ -226,6 +318,7 @@ impl ProductWorkspace {
                 _subscription: subscription,
                 _oled_subscription: None,
                 _receiver_subscription: None,
+                _dock_subscription: None,
             }
         } else {
             let entity = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
@@ -257,11 +350,16 @@ impl ProductWorkspace {
                 cx.subscribe(&entity, |_, _, event: &super::ReceiverPairingEvent, cx| {
                     cx.emit(event.clone());
                 });
+            let dock_subscription =
+                cx.subscribe(&entity, |_, _, event: &super::DockPairingEvent, cx| {
+                    cx.emit(event.clone());
+                });
             Self {
                 body: Body::Source(entity),
                 _subscription: subscription,
                 _oled_subscription: Some(oled_subscription),
                 _receiver_subscription: Some(receiver_subscription),
+                _dock_subscription: Some(dock_subscription),
             }
         }
     }
@@ -422,6 +520,48 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         self.change_profile_metadata(profile, ProfileMetadata::Rename(name), window, cx);
+    }
+    pub(crate) fn add_local_profile(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        self.change_profile_collection(ProfileCollectionAction::Add, window, cx)
+    }
+    pub(crate) fn duplicate_local_profile(
+        &mut self,
+        profile: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        self.change_profile_collection(
+            ProfileCollectionAction::Duplicate(profile.into()),
+            window,
+            cx,
+        )
+    }
+    pub(crate) fn delete_local_profile(
+        &mut self,
+        profile: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        self.change_profile_collection(ProfileCollectionAction::Delete(profile.into()), window, cx)
+    }
+    fn change_profile_collection(
+        &mut self,
+        action: ProfileCollectionAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<String, String> {
+        match &self.body {
+            Body::Existing(entity) => entity.update(cx, |workspace, cx| {
+                workspace.change_profile_collection(action, window, cx)
+            }),
+            Body::Source(entity) => entity.update(cx, |workspace, cx| {
+                workspace.change_profile_collection(action, window, cx)
+            }),
+        }
     }
     pub(crate) fn link_profile_game(
         &mut self,
